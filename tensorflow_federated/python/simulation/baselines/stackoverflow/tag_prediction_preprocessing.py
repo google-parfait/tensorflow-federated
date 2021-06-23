@@ -21,6 +21,9 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.simulation.baselines import client_spec
+
+DEFAULT_SHUFFLE_BUFFER_SIZE = 1000
 
 
 def build_to_ids_fn(word_vocab: List[str],
@@ -60,63 +63,40 @@ def build_to_ids_fn(word_vocab: List[str],
 
 
 def create_preprocess_fn(
-    num_epochs: int,
-    batch_size: int,
+    preprocess_spec: client_spec.ClientSpec,
     word_vocab: List[str],
     tag_vocab: List[str],
-    max_elements: int = -1,
-    shuffle_buffer_size: int = 1000,
     num_parallel_calls: int = tf.data.experimental.AUTOTUNE
 ) -> computation_base.Computation:
   """Creates a preprocessing function for Stack Overflow tag prediction data.
 
   This function creates a `tff.Computation` which takes a dataset, and returns
-  a preprocessed dataset. This preprocessing takes a maximum number of elements
-  in the client's dataset, shuffles, repeats some number of times, and then
-  maps the elements to tuples of the form (tokens, tags), where tokens are
-  bag-of-words vectors, and tags are binary vectors indicating that a given
-  tag is associated with the example.
+  a preprocessed dataset. This preprocessing shuffles the dataset, repeats it
+  some number of times, takes a maximum number of examples, and then maps the
+  elements to tuples of the form (tokens, tags), where tokens are bag-of-words
+  vectors, and tags are binary vectors indicating that a given tag is associated
+  with the example.
 
   Args:
-    num_epochs: An integer representing the number of epochs to repeat the
-      client datasets.
-    batch_size: An integer representing the batch size on clients.
+    preprocess_spec: A `tff.simulation.baselines.ClientSpec` containing
+      information on how to preprocess clients.
     word_vocab: A list of strings representing the in-vocabulary words.
     tag_vocab: A list of tokens representing the in-vocabulary tags.
-    max_elements: Integer controlling the maximum number of elements
-      to take per client. If -1, keeps all elements for each client. This is
-      applied before repeating the client dataset, and is intended to contend
-      with the small set of clients with tens of thousands of examples. Note
-      that only the first `max_elements` will be selected.
-    shuffle_buffer_size: An integer representing the shuffle buffer size on
-      clients. If set to a number <= 1, no shuffling occurs. If
-      `max_elements_per_client` is positive and less than `shuffle_buffer_size`,
-      it will be set to `max_elements_per_client`.
     num_parallel_calls: An integer representing the number of parallel calls
       used when performing `tf.data.Dataset.map`.
 
   Returns:
     A `tff.Computation` taking as input a `tf.data.Dataset`, and returning a
     `tf.data.Dataset` formed by preprocessing according to the input arguments.
-
-  Raises:
-    ValueError: If `num_epochs` is a non-positive integer, if `batch_size` is
-      not a positive integer, if `word_vocab` or `tag_vocab` is empty, if
-      `max_elements` is not a positive integer or -1.
   """
-  if num_epochs <= 0:
-    raise ValueError('num_epochs must be a positive integer. ')
-  if batch_size <= 0:
-    raise ValueError('batch_size must be a positive integer.')
   if not word_vocab:
     raise ValueError('word_vocab must be non-empty.')
   if not tag_vocab:
     raise ValueError('tag_vocab must be non-empty.')
-  if max_elements == 0 or max_elements < -1:
-    raise ValueError('max_elements must be a positive integer or -1.')
 
-  if (max_elements > 0) and (max_elements < shuffle_buffer_size):
-    shuffle_buffer_size = max_elements
+  shuffle_buffer_size = preprocess_spec.shuffle_buffer_size
+  if shuffle_buffer_size is None:
+    shuffle_buffer_size = DEFAULT_SHUFFLE_BUFFER_SIZE
 
   # Features are intentionally sorted lexicographically by key for consistency
   # across datasets.
@@ -131,11 +111,14 @@ def create_preprocess_fn(
 
   @computations.tf_computation(computation_types.SequenceType(feature_dtypes))
   def preprocess_fn(dataset):
-    dataset = dataset.take(max_elements)
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size)
+    if preprocess_spec.num_epochs > 1:
+      dataset = dataset.repeat(preprocess_spec.num_epochs)
+    if preprocess_spec.max_elements is not None:
+      dataset = dataset.take(preprocess_spec.max_elements)
     to_ids = build_to_ids_fn(word_vocab, tag_vocab)
-    return dataset.repeat(num_epochs).map(
-        to_ids, num_parallel_calls=num_parallel_calls).batch(batch_size)
+    dataset = dataset.map(to_ids, num_parallel_calls=num_parallel_calls)
+    return dataset.batch(preprocess_spec.batch_size)
 
   return preprocess_fn
