@@ -68,26 +68,6 @@ def _get_resnet_model(model_id: Union[str, ResnetModel],
   return keras_model_fn(input_shape=input_shape, num_classes=_NUM_CLASSES)
 
 
-def _get_preprocessing_functions(
-    train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: client_spec.ClientSpec,
-    crop_shape) -> Tuple[_PreprocessFn, _PreprocessFn]:
-  """Creates train and eval preprocessing functions for a CIFAR-100 task."""
-  train_preprocess_fn = cifar_preprocessing.create_preprocess_fn(
-      num_epochs=train_client_spec.num_epochs,
-      batch_size=train_client_spec.batch_size,
-      max_elements=train_client_spec.max_elements,
-      shuffle_buffer_size=train_client_spec.shuffle_buffer_size,
-      crop_shape=crop_shape)
-  eval_preprocess_fn = cifar_preprocessing.create_preprocess_fn(
-      num_epochs=eval_client_spec.num_epochs,
-      batch_size=eval_client_spec.batch_size,
-      max_elements=eval_client_spec.max_elements,
-      shuffle_buffer_size=eval_client_spec.shuffle_buffer_size,
-      crop_shape=crop_shape)
-  return train_preprocess_fn, eval_preprocess_fn
-
-
 def create_image_classification_task(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
@@ -138,8 +118,12 @@ def create_image_classification_task(
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=64, shuffle_buffer_size=1)
-  train_preprocess_fn, eval_preprocess_fn = _get_preprocessing_functions(
-      train_client_spec, eval_client_spec, crop_shape)
+
+  train_preprocess_fn = cifar_preprocessing.create_preprocess_fn(
+      train_client_spec, crop_shape=crop_shape)
+  eval_preprocess_fn = cifar_preprocessing.create_preprocess_fn(
+      eval_client_spec, crop_shape=crop_shape)
+
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=cifar_train,
       test_data=cifar_test,
