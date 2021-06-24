@@ -14,7 +14,7 @@
 """Library for creating baseline tasks on CIFAR-100."""
 
 import enum
-from typing import Callable, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import tensorflow as tf
 
@@ -23,8 +23,8 @@ from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
-from tensorflow_federated.python.simulation.baselines.cifar import cifar_preprocessing
-from tensorflow_federated.python.simulation.baselines.cifar import resnet_models
+from tensorflow_federated.python.simulation.baselines.cifar100 import image_classification_preprocessing
+from tensorflow_federated.python.simulation.baselines.cifar100 import resnet_models
 from tensorflow_federated.python.simulation.datasets import cifar100
 
 
@@ -39,8 +39,8 @@ class ResnetModel(enum.Enum):
 
 _NUM_CLASSES = 100
 _RESNET_MODELS = [e.value for e in ResnetModel]
-_PreprocessFn = Callable[[tf.data.Dataset], tf.data.Dataset]
-_ModelFn = Callable[[], model.Model]
+DEFAULT_CROP_HEIGHT = 24
+DEFAULT_CROP_WIDTH = 24
 
 
 def _get_resnet_model(model_id: Union[str, ResnetModel],
@@ -68,34 +68,14 @@ def _get_resnet_model(model_id: Union[str, ResnetModel],
   return keras_model_fn(input_shape=input_shape, num_classes=_NUM_CLASSES)
 
 
-def _get_preprocessing_functions(
-    train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: client_spec.ClientSpec,
-    crop_shape) -> Tuple[_PreprocessFn, _PreprocessFn]:
-  """Creates train and eval preprocessing functions for a CIFAR-100 task."""
-  train_preprocess_fn = cifar_preprocessing.create_preprocess_fn(
-      num_epochs=train_client_spec.num_epochs,
-      batch_size=train_client_spec.batch_size,
-      max_elements=train_client_spec.max_elements,
-      shuffle_buffer_size=train_client_spec.shuffle_buffer_size,
-      crop_shape=crop_shape)
-  eval_preprocess_fn = cifar_preprocessing.create_preprocess_fn(
-      num_epochs=eval_client_spec.num_epochs,
-      batch_size=eval_client_spec.batch_size,
-      max_elements=eval_client_spec.max_elements,
-      shuffle_buffer_size=eval_client_spec.shuffle_buffer_size,
-      crop_shape=crop_shape)
-  return train_preprocess_fn, eval_preprocess_fn
-
-
 def create_image_classification_task(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
     model_id: Union[str, ResnetModel] = 'resnet18',
-    crop_height: int = 24,
-    crop_width: int = 24,
-    use_synthetic_data: bool = False
-) -> Tuple[task_data.BaselineTaskDatasets, _ModelFn]:
+    crop_height: int = DEFAULT_CROP_HEIGHT,
+    crop_width: int = DEFAULT_CROP_WIDTH,
+    cache_dir: Optional[str] = None,
+    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
   """Creates a baseline task for image classification on CIFAR-100.
 
   The goal of the task is to minimize the sparse categorical crossentropy
@@ -114,9 +94,15 @@ def create_image_classification_task(
       architectures though, the batch normalization layers are replaced with
       group normalization.
     crop_height: An integer specifying the desired height for cropping images.
-      Must be between 1 and 32 (the height of uncropped CIFAR-100 images).
+      Must be between 1 and 32 (the height of uncropped CIFAR-100 images). By
+      default, this is set to
+      `tff.simulation.baselines.cifar100.DEFAULT_CROP_HEIGHT`.
     crop_width: An integer specifying the desired width for cropping images.
-      Must be between 1 and 32 (the width of uncropped CIFAR-100 images).
+      Must be between 1 and 32 (the width of uncropped CIFAR-100 images). By
+      default this is set to
+      `tff.simulation.baselines.cifar100.DEFAULT_CROP_WIDTH`.
+    cache_dir: An optional directory to cache the downloadeded datasets. If
+      `None`, they will be cached to `~/.tff/`.
     use_synthetic_data: A boolean indicating whether to use synthetic CIFAR-100
       data. This option should only be used for testing purposes, in order to
       avoid downloading the entire CIFAR-100 dataset.
@@ -133,13 +119,17 @@ def create_image_classification_task(
     cifar_train = synthetic_data
     cifar_test = synthetic_data
   else:
-    cifar_train, cifar_test = cifar100.load_data()
+    cifar_train, cifar_test = cifar100.load_data(cache_dir=cache_dir)
 
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=64, shuffle_buffer_size=1)
-  train_preprocess_fn, eval_preprocess_fn = _get_preprocessing_functions(
-      train_client_spec, eval_client_spec, crop_shape)
+
+  train_preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
+      train_client_spec, crop_shape=crop_shape)
+  eval_preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
+      eval_client_spec, crop_shape=crop_shape)
+
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=cifar_train,
       test_data=cifar_test,
