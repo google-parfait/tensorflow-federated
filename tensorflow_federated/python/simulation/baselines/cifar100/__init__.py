@@ -11,4 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for optimization algorithms."""
+"""Libraries for constructing baseline tasks for the CIFAR-100 dataset."""
+
+from tensorflow_federated.python.simulation.baselines.cifar100.image_classification_tasks import create_image_classification_task
+from tensorflow_federated.python.simulation.baselines.cifar100.image_classification_tasks import DEFAULT_CROP_HEIGHT
+from tensorflow_federated.python.simulation.baselines.cifar100.image_classification_tasks import DEFAULT_CROP_WIDTH
+from tensorflow_federated.python.simulation.baselines.cifar100.image_classification_tasks import ResnetModel

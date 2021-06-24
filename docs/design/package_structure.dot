@@ -9,47 +9,56 @@ digraph {
   examples -> tff
   tests -> tff
 
-  research [href="#research" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
-  examples [href="#examples" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
-  tests [href="#tests" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+  research [href="https://github.com/google-research/federated/blob/master/" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+  examples [href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+  tests [href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/tests" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
 
   // TFF
   tff -> simulation [arrowhead="none", style="invisible"]
   tff -> simulation_baselines [arrowhead="none", style="invisible"]
 
-  tff [href="#tff" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+  tff [href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
 
   // Simulation
   simulation_baselines -> simulation_models
   simulation_baselines -> simulation_datasets
-  simulation -> simulation_baselines [arrowhead="none", style="invisible"]
-  simulation_models -> learning [arrowhead="none", style="invisible"]
+
+  simulation_models -> learning_framework [arrowhead="none", style="invisible"]
+  simulation_models -> learning_optimizers [arrowhead="none", style="invisible"]
+  simulation_models -> learning_reconstruction [arrowhead="none", style="invisible"]
   simulation_datasets -> analytics [arrowhead="none", style="invisible"]
 
   subgraph cluster_simulation {
-    graph [label="Simulation", href="#tff-simulation" target="_parent"]
-    simulation [href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    simulation_baselines [label="baselines", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    simulation_models [label="models", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    simulation_datasets [label="datasets", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    graph [label="Simulation", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation" target="_parent"]
+    simulation_baselines [label="baselines", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation/baselines" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    simulation_models [label="models", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation/models" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    simulation_datasets [label="datasets", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation/datasets" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    simulation [href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
   // Learning
-  learning -> learning_framework
-  learning_framework -> aggregators [arrowhead="none", style="invisible"]
+  learning_framework -> learning
+  learning_optimizers -> learning
+  learning_reconstruction -> learning
+
+  learning_framework -> learning_optimizers [arrowhead="none", style="invisible"]
+  learning_optimizers -> learning_reconstruction [arrowhead="none", style="invisible"]
+  learning -> aggregators [arrowhead="none", style="invisible"]
 
   subgraph cluster_learning {
-    graph [label="Learning", href="#tff-learning" target="_parent"]
-    learning [href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    learning_framework [label="framework", href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    graph [label="Learning", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning" target="_parent"]
+    learning_framework [label="framework", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/framework" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    learning_optimizers [label="optimizers", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/optimizers" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    learning_reconstruction [label="reconstruction", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/reconstruction" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    learning [href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
   // Analytics
   analytics -> aggregators [arrowhead="none", style="invisible"]
 
   subgraph cluster_analytics {
-    graph [label="Analytics", href="#tff-analytics" target="_parent"]
-    analytics [href="#tff-analytics" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    graph [label="Analytics", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/analytics" target="_parent"]
+    analytics [href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/analytics" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
   // Aggregators
@@ -57,8 +66,8 @@ digraph {
   aggregators -> core_test [arrowhead="none", style="invisible"]
 
   subgraph cluster_aggregators {
-    graph [label="Aggregators", href="#tff-aggregators" target="_parent"]
-    aggregators [href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    graph [label="Aggregators", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/aggregators" target="_parent"]
+    aggregators [href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/aggregators" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
   // Core
@@ -66,21 +75,21 @@ digraph {
   core_backends -> core_templates
   core_templates -> core_api
   core_test -> core_api
+
   core_api -> core_framework [arrowhead="none", style="invisible"]
   core_framework -> core_types [arrowhead="none", style="invisible"]
-
-  subgraph cluster_core {
-    graph [label="Core", href="#tff-core" target="_parent"]
-    core_backends [label="backends", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    core_templates [label="templates", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    core_test [label="test", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    core_api [label="api", href="#tff-core" target="_parent"]
-    core_framework [label="framework", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    core_types [label="types", href="#tff-types" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-  }
-
   core_api -> impl_wrappers [arrowhead="none", style="invisible"]
   core_api -> impl_executors [arrowhead="none", style="invisible"]
+
+  subgraph cluster_core {
+    graph [label="Core", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core" target="_parent"]
+    core_backends [label="backends", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_templates [label="templates", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/templates" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_test [label="test", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/test" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_api [label="api", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/api" target="_parent"]
+    core_framework [label="framework", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/framework" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_types [label="types", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/types" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+  }
 
   // Impl
   impl_wrappers -> impl_tensorflow_context
@@ -114,34 +123,32 @@ digraph {
   impl_compiler -> impl_utils
   impl_context_stack -> impl_types
   impl_utils -> impl_types
-  impl_types -> proto [arrowhead="none", style="invisible"]
+
+  impl_types -> proto_v0 [arrowhead="none", style="invisible"]
   impl_types -> tensorflow_libs [arrowhead="none", style="invisible"]
 
   subgraph cluster_impl {
-    graph [label="Impl", href="#tff-impl" target="_parent"]
-    impl_wrappers [label="wrappers", href="#tff-impl" target="_parent"]
-    impl_executors [label="executors", href="#tff-impl" target="_parent"]
-    impl_tensorflow_context [label="tensorflow_context", href="#tff-impl" target="_parent"]
-    impl_federated_context [label="federated_context", href="#tff-impl" target="_parent"]
-    impl_computation [label="computation", href="#tff-impl" target="_parent"]
-    impl_compiler [label="compiler", href="#tff-impl" target="_parent"]
-    impl_context_stack [label="context_stack", href="#tff-impl" target="_parent"]
-    impl_utils [label="utils", href="#tff-impl" target="_parent"]
-    impl_types [label="types", href="#tff-impl" target="_parent"]
+    graph [label="Impl", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl" target="_parent"]
+    impl_wrappers [label="wrappers", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/wrappers" target="_parent"]
+    impl_executors [label="executors", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/executors" target="_parent"]
+    impl_tensorflow_context [label="tensorflow_context", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/tensorflow_context" target="_parent"]
+    impl_federated_context [label="federated_context", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/federated_context" target="_parent"]
+    impl_computation [label="computation", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/computation" target="_parent"]
+    impl_compiler [label="compiler", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/compiler" target="_parent"]
+    impl_context_stack [label="context_stack", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/context_stack" target="_parent"]
+    impl_utils [label="utils", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/utils" target="_parent"]
+    impl_types [label="types", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/types" target="_parent"]
   }
 
   // Proto
-  proto -> proto_v0
-
   subgraph cluster_proto {
-    graph [label="Proto", href="#tff-proto" target="_parent"]
-    proto [href="#tff-proto" target="_parent"]
-    proto_v0 [label="v0" href="#tff-proto" target="_parent"]
+    graph [label="Proto", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/proto" target="_parent"]
+    proto_v0 [label="proto/v0" href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/proto/v0" target="_parent"]
   }
 
   // Other
-  tensorflow_libs [href="#tff-tensorflow-libs" target="_parent"]
-  common_libs [href="#tff-common-libs" target="_parent"]
+  tensorflow_libs [href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/tensorflow_libs" target="_parent"]
+  common_libs [href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/common_libs" target="_parent"]
   tensorflow_libs -> common_libs
 
   // Layout
@@ -149,8 +156,8 @@ digraph {
   {rank=same; tff}
   {rank=same; simulation, simulation_baselines}
   {rank=same; simulation_models, simulation_datasets}
-  {rank=same; learning, analytics}
-  {rank=same; learning_framework}
+  {rank=same; learning_framework, learning_optimizers, learning_reconstruction, analytics}
+  {rank=same; learning}
   {rank=same; aggregators}
   {rank=same; core_backends, core_test}
   {rank=same; core_templates}
@@ -161,6 +168,6 @@ digraph {
   {rank=same; impl_compiler, impl_context_stack}
   {rank=same; impl_utils}
   {rank=same; impl_types}
-  {rank=same; proto, tensorflow_libs}
+  {rank=same; proto_v0, tensorflow_libs}
   {rank=same; common_libs}
 }

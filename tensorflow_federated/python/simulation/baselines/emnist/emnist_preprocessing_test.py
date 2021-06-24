@@ -18,6 +18,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.emnist import emnist_preprocessing
 
 
@@ -37,49 +38,13 @@ def _compute_length_of_dataset(ds):
 
 class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
-                                  ('negative_value2', -2))
-  def test_preprocess_fn_with_nonpositive_epochs_raises(self, num_epochs):
-    with self.assertRaisesRegex(ValueError,
-                                'num_epochs must be a positive integer'):
-      emnist_preprocessing.create_preprocess_fn(
-          num_epochs=num_epochs, batch_size=1)
-
-  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
-                                  ('negative_value2', -2))
-  def test_preprocess_fn_with_nonpositive_batch_size_raises(self, batch_size):
-    with self.assertRaisesRegex(ValueError,
-                                'batch_size must be a positive integer'):
-      emnist_preprocessing.create_preprocess_fn(
-          num_epochs=1, batch_size=batch_size)
-
-  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
-                                  ('negative_value2', -2))
-  def test_preprocess_fn_with_nonpositive_max_elements_raises(
-      self, max_elements):
-    with self.assertRaisesRegex(
-        ValueError, 'max_elements must be `None` or a positive integer'):
-      emnist_preprocessing.create_preprocess_fn(
-          num_epochs=1, batch_size=1, max_elements=max_elements)
-
-  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
-                                  ('negative_value2', -2))
-  def test_preprocess_fn_with_nonpositive_shuffle_buffer_raises(
-      self, shuffle_buffer_size):
-    with self.assertRaisesRegex(
-        ValueError, 'shuffle_buffer_size must be `None` or a positive integer'):
-      emnist_preprocessing.create_preprocess_fn(
-          num_epochs=1, batch_size=1, shuffle_buffer_size=shuffle_buffer_size)
-
   def test_non_supported_task_raises(self):
+    preprocess_spec = client_spec.ClientSpec(num_epochs=1, batch_size=1)
     with self.assertRaisesRegex(
         ValueError,
         'emnist_task must be one of "digit_recognition" or "autoencoder".'):
       emnist_preprocessing.create_preprocess_fn(
-          num_epochs=1,
-          batch_size=1,
-          shuffle_buffer_size=1,
-          emnist_task='bad_task')
+          preprocess_spec, emnist_task='bad_task')
 
   @parameterized.named_parameters(
       ('param1', 1, 1),
@@ -92,8 +57,9 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_ds_length_is_ceil_num_epochs_over_batch_size(self, num_epochs,
                                                         batch_size):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
-    preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-        num_epochs=num_epochs, batch_size=batch_size, shuffle_buffer_size=1)
+    preprocess_spec = client_spec.ClientSpec(
+        num_epochs=num_epochs, batch_size=batch_size)
+    preprocess_fn = emnist_preprocessing.create_preprocess_fn(preprocess_spec)
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(
         _compute_length_of_dataset(preprocessed_ds),
@@ -109,8 +75,9 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_ds_length_with_max_elements(self, max_elements):
     repeat_size = 10
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA).repeat(repeat_size)
-    preprocess_fn = emnist_preprocessing.create_preprocess_fn(
+    preprocess_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=1, max_elements=max_elements)
+    preprocess_fn = emnist_preprocessing.create_preprocess_fn(preprocess_spec)
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(
         _compute_length_of_dataset(preprocessed_ds),
@@ -118,11 +85,10 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_digit_recognition_preprocess_returns_correct_elements(self):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
+    preprocess_spec = client_spec.ClientSpec(
+        num_epochs=1, batch_size=20, shuffle_buffer_size=1)
     preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-        num_epochs=1,
-        batch_size=20,
-        shuffle_buffer_size=1,
-        emnist_task='digit_recognition')
+        preprocess_spec, emnist_task='digit_recognition')
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(preprocessed_ds.element_spec,
                      (tf.TensorSpec(shape=(None, 28, 28, 1), dtype=tf.float32),
@@ -135,11 +101,10 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_autoencoder_preprocess_returns_correct_elements(self):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
+    preprocess_spec = client_spec.ClientSpec(
+        num_epochs=1, batch_size=20, shuffle_buffer_size=1)
     preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-        num_epochs=1,
-        batch_size=20,
-        shuffle_buffer_size=1,
-        emnist_task='autoencoder')
+        preprocess_spec, emnist_task='autoencoder')
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(preprocessed_ds.element_spec,
                      (tf.TensorSpec(shape=(None, 784), dtype=tf.float32),
