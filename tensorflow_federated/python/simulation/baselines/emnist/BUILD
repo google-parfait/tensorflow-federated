@@ -21,6 +21,64 @@ py_library(
 )
 
 py_library(
+    name = "autoencoder_tasks",
+    srcs = ["autoencoder_tasks.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":emnist_models",
+        ":emnist_preprocessing",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//tensorflow_federated/python/simulation/baselines:task_data",
+        "//tensorflow_federated/python/simulation/datasets:emnist",
+    ],
+)
+
+py_test(
+    name = "autoencoder_tasks_test",
+    srcs = ["autoencoder_tasks_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":autoencoder_tasks",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+    ],
+)
+
+py_library(
+    name = "digit_recognition_tasks",
+    srcs = ["digit_recognition_tasks.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":emnist_models",
+        ":emnist_preprocessing",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//tensorflow_federated/python/simulation/baselines:task_data",
+        "//tensorflow_federated/python/simulation/datasets:emnist",
+    ],
+)
+
+py_test(
+    name = "digit_recognition_tasks_test",
+    srcs = ["digit_recognition_tasks_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":digit_recognition_tasks",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+    ],
+)
+
+py_library(
     name = "emnist_models",
     srcs = ["emnist_models.py"],
     srcs_version = "PY3",
@@ -55,35 +113,6 @@ py_test(
     deps = [
         ":emnist_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/simulation/baselines:client_spec",
-    ],
-)
-
-py_library(
-    name = "emnist_tasks",
-    srcs = ["emnist_tasks.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":emnist_models",
-        ":emnist_preprocessing",
-        "//tensorflow_federated/python/learning:keras_utils",
-        "//tensorflow_federated/python/learning:model",
-        "//tensorflow_federated/python/simulation/baselines:baseline_task",
-        "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "//tensorflow_federated/python/simulation/baselines:task_data",
-        "//tensorflow_federated/python/simulation/datasets:emnist",
-    ],
-)
-
-py_test(
-    name = "emnist_tasks_test",
-    srcs = ["emnist_tasks_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":emnist_tasks",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
     ],
 )
