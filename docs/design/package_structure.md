@@ -100,7 +100,7 @@ library.
 Libraries for running TensorFlow Federated simulations.
 
 [simulation/baselines](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation/baselines)
-Baselines for running TensorFlow Federated simulations.
+Libraries for constructing TensorFlow Federated baseline tasks.
 
 [simulation/datasets](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation/datasets)
 Datasets for running TensorFlow Federated simulations.
@@ -115,6 +115,12 @@ Libraries for using Federated Learning algorithms.
 
 [learning/framework](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/framework)
 Libraries for developing Federated Learning algorithms.
+
+[learning/optimizers](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/optimizers)
+Libraries for optimization algorithms.
+
+[learning/reconstruction](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/reconstruction)
+Libraries for using Federated Reconstruction algorithms.
 
 #### TFF Analytics
 

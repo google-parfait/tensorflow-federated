@@ -14,7 +14,7 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation.baselines.cifar import resnet_models
+from tensorflow_federated.python.simulation.baselines.cifar100 import resnet_models
 
 
 class CreateResnetInputValidationTest(tf.test.TestCase):

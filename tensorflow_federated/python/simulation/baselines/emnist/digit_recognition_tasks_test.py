@@ -20,7 +20,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
-from tensorflow_federated.python.simulation.baselines.emnist import emnist_tasks
+from tensorflow_federated.python.simulation.baselines.emnist import digit_recognition_tasks
 
 
 class CreateDigitRecognitionModelTest(tf.test.TestCase, parameterized.TestCase):
@@ -33,7 +33,7 @@ class CreateDigitRecognitionModelTest(tf.test.TestCase, parameterized.TestCase):
               'baselines.emnist.emnist_models.create_conv_dropout_model')
   def test_get_digit_recognition_model_constructs_cnn_dropout(
       self, only_digits, mock_model_builder):
-    emnist_tasks._get_digit_recognition_model(
+    digit_recognition_tasks._get_digit_recognition_model(
         model_id='cnn_dropout', only_digits=only_digits)
     mock_model_builder.assert_called_once_with(only_digits=only_digits)
 
@@ -45,7 +45,7 @@ class CreateDigitRecognitionModelTest(tf.test.TestCase, parameterized.TestCase):
               'baselines.emnist.emnist_models.create_original_fedavg_cnn_model')
   def test_get_digit_recognition_model_constructs_cnn(self, only_digits,
                                                       mock_model_builder):
-    emnist_tasks._get_digit_recognition_model(
+    digit_recognition_tasks._get_digit_recognition_model(
         model_id='cnn', only_digits=only_digits)
     mock_model_builder.assert_called_once_with(only_digits=only_digits)
 
@@ -57,7 +57,7 @@ class CreateDigitRecognitionModelTest(tf.test.TestCase, parameterized.TestCase):
               'baselines.emnist.emnist_models.create_two_hidden_layer_model')
   def test_get_digit_recognition_model_constructs_2nn(self, only_digits,
                                                       mock_model_builder):
-    emnist_tasks._get_digit_recognition_model(
+    digit_recognition_tasks._get_digit_recognition_model(
         model_id='2nn', only_digits=only_digits)
     mock_model_builder.assert_called_once_with(only_digits=only_digits)
 
@@ -67,7 +67,7 @@ class CreateDigitRecognitionModelTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_unsupported_model(self, only_digits):
     with self.assertRaises(ValueError):
-      emnist_tasks._get_digit_recognition_model(
+      digit_recognition_tasks._get_digit_recognition_model(
           model_id='unsupported_model', only_digits=only_digits)
 
 
@@ -86,7 +86,7 @@ class CreateDigitRecognitionTaskTest(tf.test.TestCase, parameterized.TestCase):
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
-    baseline_task_spec = emnist_tasks.create_digit_recognition_task(
+    baseline_task_spec = digit_recognition_tasks.create_digit_recognition_task(
         train_client_spec,
         eval_client_spec=eval_client_spec,
         model_id=model_id,
@@ -105,41 +105,11 @@ class CreateDigitRecognitionTaskTest(tf.test.TestCase, parameterized.TestCase):
   def test_constructs_with_no_eval_client_spec(self, only_digits, model_id):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = emnist_tasks.create_digit_recognition_task(
+    baseline_task_spec = digit_recognition_tasks.create_digit_recognition_task(
         train_client_spec,
         model_id=model_id,
         only_digits=only_digits,
         use_synthetic_data=True)
-    self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
-
-
-class CreateAutoencoderTaskTest(tf.test.TestCase, parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ('emnist_10', True),
-      ('emnist_62', False),
-  )
-  def test_constructs_with_eval_client_spec(self, only_digits):
-    train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
-    baseline_task_spec = emnist_tasks.create_autoencoder_task(
-        train_client_spec,
-        eval_client_spec=eval_client_spec,
-        only_digits=only_digits,
-        use_synthetic_data=True)
-    self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
-
-  @parameterized.named_parameters(
-      ('emnist_10', True),
-      ('emnist_62', False),
-  )
-  def test_constructs_with_no_eval_client_spec(self, only_digits):
-    train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = emnist_tasks.create_autoencoder_task(
-        train_client_spec, only_digits=only_digits, use_synthetic_data=True)
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
 

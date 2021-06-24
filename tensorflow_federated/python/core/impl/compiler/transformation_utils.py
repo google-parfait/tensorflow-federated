@@ -81,7 +81,8 @@ def transform_postorder(comp, transform):
       elements.append((key, value))
       elements_modified = elements_modified or value_modified
     if elements_modified:
-      comp = building_blocks.Struct(elements)
+      comp = building_blocks.Struct(
+          elements, container_type=comp.type_signature.python_container)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or elements_modified
   elif comp.is_call():
@@ -945,8 +946,8 @@ class BoundVariableTracker(object, metaclass=abc.ABCMeta):
       return False
     if (isinstance(self.value, building_blocks.ComputationBuildingBlock) and
         isinstance(other.value, building_blocks.ComputationBuildingBlock)):
-      return (self.value.compact_representation() ==
-              other.value.compact_representation() and
+      return (self.value.compact_representation()
+              == other.value.compact_representation() and
               self.value.type_signature.is_equivalent_to(
                   other.value.type_signature))
     return self.value is other.value

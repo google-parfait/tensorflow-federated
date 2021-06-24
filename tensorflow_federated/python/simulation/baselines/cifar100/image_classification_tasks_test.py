@@ -20,55 +20,60 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
-from tensorflow_federated.python.simulation.baselines.cifar import cifar100_tasks
+from tensorflow_federated.python.simulation.baselines.cifar100 import image_classification_tasks
 
 
 class CreateResnetModelTest(tf.test.TestCase, parameterized.TestCase):
 
   @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.cifar.resnet_models.create_resnet18')
+              'baselines.cifar100.resnet_models.create_resnet18')
   def test_get_resnet18_model(self, mock_model_builder):
     input_shape = (32, 32, 3)
-    cifar100_tasks._get_resnet_model(
+    image_classification_tasks._get_resnet_model(
         model_id='resnet18', input_shape=input_shape)
     mock_model_builder.assert_called_once_with(
-        input_shape=input_shape, num_classes=cifar100_tasks._NUM_CLASSES)
+        input_shape=input_shape,
+        num_classes=image_classification_tasks._NUM_CLASSES)
 
   @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.cifar.resnet_models.create_resnet34')
+              'baselines.cifar100.resnet_models.create_resnet34')
   def test_get_resnet34_model(self, mock_model_builder):
     input_shape = (24, 24, 3)
-    cifar100_tasks._get_resnet_model(
+    image_classification_tasks._get_resnet_model(
         model_id='resnet34', input_shape=input_shape)
     mock_model_builder.assert_called_once_with(
-        input_shape=input_shape, num_classes=cifar100_tasks._NUM_CLASSES)
+        input_shape=input_shape,
+        num_classes=image_classification_tasks._NUM_CLASSES)
 
   @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.cifar.resnet_models.create_resnet50')
+              'baselines.cifar100.resnet_models.create_resnet50')
   def test_get_resnet50_model(self, mock_model_builder):
     input_shape = (24, 1, 3)
-    cifar100_tasks._get_resnet_model(
+    image_classification_tasks._get_resnet_model(
         model_id='resnet50', input_shape=input_shape)
     mock_model_builder.assert_called_once_with(
-        input_shape=input_shape, num_classes=cifar100_tasks._NUM_CLASSES)
+        input_shape=input_shape,
+        num_classes=image_classification_tasks._NUM_CLASSES)
 
   @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.cifar.resnet_models.create_resnet101')
+              'baselines.cifar100.resnet_models.create_resnet101')
   def test_get_resnet101_model(self, mock_model_builder):
     input_shape = (1, 32, 3)
-    cifar100_tasks._get_resnet_model(
+    image_classification_tasks._get_resnet_model(
         model_id='resnet101', input_shape=input_shape)
     mock_model_builder.assert_called_once_with(
-        input_shape=input_shape, num_classes=cifar100_tasks._NUM_CLASSES)
+        input_shape=input_shape,
+        num_classes=image_classification_tasks._NUM_CLASSES)
 
   @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.cifar.resnet_models.create_resnet152')
+              'baselines.cifar100.resnet_models.create_resnet152')
   def test_get_resnet152_model(self, mock_model_builder):
     input_shape = (2, 5, 3)
-    cifar100_tasks._get_resnet_model(
+    image_classification_tasks._get_resnet_model(
         model_id='resnet152', input_shape=input_shape)
     mock_model_builder.assert_called_once_with(
-        input_shape=input_shape, num_classes=cifar100_tasks._NUM_CLASSES)
+        input_shape=input_shape,
+        num_classes=image_classification_tasks._NUM_CLASSES)
 
 
 class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
@@ -78,7 +83,7 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
-    baseline_task_spec = cifar100_tasks.create_image_classification_task(
+    baseline_task_spec = image_classification_tasks.create_image_classification_task(
         train_client_spec,
         eval_client_spec=eval_client_spec,
         model_id='resnet18',
@@ -88,7 +93,7 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
   def test_constructs_with_no_eval_client_spec(self):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = cifar100_tasks.create_image_classification_task(
+    baseline_task_spec = image_classification_tasks.create_image_classification_task(
         train_client_spec, model_id='resnet18', use_synthetic_data=True)
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
@@ -101,7 +106,7 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
   def test_constructs_with_different_crop_sizes(self, crop_height, crop_width):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = cifar100_tasks.create_image_classification_task(
+    baseline_task_spec = image_classification_tasks.create_image_classification_task(
         train_client_spec,
         model_id='resnet18',
         crop_height=crop_height,
@@ -122,7 +127,7 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(
         ValueError, 'The crop_height and crop_width '
         'must be between 1 and 32.'):
-      cifar100_tasks.create_image_classification_task(
+      image_classification_tasks.create_image_classification_task(
           train_client_spec,
           model_id='resnet18',
           crop_height=crop_height,
@@ -139,7 +144,7 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
   def test_constructs_with_different_models(self, model_id):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = cifar100_tasks.create_image_classification_task(
+    baseline_task_spec = image_classification_tasks.create_image_classification_task(
         train_client_spec,
         model_id=model_id,
         crop_height=3,

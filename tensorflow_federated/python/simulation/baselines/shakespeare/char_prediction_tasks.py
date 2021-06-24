@@ -31,16 +31,54 @@ from tensorflow_federated.python.simulation.datasets import shakespeare
 # end-of-sentence tokens.
 VOCAB_LENGTH = len(char_prediction_preprocessing.CHAR_VOCAB) + 4
 DEFAULT_SEQUENCE_LENGTH = 20
-_PreprocessFn = Callable[[tf.data.Dataset], tf.data.Dataset]
-_ModelFn = Callable[[], model.Model]
+PreprocessFn = Callable[[tf.data.Dataset], tf.data.Dataset]
+
+
+def create_preprocess_fns(
+    train_client_spec: client_spec.ClientSpec,
+    eval_client_spec: Optional[client_spec.ClientSpec],
+    sequence_length: int) -> Tuple[PreprocessFn, PreprocessFn]:
+  """Creates preprocessing functions for character prediction."""
+  if eval_client_spec is None:
+    eval_client_spec = client_spec.ClientSpec(
+        num_epochs=1, batch_size=32, shuffle_buffer_size=1)
+
+  train_preprocess_fn = char_prediction_preprocessing.create_preprocess_fn(
+      train_client_spec, sequence_length)
+  eval_preprocess_fn = char_prediction_preprocessing.create_preprocess_fn(
+      eval_client_spec, sequence_length)
+
+  return train_preprocess_fn, eval_preprocess_fn
+
+
+def create_tff_model_fn(input_spec,
+                        sequence_length: int) -> Callable[[], model.Model]:
+  """Creates a TFF model function for character prediction."""
+  keras_model = char_prediction_models.create_recurrent_model(
+      vocab_size=VOCAB_LENGTH, sequence_length=sequence_length)
+  loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+  pad_token, _, _, _ = char_prediction_preprocessing.get_special_tokens()
+  metrics = [
+      keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
+      keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token])
+  ]
+
+  def model_fn() -> model.Model:
+    return keras_utils.from_keras_model(
+        keras_model=keras_model,
+        loss=loss,
+        input_spec=input_spec,
+        metrics=metrics)
+
+  return model_fn
 
 
 def create_character_prediction_task(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
     sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-    use_synthetic_data: bool = False
-) -> Tuple[task_data.BaselineTaskDatasets, _ModelFn]:
+    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
   """Creates a baseline task for next-character prediction on Shakespeare.
 
   The goal of the task is to take `sequence_length` characters (eg. alpha-
@@ -56,7 +94,8 @@ def create_character_prediction_task(
       evaluation datasets will use a batch size of 64 with no extra
       preprocessing.
     sequence_length: A positive integer dictating the length of each example in
-      a client's dataset.
+      a client's dataset. By default, this is set to
+      `tff.simulation.baselines.shakespeare.DEFAULT_SEQUENCE_LENGTH`.
     use_synthetic_data: A boolean indicating whether to use synthetic
       Shakespeare data. This option should only be used for testing purposes, in
       order to avoid downloading the entire Shakespeare dataset.
@@ -74,14 +113,8 @@ def create_character_prediction_task(
   else:
     char_prediction_train, char_prediction_test = shakespeare.load_data()
 
-  if eval_client_spec is None:
-    eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=32, shuffle_buffer_size=1)
-
-  train_preprocess_fn = char_prediction_preprocessing.create_preprocess_fn(
-      train_client_spec, sequence_length)
-  eval_preprocess_fn = char_prediction_preprocessing.create_preprocess_fn(
-      eval_client_spec, sequence_length)
+  train_preprocess_fn, eval_preprocess_fn = create_preprocess_fns(
+      train_client_spec, eval_client_spec, sequence_length)
 
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=char_prediction_train,
@@ -90,21 +123,7 @@ def create_character_prediction_task(
       train_preprocess_fn=train_preprocess_fn,
       eval_preprocess_fn=eval_preprocess_fn)
 
-  keras_model = char_prediction_models.create_recurrent_model(
-      vocab_size=VOCAB_LENGTH, sequence_length=sequence_length)
-  loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-
-  pad_token, _, _, _ = char_prediction_preprocessing.get_special_tokens()
-  metrics = [
-      keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
-      keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token])
-  ]
-
-  def model_fn() -> model.Model:
-    return keras_utils.from_keras_model(
-        keras_model=keras_model,
-        loss=loss,
-        input_spec=task_datasets.element_type_structure,
-        metrics=metrics)
+  model_fn = create_tff_model_fn(task_datasets.element_type_structure,
+                                 sequence_length)
 
   return baseline_task.BaselineTask(task_datasets, model_fn)

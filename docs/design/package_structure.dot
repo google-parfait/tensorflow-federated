@@ -22,26 +22,35 @@ digraph {
   // Simulation
   simulation_baselines -> simulation_models
   simulation_baselines -> simulation_datasets
-  simulation -> simulation_baselines [arrowhead="none", style="invisible"]
-  simulation_models -> learning [arrowhead="none", style="invisible"]
+
+  simulation_models -> learning_framework [arrowhead="none", style="invisible"]
+  simulation_models -> learning_optimizers [arrowhead="none", style="invisible"]
+  simulation_models -> learning_reconstruction [arrowhead="none", style="invisible"]
   simulation_datasets -> analytics [arrowhead="none", style="invisible"]
 
   subgraph cluster_simulation {
     graph [label="Simulation", href="#tff-simulation" target="_parent"]
-    simulation [href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     simulation_baselines [label="baselines", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     simulation_models [label="models", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     simulation_datasets [label="datasets", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    simulation [href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
   // Learning
-  learning -> learning_framework
-  learning_framework -> aggregators [arrowhead="none", style="invisible"]
+  learning_framework -> learning
+  learning_optimizers -> learning
+  learning_reconstruction -> learning
+
+  learning_framework -> learning_optimizers [arrowhead="none", style="invisible"]
+  learning_optimizers -> learning_reconstruction [arrowhead="none", style="invisible"]
+  learning -> aggregators [arrowhead="none", style="invisible"]
 
   subgraph cluster_learning {
     graph [label="Learning", href="#tff-learning" target="_parent"]
-    learning [href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     learning_framework [label="framework", href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    learning_optimizers [label="optimizers", href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    learning_reconstruction [label="reconstruction", href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    learning [href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
   // Analytics
@@ -66,8 +75,11 @@ digraph {
   core_backends -> core_templates
   core_templates -> core_api
   core_test -> core_api
+
   core_api -> core_framework [arrowhead="none", style="invisible"]
   core_framework -> core_types [arrowhead="none", style="invisible"]
+  core_api -> impl_wrappers [arrowhead="none", style="invisible"]
+  core_api -> impl_executors [arrowhead="none", style="invisible"]
 
   subgraph cluster_core {
     graph [label="Core", href="#tff-core" target="_parent"]
@@ -78,9 +90,6 @@ digraph {
     core_framework [label="framework", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     core_types [label="types", href="#tff-types" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
-
-  core_api -> impl_wrappers [arrowhead="none", style="invisible"]
-  core_api -> impl_executors [arrowhead="none", style="invisible"]
 
   // Impl
   impl_wrappers -> impl_tensorflow_context
@@ -114,6 +123,7 @@ digraph {
   impl_compiler -> impl_utils
   impl_context_stack -> impl_types
   impl_utils -> impl_types
+
   impl_types -> proto [arrowhead="none", style="invisible"]
   impl_types -> tensorflow_libs [arrowhead="none", style="invisible"]
 
@@ -149,8 +159,8 @@ digraph {
   {rank=same; tff}
   {rank=same; simulation, simulation_baselines}
   {rank=same; simulation_models, simulation_datasets}
-  {rank=same; learning, analytics}
-  {rank=same; learning_framework}
+  {rank=same; learning_framework, learning_optimizers, learning_reconstruction, analytics}
+  {rank=same; learning}
   {rank=same; aggregators}
   {rank=same; core_backends, core_test}
   {rank=same; core_templates}

@@ -11,4 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for constructing TensorFlow Federated tasks on CIFAR datasets."""
+"""Default values for Stack Overflow baseline tasks."""
+
+DEFAULT_SEQUENCE_LENGTH = 20
+DEFAULT_SHUFFLE_BUFFER_SIZE = 1000
+DEFAULT_TAG_VOCAB_SIZE = 500
+DEFAULT_WORD_VOCAB_SIZE = 10000

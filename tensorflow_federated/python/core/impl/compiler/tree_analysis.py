@@ -31,7 +31,7 @@ _TypeOrTupleOfTypes = Union[
     Tuple[Type[building_blocks.ComputationBuildingBlock], ...]]
 
 
-def _visit_postorder(
+def visit_postorder(
     tree: building_blocks.ComputationBuildingBlock,
     function: Callable[[building_blocks.ComputationBuildingBlock], None]):
   py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
@@ -63,7 +63,7 @@ def count(tree: building_blocks.ComputationBuildingBlock,
     if predicate is None or predicate(building_block):
       counter += 1
 
-  _visit_postorder(tree, _function)
+  visit_postorder(tree, _function)
   return counter
 
 
@@ -142,7 +142,7 @@ def check_has_single_placement(comp, single_placement):
                            single_placement, comp.type_signature.placement,
                            comp.compact_representation()))
 
-  _visit_postorder(comp, _check_single_placement)
+  visit_postorder(comp, _check_single_placement)
 
 
 def check_contains_only_reducible_intrinsics(comp):
@@ -178,7 +178,7 @@ def check_contains_only_reducible_intrinsics(comp):
           'Encountered an Intrinsic not currently reducible to aggregate or '
           'broadcast, the intrinsic {}'.format(comp.compact_representation()))
 
-  _visit_postorder(comp, _check)
+  visit_postorder(comp, _check)
 
 
 def check_has_unique_names(comp):
@@ -337,7 +337,7 @@ def count_tensorflow_ops_under(comp):
         inner_comp.proto.WhichOneof('computation') == 'tensorflow'):
       count_ops += building_block_analysis.count_tensorflow_ops_in(inner_comp)
 
-  _visit_postorder(comp, _count_tf_ops)
+  visit_postorder(comp, _count_tf_ops)
   return count_ops
 
 
@@ -367,7 +367,7 @@ def count_tensorflow_variables_under(comp):
       count_vars += building_block_analysis.count_tensorflow_variables_in(
           inner_comp)
 
-  _visit_postorder(comp, _count_tf_vars)
+  visit_postorder(comp, _count_tf_vars)
   return count_vars
 
 
@@ -626,7 +626,7 @@ def find_aggregations_in_tree(
     if kind_predicate(comp.function.intrinsic_def().aggregation_kind):
       aggregation_calls.append(comp)
 
-  _visit_postorder(comp, record_intrinsic_calls)
+  visit_postorder(comp, record_intrinsic_calls)
   return aggregation_calls
 
 
