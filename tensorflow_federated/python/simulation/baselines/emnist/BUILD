@@ -18,6 +18,10 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation/baselines:__pkg__"],
+    deps = [
+        ":autoencoder_tasks",
+        ":digit_recognition_tasks",
+    ],
 )
 
 py_library(

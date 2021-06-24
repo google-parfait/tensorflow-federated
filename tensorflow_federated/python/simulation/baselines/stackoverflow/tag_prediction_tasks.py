@@ -41,7 +41,7 @@ def create_tag_prediction_task(
     tag_vocab_size: int = constants.DEFAULT_TAG_VOCAB_SIZE,
     use_synthetic_data: bool = False,
 ) -> baseline_task.BaselineTask:
-  """Creates a baseline task for next-word prediction on Stack Overflow.
+  """Creates a baseline task for tag prediction on Stack Overflow.
 
   The goal of the task is to predict the tags associated to a post based on a
   bag-of-words representation of the post.
@@ -54,8 +54,8 @@ def create_tag_prediction_task(
       evaluation datasets will use a batch size of 64 with no extra
       preprocessing.
     word_vocab_size: Integer dictating the number of most frequent words in the
-      entire corpus to use for the task's vocabulary. By default, this is set
-      to `tff.simulation.baselines.stackoverflow.DEFAULT_WORD_VOCAB_SIZE`.
+      entire corpus to use for the task's vocabulary. By default, this is set to
+      `tff.simulation.baselines.stackoverflow.DEFAULT_WORD_VOCAB_SIZE`.
     tag_vocab_size: Integer dictating the number of most frequent tags in the
       entire corpus to use for the task's labels. By default, this is set to
       `tff.simulation.baselines.stackoverflow.DEFAULT_TAG_VOCAB_SIZE`.

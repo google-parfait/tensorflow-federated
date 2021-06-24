@@ -18,6 +18,11 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation/baselines:__pkg__"],
+    deps = [
+        ":constants",
+        ":tag_prediction_tasks",
+        ":word_prediction_tasks",
+    ],
 )
 
 py_library(
