@@ -67,6 +67,7 @@ def create_digit_recognition_task(
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
     model_id: Union[str, DigitRecognitionModel] = 'cnn_dropout',
     only_digits: bool = False,
+    cache_dir: Optional[str] = None,
     use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
   """Creates a baseline task for digit recognition on EMNIST.
 
@@ -103,6 +104,8 @@ def create_digit_recognition_task(
     only_digits: A boolean indicating whether to use the full EMNIST-62 dataset
       containing 62 alphanumeric classes (`True`) or the smaller EMNIST-10
       dataset with only 10 numeric classes (`False`).
+    cache_dir: An optional directory to cache the downloadeded datasets. If
+      `None`, they will be cached to `~/.tff/`.
     use_synthetic_data: A boolean indicating whether to use synthetic EMNIST
       data. This option should only be used for testing purposes, in order to
       avoid downloading the entire EMNIST dataset.
@@ -115,7 +118,8 @@ def create_digit_recognition_task(
     emnist_train = synthetic_data
     emnist_test = synthetic_data
   else:
-    emnist_train, emnist_test = emnist.load_data(only_digits=only_digits)
+    emnist_train, emnist_test = emnist.load_data(
+        only_digits=only_digits, cache_dir=cache_dir)
   emnist_task = 'digit_recognition'
 
   if eval_client_spec is None:

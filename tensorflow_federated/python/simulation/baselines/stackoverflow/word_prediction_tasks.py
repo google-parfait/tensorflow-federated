@@ -35,6 +35,7 @@ def create_word_prediction_task(
     sequence_length: int = constants.DEFAULT_SEQUENCE_LENGTH,
     vocab_size: int = constants.DEFAULT_WORD_VOCAB_SIZE,
     num_out_of_vocab_buckets: int = 1,
+    cache_dir: Optional[str] = None,
     use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
   """Creates a baseline task for next-word prediction on Stack Overflow.
 
@@ -56,6 +57,8 @@ def create_word_prediction_task(
       entire corpus to use for the task's vocabulary. By default, this is set to
       `tff.simulation.baselines.stackoverflow.DEFAULT_WORD_VOCAB_SIZE`.
     num_out_of_vocab_buckets: The number of out-of-vocabulary buckets to use.
+    cache_dir: An optional directory to cache the downloadeded datasets. If
+      `None`, they will be cached to `~/.tff/`.
     use_synthetic_data: A boolean indicating whether to use synthetic Stack
       Overflow data. This option should only be used for testing purposes, in
       order to avoid downloading the entire Stack Overflow dataset.
@@ -77,7 +80,7 @@ def create_word_prediction_task(
     stackoverflow_test = synthetic_data
   else:
     stackoverflow_train, stackoverflow_validation, stackoverflow_test = (
-        stackoverflow.load_data())
+        stackoverflow.load_data(cache_dir=cache_dir))
 
   vocab = list(stackoverflow.load_word_counts(vocab_size=vocab_size).keys())
 

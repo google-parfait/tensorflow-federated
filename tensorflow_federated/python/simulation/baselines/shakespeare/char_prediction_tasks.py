@@ -37,6 +37,7 @@ def create_character_prediction_task(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
     sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
+    cache_dir: Optional[str] = None,
     use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
   """Creates a baseline task for next-character prediction on Shakespeare.
 
@@ -55,6 +56,8 @@ def create_character_prediction_task(
     sequence_length: A positive integer dictating the length of each example in
       a client's dataset. By default, this is set to
       `tff.simulation.baselines.shakespeare.DEFAULT_SEQUENCE_LENGTH`.
+    cache_dir: An optional directory to cache the downloadeded datasets. If
+      `None`, they will be cached to `~/.tff/`.
     use_synthetic_data: A boolean indicating whether to use synthetic
       Shakespeare data. This option should only be used for testing purposes, in
       order to avoid downloading the entire Shakespeare dataset.
@@ -70,7 +73,8 @@ def create_character_prediction_task(
     char_prediction_train = synthetic_data
     char_prediction_test = synthetic_data
   else:
-    char_prediction_train, char_prediction_test = shakespeare.load_data()
+    char_prediction_train, char_prediction_test = shakespeare.load_data(
+        cache_dir=cache_dir)
 
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
