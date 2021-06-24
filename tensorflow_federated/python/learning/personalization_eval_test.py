@@ -141,8 +141,9 @@ def _create_client_input(train_scale, test_scale, context=None):
 
 def _create_zero_model_weights(model_fn):
   """Creates the model weights with all zeros."""
-  whimsy_model = model_utils.enhance(model_fn())
-  return tf.nest.map_structure(tf.zeros_like, whimsy_model.weights)
+  whimsy_model = model_fn()
+  return tf.nest.map_structure(
+      tf.zeros_like, model_utils.ModelWeights.from_model(whimsy_model))
 
 
 class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):

@@ -21,13 +21,21 @@ py_library(
 )
 
 py_library(
+    name = "constants",
+    srcs = ["constants.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
     name = "tag_prediction_preprocessing",
     srcs = ["tag_prediction_preprocessing.py"],
     srcs_version = "PY3",
     deps = [
+        ":constants",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
     ],
 )
 
@@ -40,6 +48,36 @@ py_test(
     deps = [
         ":tag_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+    ],
+)
+
+py_library(
+    name = "tag_prediction_tasks",
+    srcs = ["tag_prediction_tasks.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":constants",
+        ":tag_prediction_preprocessing",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//tensorflow_federated/python/simulation/baselines:task_data",
+        "//tensorflow_federated/python/simulation/datasets:stackoverflow",
+    ],
+)
+
+py_test(
+    name = "tag_prediction_tasks_test",
+    srcs = ["tag_prediction_tasks_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":tag_prediction_tasks",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
     ],
 )
 
@@ -62,9 +100,11 @@ py_library(
     srcs = ["word_prediction_preprocessing.py"],
     srcs_version = "PY3",
     deps = [
+        ":constants",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
     ],
 )
 
@@ -77,5 +117,37 @@ py_test(
     deps = [
         ":word_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+    ],
+)
+
+py_library(
+    name = "word_prediction_tasks",
+    srcs = ["word_prediction_tasks.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":constants",
+        ":word_prediction_models",
+        ":word_prediction_preprocessing",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//tensorflow_federated/python/simulation/baselines:keras_metrics",
+        "//tensorflow_federated/python/simulation/baselines:task_data",
+        "//tensorflow_federated/python/simulation/datasets:stackoverflow",
+    ],
+)
+
+py_test(
+    name = "word_prediction_tasks_test",
+    srcs = ["word_prediction_tasks_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":word_prediction_tasks",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
     ],
 )

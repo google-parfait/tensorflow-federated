@@ -62,12 +62,10 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
     """
+    py_typecheck.check_type(model, model_lib.Model)
     client_weight_lib.check_is_client_weighting_or_callable(client_weighting)
     self._client_weighting = client_weighting
-
-    self._model = model_utils.enhance(model)
-    py_typecheck.check_type(self._model, model_utils.EnhancedModel)
-
+    self._model = model
     self._dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
         use_experimental_simulation_loop)
 
@@ -86,9 +84,11 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       raise TypeError('Expected a data set, found {}.'.format(
           py_typecheck.type_string(type(dataset))))
 
-    tf.nest.map_structure(lambda a, b: a.assign(b), model.weights,
+    model_weights = model_utils.ModelWeights.from_model(model)
+
+    tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
                           initial_weights)
-    flat_trainable_weights = tuple(tf.nest.flatten(model.weights.trainable))
+    flat_trainable_weights = tuple(tf.nest.flatten(model_weights.trainable))
 
     def reduce_fn(state, batch):
       """Runs forward_pass on batch and sums the weighted gradients."""
@@ -123,7 +123,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
         reduce_fn=reduce_fn,
         dataset=dataset,
         initial_state_fn=_zero_initial_state)
-    grad_sums = tf.nest.pack_sequence_as(model.weights.trainable,
+    grad_sums = tf.nest.pack_sequence_as(model_weights.trainable,
                                          flat_grad_sums)
     num_examples_as_float = tf.cast(num_examples_sum, tf.float32)
 

@@ -66,9 +66,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
         input dataset. An experimental reduce loop is used for simulation.
     """
     py_typecheck.check_type(model, model_lib.Model)
-    self._model = model_utils.enhance(model)
+    self._model = model
     self._optimizer = optimizer
-    py_typecheck.check_type(self._model, model_utils.EnhancedModel)
     client_weight_lib.check_is_client_weighting_or_callable(client_weighting)
     self._client_weighting = client_weighting
 
@@ -82,8 +81,9 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   @tf.function
   def __call__(self, dataset, initial_weights):
     model = self._model
+    model_weights = model_utils.ModelWeights.from_model(model)
     optimizer = self._optimizer
-    tf.nest.map_structure(lambda a, b: a.assign(b), model.weights,
+    tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
                           initial_weights)
 
     def reduce_fn(num_examples_sum, batch):
@@ -91,8 +91,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch, training=True)
 
-      gradients = tape.gradient(output.loss, model.weights.trainable)
-      optimizer.apply_gradients(zip(gradients, model.weights.trainable))
+      gradients = tape.gradient(output.loss, model_weights.trainable)
+      optimizer.apply_gradients(zip(gradients, model_weights.trainable))
 
       if output.num_examples is None:
         return num_examples_sum + tf.shape(
@@ -105,7 +105,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
         dataset,
         initial_state_fn=lambda: tf.zeros(shape=[], dtype=tf.int64))
 
-    weights_delta = tf.nest.map_structure(tf.subtract, model.weights.trainable,
+    weights_delta = tf.nest.map_structure(tf.subtract, model_weights.trainable,
                                           initial_weights.trainable)
     model_output = model.report_local_outputs()
 

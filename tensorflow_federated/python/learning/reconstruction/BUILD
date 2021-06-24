@@ -5,6 +5,12 @@ package(default_visibility = ["//visibility:private"])
 licenses(["notice"])
 
 py_library(
+    name = "reconstruction",
+    srcs = ["__init__.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
     name = "model",
     srcs = ["model.py"],
     srcs_version = "PY3",

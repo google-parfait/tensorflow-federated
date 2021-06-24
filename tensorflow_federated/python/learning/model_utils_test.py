@@ -31,14 +31,14 @@ class ModelUtilsTest(test_case.TestCase):
 
   def test_model_initializer(self):
     with tf.Graph().as_default() as g:
-      model = model_utils.enhance(model_examples.LinearRegression(2))
+      model = model_examples.LinearRegression(2)
       init = model_utils.model_initializer(model)
       with self.session(graph=g) as sess:
         sess.run(init)
         # Make sure we can read all the variables
         try:
           sess.run(model.local_variables)
-          sess.run(model.weights)
+          sess.run(model_utils.ModelWeights.from_model(model))
         except tf.errors.FailedPreconditionError:
           self.fail('Expected variables to be initialized, but got '
                     'tf.errors.FailedPreconditionError')

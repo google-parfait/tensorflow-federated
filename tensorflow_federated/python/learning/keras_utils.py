@@ -27,7 +27,6 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning import model_utils
 
 Loss = Union[tf.keras.losses.Loss, List[tf.keras.losses.Loss]]
 
@@ -166,13 +165,12 @@ def from_keras_model(
     for metric in metrics:
       py_typecheck.check_type(metric, tf.keras.metrics.Metric)
 
-  return model_utils.enhance(
-      _KerasModel(
-          keras_model,
-          input_spec=input_spec,
-          loss_fns=loss,
-          loss_weights=loss_weights,
-          metrics=metrics))
+  return _KerasModel(
+      keras_model,
+      input_spec=input_spec,
+      loss_fns=loss,
+      loss_weights=loss_weights,
+      metrics=metrics)
 
 
 def federated_aggregate_keras_metric(
