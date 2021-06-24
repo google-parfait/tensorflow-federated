@@ -181,13 +181,48 @@ def check_contains_only_reducible_intrinsics(comp):
   visit_postorder(comp, _check)
 
 
+class NonuniqueNameError(ValueError):
+
+  def __init__(self, comp, name):
+    self.comp = comp
+    self.name = name
+    message = (
+        f'The name `{name}` is bound multiple times in the computation:\n'
+        f'{comp.compact_representation()}')
+    super().__init__(message)
+
+
 def check_has_unique_names(comp):
-  if not transformation_utils.has_unique_names(comp):
-    raise ValueError(
-        'This transform should only be called after we have uniquified all '
-        '`building_blocks.Reference` names, since we may be moving '
-        'computations with unbound references under constructs which bind '
-        'those references.')
+  """Checks that each variable of `comp` is bound at most once.
+
+  Additionally, checks that `comp` does not mask any names which are unbound
+  at the top level.
+
+  Args:
+    comp: Instance of `building_blocks.ComputationBuildingBlock`.
+
+  Raises:
+    NonuniqueNameError: If we encounter a name that is bound multiple times or a
+      binding which would shadow an unbound reference.
+  """
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  # Initializing `names` to unbound names in `comp` ensures that `comp` does not
+  # mask any names from its parent scope.
+  names = transformation_utils.get_map_of_unbound_references(comp)[comp]
+
+  def _visit_name(name):
+    if name in names:
+      raise NonuniqueNameError(comp, name)
+    names.add(name)
+
+  def _visit(comp):
+    if comp.is_block():
+      for name, _ in comp.locals:
+        _visit_name(name)
+    elif comp.is_lambda() and comp.parameter_type is not None:
+      _visit_name(comp.parameter_name)
+
+  visit_postorder(comp, _visit)
 
 
 def extract_nodes_consuming(tree, predicate):

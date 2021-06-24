@@ -3966,7 +3966,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
                      '(let a=data,a=a,a=a in a)')
     self.assertEqual(transformed_comp.compact_representation(),
                      '(let _var1=data,_var2=_var1,_var3=_var2 in _var3)')
-    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_nested_blocks(self):
@@ -3983,7 +3983,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
     self.assertEqual(
         transformed_comp.compact_representation(),
         '(let _var1=data,_var2=_var1 in (let _var3=data,_var4=_var3 in _var4))')
-    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_nested_lambdas(self):
@@ -4001,7 +4001,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
 
     self.assertEqual(transformed_comp.compact_representation(),
                      '(_var1 -> _var1)((_var2 -> _var2)(data))')
-    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_block_lambda_block_lambda(self):
@@ -4025,7 +4025,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
         transformed_comp.compact_representation(),
         '(let _var1=data,_var2=_var1 in (_var3 -> (let _var4=_var3,_var5=_var4 in (_var6 -> _var6)(_var5)))(_var2))'
     )
-    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_blocks_nested_inside_of_locals(self):
@@ -4061,7 +4061,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
     self.assertEqual(
         transformed_comp.result.compact_representation(),
         '(let _var11=(let _var10=(let _var9=_var8 in data) in data) in data)')
-    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_renames_names_ignores_existing_names(self):
