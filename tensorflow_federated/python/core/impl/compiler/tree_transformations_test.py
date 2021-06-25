@@ -15,6 +15,7 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
@@ -27,6 +28,22 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+
+
+class TransformTestBase(test_case.TestCase):
+
+  def assert_transforms(self, comp, file, changes_type=False, unmodified=False):
+    # NOTE: A `transform` method must be present on inheritors.
+    after, modified = self.transform(comp)
+    golden.check_string(
+        file, f'Before transformation:\n\n{comp.formatted_representation()}\n\n'
+        f'After transformation:\n\n{after.formatted_representation()}')
+    if not changes_type:
+      self.assert_types_identical(comp.type_signature, after.type_signature)
+    if unmodified:
+      self.assertFalse(modified)
+    else:
+      self.assertTrue(modified)
 
 
 def _create_chained_whimsy_federated_applys(functions, arg):
@@ -87,7 +104,10 @@ def _create_complex_computation():
   return building_blocks.Lambda('b', tf.int32, tup)
 
 
-class ExtractComputationsTest(test_case.TestCase):
+class ExtractComputationsTest(TransformTestBase):
+
+  def transform(self, comp):
+    return tree_transformations.extract_computations(comp)
 
   def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
@@ -99,47 +119,26 @@ class ExtractComputationsTest(test_case.TestCase):
     with self.assertRaises(ValueError):
       tree_transformations.extract_computations(block)
 
-  def test_extracts_from_no_arg_lamda(self):
+  def test_extracts_from_no_arg_lambda(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Lambda(
         parameter_name=None, parameter_type=None, result=data)
-    comp = block
+    self.assert_transforms(block,
+                           'extract_computations_from_no_arg_lambda.expected')
 
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '( -> data)')
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(let _var1=data,_var2=( -> _var1) in _var2)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
-
-  def test_extracts_from_no_arg_lamda_to_block(self):
+  def test_extracts_from_no_arg_lambda_to_block(self):
     data = building_blocks.Data('data', tf.int32)
     blk = building_blocks.Block([], data)
     block = building_blocks.Lambda(
         parameter_name=None, parameter_type=None, result=blk)
-    comp = block
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '( -> (let  in data))')
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(let _var1=data,_var2=_var1,_var3=( -> _var2) in _var3)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        block, 'extract_computations_from_no_arg_lambda_to_block.expected')
 
   def test_extracts_from_block_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('a', data)], data)
-    comp = block
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '(let a=data in data)')
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(let a=data,_var1=data in _var1)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(block,
+                           'extract_computations_from_block_one_comp.expected')
 
   def test_extracts_from_block_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
@@ -147,51 +146,15 @@ class ExtractComputationsTest(test_case.TestCase):
     data_3 = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data_2, data_3])
     block = building_blocks.Block([('a', data_1)], tup)
-    comp = block
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(),
-                     '(let a=data in <data,data>)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  a=data,\n'
-        '  _var1=data,\n'
-        '  _var2=data,\n'
-        '  _var3=<\n'
-        '    _var1,\n'
-        '    _var2\n'
-        '  >,\n'
-        '  _var4=_var3\n'
-        ' in _var4)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        block, 'extract_computations_from_block_multiple_comps.expected')
 
   def test_extracts_from_call_one_comp(self):
     fn = compiler_test_utils.create_identity_function('a', tf.int32)
     data = building_blocks.Data('data', tf.int32)
     call = building_blocks.Call(fn, data)
-    comp = call
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '(a -> a)(data)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=(a -> a),\n'
-        '  _var2=data,\n'
-        '  _var3=_var1(_var2)\n'
-        ' in _var3)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(call,
+                           'extract_computations_from_call_one_comp.expected')
 
   def test_extracts_from_call_multiple_comps(self):
     fn = compiler_test_utils.create_identity_function('a', [tf.int32, tf.int32])
@@ -199,158 +162,50 @@ class ExtractComputationsTest(test_case.TestCase):
     data_2 = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data_1, data_2])
     call = building_blocks.Call(fn, tup)
-    comp = call
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '(a -> a)(<data,data>)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var4=(a -> a),\n'
-        '  _var1=data,\n'
-        '  _var2=data,\n'
-        '  _var3=<\n'
-        '    _var1,\n'
-        '    _var2\n'
-        '  >,\n'
-        '  _var5=_var3,\n'
-        '  _var6=_var4(_var5)\n'
-        ' in _var6)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        call, 'extract_computations_from_call_multiple_comps.expected')
 
   def test_extracts_from_lambda_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
     fn = building_blocks.Lambda('a', tf.int32, data)
-    comp = fn
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '(a -> data)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=data,\n'
-        '  _var2=(a -> _var1)\n'
-        ' in _var2)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        fn, 'extract_computations_from_lambda_one_comp.expected')
 
   def test_extracts_from_lambda_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data_1, data_2])
     fn = building_blocks.Lambda('a', tf.int32, tup)
-    comp = fn
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '(a -> <data,data>)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=data,\n'
-        '  _var2=data,\n'
-        '  _var3=<\n'
-        '    _var1,\n'
-        '    _var2\n'
-        '  >,\n'
-        '  _var4=_var3,\n'
-        '  _var5=(a -> _var4)\n'
-        ' in _var5)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        fn, 'extract_computations_from_lambda_multiple_comps.expected')
 
   def test_extracts_from_selection_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data])
     sel = building_blocks.Selection(tup, index=0)
-    comp = sel
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '<data>[0]')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=data,\n'
-        '  _var2=<\n'
-        '    _var1\n'
-        '  >,\n'
-        '  _var3=_var2,\n'
-        '  _var4=_var3[0]\n'
-        ' in _var4)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        sel, 'extract_computations_from_selection_one_comp.expected')
 
   def test_extracts_from_selection_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data_1, data_2])
     sel = building_blocks.Selection(tup, index=0)
-    comp = sel
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '<data,data>[0]')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=data,\n'
-        '  _var2=data,\n'
-        '  _var3=<\n'
-        '    _var1,\n'
-        '    _var2\n'
-        '  >,\n'
-        '  _var4=_var3,\n'
-        '  _var5=_var4[0]\n'
-        ' in _var5)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        sel, 'extract_computations_from_selection_multiple_comps.expected')
 
   def test_extracts_from_tuple_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data])
-    comp = tup
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '<data>')
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(let _var1=data,_var2=<_var1> in _var2)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(tup,
+                           'extract_computations_from_tuple_one_comp.expected')
 
   def test_extracts_from_tuple_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data_1, data_2])
-    comp = tup
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '<data,data>')
-    self.assertEqual(
-        transformed_comp.compact_representation(),
-        '(let _var1=data,_var2=data,_var3=<_var1,_var2> in _var3)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        tup, 'extract_computations_from_tuple_multiple_comps.expected')
 
   def test_extracts_from_tuple_named_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
@@ -359,144 +214,27 @@ class ExtractComputationsTest(test_case.TestCase):
         ('a', data_1),
         ('b', data_2),
     ])
-    comp = tup
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '<a=data,b=data>')
-    self.assertEqual(
-        transformed_comp.compact_representation(),
-        '(let _var1=data,_var2=data,_var3=<a=_var1,b=_var2> in _var3)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        tup, 'extract_computations_from_tuple_named_comps.expected')
 
   def test_extracts_federated_aggregate(self):
     called_intrinsic = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    comp = called_intrinsic
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(
-        comp.compact_representation(),
-        'federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var13=federated_aggregate,\n'
-        '  _var7=data,\n'
-        '  _var8=data,\n'
-        '  _var1=data,\n'
-        '  _var2=(a -> _var1),\n'
-        '  _var9=_var2,\n'
-        '  _var3=data,\n'
-        '  _var4=(b -> _var3),\n'
-        '  _var10=_var4,\n'
-        '  _var5=data,\n'
-        '  _var6=(c -> _var5),\n'
-        '  _var11=_var6,\n'
-        '  _var12=<\n'
-        '    _var7,\n'
-        '    _var8,\n'
-        '    _var9,\n'
-        '    _var10,\n'
-        '    _var11\n'
-        '  >,\n'
-        '  _var14=_var12,\n'
-        '  _var15=_var13(_var14)\n'
-        ' in _var15)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(called_intrinsic,
+                           'extract_computations_federated_aggregate.expected')
 
   def test_extracts_federated_broadcast(self):
     called_intrinsic = compiler_test_utils.create_whimsy_called_federated_broadcast(
     )
-    comp = called_intrinsic
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), 'federated_broadcast(data)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=federated_broadcast,\n'
-        '  _var2=data,\n'
-        '  _var3=_var1(_var2)\n'
-        ' in _var3)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(called_intrinsic,
+                           'extract_computations_federated_broadcast.expected')
 
   def test_extracts_complex_comp(self):
     complex_comp = _create_complex_computation()
-    comp = complex_comp
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        '(b -> <\n'
-        '  federated_mean(federated_map(<\n'
-        '    comp#a,\n'
-        '    federated_broadcast(b)\n'
-        '  >)),\n'
-        '  federated_mean(federated_map(<\n'
-        '    comp#a,\n'
-        '    federated_broadcast(b)\n'
-        '  >))\n'
-        '>)'
-    )
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(b -> (let\n'
-        '  _var9=federated_mean,\n'
-        '  _var6=federated_map,\n'
-        '  _var3=comp#a,\n'
-        '  _var1=federated_broadcast,\n'
-        '  _var2=_var1(b),\n'
-        '  _var4=_var2,\n'
-        '  _var5=<\n'
-        '    _var3,\n'
-        '    _var4\n'
-        '  >,\n'
-        '  _var7=_var5,\n'
-        '  _var8=_var6(_var7),\n'
-        '  _var10=_var8,\n'
-        '  _var11=_var9(_var10),\n'
-        '  _var23=_var11,\n'
-        '  _var20=federated_mean,\n'
-        '  _var17=federated_map,\n'
-        '  _var14=comp#a,\n'
-        '  _var12=federated_broadcast,\n'
-        '  _var13=_var12(b),\n'
-        '  _var15=_var13,\n'
-        '  _var16=<\n'
-        '    _var14,\n'
-        '    _var15\n'
-        '  >,\n'
-        '  _var18=_var16,\n'
-        '  _var19=_var17(_var18),\n'
-        '  _var21=_var19,\n'
-        '  _var22=_var20(_var21),\n'
-        '  _var24=_var22,\n'
-        '  _var25=<\n'
-        '    _var23,\n'
-        '    _var24\n'
-        '  >,\n'
-        '  _var26=_var25\n'
-        ' in _var26))'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(complex_comp,
+                           'extract_computations_complex_comp.expected')
 
 
 class ExtractIntrinsicsTest(test_case.TestCase):
