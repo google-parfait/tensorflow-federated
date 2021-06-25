@@ -13,4 +13,5 @@
 # limitations under the License.
 """Experimental components for Federated Learning."""
 
+from tensorflow_federated.experimental.python.learning.federated_averaging import build_federated_averaging_process
 from tensorflow_federated.experimental.python.learning.jax_components import build_jax_federated_averaging_process
