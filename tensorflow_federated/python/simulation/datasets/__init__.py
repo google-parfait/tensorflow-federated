@@ -13,6 +13,7 @@
 # limitations under the License.
 """Datasets for running TensorFlow Federated simulations."""
 
+from tensorflow_federated.python.simulation.datasets import celeba
 from tensorflow_federated.python.simulation.datasets import cifar100
 from tensorflow_federated.python.simulation.datasets import emnist
 from tensorflow_federated.python.simulation.datasets import gldv2
