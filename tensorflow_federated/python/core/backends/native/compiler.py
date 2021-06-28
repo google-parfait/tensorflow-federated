@@ -66,9 +66,9 @@ def transform_to_native_form(
       logging.debug('Compiling local computations to TensorFlow.')
       with tracing.span(
           'transform_to_native_form',
-          'compile_local_computation_to_tensorflow',
+          'compile_local_computations_to_tensorflow',
           span=True):
-        call_dominant_form, _ = transformations.compile_local_computation_to_tensorflow(
+        call_dominant_form, _ = transformations.compile_local_computations_to_tensorflow(
             call_dominant_form)
       logging.debug('Computation compiled to:')
       logging.debug(call_dominant_form.formatted_representation())

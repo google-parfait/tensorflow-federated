@@ -1,6 +1,15 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = ["//visibility:private"])
+package_group(
+    name = "default_visibility",
+    includes = ["//tensorflow_federated/python/learning:learning_visibility"],
+    packages = [
+        # Subpackages
+        "//tensorflow_federated/python/learning/optimizers/...",
+    ],
+)
+
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

@@ -8,13 +8,12 @@ package_group(
         "//tensorflow_federated/python/core/impl/types/...",
 
         # Impl Dependencies
-        "//tensorflow_federated/cc/core/impl/executors/...",
-        "//tensorflow_federated/cc/core/impl/executor_stacks/...",
         "//tensorflow_federated/python/core/impl/compiler/...",
         "//tensorflow_federated/python/core/impl/computation/...",
         "//tensorflow_federated/python/core/impl/context_stack/...",
         "//tensorflow_federated/python/core/impl/bindings_utils/...",
         "//tensorflow_federated/python/core/impl/executors/...",
+        "//tensorflow_federated/python/core/impl/executor_stacks/...",
         "//tensorflow_federated/python/core/impl/federated_context/...",
         "//tensorflow_federated/python/core/impl/tensorflow_context/...",
         "//tensorflow_federated/python/core/impl/utils/...",

@@ -7,10 +7,6 @@ package_group(
         # Subpackages
         "//tensorflow_federated/python/simulation/datasets/...",
         "//tensorflow_federated/python/simulation/baselines/...",
-
-        # TODO(b/182305417): Delete this once the full deprecation period has
-        # passed.
-        "//tensorflow_federated/python/simulation",
     ],
 )
 
@@ -24,6 +20,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation:__pkg__"],
     deps = [
+        ":celeba",
         ":cifar100",
         ":client_data",
         ":dataset_utils",
@@ -36,6 +33,25 @@ py_library(
         ":stackoverflow",
         ":transforming_client_data",
     ],
+)
+
+py_library(
+    name = "celeba",
+    srcs = ["celeba.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":download",
+        ":sql_client_data",
+    ],
+)
+
+py_test(
+    name = "celeba_test",
+    size = "small",
+    srcs = ["celeba_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":celeba"],
 )
 
 py_library(

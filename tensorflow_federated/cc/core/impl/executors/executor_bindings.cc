@@ -47,13 +47,13 @@ namespace py = ::pybind11;
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-// The Python module defintion `_executor_bindings`.
+// The Python module defintion `executor_bindings`.
 //
-// This will be used with `import _executor_bindings` on the Python side. This
+// This will be used with `import executor_bindings` on the Python side. This
 // module should _not_ be directly imported into the public pip API. The methods
 // here will raise `NotOkStatus` errors from absl, which are not user friendly.
 ////////////////////////////////////////////////////////////////////////////////
-PYBIND11_MODULE(_executor_bindings, m) {
+PYBIND11_MODULE(executor_bindings, m) {
   py::google::ImportStatusModule();
   py::google::ImportProtoModule();
 

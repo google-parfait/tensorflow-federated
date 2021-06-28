@@ -18,6 +18,15 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation:__pkg__"],
+    deps = [
+        ":baseline_task",
+        ":client_spec",
+        ":task_data",
+        "//tensorflow_federated/python/simulation/baselines/cifar100",
+        "//tensorflow_federated/python/simulation/baselines/emnist",
+        "//tensorflow_federated/python/simulation/baselines/shakespeare",
+        "//tensorflow_federated/python/simulation/baselines/stackoverflow",
+    ],
 )
 
 py_library(
