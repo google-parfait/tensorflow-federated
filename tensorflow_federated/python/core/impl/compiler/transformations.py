@@ -741,18 +741,19 @@ class TensorFlowGenerator(transformation_utils.TransformSpec):
   TensorFlow computation.
   """
 
-  def transform(self, local_function):
-    if not self.should_transform(local_function):
-      return local_function, False
-    parsed_to_tf, _ = generate_tensorflow_for_local_computation(local_function)
-    if not (parsed_to_tf.is_compiled_computation() or
-            (parsed_to_tf.is_call() and
-             parsed_to_tf.function.is_compiled_computation())):
+  def transform(self, local_computation):
+    if not self.should_transform(local_computation):
+      return local_computation, False
+    generated_tf, _ = generate_tensorflow_for_local_computation(
+        local_computation)
+    if not (generated_tf.is_compiled_computation() or
+            (generated_tf.is_call() and
+             generated_tf.function.is_compiled_computation())):
       raise tree_transformations.TransformationError(
           'Failed to generate TensorFlow for a local function. '
-          f'Generated a building block of type {type(parsed_to_tf)} with '
-          f'formatted rep {parsed_to_tf.formatted_representation()}.')
-    return parsed_to_tf, True
+          f'Generated a building block of type {type(generated_tf)} with '
+          f'formatted rep {generated_tf.formatted_representation()}.')
+    return generated_tf, True
 
   def should_transform(self, comp):
     if not (type_analysis.is_tensorflow_compatible_type(comp.type_signature) or
@@ -771,13 +772,69 @@ class TensorFlowGenerator(transformation_utils.TransformSpec):
     if unbound_refs:
       # We cannot represent these captures without further information.
       return False
-    if tree_analysis.contains_types(comp, building_blocks.Intrinsic):
+    if tree_analysis.contains_types(
+        comp, building_blocks.Intrinsic) or tree_analysis.contains_types(
+            comp, building_blocks.Data):
       return False
     return True
 
 
-def compile_local_computation_to_tensorflow(comp):
-  """Compiles any fully specified local function to a TensorFlow computation."""
+def compile_local_computations_to_tensorflow(comp):
+  """Compiles any fully specified local functions to a TensorFlow computation.
+
+  This function walks the AST backing `comp` in a preorder manner, calling out
+  to TF-generating functions when it encounters a subcomputation which can be
+  represented in TensorFlow. The fact that this function walks preorder is
+  extremely important to efficiency of the generated TensorFlow; if we instead
+  traversed in a bottom-up fashion, we could potentially generate duplicated
+  structures where such duplication is unnecessary.
+
+  Consider for example a computation with structure:
+
+    [TFComp()[0], TFComp()[1]]
+
+  Due to its preorder walk, this function will call out to TF-generating
+  utilities with the *entire* structure above; this structure still has enough
+  information to detect that TFComp() should be equivalent in both invocations
+  (at least, according to TFF's functional specification). If we traversed the
+  AST backing `comp` in a bottom-up fashion, we would instead make separate
+  calls to TF generation functions, resulting in a structure like:
+
+    [TFComp0(), TFComp1()]
+
+  where the graphs backing TFComp0 and TFComp1 share some graph substructure.
+  TFF does not inspect the substructures of the graphs it generates, and would
+  simply declare each of the above to be fully distinct invocations, and would
+  require that each run when the resulting graph is invoked.
+
+  We provide this function to ensure that callers of TFF's TF-generation
+  utilities are usually shielded from such concerns.
+
+  Args:
+    comp: Instance of `building_blocks.ComputationBuildingBlock` whose local
+      computations we wish to compile to TensorFlow.
+
+  Returns:
+    A tuple whose first element represents an equivalent computation, but whose
+    local computations are represented as TensorFlow graphs. The second element
+    of this tuple is a Boolean indicating whether any transforamtion was made.
+  """
+
+  non_tf_compiled_comp_types = set()
+
+  def _visit(comp):
+    if comp.is_compiled_computation(
+    ) and comp.proto.WhichOneof('computation') != 'tensorflow':
+      non_tf_compiled_comp_types.add(comp.proto.WhichOneof('computation'))
+
+  tree_analysis.visit_postorder(comp, _visit)
+  if non_tf_compiled_comp_types:
+    raise TypeError('Encountered non-TensorFlow compiled computation types {} '
+                    'in argument {} to '
+                    '`compile_local_computations_to_tensorflow`.'.format(
+                        non_tf_compiled_comp_types,
+                        comp.formatted_representation()))
+
   if comp.is_compiled_computation() or (
       comp.is_call() and comp.function.is_compiled_computation()):
     # These represent the final result of TF generation; no need to transform,

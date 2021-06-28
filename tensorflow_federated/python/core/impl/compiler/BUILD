@@ -504,9 +504,11 @@ py_test(
         ":tree_analysis",
         ":tree_to_cc_transformations",
         ":tree_transformations",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
 )
 
