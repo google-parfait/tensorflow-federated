@@ -73,6 +73,7 @@ py_library(
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/baselines:keras_metrics",
         "//tensorflow_federated/python/simulation/baselines:task_data",
+        "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:shakespeare",
     ],
 )
