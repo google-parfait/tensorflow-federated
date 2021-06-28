@@ -1,0 +1,21 @@
+Before transformation:
+
+(let
+  a=data
+ in <
+  data,
+  data
+>)
+
+After transformation:
+
+(let
+  a=data,
+  _var1=data,
+  _var2=data,
+  _var3=<
+    _var1,
+    _var2
+  >,
+  _var4=_var3
+ in _var4)

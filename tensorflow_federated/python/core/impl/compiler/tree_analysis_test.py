@@ -813,5 +813,81 @@ class ContainsUnsecureAggregation(parameterized.TestCase):
     self.assertLen(tree_analysis.find_unsecure_aggregation_in_tree(comp), 1)
 
 
+class CheckHasUniqueNamesTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      tree_analysis.check_has_unique_names(None)
+
+  def test_ok_on_single_lambda(self):
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)
+    tree_analysis.check_has_unique_names(lambda_1)
+
+  def test_ok_on_multiple_no_arg_lambdas(self):
+    data = building_blocks.Data('x', tf.int32)
+    lambda_1 = building_blocks.Lambda(None, None, data)
+    lambda_2 = building_blocks.Lambda(None, None, data)
+    tup = building_blocks.Struct([lambda_1, lambda_2])
+    tree_analysis.check_has_unique_names(tup)
+
+  def test_raises_on_nested_lambdas_with_same_variable_name(self):
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)
+    lambda_2 = building_blocks.Lambda('x', tf.int32, lambda_1)
+    with self.assertRaises(tree_analysis.NonuniqueNameError):
+      tree_analysis.check_has_unique_names(lambda_2)
+
+  def test_ok_on_nested_lambdas_with_different_variable_name(self):
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, ref_to_x)
+    lambda_2 = building_blocks.Lambda('y', tf.int32, lambda_1)
+    tree_analysis.check_has_unique_names(lambda_2)
+
+  def test_ok_on_single_block(self):
+    x_data = building_blocks.Data('x', tf.int32)
+    single_block = building_blocks.Block([('x', x_data)], x_data)
+    tree_analysis.check_has_unique_names(single_block)
+
+  def test_raises_on_sequential_binding_of_same_variable_in_block(self):
+    x_data = building_blocks.Data('x', tf.int32)
+    block = building_blocks.Block([('x', x_data), ('x', x_data)], x_data)
+    with self.assertRaises(tree_analysis.NonuniqueNameError):
+      tree_analysis.check_has_unique_names(block)
+
+  def test_ok_on_sequential_binding_of_different_variable_in_block(self):
+    x_data = building_blocks.Data('x', tf.int32)
+    block = building_blocks.Block([('x', x_data), ('y', x_data)], x_data)
+    tree_analysis.check_has_unique_names(block)
+
+  def test_raises_block_rebinding_of_lambda_variable(self):
+    x_data = building_blocks.Data('x', tf.int32)
+    single_block = building_blocks.Block([('x', x_data)], x_data)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, single_block)
+    with self.assertRaises(tree_analysis.NonuniqueNameError):
+      tree_analysis.check_has_unique_names(lambda_1)
+
+  def test_ok_block_binding_of_new_variable(self):
+    x_data = building_blocks.Data('x', tf.int32)
+    single_block = building_blocks.Block([('x', x_data)], x_data)
+    lambda_1 = building_blocks.Lambda('y', tf.int32, single_block)
+    tree_analysis.check_has_unique_names(lambda_1)
+
+  def test_raises_lambda_rebinding_of_block_variable(self):
+    x_ref = building_blocks.Reference('x', tf.int32)
+    lambda_1 = building_blocks.Lambda('x', tf.int32, x_ref)
+    x_data = building_blocks.Data('x', tf.int32)
+    single_block = building_blocks.Block([('x', x_data)], lambda_1)
+    with self.assertRaises(tree_analysis.NonuniqueNameError):
+      tree_analysis.check_has_unique_names(single_block)
+
+  def test_ok_lambda_binding_of_new_variable(self):
+    y_ref = building_blocks.Reference('y', tf.int32)
+    lambda_1 = building_blocks.Lambda('y', tf.int32, y_ref)
+    x_data = building_blocks.Data('x', tf.int32)
+    single_block = building_blocks.Block([('x', x_data)], lambda_1)
+    tree_analysis.check_has_unique_names(single_block)
+
+
 if __name__ == '__main__':
   absltest.main()

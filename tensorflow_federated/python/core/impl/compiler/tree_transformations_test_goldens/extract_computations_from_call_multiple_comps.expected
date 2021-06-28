@@ -1,0 +1,20 @@
+Before transformation:
+
+(a -> a)(<
+  data,
+  data
+>)
+
+After transformation:
+
+(let
+  _var4=(a -> a),
+  _var1=data,
+  _var2=data,
+  _var3=<
+    _var1,
+    _var2
+  >,
+  _var5=_var3,
+  _var6=_var4(_var5)
+ in _var6)

@@ -133,8 +133,8 @@ PYBIND11_MODULE(_executor_bindings, m) {
         py::arg("channel"), py::arg("cardinalities"),
         "Creates a RemoteExecutor.");
 
-  py::class_<grpc::ChannelInterface, std::shared_ptr<grpc::ChannelInterface>>(
-      m, "GRPCChannelInterface");
+  py::class_<grpc::ChannelInterface, std::shared_ptr<grpc::ChannelInterface>>
+      give_me_a_name(m, "GRPCChannelInterface");
   m.def(
       "create_insecure_grpc_channel",
       [](const std::string& target) -> std::shared_ptr<grpc::ChannelInterface> {

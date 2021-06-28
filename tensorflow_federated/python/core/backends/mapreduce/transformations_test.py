@@ -172,11 +172,12 @@ class ConsolidateAndExtractTest(absltest.TestCase):
   def test_reduces_federated_map_to_equivalent_function(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', tf.int32))
-    arg = building_blocks.Reference(
-        'arg', computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    mapped_fn = building_block_factory.create_federated_map_or_apply(lam, arg)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    arg = building_blocks.Reference('arg', arg_type)
+    map_block = building_block_factory.create_federated_map_or_apply(lam, arg)
+    mapping_fn = building_blocks.Lambda('arg', arg_type, map_block)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
-        mapped_fn, DEFAULT_GRAPPLER_CONFIG)
+        mapping_fn, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
@@ -188,11 +189,12 @@ class ConsolidateAndExtractTest(absltest.TestCase):
   def test_reduces_federated_apply_to_equivalent_function(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', tf.int32))
-    arg = building_blocks.Reference(
-        'arg', computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    mapped_fn = building_block_factory.create_federated_map_or_apply(lam, arg)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    arg = building_blocks.Reference('arg', arg_type)
+    map_block = building_block_factory.create_federated_map_or_apply(lam, arg)
+    mapping_fn = building_blocks.Lambda('arg', arg_type, map_block)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
-        mapped_fn, DEFAULT_GRAPPLER_CONFIG)
+        mapping_fn, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
@@ -206,8 +208,9 @@ class ConsolidateAndExtractTest(absltest.TestCase):
         computation_types.TensorType(tf.int32, shape=[]), 0)
     federated_value = building_block_factory.create_federated_value(
         zero, placements.SERVER)
+    federated_value_func = building_blocks.Lambda(None, None, federated_value)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
-        federated_value, DEFAULT_GRAPPLER_CONFIG)
+        federated_value_func, DEFAULT_GRAPPLER_CONFIG)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
     self.assertEqual(executable_tf(), 0)
@@ -218,8 +221,9 @@ class ConsolidateAndExtractTest(absltest.TestCase):
         computation_types.TensorType(tf.int32, shape=[]), 0)
     federated_value = building_block_factory.create_federated_value(
         zero, placements.CLIENTS)
+    federated_value_func = building_blocks.Lambda(None, None, federated_value)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
-        federated_value, DEFAULT_GRAPPLER_CONFIG)
+        federated_value_func, DEFAULT_GRAPPLER_CONFIG)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
     self.assertEqual(executable_tf(), 0)

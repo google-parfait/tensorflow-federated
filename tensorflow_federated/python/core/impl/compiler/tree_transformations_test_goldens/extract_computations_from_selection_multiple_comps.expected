@@ -1,0 +1,19 @@
+Before transformation:
+
+<
+  data,
+  data
+>[0]
+
+After transformation:
+
+(let
+  _var1=data,
+  _var2=data,
+  _var3=<
+    _var1,
+    _var2
+  >,
+  _var4=_var3,
+  _var5=_var4[0]
+ in _var5)

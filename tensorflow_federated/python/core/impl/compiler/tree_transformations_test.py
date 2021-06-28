@@ -15,6 +15,7 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
@@ -27,6 +28,22 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+
+
+class TransformTestBase(test_case.TestCase):
+
+  def assert_transforms(self, comp, file, changes_type=False, unmodified=False):
+    # NOTE: A `transform` method must be present on inheritors.
+    after, modified = self.transform(comp)
+    golden.check_string(
+        file, f'Before transformation:\n\n{comp.formatted_representation()}\n\n'
+        f'After transformation:\n\n{after.formatted_representation()}')
+    if not changes_type:
+      self.assert_types_identical(comp.type_signature, after.type_signature)
+    if unmodified:
+      self.assertFalse(modified)
+    else:
+      self.assertTrue(modified)
 
 
 def _create_chained_whimsy_federated_applys(functions, arg):
@@ -87,7 +104,10 @@ def _create_complex_computation():
   return building_blocks.Lambda('b', tf.int32, tup)
 
 
-class ExtractComputationsTest(test_case.TestCase):
+class ExtractComputationsTest(TransformTestBase):
+
+  def transform(self, comp):
+    return tree_transformations.extract_computations(comp)
 
   def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
@@ -99,47 +119,26 @@ class ExtractComputationsTest(test_case.TestCase):
     with self.assertRaises(ValueError):
       tree_transformations.extract_computations(block)
 
-  def test_extracts_from_no_arg_lamda(self):
+  def test_extracts_from_no_arg_lambda(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Lambda(
         parameter_name=None, parameter_type=None, result=data)
-    comp = block
+    self.assert_transforms(block,
+                           'extract_computations_from_no_arg_lambda.expected')
 
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '( -> data)')
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(let _var1=data,_var2=( -> _var1) in _var2)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
-
-  def test_extracts_from_no_arg_lamda_to_block(self):
+  def test_extracts_from_no_arg_lambda_to_block(self):
     data = building_blocks.Data('data', tf.int32)
     blk = building_blocks.Block([], data)
     block = building_blocks.Lambda(
         parameter_name=None, parameter_type=None, result=blk)
-    comp = block
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '( -> (let  in data))')
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(let _var1=data,_var2=_var1,_var3=( -> _var2) in _var3)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        block, 'extract_computations_from_no_arg_lambda_to_block.expected')
 
   def test_extracts_from_block_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('a', data)], data)
-    comp = block
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '(let a=data in data)')
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(let a=data,_var1=data in _var1)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(block,
+                           'extract_computations_from_block_one_comp.expected')
 
   def test_extracts_from_block_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
@@ -147,51 +146,15 @@ class ExtractComputationsTest(test_case.TestCase):
     data_3 = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data_2, data_3])
     block = building_blocks.Block([('a', data_1)], tup)
-    comp = block
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(),
-                     '(let a=data in <data,data>)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  a=data,\n'
-        '  _var1=data,\n'
-        '  _var2=data,\n'
-        '  _var3=<\n'
-        '    _var1,\n'
-        '    _var2\n'
-        '  >,\n'
-        '  _var4=_var3\n'
-        ' in _var4)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        block, 'extract_computations_from_block_multiple_comps.expected')
 
   def test_extracts_from_call_one_comp(self):
     fn = compiler_test_utils.create_identity_function('a', tf.int32)
     data = building_blocks.Data('data', tf.int32)
     call = building_blocks.Call(fn, data)
-    comp = call
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '(a -> a)(data)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=(a -> a),\n'
-        '  _var2=data,\n'
-        '  _var3=_var1(_var2)\n'
-        ' in _var3)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(call,
+                           'extract_computations_from_call_one_comp.expected')
 
   def test_extracts_from_call_multiple_comps(self):
     fn = compiler_test_utils.create_identity_function('a', [tf.int32, tf.int32])
@@ -199,158 +162,50 @@ class ExtractComputationsTest(test_case.TestCase):
     data_2 = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data_1, data_2])
     call = building_blocks.Call(fn, tup)
-    comp = call
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '(a -> a)(<data,data>)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var4=(a -> a),\n'
-        '  _var1=data,\n'
-        '  _var2=data,\n'
-        '  _var3=<\n'
-        '    _var1,\n'
-        '    _var2\n'
-        '  >,\n'
-        '  _var5=_var3,\n'
-        '  _var6=_var4(_var5)\n'
-        ' in _var6)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        call, 'extract_computations_from_call_multiple_comps.expected')
 
   def test_extracts_from_lambda_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
     fn = building_blocks.Lambda('a', tf.int32, data)
-    comp = fn
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '(a -> data)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=data,\n'
-        '  _var2=(a -> _var1)\n'
-        ' in _var2)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        fn, 'extract_computations_from_lambda_one_comp.expected')
 
   def test_extracts_from_lambda_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data_1, data_2])
     fn = building_blocks.Lambda('a', tf.int32, tup)
-    comp = fn
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '(a -> <data,data>)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=data,\n'
-        '  _var2=data,\n'
-        '  _var3=<\n'
-        '    _var1,\n'
-        '    _var2\n'
-        '  >,\n'
-        '  _var4=_var3,\n'
-        '  _var5=(a -> _var4)\n'
-        ' in _var5)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        fn, 'extract_computations_from_lambda_multiple_comps.expected')
 
   def test_extracts_from_selection_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data])
     sel = building_blocks.Selection(tup, index=0)
-    comp = sel
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '<data>[0]')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=data,\n'
-        '  _var2=<\n'
-        '    _var1\n'
-        '  >,\n'
-        '  _var3=_var2,\n'
-        '  _var4=_var3[0]\n'
-        ' in _var4)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        sel, 'extract_computations_from_selection_one_comp.expected')
 
   def test_extracts_from_selection_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data_1, data_2])
     sel = building_blocks.Selection(tup, index=0)
-    comp = sel
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '<data,data>[0]')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=data,\n'
-        '  _var2=data,\n'
-        '  _var3=<\n'
-        '    _var1,\n'
-        '    _var2\n'
-        '  >,\n'
-        '  _var4=_var3,\n'
-        '  _var5=_var4[0]\n'
-        ' in _var5)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        sel, 'extract_computations_from_selection_multiple_comps.expected')
 
   def test_extracts_from_tuple_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data])
-    comp = tup
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '<data>')
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(let _var1=data,_var2=<_var1> in _var2)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(tup,
+                           'extract_computations_from_tuple_one_comp.expected')
 
   def test_extracts_from_tuple_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
     tup = building_blocks.Struct([data_1, data_2])
-    comp = tup
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '<data,data>')
-    self.assertEqual(
-        transformed_comp.compact_representation(),
-        '(let _var1=data,_var2=data,_var3=<_var1,_var2> in _var3)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        tup, 'extract_computations_from_tuple_multiple_comps.expected')
 
   def test_extracts_from_tuple_named_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
@@ -359,144 +214,27 @@ class ExtractComputationsTest(test_case.TestCase):
         ('a', data_1),
         ('b', data_2),
     ])
-    comp = tup
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), '<a=data,b=data>')
-    self.assertEqual(
-        transformed_comp.compact_representation(),
-        '(let _var1=data,_var2=data,_var3=<a=_var1,b=_var2> in _var3)')
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(
+        tup, 'extract_computations_from_tuple_named_comps.expected')
 
   def test_extracts_federated_aggregate(self):
     called_intrinsic = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    comp = called_intrinsic
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(
-        comp.compact_representation(),
-        'federated_aggregate(<data,data,(a -> data),(b -> data),(c -> data)>)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var13=federated_aggregate,\n'
-        '  _var7=data,\n'
-        '  _var8=data,\n'
-        '  _var1=data,\n'
-        '  _var2=(a -> _var1),\n'
-        '  _var9=_var2,\n'
-        '  _var3=data,\n'
-        '  _var4=(b -> _var3),\n'
-        '  _var10=_var4,\n'
-        '  _var5=data,\n'
-        '  _var6=(c -> _var5),\n'
-        '  _var11=_var6,\n'
-        '  _var12=<\n'
-        '    _var7,\n'
-        '    _var8,\n'
-        '    _var9,\n'
-        '    _var10,\n'
-        '    _var11\n'
-        '  >,\n'
-        '  _var14=_var12,\n'
-        '  _var15=_var13(_var14)\n'
-        ' in _var15)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(called_intrinsic,
+                           'extract_computations_federated_aggregate.expected')
 
   def test_extracts_federated_broadcast(self):
     called_intrinsic = compiler_test_utils.create_whimsy_called_federated_broadcast(
     )
-    comp = called_intrinsic
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    self.assertEqual(comp.compact_representation(), 'federated_broadcast(data)')
-    # pyformat: disable
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=federated_broadcast,\n'
-        '  _var2=data,\n'
-        '  _var3=_var1(_var2)\n'
-        ' in _var3)'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(called_intrinsic,
+                           'extract_computations_federated_broadcast.expected')
 
   def test_extracts_complex_comp(self):
     complex_comp = _create_complex_computation()
-    comp = complex_comp
-
-    transformed_comp, modified = tree_transformations.extract_computations(comp)
-
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        '(b -> <\n'
-        '  federated_mean(federated_map(<\n'
-        '    comp#a,\n'
-        '    federated_broadcast(b)\n'
-        '  >)),\n'
-        '  federated_mean(federated_map(<\n'
-        '    comp#a,\n'
-        '    federated_broadcast(b)\n'
-        '  >))\n'
-        '>)'
-    )
-    self.assertEqual(
-        transformed_comp.formatted_representation(),
-        '(b -> (let\n'
-        '  _var9=federated_mean,\n'
-        '  _var6=federated_map,\n'
-        '  _var3=comp#a,\n'
-        '  _var1=federated_broadcast,\n'
-        '  _var2=_var1(b),\n'
-        '  _var4=_var2,\n'
-        '  _var5=<\n'
-        '    _var3,\n'
-        '    _var4\n'
-        '  >,\n'
-        '  _var7=_var5,\n'
-        '  _var8=_var6(_var7),\n'
-        '  _var10=_var8,\n'
-        '  _var11=_var9(_var10),\n'
-        '  _var23=_var11,\n'
-        '  _var20=federated_mean,\n'
-        '  _var17=federated_map,\n'
-        '  _var14=comp#a,\n'
-        '  _var12=federated_broadcast,\n'
-        '  _var13=_var12(b),\n'
-        '  _var15=_var13,\n'
-        '  _var16=<\n'
-        '    _var14,\n'
-        '    _var15\n'
-        '  >,\n'
-        '  _var18=_var16,\n'
-        '  _var19=_var17(_var18),\n'
-        '  _var21=_var19,\n'
-        '  _var22=_var20(_var21),\n'
-        '  _var24=_var22,\n'
-        '  _var25=<\n'
-        '    _var23,\n'
-        '    _var24\n'
-        '  >,\n'
-        '  _var26=_var25\n'
-        ' in _var26))'
-    )
-    # pyformat: enable
-    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
-    self.assertTrue(modified)
+    self.assert_transforms(complex_comp,
+                           'extract_computations_complex_comp.expected')
 
 
 class ExtractIntrinsicsTest(test_case.TestCase):
@@ -3966,7 +3704,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
                      '(let a=data,a=a,a=a in a)')
     self.assertEqual(transformed_comp.compact_representation(),
                      '(let _var1=data,_var2=_var1,_var3=_var2 in _var3)')
-    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_nested_blocks(self):
@@ -3983,7 +3721,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
     self.assertEqual(
         transformed_comp.compact_representation(),
         '(let _var1=data,_var2=_var1 in (let _var3=data,_var4=_var3 in _var4))')
-    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_nested_lambdas(self):
@@ -4001,7 +3739,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
 
     self.assertEqual(transformed_comp.compact_representation(),
                      '(_var1 -> _var1)((_var2 -> _var2)(data))')
-    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_block_lambda_block_lambda(self):
@@ -4025,7 +3763,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
         transformed_comp.compact_representation(),
         '(let _var1=data,_var2=_var1 in (_var3 -> (let _var4=_var3,_var5=_var4 in (_var6 -> _var6)(_var5)))(_var2))'
     )
-    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_blocks_nested_inside_of_locals(self):
@@ -4061,7 +3799,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
     self.assertEqual(
         transformed_comp.result.compact_representation(),
         '(let _var11=(let _var10=(let _var9=_var8 in data) in data) in data)')
-    self.assertTrue(transformation_utils.has_unique_names(transformed_comp))
+    tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
   def test_renames_names_ignores_existing_names(self):
@@ -4216,32 +3954,27 @@ class InsertTensorFlowIdentityAtLeavesTest(test_case.TestCase):
     self.assertFalse(modified)
 
 
-class UnwrapPlacementTest(parameterized.TestCase):
+class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
+
+  def assert_has_no_intrinsics_nor_federated_types(self, comp):
+
+    def _check(x):
+      if x.type_signature.is_federated():
+        raise AssertionError(f'Unexpected federated type: {x.type_signature}')
+      if x.is_intrinsic():
+        raise AssertionError(f'Unexpected intrinsic: {x}')
+
+    tree_analysis.visit_postorder(comp, _check)
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      tree_transformations.unwrap_placement(None)
+      tree_transformations.strip_placement(None)
 
-  def test_raises_computation_non_federated_type(self):
-    with self.assertRaises(TypeError):
-      tree_transformations.unwrap_placement(building_blocks.Data('x', tf.int32))
-
-  def test_raises_unbound_reference_non_federated_type(self):
-    block = building_blocks.Block(
-        [('x', building_blocks.Reference('y', tf.int32))],
-        building_blocks.Reference(
-            'x', computation_types.FederatedType(tf.int32, placements.CLIENTS)))
-    with self.assertRaisesRegex(TypeError, 'lone unbound reference'):
-      tree_transformations.unwrap_placement(block)
-
-  def test_raises_two_unbound_references(self):
-    ref_to_x = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
-    ref_to_y = building_blocks.Reference(
-        'y', computation_types.FunctionType(tf.int32, tf.float32))
-    applied = building_block_factory.create_federated_apply(ref_to_y, ref_to_x)
-    with self.assertRaises(ValueError):
-      tree_transformations.unwrap_placement(applied)
+  def test_computation_non_federated_type(self):
+    before = building_blocks.Data('x', tf.int32)
+    after, modified = tree_transformations.strip_placement(before)
+    self.assertEqual(before, after)
+    self.assertFalse(modified)
 
   def test_raises_disallowed_intrinsic(self):
     fed_ref = building_blocks.Reference(
@@ -4256,17 +3989,17 @@ class UnwrapPlacementTest(parameterized.TestCase):
                 all_equal=True)))
     called_broadcast = building_blocks.Call(broadcaster, fed_ref)
     with self.assertRaises(ValueError):
-      tree_transformations.unwrap_placement(called_broadcast)
+      tree_transformations.strip_placement(called_broadcast)
 
   def test_raises_multiple_placements(self):
-    server_placed_data = building_blocks.Data(
-        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
-    clients_placed_data = building_blocks.Data(
-        'y', computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    server_placed_data = building_blocks.Reference(
+        'x', computation_types.at_server(tf.int32))
+    clients_placed_data = building_blocks.Reference(
+        'y', computation_types.at_clients(tf.int32))
     block_holding_both = building_blocks.Block([('x', server_placed_data)],
                                                clients_placed_data)
-    with self.assertRaisesRegex(ValueError, 'contains a placement other than'):
-      tree_transformations.unwrap_placement(block_holding_both)
+    with self.assertRaisesRegex(ValueError, 'multiple different placements'):
+      tree_transformations.strip_placement(block_holding_both)
 
   def test_passes_unbound_type_signature_obscured_under_block(self):
     fed_ref = building_blocks.Reference(
@@ -4275,7 +4008,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         [('y', fed_ref), ('x', building_blocks.Data('whimsy', tf.int32)),
          ('z', building_blocks.Reference('x', tf.int32))],
         building_blocks.Reference('y', fed_ref.type_signature))
-    tree_transformations.unwrap_placement(block)
+    tree_transformations.strip_placement(block)
 
   def test_passes_noarg_lambda(self):
     lam = building_blocks.Lambda(None, None,
@@ -4285,278 +4018,150 @@ class UnwrapPlacementTest(parameterized.TestCase):
         intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
         computation_types.FunctionType(lam.type_signature, fed_int_type))
     called_eval = building_blocks.Call(fed_eval, lam)
-    tree_transformations.unwrap_placement(called_eval)
+    tree_transformations.strip_placement(called_eval)
 
   def test_removes_federated_types_under_function(self):
-    int_ref = building_blocks.Reference('x', tf.int32)
-    int_id = building_blocks.Lambda('x', tf.int32, int_ref)
-    fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
+    int_type = tf.int32
+    server_int_type = computation_types.at_server(int_type)
+    int_ref = building_blocks.Reference('x', int_type)
+    int_id = building_blocks.Lambda('x', int_type, int_ref)
+    fed_ref = building_blocks.Reference('x', server_int_type)
     applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
-    second_applied_id = building_block_factory.create_federated_map_or_apply(
+    before = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
-    placement_unwrapped, modified = tree_transformations.unwrap_placement(
-        second_applied_id)
+    after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
+    self.assert_has_no_intrinsics_nor_federated_types(after)
 
-    def _fed_type_predicate(x):
-      return x.type_signature.is_federated()
-
-    self.assertEqual(placement_unwrapped.function.uri,
-                     intrinsic_defs.FEDERATED_APPLY.uri)
-    self.assertEqual(
-        tree_analysis.count(placement_unwrapped.argument[0],
-                            _fed_type_predicate), 0)
-
-  def test_unwrap_placement_removes_one_federated_apply(self):
-    int_ref = building_blocks.Reference('x', tf.int32)
-    int_id = building_blocks.Lambda('x', tf.int32, int_ref)
-    fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
+  def test_strip_placement_removes_federated_applys(self):
+    int_type = computation_types.TensorType(tf.int32)
+    server_int_type = computation_types.at_server(int_type)
+    int_ref = building_blocks.Reference('x', int_type)
+    int_id = building_blocks.Lambda('x', int_type, int_ref)
+    fed_ref = building_blocks.Reference('x', server_int_type)
     applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
-    second_applied_id = building_block_factory.create_federated_map_or_apply(
+    before = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
-    placement_unwrapped, modified = tree_transformations.unwrap_placement(
-        second_applied_id)
+    after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
-
+    self.assert_has_no_intrinsics_nor_federated_types(after)
+    self.assert_types_identical(before.type_signature, server_int_type)
+    self.assert_types_identical(after.type_signature, int_type)
     self.assertEqual(
-        second_applied_id.compact_representation(),
+        before.compact_representation(),
         'federated_apply(<(x -> x),federated_apply(<(x -> x),x>)>)')
-    self.assertEqual(
-        _count_called_intrinsics(second_applied_id,
-                                 intrinsic_defs.FEDERATED_APPLY.uri), 2)
-    self.assertEqual(
-        _count_called_intrinsics(placement_unwrapped,
-                                 intrinsic_defs.FEDERATED_APPLY.uri), 1)
-    self.assertEqual(placement_unwrapped.type_signature,
-                     second_applied_id.type_signature)
-    self.assertIsInstance(placement_unwrapped, building_blocks.Call)
-    self.assertIsInstance(placement_unwrapped.argument[0],
-                          building_blocks.Lambda)
-    self.assertIsInstance(placement_unwrapped.argument[0].result,
-                          building_blocks.Call)
-    self.assertEqual(
-        placement_unwrapped.argument[0].result.function.compact_representation(
-        ), '(x -> x)')
-    self.assertEqual(
-        placement_unwrapped.argument[0].result.argument.compact_representation(
-        ), '(x -> x)(_var1)')
+    self.assertEqual(after.compact_representation(), '(x -> x)((x -> x)(x))')
 
-  def test_unwrap_placement_removes_two_federated_applys(self):
-    int_ref = building_blocks.Reference('x', tf.int32)
-    int_id = building_blocks.Lambda('x', tf.int32, int_ref)
-    fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
+  def test_strip_placement_removes_federated_maps(self):
+    int_type = computation_types.TensorType(tf.int32)
+    clients_int_type = computation_types.at_clients(int_type)
+    int_ref = building_blocks.Reference('x', int_type)
+    int_id = building_blocks.Lambda('x', int_type, int_ref)
+    fed_ref = building_blocks.Reference('x', clients_int_type)
     applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
-    second_applied_id = building_block_factory.create_federated_map_or_apply(
+    before = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
-    third_applied_id = building_block_factory.create_federated_map_or_apply(
-        int_id, second_applied_id)
-    placement_unwrapped, modified = tree_transformations.unwrap_placement(
-        second_applied_id)
+    after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
-
-    self.assertEqual(
-        _count_called_intrinsics(third_applied_id,
-                                 intrinsic_defs.FEDERATED_APPLY.uri), 3)
-    self.assertEqual(
-        _count_called_intrinsics(placement_unwrapped,
-                                 intrinsic_defs.FEDERATED_APPLY.uri), 1)
-
-  def test_unwrap_placement_removes_one_federated_map(self):
-    int_ref = building_blocks.Reference('x', tf.int32)
-    int_id = building_blocks.Lambda('x', tf.int32, int_ref)
-    fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    applied_id = building_block_factory.create_federated_map_or_apply(
-        int_id, fed_ref)
-    second_applied_id = building_block_factory.create_federated_map_or_apply(
-        int_id, applied_id)
-    placement_unwrapped, modified = tree_transformations.unwrap_placement(
-        second_applied_id)
-    self.assertTrue(modified)
-
-    self.assertEqual(second_applied_id.compact_representation(),
+    self.assert_has_no_intrinsics_nor_federated_types(after)
+    self.assert_types_identical(before.type_signature, clients_int_type)
+    self.assert_types_identical(after.type_signature, int_type)
+    self.assertEqual(before.compact_representation(),
                      'federated_map(<(x -> x),federated_map(<(x -> x),x>)>)')
-    self.assertEqual(
-        _count_called_intrinsics(second_applied_id,
-                                 intrinsic_defs.FEDERATED_MAP.uri), 2)
-    self.assertEqual(
-        _count_called_intrinsics(placement_unwrapped,
-                                 intrinsic_defs.FEDERATED_MAP.uri), 1)
-    self.assertEqual(placement_unwrapped.type_signature,
-                     second_applied_id.type_signature)
-    self.assertIsInstance(placement_unwrapped, building_blocks.Call)
-    self.assertIsInstance(placement_unwrapped.argument[0],
-                          building_blocks.Lambda)
-    self.assertIsInstance(placement_unwrapped.argument[0].result,
-                          building_blocks.Call)
-    self.assertEqual(
-        placement_unwrapped.argument[0].result.function.compact_representation(
-        ), '(x -> x)')
-    self.assertEqual(
-        placement_unwrapped.argument[0].result.argument.compact_representation(
-        ), '(x -> x)(_var1)')
+    self.assertEqual(after.compact_representation(), '(x -> x)((x -> x)(x))')
 
-  def test_unwrap_placement_removes_two_federated_maps(self):
-    int_ref = building_blocks.Reference('x', tf.int32)
-    int_id = building_blocks.Lambda('x', tf.int32, int_ref)
-    fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    applied_id = building_block_factory.create_federated_map_or_apply(
-        int_id, fed_ref)
-    second_applied_id = building_block_factory.create_federated_map_or_apply(
-        int_id, applied_id)
-    third_applied_id = building_block_factory.create_federated_map_or_apply(
-        int_id, second_applied_id)
-    placement_unwrapped, modified = tree_transformations.unwrap_placement(
-        third_applied_id)
-    self.assertTrue(modified)
-
-    self.assertEqual(
-        _count_called_intrinsics(third_applied_id,
-                                 intrinsic_defs.FEDERATED_MAP.uri), 3)
-    self.assertEqual(
-        _count_called_intrinsics(placement_unwrapped,
-                                 intrinsic_defs.FEDERATED_MAP.uri), 1)
-
-  def test_unwrap_removes_all_federated_zips_at_server(self):
-    fed_tuple = building_blocks.Reference(
-        'tup',
-        computation_types.FederatedType([tf.int32, tf.float32] * 2,
-                                        placements.SERVER))
+  def test_unwrap_removes_federated_zips_at_server(self):
+    list_type = computation_types.to_type([tf.int32, tf.float32] * 2)
+    server_list_type = computation_types.at_server(list_type)
+    fed_tuple = building_blocks.Reference('tup', server_list_type)
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
-    zipped = building_block_factory.create_federated_zip(unzipped)
-    placement_unwrapped, modified = tree_transformations.unwrap_placement(
-        zipped)
+    before = building_block_factory.create_federated_zip(unzipped)
+    after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
+    self.assert_has_no_intrinsics_nor_federated_types(after)
+    self.assert_types_identical(before.type_signature, server_list_type)
+    self.assert_types_identical(after.type_signature, list_type)
 
-    self.assertIsInstance(zipped.type_signature,
-                          computation_types.FederatedType)
-    self.assertEqual(
-        _count_called_intrinsics(zipped,
-                                 intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri), 3)
-    self.assertEqual(
-        _count_called_intrinsics(placement_unwrapped,
-                                 intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri), 0)
-
-  def test_unwrap_removes_all_federated_zips_at_clients(self):
-    fed_tuple = building_blocks.Reference(
-        'tup',
-        computation_types.FederatedType([tf.int32, tf.float32] * 2,
-                                        placements.CLIENTS))
+  def test_unwrap_removes_federated_zips_at_clients(self):
+    list_type = computation_types.to_type([tf.int32, tf.float32] * 2)
+    clients_list_type = computation_types.at_server(list_type)
+    fed_tuple = building_blocks.Reference('tup', clients_list_type)
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
-    zipped = building_block_factory.create_federated_zip(unzipped)
-    placement_unwrapped, modified = tree_transformations.unwrap_placement(
-        zipped)
+    before = building_block_factory.create_federated_zip(unzipped)
+    after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
+    self.assert_has_no_intrinsics_nor_federated_types(after)
+    self.assert_types_identical(before.type_signature, clients_list_type)
+    self.assert_types_identical(after.type_signature, list_type)
 
-    self.assertIsInstance(zipped.type_signature,
-                          computation_types.FederatedType)
-    self.assertEqual(
-        _count_called_intrinsics(zipped,
-                                 intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri),
-        3)
-    self.assertEqual(
-        _count_called_intrinsics(placement_unwrapped,
-                                 intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri),
-        0)
-
-  def test_unwrap_placement_federated_value_at_server_removes_one_federated_value(
-      self):
+  def test_strip_placement_removes_federated_value_at_server(self):
     int_data = building_blocks.Data('x', tf.int32)
     float_data = building_blocks.Data('x', tf.float32)
     fed_int = building_block_factory.create_federated_value(
         int_data, placements.SERVER)
     fed_float = building_block_factory.create_federated_value(
         float_data, placements.SERVER)
-    tup = building_blocks.Struct([fed_int, fed_float])
-    zipped = building_block_factory.create_federated_zip(tup)
-    placement_unwrapped, modified = tree_transformations.unwrap_placement(
-        zipped)
+    tup = building_blocks.Struct([fed_int, fed_float], container_type=tuple)
+    before = building_block_factory.create_federated_zip(tup)
+    after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
+    self.assert_has_no_intrinsics_nor_federated_types(after)
+    tuple_type = computation_types.StructWithPythonType([(None, tf.int32),
+                                                         (None, tf.float32)],
+                                                        tuple)
+    self.assert_types_identical(before.type_signature,
+                                computation_types.at_server(tuple_type))
+    self.assert_types_identical(after.type_signature, tuple_type)
 
-    # This is destroying a py container but we probably want to fix it
-    zipped.type_signature.check_equivalent_to(
-        placement_unwrapped.type_signature)
-    self.assertEqual(placement_unwrapped.function.uri,
-                     intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri)
-    self.assertEqual(
-        _count_called_intrinsics(zipped,
-                                 intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri),
-        2)
-    self.assertEqual(
-        _count_called_intrinsics(placement_unwrapped,
-                                 intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri),
-        1)
-
-  def test_unwrap_placement_federated_value_at_clients_removes_one_federated_value(
-      self):
+  def test_strip_placement_federated_value_at_clients(self):
     int_data = building_blocks.Data('x', tf.int32)
     float_data = building_blocks.Data('x', tf.float32)
     fed_int = building_block_factory.create_federated_value(
         int_data, placements.CLIENTS)
     fed_float = building_block_factory.create_federated_value(
         float_data, placements.CLIENTS)
-    tup = building_blocks.Struct([fed_int, fed_float])
-    zipped = building_block_factory.create_federated_zip(tup)
-    placement_unwrapped, modified = tree_transformations.unwrap_placement(
-        zipped)
+    tup = building_blocks.Struct([fed_int, fed_float], container_type=tuple)
+    before = building_block_factory.create_federated_zip(tup)
+    after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
-    # These two types are no longer literally equal, since we have unwrapped the
-    # `federated_value_at_clients` all the way to the top of the tree and
-    # therefore have a value with `all_equal=True`; the zip above had destroyed
-    # this information in a lossy way.
-    self.assertTrue(
-        zipped.type_signature.is_assignable_from(
-            placement_unwrapped.type_signature))
-    self.assertEqual(placement_unwrapped.function.uri,
-                     intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri)
-    self.assertEqual(
-        _count_called_intrinsics(zipped,
-                                 intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri),
-        2)
-    self.assertEqual(
-        _count_called_intrinsics(placement_unwrapped,
-                                 intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri),
-        1)
+    self.assert_has_no_intrinsics_nor_federated_types(after)
+    tuple_type = computation_types.StructWithPythonType([(None, tf.int32),
+                                                         (None, tf.float32)],
+                                                        tuple)
+    self.assert_types_identical(before.type_signature,
+                                computation_types.at_clients(tuple_type))
+    self.assert_types_identical(after.type_signature, tuple_type)
 
-  def test_unwrap_placement_with_lambda_inserts_federated_apply(self):
-    federated_ref = building_blocks.Reference(
-        'outer_ref', computation_types.FederatedType(tf.int32,
-                                                     placements.SERVER))
-    inner_federated_ref = building_blocks.Reference(
-        'inner_ref', computation_types.FederatedType(tf.int32,
-                                                     placements.SERVER))
-    identity_lambda = building_blocks.Lambda('inner_ref',
-                                             inner_federated_ref.type_signature,
+  def test_strip_placement_with_called_lambda(self):
+    int_type = computation_types.TensorType(tf.int32)
+    server_int_type = computation_types.at_server(int_type)
+    federated_ref = building_blocks.Reference('outer', server_int_type)
+    inner_federated_ref = building_blocks.Reference('inner', server_int_type)
+    identity_lambda = building_blocks.Lambda('inner', server_int_type,
                                              inner_federated_ref)
-    called_lambda = building_blocks.Call(identity_lambda, federated_ref)
-    unwrapped, modified = tree_transformations.unwrap_placement(called_lambda)
+    before = building_blocks.Call(identity_lambda, federated_ref)
+    after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
-    self.assertIsInstance(unwrapped.function, building_blocks.Intrinsic)
-    self.assertEqual(unwrapped.function.uri, intrinsic_defs.FEDERATED_APPLY.uri)
+    self.assert_has_no_intrinsics_nor_federated_types(after)
+    self.assert_types_identical(before.type_signature, server_int_type)
+    self.assert_types_identical(after.type_signature, int_type)
 
-  def test_unwrap_placement_with_lambda_produces_lambda_with_unplaced_type_signature(
-      self):
-    federated_ref = building_blocks.Reference(
-        'outer_ref', computation_types.FederatedType(tf.int32,
-                                                     placements.SERVER))
-    inner_federated_ref = building_blocks.Reference(
-        'inner_ref', computation_types.FederatedType(tf.int32,
-                                                     placements.SERVER))
-    identity_lambda = building_blocks.Lambda('inner_ref',
-                                             inner_federated_ref.type_signature,
-                                             inner_federated_ref)
-    called_lambda = building_blocks.Call(identity_lambda, federated_ref)
-    unwrapped, modified = tree_transformations.unwrap_placement(called_lambda)
+  def test_strip_placement_nested_federated_type(self):
+    int_type = computation_types.TensorType(tf.int32)
+    server_int_type = computation_types.at_server(int_type)
+    tupled_int_type = computation_types.to_type((int_type, int_type))
+    tupled_server_int_type = computation_types.to_type(
+        (server_int_type, server_int_type))
+    fed_ref = building_blocks.Reference('x', server_int_type)
+    before = building_blocks.Struct([fed_ref, fed_ref], container_type=tuple)
+    after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
-    self.assertEqual(unwrapped.argument[0].type_signature,
-                     computation_types.FunctionType(tf.int32, tf.int32))
+    self.assert_has_no_intrinsics_nor_federated_types(after)
+    self.assert_types_identical(before.type_signature, tupled_server_int_type)
+    self.assert_types_identical(after.type_signature, tupled_int_type)
 
 
 class GroupBlockLocalsByNamespaceTest(test_case.TestCase):

@@ -81,7 +81,8 @@ def transform_postorder(comp, transform):
       elements.append((key, value))
       elements_modified = elements_modified or value_modified
     if elements_modified:
-      comp = building_blocks.Struct(elements)
+      comp = building_blocks.Struct(
+          elements, container_type=comp.type_signature.python_container)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or elements_modified
   elif comp.is_call():
@@ -945,8 +946,8 @@ class BoundVariableTracker(object, metaclass=abc.ABCMeta):
       return False
     if (isinstance(self.value, building_blocks.ComputationBuildingBlock) and
         isinstance(other.value, building_blocks.ComputationBuildingBlock)):
-      return (self.value.compact_representation() ==
-              other.value.compact_representation() and
+      return (self.value.compact_representation()
+              == other.value.compact_representation() and
               self.value.type_signature.is_equivalent_to(
                   other.value.type_signature))
     return self.value is other.value
@@ -1117,46 +1118,6 @@ def get_unique_names(comp):
 
   transform_postorder(comp, _update)
   return names
-
-
-def has_unique_names(comp):
-  """Checks that each variable of `comp` is bound at most once.
-
-  Additionally, checks that `comp` does not mask any names which are unbound
-  at the top level.
-
-  Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock`.
-
-  Returns:
-    `True` if and only if every variable bound under `comp` uses a unique name.
-    Returns `False` if this condition fails.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  # Initializing `names` to unbound names in `comp` ensures that `comp` does not
-  # mask any names from its parent scope.
-  names = get_map_of_unbound_references(comp)[comp]
-  unique = True
-
-  def _transform(comp):
-    """Binds any names to external `names` set."""
-    nonlocal unique
-    if unique:
-      if comp.is_block():
-        for name, _ in comp.locals:
-          if name in names:
-            unique = False
-          names.add(name)
-      elif comp.is_lambda():
-        if comp.parameter_type is None:
-          return comp, False
-        if comp.parameter_name in names:
-          unique = False
-        names.add(comp.parameter_name)
-    return comp, False
-
-  transform_postorder(comp, _transform)
-  return unique
 
 
 def get_map_of_unbound_references(

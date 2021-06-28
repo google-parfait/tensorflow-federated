@@ -222,55 +222,11 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
     TensorFlow section produced by this extraction step, as described above.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if comp.type_signature.is_function():
-    if comp.is_compiled_computation():
-      return comp
-    elif not comp.is_lambda():
-      # We normalize on lambdas for ease of calling unwrap_placement below.
-      # The constructed lambda here simply forwards its argument to `comp`.
-      arg = building_blocks.Reference(
-          next(building_block_factory.unique_name_generator(comp)),
-          comp.type_signature.parameter)
-      called_fn = building_blocks.Call(comp, arg)
-      comp = building_blocks.Lambda(arg.name, arg.type_signature, called_fn)
-    if comp.type_signature.result.is_federated():
-      unwrapped, _ = tree_transformations.unwrap_placement(comp.result)
-      # Unwrapped can be a call to `federated_value_at_P`, or
-      # `federated_apply/map`.
-      if unwrapped.function.uri in (intrinsic_defs.FEDERATED_APPLY.uri,
-                                    intrinsic_defs.FEDERATED_MAP.uri):
-        extracted = parse_tff_to_tf(unwrapped.argument[0],
-                                    grappler_config_proto)
-        check_extraction_result(unwrapped.argument[0], extracted)
-        return extracted
-      else:
-        member_type = None if comp.parameter_type is None else comp.parameter_type.member
-        rebound = building_blocks.Lambda(comp.parameter_name, member_type,
-                                         unwrapped.argument)
-        extracted = parse_tff_to_tf(rebound, grappler_config_proto)
-        check_extraction_result(rebound, extracted)
-        return extracted
-    else:
-      extracted = parse_tff_to_tf(comp, grappler_config_proto)
-      check_extraction_result(comp, extracted)
-      return extracted
-  elif comp.type_signature.is_federated():
-    unwrapped, _ = tree_transformations.unwrap_placement(comp)
-    # Unwrapped can be a call to `federated_value_at_P`, or
-    # `federated_apply/map`.
-    if unwrapped.function.uri in (intrinsic_defs.FEDERATED_APPLY.uri,
-                                  intrinsic_defs.FEDERATED_MAP.uri):
-      extracted = parse_tff_to_tf(unwrapped.argument[0], grappler_config_proto)
-      check_extraction_result(unwrapped.argument[0], extracted)
-      return extracted
-    else:
-      extracted = parse_tff_to_tf(unwrapped.argument, grappler_config_proto)
-      check_extraction_result(unwrapped.argument, extracted)
-      return extracted.function
-  else:
-    called_tf = parse_tff_to_tf(comp, grappler_config_proto)
-    check_extraction_result(comp, called_tf)
-    return called_tf.function
+  comp.type_signature.check_function()
+  unplaced, _ = tree_transformations.strip_placement(comp)
+  extracted = parse_tff_to_tf(unplaced, grappler_config_proto)
+  check_extraction_result(unplaced, extracted)
+  return extracted
 
 
 def parse_tff_to_tf(comp, grappler_config_proto):
