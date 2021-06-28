@@ -544,28 +544,92 @@ class BlockLocalsTFGraphTest(test_case.TestCase):
     self.assertEqual(tuple_ops_slope / block_ops_slope, 2)
 
 
-class GenerateTensorflowForLocalFunctionTest(test_case.TestCase):
+class GenerateTensorflowForLocalComputationTest(test_case.TestCase):
 
   def test_raises_bad_type(self):
     with self.assertRaises(TypeError):
-      transformations.generate_tensorflow_for_local_function(1)
+      transformations.generate_tensorflow_for_local_computation(1)
 
   def test_raises_non_unique_names(self):
     data = building_blocks.Data('a', tf.int32)
     block = building_blocks.Block([('x', data), ('x', data)], data)
     with self.assertRaises(ValueError):
-      transformations.generate_tensorflow_for_local_function(block)
+      transformations.generate_tensorflow_for_local_computation(block)
 
-  def test_returns_tf_computation_with_functional_type(self):
+  def test_returns_tf_computation_with_functional_type_lambda_no_block(self):
     param = building_blocks.Reference('x', [('a', tf.int32), ('b', tf.float32)])
     sel = building_blocks.Selection(source=param, index=0)
     tup = building_blocks.Struct([sel, sel, sel])
     lam = building_blocks.Lambda(param.name, param.type_signature, tup)
-    transformed, modified_indicator = transformations.generate_tensorflow_for_local_function(
+    transformed, modified_indicator = transformations.generate_tensorflow_for_local_computation(
         lam)
     self.assertTrue(modified_indicator)
     self.assertIsInstance(transformed, building_blocks.CompiledComputation)
     self.assertEqual(transformed.type_signature, lam.type_signature)
+
+  def test_returns_tf_computation_with_functional_type_lambda_with_block(self):
+    param = building_blocks.Reference('x', [('a', tf.int32), ('b', tf.float32)])
+    block_to_param = building_blocks.Block([('x', param)], param)
+    lam = building_blocks.Lambda(param.name, param.type_signature,
+                                 block_to_param)
+    transformed, modified_indicator = transformations.generate_tensorflow_for_local_computation(
+        lam)
+    self.assertTrue(modified_indicator)
+    self.assertIsInstance(transformed, building_blocks.CompiledComputation)
+    self.assertEqual(transformed.type_signature, lam.type_signature)
+
+  def test_returns_tf_computation_with_functional_type_block_to_lambda_no_block(
+      self):
+    concrete_int_type = computation_types.TensorType(tf.int32)
+    param = building_blocks.Reference('x', tf.float32)
+    lam = building_blocks.Lambda(param.name, param.type_signature, param)
+    unused_int = building_block_factory.create_tensorflow_constant(
+        concrete_int_type, 1)
+    blk_to_lam = building_blocks.Block([('y', unused_int)], lam)
+    transformed, modified_indicator = transformations.generate_tensorflow_for_local_computation(
+        blk_to_lam)
+    self.assertTrue(modified_indicator)
+    self.assertIsInstance(transformed, building_blocks.CompiledComputation)
+    self.assertEqual(transformed.type_signature, blk_to_lam.type_signature)
+
+  def test_returns_tf_computation_with_functional_type_block_to_lambda_with_block(
+      self):
+    concrete_int_type = computation_types.TensorType(tf.int32)
+    param = building_blocks.Reference('x', tf.float32)
+    block_to_param = building_blocks.Block([('x', param)], param)
+    lam = building_blocks.Lambda(param.name, param.type_signature,
+                                 block_to_param)
+    unused_int = building_block_factory.create_tensorflow_constant(
+        concrete_int_type, 1)
+    blk_to_lam = building_blocks.Block([('y', unused_int)], lam)
+    transformed, modified_indicator = transformations.generate_tensorflow_for_local_computation(
+        blk_to_lam)
+    self.assertTrue(modified_indicator)
+    self.assertIsInstance(transformed, building_blocks.CompiledComputation)
+    self.assertEqual(transformed.type_signature, blk_to_lam.type_signature)
+
+  def test_returns_tf_computation_block_with_compiled_comp(self):
+    concrete_int_type = computation_types.TensorType(tf.int32)
+    tf_identity = building_block_factory.create_compiled_identity(
+        concrete_int_type)
+    unused_int = building_block_factory.create_tensorflow_constant(
+        concrete_int_type, 1)
+    block_to_id = building_blocks.Block([('x', unused_int)], tf_identity)
+    transformed, modified_indicator = transformations.generate_tensorflow_for_local_computation(
+        block_to_id)
+    self.assertTrue(modified_indicator)
+    self.assertIsInstance(transformed, building_blocks.CompiledComputation)
+    self.assertEqual(transformed.type_signature, block_to_id.type_signature)
+
+  def test_returns_tf_computation_ompiled_comp(self):
+    concrete_int_type = computation_types.TensorType(tf.int32)
+    tf_identity = building_block_factory.create_compiled_identity(
+        concrete_int_type)
+    transformed, modified_indicator = transformations.generate_tensorflow_for_local_computation(
+        tf_identity)
+    self.assertFalse(modified_indicator)
+    self.assertIsInstance(transformed, building_blocks.CompiledComputation)
+    self.assertEqual(transformed.type_signature, tf_identity.type_signature)
 
   def test_returns_called_tf_computation_with_non_functional_type(self):
     constant_tuple_type = computation_types.StructType([tf.int32, tf.float32])
@@ -573,7 +637,7 @@ class GenerateTensorflowForLocalFunctionTest(test_case.TestCase):
         constant_tuple_type, 1)
     sel = building_blocks.Selection(source=constant_tuple, index=0)
     tup = building_blocks.Struct([sel, sel, sel])
-    transformed, modified_indicator = transformations.generate_tensorflow_for_local_function(
+    transformed, modified_indicator = transformations.generate_tensorflow_for_local_computation(
         tup)
     self.assertTrue(modified_indicator)
     self.assertEqual(transformed.type_signature, tup.type_signature)
@@ -600,7 +664,7 @@ class GenerateTensorflowForLocalFunctionTest(test_case.TestCase):
 
     def _count_ops_parameterized_by_layers(k):
       inlined_tuple_with_k_layers = _construct_inlined_tuple(k)
-      tf_representing_block_with_k_layers, _ = transformations.generate_tensorflow_for_local_function(
+      tf_representing_block_with_k_layers, _ = transformations.generate_tensorflow_for_local_computation(
           inlined_tuple_with_k_layers)
       block_ops_with_k_layers = tree_analysis.count_tensorflow_ops_under(
           tf_representing_block_with_k_layers)
