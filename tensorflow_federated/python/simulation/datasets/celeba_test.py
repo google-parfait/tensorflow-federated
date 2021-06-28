@@ -49,8 +49,8 @@ class CelebATest(tf.test.TestCase):
                  expected_min_num_test_examples: int):
       train, test = celeba.load_data(
           split_by_clients, cache_dir=FLAGS.test_tmpdir)
-      self.assertLen(expected_num_train_clients, train.client_ids)
-      self.assertLen(expected_num_test_clients, test.client_ids)
+      self.assertLen(train.client_ids, expected_num_train_clients)
+      self.assertLen(test.client_ids, expected_num_test_clients)
       self.assertIsInstance(train.element_type_structure,
                             collections.OrderedDict)
       self.assertIsInstance(test.element_type_structure,

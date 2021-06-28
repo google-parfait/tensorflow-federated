@@ -69,16 +69,17 @@ def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
   """Add parsing of the tf.Example proto to the dataset pipeline."""
 
   def parse_proto(tensor_proto):
-    parse_spec = {
+    parse_spec = collections.OrderedDict(
         sorted([(IMAGE_NAME,
                  tf.io.FixedLenFeature(shape=(84, 84, 3), dtype=tf.int64))] +
-               [(attribute_name, tf.io.FixedLenFeature(shape=(), dtype=tf.bool))
-                for attribute_name in ATTRIBUTE_NAMES])
-    }
+               [(attribute_name,
+                 tf.io.FixedLenFeature(shape=(), dtype=tf.int64))
+                for attribute_name in ATTRIBUTE_NAMES]))
     parsed_features = tf.io.parse_example(tensor_proto, parse_spec)
     return collections.OrderedDict(
         sorted([(IMAGE_NAME, parsed_features[IMAGE_NAME])] +
-               [(attribute_name, parsed_features[attribute_name])
+               [(attribute_name,
+                 tf.cast(parsed_features[attribute_name], tf.bool))
                 for attribute_name in ATTRIBUTE_NAMES]))
 
   return dataset.map(parse_proto, num_parallel_calls=tf.data.AUTOTUNE)
