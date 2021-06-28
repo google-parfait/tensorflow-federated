@@ -13,16 +13,16 @@
 # limitations under the License.
 """Python interface to C++ Value serialization implementations."""
 
-from tensorflow_federated.cc.core.impl.executors import _serialization_bindings
+from tensorflow_federated.cc.core.impl.executors import serialization_bindings
 
 # Protobuf constructors.
-Value = _serialization_bindings.Value
-Sequence = _serialization_bindings.Sequence
-Struct = _serialization_bindings.Struct
-Element = _serialization_bindings.Element
-Federated = _serialization_bindings.Federated
-Cardinality = _serialization_bindings.Cardinality
+Value = serialization_bindings.Value
+Sequence = serialization_bindings.Sequence
+Struct = serialization_bindings.Struct
+Element = serialization_bindings.Element
+Federated = serialization_bindings.Federated
+Cardinality = serialization_bindings.Cardinality
 
 # Serialization methods.
-serialize_tensor_value = _serialization_bindings.serialize_tensor_value
-deserialize_tensor_value = _serialization_bindings.deserialize_tensor_value
+serialize_tensor_value = serialization_bindings.serialize_tensor_value
+deserialize_tensor_value = serialization_bindings.deserialize_tensor_value

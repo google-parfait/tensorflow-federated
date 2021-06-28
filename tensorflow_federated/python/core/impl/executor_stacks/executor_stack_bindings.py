@@ -15,9 +15,9 @@
 
 from typing import Mapping, Sequence
 
-from tensorflow_federated.cc.core.impl.executor_stacks import _executor_stack_bindings
-from tensorflow_federated.cc.core.impl.executors import executor_bindings
+from tensorflow_federated.cc.core.impl.executor_stacks import executor_stack_bindings
 from tensorflow_federated.python.core.impl.bindings_utils import data_conversions
+from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.types import placements
 
 
@@ -28,5 +28,5 @@ def create_remote_executor_stack(
   """Constructs a RemoteExecutor proxying services on `targets`."""
   uri_cardinalities = data_conversions.convert_cardinalities_dict_to_string_keyed(
       cardinalities)
-  return _executor_stack_bindings.create_remote_executor_stack(
+  return executor_stack_bindings.create_remote_executor_stack(
       channels, uri_cardinalities)

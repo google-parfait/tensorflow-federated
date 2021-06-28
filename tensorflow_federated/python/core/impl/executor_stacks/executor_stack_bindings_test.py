@@ -11,14 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for executor_stack_bindings."""
 
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 
-from tensorflow_federated.cc.core.impl.executor_stacks import executor_stack_bindings
-from tensorflow_federated.cc.core.impl.executors import executor_bindings
+from tensorflow_federated.python.core.impl.executor_stacks import executor_stack_bindings
+from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.types import placements
 
 _TARGET_LIST = ['localhost:8000', 'localhost:8001']
