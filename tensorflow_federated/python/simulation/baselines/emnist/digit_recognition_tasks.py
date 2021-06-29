@@ -25,6 +25,7 @@ from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
 from tensorflow_federated.python.simulation.baselines.emnist import emnist_models
 from tensorflow_federated.python.simulation.baselines.emnist import emnist_preprocessing
+from tensorflow_federated.python.simulation.datasets import client_data
 from tensorflow_federated.python.simulation.datasets import emnist
 
 
@@ -60,6 +61,66 @@ def _get_digit_recognition_model(model_id: Union[str, DigitRecognitionModel],
     raise ValueError('The model id must be one of {}, found {}'.format(
         model_enum, _DIGIT_RECOGNITION_MODELS))
   return keras_model
+
+
+def create_digit_recognition_task_from_datasets(
+    train_client_spec: client_spec.ClientSpec,
+    eval_client_spec: Optional[client_spec.ClientSpec],
+    model_id: Union[str, DigitRecognitionModel], only_digits: bool,
+    train_data: client_data.ClientData,
+    test_data: client_data.ClientData) -> baseline_task.BaselineTask:
+  """Creates a baseline task for digit recognition on EMNIST.
+
+  Args:
+    train_client_spec: A `tff.simulation.baselines.ClientSpec` specifying how to
+      preprocess train client data.
+    eval_client_spec: An optional `tff.simulation.baselines.ClientSpec`
+      specifying how to preprocess evaluation client data. If set to `None`, the
+      evaluation datasets will use a batch size of 64 with no extra
+      preprocessing.
+    model_id: A string identifier for a digit recognition model. Must be one of
+      'cnn_dropout', 'cnn', or '2nn'. These correspond respectively to a CNN
+      model with dropout, a CNN model with no dropout, and a densely connected
+      network with two hidden layers of width 200.
+    only_digits: A boolean indicating whether to use the full EMNIST-62 dataset
+      containing 62 alphanumeric classes (`True`) or the smaller EMNIST-10
+      dataset with only 10 numeric classes (`False`).
+    train_data: A `tff.simulation.datasets.ClientData` used for training.
+    test_data: A `tff.simulation.datasets.ClientData` used for testing.
+
+  Returns:
+    A `tff.simulation.baselines.BaselineTask`.
+  """
+  emnist_task = 'digit_recognition'
+
+  if eval_client_spec is None:
+    eval_client_spec = client_spec.ClientSpec(
+        num_epochs=1, batch_size=64, shuffle_buffer_size=1)
+
+  train_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
+      train_client_spec, emnist_task=emnist_task)
+  eval_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
+      eval_client_spec, emnist_task=emnist_task)
+
+  task_datasets = task_data.BaselineTaskDatasets(
+      train_data=train_data,
+      test_data=test_data,
+      validation_data=None,
+      train_preprocess_fn=train_preprocess_fn,
+      eval_preprocess_fn=eval_preprocess_fn)
+
+  keras_model = _get_digit_recognition_model(model_id, only_digits)
+  loss = tf.keras.losses.SparseCategoricalCrossentropy()
+  metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
+
+  def model_fn() -> model.Model:
+    return keras_utils.from_keras_model(
+        keras_model=keras_model,
+        loss=loss,
+        input_spec=task_datasets.element_type_structure,
+        metrics=metrics)
+
+  return baseline_task.BaselineTask(task_datasets, model_fn)
 
 
 def create_digit_recognition_task(
@@ -120,33 +181,8 @@ def create_digit_recognition_task(
   else:
     emnist_train, emnist_test = emnist.load_data(
         only_digits=only_digits, cache_dir=cache_dir)
-  emnist_task = 'digit_recognition'
 
-  if eval_client_spec is None:
-    eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=64, shuffle_buffer_size=1)
-
-  train_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-      train_client_spec, emnist_task=emnist_task)
-  eval_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-      eval_client_spec, emnist_task=emnist_task)
-
-  task_datasets = task_data.BaselineTaskDatasets(
-      train_data=emnist_train,
-      test_data=emnist_test,
-      validation_data=None,
-      train_preprocess_fn=train_preprocess_fn,
-      eval_preprocess_fn=eval_preprocess_fn)
-
-  keras_model = _get_digit_recognition_model(model_id, only_digits)
-  loss = tf.keras.losses.SparseCategoricalCrossentropy()
-  metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
-
-  def model_fn() -> model.Model:
-    return keras_utils.from_keras_model(
-        keras_model=keras_model,
-        loss=loss,
-        input_spec=task_datasets.element_type_structure,
-        metrics=metrics)
-
-  return baseline_task.BaselineTask(task_datasets, model_fn)
+  return create_digit_recognition_task_from_datasets(train_client_spec,
+                                                     eval_client_spec, model_id,
+                                                     only_digits, emnist_train,
+                                                     emnist_test)

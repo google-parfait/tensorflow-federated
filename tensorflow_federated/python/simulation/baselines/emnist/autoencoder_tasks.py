@@ -24,7 +24,62 @@ from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
 from tensorflow_federated.python.simulation.baselines.emnist import emnist_models
 from tensorflow_federated.python.simulation.baselines.emnist import emnist_preprocessing
+from tensorflow_federated.python.simulation.datasets import client_data
 from tensorflow_federated.python.simulation.datasets import emnist
+
+
+def create_autoencoder_task_from_datasets(
+    train_client_spec: client_spec.ClientSpec,
+    eval_client_spec: Optional[client_spec.ClientSpec],
+    train_data: client_data.ClientData,
+    test_data: client_data.ClientData) -> baseline_task.BaselineTask:
+  """Creates a baseline task for autoencoding on EMNIST.
+
+  Args:
+    train_client_spec: A `tff.simulation.baselines.ClientSpec` specifying how to
+      preprocess train client data.
+    eval_client_spec: An optional `tff.simulation.baselines.ClientSpec`
+      specifying how to preprocess evaluation client data. If set to `None`, the
+      evaluation datasets will use a batch size of 64 with no extra
+      preprocessing.
+    train_data: A `tff.simulation.datasets.ClientData` used for training.
+    test_data: A `tff.simulation.datasets.ClientData` used for testing.
+
+  Returns:
+    A `tff.simulation.baselines.BaselineTask`.
+  """
+  emnist_task = 'autoencoder'
+
+  if eval_client_spec is None:
+    eval_client_spec = client_spec.ClientSpec(
+        num_epochs=1, batch_size=64, shuffle_buffer_size=1)
+
+  train_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
+      train_client_spec, emnist_task=emnist_task)
+  eval_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
+      eval_client_spec, emnist_task=emnist_task)
+  task_datasets = task_data.BaselineTaskDatasets(
+      train_data=train_data,
+      test_data=test_data,
+      validation_data=None,
+      train_preprocess_fn=train_preprocess_fn,
+      eval_preprocess_fn=eval_preprocess_fn)
+
+  keras_model = emnist_models.create_autoencoder_model()
+  loss = tf.keras.losses.MeanSquaredError()
+  metrics = [
+      tf.keras.metrics.MeanSquaredError(),
+      tf.keras.metrics.MeanAbsoluteError()
+  ]
+
+  def model_fn() -> model.Model:
+    return keras_utils.from_keras_model(
+        keras_model=keras_model,
+        loss=loss,
+        input_spec=task_datasets.element_type_structure,
+        metrics=metrics)
+
+  return baseline_task.BaselineTask(task_datasets, model_fn)
 
 
 def create_autoencoder_task(
@@ -70,35 +125,7 @@ def create_autoencoder_task(
   else:
     emnist_train, emnist_test = emnist.load_data(
         only_digits=only_digits, cache_dir=cache_dir)
-  emnist_task = 'autoencoder'
 
-  if eval_client_spec is None:
-    eval_client_spec = client_spec.ClientSpec(
-        num_epochs=1, batch_size=64, shuffle_buffer_size=1)
-
-  train_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-      train_client_spec, emnist_task=emnist_task)
-  eval_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-      eval_client_spec, emnist_task=emnist_task)
-  task_datasets = task_data.BaselineTaskDatasets(
-      train_data=emnist_train,
-      test_data=emnist_test,
-      validation_data=None,
-      train_preprocess_fn=train_preprocess_fn,
-      eval_preprocess_fn=eval_preprocess_fn)
-
-  keras_model = emnist_models.create_autoencoder_model()
-  loss = tf.keras.losses.MeanSquaredError()
-  metrics = [
-      tf.keras.metrics.MeanSquaredError(),
-      tf.keras.metrics.MeanAbsoluteError()
-  ]
-
-  def model_fn() -> model.Model:
-    return keras_utils.from_keras_model(
-        keras_model=keras_model,
-        loss=loss,
-        input_spec=task_datasets.element_type_structure,
-        metrics=metrics)
-
-  return baseline_task.BaselineTask(task_datasets, model_fn)
+  return create_autoencoder_task_from_datasets(train_client_spec,
+                                               eval_client_spec, emnist_train,
+                                               emnist_test)
