@@ -11,4 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for constructing TensorFlow Federated tasks on EMNIST datasets."""
+"""Libraries for constructing baseline tasks for the EMNIST dataset."""
+
+from tensorflow_federated.python.simulation.baselines.emnist.autoencoder_tasks import create_autoencoder_task
+from tensorflow_federated.python.simulation.baselines.emnist.digit_recognition_tasks import create_digit_recognition_tasks
+from tensorflow_federated.python.simulation.baselines.emnist.digit_recognition_tasks import DigitRecognitionModel

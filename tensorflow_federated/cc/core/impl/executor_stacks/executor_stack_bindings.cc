@@ -31,7 +31,7 @@ namespace py = ::pybind11;
 
 namespace {
 
-PYBIND11_MODULE(_executor_stack_bindings, m) {
+PYBIND11_MODULE(executor_stack_bindings, m) {
   m.def("create_remote_executor_stack",
         py::overload_cast<
             absl::Span<const std::shared_ptr<grpc::ChannelInterface>>,

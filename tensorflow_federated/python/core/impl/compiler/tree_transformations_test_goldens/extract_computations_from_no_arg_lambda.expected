@@ -1,0 +1,10 @@
+Before transformation:
+
+( -> data)
+
+After transformation:
+
+(let
+  _var1=data,
+  _var2=( -> _var1)
+ in _var2)

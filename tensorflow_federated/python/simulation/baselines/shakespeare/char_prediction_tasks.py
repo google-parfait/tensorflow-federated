@@ -13,7 +13,7 @@
 # limitations under the License.
 """Library for creating baseline tasks on Shakespeare."""
 
-from typing import Callable, Optional, Tuple
+from typing import Optional
 
 import tensorflow as tf
 
@@ -25,28 +25,23 @@ from tensorflow_federated.python.simulation.baselines import keras_metrics
 from tensorflow_federated.python.simulation.baselines import task_data
 from tensorflow_federated.python.simulation.baselines.shakespeare import char_prediction_models
 from tensorflow_federated.python.simulation.baselines.shakespeare import char_prediction_preprocessing
+from tensorflow_federated.python.simulation.datasets import client_data
 from tensorflow_federated.python.simulation.datasets import shakespeare
 
 # Vocabulary with out-of-vocabulary, padding, beginning-of-sentence, and
 # end-of-sentence tokens.
 VOCAB_LENGTH = len(char_prediction_preprocessing.CHAR_VOCAB) + 4
 DEFAULT_SEQUENCE_LENGTH = 20
-_PreprocessFn = Callable[[tf.data.Dataset], tf.data.Dataset]
-_ModelFn = Callable[[], model.Model]
 
 
-def create_character_prediction_task(
+def create_character_prediction_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: Optional[client_spec.ClientSpec] = None,
-    sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
-    use_synthetic_data: bool = False
-) -> Tuple[task_data.BaselineTaskDatasets, _ModelFn]:
+    eval_client_spec: Optional[client_spec.ClientSpec],
+    sequence_length: int,
+    train_data: client_data.ClientData,
+    test_data: client_data.ClientData,
+) -> baseline_task.BaselineTask:
   """Creates a baseline task for next-character prediction on Shakespeare.
-
-  The goal of the task is to take `sequence_length` characters (eg. alpha-
-  numeric characters and puctuation characters) and predict the next character.
-  Here, all sentences are drawn from the collected works of William Shakespeare,
-  and a client corresponds to role in a play.
 
   Args:
     train_client_spec: A `tff.simulation.baselines.ClientSpec` specifying how to
@@ -56,23 +51,17 @@ def create_character_prediction_task(
       evaluation datasets will use a batch size of 64 with no extra
       preprocessing.
     sequence_length: A positive integer dictating the length of each example in
-      a client's dataset.
-    use_synthetic_data: A boolean indicating whether to use synthetic
-      Shakespeare data. This option should only be used for testing purposes, in
-      order to avoid downloading the entire Shakespeare dataset.
+      a client's dataset. By default, this is set to
+      `tff.simulation.baselines.shakespeare.DEFAULT_SEQUENCE_LENGTH`.
+    train_data: A `tff.simulation.datasets.ClientData` used for training.
+    test_data: A `tff.simulation.datasets.ClientData` used for testing.
 
   Returns:
     A `tff.simulation.baselines.BaselineTask`.
   """
+
   if sequence_length < 1:
     raise ValueError('sequence_length must be a positive integer')
-
-  if use_synthetic_data:
-    synthetic_data = shakespeare.get_synthetic()
-    char_prediction_train = synthetic_data
-    char_prediction_test = synthetic_data
-  else:
-    char_prediction_train, char_prediction_test = shakespeare.load_data()
 
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
@@ -84,8 +73,8 @@ def create_character_prediction_task(
       eval_client_spec, sequence_length)
 
   task_datasets = task_data.BaselineTaskDatasets(
-      train_data=char_prediction_train,
-      test_data=char_prediction_test,
+      train_data=train_data,
+      test_data=test_data,
       validation_data=None,
       train_preprocess_fn=train_preprocess_fn,
       eval_preprocess_fn=eval_preprocess_fn)
@@ -108,3 +97,48 @@ def create_character_prediction_task(
         metrics=metrics)
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
+
+
+def create_character_prediction_task(
+    train_client_spec: client_spec.ClientSpec,
+    eval_client_spec: Optional[client_spec.ClientSpec] = None,
+    sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
+    cache_dir: Optional[str] = None,
+    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
+  """Creates a baseline task for next-character prediction on Shakespeare.
+
+  The goal of the task is to take `sequence_length` characters (eg. alpha-
+  numeric characters and puctuation characters) and predict the next character.
+  Here, all sentences are drawn from the collected works of William Shakespeare,
+  and a client corresponds to role in a play.
+
+  Args:
+    train_client_spec: A `tff.simulation.baselines.ClientSpec` specifying how to
+      preprocess train client data.
+    eval_client_spec: An optional `tff.simulation.baselines.ClientSpec`
+      specifying how to preprocess evaluation client data. If set to `None`, the
+      evaluation datasets will use a batch size of 64 with no extra
+      preprocessing.
+    sequence_length: A positive integer dictating the length of each example in
+      a client's dataset. By default, this is set to
+      `tff.simulation.baselines.shakespeare.DEFAULT_SEQUENCE_LENGTH`.
+    cache_dir: An optional directory to cache the downloadeded datasets. If
+      `None`, they will be cached to `~/.tff/`.
+    use_synthetic_data: A boolean indicating whether to use synthetic
+      Shakespeare data. This option should only be used for testing purposes, in
+      order to avoid downloading the entire Shakespeare dataset.
+
+  Returns:
+    A `tff.simulation.baselines.BaselineTask`.
+  """
+  if use_synthetic_data:
+    synthetic_data = shakespeare.get_synthetic()
+    train_data = synthetic_data
+    test_data = synthetic_data
+  else:
+    train_data, test_data = shakespeare.load_data(cache_dir=cache_dir)
+
+  return create_character_prediction_task_from_datasets(train_client_spec,
+                                                        eval_client_spec,
+                                                        sequence_length,
+                                                        train_data, test_data)

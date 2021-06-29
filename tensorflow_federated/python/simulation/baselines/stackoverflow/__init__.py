@@ -11,4 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for constructing TensorFlow Federated tasks on Stack Overflow."""
+"""Libraries for constructing baseline tasks for the Stack Overflow dataset."""
+
+from tensorflow_federated.python.simulation.baselines.stackoverflow.constants import DEFAULT_SEQUENCE_LENGTH
+from tensorflow_federated.python.simulation.baselines.stackoverflow.constants import DEFAULT_TAG_VOCAB_SIZE
+from tensorflow_federated.python.simulation.baselines.stackoverflow.constants import DEFAULT_WORD_VOCAB_SIZE
+from tensorflow_federated.python.simulation.baselines.stackoverflow.tag_prediction_tasks import create_tag_prediction_task
+from tensorflow_federated.python.simulation.baselines.stackoverflow.word_prediction_tasks import create_word_prediction_task

@@ -129,13 +129,20 @@ def transform_to_local_call_dominant(
   Returns:
     A transformed but semantically-equivalent `comp`. The resulting `comp` will
     be in CDF (call-dominant form), as defined by the following CFG:
-    CDF ->
-     | External
-     | Reference to a bound call to an External
-     | Selection(CDF, index)
-     | Struct(CDF, ...)
-     | Lambda(Block([bindings for External calls], CDF))
+
     External -> Intrinsic | Data | Compiled Computation
+
+    CDFElem ->
+       External
+     | Reference to a bound call to an External
+     | Selection(CDFElem, index)
+     | Lambda(Block([bindings for External calls, CDF))
+
+    CDF ->
+       CDFElem
+     | Struct(CDF, ...)
+     | Lambda(CDF)
+     | Lambda(Block([bindings for External calls], CDF))
   """
   # Top-level comp must be a lambda to ensure that we create a set of bindings
   # immediately under it, as `_build` does for all lambdas.
@@ -517,12 +524,23 @@ def create_tensorflow_representing_block(block):
   return comp_called, True
 
 
-def generate_tensorflow_for_local_function(comp):
+def generate_tensorflow_for_local_computation(comp):
   """Generates TensorFlow for a local TFF computation.
 
   This function performs a deduplication of function invocations
   according to `tree_analysis.trees_equal`, and hence may reduce the number
   of calls under `comp`.
+
+  We assume `comp` has type which can be represented by either a call to a
+  no-arg `building_blocks.CompiledComputation` of type `tensorflow`, or such a
+  `building_blocks.CompiledComputation` itself. That is, the type signature of
+  `comp` must be either a potentially nested structure of
+  `computation_types.TensorType`s and `computation_types.SequenceType`s, or a
+  function whose parameter and return types are such potentially nested
+  structures.
+
+  Further, we assume that there are no intrinsic or data building blocks inside
+  `comp`.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` for which we
@@ -536,7 +554,12 @@ def generate_tensorflow_for_local_function(comp):
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   names_uniquified, _ = tree_transformations.uniquify_reference_names(comp)
-  comp = transform_to_local_call_dominant(names_uniquified)
+  # We ensure the argument to `transform_to_local_call_dominant` is a Lambda, as
+  # required.
+  lambda_wrapping_comp = building_blocks.Lambda(None, None, names_uniquified)
+  # CFG for local CDF plus the type of `lambda_wrapping_comp` imply result must
+  # be another no-arg lambda.
+  local_cdf_comp = transform_to_local_call_dominant(lambda_wrapping_comp).result
 
   def _package_as_deduplicated_block(inner_comp):
     repacked_block, _ = tree_transformations.remove_duplicate_block_locals(
@@ -545,16 +568,54 @@ def generate_tensorflow_for_local_function(comp):
       repacked_block = building_blocks.Block([], repacked_block)
     return repacked_block
 
-  if comp.is_lambda():
-    repacked_block = _package_as_deduplicated_block(comp.result)
-    tf_generated, _ = create_tensorflow_representing_block(repacked_block)
-    tff_func = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
-                                      tf_generated)
-    tf_parser_callable = tree_to_cc_transformations.TFParser()
-    tf_generated, _ = transformation_utils.transform_postorder(
-        tff_func, tf_parser_callable)
+  if local_cdf_comp.type_signature.is_function():
+    # The CFG for local call dominant tells us that the following patterns are
+    # possible for a functional computation respecting the structural
+    # restrictions we require for `comp`:
+    #   1. CompiledComputation
+    #   2. Block(bindings, CompiledComp)
+    #   3. Block(bindings, Lambda(non-functional result with at most one Block))
+    #   4. Lambda(non-functional result with at most one Block)
+    if local_cdf_comp.is_compiled_computation():
+      # Case 1.
+      return local_cdf_comp, not comp.is_compiled_computation()
+    elif local_cdf_comp.is_block():
+      if local_cdf_comp.result.is_compiled_computation():
+        # Case 2. The bindings in `comp` cannot be referenced in `comp.result`;
+        # we may return it directly.
+        return local_cdf_comp.result, True
+      elif local_cdf_comp.result.is_lambda():
+        # Case 3. We reduce to case 4 and pass through.
+        local_cdf_comp = building_blocks.Lambda(
+            local_cdf_comp.result.parameter_name,
+            local_cdf_comp.result.parameter_type,
+            building_blocks.Block(local_cdf_comp.locals,
+                                  local_cdf_comp.result.result))
+        # Reduce potential chain of blocks.
+        local_cdf_comp, _ = tree_transformations.merge_chained_blocks(
+            local_cdf_comp)
+        # This fall-through is intended, since we have merged with case 4.
+    if local_cdf_comp.is_lambda():
+      # Case 4.
+      repacked_block = _package_as_deduplicated_block(local_cdf_comp.result)
+      tf_generated, _ = create_tensorflow_representing_block(repacked_block)
+      tff_func = building_blocks.Lambda(local_cdf_comp.parameter_name,
+                                        local_cdf_comp.parameter_type,
+                                        tf_generated)
+      tf_parser_callable = tree_to_cc_transformations.TFParser()
+      tf_generated, _ = transformation_utils.transform_postorder(
+          tff_func, tf_parser_callable)
+    else:
+      raise tree_transformations.TransformationError(
+          'Unexpected structure encountered for functional computation in '
+          'local call-dominant form: \n'
+          f'{local_cdf_comp.formatted_representation()}')
   else:
-    repacked_block = _package_as_deduplicated_block(comp)
+    # The CFG for local call dominant tells us no lambdas or blocks may be
+    # present under `comp` for non-functional types which can be represented in
+    # TensorFlow (in particular, structures of functions are disallowed by this
+    # restriction). So we may package as a block directly.
+    repacked_block = _package_as_deduplicated_block(local_cdf_comp)
     tf_generated, _ = create_tensorflow_representing_block(repacked_block)
   return tf_generated, True
 
@@ -680,18 +741,19 @@ class TensorFlowGenerator(transformation_utils.TransformSpec):
   TensorFlow computation.
   """
 
-  def transform(self, local_function):
-    if not self.should_transform(local_function):
-      return local_function, False
-    parsed_to_tf, _ = generate_tensorflow_for_local_function(local_function)
-    if not (parsed_to_tf.is_compiled_computation() or
-            (parsed_to_tf.is_call() and
-             parsed_to_tf.function.is_compiled_computation())):
+  def transform(self, local_computation):
+    if not self.should_transform(local_computation):
+      return local_computation, False
+    generated_tf, _ = generate_tensorflow_for_local_computation(
+        local_computation)
+    if not (generated_tf.is_compiled_computation() or
+            (generated_tf.is_call() and
+             generated_tf.function.is_compiled_computation())):
       raise tree_transformations.TransformationError(
           'Failed to generate TensorFlow for a local function. '
-          f'Generated a building block of type {type(parsed_to_tf)} with '
-          f'formatted rep {parsed_to_tf.formatted_representation()}.')
-    return parsed_to_tf, True
+          f'Generated a building block of type {type(generated_tf)} with '
+          f'formatted rep {generated_tf.formatted_representation()}.')
+    return generated_tf, True
 
   def should_transform(self, comp):
     if not (type_analysis.is_tensorflow_compatible_type(comp.type_signature) or
@@ -710,13 +772,69 @@ class TensorFlowGenerator(transformation_utils.TransformSpec):
     if unbound_refs:
       # We cannot represent these captures without further information.
       return False
-    if tree_analysis.contains_types(comp, building_blocks.Intrinsic):
+    if tree_analysis.contains_types(
+        comp, building_blocks.Intrinsic) or tree_analysis.contains_types(
+            comp, building_blocks.Data):
       return False
     return True
 
 
-def compile_local_computation_to_tensorflow(comp):
-  """Compiles any fully specified local function to a TensorFlow computation."""
+def compile_local_computations_to_tensorflow(comp):
+  """Compiles any fully specified local functions to a TensorFlow computation.
+
+  This function walks the AST backing `comp` in a preorder manner, calling out
+  to TF-generating functions when it encounters a subcomputation which can be
+  represented in TensorFlow. The fact that this function walks preorder is
+  extremely important to efficiency of the generated TensorFlow; if we instead
+  traversed in a bottom-up fashion, we could potentially generate duplicated
+  structures where such duplication is unnecessary.
+
+  Consider for example a computation with structure:
+
+    [TFComp()[0], TFComp()[1]]
+
+  Due to its preorder walk, this function will call out to TF-generating
+  utilities with the *entire* structure above; this structure still has enough
+  information to detect that TFComp() should be equivalent in both invocations
+  (at least, according to TFF's functional specification). If we traversed the
+  AST backing `comp` in a bottom-up fashion, we would instead make separate
+  calls to TF generation functions, resulting in a structure like:
+
+    [TFComp0(), TFComp1()]
+
+  where the graphs backing TFComp0 and TFComp1 share some graph substructure.
+  TFF does not inspect the substructures of the graphs it generates, and would
+  simply declare each of the above to be fully distinct invocations, and would
+  require that each run when the resulting graph is invoked.
+
+  We provide this function to ensure that callers of TFF's TF-generation
+  utilities are usually shielded from such concerns.
+
+  Args:
+    comp: Instance of `building_blocks.ComputationBuildingBlock` whose local
+      computations we wish to compile to TensorFlow.
+
+  Returns:
+    A tuple whose first element represents an equivalent computation, but whose
+    local computations are represented as TensorFlow graphs. The second element
+    of this tuple is a Boolean indicating whether any transforamtion was made.
+  """
+
+  non_tf_compiled_comp_types = set()
+
+  def _visit(comp):
+    if comp.is_compiled_computation(
+    ) and comp.proto.WhichOneof('computation') != 'tensorflow':
+      non_tf_compiled_comp_types.add(comp.proto.WhichOneof('computation'))
+
+  tree_analysis.visit_postorder(comp, _visit)
+  if non_tf_compiled_comp_types:
+    raise TypeError('Encountered non-TensorFlow compiled computation types {} '
+                    'in argument {} to '
+                    '`compile_local_computations_to_tensorflow`.'.format(
+                        non_tf_compiled_comp_types,
+                        comp.formatted_representation()))
+
   if comp.is_compiled_computation() or (
       comp.is_call() and comp.function.is_compiled_computation()):
     # These represent the final result of TF generation; no need to transform,

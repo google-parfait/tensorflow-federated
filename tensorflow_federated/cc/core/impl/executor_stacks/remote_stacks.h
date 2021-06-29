@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_SIMULATION_EXECUTOR_STACKS_H_
-#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_SIMULATION_EXECUTOR_STACKS_H_
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_REMOTE_STACKS_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_REMOTE_STACKS_H_
 
 #include "absl/strings/string_view.h"
 #include "grpc/include/grpcpp/channel.h"
@@ -62,4 +62,4 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
 
 }  // namespace tensorflow_federated
 
-#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_SIMULATION_EXECUTOR_STACKS_H_
+#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_REMOTE_STACKS_H_

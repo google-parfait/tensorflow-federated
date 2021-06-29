@@ -52,14 +52,14 @@ namespace py = ::pybind11;
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-// The Python module defintion `_serialization_bindings`.
+// The Python module defintion `serialization_bindings`.
 //
-// This will be used with `import _serialization_bindigns` on the Python side.
+// This will be used with `import serialization_bindigns` on the Python side.
 // This module should _not_ be directly imported into the public pip API. The
 // methods here will raise `NotOkStatus` errors from absl, which are not user
 // friendly.
 ////////////////////////////////////////////////////////////////////////////////
-PYBIND11_MODULE(_serialization_bindings, m) {
+PYBIND11_MODULE(serialization_bindings, m) {
   py::google::ImportStatusModule();
   py::google::ImportProtoModule();
 

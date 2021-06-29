@@ -1,0 +1,11 @@
+Before transformation:
+
+federated_broadcast(data)
+
+After transformation:
+
+(let
+  _var1=federated_broadcast,
+  _var2=data,
+  _var3=_var1(_var2)
+ in _var3)
