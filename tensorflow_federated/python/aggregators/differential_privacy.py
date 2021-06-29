@@ -241,17 +241,20 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     query_state_type = query_initial_state_fn.type_signature.result
     derive_sample_params = computations.tf_computation(
         self._query.derive_sample_params, query_state_type)
+
     get_query_record = computations.tf_computation(
         self._query.preprocess_record,
         derive_sample_params.type_signature.result, value_type)
-    query_record_type = get_query_record.type_signature.result
-    get_noised_result = computations.tf_computation(
-        self._query.get_noised_result, query_record_type, query_state_type)
-    derive_metrics = computations.tf_computation(self._query.derive_metrics,
-                                                 query_state_type)
 
+    query_record_type = get_query_record.type_signature.result
     record_agg_process = self._record_aggregation_factory.create(
         query_record_type)
+
+    agg_output_type = record_agg_process.next.type_signature.result.result.member
+    get_noised_result = computations.tf_computation(
+        self._query.get_noised_result, agg_output_type, query_state_type)
+    derive_metrics = computations.tf_computation(self._query.derive_metrics,
+                                                 query_state_type)
 
     @computations.federated_computation()
     def init_fn():
