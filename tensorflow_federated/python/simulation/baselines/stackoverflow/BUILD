@@ -37,9 +37,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":constants",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
     ],
 )
@@ -107,9 +104,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":constants",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
     ],
 )

@@ -18,9 +18,6 @@ from typing import Callable, Sequence, Tuple, Union
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.simulation.baselines import client_spec
 
 CIFAR_SHAPE = (32, 32, 3)
@@ -79,7 +76,7 @@ def create_preprocess_fn(
     crop_shape: Tuple[int, int, int] = CIFAR_SHAPE,
     distort_image=False,
     num_parallel_calls: int = tf.data.experimental.AUTOTUNE
-) -> computation_base.Computation:
+) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for CIFAR-100 client datasets.
 
   The preprocessing shuffles, repeats, batches, and then reshapes, using
@@ -100,7 +97,8 @@ def create_preprocess_fn(
       used when performing `tf.data.Dataset.map`.
 
   Returns:
-    A `tff.Computation` performing the preprocessing described above.
+    A callable taking as input a `tf.data.Dataset`, and returning a
+    `tf.data.Dataset` formed by preprocessing according to the input arguments.
 
   Raises:
     TypeError: If `crop_shape` is not an iterable.
@@ -118,16 +116,7 @@ def create_preprocess_fn(
   if shuffle_buffer_size is None:
     shuffle_buffer_size = NUM_EXAMPLES_PER_CLIENT
 
-  # Features are intentionally sorted lexicographically by key for consistency
-  # across datasets.
-  feature_dtypes = collections.OrderedDict(
-      coarse_label=computation_types.TensorType(tf.int64),
-      image=computation_types.TensorType(tf.uint8, shape=(32, 32, 3)),
-      label=computation_types.TensorType(tf.int64))
-
   image_map_fn = build_image_map(crop_shape, distort_image)
-
-  @computations.tf_computation(computation_types.SequenceType(feature_dtypes))
   def preprocess_fn(dataset):
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size)

@@ -13,14 +13,10 @@
 # limitations under the License.
 """Preprocessing library for Stack Overflow tag prediction tasks."""
 
-import collections
 from typing import Callable, List
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.stackoverflow import constants
 
@@ -66,7 +62,7 @@ def create_preprocess_fn(
     word_vocab: List[str],
     tag_vocab: List[str],
     num_parallel_calls: int = tf.data.experimental.AUTOTUNE
-) -> computation_base.Computation:
+) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for Stack Overflow tag prediction data.
 
   This function creates a `tff.Computation` which takes a dataset, and returns
@@ -85,7 +81,7 @@ def create_preprocess_fn(
       used when performing `tf.data.Dataset.map`.
 
   Returns:
-    A `tff.Computation` taking as input a `tf.data.Dataset`, and returning a
+    A callable taking as input a `tf.data.Dataset`, and returning a
     `tf.data.Dataset` formed by preprocessing according to the input arguments.
   """
   if not word_vocab:
@@ -97,18 +93,6 @@ def create_preprocess_fn(
   if shuffle_buffer_size is None:
     shuffle_buffer_size = constants.DEFAULT_SHUFFLE_BUFFER_SIZE
 
-  # Features are intentionally sorted lexicographically by key for consistency
-  # across datasets.
-  feature_dtypes = collections.OrderedDict(
-      creation_date=tf.string,
-      score=tf.int64,
-      tags=tf.string,
-      title=tf.string,
-      tokens=tf.string,
-      type=tf.string,
-  )
-
-  @computations.tf_computation(computation_types.SequenceType(feature_dtypes))
   def preprocess_fn(dataset):
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size)

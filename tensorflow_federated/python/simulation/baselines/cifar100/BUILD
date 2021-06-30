@@ -25,12 +25,7 @@ py_library(
     name = "image_classification_preprocessing",
     srcs = ["image_classification_preprocessing.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/simulation/baselines:client_spec",
-    ],
+    deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
 )
 
 py_test(

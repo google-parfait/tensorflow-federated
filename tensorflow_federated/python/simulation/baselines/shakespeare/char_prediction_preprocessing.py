@@ -13,14 +13,10 @@
 # limitations under the License.
 """Preprocessing library for Shakespeare next-character prediction tasks."""
 
-import collections
-from typing import Tuple
+from typing import Callable, Tuple
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.simulation.baselines import client_spec
 
 DEFAULT_SEQUENCE_LENGTH = 80  # from McMahan et al AISTATS 2017
@@ -91,7 +87,7 @@ def create_preprocess_fn(
     preprocess_spec: client_spec.ClientSpec,
     sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
     num_parallel_calls: int = tf.data.experimental.AUTOTUNE
-) -> computation_base.Computation:
+) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for Shakespeare client datasets.
 
   This function maps a dataset of string snippets to a dataset of input/output
@@ -109,7 +105,8 @@ def create_preprocess_fn(
       used when performing `tf.data.Dataset.map`.
 
   Returns:
-    A `tff.Computation` performing the preprocessing described above.
+    A callable taking as input a `tf.data.Dataset`, and returning a
+    `tf.data.Dataset` formed by preprocessing according to the input arguments.
   """
   if sequence_length < 1:
     raise ValueError('sequence_length must be a positive integer.')
@@ -118,9 +115,6 @@ def create_preprocess_fn(
   if shuffle_buffer_size is None:
     shuffle_buffer_size = DEFAULT_SHUFFLE_BUFFER_SIZE
 
-  feature_dtypes = collections.OrderedDict(snippets=tf.string,)
-
-  @computations.tf_computation(computation_types.SequenceType(feature_dtypes))
   def preprocess_fn(dataset):
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size)

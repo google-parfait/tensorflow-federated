@@ -13,13 +13,10 @@
 # limitations under the License.
 """Preprocessing library for EMNIST prediction tasks."""
 
-import collections
+from typing import Callable
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.simulation.baselines import client_spec
 
 MAX_CLIENT_DATASET_SIZE = 418
@@ -38,7 +35,7 @@ def create_preprocess_fn(
     preprocess_spec: client_spec.ClientSpec,
     emnist_task: str = 'digit_recognition',
     num_parallel_calls: tf.Tensor = tf.data.experimental.AUTOTUNE
-) -> computation_base.Computation:
+) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for EMNIST client datasets.
 
   The preprocessing shuffles, repeats, batches, and then reshapes, using
@@ -56,7 +53,8 @@ def create_preprocess_fn(
       used when performing `tf.data.Dataset.map`.
 
   Returns:
-    A `tff.Computation` performing the preprocessing discussed above.
+    A callable taking as input a `tf.data.Dataset`, and returning a
+    `tf.data.Dataset` formed by preprocessing according to the input arguments.
   """
   shuffle_buffer_size = preprocess_spec.shuffle_buffer_size
   if shuffle_buffer_size is None:
@@ -70,13 +68,6 @@ def create_preprocess_fn(
     raise ValueError('emnist_task must be one of "digit_recognition" or '
                      '"autoencoder".')
 
-  # Features are intentionally sorted lexicographically by key for consistency
-  # across datasets.
-  feature_dtypes = collections.OrderedDict(
-      label=computation_types.TensorType(tf.int32),
-      pixels=computation_types.TensorType(tf.float32, shape=(28, 28)))
-
-  @computations.tf_computation(computation_types.SequenceType(feature_dtypes))
   def preprocess_fn(dataset):
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size)
