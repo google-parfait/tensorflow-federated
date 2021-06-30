@@ -183,14 +183,14 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(data1, data2)
     self.assertNotAllEqual(data1, data3)
 
-  def create_centralized_test_from_client_data(self):
+  def test_create_centralized_test_from_client_data(self):
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(100), test_data=create_client_data(3))
     test_data = test_task_data.get_centralized_test_data()
     self.assertSameElements(
-        list(test_data.as_numpy_iterator()), [1, 1, 1, 2, 2, 3])
+        list(test_data.as_numpy_iterator()), [0, 0, 0, 1, 1, 2])
 
-  def create_centralized_test_from_client_data_with_eval_preprocess(self):
+  def test_create_centralized_test_from_client_data_with_eval_preprocess(self):
     eval_preprocess_fn = lambda x: x.map(lambda y: 3 * y)
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(100),
@@ -198,15 +198,15 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
         eval_preprocess_fn=eval_preprocess_fn)
     test_data = test_task_data.get_centralized_test_data()
     self.assertSameElements(
-        list(test_data.as_numpy_iterator()), [3, 3, 3, 6, 6, 9])
+        list(test_data.as_numpy_iterator()), [0, 0, 0, 3, 3, 6])
 
-  def create_centralized_test_from_dataset(self):
+  def test_create_centralized_test_from_dataset(self):
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(100), test_data=tf.data.Dataset.range(7))
     test_data = test_task_data.get_centralized_test_data()
     self.assertSameElements(list(test_data.as_numpy_iterator()), list(range(7)))
 
-  def create_centralized_test_from_dataset_with_eval_preprocess(self):
+  def test_create_centralized_test_from_dataset_with_eval_preprocess(self):
     eval_preprocess_fn = lambda x: x.map(lambda y: 3 * y)
     test_task_data = task_data.BaselineTaskDatasets(
         train_data=create_client_data(100),

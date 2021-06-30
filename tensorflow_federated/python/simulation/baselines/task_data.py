@@ -225,10 +225,10 @@ class BaselineTaskDatasets(object):
     federated, then this method will first amalgamate the client datasets into
     a single dataset, then apply preprocessing.
     """
-    test_data = self._data_spec.test_data
+    test_data = self._test_data
     if isinstance(test_data, client_data.ClientData):
       test_data = test_data.create_tf_dataset_from_all_clients()
-    preprocess_fn = self._data_spec.eval_preprocess_fn
+    preprocess_fn = self._eval_preprocess_fn
     if preprocess_fn is not None:
       test_data = preprocess_fn(test_data)
     return test_data
