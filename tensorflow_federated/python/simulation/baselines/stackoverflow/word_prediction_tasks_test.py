@@ -98,6 +98,16 @@ class WordPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
       word_prediction_tasks.create_word_prediction_task(
           train_client_spec, vocab_size=vocab_size, use_synthetic_data=True)
 
+  def test_model_is_compatible_with_preprocessed_data(self):
+    train_client_spec = client_spec.ClientSpec(num_epochs=1, batch_size=10)
+    baseline_task_spec = word_prediction_tasks.create_word_prediction_task(
+        train_client_spec, use_synthetic_data=True)
+    centralized_dataset = baseline_task_spec.datasets.get_centralized_test_data(
+    )
+    sample_batch = next(iter(centralized_dataset))
+    model = baseline_task_spec.model_fn()
+    model.forward_pass(sample_batch)
+
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()

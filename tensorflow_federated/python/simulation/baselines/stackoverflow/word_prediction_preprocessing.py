@@ -37,6 +37,9 @@ class SpecialTokens(object):
   beginning_of_sentence = attr.ib()
   end_of_sentence = attr.ib()
 
+  def get_number_of_special_tokens(self):
+    return 3 + len(self.out_of_vocab)
+
 
 def split_input_target(chunk: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
   """Generate input and target data.

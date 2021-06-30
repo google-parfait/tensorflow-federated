@@ -98,35 +98,40 @@ def create_word_prediction_task_from_datasets(
       train_preprocess_fn=train_preprocess_fn,
       eval_preprocess_fn=eval_preprocess_fn)
 
-  keras_model = word_prediction_models.create_recurrent_model(
-      vocab_size=vocab_size)
-  loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-
   special_tokens = word_prediction_preprocessing.get_special_tokens(
       vocab_size, num_out_of_vocab_buckets=num_out_of_vocab_buckets)
   pad_token = special_tokens.padding
   oov_tokens = special_tokens.out_of_vocab
   eos_token = special_tokens.end_of_sentence
-  metrics = [
-      keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
-      keras_metrics.MaskedCategoricalAccuracy(
-          name='accuracy', masked_tokens=[pad_token]),
-      keras_metrics.MaskedCategoricalAccuracy(
-          name='accuracy_without_out_of_vocab',
-          masked_tokens=[pad_token] + oov_tokens),
-      # Notice that the beginning of sentence token never appears in the ground
-      # truth label.
-      keras_metrics.MaskedCategoricalAccuracy(
-          name='accuracy_without_out_of_vocab_or_end_of_sentence',
-          masked_tokens=[pad_token, eos_token] + oov_tokens),
-  ]
+
+  def metrics_builder():
+    return [
+        keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
+        keras_metrics.MaskedCategoricalAccuracy(
+            name='accuracy', masked_tokens=[pad_token]),
+        keras_metrics.MaskedCategoricalAccuracy(
+            name='accuracy_without_out_of_vocab',
+            masked_tokens=[pad_token] + oov_tokens),
+        # Notice that the beginning of sentence token never appears in the
+        # ground truth label.
+        keras_metrics.MaskedCategoricalAccuracy(
+            name='accuracy_without_out_of_vocab_or_end_of_sentence',
+            masked_tokens=[pad_token, eos_token] + oov_tokens),
+    ]
+
+  # The total vocabulary size is the number of words in the vocabulary, plus
+  # the number of out-of-vocabulary tokens, plus three tokens used for
+  # padding, beginning of sentence and end of sentence.
+  extended_vocab_size = (
+      vocab_size + special_tokens.get_number_of_special_tokens())
 
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
-        keras_model=keras_model,
-        loss=loss,
+        keras_model=word_prediction_models.create_recurrent_model(
+            vocab_size=extended_vocab_size),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         input_spec=task_datasets.element_type_structure,
-        metrics=metrics)
+        metrics=metrics_builder())
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
 
