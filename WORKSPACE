@@ -1,6 +1,6 @@
 workspace(name = "org_tensorflow_federated")
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
 git_repository(
     name = "rules_python",
@@ -15,7 +15,6 @@ git_repository(
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
-
 protobuf_deps()
 
 # Required by com_google_protobuf
@@ -52,9 +51,23 @@ git_repository(
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
-
 grpc_deps()
 
 load("@upb//bazel:workspace_deps.bzl", "upb_deps")
-
 upb_deps()
+
+git_repository(
+    name = "pybind11_bazel",
+    remote = "git@github.com:pybind/pybind11_bazel.git",
+    commit = "26973c0ff320cb4b39e45bc3e4297b82bc3a6c09",
+)
+
+new_git_repository(
+    name = "pybind11",
+    remote = "git@github.com:pybind/pybind11.git",
+    build_file = "@pybind11_bazel//:pybind11.BUILD",
+    tag = "v2.6.2",
+)
+
+load("@pybind11_bazel//:python_configure.bzl", "python_configure")
+python_configure(name = "local_config_python")
