@@ -394,8 +394,8 @@ def _build_run_one_round_fn(
       model outputs across clients.
     federated_server_state_type: A `tff.FederatedType` whose `member` attribute
       is a `tff.Type` for the server state.
-    federated_dataset_type: A `tff.FederatedType` whose `member` attribute
-      is a `tff.SequenceType` for the federated dataset.
+    federated_dataset_type: A `tff.FederatedType` whose `member` attribute is a
+      `tff.SequenceType` for the federated dataset.
     aggregation_process: Instance of `tff.templates.AggregationProcess` to
       perform aggregation during the round.
     broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
@@ -563,16 +563,15 @@ def build_training_process(
       during reconstruction, and the second is iterated over
       post-reconstruction. This can be used to preprocess datasets to e.g.
       iterate over them for multiple epochs or use disjoint data for
-      reconstruction and post-reconstruction. If None,
-      `reconstruction_utils.simple_dataset_split_fn` is used, which results in
-      iterating over the original client data for both phases of training. See
-      `reconstruction_utils.build_dataset_split_fn` for options.
+      reconstruction and post-reconstruction. If None, split client data in half
+      for each user, using one half for reconstruction and the other for
+      evaluation. See `reconstruction_utils.build_dataset_split_fn` for options.
     client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
       built-in weighting method, or a callable that takes the local metrics of
       the model and returns a tensor that provides the weight in the federated
       average of model deltas. If None, defaults to weighting by number of
       examples.
-    broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
+    broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`. If set to default None,
       the server model is broadcast to the clients using the default
@@ -584,6 +583,16 @@ def build_training_process(
       `tff.aggregators.MeanFactory` which computes a stateless mean across
       clients (weighted depending on `client_weighting`).
 
+  Raises:
+    TypeError: if `broadcast_process` does not have the expected signature.
+    TypeError: if `aggregation_factory` does not have the expected signature.
+    ValueError: if  `aggregation_factory` is not a
+      `tff.aggregators.WeightedAggregationFactory` or a
+      `tff.aggregators.UnweightedAggregationFactory`.
+    ValueError: if `aggregation_factory` is a
+      `tff.aggregators.UnweightedAggregationFactory` but `client_weighting` is
+      not `tff.learning.ClientWeighting.UNIFORM`.
+
   Returns:
     A `tff.templates.IterativeProcess`.
   """
@@ -593,14 +602,13 @@ def build_training_process(
   model_weights_type = type_conversions.type_from_tensors(
       reconstruction_utils.get_global_variables(throwaway_model_for_metadata))
 
-  if isinstance(aggregation_factory, factory.UnweightedAggregationFactory):
-    if client_weighting is None:
-      client_weighting = client_weight_lib.ClientWeighting.UNIFORM
-    elif client_weighting is not client_weight_lib.ClientWeighting.UNIFORM:
-      raise ValueError('Cannot use non-uniform client weighting with '
-                       'unweighted aggregation.')
-  elif client_weighting is None:
+  if client_weighting is None:
     client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
+  if (isinstance(aggregation_factory, factory.UnweightedAggregationFactory) and
+      client_weighting is not client_weight_lib.ClientWeighting.UNIFORM):
+    raise ValueError(f'Expected `tff.learning.ClientWeighting.UNIFORM` client '
+                     f'weighting with unweighted aggregator, instead got '
+                     f'{client_weighting}')
 
   if broadcast_process is None:
     broadcast_process = optimizer_utils.build_stateless_broadcaster(
@@ -634,7 +642,8 @@ def build_training_process(
   dataset_type = computation_types.SequenceType(
       throwaway_model_for_metadata.input_spec)
   if dataset_split_fn is None:
-    dataset_split_fn = reconstruction_utils.simple_dataset_split_fn
+    dataset_split_fn = reconstruction_utils.build_dataset_split_fn(
+        split_dataset=True)
   client_update_fn = _build_client_update_fn(
       model_fn,
       loss_fn=loss_fn,

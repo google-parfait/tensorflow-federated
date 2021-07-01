@@ -22,25 +22,15 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.framework import optimizer_utils
 
 
 # Convenience aliases.
 SequenceType = computation_types.SequenceType
-
-
-def _is_stateful(process: measured_process.MeasuredProcess) -> bool:
-  """Determine if a MeasuredProcess has a non-empty state."""
-
-  def federated_empty_struct(type_spec: computation_types.Type) -> bool:
-    return type_spec.is_struct() or type_spec.is_federated()
-
-  return not type_analysis.contains_only(
-      process.initialize.type_signature.result, federated_empty_struct)
 
 
 def build_federated_evaluation(
@@ -72,7 +62,7 @@ def build_federated_evaluation(
     if not isinstance(broadcast_process, measured_process.MeasuredProcess):
       raise ValueError('`broadcast_process` must be a `MeasuredProcess`, got '
                        f'{type(broadcast_process)}.')
-    if _is_stateful(broadcast_process):
+    if optimizer_utils.is_stateful_process(broadcast_process):
       raise ValueError(
           'Cannot create a federated evaluation with a stateful '
           'broadcast process, must be stateless, has state: '

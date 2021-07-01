@@ -179,6 +179,115 @@ class UtilsTest(test_case.TestCase):
           trainable_weights={'a': np.array([3.0, 3.0])},
           non_trainable_weights=[np.array(3)])
 
+  def test_is_stateful_process_true(self):
+
+    @computations.federated_computation()
+    def stateful_init():
+      return intrinsics.federated_value(2.0, placements.SERVER)
+
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.float32, placements.SERVER),
+        computation_types.FederatedType((), placements.SERVER),
+    )
+    def stateful_broadcast(state, value):
+      empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
+      return measured_process.MeasuredProcessOutput(
+          state=state,
+          result=intrinsics.federated_broadcast(value),
+          measurements=empty_metrics)
+
+    stateful_process = measured_process.MeasuredProcess(
+        initialize_fn=stateful_init, next_fn=stateful_broadcast)
+
+    self.assertTrue(optimizer_utils.is_stateful_process(stateful_process))
+
+  def test_is_stateful_process_false(self):
+
+    @computations.federated_computation()
+    def stateless_init():
+      return intrinsics.federated_value((), placements.SERVER)
+
+    @computations.federated_computation(
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType((), placements.SERVER),
+    )
+    def stateless_broadcast(state, value):
+      empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
+      return measured_process.MeasuredProcessOutput(
+          state=state,
+          result=intrinsics.federated_broadcast(value),
+          measurements=empty_metrics)
+
+    stateless_process = measured_process.MeasuredProcess(
+        initialize_fn=stateless_init, next_fn=stateless_broadcast)
+
+    self.assertFalse(optimizer_utils.is_stateful_process(stateless_process))
+
+  def test_is_valid_broadcast_process_true(self):
+
+    @computations.federated_computation()
+    def stateless_init():
+      return intrinsics.federated_value((), placements.SERVER)
+
+    @computations.federated_computation(
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType((), placements.SERVER),
+    )
+    def stateless_broadcast(state, value):
+      empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
+      return measured_process.MeasuredProcessOutput(
+          state=state,
+          result=intrinsics.federated_broadcast(value),
+          measurements=empty_metrics)
+
+    stateless_process = measured_process.MeasuredProcess(
+        initialize_fn=stateless_init, next_fn=stateless_broadcast)
+
+    self.assertTrue(
+        optimizer_utils.is_valid_broadcast_process(stateless_process))
+
+  def test_is_valid_broadcast_process_bad_placement(self):
+
+    @computations.federated_computation()
+    def stateless_init():
+      return intrinsics.federated_value((), placements.SERVER)
+
+    @computations.federated_computation(
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType((), placements.SERVER),
+    )
+    def fake_broadcast(state, value):
+      empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
+      return measured_process.MeasuredProcessOutput(
+          state=state, result=value, measurements=empty_metrics)
+
+    stateless_process = measured_process.MeasuredProcess(
+        initialize_fn=stateless_init, next_fn=fake_broadcast)
+
+    # Expect to be false because `result` of `next` is on the server.
+    self.assertFalse(
+        optimizer_utils.is_valid_broadcast_process(stateless_process))
+
+    @computations.federated_computation()
+    def stateless_init2():
+      return intrinsics.federated_value((), placements.SERVER)
+
+    @computations.federated_computation(
+        computation_types.FederatedType((), placements.SERVER),
+        computation_types.FederatedType((), placements.CLIENTS),
+    )
+    def stateless_broadcast(state, value):
+      empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
+      return measured_process.MeasuredProcessOutput(
+          state=state, result=value, measurements=empty_metrics)
+
+    stateless_process = measured_process.MeasuredProcess(
+        initialize_fn=stateless_init2, next_fn=stateless_broadcast)
+
+    # Expect to be false because second param of `next` is on the clients.
+    self.assertFalse(
+        optimizer_utils.is_valid_broadcast_process(stateless_process))
+
 
 class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
 

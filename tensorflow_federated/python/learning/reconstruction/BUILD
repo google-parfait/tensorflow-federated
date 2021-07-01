@@ -119,3 +119,42 @@ py_test(
         "//tensorflow_federated/python/learning:model_utils",
     ],
 )
+
+py_library(
+    name = "evaluation_computation",
+    srcs = ["evaluation_computation.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":keras_utils",
+        ":reconstruction_utils",
+        ":training_process",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning/framework:optimizer_utils",
+    ],
+)
+
+py_test(
+    name = "evaluation_computation_test",
+    srcs = ["evaluation_computation_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":evaluation_computation",
+        ":keras_utils",
+        ":model",
+        ":reconstruction_utils",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)

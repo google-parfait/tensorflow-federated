@@ -242,30 +242,6 @@ class _DPMean(factory.UnweightedAggregationFactory):
         initialize_fn=init, next_fn=next_fn)
 
 
-@computations.federated_computation()
-def _test_server_initialization():
-  return intrinsics.federated_value(2.0, placements.SERVER)
-
-
-def build_custom_stateful_broadcaster(
-    model_weights_type) -> measured_process_lib.MeasuredProcess:
-  """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
-
-  @computations.federated_computation(
-      computation_types.FederatedType(tf.float32, placements.SERVER),
-      computation_types.FederatedType(model_weights_type, placements.SERVER),
-  )
-  def stateful_broadcast(state, value):
-    empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
-    return measured_process_lib.MeasuredProcessOutput(
-        state=state,
-        result=intrinsics.federated_broadcast(value),
-        measurements=empty_metrics)
-
-  return measured_process_lib.MeasuredProcess(
-      initialize_fn=_test_server_initialization, next_fn=stateful_broadcast)
-
-
 class TrainingProcessTest(test_case.TestCase):
 
   def _run_rounds(self, iterproc, federated_data, num_rounds):
@@ -386,10 +362,12 @@ class TrainingProcessTest(test_case.TestCase):
     ]
     self.assertCountEqual(outputs[0]['train'].keys(), expected_train_keys)
 
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 6)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 4)
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 6)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 4)
+    # On both rounds, each client has 1 reconstruction batch with 2 examples,
+    # and one post-reconstruction batch with 1 example.
+    self.assertEqual(outputs[0]['train']['num_examples_total'], 2)
+    self.assertEqual(outputs[1]['train']['num_batches_total'], 2)
+    self.assertEqual(outputs[0]['train']['num_examples_total'], 2)
+    self.assertEqual(outputs[1]['train']['num_batches_total'], 2)
 
   def test_keras_local_layer(self):
 
@@ -441,10 +419,12 @@ class TrainingProcessTest(test_case.TestCase):
     ]
     self.assertCountEqual(outputs[0]['train'].keys(), expected_train_keys)
 
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 5)
-    self.assertEqual(outputs[0]['train']['num_batches_total'], 4)
-    self.assertEqual(outputs[1]['train']['num_examples_total'], 5)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 4)
+    # On both rounds, each client has one post-reconstruction batch with 1
+    # example.
+    self.assertEqual(outputs[0]['train']['num_examples_total'], 2)
+    self.assertEqual(outputs[0]['train']['num_batches_total'], 2)
+    self.assertEqual(outputs[1]['train']['num_examples_total'], 2)
+    self.assertEqual(outputs[1]['train']['num_batches_total'], 2)
 
     expected_aggregation_keys = ['mean_weight', 'mean_value']
     self.assertCountEqual(output['aggregation'].keys(),
@@ -487,8 +467,9 @@ class TrainingProcessTest(test_case.TestCase):
     ]
     self.assertCountEqual(output['train'].keys(), expected_train_keys)
 
-    self.assertEqual(output['train']['num_examples_total'], 5)
-    self.assertEqual(output['train']['num_batches_total'], 3)
+    # Only one client has a post-reconstruction batch, with one example.
+    self.assertEqual(output['train']['num_examples_total'], 1)
+    self.assertEqual(output['train']['num_batches_total'], 1)
 
     # Ensure we are using a weighted aggregator.
     expected_aggregation_keys = ['mean_weight', 'mean_value']
@@ -514,7 +495,8 @@ class TrainingProcessTest(test_case.TestCase):
         client_optimizer_fn=functools.partial(tf.keras.optimizers.SGD, 0.001),
         reconstruction_optimizer_fn=functools.partial(tf.keras.optimizers.SGD,
                                                       0.001),
-        client_weighting=client_weight_lib.ClientWeighting.UNIFORM)
+        client_weighting=client_weight_lib.ClientWeighting.UNIFORM,
+        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
 
     server_state = it_process.initialize()
 
@@ -617,7 +599,8 @@ class TrainingProcessTest(test_case.TestCase):
         server_optimizer_fn=functools.partial(tf.keras.optimizers.SGD, 0.01),
         client_optimizer_fn=functools.partial(tf.keras.optimizers.SGD, 0.001),
         reconstruction_optimizer_fn=functools.partial(tf.keras.optimizers.SGD,
-                                                      0.0))
+                                                      0.0),
+        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
     state = trainer.initialize()
 
     outputs = []
@@ -669,7 +652,8 @@ class TrainingProcessTest(test_case.TestCase):
                                               0.01),
         client_optimizer_fn=functools.partial(tf.keras.optimizers.SGD, 0.001),
         reconstruction_optimizer_fn=functools.partial(tf.keras.optimizers.SGD,
-                                                      0.0))
+                                                      0.0),
+        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
     state = trainer.initialize()
 
     outputs = []
@@ -726,7 +710,7 @@ class TrainingProcessTest(test_case.TestCase):
         reconstruction_optimizer_fn=functools.partial(tf.keras.optimizers.SGD,
                                                       0.0),
         aggregation_factory=aggregation_factory,
-    )
+        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
     state = trainer.initialize()
 
     outputs = []
@@ -779,7 +763,7 @@ class TrainingProcessTest(test_case.TestCase):
       del local_outputs  # Unused
       return 1.0
 
-    with self.assertRaisesRegex(ValueError, 'unweighted aggregation'):
+    with self.assertRaisesRegex(ValueError, 'unweighted aggregator'):
       training_process.build_training_process(
           MnistModel,
           loss_fn=loss_fn,
@@ -790,7 +774,41 @@ class TrainingProcessTest(test_case.TestCase):
                                                         0.0),
           aggregation_factory=dp_mean_factory,
           client_weighting=client_weight_fn,
-      )
+          dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
+
+  def test_iterative_process_fails_with_dp_agg_and_none_client_weighting(self):
+
+    def loss_fn():
+      return tf.keras.losses.SparseCategoricalCrossentropy()
+
+    def metrics_fn():
+      return [
+          NumExamplesCounter(),
+          NumBatchesCounter(),
+          tf.keras.metrics.SparseCategoricalAccuracy()
+      ]
+
+    # No values should be changed, but working with inf directly zeroes out all
+    # updates. Preferring very large value, but one that can be handled in
+    # multiplication/division
+    gaussian_sum_query = tfp.GaussianSumQuery(l2_norm_clip=1e10, stddev=0)
+    dp_sum_factory = differential_privacy.DifferentiallyPrivateFactory(
+        query=gaussian_sum_query,
+        record_aggregation_factory=sum_factory.SumFactory())
+    dp_mean_factory = _DPMean(dp_sum_factory)
+
+    with self.assertRaisesRegex(ValueError, 'unweighted aggregator'):
+      training_process.build_training_process(
+          MnistModel,
+          loss_fn=loss_fn,
+          metrics_fn=metrics_fn,
+          server_optimizer_fn=functools.partial(tf.keras.optimizers.SGD, 0.01),
+          client_optimizer_fn=functools.partial(tf.keras.optimizers.SGD, 0.001),
+          reconstruction_optimizer_fn=functools.partial(tf.keras.optimizers.SGD,
+                                                        0.0),
+          aggregation_factory=dp_mean_factory,
+          client_weighting=None,
+          dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
 
   def test_execution_with_custom_dp_query(self):
     client_data = create_emnist_client_data()
@@ -826,6 +844,8 @@ class TrainingProcessTest(test_case.TestCase):
         reconstruction_optimizer_fn=functools.partial(tf.keras.optimizers.SGD,
                                                       0.0),
         aggregation_factory=dp_mean_factory,
+        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
+        client_weighting=client_weight_lib.ClientWeighting.UNIFORM,
     )
     state = trainer.initialize()
 
@@ -869,6 +889,29 @@ class TrainingProcessTest(test_case.TestCase):
     model_weights_type = type_conversions.type_from_tensors(
         reconstruction_utils.get_global_variables(local_recon_model_fn()))
 
+    def build_custom_stateful_broadcaster(
+        model_weights_type) -> measured_process_lib.MeasuredProcess:
+      """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
+
+      @computations.federated_computation()
+      def test_server_initialization():
+        return intrinsics.federated_value(2.0, placements.SERVER)
+
+      @computations.federated_computation(
+          computation_types.FederatedType(tf.float32, placements.SERVER),
+          computation_types.FederatedType(model_weights_type,
+                                          placements.SERVER),
+      )
+      def stateful_broadcast(state, value):
+        empty_metrics = intrinsics.federated_value(1.0, placements.SERVER)
+        return measured_process_lib.MeasuredProcessOutput(
+            state=state,
+            result=intrinsics.federated_broadcast(value),
+            measurements=empty_metrics)
+
+      return measured_process_lib.MeasuredProcess(
+          initialize_fn=test_server_initialization, next_fn=stateful_broadcast)
+
     it_process = training_process.build_training_process(
         local_recon_model_fn,
         loss_fn=loss_fn,
@@ -876,6 +919,7 @@ class TrainingProcessTest(test_case.TestCase):
         client_optimizer_fn=functools.partial(tf.keras.optimizers.SGD, 0.001),
         reconstruction_optimizer_fn=functools.partial(tf.keras.optimizers.SGD,
                                                       0.001),
+        dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
         broadcast_process=build_custom_stateful_broadcaster(
             model_weights_type=model_weights_type))
 
