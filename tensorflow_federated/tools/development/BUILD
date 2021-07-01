@@ -35,6 +35,8 @@ sh_binary(
         "//tensorflow_federated/python/core/impl/types",
         "//tensorflow_federated/python/core/impl/utils",
         "//tensorflow_federated/python/core/impl/wrappers",
+        "//tensorflow_federated/python/learning/optimizers",
+        "//tensorflow_federated/python/learning/reconstruction",
         "//tensorflow_federated/python/tensorflow_libs",
     ],
 )
