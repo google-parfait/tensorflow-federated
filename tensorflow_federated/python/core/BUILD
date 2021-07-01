@@ -12,6 +12,7 @@ package_group(
         "//tensorflow_federated/python/aggregators/...",
         "//tensorflow_federated/python/learning/...",
         "//tensorflow_federated/python/simulation/...",
+        "//tensorflow_federated/python/analytics/...",
 
         # Other non-learning federated algorithm dependencies
         "//tensorflow_federated/experimental/...",
