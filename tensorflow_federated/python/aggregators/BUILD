@@ -5,6 +5,7 @@ package_group(
     packages = [
         "//tensorflow_federated/experimental/python/learning/...",
         "//tensorflow_federated/python/aggregators/...",
+        "//tensorflow_federated/python/analytics/...",
         "//tensorflow_federated/python/learning/...",
     ],
 )
