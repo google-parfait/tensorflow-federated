@@ -44,23 +44,32 @@ class StackoverflowTest(absltest.TestCase):
     self.assertEqual(dataset.element_spec, EXPECTED_ELEMENT_TYPE)
 
   def test_load_word_counts(self):
-    self.skipTest('b/192530958: Temporarily skip failing test.')
-    expected_num_words = 6005329
-    expected_periods = 342309
-    expected_occurrences_the = 341937
+    self.skipTest(
+        "CI infrastructure doesn't support downloading from GCS. Remove "
+        'skipTest to run test locally.')
     word_counts = stackoverflow.load_word_counts()
-    self.assertLen(word_counts, expected_num_words)
-    self.assertEqual(word_counts['.'], expected_periods)
-    self.assertEqual(word_counts['the'], expected_occurrences_the)
+    self.assertLen(word_counts, 6005329)
+    self.assertEqual(word_counts['.'], 342309)
+    self.assertEqual(word_counts['the'], 341937)
 
   def test_load_word_counts_small_vocab(self):
-    expected_num_words = 100
-    expected_periods = 342309
-    expected_occurrences_the = 341937
-    word_counts = stackoverflow.load_word_counts(vocab_size=100)
-    self.assertLen(word_counts, expected_num_words)
-    self.assertEqual(word_counts['.'], expected_periods)
-    self.assertEqual(word_counts['the'], expected_occurrences_the)
+    self.skipTest(
+        "CI infrastructure doesn't support downloading from GCS. Remove "
+        'skipTest to run test locally.')
+    num_words = 100
+    word_counts = stackoverflow.load_word_counts(vocab_size=num_words)
+    self.assertLen(word_counts, num_words)
+    self.assertEqual(word_counts['.'], 342309)
+    self.assertEqual(word_counts['the'], 341937)
+
+  def test_load_tag_counts(self):
+    self.skipTest(
+        "CI infrastructure doesn't support downloading from GCS. Remove "
+        'skipTest to run test locally.')
+    tag_counts = stackoverflow.load_tag_counts()
+    self.assertLen(tag_counts, 50454)
+    self.assertEqual(tag_counts['html'], 167815)
+    self.assertEqual(tag_counts['galois-field'], 58)
 
   def test_load_from_gcs(self):
     self.skipTest(
