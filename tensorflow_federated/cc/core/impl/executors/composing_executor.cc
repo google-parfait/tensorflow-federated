@@ -585,8 +585,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     *aggregate.mutable_computation()->mutable_intrinsic()->mutable_uri() =
         kFederatedAggregateUri;
     std::optional<OwnedValueId> current = std::nullopt;
-    // FIXME: parallelize this so that we're materializing more than one
-    // value at a time and so that we can begin merging as soon as any
+    // TODO(b/192457028): parallelize this so that we're materializing more than
+    // one value at a time and so that we can begin merging as soon as any
     // result is available.
     for (uint32 i = 0; i < children_.size(); i++) {
       const auto& child = children_[i].Executor();

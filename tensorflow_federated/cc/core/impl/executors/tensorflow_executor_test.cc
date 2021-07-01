@@ -189,9 +189,10 @@ TEST_F(TensorFlowExecutorTest, CreateValueSimpleTensor) {
   EXPECT_THAT(test_executor_->CreateValue(input_pb), IsOk());
 }
 
-// FIXME: this test won't work yet because we don't have a `reduce_lambda`
-// function in the GraphDef.library. This is going to be hard to simulate only
-// from C++, we should probably look at building the graphs in Python.
+// TODO(b/192457188): this test won't work yet because we don't have a
+// `reduce_lambda` function in the GraphDef.library. This is going to be hard to
+// simulate only from C++, we should probably look at building the graphs in
+// Python.
 // TEST_F(TensorFlowExecutorTest, CallReduceOnSequence) {
 //   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
 //   tensorflow::ops::internal::RangeDataset dataset(

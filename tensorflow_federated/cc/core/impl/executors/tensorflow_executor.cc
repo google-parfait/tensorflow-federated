@@ -161,9 +161,9 @@ class SessionProvider {
   }
 
   absl::StatusOr<std::unique_ptr<tensorflow::Session>> CreateSession() {
-    // FIXME(cramertj) how expensive is this work, really? is it worth the extra
-    // work to cache it and limit it to num_cpus? If not, we could get rid of
-    // the whole `SessionProvider` class.
+    // TODO(b/192457299) how expensive is this work, really? is it worth the
+    // extra work to cache it and limit it to num_cpus? If not, we could get rid
+    // of the whole `SessionProvider` class.
     std::unique_ptr<tensorflow::Session> session(
         tensorflow::NewSession(get_session_options()));
     if (session == nullptr) {
@@ -506,7 +506,7 @@ class SequenceTensor {
 class ExecutorValue {
  public:
   // Whether a given `ExecutorValue` is a structure or a single tensor.
-  // FIXME(cramertj): add more cases here as necessary (for computations,
+  // TODO(b/192457495): add more cases here as necessary (for computations,
   // sequences, and more...).
   enum class ValueType { TENSOR, STRUCT, COMPUTATION, SEQUENCE };
 
@@ -806,7 +806,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ExecutorValue> CreateValueTensor(
       const google::protobuf::Any& tensor_pb_any) {
-    // FIXME(cramertj): There's an extra copy here to go from
+    // TODO(b/192457597): There's an extra copy here to go from
     // `Any -> tensorflow::TensorProto -> tensorflow::Tensor`.
     // Ideally we'd store a `tensorflow::TensorProto` directly, but this is hard
     // due to `executor.proto` needing to be defined in OSS, which then means
