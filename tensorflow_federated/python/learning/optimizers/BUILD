@@ -6,6 +6,8 @@ package_group(
     packages = [
         # Subpackages
         "//tensorflow_federated/python/learning/optimizers/...",
+        # Framework uses the optimizers.
+        "//tensorflow_federated/python/learning/framework/...",
     ],
 )
 

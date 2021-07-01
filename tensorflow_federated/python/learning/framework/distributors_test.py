@@ -14,10 +14,12 @@
 
 import collections
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -235,5 +237,69 @@ class DistributionProcessTest(test_case.TestCase):
       distributors.DistributionProcess(test_initialize_fn, next_fn)
 
 
+class BroadcastProcessComputationTest(test_case.TestCase,
+                                      parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('float', computation_types.TensorType(tf.float32)),
+      ('struct', computation_types.to_type([(tf.float32, (2,)), tf.int32])))
+  def test_type_properties(self, value_type):
+    broadcast_process = distributors.build_broadcast_process(value_type)
+    self.assertIsInstance(broadcast_process, distributors.DistributionProcess)
+
+    expected_param_value_type = computation_types.at_server(value_type)
+    expected_result_type = computation_types.at_clients(
+        value_type, all_equal=True)
+    expected_state_type = computation_types.at_server(())
+    expected_measurements_type = computation_types.at_server(())
+
+    expected_initialize_type = computation_types.FunctionType(
+        parameter=None, result=expected_state_type)
+    expected_initialize_type.check_equivalent_to(
+        broadcast_process.initialize.type_signature)
+
+    expected_next_type = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            state=expected_state_type, value=expected_param_value_type),
+        result=MeasuredProcessOutput(expected_state_type, expected_result_type,
+                                     expected_measurements_type))
+    expected_next_type.check_equivalent_to(
+        broadcast_process.next.type_signature)
+
+  @parameterized.named_parameters(
+      ('federated_type', SERVER_FLOAT),
+      ('function_type', computation_types.FunctionType(None, ())),
+      ('sequence_type', computation_types.SequenceType(tf.float32)))
+  def test_incorrect_value_type_raises(self, bad_value_type):
+    with self.assertRaises(TypeError):
+      distributors.build_broadcast_process(bad_value_type)
+
+  def test_inner_federated_type_raises(self):
+    with self.assertRaisesRegex(TypeError, 'FederatedType'):
+      distributors.build_broadcast_process(
+          computation_types.to_type([SERVER_FLOAT, SERVER_FLOAT]))
+
+
+class BroadcastProcessExecutionTest(test_case.TestCase):
+
+  def test_broadcast_scalar(self):
+    broadcast_process = distributors.build_broadcast_process(
+        SERVER_FLOAT.member)
+    output = broadcast_process.next(broadcast_process.initialize(), 2.5)
+    self.assertEqual((), output.state)
+    self.assertAllClose(2.5, output.result)
+    self.assertEqual((), output.measurements)
+
+  def test_broadcast_struct(self):
+    struct_type = computation_types.to_type([(tf.float32, (2,)), tf.int32])
+    broadcast_process = distributors.build_broadcast_process(struct_type)
+    output = broadcast_process.next(broadcast_process.initialize(),
+                                    ((1.0, 2.5), 3))
+    self.assertEqual((), output.state)
+    self.assertAllClose(((1.0, 2.5), 3), output.result)
+    self.assertEqual((), output.measurements)
+
+
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context(default_num_clients=1)
   test_case.main()

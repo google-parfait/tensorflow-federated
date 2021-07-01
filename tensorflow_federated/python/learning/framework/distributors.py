@@ -17,8 +17,13 @@ This module is a minimal stab at structure which will probably live in
 `tff.distributors` and `tff.templates` later on.
 """
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -98,3 +103,39 @@ class DistributionProcess(measured_process.MeasuredProcess):
       raise errors.TemplatePlacementError(
           f'The "measurements" attribute of return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.measurements}.')
+
+
+# TODO(b/190334722): Replace with a factory pattern similar to tff.aggregators.
+def build_broadcast_process(value_type: computation_types.Type):
+  """Builds `DistributionProcess` directly broadcasting values.
+
+  The created process has empty state and reports no measurements.
+
+  Args:
+    value_type: A non-federated `tff.Type` of value to be broadcasted.
+
+  Returns:
+    A `DistributionProcess` for broadcasting `value_type`.
+
+  Raises:
+    TypeError: If `value_type` contains a `tff.types.FederatedType`.
+  """
+  py_typecheck.check_type(
+      value_type, (computation_types.TensorType, computation_types.StructType))
+  if type_analysis.contains_federated_types(value_type):
+    raise TypeError(
+        f'Provided value_type must not contain any tff.types.FederatedType, '
+        f'but found: {value_type}')
+
+  @computations.federated_computation
+  def init_fn():
+    return intrinsics.federated_value((), placements.SERVER)
+
+  @computations.federated_computation(init_fn.type_signature.result,
+                                      computation_types.at_server(value_type))
+  def next_fn(state, value):
+    empty_measurements = intrinsics.federated_value((), placements.SERVER)
+    return measured_process.MeasuredProcessOutput(
+        state, intrinsics.federated_broadcast(value), empty_measurements)
+
+  return DistributionProcess(init_fn, next_fn)

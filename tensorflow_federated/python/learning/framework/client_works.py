@@ -13,16 +13,25 @@
 # limitations under the License.
 """Abstractions for client work in learning algorithms."""
 
+from typing import Callable
 import attr
+import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 
 
-@attr.s(eq=False, frozen=True)
+@attr.s(frozen=True)
 class ClientResult():
   """A structure containing the result of `ClientWorkProcess.next` computation.
 
@@ -43,7 +52,7 @@ class ClientDataTypeError(TypeError):
 
 
 class ClientResultTypeError(TypeError):
-  """`TypeError` for incorrect structure of result of clinet work."""
+  """`TypeError` for incorrect structure of result of client work."""
 
 
 class ClientWorkProcess(measured_process.MeasuredProcess):
@@ -173,3 +182,94 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
       raise errors.TemplatePlacementError(
           f'The "measurements" attribute of return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.measurements}.')
+
+
+# TODO(b/190334722): Add model metric handling and aggregation and report it in
+# the measurement field of the output.
+def build_model_delta_client_work(model_fn: Callable[[], model_lib.Model],
+                                  optimizer: optimizer_base.Optimizer):
+  """Builds `ClientWorkProcess` returning change to the trained model weights.
+
+  The created `ClientWorkProcess` expects model weights that can be assigned to
+  the model created by `model_fn`, and will apply `optimizer` to optimize the
+  model using the client data. The returned `ClientResult` will contain the
+  difference between the trained and initial trainable model weights (aka
+  "model delta") as update, and the update_weight will be the number of examples
+  used in training. The type signature for client data is derived from the input
+  spec of the model.
+
+  This method is the recommended starting point for forking a custom
+  implementation of the `ClientWorkProcess`.
+
+  Args:
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    optimizer: A `tff.learning.optimizers.Optimizer`.
+
+  Returns:
+    A `ClientWorkProcess`.
+  """
+  py_typecheck.check_callable(model_fn)
+  # TODO(b/190334722): Include support for Keras optimizers via
+  # tff.learning.optimizers.KerasOptimizer when ready.
+  py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
+  weights_type, data_type = _weights_and_data_type_from_model_fn(model_fn)
+  tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
+
+  @computations.tf_computation(weights_type, data_type)
+  @tf.function
+  def local_update(initial_weights, data):
+    # TODO(b/190334722): Restructure so that model_fn only needs to be invoked
+    # once.
+    with tf.init_scope():
+      model = model_fn()
+    model_weights = model_utils.ModelWeights.from_model(model)
+
+    tf.nest.map_structure(lambda weight, value: weight.assign(value),
+                          model_weights, initial_weights)
+    num_examples = tf.constant(0, tf.int32)
+    optimizer_state = optimizer.initialize(tensor_specs)
+
+    # TODO(b/161529310): Different from creating an iterator using iter(data).
+    for batch in data:
+      with tf.GradientTape() as tape:
+        outputs = model.forward_pass(batch)
+      gradients = tape.gradient(outputs.loss, model_weights.trainable)
+      num_examples += tf.shape(outputs.predictions)[0]
+
+      optimizer_state, updated_weights = optimizer.next(optimizer_state,
+                                                        model_weights.trainable,
+                                                        gradients)
+      tf.nest.map_structure(lambda weight, value: weight.assign(value),
+                            model_weights.trainable, updated_weights)
+
+    model_delta = tf.nest.map_structure(lambda x, y: x - y,
+                                        initial_weights.trainable,
+                                        model_weights.trainable)
+    return ClientResult(
+        update=model_delta, update_weight=tf.cast(num_examples, tf.float32))
+
+  @computations.federated_computation
+  def init_fn():
+    return intrinsics.federated_value((), placements.SERVER)
+
+  @computations.federated_computation(
+      init_fn.type_signature.result, computation_types.at_clients(weights_type),
+      computation_types.at_clients(data_type))
+  def next_fn(state, weights, client_data):
+    client_result = intrinsics.federated_map(local_update,
+                                             (weights, client_data))
+    empty_measurements = intrinsics.federated_value((), placements.SERVER)
+    return measured_process.MeasuredProcessOutput(state, client_result,
+                                                  empty_measurements)
+
+  return ClientWorkProcess(init_fn, next_fn)
+
+
+def _weights_and_data_type_from_model_fn(model_fn):
+  with tf.Graph().as_default():
+    # Wrap model construction in a graph to avoid polluting the global context
+    # with variables created for this model.
+    model = model_fn()
+  data_type = computation_types.SequenceType(model.input_spec)
+  model_weights_type = model_utils.weights_type_from_model(model)
+  return model_weights_type, data_type

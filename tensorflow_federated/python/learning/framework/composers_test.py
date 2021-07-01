@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import collections
+
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
@@ -20,16 +22,19 @@ from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import learning_process
+from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import client_works
 from tensorflow_federated.python.learning.framework import composers
 from tensorflow_federated.python.learning.framework import distributors
 from tensorflow_federated.python.learning.framework import finalizers
+from tensorflow_federated.python.learning.optimizers import sgdm
 
 FLOAT_TYPE = computation_types.TensorType(tf.float32)
 MODEL_WEIGHTS_TYPE = computation_types.to_type(
@@ -224,5 +229,55 @@ class ComposeLearningProcessTest(test_case.TestCase):
   # _validate_args method, when adding custom error messages.
 
 
+class VanillaFedAvgTest(test_case.TestCase, parameterized.TestCase):
+
+  def _test_data(self):
+    return tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0]],
+            y=[[5.0], [6.0]],
+        )).batch(2)
+
+  def _test_batch_loss(self, model, weights):
+    tf.nest.map_structure(lambda w, v: w.assign(v), model.weights, weights)
+    for batch in self._test_data().take(1):
+      batch_output = model.forward_pass(batch, training=False)
+    return batch_output.loss
+
+  def test_loss_decreases(self):
+    model_fn = lambda: model_utils.enhance(model_examples.LinearRegression())
+    test_model = model_fn()
+    fedavg = composers.build_basic_fedavg_process(
+        model_fn=model_fn, client_learning_rate=0.1)
+    client_data = [self._test_data()] * 3  # 3 clients with identical data.
+
+    state = fedavg.initialize()
+    last_loss = self._test_batch_loss(test_model, state.global_model_weights)
+    for _ in range(5):
+      fedavg_result = fedavg.next(state, client_data)
+      state = fedavg_result.state
+      metrics = fedavg_result.metrics
+      loss = self._test_batch_loss(test_model, state.global_model_weights)
+      self.assertLess(loss, last_loss)
+      last_loss = loss
+
+    self.assertIsInstance(state, composers.LearningAlgorithmState)
+    self.assertLen(metrics, 4)
+    for key in ['distributor', 'client_work', 'aggregator', 'finalizer']:
+      self.assertIn(key, metrics)
+
+  def test_created_model_raises(self):
+    with self.assertRaises(TypeError):
+      composers.build_basic_fedavg_process(model_examples.LinearRegression(),
+                                           0.1)
+
+  @parameterized.named_parameters(('int', 1), ('optimizer', sgdm.SGD(0.1)))
+  def test_wrong_client_learning_rate_raises(self, bad_client_lr):
+    with self.assertRaises(TypeError):
+      composers.build_basic_fedavg_process(model_examples.LinearRegression(),
+                                           bad_client_lr)
+
+
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   test_case.main()

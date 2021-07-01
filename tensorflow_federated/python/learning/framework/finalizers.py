@@ -13,11 +13,18 @@
 # limitations under the License.
 """Abstractions for finalization in learning algorithms."""
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 
 
 class ModelWeightsTypeError(TypeError):
@@ -132,3 +139,68 @@ class FinalizerProcess(measured_process.MeasuredProcess):
       raise errors.TemplatePlacementError(
           f'The "measurements" attribute of return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.measurements}.')
+
+
+def build_apply_optimizer_finalizer(
+    optimizer: optimizer_base.Optimizer,
+    model_weights_type: computation_types.StructType):
+  """Builds finalizer that applies a step of an optimizer.
+
+  The provided `model_weights_type` must be a non-federated `tff.Type` with the
+  `tff.learning.ModelWeights` container.
+
+  The 2nd input argument of the created `FinalizerProcess.next` expects a value
+  matching `model_weights_type` and its 3rd argument expects value matching
+  `model_weights_type.trainable`. The `optimizer` will be applied to the
+  trainable model weights only, leaving non_trainable weights unmodified.
+
+  The state of the process is the state of the `optimizer` and the process
+  returns empty measurements.
+
+  Args:
+    optimizer: A `tff.learning.optimizers.Optimizer`.
+    model_weights_type: A non-federated `tff.Type` of the model weights to be
+      optimized, which must have a `tff.learning.ModelWeights` container.
+
+  Returns:
+    A `FinalizerProcess` that applies the `optimizer`.
+
+  Raises:
+    TypeError: If `value_type` does not have a `tff.learning.ModelWeights`
+      Python container, or contains a `tff.types.FederatedType`.
+  """
+
+  # TODO(b/190334722): Include support for Keras optimizers via
+  # tff.learning.optimizers.KerasOptimizer when ready.
+  py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
+  if (not model_weights_type.is_struct_with_python() or
+      model_weights_type.python_container != model_utils.ModelWeights or
+      type_analysis.contains_federated_types(model_weights_type)):
+    raise TypeError(
+        f'Provided value_type must be a tff.types.StructType with its python '
+        f'container being tff.learning.ModelWeights, not containing a '
+        f'tff.types.FederatedType, but found: {model_weights_type}')
+
+  @computations.federated_computation
+  def init_fn():
+    tensor_specs = type_conversions.type_to_tf_tensor_specs(
+        model_weights_type.trainable)
+    return intrinsics.federated_eval(
+        computations.tf_computation(lambda: optimizer.initialize(tensor_specs)),
+        placements.SERVER)
+
+  @computations.federated_computation(
+      init_fn.type_signature.result,
+      computation_types.at_server(model_weights_type),
+      computation_types.at_server(model_weights_type.trainable))
+  def next_fn(state, weights, update):
+    optimizer_state, new_trainable_weights = intrinsics.federated_map(
+        computations.tf_computation(optimizer.next),
+        (state, weights.trainable, update))
+    new_weights = intrinsics.federated_zip(
+        model_utils.ModelWeights(new_trainable_weights, weights.non_trainable))
+    empty_measurements = intrinsics.federated_value((), placements.SERVER)
+    return measured_process.MeasuredProcessOutput(optimizer_state, new_weights,
+                                                  empty_measurements)
+
+  return FinalizerProcess(init_fn, next_fn)

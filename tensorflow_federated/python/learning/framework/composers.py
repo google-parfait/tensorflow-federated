@@ -14,9 +14,11 @@
 """Methods for composing learning components into a LearningProcess."""
 
 import collections
+from typing import Callable
 
 import attr
 
+from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
@@ -25,10 +27,12 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.learning import learning_process
+from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import client_works
 from tensorflow_federated.python.learning.framework import distributors
 from tensorflow_federated.python.learning.framework import finalizers
+from tensorflow_federated.python.learning.optimizers import sgdm
 
 
 # TODO(b/190334722): Add SLO guarantees / backwards compatibility guarantees.
@@ -218,3 +222,77 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
   finalizer_param[1].check_assignable_from(global_model_weights_type)
   finalizer_param[2].check_assignable_from(aggregator_result.result)
   global_model_weights_type.check_assignable_from(finalizer_result.result)
+
+
+def build_basic_fedavg_process(model_fn: Callable[[], model_lib.Model],
+                               client_learning_rate: float):
+  """Builds vanilla Federated Averaging process.
+
+  The created process is the basic form of the Federated Averaging algorithm as
+  proposed by http://proceedings.mlr.press/v54/mcmahan17a/mcmahan17a.pdf in
+  Algorithm 1, for training the model created by `model_fn`. The following is
+  the algorithm in pseudo-code:
+
+  ```
+  # Inputs: m: Initial model weights; eta: Client learning rate
+  for i in num_rounds:
+    for c in available_clients_indices:
+      delta_m_c, w_c = client_update(m, eta)
+    aggregate_model_delta = sum_c(model_delta_c * w_c) / sum_c(w_c)
+    m = m - aggregate_model_delta
+  return m  # Final trained model.
+
+  def client_udpate(m, eta):
+    initial_m = m
+    for batch in client_dataset:
+      m = m - eta * grad(m, b)
+    delta_m = initial_m - m
+    return delta_m, size(dataset)
+  ```
+
+  The other algorithm hyper parameters (batch size, number of local epochs) are
+  controlled by the data provided to the built process.
+
+  An example usage of the returned `LearningProcess` in simulation:
+
+  ```
+  fedavg = build_basic_fedavg_process(model_fn, 0.1)
+
+  # Create a `LearningAlgorithmState` containing the initial model weights for
+  # the model returned from `model_fn`.
+  state = fedavg.initialize()
+  for _ in range(num_rounds):
+    client_data = ...  # Preprocessed client datasets
+    output = fedavg.next(state, client_data)
+    write_round_metrics(outpus.metrics)
+    # The new state contains the updated model weights after this round.
+    state = output.state
+  ```
+
+  Args:
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    client_learning_rate: A float. Learning rate for the SGD at clients.
+
+  Returns:
+    A `LearningProcess`.
+  """
+  py_typecheck.check_callable(model_fn)
+  py_typecheck.check_type(client_learning_rate, float)
+
+  @computations.tf_computation()
+  def initial_model_weights_fn():
+    return model_utils.ModelWeights.from_model(model_fn())
+
+  model_weights_type = initial_model_weights_fn.type_signature.result
+
+  distributor = distributors.build_broadcast_process(model_weights_type)
+  client_work = client_works.build_model_delta_client_work(
+      model_fn, sgdm.SGD(client_learning_rate))
+  aggregator = mean.MeanFactory().create(
+      client_work.next.type_signature.result.result.member.update,
+      client_work.next.type_signature.result.result.member.update_weight)
+  finalizer = finalizers.build_apply_optimizer_finalizer(
+      sgdm.SGD(1.0), model_weights_type)
+
+  return compose_learning_process(initial_model_weights_fn, distributor,
+                                  client_work, aggregator, finalizer)

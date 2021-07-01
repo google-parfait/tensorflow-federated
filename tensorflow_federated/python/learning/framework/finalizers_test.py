@@ -14,10 +14,12 @@
 
 import collections
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -25,6 +27,7 @@ from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import finalizers
+from tensorflow_federated.python.learning.optimizers import sgdm
 
 SERVER_INT = computation_types.FederatedType(tf.int32, placements.SERVER)
 SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
@@ -300,5 +303,75 @@ class FinalizerTest(test_case.TestCase):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
 
+class ApplyOptimizerFinalizerComputationTest(test_case.TestCase,
+                                             parameterized.TestCase):
+
+  def test_type_properties(self):
+    mw_type = computation_types.to_type(
+        model_utils.ModelWeights(
+            trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
+
+    finalizer = finalizers.build_apply_optimizer_finalizer(
+        sgdm.SGD(1.0), mw_type)
+    self.assertIsInstance(finalizer, finalizers.FinalizerProcess)
+
+    expected_param_weights_type = computation_types.at_server(mw_type)
+    expected_param_update_type = computation_types.at_server(mw_type.trainable)
+    expected_result_type = computation_types.at_server(mw_type)
+    expected_state_type = computation_types.at_server(())
+    expected_measurements_type = computation_types.at_server(())
+
+    expected_initialize_type = computation_types.FunctionType(
+        parameter=None, result=expected_state_type)
+    expected_initialize_type.check_equivalent_to(
+        finalizer.initialize.type_signature)
+
+    expected_next_type = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            state=expected_state_type,
+            weights=expected_param_weights_type,
+            update=expected_param_update_type),
+        result=MeasuredProcessOutput(expected_state_type, expected_result_type,
+                                     expected_measurements_type))
+    expected_next_type.check_equivalent_to(finalizer.next.type_signature)
+
+  @parameterized.named_parameters(
+      ('not_struct', computation_types.TensorType(tf.float32)),
+      ('federated_type', MODEL_WEIGHTS_TYPE),
+      ('model_weights_of_federated_types',
+       computation_types.to_type(
+           model_utils.ModelWeights(SERVER_FLOAT, SERVER_FLOAT))),
+      ('not_model_weights', computation_types.to_type(
+          (tf.float32, tf.float32))),
+      ('function_type', computation_types.FunctionType(None,
+                                                       MODEL_WEIGHTS_TYPE)),
+      ('sequence_type', computation_types.SequenceType(
+          MODEL_WEIGHTS_TYPE.member)))
+  def test_incorrect_value_type_raises(self, bad_type):
+    with self.assertRaises(TypeError):
+      finalizers.build_apply_optimizer_finalizer(sgdm.SGD(1.0), bad_type)
+
+  def test_not_tff_optimizer_raises(self):
+    optimizer = tf.keras.optimizers.SGD(1.0)
+    with self.assertRaises(TypeError):
+      finalizers.build_apply_optimizer_finalizer(optimizer,
+                                                 MODEL_WEIGHTS_TYPE.member)
+
+
+class ApplyOptimizerFinalizerExecutionTest(test_case.TestCase):
+
+  def test_execution(self):
+    finalizer = finalizers.build_apply_optimizer_finalizer(
+        sgdm.SGD(1.0), MODEL_WEIGHTS_TYPE.member)
+
+    weights = model_utils.ModelWeights(1.0, ())
+    update = 0.1
+    output = finalizer.next(finalizer.initialize(), weights, update)
+    self.assertEqual((), output.state)
+    self.assertAllClose(0.9, output.result.trainable)
+    self.assertEqual((), output.measurements)
+
+
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   test_case.main()
