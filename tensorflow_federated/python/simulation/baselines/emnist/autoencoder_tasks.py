@@ -65,19 +65,15 @@ def create_autoencoder_task_from_datasets(
       train_preprocess_fn=train_preprocess_fn,
       eval_preprocess_fn=eval_preprocess_fn)
 
-  keras_model = emnist_models.create_autoencoder_model()
-  loss = tf.keras.losses.MeanSquaredError()
-  metrics = [
-      tf.keras.metrics.MeanSquaredError(),
-      tf.keras.metrics.MeanAbsoluteError()
-  ]
-
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
-        keras_model=keras_model,
-        loss=loss,
+        keras_model=emnist_models.create_autoencoder_model(),
+        loss=tf.keras.losses.MeanSquaredError(),
         input_spec=task_datasets.element_type_structure,
-        metrics=metrics)
+        metrics=[
+            tf.keras.metrics.MeanSquaredError(),
+            tf.keras.metrics.MeanAbsoluteError()
+        ])
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
 

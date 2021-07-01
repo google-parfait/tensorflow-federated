@@ -28,6 +28,7 @@ py_library(
         ":server_utils",
         ":tensorboard_manager",
         ":training_loop",
+        "//tensorflow_federated/python/simulation/baselines",
         "//tensorflow_federated/python/simulation/datasets",
         "//tensorflow_federated/python/simulation/models",
     ],

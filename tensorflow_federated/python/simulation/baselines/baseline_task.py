@@ -16,6 +16,7 @@
 from typing import Callable
 
 import attr
+import tensorflow as tf
 
 from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.simulation.baselines import task_data
@@ -39,7 +40,10 @@ class BaselineTask(object):
       validator=attr.validators.is_callable())
 
   def __attrs_post_init__(self):
-    tff_model = self.model_fn()
+    # Wrap model construction in a graph to avoid polluting the global context
+    # with variables created for this model.
+    with tf.Graph().as_default():
+      tff_model = self.model_fn()
     if not isinstance(tff_model, model.Model):
       raise TypeError('Expected model_fn to output a tff.learning.Model, '
                       'found {} instead'.format(type(tff_model)))

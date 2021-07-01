@@ -79,22 +79,18 @@ def create_character_prediction_task_from_datasets(
       train_preprocess_fn=train_preprocess_fn,
       eval_preprocess_fn=eval_preprocess_fn)
 
-  keras_model = char_prediction_models.create_recurrent_model(
-      vocab_size=VOCAB_LENGTH, sequence_length=sequence_length)
-  loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-
   pad_token, _, _, _ = char_prediction_preprocessing.get_special_tokens()
-  metrics = [
-      keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
-      keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token])
-  ]
 
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
-        keras_model=keras_model,
-        loss=loss,
+        keras_model=char_prediction_models.create_recurrent_model(
+            vocab_size=VOCAB_LENGTH, sequence_length=sequence_length),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         input_spec=task_datasets.element_type_structure,
-        metrics=metrics)
+        metrics=[
+            keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
+            keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token])
+        ])
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
 

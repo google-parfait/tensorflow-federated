@@ -14,5 +14,5 @@
 """Libraries for constructing baseline tasks for the EMNIST dataset."""
 
 from tensorflow_federated.python.simulation.baselines.emnist.autoencoder_tasks import create_autoencoder_task
-from tensorflow_federated.python.simulation.baselines.emnist.digit_recognition_tasks import create_digit_recognition_tasks
+from tensorflow_federated.python.simulation.baselines.emnist.digit_recognition_tasks import create_digit_recognition_task
 from tensorflow_federated.python.simulation.baselines.emnist.digit_recognition_tasks import DigitRecognitionModel

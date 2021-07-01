@@ -90,21 +90,17 @@ def create_tag_prediction_task_from_datasets(
       train_preprocess_fn=train_preprocess_fn,
       eval_preprocess_fn=eval_preprocess_fn)
 
-  keras_model = _build_logistic_regression_model(
-      input_size=word_vocab_size, output_size=tag_vocab_size)
-  loss = tf.keras.losses.BinaryCrossentropy(
-      from_logits=False, reduction=tf.keras.losses.Reduction.SUM)
-  metrics = [
-      tf.keras.metrics.Precision(name='precision'),
-      tf.keras.metrics.Recall(top_k=5, name='recall_at_5'),
-  ]
-
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
-        keras_model=keras_model,
-        loss=loss,
+        keras_model=_build_logistic_regression_model(
+            input_size=word_vocab_size, output_size=tag_vocab_size),
+        loss=tf.keras.losses.BinaryCrossentropy(
+            from_logits=False, reduction=tf.keras.losses.Reduction.SUM),
         input_spec=task_datasets.element_type_structure,
-        metrics=metrics)
+        metrics=[
+            tf.keras.metrics.Precision(name='precision'),
+            tf.keras.metrics.Recall(top_k=5, name='recall_at_5'),
+        ])
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
 

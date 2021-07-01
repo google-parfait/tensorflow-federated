@@ -13,6 +13,7 @@
 # limitations under the License.
 """Libraries for running TensorFlow Federated simulations."""
 
+from tensorflow_federated.python.simulation import baselines
 from tensorflow_federated.python.simulation import datasets
 from tensorflow_federated.python.simulation import models
 from tensorflow_federated.python.simulation.checkpoint_manager import FileCheckpointManager

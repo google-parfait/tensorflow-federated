@@ -126,16 +126,12 @@ def create_image_classification_task_with_datasets(
       train_preprocess_fn=train_preprocess_fn,
       eval_preprocess_fn=eval_preprocess_fn)
 
-  keras_model = _get_resnet_model(model_id, crop_shape)
-  loss = tf.keras.losses.SparseCategoricalCrossentropy()
-  metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
-
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
-        keras_model=keras_model,
-        loss=loss,
+        keras_model=_get_resnet_model(model_id, crop_shape),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         input_spec=task_datasets.element_type_structure,
-        metrics=metrics)
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
   return baseline_task.BaselineTask(task_datasets, model_fn)
 

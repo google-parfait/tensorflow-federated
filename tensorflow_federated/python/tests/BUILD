@@ -89,6 +89,15 @@ py_library(
     deps = ["//tensorflow_federated"],
 )
 
+py_test(
+    name = "simulation_test",
+    size = "medium",
+    srcs = ["simulation_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
 py_library(
     name = "temperature_sensor_example",
     srcs = ["temperature_sensor_example.py"],
