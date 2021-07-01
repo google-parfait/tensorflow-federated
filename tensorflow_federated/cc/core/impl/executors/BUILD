@@ -12,22 +12,19 @@ package_group(
     ],
 )
 
-package(
-    default_copts = ["-Wthread-safety-analysis"],
-    default_visibility = [":executors_visibility"],
-)
+package(default_visibility = [":executors_visibility"])
 
 cc_library(
     name = "cardinalities",
     srcs = ["cardinalities.cc"],
-    hdrs = ["cardinalities.h"],
+    # hdrs = ["cardinalities.h"],
     tags = ["nokokoro"],
 )
 
 cc_library(
     name = "composing_executor",
     srcs = ["composing_executor.cc"],
-    hdrs = ["composing_executor.h"],
+    # hdrs = ["composing_executor.h"],
     tags = ["nokokoro"],
     deps = [
         ":cardinalities",
@@ -56,7 +53,7 @@ cc_test(
 
 cc_library(
     name = "computations",
-    hdrs = ["computations.h"],
+    # hdrs = ["computations.h"],
     tags = ["nokokoro"],
 )
 
@@ -77,7 +74,7 @@ pybind_extension(
 cc_library(
     name = "executor",
     srcs = ["executor.cc"],
-    hdrs = ["executor.h"],
+    # hdrs = ["executor.h"],
     tags = ["nokokoro"],
     deps = [":status_macros"],
 )
@@ -85,7 +82,7 @@ cc_library(
 cc_library(
     name = "executor_service",
     srcs = ["executor_service.cc"],
-    hdrs = ["executor_service.h"],
+    # hdrs = ["executor_service.h"],
     tags = ["nokokoro"],
     deps = [
         ":cardinalities",
@@ -110,7 +107,7 @@ cc_library(
     name = "executor_test_base",
     testonly = True,
     srcs = [],
-    hdrs = ["executor_test_base.h"],
+    # hdrs = ["executor_test_base.h"],
     tags = ["nokokoro"],
     deps = [":mock_executor"],
 )
@@ -118,14 +115,14 @@ cc_library(
 cc_library(
     name = "federated_intrinsics",
     srcs = ["federated_intrinsics.cc"],
-    hdrs = ["federated_intrinsics.h"],
+    # hdrs = ["federated_intrinsics.h"],
     tags = ["nokokoro"],
 )
 
 cc_library(
     name = "federating_executor",
     srcs = ["federating_executor.cc"],
-    hdrs = ["federating_executor.h"],
+    # hdrs = ["federating_executor.h"],
     tags = ["nokokoro"],
     deps = [
         ":cardinalities",
@@ -152,7 +149,7 @@ cc_test(
 cc_library(
     name = "mock_executor",
     testonly = True,
-    hdrs = ["mock_executor.h"],
+    # hdrs = ["mock_executor.h"],
     tags = ["nokokoro"],
     deps = [":executor"],
 )
@@ -160,7 +157,7 @@ cc_library(
 cc_library(
     name = "reference_resolving_executor",
     srcs = ["reference_resolving_executor.cc"],
-    hdrs = ["reference_resolving_executor.h"],
+    # hdrs = ["reference_resolving_executor.h"],
     tags = ["nokokoro"],
     deps = [
         ":executor",
@@ -185,7 +182,7 @@ cc_test(
 cc_library(
     name = "remote_executor",
     srcs = ["remote_executor.cc"],
-    hdrs = ["remote_executor.h"],
+    # hdrs = ["remote_executor.h"],
     tags = ["nokokoro"],
     deps = [
         ":cardinalities",
@@ -219,14 +216,14 @@ pybind_extension(
 
 cc_library(
     name = "status_macros",
-    hdrs = ["status_macros.h"],
+    # hdrs = ["status_macros.h"],
     tags = ["nokokoro"],
 )
 
 cc_library(
     name = "tensor_serialization",
     srcs = ["tensor_serialization.cc"],
-    hdrs = ["tensor_serialization.h"],
+    # hdrs = ["tensor_serialization.h"],
     tags = ["nokokoro"],
     deps = [":status_macros"],
 )
@@ -234,7 +231,7 @@ cc_library(
 cc_library(
     name = "tensorflow_executor",
     srcs = ["tensorflow_executor.cc"],
-    hdrs = ["tensorflow_executor.h"],
+    # hdrs = ["tensorflow_executor.h"],
     tags = ["nokokoro"],
     deps = [
         ":executor",
@@ -259,7 +256,7 @@ cc_cpu_gpu_test(
 cc_library(
     name = "threading",
     srcs = ["threading.cc"],
-    hdrs = ["threading.h"],
+    # hdrs = ["threading.h"],
     tags = ["nokokoro"],
     deps = [":status_macros"],
 )
@@ -275,7 +272,7 @@ cc_test(
 cc_library(
     name = "value_test_utils",
     testonly = True,
-    hdrs = ["value_test_utils.h"],
+    # hdrs = ["value_test_utils.h"],
     tags = ["nokokoro"],
     deps = [":executor"],
 )
@@ -283,7 +280,7 @@ cc_library(
 cc_library(
     name = "value_validation",
     srcs = ["value_validation.cc"],
-    hdrs = ["value_validation.h"],
+    # hdrs = ["value_validation.h"],
     tags = ["nokokoro"],
     deps = [
         ":cardinalities",

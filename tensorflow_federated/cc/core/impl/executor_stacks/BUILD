@@ -10,10 +10,7 @@ package_group(
     ],
 )
 
-package(
-    default_copts = ["-Wthread-safety-analysis"],
-    default_visibility = [":executor_stacks_visibility"],
-)
+package(default_visibility = [":executor_stacks_visibility"])
 
 pybind_extension(
     name = "executor_stack_bindings",
@@ -25,7 +22,7 @@ pybind_extension(
 cc_library(
     name = "local_stacks",
     srcs = ["local_stacks.cc"],
-    hdrs = ["local_stacks.h"],
+    # hdrs = ["local_stacks.h"],
     tags = ["nokokoro"],
     deps = [
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
@@ -49,7 +46,7 @@ cc_test(
 cc_library(
     name = "remote_stacks",
     srcs = ["remote_stacks.cc"],
-    hdrs = ["remote_stacks.h"],
+    # hdrs = ["remote_stacks.h"],
     tags = ["nokokoro"],
     deps = [
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",

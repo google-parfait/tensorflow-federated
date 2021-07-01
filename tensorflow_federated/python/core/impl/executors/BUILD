@@ -256,7 +256,6 @@ py_library(
     srcs_version = "PY3",
     tags = ["nokokoro"],
     deps = [
-        "//tensorflow_federated/cc/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/bindings_utils:data_conversions",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
@@ -786,7 +785,6 @@ py_library(
     srcs = ["serialization_bindings.py"],
     srcs_version = "PY3",
     tags = ["nokokoro"],
-    deps = ["//tensorflow_federated/cc/core/impl/executors:serialization_bindings"],
 )
 
 py_test(
