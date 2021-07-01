@@ -45,9 +45,10 @@ class AggregationProcess(measured_process.MeasuredProcess):
 
   Compared to the `tff.templates.MeasuredProcess`, this class requires a second
   input argument, which is a value placed at `CLIENTS` and to be aggregated.
-  The `result` field of returned `tff.templates.MeasuredProcessOutput` must be
-  placed at `SERVER`, and does not necessarily need to have type signature equal
-  to the type signature of the second input argument.
+  The `result` field of returned `tff.templates.MeasuredProcessOutput`,
+  representing the aggregate, must be placed at `SERVER` and does not
+  necessarily need to have type signature equal to the type signature of the
+  second input argument.
 
   The intended composition pattern for `tff.templates.AggregationProcess` is
   that of nesting. An aggregation will broadly consist of three logical parts:
@@ -65,6 +66,10 @@ class AggregationProcess(measured_process.MeasuredProcess):
               <state=S@SERVER, result=V'@SERVER, measurements=M@SERVER>)`
   where `*` represents optional other arguments placed at `CLIENTS`. This can be
   used for weighted aggregation, where the third parameter is the weight.
+
+  Note that while the value type to be aggregated will often be preserved
+  (i.e., `V == V'`), it is not required. An example is sampling-based
+  aggregation.
   """
 
   def __init__(self, initialize_fn: computation_base.Computation,
