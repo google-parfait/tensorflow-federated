@@ -58,13 +58,13 @@ upb_deps()
 
 git_repository(
     name = "pybind11_bazel",
-    remote = "git@github.com:pybind/pybind11_bazel.git",
+    remote = "https://github.com/pybind/pybind11_bazel.git",
     commit = "26973c0ff320cb4b39e45bc3e4297b82bc3a6c09",
 )
 
 new_git_repository(
     name = "pybind11",
-    remote = "git@github.com:pybind/pybind11.git",
+    remote = "https://github.com/pybind/pybind11.git",
     build_file = "@pybind11_bazel//:pybind11.BUILD",
     tag = "v2.6.2",
 )

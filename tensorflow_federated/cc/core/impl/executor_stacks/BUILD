@@ -10,10 +10,7 @@ package_group(
     ],
 )
 
-package(
-    default_copts = ["-Wthread-safety-analysis"],
-    default_visibility = [":executor_stacks_visibility"],
-)
+package(default_visibility = [":executor_stacks_visibility"])
 
 pybind_extension(
     name = "executor_stack_bindings",

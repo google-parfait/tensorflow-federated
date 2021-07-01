@@ -12,10 +12,7 @@ package_group(
     ],
 )
 
-package(
-    default_copts = ["-Wthread-safety-analysis"],
-    default_visibility = [":executors_visibility"],
-)
+package(default_visibility = [":executors_visibility"])
 
 cc_library(
     name = "cardinalities",
