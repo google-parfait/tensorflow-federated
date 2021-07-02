@@ -95,9 +95,10 @@ def load_data(split_by_clients=True, cache_dir=None):
   [LEAF repository](https://github.com/TalwalkarLab/leaf) preprocessing of the
   [CelebA dataset](https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html),
   grouping examples by celebrity id. Details about LEAF were published in
-  "LEAF: A Benchmark for Federated Settings" https://arxiv.org/abs/1812.01097,
-  and details about CelebA were published in "Deep Learning Face Attributes in
-  the Wild" https://arxiv.org/abs/1411.7766.
+  ["LEAF: A Benchmark for Federated
+  Settings"](https://arxiv.org/abs/1812.01097), and details about CelebA were
+  published in ["Deep Learning Face Attributes in the
+  Wild"](https://arxiv.org/abs/1411.7766).
 
   The raw CelebA dataset contains 10,177 unique identities. During LEAF
   preprocessing, all clients with less than 5 examples are removed; this leaves
