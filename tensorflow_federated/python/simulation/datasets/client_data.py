@@ -27,6 +27,17 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 
 
+class IncompatiblePreprocessFnError(TypeError):
+
+  def __init__(self):
+    message = (
+        'The preprocess_fn must not be a tff.Computation. Please use a python'
+        ' callable or tf.function instead. This restriction is because '
+        '`tf.data.Dataset.map` wraps preprocessing functions with a '
+        '`tf.function` decorator, which cannot call to a `tff.Computation`.')
+    super().__init__(message)
+
+
 class ClientData(object, metaclass=abc.ABCMeta):
   """Object to hold a federated dataset.
 
@@ -162,6 +173,8 @@ class ClientData(object, metaclass=abc.ABCMeta):
   ) -> 'PreprocessClientData':
     """Applies `preprocess_fn` to each client's data."""
     py_typecheck.check_callable(preprocess_fn)
+    if isinstance(preprocess_fn, computation_base.Computation):
+      raise IncompatiblePreprocessFnError()
     return PreprocessClientData(self, preprocess_fn)
 
 # TODO(b/186139255): Delete this once the full deprecation period has passed.
@@ -494,6 +507,8 @@ class SerializableClientData(ClientData, metaclass=abc.ABCMeta):
   ) -> 'PreprocessSerializableClientData':
     """Applies `preprocess_fn` to each client's data."""
     py_typecheck.check_callable(preprocess_fn)
+    if isinstance(preprocess_fn, computation_base.Computation):
+      raise IncompatiblePreprocessFnError()
     return PreprocessSerializableClientData(self, preprocess_fn)
 
 

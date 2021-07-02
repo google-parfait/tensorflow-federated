@@ -206,6 +206,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":client_data",
+        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
 )
