@@ -72,6 +72,18 @@ Datasets include:
     clients. For more details, see the
     [API](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/cifar100/load_data).
 
+*   [**Google Landmark v2 dataset**](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/gldv2/load_data)
+    The dataset consists of photos of various world landmarks, with images
+    grouped by photographer to achieve a federated partitioning of the data. Two
+    flavors of dataset are available: a smaller dataset with 233 clients and
+    23080 images, and a larger dataset with 1262 clients and 164172 images.
+
+*   [**CelebA**](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/celeba/load_data)
+    A dataset of examples (image and facial attributes) of celebrity faces. The
+    federated dataset has each celebrity's examples grouped together to form a
+    client. There are 9343 clients, each with at least 5 examples. The dataset
+    can be split into train and test groups either by clients or by examples.
+
 ## High performance simulations
 
 While the wall-clock time of an FL _simulation_ is not a relevant metric for
