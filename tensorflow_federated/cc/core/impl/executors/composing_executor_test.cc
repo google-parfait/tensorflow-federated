@@ -62,7 +62,7 @@ class ComposingExecutorTest : public ExecutorTestBase {
     clients_per_child_ = {0, 1, 2, 3};
     total_clients_ = 0;
     std::vector<ComposingChild> composing_children;
-    for (uint32 num_clients : clients_per_child_) {
+    for (uint32_t num_clients : clients_per_child_) {
       total_clients_ += num_clients;
       auto exec = std::make_shared<::testing::StrictMock<MockExecutor>>();
       ASSERT_OK_AND_ASSIGN(
@@ -76,8 +76,8 @@ class ComposingExecutorTest : public ExecutorTestBase {
   }
 
  protected:
-  std::vector<uint32> clients_per_child_;
-  uint32 total_clients_;
+  std::vector<uint32_t> clients_per_child_;
+  uint32_t total_clients_;
   std::shared_ptr<::testing::StrictMock<MockExecutor>> mock_server_;
   std::vector<std::shared_ptr<::testing::StrictMock<MockExecutor>>>
       mock_children_;
@@ -125,12 +125,12 @@ TEST_F(ComposingExecutorTest, CreateMaterializeAtServer) {
 
 TEST_F(ComposingExecutorTest, CreateMaterializeAtClients) {
   std::vector<v0::Value> values;
-  uint32 next_value = 0;
-  for (uint32 i = 0; i < mock_children_.size(); i++) {
+  uint32_t next_value = 0;
+  for (uint32_t i = 0; i < mock_children_.size(); i++) {
     const auto& child = mock_children_[i];
-    uint32 num_clients = clients_per_child_[i];
+    uint32_t num_clients = clients_per_child_[i];
     std::vector<v0::Value> child_values;
-    for (uint32 j = 0; j < num_clients; j++) {
+    for (uint32_t j = 0; j < num_clients; j++) {
       v0::Value tensor_pb = TensorV(next_value);
       next_value++;
       child_values.push_back(tensor_pb);

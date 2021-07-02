@@ -704,7 +704,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationStruct) {
   }));
   // Expect CreateValue calls for each element as it is embedded.
   ValueId test_id = 0;
-  const uint32 num_elements =
+  const uint32_t num_elements =
       struct_value_pb.computation().struct_().element_size();
   EXPECT_CALL(*mock_executor_, CreateValue(_))
       .Times(num_elements)
@@ -751,11 +751,11 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationSelection) {
                            /*index=*/1));
   // Expect CreateValue calls for each element in the struct as it is embedded.
   ValueId test_id = 0;
-  const uint32 num_elements = selection_value_pb.computation()
-                                  .selection()
-                                  .source()
-                                  .struct_()
-                                  .element_size();
+  const uint32_t num_elements = selection_value_pb.computation()
+                                    .selection()
+                                    .source()
+                                    .struct_()
+                                    .element_size();
   EXPECT_CALL(*mock_executor_, CreateValue(_))
       .Times(num_elements)
       .WillRepeatedly([this, &test_id]() {

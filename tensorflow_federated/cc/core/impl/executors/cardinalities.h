@@ -22,12 +22,12 @@ limitations under the License
 
 namespace tensorflow_federated {
 
-using CardinalityMap = absl::flat_hash_map<std::string, uint32>;
+using CardinalityMap = absl::flat_hash_map<std::string, uint32_t>;
 const absl::string_view kClientsUri = "clients";
 const absl::string_view kServerUri = "server";
 
 // Returns the number of clients specifed by the provided `cardinalities`.
-absl::StatusOr<uint32> NumClientsFromCardinalities(
+absl::StatusOr<uint32_t> NumClientsFromCardinalities(
     const CardinalityMap& cardinalities);
 
 }  // namespace tensorflow_federated

@@ -206,9 +206,9 @@ class ReferenceResolvingExecutor
       std::vector<std::shared_ptr<ExecutorValue>> members) final;
 
   absl::StatusOr<std::shared_ptr<ExecutorValue>> CreateSelection(
-      std::shared_ptr<ExecutorValue> value, const uint32 index) final;
+      std::shared_ptr<ExecutorValue> value, const uint32_t index) final;
   absl::StatusOr<std::shared_ptr<ExecutorValue>> CreateSelectionInternal(
-      std::shared_ptr<ExecutorValue> source, const uint32 index) const;
+      std::shared_ptr<ExecutorValue> source, const uint32_t index) const;
 
   absl::Status Materialize(std::shared_ptr<ExecutorValue> value,
                            v0::Value* value_pb) final;
@@ -403,13 +403,13 @@ ReferenceResolvingExecutor::CreateStruct(
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::CreateSelection(
-    std::shared_ptr<ExecutorValue> value, const uint32 index) {
+    std::shared_ptr<ExecutorValue> value, const uint32_t index) {
   return CreateSelectionInternal(std::move(value), index);
 }
 
 absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::CreateSelectionInternal(
-    std::shared_ptr<ExecutorValue> source, const uint32 index) const {
+    std::shared_ptr<ExecutorValue> source, const uint32_t index) const {
   switch (source->type()) {
     case ExecutorValue::ValueType::EMBEDDED: {
       const OwnedValueId& child_id = source->embedded();

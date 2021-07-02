@@ -32,7 +32,7 @@ using testing::TensorV;
 using ::testing::status::IsOkAndHolds;
 using ::testing::status::StatusIs;
 
-const uint32 NUM_CLIENTS = 5;
+const uint32_t NUM_CLIENTS = 5;
 const v0::Value TENSOR = TensorV(1.0);
 
 class ValueValidationTest : public ::testing::Test {};
@@ -74,7 +74,7 @@ TEST_F(ValueValidationTest, ValidateFederatedErrorOnNonAllEqualServer) {
       value_proto.mutable_federated()->mutable_type();
   type_proto->set_all_equal(false);
   *type_proto->mutable_placement()->mutable_value()->mutable_uri() = "server";
-  for (uint32 i = 0; i < NUM_CLIENTS; i++) {
+  for (uint32_t i = 0; i < NUM_CLIENTS; i++) {
     *value_proto.mutable_federated()->add_value() = TENSOR;
   }
   EXPECT_THAT(ValidateFederated(NUM_CLIENTS, value_proto.federated()),

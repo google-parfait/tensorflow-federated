@@ -130,8 +130,8 @@ class Executor {
   // This method is expected to return quickly. It should not block on complex
   // computation or IO-bound work, instead kicking off that work to run
   // asynchronously.
-  virtual absl::StatusOr<OwnedValueId> CreateSelection(const ValueId source,
-                                                       const uint32 index) = 0;
+  virtual absl::StatusOr<OwnedValueId> CreateSelection(
+      const ValueId source, const uint32_t index) = 0;
 
   // Materialize the value as a concrete structure.
   //
@@ -276,8 +276,8 @@ class ExecutorBase : public Executor,
       ExecutorValue function, std::optional<ExecutorValue> argument) = 0;
   virtual absl::StatusOr<ExecutorValue> CreateStruct(
       std::vector<ExecutorValue> members) = 0;
-  virtual absl::StatusOr<ExecutorValue> CreateSelection(ExecutorValue value,
-                                                        const uint32 index) = 0;
+  virtual absl::StatusOr<ExecutorValue> CreateSelection(
+      ExecutorValue value, const uint32_t index) = 0;
   virtual absl::Status Materialize(ExecutorValue value,
                                    v0::Value* value_pb) = 0;
   virtual ~ExecutorBase() {}
@@ -312,7 +312,7 @@ class ExecutorBase : public Executor,
   }
 
   absl::StatusOr<OwnedValueId> CreateSelection(const ValueId source,
-                                               const uint32 index) final {
+                                               const uint32_t index) final {
     auto trace = Trace("CreateSelection");
     return TrackValue(
         TFF_TRY(CreateSelection(TFF_TRY(GetTracked(source)), index)));

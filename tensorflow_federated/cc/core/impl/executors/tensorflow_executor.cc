@@ -912,7 +912,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
         });
   }
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
-                                              const uint32 index) final {
+                                              const uint32_t index) final {
     return Map(std::vector<ValueFuture>({value}),
                [index](std::vector<ExecutorValue>&& values)
                    -> absl::StatusOr<ExecutorValue> {

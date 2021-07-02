@@ -156,7 +156,7 @@ class ParallelTasksInner_ {
   bool AllDone_() ABSL_SHARED_LOCKS_REQUIRED(mutex_);
   absl::Mutex mutex_;
   absl::Status status_ ABSL_GUARDED_BY(mutex_) = absl::OkStatus();
-  uint32 remaining_tasks_ ABSL_GUARDED_BY(mutex_) = 0;
+  uint32_t remaining_tasks_ ABSL_GUARDED_BY(mutex_) = 0;
   friend class ParallelTasks;
 };
 

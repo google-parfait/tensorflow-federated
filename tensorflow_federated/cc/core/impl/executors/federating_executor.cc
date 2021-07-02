@@ -46,7 +46,7 @@ inline std::shared_ptr<OwnedValueId> ShareValueId(OwnedValueId&& id) {
   return std::make_shared<OwnedValueId>(std::move(id));
 }
 
-inline Clients NewClients(uint32 num_clients) {
+inline Clients NewClients(uint32_t num_clients) {
   auto v = std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>();
   v->reserve(num_clients);
   return v;
@@ -128,7 +128,7 @@ absl::Status CheckLenForUseAsArgument(const ExecutorValue& value,
 class FederatingExecutor : public ExecutorBase<ExecutorValue> {
  public:
   explicit FederatingExecutor(std::shared_ptr<Executor> child,
-                              uint32 num_clients)
+                              uint32_t num_clients)
       : child_(child), num_clients_(num_clients) {}
   ~FederatingExecutor() override {
     // We must make sure to delete all of our OwnedValueIds, releasing them from
@@ -138,7 +138,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
 
  private:
   std::shared_ptr<Executor> child_;
-  uint32 num_clients_;
+  uint32_t num_clients_;
 
   const char* ExecutorName() final { return "FederatingExecutor"; }
 
@@ -393,7 +393,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
   }
 
   absl::StatusOr<ExecutorValue> CreateSelection(ExecutorValue value,
-                                                const uint32 index) final {
+                                                const uint32_t index) final {
     switch (value.type()) {
       case ExecutorValue::ValueType::CLIENTS:
       case ExecutorValue::ValueType::SERVER: {

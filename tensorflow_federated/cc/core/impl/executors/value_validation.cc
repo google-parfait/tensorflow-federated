@@ -22,7 +22,7 @@ limitations under the License
 namespace tensorflow_federated {
 
 absl::StatusOr<FederatedKind> ValidateFederated(
-    uint32 num_clients, const v0::Value_Federated& federated) {
+    uint32_t num_clients, const v0::Value_Federated& federated) {
   const absl::string_view placement =
       federated.type().placement().value().uri();
   bool all_equal = federated.type().all_equal();

@@ -33,7 +33,7 @@ namespace {
 class ExecutorValue;
 
 using ValueFuture = std::shared_future<absl::StatusOr<ExecutorValue>>;
-using Children = std::tuple<uint32>;
+using Children = std::tuple<uint32_t>;
 
 inline std::shared_ptr<OwnedValueId> ShareValueId(OwnedValueId&& id) {
   return std::make_shared<OwnedValueId>(std::move(id));
@@ -157,7 +157,7 @@ using Structure = std::shared_ptr<std::vector<ExecutorValue>>;
 using ValueVariant =
     std::variant<Unplaced, Server, Clients, Structure, enum FederatedIntrinsic>;
 
-inline Clients NewClients(uint32 num_clients) {
+inline Clients NewClients(uint32_t num_clients) {
   auto v = std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>();
   v->reserve(num_clients);
   return v;
@@ -277,7 +277,7 @@ class ExecutorValue {
   // of federated values to `create_federated` and creating unrecognized
   // values inside of the `unplaced_child` executor.
   static absl::StatusOr<ExecutorValue> FromProto(
-      const v0::Value& value_pb, Executor& unplaced_child, uint32 num_clients,
+      const v0::Value& value_pb, Executor& unplaced_child, uint32_t num_clients,
       const std::function<absl::StatusOr<ExecutorValue>(
           FederatedKind, const v0::Value_Federated&)>& create_federated) {
     switch (value_pb.value_case()) {

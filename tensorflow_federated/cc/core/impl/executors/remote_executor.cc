@@ -58,7 +58,7 @@ class RemoteExecutor : public ExecutorBase<ValueFuture> {
       std::vector<ValueFuture> members) final;
 
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
-                                              const uint32 index) final;
+                                              const uint32_t index) final;
 
   absl::Status Materialize(ValueFuture value, v0::Value* value_pb) final;
 
@@ -197,7 +197,7 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateStruct(
 }
 
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateSelection(
-    ValueFuture value, const uint32 index) {
+    ValueFuture value, const uint32_t index) {
   TFF_TRY(EnsureInitialized());
   return ThreadRun(
       [source = std::move(value), index = index,

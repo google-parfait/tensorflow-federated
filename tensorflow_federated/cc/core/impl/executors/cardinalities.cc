@@ -17,7 +17,7 @@ limitations under the License
 
 namespace tensorflow_federated {
 
-absl::StatusOr<uint32> NumClientsFromCardinalities(
+absl::StatusOr<uint32_t> NumClientsFromCardinalities(
     const CardinalityMap& cardinalities) {
   auto entry_iter = cardinalities.find(kClientsUri);
   if (entry_iter == cardinalities.end()) {

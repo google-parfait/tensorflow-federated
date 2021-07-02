@@ -35,7 +35,7 @@ enum class FederatedKind {
 // In particular, checks that `all_equal` corresponds to 1, and that
 // server-placed values are `all_equal`.
 absl::StatusOr<FederatedKind> ValidateFederated(
-    uint32 num_clients, const v0::Value_Federated& federated);
+    uint32_t num_clients, const v0::Value_Federated& federated);
 
 }  // namespace tensorflow_federated
 

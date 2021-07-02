@@ -39,7 +39,7 @@ class MockExecutor : public Executor,
   MOCK_METHOD(absl::StatusOr<OwnedValueId>, CreateStruct,
               (const absl::Span<const ValueId> members), (override));
   MOCK_METHOD(absl::StatusOr<OwnedValueId>, CreateSelection,
-              (const ValueId source, const uint32 index), (override));
+              (const ValueId source, const uint32_t index), (override));
   MOCK_METHOD(absl::Status, Materialize,
               (const ValueId value, v0::Value* value_pb), (override));
   MOCK_METHOD(absl::Status, Dispose, (const ValueId value), (override));
@@ -68,7 +68,7 @@ class MockExecutor : public Executor,
                            repeatedly);
   }
 
-  inline ValueId ExpectCreateSelection(ValueId source_id, uint32 index) {
+  inline ValueId ExpectCreateSelection(ValueId source_id, uint32_t index) {
     return ReturnsNewValue(
         EXPECT_CALL(*this, CreateSelection(source_id, index)));
   }

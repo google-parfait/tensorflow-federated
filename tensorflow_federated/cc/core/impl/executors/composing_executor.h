@@ -30,20 +30,20 @@ class ComposingChild {
  public:
   static absl::StatusOr<ComposingChild> Make(
       std::shared_ptr<Executor> executor, const CardinalityMap& cardinalities) {
-    uint32 num_clients = TFF_TRY(NumClientsFromCardinalities(cardinalities));
+    uint32_t num_clients = TFF_TRY(NumClientsFromCardinalities(cardinalities));
     return ComposingChild(std::move(executor), num_clients);
   }
 
   const std::shared_ptr<Executor>& Executor() const { return executor_; }
 
-  uint32 NumClients() const { return num_clients_; }
+  uint32_t NumClients() const { return num_clients_; }
 
  private:
   std::shared_ptr<::tensorflow_federated::Executor> executor_;
-  uint32 num_clients_;
+  uint32_t num_clients_;
 
   ComposingChild(std::shared_ptr<::tensorflow_federated::Executor> executor,
-                 uint32 num_clients)
+                 uint32_t num_clients)
       : executor_(std::move(executor)), num_clients_(num_clients) {}
 };
 

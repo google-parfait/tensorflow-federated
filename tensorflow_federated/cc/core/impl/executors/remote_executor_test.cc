@@ -106,8 +106,8 @@ class RemoteExecutorTest : public ::testing::Test {
  protected:
   RemoteExecutorTest() : mock_executor_service_(mock_executor_.service()) {
     std::unique_ptr<v0::Executor::Stub> stub_ptr(mock_executor_.NewStub());
-    absl::flat_hash_map<std::string, uint32> cardinalities = {{"server", 1},
-                                                              {"clients", 1}};
+    absl::flat_hash_map<std::string, uint32_t> cardinalities = {{"server", 1},
+                                                                {"clients", 1}};
     test_executor_ = CreateRemoteExecutor(std::move(stub_ptr), cardinalities);
   }
   ~RemoteExecutorTest() { test_executor_ = nullptr; }
@@ -122,8 +122,8 @@ TEST_F(RemoteExecutorTest, ConstructRemoteExecutorFromChannel) {
       grpc::InsecureChannelCredentials();
   std::shared_ptr<grpc::Channel> channel =
       grpc::CreateChannel("fake_target", credentials);
-  absl::flat_hash_map<std::string, uint32> cardinalities = {{"server", 1},
-                                                            {"clients", 1}};
+  absl::flat_hash_map<std::string, uint32_t> cardinalities = {{"server", 1},
+                                                              {"clients", 1}};
   auto remote_executor = CreateRemoteExecutor(channel, cardinalities);
   static_assert(
       std::is_same<decltype(remote_executor), decltype(test_executor_)>::value);
