@@ -14,52 +14,54 @@
 # limitations under the License.
 #
 # Tool to publish the TensorFlow Federated pip package.
-#
-# Usage:
-#   bazel run //tensorflow_federated/tools/development:publish_pip_package -- \
-#       --package "/tmp/tensorflow_federated/"*".whl"
-#
-# Arguments:
-#   package: A path to a local pip package.
 set -e
 
-die() {
-  echo >&2 "$@"
-  exit 1
-}
+script="$(readlink -f "$0")"
+script_dir="$(dirname "${script}")"
+source "${script_dir}/common.sh"
 
 usage() {
   local script_name=$(basename "${0}")
-  echo "usage: ${script_name} [--package PATH]" 1>&2
+  local options=(
+      "--python=python3"
+      "--package=<path>"
+  )
+  echo "usage: ${script_name} ${options[@]}"
+  echo "  --python=python3  The Python version used by the environment to build"
+  echo "                    the Python package."
+  echo "  --package=<path>  A path to a local pip package."
+  exit 1
 }
 
 main() {
   # Parse arguments
+  local python="python3"
   local package=""
 
   while [[ "$#" -gt 0 ]]; do
-    opt="$1"
-    case "${opt}" in
-      --package)
-        package="$2"
+    option="$1"
+    case "${option}" in
+      --python=*)
+        python="${option#*=}"
         shift
-        # Shift might exit with an error code if no output_dir was provided.
-        shift || break
+        ;;
+      --package=*)
+        package="${option#*=}"
+        shift
         ;;
       *)
+        error_unrecognized "${option}"
         usage
-        exit 1
         ;;
     esac
   done
 
-  if [[ -z ${package} ]]; then
+  if [[ -z "${package}" ]]; then
+    error_required "--package"
     usage
-    exit 1
-  fi
-
-  if [[ ! -f "${package}" ]]; then
-    die "The package '${package}' does not exist."
+  elif [[ ! -d "${package}" ]]; then
+    error_directory_does_not_exist "--package"
+    usage
   fi
 
   # Create working directory
@@ -68,10 +70,11 @@ main() {
   pushd "${temp_dir}"
 
   # Create a virtual environment
-  virtualenv --python=python3.6 "venv"
+  virtualenv --python="${python}" "venv"
   source "venv/bin/activate"
   python --version
   pip install --upgrade pip
+  pip --version
 
   # Publish pip package
   pip install --upgrade twine

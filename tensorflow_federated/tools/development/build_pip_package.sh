@@ -14,62 +14,75 @@
 # limitations under the License.
 #
 # Tool to build the TensorFlow Federated pip package.
-#
-# Usage:
-#   bazel run //tensorflow_federated/tools/development:build_pip_package -- \
-#       --output_dir "/tmp/tensorflow_federated"
-#   bazel run //tensorflow_federated/tools/development:build_pip_package -- \
-#       --nightly \
-#       --output_dir "/tmp/tensorflow_federated"
-#
-# Arguments:
-#   nightly: A flag indicating whether or not to build the nightly version of
-#     the pip package.
-#   output_dir: An output directory.
-set -e
+set -ex
 
-die() {
-  echo >&2 "$@"
-  exit 1
-}
+script="$(readlink -f "$0")"
+script_dir="$(dirname "${script}")"
+source "${script_dir}/common.sh"
 
 usage() {
   local script_name=$(basename "${0}")
-  echo "usage: ${script_name} [--nightly] [--output_dir PATH]" 1>&2
+  local options=(
+      "--latest|--nightly"
+      "--python=python3"
+      "--output_dir=<path>"
+  )
+  echo "usage: ${script_name} ${options[@]}"
+  echo "  --latest|--nightly   Flags indicating whether to build the latest or"
+  echo "                       nightly version of the TFF Python package."
+  echo "  --python=python3     The Python version used by the environment to"
+  echo "                       build the Python package."
+  echo "  --output_dir=<path>  An output directory."
+  exit 1
 }
 
 main() {
   # Parse arguments
+  local latest=0
   local nightly=0
+  local python="python3"
   local output_dir=""
 
   while [[ "$#" -gt 0 ]]; do
-    opt="$1"
-    case "${opt}" in
-      --nightly)
-        nightly="1"
+    option="$1"
+    case "${option}" in
+      --latest)
+        latest=1
         shift
         ;;
-      --output_dir)
-        output_dir="$2"
+      --nightly)
+        nightly=1
         shift
-        # Shift might exit with an error code if no output_dir was provided.
-        shift || break
+        ;;
+      --python=*)
+        python="${option#*=}"
+        shift
+        ;;
+      --output_dir=*)
+        output_dir="${option#*=}"
+        shift
         ;;
       *)
+        error_unrecognized "${option}"
         usage
-        exit 1
         ;;
     esac
   done
 
-  if [[ -z ${output_dir} ]]; then
+  if [[ "${latest}" == "1" ]] && [[ "${nightly}" == "1" ]]; then
+    error_exclusive "--latest" "--nightly"
     usage
-    exit 1
+  elif [[ "${latest}" == "0" ]] && [[ "${nightly}" == "0" ]]; then
+    error_required "--latest" "--nightly"
+    usage
   fi
 
-  if [[ ! -d "${output_dir}" ]]; then
-    die "The output directory '${output_dir}' does not exist."
+  if [[ -z "${output_dir}" ]]; then
+    error_required "--output_dir"
+    usage
+  elif [[ ! -d "${output_dir}" ]]; then
+    error_directory_does_not_exist "--output_dir"
+    usage
   fi
 
   # Create working directory
@@ -79,25 +92,28 @@ main() {
   pushd "${temp_dir}"
 
   # Create a virtual environment
-  virtualenv --python=python3.6 "venv"
+  virtualenv --python="${python}" "venv"
   source "venv/bin/activate"
   python --version
   pip install --upgrade pip
+  pip --version
 
   # Build pip package
   pip install --upgrade setuptools wheel
   flags=()
-  if [[ ${nightly} == "1" ]]; then
+  if [[ "${latest}" == "1" ]]; then
+    :  # pass
+  elif [[ "${nightly}" == "1" ]]; then
     flags+=("--nightly")
   fi
   python "tensorflow_federated/tools/development/setup.py" bdist_wheel \
       --universal \
       "${flags[@]}"
+  cp "${temp_dir}/dist/"* "${output_dir}"
 
   # Cleanup
   deactivate
   popd
-  cp "${temp_dir}/dist/"* "${output_dir}"
 }
 
 main "$@"
