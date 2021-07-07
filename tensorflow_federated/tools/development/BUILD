@@ -10,6 +10,7 @@ sh_binary(
     name = "build_pip_package",
     srcs = ["build_pip_package.sh"],
     data = [
+        ":common",
         ":setup",
         "//tensorflow_federated",
         "//tensorflow_federated/experimental/python",
@@ -41,6 +42,11 @@ sh_binary(
     ],
 )
 
+sh_binary(
+    name = "common",
+    srcs = ["common.sh"],
+)
+
 filegroup(
     name = "setup",
     srcs = ["setup.py"],
@@ -50,9 +56,15 @@ filegroup(
 sh_binary(
     name = "publish_pip_package",
     srcs = ["publish_pip_package.sh"],
+    data = [
+        ":common",
+    ],
 )
 
 sh_binary(
     name = "test_pip_package",
     srcs = ["test_pip_package.sh"],
+    data = [
+        ":common",
+    ],
 )
