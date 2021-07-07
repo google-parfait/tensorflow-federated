@@ -31,6 +31,7 @@ limitations under the License
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
@@ -68,7 +69,7 @@ class RemoteExecutor : public ExecutorBase<ValueFuture> {
   absl::Status Materialize(ValueFuture value, v0::Value* value_pb) final;
 
  private:
-  grpc::Status EnsureInitialized();
+  absl::Status EnsureInitialized();
   std::shared_ptr<v0::Executor::StubInterface> stub_;
   absl::Mutex mutex_;
   bool cardinalities_set_ ABSL_GUARDED_BY(mutex_) = false;
@@ -89,10 +90,10 @@ class ExecutorValue {
       v0::ValueRef value_to_dispose;
       *value_to_dispose.mutable_id() = dispose_id;
       request.mutable_value_ref()->Add(std::move(value_to_dispose));
-      absl::Status dispose_status = stub->Dispose(&context, request, &response);
+      grpc::Status dispose_status = stub->Dispose(&context, request, &response);
       if (!dispose_status.ok()) {
         LOG(ERROR) << "Error disposing of ExecutorValue [" << dispose_id
-                   << "]: " << dispose_status;
+                   << "]: " << grpc_to_absl(dispose_status);
       }
     });
   }
@@ -104,7 +105,7 @@ class ExecutorValue {
   std::shared_ptr<v0::Executor::StubInterface> stub_;
 };
 
-grpc::Status RemoteExecutor::EnsureInitialized() {
+absl::Status RemoteExecutor::EnsureInitialized() {
   absl::MutexLock lock(&mutex_);
   if (cardinalities_set_) {
     return absl::OkStatus();
@@ -125,7 +126,7 @@ grpc::Status RemoteExecutor::EnsureInitialized() {
   if (result.ok()) {
     cardinalities_set_ = true;
   }
-  return result;
+  return grpc_to_absl(result);
 }
 
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateExecutorValue(
@@ -141,9 +142,7 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateExecutorValue(
         grpc::ClientContext client_context;
         grpc::Status status =
             stub->CreateValue(&client_context, request, &response);
-        if (!status.ok()) {
-          return status;
-        }
+        TFF_TRY(grpc_to_absl(status));
         return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
                                                stub);
       });
@@ -168,9 +167,7 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateCall(
         }
 
         grpc::Status status = stub->CreateCall(&context, request, &response);
-        if (!status.ok()) {
-          return status;
-        }
+        TFF_TRY(grpc_to_absl(status));
         return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
                                                stub);
       });
@@ -193,9 +190,7 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateStruct(
           request.mutable_element()->Add(std::move(struct_elem));
         }
         grpc::Status status = stub->CreateStruct(&context, request, &response);
-        if (!status.ok()) {
-          return status;
-        }
+        TFF_TRY(grpc_to_absl(status));
         return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
                                                stub);
       });
@@ -215,9 +210,7 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateSelection(
         request.set_index(index);
         grpc::Status status =
             stub->CreateSelection(&context, request, &response);
-        if (!status.ok()) {
-          return status;
-        }
+        TFF_TRY(grpc_to_absl(status));
         return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
                                                stub);
       });
@@ -234,7 +227,7 @@ absl::Status RemoteExecutor::Materialize(ValueFuture value,
   grpc::Status status =
       stub_->Compute(&client_context, request, &compute_response);
   *value_pb = std::move(*compute_response.mutable_value());
-  return status;
+  return grpc_to_absl(status);
 }
 
 std::shared_ptr<Executor> CreateRemoteExecutor(

@@ -32,6 +32,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
@@ -155,7 +156,7 @@ class ExecutorServiceTest : public ::testing::Test {
     grpc::ServerContext server_context;
     auto ok_status = executor_service_.SetCardinalities(
         &server_context, &request_pb, &response_pb);
-    TFF_ASSERT_OK(ok_status);
+    TFF_ASSERT_OK(grpc_to_absl(ok_status));
   }
 
  protected:
@@ -171,8 +172,8 @@ TEST_F(ExecutorServiceTest, SetCardinalitiesReturnsOK) {
   v0::SetCardinalitiesResponse response_pb;
   grpc::ServerContext server_context;
 
-  TFF_EXPECT_OK(executor_service_.SetCardinalities(&server_context, &request_pb,
-                                                   &response_pb));
+  TFF_EXPECT_OK(grpc_to_absl(executor_service_.SetCardinalities(
+      &server_context, &request_pb, &response_pb)));
 }
 
 TEST_F(ExecutorServiceTest, CreateValueReturnsZeroRef) {
@@ -184,8 +185,8 @@ TEST_F(ExecutorServiceTest, CreateValueReturnsZeroRef) {
     return TestId(0);
   });
 
-  TFF_ASSERT_OK(executor_service_.CreateValue(&server_context, &request_pb,
-                                              &response_pb));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.CreateValue(
+      &server_context, &request_pb, &response_pb)));
   // First element in the id is the id in the mock executor; the second is the
   // executor's generation.
   EXPECT_THAT(response_pb, testing::EqualsProto("value_ref { id: '0-0' }"));
@@ -215,10 +216,10 @@ TEST_F(ExecutorServiceTest, SetCardinalitiesIncrementsExecutorGeneration) {
   auto second_response_status = executor_service_.CreateValue(
       &server_context, &request_pb, &second_response_pb);
 
-  TFF_ASSERT_OK(first_response_status);
+  TFF_ASSERT_OK(grpc_to_absl(first_response_status));
   EXPECT_THAT(first_response_pb,
               testing::EqualsProto("value_ref { id: '0-0' }"));
-  TFF_ASSERT_OK(second_response_status);
+  TFF_ASSERT_OK(grpc_to_absl(second_response_status));
   EXPECT_THAT(second_response_pb,
               testing::EqualsProto("value_ref { id: '0-1' }"));
 }
@@ -275,8 +276,7 @@ TEST_F(ExecutorServiceTest, ComputeUnknownRefForwardsFromMock) {
   v0::ComputeRequest compute_request_pb = ComputeRequestForId("0-0");
   EXPECT_CALL(*executor_ptr_, Materialize(::testing::_, ::testing::_))
       .WillOnce([](ValueId id, v0::Value* val) {
-        return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT,
-                            "Unknown value ref");
+        return absl::InvalidArgumentError("Unknown value ref");
       });
 
   auto compute_response_status = executor_service_.Compute(
@@ -316,17 +316,17 @@ TEST_F(ExecutorServiceTest, ComputeReturnsMockValue) {
   });
   EXPECT_CALL(*executor_ptr_, Materialize(::testing::_, ::testing::_))
       .WillOnce([&expected_value](ValueId id, v0::Value* val) {
-        val->CopyFrom(expected_value);
-        return grpc::Status::OK;
+        *val = expected_value;
+        return absl::OkStatus();
       });
 
-  TFF_ASSERT_OK(executor_service_.CreateValue(&server_context, &request_pb,
-                                              &create_value_response_pb));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.CreateValue(
+      &server_context, &request_pb, &create_value_response_pb)));
 
   v0::ComputeRequest compute_request_pb =
       ComputeRequestForId(create_value_response_pb.value_ref().id());
-  TFF_ASSERT_OK(executor_service_.Compute(&server_context, &compute_request_pb,
-                                          &compute_response_pb));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.Compute(
+      &server_context, &compute_request_pb, &compute_response_pb)));
   EXPECT_THAT(compute_response_pb.value(),
               testing::EqualsProto(expected_value));
 }
@@ -351,26 +351,25 @@ TEST_F(ExecutorServiceTest, ComputeTwoValuesReturnsAppropriateValues) {
 
   // We expect materializing the 0th id to retun 3, the 1st to return 4.
   EXPECT_CALL(*executor_ptr_, Materialize(::testing::_, ::testing::_))
-      .WillRepeatedly([&expected_three, &expected_four](ValueId id,
-                                                        v0::Value* val) {
-        if (id == 0) {
-          val->CopyFrom(expected_three);
-          return grpc::Status::OK;
-        } else if (id == 1) {
-          val->CopyFrom(expected_four);
-          return grpc::Status::OK;
-        } else {
-          return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "Unknown id");
-        }
-      });
+      .WillRepeatedly(
+          [&expected_three, &expected_four](ValueId id, v0::Value* val) {
+            if (id == 0) {
+              *val = expected_three;
+            } else if (id == 1) {
+              *val = expected_four;
+            } else {
+              return absl::InvalidArgumentError("Unknown id");
+            }
+            return absl::OkStatus();
+          });
 
   auto first_create_value_response_status = executor_service_.CreateValue(
       &server_context, &request_pb, &first_value_response_pb);
   auto second_create_value_response_status = executor_service_.CreateValue(
       &server_context, &request_pb, &second_value_response_pb);
 
-  TFF_ASSERT_OK(first_create_value_response_status);
-  TFF_ASSERT_OK(second_create_value_response_status);
+  TFF_ASSERT_OK(grpc_to_absl(first_create_value_response_status));
+  TFF_ASSERT_OK(grpc_to_absl(second_create_value_response_status));
 
   v0::ComputeRequest first_compute_request_pb =
       ComputeRequestForId(first_value_response_pb.value_ref().id());
@@ -380,8 +379,8 @@ TEST_F(ExecutorServiceTest, ComputeTwoValuesReturnsAppropriateValues) {
       &server_context, &first_compute_request_pb, &first_compute_response_pb);
   auto second_compute_response_status = executor_service_.Compute(
       &server_context, &second_compute_request_pb, &second_compute_response_pb);
-  TFF_ASSERT_OK(first_compute_response_status);
-  TFF_ASSERT_OK(second_compute_response_status);
+  TFF_ASSERT_OK(grpc_to_absl(first_compute_response_status));
+  TFF_ASSERT_OK(grpc_to_absl(second_compute_response_status));
 
   // We expect materializing the 0th id to retun 3, the 1st to return 4.
   EXPECT_THAT(first_compute_response_pb.value(),
@@ -400,7 +399,7 @@ TEST_F(ExecutorServiceTest, DisposePassesCallsDown) {
   EXPECT_CALL(*executor_ptr_, Dispose(1)).WillOnce(ReturnOk);
   auto dispose_status = executor_service_.Dispose(
       &server_context, &dispose_request, &dispose_response);
-  TFF_ASSERT_OK(dispose_status);
+  TFF_ASSERT_OK(grpc_to_absl(dispose_status));
 }
 
 TEST_F(ExecutorServiceTest, DisposeFiltersBadGeneration) {
@@ -412,8 +411,8 @@ TEST_F(ExecutorServiceTest, DisposeFiltersBadGeneration) {
   // We expect one forwarded dispose call, as the generation of the second id is
   // not live.
   EXPECT_CALL(*executor_ptr_, Dispose(0)).WillOnce(ReturnOk);
-  TFF_ASSERT_OK(executor_service_.Dispose(&server_context, &dispose_request,
-                                          &dispose_response));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.Dispose(
+      &server_context, &dispose_request, &dispose_response)));
 }
 
 TEST_F(ExecutorServiceTest, ClearExecutorThenCreateValueFails) {
@@ -424,8 +423,8 @@ TEST_F(ExecutorServiceTest, ClearExecutorThenCreateValueFails) {
   auto request_pb = CreateValueFloatRequest(2.0f);
   v0::CreateValueResponse response_pb;
 
-  TFF_ASSERT_OK(executor_service_.ClearExecutor(
-      &server_context, &clear_executor_request, &clear_executor_response));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.ClearExecutor(
+      &server_context, &clear_executor_request, &clear_executor_response)));
 
   auto create_value_response_status =
       executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
@@ -443,8 +442,8 @@ TEST_F(ExecutorServiceTest, ClearExecutorThenDisposeFails) {
   v0::DisposeResponse dispose_response;
   grpc::ServerContext server_context;
 
-  TFF_ASSERT_OK(executor_service_.ClearExecutor(
-      &server_context, &clear_executor_request, &clear_executor_response));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.ClearExecutor(
+      &server_context, &clear_executor_request, &clear_executor_response)));
 
   auto dispose_response_status = executor_service_.Dispose(
       &server_context, &dispose_request, &dispose_response);
@@ -479,8 +478,8 @@ TEST_F(ExecutorServiceTest, CreateCallNoArgFn) {
   EXPECT_CALL(*executor_ptr_, CreateCall(0, ::testing::Eq(absl::nullopt)))
       .WillOnce([this] { return TestId(1); });
 
-  TFF_ASSERT_OK(executor_service_.CreateCall(&server_context, &call_request,
-                                             &create_call_response_pb));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.CreateCall(
+      &server_context, &call_request, &create_call_response_pb)));
 
   EXPECT_THAT(create_call_response_pb,
               testing::EqualsProto("value_ref { id: '1-0' }"));
@@ -494,8 +493,8 @@ TEST_F(ExecutorServiceTest, CreateCallFunctionWithArgument) {
   EXPECT_CALL(*executor_ptr_, CreateCall(0, ::testing::Optional(1)))
       .WillOnce([this] { return TestId(2); });
 
-  TFF_ASSERT_OK(executor_service_.CreateCall(&server_context, &call_request,
-                                             &create_call_response_pb));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.CreateCall(
+      &server_context, &call_request, &create_call_response_pb)));
 
   EXPECT_THAT(create_call_response_pb,
               testing::EqualsProto("value_ref { id: '2-0' }"));
@@ -527,8 +526,8 @@ TEST_F(ExecutorServiceTest, CreateSelection) {
                                         &second_selection_request,
                                         &second_create_selection_response_pb);
 
-  TFF_ASSERT_OK(first_create_selection_response_status);
-  TFF_ASSERT_OK(second_create_selection_response_status);
+  TFF_ASSERT_OK(grpc_to_absl(first_create_selection_response_status));
+  TFF_ASSERT_OK(grpc_to_absl(second_create_selection_response_status));
   EXPECT_THAT(first_create_selection_response_pb,
               testing::EqualsProto("value_ref { id: '1-0' }"));
   EXPECT_THAT(second_create_selection_response_pb,
@@ -557,8 +556,8 @@ TEST_F(ExecutorServiceTest, CreateEmptyStruct) {
               CreateStruct(::testing::Eq(std::vector<ValueId>{})))
       .WillOnce([this] { return TestId(0); });
 
-  TFF_ASSERT_OK(executor_service_.CreateStruct(&server_context, &struct_request,
-                                               &struct_response_pb));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.CreateStruct(
+      &server_context, &struct_request, &struct_response_pb)));
 
   EXPECT_THAT(struct_response_pb,
               testing::EqualsProto("value_ref { id: '0-0' }"));
@@ -573,8 +572,8 @@ TEST_F(ExecutorServiceTest, CreateNonemptyStruct) {
               CreateStruct(::testing::Eq(std::vector<ValueId>{0, 1})))
       .WillOnce([this] { return TestId(0); });
 
-  TFF_ASSERT_OK(executor_service_.CreateStruct(&server_context, &struct_request,
-                                               &struct_response_pb));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.CreateStruct(
+      &server_context, &struct_request, &struct_response_pb)));
 
   EXPECT_THAT(struct_response_pb,
               testing::EqualsProto("value_ref { id: '0-0' }"));
@@ -590,8 +589,8 @@ TEST_F(ExecutorServiceTest, CreateNamedNonemptyStruct) {
               CreateStruct(::testing::Eq(std::vector<ValueId>{0, 1})))
       .WillOnce([this] { return TestId(0); });
 
-  TFF_ASSERT_OK(executor_service_.CreateStruct(&server_context, &struct_request,
-                                               &struct_response_pb));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.CreateStruct(
+      &server_context, &struct_request, &struct_response_pb)));
 
   EXPECT_THAT(struct_response_pb,
               testing::EqualsProto("value_ref { id: '0-0' }"));

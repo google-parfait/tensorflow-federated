@@ -32,6 +32,7 @@ limitations under the License
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -132,15 +133,17 @@ class ExecutorService : public v0::Executor::Service {
   // have generation 0.
   std::pair<std::shared_ptr<Executor>, int> executor_and_generation_
       ABSL_GUARDED_BY(executor_mutex_) = std::make_pair(nullptr, -1);
-  absl::StatusOr<std::pair<std::shared_ptr<Executor>, int>> RequireExecutor_(
-      std::string method_name);
-  absl::Status EnsureGeneration_(int, int);
+  grpc::Status RequireExecutor_(std::string method_name,
+                                std::shared_ptr<Executor>* executor_out,
+                                int* generation_out);
+  grpc::Status EnsureGeneration_(int, int);
   // We StatusOr here so that we can check whether the incoming RemoteValueIds
   // correspond to the currently live executor. RemoteValueId is a string of the
   // format "a-b", where a is a uint64_t and b is another int. a represents the
   // ValueId of the underlying value in executor_, and b represents the
   // generation of executor_.
-  absl::StatusOr<ValueId> ResolveRemoteValue_(const v0::ValueRef&, int);
+  grpc::Status ResolveRemoteValue_(const v0::ValueRef&, int,
+                                   ValueId* value_id_out);
   RemoteValueId CreateRemoteValue_(ValueId, int);
 };
 }  // namespace tensorflow_federated

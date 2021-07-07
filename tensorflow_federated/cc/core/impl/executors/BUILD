@@ -116,7 +116,6 @@ cc_library(
     tags = ["nokokoro"],
     deps = [
         ":status_macros",
-        "//base:logging",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/base:core_headers",
@@ -139,6 +138,7 @@ cc_library(
     deps = [
         ":cardinalities",
         ":executor",
+        ":status_conversion",
         ":status_macros",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
@@ -163,6 +163,7 @@ cc_test(
         ":executor_service",
         ":mock_executor",
         ":protobuf_matchers",
+        ":status_conversion",
         ":status_matchers",
         ":value_test_utils",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -352,6 +353,7 @@ cc_library(
     deps = [
         ":cardinalities",
         ":executor",
+        ":status_conversion",
         ":status_macros",
         ":threading",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -412,6 +414,17 @@ pybind_extension(
         "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
         "@pybind11_protobuf//pybind11_protobuf:wrapped_proto_caster",
+    ],
+)
+
+cc_library(
+    name = "status_conversion",
+    srcs = ["status_conversion.cc"],
+    hdrs = ["status_conversion.h"],
+    tags = ["nokokoro"],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/status",
     ],
 )
 
