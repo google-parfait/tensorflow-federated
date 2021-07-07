@@ -1,6 +1,15 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = ["//visibility:private"])
+package_group(
+    name = "default_visibility",
+    includes = ["//tensorflow_federated/python/learning:learning_visibility"],
+    packages = [
+        # Subpackages
+        "//tensorflow_federated/python/learning/reconstruction/...",
+    ],
+)
+
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 
@@ -8,7 +17,17 @@ py_library(
     name = "reconstruction",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/tools:__subpackages__"],
+    visibility = [
+        "//tensorflow_federated/python/learning:__pkg__",
+        "//tensorflow_federated/tools:__subpackages__",
+    ],
+    deps = [
+        ":evaluation_computation",
+        ":keras_utils",
+        ":model",
+        ":reconstruction_utils",
+        ":training_process",
+    ],
 )
 
 py_library(

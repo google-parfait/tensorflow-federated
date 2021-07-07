@@ -40,6 +40,7 @@ py_library(
         ":personalization_eval",
         "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
+        "//tensorflow_federated/python/learning/reconstruction",
     ],
 )
 
