@@ -441,13 +441,18 @@ def map_structure(fn, *structures: Struct):
     `x[i]` is a value in the corresponding location in `structure[i]`.
 
   Raises:
-    TypeError: if `fn` is not a callable, or *structure contains types other
-      than `Struct`.
+    TypeError: if `fn` is not a callable, or *structure is not all `Struct` or
+      all `tf.Tensor` typed values.
     ValueError: if `*structure` is empty.
   """
   py_typecheck.check_callable(fn)
   if not structures:
     raise ValueError('Must provide at least one structure')
+
+  # Mimic tf.nest.map_structure, if all elements are tensors, just apply `fn` to
+  # the incoming values directly.
+  if all(tf.is_tensor(s) for s in structures):
+    return fn(*structures)
 
   py_typecheck.check_type(structures[0], Struct)
   for i, other in enumerate(structures[1:]):

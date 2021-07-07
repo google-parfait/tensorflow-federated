@@ -14,14 +14,13 @@
 
 import collections
 
-from absl.testing import absltest
 import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 
 
-class StructTest(absltest.TestCase):
+class StructTest(tf.test.TestCase):
 
   def test_new_named(self):
     x = structure.Struct.named(a=1, b=4)
@@ -367,6 +366,35 @@ class StructTest(absltest.TestCase):
                 z=structure.Struct.named(q=55, r=66)),
             c=22))
 
+  def test_map_structure_tensor_fails(self):
+    x = structure.Struct.named(a=10, c=20)
+    y = tf.constant(2)
+    with self.assertRaises(TypeError):
+      structure.map_structure(tf.add, x, y)
+    x = structure.Struct.named(a='abc', c='xyz')
+    y = tf.strings.bytes_split('abc')
+    with self.assertRaises(TypeError):
+      structure.map_structure(tf.add, x, y)
+
+  def test_map_structure_fails_different_structures(self):
+    x = structure.Struct.named(a=10, c=20)
+    y = structure.Struct.named(a=30)
+    with self.assertRaises(TypeError):
+      structure.map_structure(tf.add, x, y)
+    x = structure.Struct.named(a=10)
+    y = structure.Struct.named(a=30, c=tf.strings.bytes_split('abc'))
+    with self.assertRaises(TypeError):
+      structure.map_structure(tf.add, x, y)
+
+  def test_map_structure_tensors(self):
+    x = tf.constant(1)
+    y = tf.constant(2)
+    self.assertAllEqual(structure.map_structure(tf.add, x, y), 3)
+    x = tf.strings.bytes_split('abc')
+    y = tf.strings.bytes_split('xyz')
+    self.assertAllEqual(
+        structure.map_structure(tf.add, x, y), ['ax', 'by', 'cz'])
+
   def test_from_container_with_none(self):
     with self.assertRaises(TypeError):
       structure.from_container(None)
@@ -611,4 +639,4 @@ class StructTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  absltest.main()
+  tf.test.main()
