@@ -16,7 +16,7 @@
 import collections
 import pprint
 import time
-from typing import Any, Callable, List, Mapping, Optional, Tuple
+from typing import Any, Callable, List, MutableMapping, Optional, Tuple
 
 from absl import logging
 
@@ -24,7 +24,7 @@ from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.simulation import checkpoint_manager
 from tensorflow_federated.python.simulation import metrics_manager
 
-MetricsType = Mapping[str, Any]
+MetricsType = MutableMapping[str, Any]
 FileCheckpointManager = checkpoint_manager.FileCheckpointManager
 MetricsManager = metrics_manager.MetricsManager
 ValidationFnType = Callable[[Any, int], MetricsType]
