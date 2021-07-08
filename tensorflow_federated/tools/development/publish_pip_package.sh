@@ -59,8 +59,8 @@ main() {
   if [[ -z "${package}" ]]; then
     error_required "--package"
     usage
-  elif [[ ! -d "${package}" ]]; then
-    error_directory_does_not_exist "--package"
+  elif [[ ! -f "${package}" ]]; then
+    error_file_does_not_exist "${package}"
     usage
   fi
 

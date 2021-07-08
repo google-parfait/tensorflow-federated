@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 # Tool to build the TensorFlow Federated pip package.
-set -ex
+set -e
 
 script="$(readlink -f "$0")"
 script_dir="$(dirname "${script}")"
@@ -81,7 +81,7 @@ main() {
     error_required "--output_dir"
     usage
   elif [[ ! -d "${output_dir}" ]]; then
-    error_directory_does_not_exist "--output_dir"
+    error_directory_does_not_exist "${output_dir}"
     usage
   fi
 
