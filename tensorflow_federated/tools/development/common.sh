@@ -28,6 +28,10 @@ error_exclusive() {
   echo "error: can not specify both options ${options}" 1>&2
 }
 
+error_file_does_not_exist() {
+  echo "error: the file '$@' does not exist" 1>&2
+}
+
 error_required() {
   local options=()
   for option in "$@"; do

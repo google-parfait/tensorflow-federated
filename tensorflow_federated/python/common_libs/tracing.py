@@ -290,12 +290,7 @@ def _current_task() -> Optional[asyncio.Task]:
   # Note: `current_task` returns `None` if there is no current task, but it
   # throws if no currently running async loop.
   try:
-    # asyncio.Task.current_task was moved to asyncio.current_task() starting
-    # with 3.9, but previoulsy was asyncio.Task.current() until Python 3.6.
-    if sys.version_info[1] >= 7:
-      return asyncio.current_task()
-    else:
-      return asyncio.Task.current_task()
+    return asyncio.current_task()
   except RuntimeError:
     return None
 
