@@ -60,7 +60,7 @@ main() {
     error_required "--package"
     usage
   elif [[ ! -d "${package}" ]]; then
-    error_directory_does_not_exist "--package"
+    error_directory_does_not_exist "${package}"
     usage
   fi
 
