@@ -15,8 +15,8 @@ limitations under the License
 
 #include <memory>
 
+#include "net/grpc/public/include/grpcpp/impl/codegen/channel_interface.h"
 #include "absl/types/span.h"
-#include "grpc/include/grpcpp/channel.h"
 #include "pybind11/include/pybind11/detail/common.h"
 #include "pybind11/include/pybind11/pybind11.h"
 #include "pybind11/include/pybind11/stl.h"

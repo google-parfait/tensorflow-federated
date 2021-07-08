@@ -155,6 +155,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
 
 
+# TODO(b/192094313): refactor to accept tff.learning.Optimizer arguments
 def build_federated_sgd_process(
     model_fn: Callable[[], model_lib.Model],
     server_optimizer_fn: Callable[
@@ -222,7 +223,7 @@ def build_federated_sgd_process(
       `model.report_local_outputs` and returns a tensor that provides the weight
       in the federated average of model deltas. If `None`, defaults to weighting
       by number of examples.
-    broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
+    broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`.
     model_update_aggregation_factory: An optional

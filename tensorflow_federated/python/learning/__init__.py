@@ -14,6 +14,7 @@
 """Libraries for using Federated Learning algorithms."""
 
 from tensorflow_federated.python.learning import framework
+from tensorflow_federated.python.learning import optimizers
 from tensorflow_federated.python.learning import reconstruction
 from tensorflow_federated.python.learning.client_weight_lib import ClientWeighting
 from tensorflow_federated.python.learning.federated_averaging import build_federated_averaging_process

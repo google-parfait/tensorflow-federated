@@ -28,10 +28,10 @@ from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -146,7 +146,7 @@ class RemoteValueTest(absltest.TestCase):
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
                                        executor)
 
-    with self.assertRaises(execution_context.RetryableError):
+    with self.assertRaises(executors_errors.RetryableError):
       loop.run_until_complete(comp.compute())
 
   def test_compute_reraises_grpc_error(self, mock_stub):
@@ -210,7 +210,7 @@ class RemoteExecutorTest(absltest.TestCase):
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
 
-    with self.assertRaises(execution_context.RetryableError):
+    with self.assertRaises(executors_errors.RetryableError):
       loop.run_until_complete(executor.create_value(1, tf.int32))
 
   def test_create_value_reraises_grpc_error(self, mock_stub):
@@ -259,7 +259,7 @@ class RemoteExecutorTest(absltest.TestCase):
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
                                        executor)
 
-    with self.assertRaises(execution_context.RetryableError):
+    with self.assertRaises(executors_errors.RetryableError):
       loop.run_until_complete(executor.create_call(comp, None))
 
   def test_create_call_reraises_grpc_error(self, mock_stub):
@@ -317,7 +317,7 @@ class RemoteExecutorTest(absltest.TestCase):
     value_2 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                           type_signature, executor)
 
-    with self.assertRaises(execution_context.RetryableError):
+    with self.assertRaises(executors_errors.RetryableError):
       loop.run_until_complete(executor.create_struct([value_1, value_2]))
 
   def test_create_struct_reraises_grpc_error(self, mock_stub):
@@ -377,7 +377,7 @@ class RemoteExecutorTest(absltest.TestCase):
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                          type_signature, executor)
 
-    with self.assertRaises(execution_context.RetryableError):
+    with self.assertRaises(executors_errors.RetryableError):
       loop.run_until_complete(executor.create_selection(source, 0))
 
   def test_create_selection_reraises_non_retryable_grpc_error(self, mock_stub):

@@ -254,6 +254,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
@@ -262,6 +264,7 @@ py_cpu_gpu_test(
     name = "optimizer_utils_test",
     srcs = ["optimizer_utils_test.py"],
     python_version = "PY3",
+    shard_count = 10,
     srcs_version = "PY3",
     deps = [
         ":optimizer_utils",
@@ -281,6 +284,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )
 

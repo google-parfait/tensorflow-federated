@@ -10,6 +10,7 @@ package_group(
 
         # Impl Dependencies
         "//tensorflow_federated/python/core/impl/computation/...",
+        "//tensorflow_federated/python/core/impl/execution_contexts/...",
         "//tensorflow_federated/python/core/impl/executors/...",
         "//tensorflow_federated/python/core/impl/executor_stacks/...",
         "//tensorflow_federated/python/core/impl/federated_context/...",
@@ -322,8 +323,10 @@ py_library(
         ":intrinsic_defs",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
 

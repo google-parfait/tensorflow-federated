@@ -224,7 +224,6 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
       ('sequence_type', tf.math.add, computation_types.SequenceType(tf.int32)),
   )
   def test_raises_type_error(self, operator, type_signature):
-
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_binary_operator(
           operator, type_signature)
@@ -235,16 +234,10 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('add_int_same_shape', tf.math.add,
-       _StructType([
-           _TensorType(tf.int32),
-           _TensorType(tf.int32),
-       ]),
+       _StructType([_TensorType(tf.int32), _TensorType(tf.int32)]),
        [1, 2], 3),
       ('add_int_different_shape', tf.math.add,
-       _StructType([
-           _TensorType(tf.int32, shape=[1]),
-           _TensorType(tf.int32),
-       ]),
+       _StructType([_TensorType(tf.int32, shape=[1]), _TensorType(tf.int32)]),
        [np.array([1]), 2], 3),
       ('add_int_different_types', tf.math.add,
        _StructType([
@@ -255,16 +248,10 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
        [[np.array([1])], 2],
        structure.Struct([(None, 3)])),
       ('multiply_int_same_shape', tf.math.multiply,
-       _StructType([
-           _TensorType(tf.int32),
-           _TensorType(tf.int32),
-       ]),
+       _StructType([_TensorType(tf.int32), _TensorType(tf.int32)]),
        [1, 2], 2),
       ('multiply_int_different_shape', tf.math.multiply,
-       _StructType([
-           _TensorType(tf.int32, shape=[1]),
-           _TensorType(tf.int32),
-       ]),
+       _StructType([_TensorType(tf.int32, shape=[1]), _TensorType(tf.int32)]),
        [np.array([1]), 2], 2),
       ('multiply_int_different_types', tf.math.multiply,
        _StructType([
@@ -275,16 +262,10 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
        [[np.array([1])], 2],
        structure.Struct([(None, 2)])),
       ('divide_int_same_shape', tf.math.divide,
-       _StructType([
-           _TensorType(tf.int32),
-           _TensorType(tf.int32),
-       ]),
+       _StructType([_TensorType(tf.int32), _TensorType(tf.int32)]),
        [1, 2], 0.5),
       ('divide_int_different_shape', tf.math.divide,
-       _StructType([
-           _TensorType(tf.int32, shape=[1]),
-           _TensorType(tf.int32),
-       ]),
+       _StructType([_TensorType(tf.int32, shape=[1]), _TensorType(tf.int32)]),
        [np.array([1]), 2], 0.5),
       ('divide_int_different_types', tf.math.divide,
        _StructType([
