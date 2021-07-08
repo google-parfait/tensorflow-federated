@@ -54,11 +54,25 @@ class TensorFlowComputationFactory(
 
   def create_plus_operator(
       self, type_spec: computation_types.Type) -> ComputationProtoAndType:
-    return create_binary_operator(tf.add, type_spec)
+
+    def plus(a, b):
+      if type_spec.is_struct():
+        return structure.map_structure(tf.add, a, b)
+      else:
+        return tf.add(a, b)
+
+    return create_binary_operator(plus, type_spec)
 
   def create_multiply_operator(
       self, type_spec: computation_types.Type) -> ComputationProtoAndType:
-    return create_binary_operator(tf.multiply, type_spec)
+
+    def multiply(a, b):
+      if type_spec.is_struct():
+        return structure.map_structure(tf.multiply, a, b)
+      else:
+        return tf.multiply(a, b)
+
+    return create_binary_operator(multiply, type_spec)
 
   def create_scalar_multiply_operator(
       self, operand_type: computation_types.Type,
@@ -170,8 +184,54 @@ def create_constant(
   return _tensorflow_comp(tensorflow, type_signature)
 
 
-def create_binary_operator(
+def create_unary_operator(
     operator, operand_type: computation_types.Type) -> ComputationProtoAndType:
+  """Returns a tensorflow computation computing a unary operation.
+
+  The returned computation has the type signature `(T -> U)`, where `T` is
+  `operand_type` and `U` is the result of applying the `operator` to a value of
+  type `T`
+
+  Args:
+    operator: A callable taking one argument representing the operation to
+      encode For example: `tf.math.abs`.
+    operand_type: A `computation_types.Type` to use as the argument to the
+      constructed unary operator; must contain only named tuples and tensor
+      types.
+
+  Raises:
+    TypeError: If the constraints of `operand_type` are violated or `operator`
+      is not callable.
+  """
+  if (operand_type is None or
+      not type_analysis.is_generic_op_compatible_type(operand_type)):
+    raise TypeError(
+        '`operand_type` contains a type other than '
+        '`computation_types.TensorType` and `computation_types.StructType`; '
+        f'this is disallowed in the generic operators. Got: {operand_type} ')
+  py_typecheck.check_callable(operator)
+
+  with tf.Graph().as_default() as graph:
+    operand_value, operand_binding = tensorflow_utils.stamp_parameter_in_graph(
+        'x', operand_type, graph)
+    result_value = operator(operand_value)
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        result_value, graph)
+
+  type_signature = computation_types.FunctionType(operand_type, result_type)
+  parameter_binding = operand_binding
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+      parameter=parameter_binding,
+      result=result_binding)
+  return _tensorflow_comp(tensorflow, type_signature)
+
+
+def create_binary_operator(
+    operator,
+    operand_type: computation_types.Type,
+    second_operand_type: Optional[computation_types.Type] = None
+) -> ComputationProtoAndType:
   """Returns a tensorflow computation computing a binary operation.
 
   The returned computation has the type signature `(<T,T> -> U)`, where `T` is
@@ -192,6 +252,10 @@ def create_binary_operator(
     operand_type: A `computation_types.Type` to use as the argument to the
       constructed binary operator; must contain only named tuples and tensor
       types.
+    second_operand_type: An optional `computation_types.Type` to use as the
+      seocnd argument to the constructed binary operator. If `None`, operator
+      uses `operand_type` for both arguments. Must contain only named tuples and
+      tensor types.
 
   Raises:
     TypeError: If the constraints of `operand_type` are violated or `operator`
@@ -199,32 +263,32 @@ def create_binary_operator(
   """
   if not type_analysis.is_generic_op_compatible_type(operand_type):
     raise TypeError(
-        'The type {} contains a type other than `computation_types.TensorType` '
-        'and `computation_types.StructType`; this is disallowed in the '
-        'generic operators.'.format(operand_type))
+        '`operand_type` contains a type other than '
+        '`computation_types.TensorType` and `computation_types.StructType`; '
+        f'this is disallowed in the generic operators. Got: {operand_type} ')
+  if second_operand_type is not None:
+    if not type_analysis.is_generic_op_compatible_type(second_operand_type):
+      raise TypeError(
+          '`second_operand_type` contains a type other than '
+          '`computation_types.TensorType` and `computation_types.StructType`; '
+          'this is disallowed in the generic operators. '
+          f'Got: {second_operand_type} ')
+  elif second_operand_type is None:
+    second_operand_type = operand_type
   py_typecheck.check_callable(operator)
+
   with tf.Graph().as_default() as graph:
     operand_1_value, operand_1_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', operand_type, graph)
     operand_2_value, operand_2_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'y', operand_type, graph)
-
-    if operand_type is not None:
-      if operand_type.is_tensor():
-        result_value = operator(operand_1_value, operand_2_value)
-      elif operand_type.is_struct():
-        result_value = structure.map_structure(operator, operand_1_value,
-                                               operand_2_value)
-    else:
-      raise TypeError(
-          'Operand type {} cannot be used in generic operations. The call to '
-          '`type_analysis.is_generic_op_compatible_type` has allowed it to '
-          'pass, and should be updated.'.format(operand_type))
+        'y', second_operand_type, graph)
+    result_value = operator(operand_1_value, operand_2_value)
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result_value, graph)
 
   type_signature = computation_types.FunctionType(
-      computation_types.StructType((operand_type, operand_type)), result_type)
+      computation_types.StructType((operand_type, second_operand_type)),
+      result_type)
   parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(
           element=[operand_1_binding, operand_2_binding]))

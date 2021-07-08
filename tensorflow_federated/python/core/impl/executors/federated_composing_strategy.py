@@ -236,7 +236,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       intrinsic = executor_utils.create_intrinsic_comp(
           intrinsic_defs.FEDERATED_AGGREGATE, intrinsic_type)
       add_comp = building_block_factory.create_tensorflow_binary_operator_with_upcast(
-          computation_types.StructType([tf.int32, tf.int32]), tf.add).proto
+          tf.add, computation_types.StructType([tf.int32, tf.int32])).proto
       identity_comp = building_block_factory.create_compiled_identity(
           computation_types.TensorType(tf.int32)).proto
       fn, client_data, zero_value, add_value, identity_value = await asyncio.gather(

@@ -623,8 +623,8 @@ def _convert_tuple_to_tensor(type_spec):
 
 class IsBinaryOpWithUpcastCompatibleTest(absltest.TestCase):
 
-  def test_passes_on_none(self):
-    self.assertTrue(
+  def test_fails_on_none(self):
+    self.assertFalse(
         type_analysis.is_binary_op_with_upcast_compatible_pair(None, None))
 
   def test_passes_empty_tuples(self):

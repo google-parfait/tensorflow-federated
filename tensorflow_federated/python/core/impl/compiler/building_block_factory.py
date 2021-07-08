@@ -292,9 +292,47 @@ def create_compiled_input_replication(
   return building_blocks.CompiledComputation(proto, type_signature=comp_type)
 
 
+def create_tensorflow_unary_operator(
+    operator: Callable[[Any], Any], operand_type: computation_types.Type
+) -> building_blocks.CompiledComputation:
+  """Creates a TensorFlow computation for the unary `operator`.
+
+  For `T` the `operand_type`, the type signature of the constructed operator
+  will be `(T -> U)`, where `U` is the result of applying `operator` to
+  a value of type `T`.
+
+  Notice that we have quite serious restrictions on `operand_type` here; not
+  only must it be compatible with stamping into a TensorFlow graph, but
+  additionally cannot contain a `computation_types.SequenceType`, as checked by
+  `type_analysis.is_generic_op_compatible_type`.
+
+  Args:
+    operator: Callable taking one argument specifying the operation to encode.
+      For example, `tf.math.abs`, `tf.math.reduce_sum`, ...
+    operand_type: The type of argument to the constructed binary operator. Must
+      be convertible to `computation_types.Type`.
+
+  Returns:
+    Instance of `building_blocks.CompiledComputation` encoding this unary
+    operator.
+
+  Raises:
+    TypeError: If the type tree of `operand_type` contains any type which is
+    incompatible with the TFF generic operators, as checked by
+    `type_analysis.is_generic_op_compatible_type`, or `operator` is not
+    callable.
+  """
+  proto, type_signature = tensorflow_computation_factory.create_unary_operator(
+      operator, operand_type)
+  return building_blocks.CompiledComputation(
+      proto, type_signature=type_signature)
+
+
 def create_tensorflow_binary_operator(
+    operator: Callable[[Any, Any], Any],
     operand_type: computation_types.Type,
-    operator: Callable[[Any, Any], Any]) -> building_blocks.CompiledComputation:
+    second_operand_type: Optional[computation_types.Type] = None
+) -> building_blocks.CompiledComputation:
   """Creates a TensorFlow computation for the binary `operator`.
 
   For `T` the `operand_type`, the type signature of the constructed operator
@@ -306,18 +344,22 @@ def create_tensorflow_binary_operator(
   additionally cannot contain a `computation_types.SequenceType`, as checked by
   `type_analysis.is_generic_op_compatible_type`.
 
-  Notice also that if `operand_type` is a `computation_types.StructType`,
-  `operator` will be applied pointwise. This places the burden on callers of
-  this function to construct the correct values to pass into the returned
-  function. For example, to divide `[2, 2]` by `2`, first the `int 2` must
-  be packed into the data structure `[x, x]`, before the division operator of
-  the appropriate type is called.
+  Notice also that if `operand_type` is a `computation_types.StructType` and
+  `second_operand_type` is not `None`, `operator` will be applied pointwise.
+  This places the burden on callers of this function to construct the correct
+  values to pass into the returned function. For example, to divide `[2, 2]` by
+  `2`, first the `int 2` must be packed into the data structure `[x, x]`, before
+  the division operator of the appropriate type is called.
 
   Args:
-    operand_type: The type of argument to the constructed binary operator. Must
-      be convertible to `computation_types.Type`.
     operator: Callable taking two arguments specifying the operation to encode.
       For example, `tf.add`, `tf.multiply`, `tf.divide`, ...
+    operand_type: The type of argument to the constructed binary operator. Must
+      be convertible to `computation_types.Type`.
+    second_operand_type: An optional type for the second argument to the
+      constructed binary operator. Must be convertible to
+      `computation_types.Type`. If `None`, uses `operand_type` for the second
+      argument's type.
 
   Returns:
     Instance of `building_blocks.CompiledComputation` encoding
@@ -330,7 +372,7 @@ def create_tensorflow_binary_operator(
     callable.
   """
   proto, type_signature = tensorflow_computation_factory.create_binary_operator(
-      operator, operand_type)
+      operator, operand_type, second_operand_type)
   return building_blocks.CompiledComputation(
       proto, type_signature=type_signature)
 
@@ -1777,19 +1819,19 @@ def _check_generic_operator_type(type_spec):
 
 @functools.lru_cache()
 def create_tensorflow_binary_operator_with_upcast(
-    type_signature: computation_types.Type,
-    operator: Callable[[Any, Any], Any]) -> building_blocks.CompiledComputation:
+    operator: Callable[[Any, Any], Any], type_signature: computation_types.Type
+) -> building_blocks.CompiledComputation:
   """Creates TF computation upcasting its argument and applying `operator`.
 
   The concept of upcasting is explained further in the docstring for
   `apply_binary_operator_with_upcast`.
 
   Args:
+    operator: Callable defining the operator.
     type_signature: Value convertible to `computation_types.StructType`, with
       two elements, both of the same type or the second able to be upcast to the
       first, as explained in `apply_binary_operator_with_upcast`, and both
       containing only tuples and tensors in their type tree.
-    operator: Callable defining the operator.
 
   Returns:
     A `building_blocks.CompiledComputation` encapsulating a function which
@@ -1852,7 +1894,7 @@ def apply_binary_operator_with_upcast(
         'unplaced tuples; you have passed {}.'.format(arg.type_signature))
 
   tf_representing_op = create_tensorflow_binary_operator_with_upcast(
-      tuple_type, operator)
+      operator, tuple_type)
 
   if arg.type_signature.is_federated():
     called = create_federated_map_or_apply(tf_representing_op, arg)

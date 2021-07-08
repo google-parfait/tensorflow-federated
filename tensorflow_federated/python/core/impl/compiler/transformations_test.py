@@ -655,7 +655,7 @@ class GenerateTensorflowForLocalComputationTest(test_case.TestCase):
       concrete_int = building_block_factory.create_tensorflow_constant(
           constant_tuple_type, 1)
       first_tf_fn = building_block_factory.create_tensorflow_binary_operator(
-          concrete_int.type_signature, tf.add)
+          tf.add, concrete_int.type_signature)
       call = building_blocks.Call(
           first_tf_fn, building_blocks.Struct([concrete_int, concrete_int]))
       for _ in range(k):
@@ -1133,7 +1133,7 @@ class TensorFlowGeneratorTest(test_case.TestCase):
       concrete_int = building_block_factory.create_tensorflow_constant(
           constant_tuple_type, 1)
       first_tf_fn = building_block_factory.create_tensorflow_binary_operator(
-          concrete_int.type_signature, tf.add)
+          tf.add, concrete_int.type_signature)
       call = building_blocks.Call(
           first_tf_fn, building_blocks.Struct([concrete_int, concrete_int]))
       for _ in range(k):

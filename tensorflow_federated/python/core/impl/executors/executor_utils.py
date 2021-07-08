@@ -344,7 +344,7 @@ async def compute_intrinsic_federated_weighted_mean(
               [sum1_type.result.member, sum2_type.result.member])))
 
   divide_blk = building_block_factory.create_tensorflow_binary_operator_with_upcast(
-      zip2_type.result.member, tf.divide)
+      tf.divide, zip2_type.result.member)
 
   async def _compute_multiply_fn():
     return await executor.create_value(multiply_blk.proto,

@@ -136,7 +136,7 @@ def get_intrinsic_reductions(
     operand_type = x.type_signature.member
     zero = building_block_factory.create_generic_constant(operand_type, 0)
     plus_op = building_block_factory.create_tensorflow_binary_operator_with_upcast(
-        computation_types.StructType([operand_type, operand_type]), tf.add)
+        tf.add, computation_types.StructType([operand_type, operand_type]))
     identity = building_block_factory.create_compiled_identity(operand_type)
     return building_block_factory.create_federated_aggregate(
         x, zero, plus_op, plus_op, identity)

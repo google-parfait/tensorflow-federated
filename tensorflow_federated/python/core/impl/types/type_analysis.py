@@ -115,7 +115,7 @@ def check_tensorflow_compatible_type(type_spec):
 def is_generic_op_compatible_type(type_spec):
   """Checks `type_spec` against an explicit list of generic operators."""
   if type_spec is None:
-    return True
+    return False
   return contains_only(type_spec, lambda t: t.is_struct() or t.is_tensor())
 
 
