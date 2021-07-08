@@ -23,6 +23,34 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.datasets import client_data as cd
 
 
+class CheckRandomSeedTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('integer1', 0),
+      ('integer2', 1234),
+      ('integer3', 2**32 - 1),
+      ('sequence1', [0, 2, 323]),
+      ('sequence2', [1024]),
+      ('sequence3', [2**31, 2**32 - 1]),
+      ('none', None),
+  )
+  def test_validate_does_not_raise_on_expected_inputs(self, seed):
+    cd.check_numpy_random_seed(seed)
+
+  @parameterized.named_parameters(
+      ('integer1', -1),
+      ('integer2', 2**40),
+      ('integer3', 2**32),
+      ('sequence1', [0, 2, -1]),
+      ('sequence2', [2**33]),
+      ('sequence3', [2**31, 2**32 - 1, -500]),
+      ('string', 'bad_seed'),
+  )
+  def test_validate_raises_on_unexpected_inputs(self, seed):
+    with self.assertRaises(cd.InvalidRandomSeedError):
+      cd.check_numpy_random_seed(seed)
+
+
 def create_concrete_client_data(
     serializable: bool = False,
 ) -> Union[cd.ConcreteSerializableClientData, cd.ConcreteClientData]:
@@ -62,7 +90,7 @@ def dataset_length(dataset):
   return dataset.reduce(0, lambda x, _: x + 1)
 
 
-class TrainTestClientSplitTest(tf.test.TestCase):
+class TrainTestClientSplitTest(tf.test.TestCase, parameterized.TestCase):
 
   def get_even_odd_client_data(self):
     """Creates a `ClientData` where only clients with even IDs have data."""
@@ -119,6 +147,35 @@ class TrainTestClientSplitTest(tf.test.TestCase):
 
     self.assertEqual(train_0.client_ids, train_1.client_ids)
     self.assertEqual(test_0.client_ids, test_1.client_ids)
+
+  @parameterized.named_parameters(
+      ('integer1', 0),
+      ('integer2', 1234),
+      ('integer3', 2**32 - 1),
+      ('sequence1', [0, 2, 323]),
+      ('sequence2', [1024]),
+      ('sequence3', [2**31, 2**32 - 1]),
+      ('none', None),
+  )
+  def test_split_does_not_raise_on_expected_random_seed(self, seed):
+    client_data = client_data = self.get_even_odd_client_data()
+    cd.ClientData.train_test_client_split(
+        client_data, num_test_clients=3, seed=seed)
+
+  @parameterized.named_parameters(
+      ('integer1', -1),
+      ('integer2', 2**40),
+      ('integer3', 2**32),
+      ('sequence1', [0, 2, -1]),
+      ('sequence2', [2**33]),
+      ('sequence3', [2**31, 2**32 - 1, -500]),
+      ('string', 'bad_seed'),
+  )
+  def test_split_raises_on_unexpected_random_seed(self, seed):
+    client_data = client_data = self.get_even_odd_client_data()
+    with self.assertRaises(cd.InvalidRandomSeedError):
+      cd.ClientData.train_test_client_split(
+          client_data, num_test_clients=3, seed=seed)
 
 
 class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
@@ -213,6 +270,33 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
     client_data.datasets()
     self.assertEqual(client_data.client_ids, client_ids_copy)
 
+  @parameterized.named_parameters(
+      ('integer1', 0),
+      ('integer2', 1234),
+      ('integer3', 2**32 - 1),
+      ('sequence1', [0, 2, 323]),
+      ('sequence2', [1024]),
+      ('sequence3', [2**31, 2**32 - 1]),
+      ('none', None),
+  )
+  def test_datasets_does_not_raise_on_expected_random_seed(self, seed):
+    client_data = create_concrete_client_data(serializable=False)
+    next(client_data.datasets(seed=seed))
+
+  @parameterized.named_parameters(
+      ('integer1', -1),
+      ('integer2', 2**40),
+      ('integer3', 2**32),
+      ('sequence1', [0, 2, -1]),
+      ('sequence2', [2**33]),
+      ('sequence3', [2**31, 2**32 - 1, -500]),
+      ('string', 'bad_seed'),
+  )
+  def test_datasets_raises_on_unexpected_random_seed(self, seed):
+    client_data = create_concrete_client_data(serializable=False)
+    with self.assertRaises(cd.InvalidRandomSeedError):
+      next(client_data.datasets(seed=seed))
+
   @parameterized.named_parameters(('nonserializable', False),
                                   ('serializable', True))
   def test_create_tf_dataset_from_all_clients(self, serializable):
@@ -221,8 +305,36 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
     dataset_list = list(dataset.as_numpy_iterator())
     self.assertCountEqual(dataset_list, [0, 0, 0, 1, 1, 2])
 
+  @parameterized.named_parameters(
+      ('integer1', 0),
+      ('integer2', 1234),
+      ('integer3', 2**32 - 1),
+      ('sequence1', [0, 2, 323]),
+      ('sequence2', [1024]),
+      ('sequence3', [2**31, 2**32 - 1]),
+      ('none', None),
+  )
+  def test_create_from_all_does_not_raise_on_expected_random_seed(self, seed):
+    client_data = create_concrete_client_data(serializable=False)
+    client_data.create_tf_dataset_from_all_clients(seed=seed)
 
-class ConcreteSerializableClientDataTest(tf.test.TestCase):
+  @parameterized.named_parameters(
+      ('integer1', -1),
+      ('integer2', 2**40),
+      ('integer3', 2**32),
+      ('sequence1', [0, 2, -1]),
+      ('sequence2', [2**33]),
+      ('sequence3', [2**31, 2**32 - 1, -500]),
+      ('string', 'bad_seed'),
+  )
+  def test_create_from_all_raises_on_unexpected_random_seed(self, seed):
+    client_data = create_concrete_client_data(serializable=False)
+    with self.assertRaises(cd.InvalidRandomSeedError):
+      client_data.create_tf_dataset_from_all_clients(seed=seed)
+
+
+class ConcreteSerializableClientDataTest(tf.test.TestCase,
+                                         parameterized.TestCase):
 
   def test_dataset_computation_lists_all_elements(self):
     client_data = create_concrete_client_data(serializable=True)
@@ -247,6 +359,33 @@ class ConcreteSerializableClientDataTest(tf.test.TestCase):
       client_data.create_tf_dataset_from_all_clients(seed=42)
     except Exception as e:  # pylint: disable=broad-except
       self.fail(e)
+
+  @parameterized.named_parameters(
+      ('integer1', 0),
+      ('integer2', 1234),
+      ('integer3', 2**32 - 1),
+      ('sequence1', [0, 2, 323]),
+      ('sequence2', [1024]),
+      ('sequence3', [2**31, 2**32 - 1]),
+      ('none', None),
+  )
+  def test_create_from_all_does_not_raise_on_expected_random_seed(self, seed):
+    client_data = create_concrete_client_data(serializable=True)
+    client_data.create_tf_dataset_from_all_clients(seed=seed)
+
+  @parameterized.named_parameters(
+      ('integer1', -1),
+      ('integer2', 2**40),
+      ('integer3', 2**32),
+      ('sequence1', [0, 2, -1]),
+      ('sequence2', [2**33]),
+      ('sequence3', [2**31, 2**32 - 1, -500]),
+      ('string', 'bad_seed'),
+  )
+  def test_create_from_all_raises_on_unexpected_random_seed(self, seed):
+    client_data = create_concrete_client_data(serializable=True)
+    with self.assertRaises(cd.InvalidRandomSeedError):
+      client_data.create_tf_dataset_from_all_clients(seed=seed)
 
 
 class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
