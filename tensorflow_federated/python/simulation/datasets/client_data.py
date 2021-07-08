@@ -15,7 +15,7 @@
 
 import abc
 import collections
-from typing import Callable, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union
 import warnings
 
 from absl import logging
@@ -35,6 +35,44 @@ class IncompatiblePreprocessFnError(TypeError):
         ' callable or tf.function instead. This restriction is because '
         '`tf.data.Dataset.map` wraps preprocessing functions with a '
         '`tf.function` decorator, which cannot call to a `tff.Computation`.')
+    super().__init__(message)
+
+
+def is_nonnegative_32_bit_int(x: Any) -> bool:
+  if isinstance(x, int) and 0 <= x and x < 2**32:
+    return True
+  return False
+
+
+def check_numpy_random_seed(seed: Any) -> None:
+  """Determines if an input is a valid random seed for `np.random.RandomState`.
+
+  Specifically, this method returns `True` if the input is a nonnegative 32-bit
+  integer, a sequence of such integers, or `None`.
+
+  Args:
+    seed: The argument that we wish to determine is a valid random seed.
+
+  Raises:
+    InvalidRandomSeedError: If the input argument does not meet any of the
+      types above.
+  """
+  if seed is None:
+    return
+  elif is_nonnegative_32_bit_int(seed):
+    return
+  elif isinstance(seed, Sequence) and all(
+      [is_nonnegative_32_bit_int(x) for x in seed]):
+    return
+  raise InvalidRandomSeedError(type(seed))
+
+
+class InvalidRandomSeedError(TypeError):
+
+  def __init__(self, seed_type):
+    message = (
+        'The seed must be a nonnegative 32-bit integer, a sequence of such '
+        'integers, or None. Found {} instead.'.format(seed_type))
     super().__init__(message)
 
 
@@ -113,9 +151,11 @@ class ClientData(object, metaclass=abc.ABCMeta):
     """
     pass
 
-  def datasets(self,
-               limit_count: Optional[int] = None,
-               seed: Optional[int] = None) -> Iterable[tf.data.Dataset]:
+  def datasets(
+      self,
+      limit_count: Optional[int] = None,
+      seed: Optional[Union[int, Sequence[int]]] = None
+  ) -> Iterable[tf.data.Dataset]:
     """Yields the `tf.data.Dataset` for each client in random order.
 
     This function is intended for use building a static array of client data
@@ -124,9 +164,10 @@ class ClientData(object, metaclass=abc.ABCMeta):
     Args:
       limit_count: Optional, a maximum number of datasets to return.
       seed: Optional, a seed to determine the order in which clients are
-        processed in the joined dataset. The seed can be any 32-bit unsigned
-        integer or an array of such integers.
+        processed in the joined dataset. The seed can be any nonnegative 32-bit
+        integer, an array of such integers, or `None`.
     """
+    check_numpy_random_seed(seed)
     # Create a copy to prevent the original list being reordered
     client_ids = self.client_ids.copy()
     np.random.RandomState(seed=seed).shuffle(client_ids)
@@ -139,9 +180,9 @@ class ClientData(object, metaclass=abc.ABCMeta):
       py_typecheck.check_type(dataset, tf.data.Dataset)
       yield dataset
 
-  def create_tf_dataset_from_all_clients(self,
-                                         seed: Optional[int] = None
-                                        ) -> tf.data.Dataset:
+  def create_tf_dataset_from_all_clients(
+      self,
+      seed: Optional[Union[int, Sequence[int]]] = None) -> tf.data.Dataset:
     """Creates a new `tf.data.Dataset` containing _all_ client examples.
 
     This function is intended for use training centralized, non-distributed
@@ -154,12 +195,13 @@ class ClientData(object, metaclass=abc.ABCMeta):
 
     Args:
       seed: Optional, a seed to determine the order in which clients are
-        processed in the joined dataset. The seed can be any 32-bit unsigned
-        integer or an array of such integers.
+        processed in the joined dataset. The seed can be any nonnegative 32-bit
+        integer, an array of such integers, or `None`.
 
     Returns:
       A `tf.data.Dataset` object.
     """
+    check_numpy_random_seed(seed)
     # Note: simply calling Dataset.concatenate() will result in too deep
     # recursion depth.
     # Note: Tests are via the simple concrete from_tensor_slices_client_data.
@@ -236,7 +278,8 @@ class ClientData(object, metaclass=abc.ABCMeta):
       cls,
       client_data: 'ClientData',
       num_test_clients: int,
-      seed: Optional[int] = None) -> Tuple['ClientData', 'ClientData']:
+      seed: Optional[Union[int, Sequence[int]]] = None
+  ) -> Tuple['ClientData', 'ClientData']:
     """Returns a pair of (train, test) `ClientData`.
 
     This method partitions the clients of `client_data` into two `ClientData`
@@ -252,7 +295,9 @@ class ClientData(object, metaclass=abc.ABCMeta):
       num_test_clients: How many clients to hold out for testing. This can be at
         most len(client_data.client_ids) - 1, since we don't want to produce
         empty `ClientData`.
-      seed: Optional seed to fix shuffling of clients before splitting.
+      seed: Optional seed to fix shuffling of clients before splitting. The seed
+        can be any nonnegative 32-bit integer, an array of such integers, or
+        `None`.
 
     Returns:
       A pair (train_client_data, test_client_data), where test_client_data
@@ -271,6 +316,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
                        '{} test clients were requested.'.format(
                            len(client_data.client_ids), num_test_clients))
 
+    check_numpy_random_seed(seed)
     train_client_ids = list(client_data.client_ids)
     np.random.RandomState(seed).shuffle(train_client_ids)
     # These clients will be added back into the training set at the end.
@@ -472,9 +518,9 @@ class SerializableClientData(ClientData, metaclass=abc.ABCMeta):
       self._cached_dataset_computation = dataset_computation
     return self._cached_dataset_computation
 
-  def create_tf_dataset_from_all_clients(self,
-                                         seed: Optional[int] = None
-                                        ) -> tf.data.Dataset:
+  def create_tf_dataset_from_all_clients(
+      self,
+      seed: Optional[Union[int, Sequence[int]]] = None) -> tf.data.Dataset:
     """Creates a new `tf.data.Dataset` containing _all_ client examples.
 
     This function is intended for use training centralized, non-distributed
@@ -487,12 +533,13 @@ class SerializableClientData(ClientData, metaclass=abc.ABCMeta):
 
     Args:
       seed: Optional, a seed to determine the order in which clients are
-        processed in the joined dataset. The seed can be any 32-bit unsigned
-        integer or an array of such integers.
+        processed in the joined dataset. The seed can be any nonnegative 32-bit
+        integer, an array of such integers, or `None`.
 
     Returns:
       A `tf.data.Dataset` object.
     """
+    check_numpy_random_seed(seed)
     client_ids = self.client_ids.copy()
     np.random.RandomState(seed=seed).shuffle(client_ids)
     nested_dataset = tf.data.Dataset.from_tensor_slices(client_ids)
