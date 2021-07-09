@@ -130,9 +130,9 @@ def _dense_all_zeros_layer(input_dims=None, output_dim=1):
   the only layer in a model, the model is effectively a linear regression model.
 
   Args:
-    input_dims: the integer length of the input to this layers. Maybe None if
+    input_dims: The integer length of the input to this layers. Maybe None if
       the layer input size does not need to be specified.
-    output_dim: the integer length of the flattened output tensor. Defaults to
+    output_dim: The integer length of the flattened output tensor. Defaults to
       one, effectively making the layer perform linear regression.
 
   Returns:
@@ -162,11 +162,11 @@ def _dense_all_zeros_regularized_layer(input_dims=None,
   and bias.
 
   Args:
-    input_dims: the integer length of the input to this layers. Maybe None if
+    input_dims: The integer length of the input to this layers. Maybe None if
       the layer input size does not need to be specified.
-    output_dim: the integer length of the flattened output tensor. Defaults to
+    output_dim: The integer length of the flattened output tensor. Defaults to
       one, effectively making the layer perform linear regression.
-    regularization_constant: the float scaling magnitude (lambda) for L2
+    regularization_constant: The float scaling magnitude (lambda) for L2
       regularization on the layer's weights and bias.
 
   Returns:
@@ -199,11 +199,11 @@ def _dense_all_ones_regularized_layer(input_dims=None,
   and bias.
 
   Args:
-    input_dims: the integer length of the input to this layers. Maybe None if
+    input_dims: The integer length of the input to this layers. Maybe None if
       the layer input size does not need to be specified.
-    output_dim: the integer length of the flattened output tensor. Defaults to
+    output_dim: The integer length of the flattened output tensor. Defaults to
       one, effectively making the layer perform linear regression.
-    regularization_constant: the float scaling magnitude (lambda) for L2
+    regularization_constant: The float scaling magnitude (lambda) for L2
       regularization on the layer's weights and bias.
 
   Returns:

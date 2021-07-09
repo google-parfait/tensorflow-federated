@@ -89,9 +89,9 @@ class ClientDeltaFn(object, metaclass=abc.ABCMeta):
     Typically implementations should be decorated with `tf.function`.
 
     Args:
-      dataset: a `tf.data.Dataset` producing batches than can be fed to
+      dataset: A `tf.data.Dataset` producing batches than can be fed to
         `tff.learning.Model.forward_pass`.
-      initial_weights: a dictionary of initial values for all trainable and
+      initial_weights: A dictionary of initial values for all trainable and
         non-trainable model variables, keyed by name. This will be supplied by
         the server in Federated Averaging.
 
@@ -106,11 +106,11 @@ class ServerState(object):
   """Represents the state of the server carried between rounds.
 
   Attributes:
-    model: a `ModelWeights` structure, containing Tensors or Variables.
-    optimizer_state: a list of Tensors or Variables, in the order returned by
+    model: A `ModelWeights` structure, containing Tensors or Variables.
+    optimizer_state: A list of Tensors or Variables, in the order returned by
       `optimizer.variables()`
-    delta_aggregate_state: state (possibly empty) of the delta_aggregate_fn.
-    model_broadcast_state: state (possibly empty) of the model_broadcast_fn.
+    delta_aggregate_state: State (possibly empty) of the delta_aggregate_fn.
+    model_broadcast_state: State (possibly empty) of the model_broadcast_fn.
   """
   model = attr.ib()
   optimizer_state = attr.ib()
@@ -126,11 +126,11 @@ def state_with_new_model_weights(
   """Returns a `ServerState` with updated model weights.
 
   Args:
-    server_state: a server state object returned by an iterative training
+    server_state: A server state object returned by an iterative training
       process like `tff.learning.build_federated_averaging_process`.
-    trainable_weights: a list of `numpy` arrays in the order of the original
+    trainable_weights: A list of `numpy` arrays in the order of the original
       model's `trainable_variables`.
-    non_trainable_weights: a list of `numpy` arrays in the order of the original
+    non_trainable_weights: A list of `numpy` arrays in the order of the original
       model's `non_trainable_variables`.
 
   Returns:
@@ -236,16 +236,16 @@ def _build_initialize_computation(
   """Builds the `initialize` computation for a model delta averaging process.
 
   Args:
-    model_fn: a no-argument callable that constructs and returns a
+    model_fn: A no-argument callable that constructs and returns a
       `tff.learning.Model`. *Must* construct and return a new model when called.
       Returning captured models from other scopes will raise errors.
-    server_optimizer_fn: a no-argument callable that constructs and returns a
+    server_optimizer_fn: A no-argument callable that constructs and returns a
       `tf.keras.optimizers.Optimizer`. *Must* construct and return a new
       optimizer when called. Returning captured optimizers from other scopes
       will raise errors.
-    broadcast_process: a `tff.templates.MeasuredProcess` to broadcast the global
+    broadcast_process: A `tff.templates.MeasuredProcess` to broadcast the global
       model to the clients.
-    aggregation_process: a `tff.templates.MeasuredProcess` to aggregate client
+    aggregation_process: A `tff.templates.MeasuredProcess` to aggregate client
       model deltas.
 
   Returns:
@@ -296,20 +296,20 @@ def _build_one_round_computation(
   """Builds the `next` computation for a model delta averaging process.
 
   Args:
-    model_fn: a no-argument callable that constructs and returns a
+    model_fn: A no-argument callable that constructs and returns a
       `tff.learning.Model`. *Must* construct and return a new model when called.
       Returning captured models from other scopes will raise errors.
-    server_optimizer_fn: a no-argument callable that constructs and returns a
+    server_optimizer_fn: A no-argument callable that constructs and returns a
       `tf.keras.optimizers.Optimizer`. *Must* construct and return a new
       optimizer when called. Returning captured optimizers from other scopes
       will raise errors.
-    model_to_client_delta_fn: a callable that takes a single no-arg callable
+    model_to_client_delta_fn: A callable that takes a single no-arg callable
       that returns `tff.learning.Model` as an argument and returns a
       `ClientDeltaFn` which performs the local training loop and model delta
       computation.
-    broadcast_process: a `tff.templates.MeasuredProcess` to broadcast the global
+    broadcast_process: A `tff.templates.MeasuredProcess` to broadcast the global
       model to the clients.
-    aggregation_process: a `tff.templates.MeasuredProcess` to aggregate client
+    aggregation_process: A `tff.templates.MeasuredProcess` to aggregate client
       model deltas.
 
   Returns:
@@ -379,8 +379,8 @@ def _build_one_round_computation(
     """Performs client local model optimization.
 
     Args:
-      dataset: a `tf.data.Dataset` that provides training examples.
-      initial_model_weights: a `model_utils.ModelWeights` containing the
+      dataset: A `tf.data.Dataset` that provides training examples.
+      initial_model_weights: A `model_utils.ModelWeights` containing the
         starting weights.
 
     Returns:
@@ -407,8 +407,8 @@ def _build_one_round_computation(
     """Orchestration logic for one round of optimization.
 
     Args:
-      server_state: a `tff.learning.framework.ServerState` named tuple.
-      federated_dataset: a federated `tf.Dataset` with placement tff.CLIENTS.
+      server_state: A `tff.learning.framework.ServerState` named tuple.
+      federated_dataset: A federated `tf.Dataset` with placement tff.CLIENTS.
 
     Returns:
       A tuple of updated `tff.learning.framework.ServerState` and the result of
@@ -571,7 +571,7 @@ def build_model_delta_optimizer_process(
     A `tff.templates.IterativeProcess`.
 
   Raises:
-    ProcessTypeError: if `broadcast_process` does not conform to the signature
+    ProcessTypeError: If `broadcast_process` does not conform to the signature
       of broadcast (SERVER->CLIENTS).
   """
   py_typecheck.check_callable(model_fn)

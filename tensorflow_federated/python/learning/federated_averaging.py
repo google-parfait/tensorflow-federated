@@ -203,7 +203,7 @@ def build_federated_averaging_process(
       `model.report_local_outputs` and returns a tensor that provides the weight
       in the federated average of model deltas. If None, defaults to weighting
       by number of examples.
-    broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
+    broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`. If set to default None,
       the server model is broadcast to the clients using the default
