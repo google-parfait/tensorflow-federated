@@ -42,7 +42,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     preprocess_spec = client_spec.ClientSpec(num_epochs=1, batch_size=1)
     with self.assertRaisesRegex(
         ValueError,
-        'emnist_task must be one of "digit_recognition" or "autoencoder".'):
+        'emnist_task must be one of "character_recognition" or "autoencoder".'):
       emnist_preprocessing.create_preprocess_fn(
           preprocess_spec, emnist_task='bad_task')
 
@@ -83,12 +83,12 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
         _compute_length_of_dataset(preprocessed_ds),
         min(repeat_size, max_elements))
 
-  def test_digit_recognition_preprocess_returns_correct_elements(self):
+  def test_character_recognition_preprocess_returns_correct_elements(self):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
     preprocess_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=20, shuffle_buffer_size=1)
     preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-        preprocess_spec, emnist_task='digit_recognition')
+        preprocess_spec, emnist_task='character_recognition')
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(preprocessed_ds.element_spec,
                      (tf.TensorSpec(shape=(None, 28, 28, 1), dtype=tf.float32),

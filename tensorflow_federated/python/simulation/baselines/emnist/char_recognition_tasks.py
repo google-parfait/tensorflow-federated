@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Library for creating digit recognition tasks on EMNIST."""
+"""Library for creating character recognition tasks on EMNIST."""
 
 import enum
 from typing import Optional, Union
@@ -29,47 +29,48 @@ from tensorflow_federated.python.simulation.datasets import client_data
 from tensorflow_federated.python.simulation.datasets import emnist
 
 
-class DigitRecognitionModel(enum.Enum):
-  """Enum for EMNIST digit recognition models."""
+class CharacterRecognitionModel(enum.Enum):
+  """Enum for EMNIST character recognition models."""
   CNN_DROPOUT = 'cnn_dropout'
   CNN = 'cnn'
   TWO_LAYER_DNN = '2nn'
 
 
-_DIGIT_RECOGNITION_MODELS = [e.value for e in DigitRecognitionModel]
+_CHARACTER_RECOGNITION_MODELS = [e.value for e in CharacterRecognitionModel]
 
 
-def _get_digit_recognition_model(model_id: Union[str, DigitRecognitionModel],
-                                 only_digits: bool) -> tf.keras.Model:
-  """Constructs a `tf.keras.Model` for digit recognition."""
+def _get_character_recognition_model(model_id: Union[str,
+                                                     CharacterRecognitionModel],
+                                     only_digits: bool) -> tf.keras.Model:
+  """Constructs a `tf.keras.Model` for character recognition."""
   try:
-    model_enum = DigitRecognitionModel(model_id)
+    model_enum = CharacterRecognitionModel(model_id)
   except ValueError:
     raise ValueError('The model argument must be one of {}, found {}'.format(
-        model, _DIGIT_RECOGNITION_MODELS))
+        model, _CHARACTER_RECOGNITION_MODELS))
 
-  if model_enum == DigitRecognitionModel.CNN_DROPOUT:
+  if model_enum == CharacterRecognitionModel.CNN_DROPOUT:
     keras_model = emnist_models.create_conv_dropout_model(
         only_digits=only_digits)
-  elif model_enum == DigitRecognitionModel.CNN:
+  elif model_enum == CharacterRecognitionModel.CNN:
     keras_model = emnist_models.create_original_fedavg_cnn_model(
         only_digits=only_digits)
-  elif model_enum == DigitRecognitionModel.TWO_LAYER_DNN:
+  elif model_enum == CharacterRecognitionModel.TWO_LAYER_DNN:
     keras_model = emnist_models.create_two_hidden_layer_model(
         only_digits=only_digits)
   else:
     raise ValueError('The model id must be one of {}, found {}'.format(
-        model_enum, _DIGIT_RECOGNITION_MODELS))
+        model_enum, _CHARACTER_RECOGNITION_MODELS))
   return keras_model
 
 
-def create_digit_recognition_task_from_datasets(
+def create_character_recognition_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec],
-    model_id: Union[str, DigitRecognitionModel], only_digits: bool,
+    model_id: Union[str, CharacterRecognitionModel], only_digits: bool,
     train_data: client_data.ClientData,
     test_data: client_data.ClientData) -> baseline_task.BaselineTask:
-  """Creates a baseline task for digit recognition on EMNIST.
+  """Creates a baseline task for character recognition on EMNIST.
 
   Args:
     train_client_spec: A `tff.simulation.baselines.ClientSpec` specifying how to
@@ -78,8 +79,8 @@ def create_digit_recognition_task_from_datasets(
       specifying how to preprocess evaluation client data. If set to `None`, the
       evaluation datasets will use a batch size of 64 with no extra
       preprocessing.
-    model_id: A string identifier for a digit recognition model. Must be one of
-      'cnn_dropout', 'cnn', or '2nn'. These correspond respectively to a CNN
+    model_id: A string identifier for a character recognition model. Must be one
+      of 'cnn_dropout', 'cnn', or '2nn'. These correspond respectively to a CNN
       model with dropout, a CNN model with no dropout, and a densely connected
       network with two hidden layers of width 200.
     only_digits: A boolean indicating whether to use the full EMNIST-62 dataset
@@ -91,7 +92,7 @@ def create_digit_recognition_task_from_datasets(
   Returns:
     A `tff.simulation.baselines.BaselineTask`.
   """
-  emnist_task = 'digit_recognition'
+  emnist_task = 'character_recognition'
 
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
@@ -111,7 +112,7 @@ def create_digit_recognition_task_from_datasets(
 
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
-        keras_model=_get_digit_recognition_model(model_id, only_digits),
+        keras_model=_get_character_recognition_model(model_id, only_digits),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         input_spec=task_datasets.element_type_structure,
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
@@ -119,14 +120,14 @@ def create_digit_recognition_task_from_datasets(
   return baseline_task.BaselineTask(task_datasets, model_fn)
 
 
-def create_digit_recognition_task(
+def create_character_recognition_task(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
-    model_id: Union[str, DigitRecognitionModel] = 'cnn_dropout',
+    model_id: Union[str, CharacterRecognitionModel] = 'cnn_dropout',
     only_digits: bool = False,
     cache_dir: Optional[str] = None,
     use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
-  """Creates a baseline task for digit recognition on EMNIST.
+  """Creates a baseline task for character recognition on EMNIST.
 
   The goal of the task is to minimize the sparse categorical crossentropy
   between the output labels of the model and the true label of the image. When
@@ -154,8 +155,8 @@ def create_digit_recognition_task(
       specifying how to preprocess evaluation client data. If set to `None`, the
       evaluation datasets will use a batch size of 64 with no extra
       preprocessing.
-    model_id: A string identifier for a digit recognition model. Must be one of
-      'cnn_dropout', 'cnn', or '2nn'. These correspond respectively to a CNN
+    model_id: A string identifier for a character recognition model. Must be one
+      of 'cnn_dropout', 'cnn', or '2nn'. These correspond respectively to a CNN
       model with dropout, a CNN model with no dropout, and a densely connected
       network with two hidden layers of width 200.
     only_digits: A boolean indicating whether to use the full EMNIST-62 dataset
@@ -178,7 +179,6 @@ def create_digit_recognition_task(
     emnist_train, emnist_test = emnist.load_data(
         only_digits=only_digits, cache_dir=cache_dir)
 
-  return create_digit_recognition_task_from_datasets(train_client_spec,
-                                                     eval_client_spec, model_id,
-                                                     only_digits, emnist_train,
-                                                     emnist_test)
+  return create_character_recognition_task_from_datasets(
+      train_client_spec, eval_client_spec, model_id, only_digits, emnist_train,
+      emnist_test)

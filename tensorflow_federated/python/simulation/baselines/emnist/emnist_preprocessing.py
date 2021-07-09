@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Preprocessing library for EMNIST prediction tasks."""
+"""Preprocessing library for EMNIST baseline tasks."""
 
 from typing import Callable
 
@@ -22,7 +22,7 @@ from tensorflow_federated.python.simulation.baselines import client_spec
 MAX_CLIENT_DATASET_SIZE = 418
 
 
-def _reshape_for_digit_recognition(element):
+def _reshape_for_character_recognition(element):
   return tf.expand_dims(element['pixels'], axis=-1), element['label']
 
 
@@ -33,7 +33,7 @@ def _reshape_for_autoencoder(element):
 
 def create_preprocess_fn(
     preprocess_spec: client_spec.ClientSpec,
-    emnist_task: str = 'digit_recognition',
+    emnist_task: str = 'character_recognition',
     num_parallel_calls: tf.Tensor = tf.data.experimental.AUTOTUNE
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for EMNIST client datasets.
@@ -46,9 +46,9 @@ def create_preprocess_fn(
     preprocess_spec: A `tff.simulation.baselines.ClientSpec` containing
       information on how to preprocess clients.
     emnist_task: A string indicating the EMNIST task being performed. Must be
-      one of 'digit_recognition' or 'autoencoder'. If the former, then elements
-      are mapped to tuples of the form (pixels, label), if the latter then
-      elements are mapped to tuples of the form (pixels, pixels).
+      one of 'character_recognition' or 'autoencoder'. If the former, then
+      elements are mapped to tuples of the form (pixels, label), if the latter
+      then elements are mapped to tuples of the form (pixels, pixels).
     num_parallel_calls: An integer representing the number of parallel calls
       used when performing `tf.data.Dataset.map`.
 
@@ -60,12 +60,12 @@ def create_preprocess_fn(
   if shuffle_buffer_size is None:
     shuffle_buffer_size = MAX_CLIENT_DATASET_SIZE
 
-  if emnist_task == 'digit_recognition':
-    mapping_fn = _reshape_for_digit_recognition
+  if emnist_task == 'character_recognition':
+    mapping_fn = _reshape_for_character_recognition
   elif emnist_task == 'autoencoder':
     mapping_fn = _reshape_for_autoencoder
   else:
-    raise ValueError('emnist_task must be one of "digit_recognition" or '
+    raise ValueError('emnist_task must be one of "character_recognition" or '
                      '"autoencoder".')
 
   def preprocess_fn(dataset):

@@ -20,7 +20,7 @@ py_library(
     visibility = ["//tensorflow_federated/python/simulation/baselines:__pkg__"],
     deps = [
         ":autoencoder_tasks",
-        ":digit_recognition_tasks",
+        ":char_recognition_tasks",
     ],
 )
 
@@ -55,8 +55,8 @@ py_test(
 )
 
 py_library(
-    name = "digit_recognition_tasks",
-    srcs = ["digit_recognition_tasks.py"],
+    name = "char_recognition_tasks",
+    srcs = ["char_recognition_tasks.py"],
     srcs_version = "PY3",
     deps = [
         ":emnist_models",
@@ -72,12 +72,12 @@ py_library(
 )
 
 py_test(
-    name = "digit_recognition_tasks_test",
-    srcs = ["digit_recognition_tasks_test.py"],
+    name = "char_recognition_tasks_test",
+    srcs = ["char_recognition_tasks_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":digit_recognition_tasks",
+        ":char_recognition_tasks",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
