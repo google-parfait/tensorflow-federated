@@ -24,9 +24,10 @@ class BatchOutput(object):
 
   Note: All fields are optional (may be None).
 
-  -   `predictions`: Tensor of predictions on the examples.
-  -   `labels`: Tensor of labels for the examples.
-  -   `num_examples`: tf.int32 scalar number of examples seen in the batch.
+  Attributes:
+    predictions: A `tf.Tensor` of predictions on the examples.
+    labels: A `tf.Tensor` of labels for the examples.
+    num_examples: A `tf.int32` scalar number of examples seen in the batch.
   """
   predictions = attr.ib()
   labels = attr.ib()
@@ -124,7 +125,7 @@ class Model(object, metaclass=abc.ABCMeta):
     is done by the training loop.
 
     Args:
-      batch_input: a nested structure that matches the structure of
+      batch_input: A nested structure that matches the structure of
         `Model.input_spec` and each tensor in `batch_input` satisfies
         `tf.TensorSpec.is_compatible_with()` for the corresponding
         `tf.TensorSpec` in `Model.input_spec`.

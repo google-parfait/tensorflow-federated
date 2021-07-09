@@ -64,6 +64,21 @@ py_test(
 )
 
 py_library(
+    name = "dictionary_manager",
+    srcs = ["dictionary_manager.py"],
+    srcs_version = "PY3",
+    deps = [":metrics_manager"],
+)
+
+py_test(
+    name = "dictionary_manager_test",
+    srcs = ["dictionary_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":dictionary_manager"],
+)
+
+py_library(
     name = "iterative_process_compositions",
     srcs = ["iterative_process_compositions.py"],
     srcs_version = "PY3",
@@ -122,6 +137,7 @@ py_library(
     srcs = ["server_utils.py"],
     srcs_version = "PY3",
     deps = [
+        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_service",

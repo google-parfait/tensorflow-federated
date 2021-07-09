@@ -22,12 +22,12 @@ from tensorflow_federated.python.core.impl.context_stack.context_base import Con
 from tensorflow_federated.python.core.impl.context_stack.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context
+from tensorflow_federated.python.core.impl.execution_contexts.synchronous_execution_context import ExecutionContext
 from tensorflow_federated.python.core.impl.executors.caching_executor import CachingExecutor
 from tensorflow_federated.python.core.impl.executors.cardinality_carrying_base import CardinalityCarrying
 from tensorflow_federated.python.core.impl.executors.data_backend_base import DataBackend
 from tensorflow_federated.python.core.impl.executors.data_executor import DataExecutor
 from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
-from tensorflow_federated.python.core.impl.executors.execution_context import ExecutionContext
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_serialization import deserialize_value

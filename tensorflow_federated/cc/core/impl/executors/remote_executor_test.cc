@@ -19,14 +19,13 @@ limitations under the License
 #include <memory>
 #include <optional>
 
+#include "net/grpc/testing/mocker/mock_grpc.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "grpc/include/grpcpp/generic/generic_stub.h"
-#include "grpc/include/grpcpp/impl/codegen/server_context.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/executor.mocker.grpc.pb.h"
