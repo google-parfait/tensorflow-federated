@@ -17,13 +17,10 @@ limitations under the License
 
 #include <memory>
 
+#include "net/grpc/public/include/grpcpp/grpcpp.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
-#include "grpc/include/grpc/impl/codegen/connectivity_state.h"
-#include "grpc/include/grpcpp/create_channel.h"
-#include "grpc/include/grpcpp/impl/codegen/channel_interface.h"
-#include "grpc/include/grpcpp/security/credentials.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"

@@ -234,12 +234,12 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
       metrics: A nested structure of metrics collected during `round_num`. The
         nesting will be flattened for storage in the CSV (with the new keys
         equal to the paths in the nested structure).
-      round_num: Communication round at which `metrics_to_append` was collected.
+      round_num: Communication round at which `metrics` was collected.
 
     Raises:
-      ValueError: If the provided round number is negative.
-      ValueError: If the provided round number is less than or equal to the
-        latest round number in the stored metrics data.
+      ValueError: If `round_num` is negative.
+      ValueError: If `round_num` is less than or equal to the latest round
+        number used to save metrics.
     """
     if not isinstance(round_num, int) or round_num < 0:
       raise ValueError(
@@ -345,9 +345,9 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
 
   @property
   def latest_round_num(self):
-    """The last round number passed to `update_metrics`.
+    """The last round number passed to `save_metrics`.
 
-    If not metrics have been written, this will be `None`, otherwise it will
+    If no metrics have been written, this will be `None`, otherwise it will
     be a nonnegative integer.
     """
     return self._latest_round_num
