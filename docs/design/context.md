@@ -16,7 +16,7 @@ This API defines a **low-level abstraction** that should be used when an
 ### `ExecutionContext`
 
 An
-[execution_context.ExecutionContext](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/executors/execution_context.py)
+[execution_context.ExecutionContext](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/execution_contexts/synchronous_execution_context.py)
 is a
 [context_base.Context](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/context_stack/context_base.py)
 that compiles computations using a compilation function and executes

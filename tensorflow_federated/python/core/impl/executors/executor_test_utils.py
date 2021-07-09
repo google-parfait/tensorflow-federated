@@ -26,20 +26,61 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.executors import execution_context
+from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
+class TestExecutionContext(context_base.Context):
+  """Minimal execution context for testing executors."""
+
+  def __init__(self, executor_factory):
+    self._executor_factory = executor_factory
+    self._loop = asyncio.new_event_loop()
+
+  def ingest(self, value, type_signature):
+    del type_signature  # Unused
+    return value
+
+  def _unwrap_tensors(self, value):
+    if tf.is_tensor(value):
+      return value.numpy()
+    elif isinstance(value, structure.Struct):
+      return structure.Struct((k, self._unwrap_tensors(v))
+                              for k, v in structure.iter_elements(value))
+    else:
+      return value
+
+  def invoke(self, comp, arg):
+    cardinalities = cardinalities_utils.infer_cardinalities(
+        arg, comp.type_signature.parameter)
+    executor = self._executor_factory.create_executor(cardinalities)
+    embedded_comp = self._loop.run_until_complete(
+        executor.create_value(comp, comp.type_signature))
+    if arg is not None:
+      embedded_arg = self._loop.run_until_complete(
+          executor.create_value(arg, comp.type_signature.parameter))
+    else:
+      embedded_arg = None
+    embedded_call = self._loop.run_until_complete(
+        executor.create_call(embedded_comp, embedded_arg))
+    return type_conversions.type_to_py_container(
+        self._unwrap_tensors(
+            self._loop.run_until_complete(embedded_call.compute())),
+        comp.type_signature.result)
+
+
 def install_executor(executor_factory_instance):
-  context = execution_context.ExecutionContext(executor_factory_instance)
+  context = TestExecutionContext(executor_factory_instance)
   return context_stack_impl.context_stack.install(context)
 
 
@@ -101,7 +142,7 @@ def executors(*args):
     @parameterized.named_parameters(*named_executors)
     def wrapped_fn(self, executor):
       """Install a particular execution context before running `fn`."""
-      context = execution_context.ExecutionContext(executor)
+      context = TestExecutionContext(executor)
       with context_stack_impl.context_stack.install(context):
         fn(self)
 
