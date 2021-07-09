@@ -64,6 +64,21 @@ py_test(
 )
 
 py_library(
+    name = "dictionary_manager",
+    srcs = ["dictionary_manager.py"],
+    srcs_version = "PY3",
+    deps = [":metrics_manager"],
+)
+
+py_test(
+    name = "dictionary_manager_test",
+    srcs = ["dictionary_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":dictionary_manager"],
+)
+
+py_library(
     name = "iterative_process_compositions",
     srcs = ["iterative_process_compositions.py"],
     srcs_version = "PY3",
