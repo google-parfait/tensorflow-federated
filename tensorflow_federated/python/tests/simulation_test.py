@@ -36,10 +36,6 @@ class FederatedTasksTest(tf.test.TestCase, parameterized.TestCase):
        tff.simulation.baselines.emnist.create_character_recognition_task),
       ('shakespeare_character_prediction',
        tff.simulation.baselines.shakespeare.create_character_prediction_task),
-      ('stackoverflow_tag_prediction',
-       tff.simulation.baselines.stackoverflow.create_tag_prediction_task),
-      ('stackoverflow_word_prediction',
-       tff.simulation.baselines.stackoverflow.create_word_prediction_task),
   )
   def test_run_federated(self, baseline_task_fn):
     train_client_spec = tff.simulation.baselines.ClientSpec(
