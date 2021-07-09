@@ -26,7 +26,7 @@ bind(
 git_repository(
     name = "com_github_grpc_grpc",
     remote = "https://github.com/grpc/grpc.git",
-    tag = "v1.37.1",
+    tag = "v1.38.1",
 )
 
 # Required by com_github_grpc_grpc

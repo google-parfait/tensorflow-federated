@@ -137,6 +137,7 @@ py_library(
     srcs = ["server_utils.py"],
     srcs_version = "PY3",
     deps = [
+        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_service",
