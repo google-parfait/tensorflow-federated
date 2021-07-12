@@ -18,7 +18,7 @@ limitations under the License
 
 #include <memory>
 
-#include "grpc/include/grpcpp/channel.h"
+#include "net/grpc/public/include/grpcpp/impl/codegen/channel_interface.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"

@@ -251,8 +251,8 @@ def _build_client_update_fn(
       by the metric, and are aggregated across clients as in
       `federated_aggregate_keras_metric`. If None, no metrics are applied.
       Metrics are not computed on reconstruction batches.
-    dataset_type: type of TF dataset.
-    model_weights_type: type of model weights.
+    dataset_type: Type of TF dataset.
+    model_weights_type: Type of model weights.
     client_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer` for training the model weights on the
       client post-reconstruction.
@@ -280,8 +280,8 @@ def _build_client_update_fn(
     """Performs client local model optimization.
 
     Args:
-      dataset: a `tf.data.Dataset` that provides training examples.
-      initial_model_weights: a `tff.learning.ModelWeights` containing the
+      dataset: A `tf.data.Dataset` that provides training examples.
+      initial_model_weights: A `tff.learning.ModelWeights` containing the
         starting global trainable and non-trainable weights.
 
     Returns:
@@ -584,12 +584,12 @@ def build_training_process(
       clients (weighted depending on `client_weighting`).
 
   Raises:
-    TypeError: if `broadcast_process` does not have the expected signature.
-    TypeError: if `aggregation_factory` does not have the expected signature.
-    ValueError: if  `aggregation_factory` is not a
+    TypeError: If `broadcast_process` does not have the expected signature.
+    TypeError: If `aggregation_factory` does not have the expected signature.
+    ValueError: If  `aggregation_factory` is not a
       `tff.aggregators.WeightedAggregationFactory` or a
       `tff.aggregators.UnweightedAggregationFactory`.
-    ValueError: if `aggregation_factory` is a
+    ValueError: If `aggregation_factory` is a
       `tff.aggregators.UnweightedAggregationFactory` but `client_weighting` is
       not `tff.learning.ClientWeighting.UNIFORM`.
 

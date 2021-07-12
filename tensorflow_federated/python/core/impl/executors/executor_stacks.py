@@ -30,9 +30,9 @@ from tensorflow_federated.python.core.impl.compiler import local_computation_fac
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
-from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import federated_composing_strategy
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
@@ -942,7 +942,7 @@ def _configure_remote_workers(default_num_clients, remote_executors):
   logging.info('%s TFF workers available out of a total of %s.',
                len(available_executors), len(remote_executors))
   if not available_executors:
-    raise execution_context.RetryableError(
+    raise executors_errors.RetryableError(
         'No workers are ready; try again to reconnect.')
   try:
     remaining_clients = default_num_clients

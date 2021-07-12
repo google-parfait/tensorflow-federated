@@ -15,8 +15,9 @@
 
 import asyncio
 import contextlib
-from typing import Any, Callable, Optional
-
+from typing import Any
+from typing import Callable
+from typing import Optional
 import retrying
 import tensorflow as tf
 
@@ -30,18 +31,15 @@ from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
-class RetryableError(Exception):
-  """Raised when execution fails and can be retried."""
-
-
 def _is_retryable_error(exception):
-  return isinstance(exception, RetryableError)
+  return isinstance(exception, executors_errors.RetryableError)
 
 
 def _unwrap(value):

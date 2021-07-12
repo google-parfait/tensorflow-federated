@@ -22,9 +22,7 @@ limitations under the License
 //     The only logic that may exist here is parameter/result conversions (e.g.
 //     `OwnedValueId` -> `ValueId`, etc).
 
-#include "grpc/include/grpcpp/create_channel.h"
-#include "grpc/include/grpcpp/impl/codegen/channel_interface.h"
-#include "grpc/include/grpcpp/security/credentials.h"
+#include "net/grpc/public/include/grpcpp/grpcpp.h"
 #include "pybind11/include/pybind11/detail/common.h"
 #include "pybind11/include/pybind11/pybind11.h"
 #include "pybind11/include/pybind11/stl.h"
