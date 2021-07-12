@@ -166,8 +166,10 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       self._get_bounds_from_state = _create_get_bounds_const(
           upper_bound_threshold, lower_bound_threshold)
       self._update_state = lambda _, __, ___: _empty_state()
+      # We must add one because the size of inclusive range [0, threshold_range]
+      # is threshold_range + 1. We ensure that threshold_range > 0 above.
       self._secagg_bitwidth = math.ceil(
-          math.log2(upper_bound_threshold - lower_bound_threshold))
+          math.log2(upper_bound_threshold - lower_bound_threshold + 1))
 
     # Configuration specific for aggregating floating point types.
     else:
