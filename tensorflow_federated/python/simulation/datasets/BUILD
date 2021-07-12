@@ -20,6 +20,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation:__pkg__"],
     deps = [
+        "inaturalist",
         ":celeba",
         ":cifar100",
         ":client_data",
@@ -174,7 +175,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":client_data",
-        ":file_per_user_client_data",
+        ":vision_datasets_utils",
     ],
 )
 
@@ -184,7 +185,50 @@ py_test(
     srcs = ["gldv2_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":gldv2"],
+    deps = [
+        ":gldv2",
+        ":vision_datasets_utils",
+    ],
+)
+
+py_library(
+    name = "inaturalist",
+    srcs = ["inaturalist.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":client_data",
+        ":vision_datasets_utils",
+    ],
+)
+
+py_test(
+    name = "inaturalist_test",
+    size = "small",
+    srcs = ["inaturalist_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":inaturalist",
+        ":vision_datasets_utils",
+    ],
+)
+
+py_library(
+    name = "vision_datasets_utils",
+    srcs = ["vision_datasets_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":client_data",
+        ":file_per_user_client_data",
+    ],
+)
+
+py_test(
+    name = "vision_datasets_utils_test",
+    srcs = ["vision_datasets_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":vision_datasets_utils"],
 )
 
 py_library(

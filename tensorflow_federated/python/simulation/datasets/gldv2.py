@@ -14,7 +14,6 @@
 """Libraries for the federated Google Landmark v2 dataset for simulation."""
 
 import collections
-import csv
 import logging
 import multiprocessing.pool
 import os
@@ -30,8 +29,8 @@ from typing import Tuple
 
 import tensorflow as tf
 
+from tensorflow_federated.python.simulation.datasets import vision_datasets_utils
 from tensorflow_federated.python.simulation.datasets.client_data import ClientData
-from tensorflow_federated.python.simulation.datasets.file_per_user_client_data import FilePerUserClientData
 
 FED_GLD_SPLIT_FILE_BUNDLE = 'landmarks-user-160k'
 FED_GLD_SPLIT_FILE_DOWNLOAD_URL = 'http://storage.googleapis.com/gresearch/federated-vision-datasets/%s.zip' % FED_GLD_SPLIT_FILE_BUNDLE
@@ -51,9 +50,6 @@ MINI_GLD_CACHE = 'gld23k'
 TRAIN_SUB_DIR = 'train'
 TEST_FILE_NAME = 'test.tfRecord'
 LOGGER = 'gldv2'
-KEY_IMAGE_BYTES = 'image/encoded_jpeg'
-KEY_IMAGE_DECODED = 'image/decoded'
-KEY_CLASS = 'class'
 
 
 def _listener_process(queue: multiprocessing.Queue, log_file: str):
@@ -86,20 +82,6 @@ def _listener_process(queue: multiprocessing.Queue, log_file: str):
       traceback.print_exc(file=sys.stderr)
 
 
-def _read_csv(path: str) -> List[Dict[str, str]]:
-  """Reads a csv file, and returns the content inside a list of dictionaries.
-
-  Args:
-    path: The path to the csv file.
-
-  Returns:
-    A list of dictionaries. Each row in the csv file will be a list entry. The
-    dictionary is keyed by the column names.
-  """
-  with open(path, 'r') as f:
-    return list(csv.DictReader(f))
-
-
 def _create_dataset_with_mapping(
     image_dir: str, mapping: List[Dict[str, str]]) -> List[tf.train.Example]:
   """Builds a dataset based on the mapping file and the images in the image dir.
@@ -120,18 +102,7 @@ def _create_dataset_with_mapping(
       with open(img_path, 'rb') as f:
         img_bytes = f.read()
         examples.append(
-            tf.train.Example(
-                features=tf.train.Features(
-                    feature={
-                        KEY_IMAGE_BYTES:
-                            tf.train.Feature(
-                                bytes_list=tf.train.BytesList(
-                                    value=[img_bytes])),
-                        KEY_CLASS:
-                            tf.train.Feature(
-                                int64_list=tf.train.Int64List(
-                                    value=[int(row['class'])])),
-                    })))
+            vision_datasets_utils.create_example(img_bytes, int(row['class'])))
     except IOError as e:
       logger.warning('Image %s is not found. Exception: %s', img_path, e)
       continue
@@ -151,7 +122,7 @@ def _create_train_data_files(cache_dir: str, image_dir: str, mapping_file: str):
     logger.error('Image directory %s does not exist', image_dir)
     raise ValueError('%s does not exist or is not a directory' % image_dir)
 
-  mapping_table = _read_csv(mapping_file)
+  mapping_table = vision_datasets_utils.read_csv(mapping_file)
   expected_cols = ['user_id', 'image_id', 'class']
   if not all(col in mapping_table[0].keys() for col in expected_cols):
     logger.error('%s has wrong format.', mapping_file)
@@ -185,7 +156,7 @@ def _create_test_data_file(cache_dir: str, image_dir: str, mapping_file: str):
   if not os.path.isdir(image_dir):
     logger.error('Image directory %s does not exist', image_dir)
     raise ValueError('%s does not exist or is not a directory' % image_dir)
-  mapping_table = _read_csv(mapping_file)
+  mapping_table = vision_datasets_utils.read_csv(mapping_file)
   expected_cols = ['image_id', 'class']
   if not all(col in mapping_table[0].keys() for col in expected_cols):
     logger.error('%s has wrong format.', mapping_file)
@@ -224,7 +195,8 @@ def _create_federated_gld_dataset(
       cache_dir=os.path.join(cache_dir, FED_GLD_CACHE),
       image_dir=image_dir,
       mapping_file=test_mapping_file)
-  return _load_data_from_cache(os.path.join(cache_dir, FED_GLD_CACHE))
+  return vision_datasets_utils.load_data_from_cache(
+      os.path.join(cache_dir, FED_GLD_CACHE), LOGGER)
 
 
 def _create_mini_gld_dataset(
@@ -258,7 +230,8 @@ def _create_mini_gld_dataset(
       cache_dir=os.path.join(cache_dir, MINI_GLD_CACHE),
       image_dir=image_dir,
       mapping_file=test_path)
-  return _load_data_from_cache(os.path.join(cache_dir, MINI_GLD_CACHE))
+  return vision_datasets_utils.load_data_from_cache(
+      os.path.join(cache_dir, MINI_GLD_CACHE), LOGGER)
 
 
 def _filter_images(shard: int, all_images: Set[str], image_dir: str,
@@ -346,8 +319,8 @@ def _download_data(
                             FED_GLD_TRAIN_SPLIT_FILE)
   test_path = os.path.join(base_path, FED_GLD_SPLIT_FILE_BUNDLE,
                            FED_GLD_TEST_SPLIT_FILE)
-  train_mapping = _read_csv(train_path)
-  test_mapping = _read_csv(test_path)
+  train_mapping = vision_datasets_utils.read_csv(train_path)
+  test_mapping = vision_datasets_utils.read_csv(test_path)
   all_images = set()
   all_images.update([row['image_id'] for row in train_mapping],
                     [row['image_id'] for row in test_mapping])
@@ -369,69 +342,14 @@ def _download_data(
   return fed_gld_train, fed_gld_test, mini_gld_train, mini_gld_test
 
 
-def _load_tfrecord(fname: str) -> tf.data.Dataset:
-  """Reads a `tf.data.Dataset` from a TFRecord file.
-
-  Parse each element into a `tf.train.Example`.
-
-  Args:
-    fname: The file name of the TFRecord file.
-
-  Returns:
-    `tf.data.Dataset`.
-  """
-  logger = logging.getLogger(LOGGER)
-  logger.info('Start loading dataset for file %s', fname)
-  raw_dataset = tf.data.TFRecordDataset([fname])
-
-  def _parse(example_proto):
-    feature_description = {
-        KEY_IMAGE_BYTES: tf.io.FixedLenFeature([], tf.string, default_value=''),
-        KEY_CLASS: tf.io.FixedLenFeature([], tf.int64, default_value=-1),
-    }
-    return collections.OrderedDict(
-        tf.io.parse_single_example(example_proto, feature_description))
-
-  ds = raw_dataset.map(_parse)
-
-  def _transform(item):
-    return collections.OrderedDict([
-        (KEY_IMAGE_DECODED, tf.io.decode_jpeg(item[KEY_IMAGE_BYTES])),
-        (KEY_CLASS, tf.reshape(item[KEY_CLASS], [1]))
-    ])
-
-  ds = ds.map(_transform)
-  logger.info('Finished loading dataset for file %s', fname)
-  return ds
-
-
-def _load_data_from_cache(cache_dir: str) -> Tuple[ClientData, tf.data.Dataset]:
-  """Load train and test data from the TFRecord files.
-
-  Args:
-    cache_dir: The directory containing the TFRecord files.
-
-  Returns:
-    A tuple of `ClientData`, `tf.data.Dataset`.
-  """
-  logger = logging.getLogger(LOGGER)
-  train_dir = os.path.join(cache_dir, TRAIN_SUB_DIR)
-  logger.info('Start to load train data from cache directory: %s', train_dir)
-  train = FilePerUserClientData.create_from_dir(train_dir, _load_tfrecord)
-  logger.info('Finish loading train data from cache directory: %s', train_dir)
-  test_file = os.path.join(cache_dir, TEST_FILE_NAME)
-  logger.info('Start to load test data from file: %s', test_file)
-  test = _load_tfrecord(test_file)
-  logger.info('Finish loading test data from file: %s', test_file)
-  return train, test
-
-
 def load_data(num_worker: int = 1,
               cache_dir: str = 'cache',
               gld23k: bool = False,
               base_url: str = GLD_SHARD_BASE_URL):
   """Loads a federated version of the Google Landmark v2 dataset.
 
+  The dataset consists of photos of various world landmarks, with images
+  grouped by photographer to achieve a federated partitioning of the data.
   The dataset is downloaded and cached locally. If previously downloaded, it
   tries to load the dataset from cache.
 
@@ -484,7 +402,9 @@ def load_data(num_worker: int = 1,
     existing_data_cache = os.path.join(cache_dir, FED_GLD_CACHE)
   try:
     logger.info('Try loading dataset from cache')
-    return _load_data_from_cache(existing_data_cache)
+    return vision_datasets_utils.load_data_from_cache(existing_data_cache,
+                                                      TRAIN_SUB_DIR,
+                                                      TEST_FILE_NAME, LOGGER)
   except Exception:  # pylint: disable=broad-except
     logger.info('Loading from cache failed, start to download the data.')
     fed_gld_train, fed_gld_test, mini_gld_train, mini_gld_test = _download_data(
