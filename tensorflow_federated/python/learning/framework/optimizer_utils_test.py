@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import functools
 from unittest import mock
 
 from absl.testing import parameterized
@@ -37,6 +36,7 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
+from tensorflow_federated.python.learning.optimizers import sgdm
 
 
 class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
@@ -289,6 +289,14 @@ class UtilsTest(test_case.TestCase):
         optimizer_utils.is_valid_broadcast_process(stateless_process))
 
 
+def _tff_optimizer(learning_rate=0.1):
+  return sgdm.SGD(learning_rate=learning_rate)
+
+
+def _keras_optimizer_fn(learning_rate=0.1):
+  return lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
+
+
 class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -353,7 +361,9 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             result=(server_state_type, metrics_type)),
         iterative_process.next.type_signature)
 
-  def test_construction_calls_model_fn(self):
+  @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
+                                   ('keras_optimizer', _keras_optimizer_fn)])
+  def test_construction_calls_model_fn(self, server_optimzier):
     # Assert that the the process building does not call `model_fn` too many
     # times. `model_fn` can potentially be expensive (loading weights,
     # processing, etc).
@@ -361,11 +371,13 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     optimizer_utils.build_model_delta_optimizer_process(
         model_fn=mock_model_fn,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=tf.keras.optimizers.SGD)
+        server_optimizer_fn=server_optimzier())
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 4)
 
-  def test_initial_weights_pulled_from_model(self):
+  @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
+                                   ('keras_optimizer', _keras_optimizer_fn)])
+  def test_initial_weights_pulled_from_model(self, server_optimizer):
 
     self.skipTest('b/184855264')
 
@@ -392,12 +404,12 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     iterative_process_returning_zeros = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=_model_fn_with_zero_weights,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=tf.keras.optimizers.SGD)
+        server_optimizer_fn=server_optimizer())
 
     iterative_process_returning_ones = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=_model_fn_with_one_weights,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=tf.keras.optimizers.SGD)
+        server_optimizer_fn=server_optimizer())
 
     zero_weights_expected = iterative_process_returning_zeros.initialize().model
     one_weights_expected = iterative_process_returning_ones.initialize().model
@@ -412,7 +424,10 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             iterative_process_returning_ones.initialize.type_signature.result
             .member.model)['parameters'])
 
-  def test_construction_fails_with_invalid_aggregation_factory(self):
+  @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
+                                   ('keras_optimizer', _keras_optimizer_fn)])
+  def test_construction_fails_with_invalid_aggregation_factory(
+      self, server_optimizer):
     aggregation_factory = sampling.UnweightedReservoirSamplingFactory(
         sample_size=1)
     with self.assertRaisesRegex(
@@ -420,7 +435,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
       optimizer_utils.build_model_delta_optimizer_process(
           model_fn=model_examples.LinearRegression,
           model_to_client_delta_fn=DummyClientDeltaFn,
-          server_optimizer_fn=tf.keras.optimizers.SGD,
+          server_optimizer_fn=server_optimizer(),
           model_update_aggregation_factory=aggregation_factory)
 
   def test_construction_with_adam_optimizer(self):
@@ -437,14 +452,32 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     self.assertLen(next_type.parameter[0].member.optimizer_state, 5)
     self.assertLen(next_type.result[0].member.optimizer_state, 5)
 
-  def test_construction_with_aggregation_process(self):
+  @parameterized.named_parameters([('no_momentum', None, 0),
+                                   ('momentum', 0.9, 2)])
+  def test_construction_with_tff_sgdm_optimizer(self, momentum, state_len):
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_examples.LinearRegression,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=sgdm.SGD(learning_rate=0.1, momentum=momentum))
+    # Assert that the optimizer_state is empty for SGD without momentum;
+    # and includes two tensors for the momentum: kernel and bias from the model.
+    initialize_type = iterative_process.initialize.type_signature
+    self.assertLen(initialize_type.result.member.optimizer_state, state_len)
+
+    next_type = iterative_process.next.type_signature
+    self.assertLen(next_type.parameter[0].member.optimizer_state, state_len)
+    self.assertLen(next_type.result[0].member.optimizer_state, state_len)
+
+  @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
+                                   ('keras_optimizer', _keras_optimizer_fn)])
+  def test_construction_with_aggregation_process(self, server_optimizer):
     model_update_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression).trainable
     aggregator = TestMeasuredMeanFactory()
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=tf.keras.optimizers.SGD,
+        server_optimizer_fn=server_optimizer(),
         model_update_aggregation_factory=aggregator)
 
     agg_process = aggregator.create(model_update_type,
@@ -472,14 +505,16 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
         computation_types.FederatedType(next_type.result[1].member.aggregation,
                                         placements.SERVER), agg_metrics_type)
 
-  def test_construction_with_broadcast_process(self):
+  @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
+                                   ('keras_optimizer', _keras_optimizer_fn)])
+  def test_construction_with_broadcast_process(self, server_optimizer):
     model_weights_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression)
     broadcast_process = _build_test_measured_broadcast(model_weights_type)
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=tf.keras.optimizers.SGD,
+        server_optimizer_fn=server_optimizer(),
         broadcast_process=broadcast_process)
 
     expected_broadcast_state_type = broadcast_process.initialize.type_signature.result
@@ -499,16 +534,18 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             next_type.result[0].member.model_broadcast_state,
             placements.SERVER), expected_broadcast_state_type)
 
+  @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
+                                   ('keras_optimizer', _keras_optimizer_fn)])
   @test_utils.skip_test_for_multi_gpu
-  def test_orchestration_execute_measured_process(self):
+  def test_orchestration_execute_measured_process(self, server_optimizer):
     model_weights_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression)
     learning_rate = 1.0
+    server_optimizer_fn = server_optimizer(learning_rate)
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=functools.partial(
-            tf.keras.optimizers.SGD, learning_rate=learning_rate),
+        server_optimizer_fn=server_optimizer_fn,
         broadcast_process=_build_test_measured_broadcast(model_weights_type),
         model_update_aggregation_factory=TestMeasuredMeanFactory())
 
@@ -520,8 +557,12 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     federated_ds = [ds] * 3
 
     state = iterative_process.initialize()
-    # SGD keeps track of a single scalar for the number of iterations.
-    self.assertAllEqual(state.optimizer_state, [0])
+    if callable(server_optimizer_fn):
+      # Keras SGD keeps track of a single scalar for the number of iterations.
+      self.assertAllEqual(state.optimizer_state, [0])
+    else:
+      # TFF SGD has an empty state.
+      self.assertEmpty(state.optimizer_state)
     self.assertAllClose(list(state.model.trainable), [np.zeros((2, 1)), 0.0])
     self.assertAllClose(list(state.model.non_trainable), [0.0])
     self.assertEqual(state.delta_aggregate_state, 0)
@@ -531,7 +572,8 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(
         list(state.model.trainable), [-np.ones((2, 1)), -1.0 * learning_rate])
     self.assertAllClose(list(state.model.non_trainable), [0.0])
-    self.assertAllEqual(state.optimizer_state, [1])
+    if callable(server_optimizer_fn):
+      self.assertAllEqual(state.optimizer_state, [1])
     self.assertEqual(state.delta_aggregate_state, 1)
     self.assertEqual(state.model_broadcast_state, 1)
 

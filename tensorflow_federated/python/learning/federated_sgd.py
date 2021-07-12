@@ -155,6 +155,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
 
 
+# TODO(b/192094313): refactor to accept tff.learning.Optimizer arguments
 def build_federated_sgd_process(
     model_fn: Callable[[], model_lib.Model],
     server_optimizer_fn: Callable[

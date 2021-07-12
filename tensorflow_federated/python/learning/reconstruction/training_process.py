@@ -511,6 +511,7 @@ def _instantiate_aggregation_process(
   return aggregation_process
 
 
+# TODO(b/192094313): refactor to accept tff.learning.Optimizer arguments
 def build_training_process(
     model_fn: ModelFn,
     *,  # Callers pass below args by name.

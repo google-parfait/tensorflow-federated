@@ -35,11 +35,14 @@ from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.optimizers import keras_optimizer
+from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 # Type aliases.
 _ModelConstructor = Callable[[], model_lib.Model]
-_OptimizerConstructor = Callable[[], tf.keras.optimizers.Optimizer]
+_OptimizerConstructor = Union[optimizer_base.Optimizer,
+                              Callable[[], tf.keras.optimizers.Optimizer]]
 
 
 class ProcessTypeError(Exception):
@@ -193,37 +196,24 @@ def _apply_delta(
   optimizer.apply_gradients(grads_and_vars)
 
 
-def _eagerly_create_optimizer_variables(
-    *, model_variables: model_utils.ModelWeights,
-    optimizer: tf.keras.optimizers.Optimizer) -> List[tf.Variable]:
-  """Forces eager construction of the optimizer variables.
-
-  This code is needed both in `server_init` and `server_update` (to introduce
-  variables so we can read their initial values for the initial state).
-
-  Args:
-    model_variables: A `tff.learning.ModelWeights` structure of `tf.Variables`.
-    optimizer: A `tf.keras.optimizers.Optimizer`.
-
-  Returns:
-    A list of optimizer variables.
-  """
-  delta_tensor_spec = tf.nest.map_structure(
-      lambda v: tf.TensorSpec.from_tensor(v.read_value()),
-      model_variables.trainable)
-  # Trace the function, which forces eager variable creation.
-  tf.function(_apply_delta).get_concrete_function(
-      optimizer=optimizer,
-      model_variables=model_variables,
-      delta=delta_tensor_spec)
-  return optimizer.variables()
-
-
 # ==============================================================================
 # Federated Computations
 #
 # These constructors setup the system level orchestration logic.
 # ==============================================================================
+
+
+def _construct_tff_optimizer(
+    optimizer_fn: _OptimizerConstructor,
+    model_weights: model_utils.ModelWeights) -> optimizer_base.Optimizer:
+  # This helper function is used inside several TFF computation functions as
+  # keras optimizer is eagerly constructed and has to be separately created in
+  # each computation graph.
+  if isinstance(optimizer_fn, optimizer_base.Optimizer):
+    return optimizer_fn
+  else:
+    return keras_optimizer.KerasOptimizer(optimizer_fn, model_weights.trainable,
+                                          True)
 
 
 def _build_initialize_computation(
@@ -239,10 +229,10 @@ def _build_initialize_computation(
     model_fn: A no-argument callable that constructs and returns a
       `tff.learning.Model`. *Must* construct and return a new model when called.
       Returning captured models from other scopes will raise errors.
-    server_optimizer_fn: A no-argument callable that constructs and returns a
-      `tf.keras.optimizers.Optimizer`. *Must* construct and return a new
-      optimizer when called. Returning captured optimizers from other scopes
-      will raise errors.
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-argument
+      callable that constructs and returns a `tf.keras.optimizers.Optimizer`.
+      The callable *must* construct and return a new Keras optimizer when
+      called. Returning captured optimizers from other scopes will raise errors.
     broadcast_process: A `tff.templates.MeasuredProcess` to broadcast the global
       model to the clients.
     aggregation_process: A `tff.templates.MeasuredProcess` to aggregate client
@@ -263,11 +253,11 @@ def _build_initialize_computation(
       `tf.Variable`s for the global optimizer state.
     """
     model_variables = model_utils.ModelWeights.from_model(model_fn())
-    optimizer = server_optimizer_fn()
-    # We must force variable creation for momentum and adaptive optimizers.
-    optimizer_vars = _eagerly_create_optimizer_variables(
-        model_variables=model_variables, optimizer=optimizer)
-    return model_variables, optimizer_vars,
+    optimizer = _construct_tff_optimizer(server_optimizer_fn, model_variables)
+    trainable_tensor_specs = tf.nest.map_structure(
+        lambda v: tf.TensorSpec(v.shape, v.dtype), model_variables.trainable)
+    optimizer_state = optimizer.initialize(trainable_tensor_specs)
+    return model_variables, optimizer_state
 
   @computations.federated_computation()
   def initialize_computation():
@@ -299,10 +289,10 @@ def _build_one_round_computation(
     model_fn: A no-argument callable that constructs and returns a
       `tff.learning.Model`. *Must* construct and return a new model when called.
       Returning captured models from other scopes will raise errors.
-    server_optimizer_fn: A no-argument callable that constructs and returns a
-      `tf.keras.optimizers.Optimizer`. *Must* construct and return a new
-      optimizer when called. Returning captured optimizers from other scopes
-      will raise errors.
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-argument
+      callable that constructs and returns a `tf.keras.optimizers.Optimizer`.
+      The callable *must* construct and return a new Keras optimizer when
+      called. Returning captured optimizers from other scopes will raise errors.
     model_to_client_delta_fn: A callable that takes a single no-arg callable
       that returns `tff.learning.Model` as an argument and returns a
       `ClientDeltaFn` which performs the local training loop and model delta
@@ -324,20 +314,18 @@ def _build_one_round_computation(
   # still need this.
   with tf.Graph().as_default():
     whimsy_model_for_metadata = model_fn()
-    model_weights_type = model_utils.weights_type_from_model(
+    model_weights = model_utils.ModelWeights.from_model(
         whimsy_model_for_metadata)
+    model_weights_type = type_conversions.type_from_tensors(model_weights)
 
-    whimsy_optimizer = server_optimizer_fn()
-    # We must force variable creation for momentum and adaptive optimizers.
-    _eagerly_create_optimizer_variables(
-        model_variables=model_utils.ModelWeights.from_model(
-            whimsy_model_for_metadata),
-        optimizer=whimsy_optimizer)
-    optimizer_variable_type = type_conversions.type_from_tensors(
-        whimsy_optimizer.variables())
+    optimizer = _construct_tff_optimizer(server_optimizer_fn, model_weights)
+    trainable_tensor_specs = tf.nest.map_structure(
+        lambda v: tf.TensorSpec(v.shape, v.dtype), model_weights.trainable)
+    optimizer_state_type = type_conversions.type_from_tensors(
+        optimizer.initialize(trainable_tensor_specs))
 
   @computations.tf_computation(model_weights_type, model_weights_type.trainable,
-                               optimizer_variable_type)
+                               optimizer_state_type)
   @tf.function
   def server_update(global_model, mean_model_delta, optimizer_state):
     """Updates the global model with the mean model update from clients."""
@@ -346,16 +334,12 @@ def _build_one_round_computation(
       model_variables = tf.nest.map_structure(
           lambda t: tf.Variable(initial_value=tf.zeros(t.shape, t.dtype)),
           global_model)
-      optimizer = server_optimizer_fn()
-      # We must force variable creation for momentum and adaptive optimizers.
-      _eagerly_create_optimizer_variables(
-          model_variables=model_variables, optimizer=optimizer)
-    optimizer_variables = optimizer.variables()
+      optimizer = _construct_tff_optimizer(server_optimizer_fn, model_variables)
+
     # Set the variables to the current global model, the optimizer will
     # update these variables.
-    tf.nest.map_structure(lambda a, b: a.assign(b),
-                          (model_variables, optimizer_variables),
-                          (global_model, optimizer_state))
+    tf.nest.map_structure(lambda a, b: a.assign(b), model_variables,
+                          global_model)
     # We might have a NaN value e.g. if all of the clients processed had no
     # data, so the denominator in the federated_mean is zero. If we see any
     # NaNs, zero out the whole update.
@@ -364,11 +348,17 @@ def _build_one_round_computation(
     finite_weights_delta, _ = tensor_utils.zero_all_if_any_non_finite(
         mean_model_delta)
     # Update the global model variables with the delta as a pseudo-gradient.
-    _apply_delta(
-        optimizer=optimizer,
-        model_variables=model_variables,
-        delta=finite_weights_delta)
-    return model_variables, optimizer_variables
+    negative_weights_delta = tf.nest.map_structure(lambda w: -1.0 * w,
+                                                   finite_weights_delta)
+    optimizer_state, updated_weights = optimizer.next(optimizer_state,
+                                                      model_variables.trainable,
+                                                      negative_weights_delta)
+    # Keras optimizers mutate model variables in with the `next` step above, so
+    # we skip calling the assignment for those optimizers.
+    if not isinstance(optimizer, keras_optimizer.KerasOptimizer):
+      tf.nest.map_structure(lambda a, b: a.assign(b), model_variables.trainable,
+                            updated_weights)
+    return model_variables, optimizer_state
 
   dataset_type = computation_types.SequenceType(
       whimsy_model_for_metadata.input_spec)
@@ -396,7 +386,7 @@ def _build_one_round_computation(
 
   server_state_type = ServerState(
       model=model_weights_type,
-      optimizer_state=optimizer_variable_type,
+      optimizer_state=optimizer_state_type,
       delta_aggregate_state=aggregation_state,
       model_broadcast_state=broadcast_state)
 
@@ -576,7 +566,11 @@ def build_model_delta_optimizer_process(
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(model_to_client_delta_fn)
-  py_typecheck.check_callable(server_optimizer_fn)
+  if not (callable(server_optimizer_fn) or
+          isinstance(server_optimizer_fn, optimizer_base.Optimizer)):
+    raise TypeError(
+        '`server_optimizer_fn` must be a callable or `tff.learning.optimizers.Optimizer`'
+    )
 
   model_weights_type = model_utils.weights_type_from_model(model_fn)
 

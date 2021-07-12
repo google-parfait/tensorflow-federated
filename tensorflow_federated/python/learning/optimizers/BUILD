@@ -8,6 +8,10 @@ package_group(
         "//tensorflow_federated/python/learning/optimizers/...",
         # Framework uses the optimizers.
         "//tensorflow_federated/python/learning/framework/...",
+        # TODO(b/151441025): This package is temporary and can be removed once the
+        # dependencies between `tff.learning` and `tff.learning.optimizers` are
+        # cleaned up.
+        "//tensorflow_federated/python/learning",
     ],
 )
 
@@ -19,7 +23,11 @@ py_library(
     name = "optimizers",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/tools:__subpackages__"],
+    visibility = [
+        "//tensorflow_federated/python/learning:__pkg__",
+        "//tensorflow_federated/tools:__subpackages__",
+    ],
+    deps = [":optimizer"],
 )
 
 py_library(
