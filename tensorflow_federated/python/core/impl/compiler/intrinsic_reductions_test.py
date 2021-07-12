@@ -215,6 +215,35 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
     self.assertGreater(
         _count_intrinsics(reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri), 0)
 
+  def test_federated_secure_select(self):
+    uri = intrinsic_defs.FEDERATED_SECURE_SELECT.uri
+    comp = building_blocks.Intrinsic(
+        uri,
+        computation_types.FunctionType(
+            [
+                computation_types.at_clients(tf.int32),  # client_keys
+                computation_types.at_server(tf.int32),  # max_key
+                computation_types.at_server(tf.float32),  # server_state
+                computation_types.FunctionType([tf.float32, tf.int32],
+                                               tf.float32)  # select_fn
+            ],
+            computation_types.at_clients(
+                computation_types.SequenceType(tf.float32))))
+    self.assertGreater(_count_intrinsics(comp, uri), 0)
+    # First without secure intrinsics shouldn't modify anything.
+    reduced, modified = intrinsic_reductions.replace_intrinsics_with_bodies(
+        comp)
+    self.assertFalse(modified)
+    self.assertGreater(_count_intrinsics(comp, uri), 0)
+    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    # Now replace bodies including secure intrinsics.
+    reduced, modified = intrinsic_reductions.replace_secure_intrinsics_with_insecure_bodies(
+        comp)
+    self.assertTrue(modified)
+    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    self.assertGreater(
+        _count_intrinsics(reduced, intrinsic_defs.FEDERATED_SELECT.uri), 0)
+
 
 if __name__ == '__main__':
   absltest.main()

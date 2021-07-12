@@ -359,10 +359,24 @@ def _get_secure_intrinsic_reductions(
     return federated_secure_sum(
         building_blocks.Struct([summand_arg, max_value]))
 
+  def federated_secure_select(arg):
+    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
+    client_keys_arg = building_blocks.Selection(arg, index=0)
+    max_key_arg = building_blocks.Selection(arg, index=1)
+    server_val_arg = building_blocks.Selection(arg, index=2)
+    select_fn_arg = building_blocks.Selection(arg, index=3)
+    return building_block_factory.create_federated_select(
+        client_keys_arg,
+        max_key_arg,
+        server_val_arg,
+        select_fn_arg,
+        secure=False)
+
   secure_intrinsic_bodies_by_uri = collections.OrderedDict([
       (intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
        federated_secure_sum_bitwidth),
-      (intrinsic_defs.FEDERATED_SECURE_SUM.uri, federated_secure_sum)
+      (intrinsic_defs.FEDERATED_SECURE_SUM.uri, federated_secure_sum),
+      (intrinsic_defs.FEDERATED_SECURE_SELECT.uri, federated_secure_select),
   ])
   return secure_intrinsic_bodies_by_uri
 
