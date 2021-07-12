@@ -1362,7 +1362,7 @@ class AddUniqueIDs(transformation_utils.TransformSpec):
     new_tf_proto = pb.TensorFlow()
     new_tf_proto.CopyFrom(comp.proto.tensorflow)
     hash_value = hash(comp.proto.tensorflow.graph_def.value)
-    new_tf_proto.id = ctypes.c_uint64(hash_value).value
+    new_tf_proto.cache_key.id = ctypes.c_uint64(hash_value).value
     new_comp_proto = pb.Computation(
         type=comp.proto.type, tensorflow=new_tf_proto)
     return building_blocks.CompiledComputation(

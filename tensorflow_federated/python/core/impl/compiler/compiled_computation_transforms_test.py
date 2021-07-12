@@ -2130,17 +2130,21 @@ class AddUniqueIDsTest(test_case.TestCase):
       self.assertTrue(mutated)
       self.assertIsInstance(first_transformed_comp,
                             building_blocks.CompiledComputation)
-      self.assertTrue(first_transformed_comp.proto.tensorflow.HasField('id'))
-      self.assertNotEqual(first_transformed_comp.proto.tensorflow.id, 0)
+      self.assertTrue(
+          first_transformed_comp.proto.tensorflow.HasField('cache_key'))
+      self.assertNotEqual(first_transformed_comp.proto.tensorflow.cache_key.id,
+                          0)
     with self.subTest('second_comp_same_id'):
       second_transformed_comp, mutated = add_ids.transform(compiled_computation)
       self.assertTrue(mutated)
       self.assertIsInstance(second_transformed_comp,
                             building_blocks.CompiledComputation)
-      self.assertTrue(second_transformed_comp.proto.tensorflow.HasField('id'))
-      self.assertNotEqual(second_transformed_comp.proto.tensorflow.id, 0)
-      self.assertEqual(first_transformed_comp.proto.tensorflow.id,
-                       second_transformed_comp.proto.tensorflow.id)
+      self.assertTrue(
+          second_transformed_comp.proto.tensorflow.HasField('cache_key'))
+      self.assertNotEqual(second_transformed_comp.proto.tensorflow.cache_key.id,
+                          0)
+      self.assertEqual(first_transformed_comp.proto.tensorflow.cache_key.id,
+                       second_transformed_comp.proto.tensorflow.cache_key.id)
     with self.subTest('restart_transformation_same_id'):
       # Test that the sequence ids are the same if we run a new compiler pass.
       # With compiler running inside the `invoke` call, we need to ensure
@@ -2148,10 +2152,12 @@ class AddUniqueIDsTest(test_case.TestCase):
       add_ids = compiled_computation_transforms.AddUniqueIDs()
       third_transformed_comp, mutated = add_ids.transform(compiled_computation)
       self.assertTrue(mutated)
-      self.assertTrue(third_transformed_comp.proto.tensorflow.HasField('id'))
-      self.assertNotEqual(third_transformed_comp.proto.tensorflow.id, 0)
-      self.assertEqual(first_transformed_comp.proto.tensorflow.id,
-                       third_transformed_comp.proto.tensorflow.id)
+      self.assertTrue(
+          third_transformed_comp.proto.tensorflow.HasField('cache_key'))
+      self.assertNotEqual(third_transformed_comp.proto.tensorflow.cache_key.id,
+                          0)
+      self.assertEqual(first_transformed_comp.proto.tensorflow.cache_key.id,
+                       third_transformed_comp.proto.tensorflow.cache_key.id)
     with self.subTest('different_computation_different_id'):
       different_compiled_computation = _create_compiled_computation(
           lambda x: x + tf.constant(1.0),
@@ -2160,10 +2166,12 @@ class AddUniqueIDsTest(test_case.TestCase):
           different_compiled_computation)
       self.assertTrue(mutated)
       self.assertTrue(
-          different_transformed_comp.proto.tensorflow.HasField('id'))
-      self.assertNotEqual(different_transformed_comp.proto.tensorflow.id, 0)
-      self.assertNotEqual(first_transformed_comp.proto.tensorflow.id,
-                          different_transformed_comp.proto.tensorflow.id)
+          different_transformed_comp.proto.tensorflow.HasField('cache_key'))
+      self.assertNotEqual(
+          different_transformed_comp.proto.tensorflow.cache_key.id, 0)
+      self.assertNotEqual(
+          first_transformed_comp.proto.tensorflow.cache_key.id,
+          different_transformed_comp.proto.tensorflow.cache_key.id)
 
 
 if __name__ == '__main__':

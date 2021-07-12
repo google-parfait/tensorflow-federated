@@ -377,9 +377,10 @@ def _to_computation_internal_rep(*, value: pb.Computation,
                                  type_spec: computation_types.StructType,
                                  device: tf.config.LogicalDevice):
   """Converts a `pb.Computation` to a `tf.function`."""
-  if value.tensorflow.id:
-    logging.debug('Using value id for cache key: %s', value.tensorflow.id)
-    key = (value.tensorflow.id,
+  if value.tensorflow.cache_key.id:
+    logging.debug('Using value id for cache key: %s',
+                  value.tensorflow.cache_key.id)
+    key = (value.tensorflow.cache_key.id,
            type_serialization.serialize_type(type_spec).SerializeToString(
                deterministic=True), device.name if device else None)
   else:

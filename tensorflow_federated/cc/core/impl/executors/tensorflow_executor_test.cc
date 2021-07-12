@@ -466,7 +466,8 @@ TEST_F(TensorFlowExecutorTest, CallWithComputationId) {
   v0::Value fn =
       Computation(StructB({TensorB(x), TensorB(y)}), TensorB(out), root);
   // Add an ID to the value.
-  fn.mutable_computation()->mutable_tensorflow()->set_id(1);
+  fn.mutable_computation()->mutable_tensorflow()->mutable_cache_key()->set_id(
+      1);
   v0::Value arg = StructV({TensorV(1), TensorV(2)});
   v0::Value expected = TensorV(3);
   // First call will populate the cache.

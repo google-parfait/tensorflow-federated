@@ -772,13 +772,14 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
           "non-TensorFlow computations. Found computation of type ",
           comp_pb.computation_case()));
     }
-    if (!comp_pb.tensorflow().has_id() || comp_pb.tensorflow().id() == 0) {
+    if (!comp_pb.tensorflow().has_cache_key() ||
+        comp_pb.tensorflow().cache_key().id() == 0) {
       // No ID to use for caching, simply create a computation and skip cache
       // logic.
       return ExecutorValue(
           TFF_TRY(Computation::FromProto(comp_pb.tensorflow())));
     }
-    const uint64 function_id = comp_pb.tensorflow().id();
+    const uint64 function_id = comp_pb.tensorflow().cache_key().id();
     // Try the fast path first, reader locks are much cheaper.
     {
       absl::ReaderMutexLock reader_lock(&function_cache_mutex_);
