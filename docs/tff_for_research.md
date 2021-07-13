@@ -172,7 +172,9 @@ updates of federated averaging, you can implement a new DP mean algorithm as a
 subclass of
 [`tensorflow_privacy.DPQuery`](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/dp_query/dp_query.py#L54)
 and create a `tff.aggregators.DifferentiallyPrivateFactory` with an instance of
-your query.
+your query. An example of implementing the
+[DP-FTRL algorithm](https://arxiv.org/abs/2103.00039) can be found
+[here](https://github.com/google-research/federated/blob/master/dp_ftrl/dp_fedavg.py)
 
 Federated GANs (described [below](#generative_adversarial_networks)) are another
 example of a TFF project implementing user-level differential privacy (e.g.,
