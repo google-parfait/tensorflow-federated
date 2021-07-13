@@ -20,7 +20,6 @@ limitations under the License
 #include "net/grpc/public/include/grpcpp/grpcpp.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "grpc/include/grpc/impl/codegen/connectivity_state.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
