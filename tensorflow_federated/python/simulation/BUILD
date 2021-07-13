@@ -24,6 +24,7 @@ py_library(
     deps = [
         ":checkpoint_manager",
         ":csv_manager",
+        ":dictionary_manager",
         ":iterative_process_compositions",
         ":metrics_manager",
         ":sampling_utils",
