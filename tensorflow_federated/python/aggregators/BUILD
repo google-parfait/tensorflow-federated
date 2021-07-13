@@ -1,16 +1,22 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":aggregators_packages",
+    ":aggregators_visibility",
+])
+
 package_group(
-    name = "default_visibility",
-    packages = [
-        "//tensorflow_federated/experimental/python/learning/...",
-        "//tensorflow_federated/python/aggregators/...",
-        "//tensorflow_federated/python/analytics/...",
-        "//tensorflow_federated/python/learning/...",
-    ],
+    name = "aggregators_packages",
+    packages = ["//tensorflow_federated/python/aggregators/..."],
 )
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "aggregators_visibility",
+    includes = [
+        "//tensorflow_federated/python/analytics:analytics_packages",
+        "//tensorflow_federated/python/learning:learning_packages",
+    ],
+)
 
 licenses(["notice"])
 

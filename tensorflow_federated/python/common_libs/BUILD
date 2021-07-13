@@ -1,13 +1,19 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = ["//tensorflow_federated:internal"])
+package(default_visibility = [
+    ":common_libs_packages",
+    "//tensorflow_federated/python:internal_packages",
+
+    # Namespace visibility
+    "//tensorflow_federated:__pkg__",
+])
+
+package_group(
+    name = "common_libs_packages",
+    packages = ["//tensorflow_federated/python/common_libs/..."],
+)
 
 licenses(["notice"])
-
-# Note: TFF code outside this directory can depend on libraries defined in this
-# directory, but not the other way round. In particular, utility classes and
-# functions that depend on interfaces defined in the Core API belong in `core`,
-# and those that deal with TensorFlow belong in `tensorflow_libs`.
 
 py_library(
     name = "common_libs",
@@ -92,10 +98,6 @@ py_library(
     name = "structure",
     srcs = ["structure.py"],
     srcs_version = "PY3",
-    visibility = [
-        "//tensorflow_federated:__pkg__",
-        "//tensorflow_federated:internal",
-    ],
     deps = [":py_typecheck"],
 )
 
@@ -112,16 +114,17 @@ py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":common_libs_packages",
+        "//tensorflow_federated/python:internal_packages",
+        "//tensorflow_federated/tools:__subpackages__",
+    ],
 )
 
 py_library(
     name = "tracing",
     srcs = ["tracing.py"],
     srcs_version = "PY3",
-    visibility = [
-        "//tensorflow_federated:__pkg__",
-        "//tensorflow_federated:internal",
-    ],
     deps = [":py_typecheck"],
 )
 

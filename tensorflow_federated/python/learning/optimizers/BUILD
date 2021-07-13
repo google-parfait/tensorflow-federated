@@ -1,21 +1,21 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/learning:learning_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/learning/optimizers/...",
-        # Framework uses the optimizers.
-        "//tensorflow_federated/python/learning/framework/...",
-        # TODO(b/151441025): This package is temporary and can be removed once the
-        # dependencies between `tff.learning` and `tff.learning.optimizers` are
-        # cleaned up.
-        "//tensorflow_federated/python/learning",
-    ],
-)
+package(default_visibility = [
+    ":optimizers_packages",
+    "//tensorflow_federated/python/learning/framework:framework_packages",
+    "//tensorflow_federated/python/learning:learning_visibility",
 
-package(default_visibility = [":default_visibility"])
+    # TODO(b/151441025): This package is temporary and can be removed once the
+    # dependencies between `tff.learning` and `tff.learning.optimizers` are
+    # cleaned up.
+    "//tensorflow_federated/python/learning:__pkg__",
+    "//tensorflow_federated/experimental/python/learning:__pkg__",
+])
+
+package_group(
+    name = "optimizers_packages",
+    packages = ["//tensorflow_federated/python/learning/optimizers/..."],
+)
 
 licenses(["notice"])
 
@@ -23,10 +23,7 @@ py_library(
     name = "optimizers",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = [
-        "//tensorflow_federated/python/learning:__pkg__",
-        "//tensorflow_federated/tools:__subpackages__",
-    ],
+    visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [":optimizer"],
 )
 

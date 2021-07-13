@@ -1,14 +1,14 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core/impl:impl_visibility"],
-    packages = [
-        "//tensorflow_federated/python/core/impl/executor_stacks/...",
-    ],
-)
+package(default_visibility = [
+    ":executor_stacks_packages",
+    "//tensorflow_federated/python/core/impl:impl_visibility",
+])
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "executor_stacks_packages",
+    packages = ["//tensorflow_federated/python/core/impl/executor_stacks/..."],
+)
 
 licenses(["notice"])
 

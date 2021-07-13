@@ -1,13 +1,19 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":learning_packages",
+    ":learning_visibility",
+])
+
 package_group(
-    name = "default_visibility",
-    packages = [
-        "//tensorflow_federated/experimental/...",
-    ],
+    name = "learning_packages",
+    packages = ["//tensorflow_federated/experimental/python/learning/..."],
 )
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "learning_visibility",
+    includes = [],
+)
 
 licenses(["notice"])
 
@@ -15,10 +21,7 @@ py_library(
     name = "learning",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = [
-        "//tensorflow_federated/experimental:__pkg__",
-        "//tensorflow_federated/tools:__subpackages__",
-    ],
+    visibility = ["//tensorflow_federated/experimental:__pkg__"],
     deps = [
         ":federated_averaging",
         ":jax_components",

@@ -1,21 +1,22 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":framework_packages",
+    "//tensorflow_federated/python/learning:learning_visibility",
+    "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
+
+    # TODO(b/151441025): This package is temporary and can be removed once the
+    # dependencies between `tff.learning` and `tff.learning.framework` are
+    # cleaned up.
+    "//tensorflow_federated/python/learning:__pkg__",
+    "//tensorflow_federated/experimental/python/learning:__pkg__",
+])
+
 package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/learning:learning_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/learning/framework/...",
-
-        # TODO(b/151441025): This package is temporary and can be removed once the
-        # dependencies between `tff.learning` and `tff.learning.framework` are
-        # cleaned up.
-        "//tensorflow_federated/python/learning/...",
-    ],
+    name = "framework_packages",
+    packages = ["//tensorflow_federated/python/learning/framework/..."],
 )
-
-package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

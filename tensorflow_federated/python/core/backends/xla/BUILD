@@ -1,13 +1,17 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(
-    name = "default_visibility",
-    packages = [
-        "//tensorflow_federated/...",
-    ],
-)
+package(default_visibility = [
+    ":xla_packages",
+    "//tensorflow_federated/python/core:core_visibility",
 
-package(default_visibility = [":default_visibility"])
+    # TODO(b/192369072): `core/impl` should not depend on `core/backends`.
+    "//tensorflow_federated/experimental/python/core/impl/jax_context:__subpackages__",
+])
+
+package_group(
+    name = "xla_packages",
+    packages = ["//tensorflow_federated/python/core/backends/xla/..."],
+)
 
 licenses(["notice"])
 

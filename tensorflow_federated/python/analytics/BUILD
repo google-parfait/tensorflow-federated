@@ -1,13 +1,19 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":analytics_packages",
+    ":analytics_visibility",
+])
+
 package_group(
-    name = "default_visibility",
-    packages = [
-        "//tensorflow_federated/python/analytics/...",
-    ],
+    name = "analytics_packages",
+    packages = ["//tensorflow_federated/python/analytics/..."],
 )
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "analytics_visibility",
+    includes = ["//tensorflow_federated/python/simulation:simulation_packages"],
+)
 
 licenses(["notice"])
 

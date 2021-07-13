@@ -1,12 +1,14 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":native_packages",
+    "//tensorflow_federated/python/core:core_visibility",
+])
+
 package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
+    name = "native_packages",
     packages = ["//tensorflow_federated/python/core/backends/native/..."],
 )
-
-package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

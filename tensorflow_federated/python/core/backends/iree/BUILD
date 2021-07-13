@@ -1,15 +1,19 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = [":iree_packages"])
+
+package_group(
+    name = "iree_packages",
+    packages = ["//tensorflow_federated/python/core/backends/iree/..."],
+)
 
 licenses(["notice"])
 
-# The targets in the `iree` package are tagged with `nopresubmit`; this excludes
-# these targets from the `tensorflow_federated` TAP project but does not exclude
-# them from the `tensorflow_federated.iree` TAP project. Changes to this package
-# do block on the `tensorflow_federated.iree` TAP project; therefore, changes to
-# the `iree` package **are** run as a presubmit for the `iree` package even
-# though they are labeled with "nopresubmit".
+py_library(
+    name = "iree",
+    srcs = ["__init__.py"],
+    srcs_version = "PY3",
+)
 
 py_library(
     name = "backend_info",

@@ -1,15 +1,14 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/core/backends/mapreduce/...",
-    ],
-)
+package(default_visibility = [
+    ":mapreduce_packages",
+    "//tensorflow_federated/python/core:core_visibility",
+])
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "mapreduce_packages",
+    packages = ["//tensorflow_federated/python/core/backends/mapreduce/..."],
+)
 
 licenses(["notice"])
 

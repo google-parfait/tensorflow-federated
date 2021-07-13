@@ -1,14 +1,15 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(
-    name = "default_visibility",
-    packages = [
-        "//tensorflow_federated/experimental/python/core/impl/jax_context/...",
-        "//tensorflow_federated/experimental/python/core/impl/wrappers/...",
-    ],
-)
+package(default_visibility = [
+    ":jax_context_packages",
+    "//tensorflow_federated/experimental/python/core/impl:impl_visibility",
+    "//tensorflow_federated/experimental/python/core/impl/wrappers:wrappers_packages",
+])
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "jax_context_packages",
+    packages = ["//tensorflow_federated/experimental/python/core/impl/jax_context/..."],
+)
 
 licenses(["notice"])
 

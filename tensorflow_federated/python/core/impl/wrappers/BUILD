@@ -1,15 +1,17 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":wrappers_packages",
+    "//tensorflow_federated/python/core/impl:impl_visibility",
+])
+
 package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core/impl:impl_visibility"],
+    name = "wrappers_packages",
     packages = [
-        # Subpackages
+        "//tensorflow_federated/experimental/python/core/impl/wrappers/...",
         "//tensorflow_federated/python/core/impl/wrappers/...",
     ],
 )
-
-package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

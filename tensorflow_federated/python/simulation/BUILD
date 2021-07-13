@@ -1,17 +1,19 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(name = "simulation_visibility")
+package(default_visibility = [
+    ":simulation_packages",
+    ":simulation_visibility",
+])
 
 package_group(
-    name = "default_visibility",
-    includes = [":simulation_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/simulation/...",
-    ],
+    name = "simulation_packages",
+    packages = ["//tensorflow_federated/python/simulation/..."],
 )
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "simulation_visibility",
+    includes = ["//tensorflow_federated/tools:tools_packages"],
+)
 
 licenses(["notice"])
 

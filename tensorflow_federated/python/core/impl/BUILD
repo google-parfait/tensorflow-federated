@@ -1,21 +1,34 @@
 load("@rules_python//python:defs.bzl", "py_library")
 
-# Packages that have visibility into the `impl` package.
+package(default_visibility = ["//visibility:private"])
+
 package_group(
-    name = "impl_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
+    name = "impl_packages",
     packages = [
-        "//tensorflow_federated",
-        "//tensorflow_federated/python/core/api/...",
-        "//tensorflow_federated/python/core/backends/...",
-        "//tensorflow_federated/python/core/framework/...",
-        "//tensorflow_federated/python/core/templates/...",
-        "//tensorflow_federated/python/core/test/...",
-        "//tensorflow_federated/python/core/types/...",
+        "//tensorflow_federated/experimental/python/core/impl/...",
+        "//tensorflow_federated/python/core/impl/...",
     ],
 )
 
-package(default_visibility = ["//visibility:private"])
+package_group(
+    name = "impl_visibility",
+    includes = [
+        "//tensorflow_federated/python/aggregators:aggregators_packages",
+        "//tensorflow_federated/python/analytics:analytics_packages",
+        "//tensorflow_federated/python/core/api:api_packages",
+        "//tensorflow_federated/python/core/backends:backends_packages",
+        "//tensorflow_federated/python/core/framework:framework_packages",
+        "//tensorflow_federated/python/core/templates:templates_packages",
+        "//tensorflow_federated/python/core/test:test_packages",
+        "//tensorflow_federated/python/core/types:types_packages",
+        "//tensorflow_federated/python/learning:learning_packages",
+        "//tensorflow_federated/python/simulation:simulation_packages",
+    ],
+    packages = [
+        # Namespace visibility
+        "//tensorflow_federated",
+    ],
+)
 
 licenses(["notice"])
 
