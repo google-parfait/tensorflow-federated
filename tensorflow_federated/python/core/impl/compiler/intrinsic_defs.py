@@ -341,6 +341,22 @@ FEDERATED_MEAN = IntrinsicDef(
             computation_types.AbstractType('T'))),
     aggregation_kind=AggregationKind.DEFAULT)
 
+# Computes the modular sum of client values on the server, securely. Only
+# supported for integers or nested structures of integers.
+#
+# Type signature: <{V}@CLIENTS,M> -> V@SERVER
+FEDERATED_SECURE_MODULAR_SUM = IntrinsicDef(
+    'FEDERATED_SECURE_MODULAR_SUM',
+    'federated_secure_modular_sum',
+    computation_types.FunctionType(
+        parameter=[
+            computation_types.at_clients(computation_types.AbstractType('V')),
+            computation_types.AbstractType('M'),
+        ],
+        result=computation_types.at_server(
+            computation_types.AbstractType('V'))),
+    aggregation_kind=AggregationKind.SECURE)
+
 # Computes the sum of client values on the server, securely. Only supported for
 # integers or nested structures of integers.
 #

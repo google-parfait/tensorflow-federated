@@ -614,6 +614,37 @@ class CreateFederatedMeanTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
+class CreateFederatedSecureModularSumTest(absltest.TestCase):
+
+  def test_raises_type_error_with_none_value(self):
+    modulus_type = computation_types.TensorType(tf.int32)
+    modulus = building_block_factory.create_compiled_identity(
+        modulus_type, name='b')
+
+    with self.assertRaises(TypeError):
+      building_block_factory.create_federated_secure_modular_sum(None, modulus)
+
+  def test_raises_type_error_with_none_modulus(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    value = building_blocks.Data('v', value_type)
+
+    with self.assertRaises(TypeError):
+      building_block_factory.create_federated_secure_modular_sum(value, None)
+
+  def test_returns_federated_sum(self):
+    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    value = building_blocks.Data('v', value_type)
+    modulus_type = computation_types.TensorType(tf.int32)
+    modulus = building_block_factory.create_tensorflow_constant(
+        modulus_type, 8, 'b')
+    comp = building_block_factory.create_federated_secure_modular_sum(
+        value, modulus)
+    self.assertEqual(comp.compact_representation(),
+                     'federated_secure_modular_sum(<v,comp#b()>)')
+    self.assertEqual(comp.type_signature.compact_representation(),
+                     'int32@SERVER')
+
+
 class CreateFederatedSecureSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
@@ -624,7 +655,7 @@ class CreateFederatedSecureSumTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_secure_sum(None, max_input)
 
-  def test_raises_type_error_with_none_bitwidth(self):
+  def test_raises_type_error_with_none_max_input(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     value = building_blocks.Data('v', value_type)
 

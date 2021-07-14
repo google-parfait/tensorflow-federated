@@ -161,6 +161,62 @@ class FederatedMapTest(IntrinsicTestBase):
       intrinsics.federated_map(computations.tf_computation(lambda x: x > 10), x)
 
 
+class FederatedSecureModularSumTest(IntrinsicTestBase):
+
+  def test_type_signature_with_int(self):
+    value = intrinsics.federated_value(1, placements.CLIENTS)
+    modulus = 1
+    result = intrinsics.federated_secure_modular_sum(value, modulus)
+    self.assert_value(result, 'int32@SERVER')
+
+  def test_type_signature_with_structure_of_ints(self):
+    value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
+    modulus = [8, [4, 2]]
+    result = intrinsics.federated_secure_modular_sum(value, modulus)
+    self.assert_value(result, '<int32,<int32,int32>>@SERVER')
+
+  def test_type_signature_with_structure_of_ints_scalar_modulus(self):
+    value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
+    modulus = 8
+    result = intrinsics.federated_secure_modular_sum(value, modulus)
+    self.assert_value(result, '<int32,<int32,int32>>@SERVER')
+
+  def test_type_signature_with_one_tensor_and_modulus(self):
+    value = intrinsics.federated_value(
+        np.ndarray(shape=(5, 37), dtype=np.int16), placements.CLIENTS)
+    modulus = 2
+    result = intrinsics.federated_secure_modular_sum(value, modulus)
+    self.assert_value(result, 'int16[5,37]@SERVER')
+
+  def test_type_signature_with_structure_of_tensors_and_moduli(self):
+    np_array = np.ndarray(shape=(5, 37), dtype=np.int16)
+    value = intrinsics.federated_value((np_array, np_array), placements.CLIENTS)
+    modulus = (2, 2)
+    result = intrinsics.federated_secure_modular_sum(value, modulus)
+    self.assert_value(result, '<int16[5,37],int16[5,37]>@SERVER')
+
+  def test_raises_type_error_with_value_float(self):
+    value = intrinsics.federated_value(1.0, placements.CLIENTS)
+    modulus = intrinsics.federated_value(1, placements.SERVER)
+
+    with self.assertRaises(TypeError):
+      intrinsics.federated_secure_modular_sum(value, modulus)
+
+  def test_raises_type_error_with_modulus_int_at_server(self):
+    value = intrinsics.federated_value(1, placements.CLIENTS)
+    modulus = intrinsics.federated_value(1, placements.SERVER)
+
+    with self.assertRaises(TypeError):
+      intrinsics.federated_secure_modular_sum(value, modulus)
+
+  def test_raises_type_error_with_different_structures(self):
+    value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
+    modulus = [8, 4, 2]
+
+    with self.assertRaises(TypeError):
+      intrinsics.federated_secure_modular_sum(value, modulus)
+
+
 class FederatedSecureSumTest(IntrinsicTestBase):
 
   def test_type_signature_with_int(self):
