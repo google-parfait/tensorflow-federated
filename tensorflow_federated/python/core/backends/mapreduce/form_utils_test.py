@@ -24,14 +24,11 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
-from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.backends.reference import reference_context
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
-from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -546,198 +543,6 @@ class GetIterativeProcessForMapReduceFormTest(MapReduceFormTestCase):
                         collections.OrderedDict(ratio_over_threshold=0.75))
 
 
-class CreateBeforeAndAfterBroadcastForNoBroadcastTest(test_case.TestCase):
-
-  def test_returns_tree(self):
-    ip = get_iterative_process_for_sum_example_with_no_broadcast()
-    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
-        ip.next._computation_proto)
-
-    before_broadcast, after_broadcast = form_utils._create_before_and_after_broadcast_for_no_broadcast(
-        next_tree)
-
-    # pyformat: disable
-    self.assertEqual(
-        before_broadcast.formatted_representation(),
-        '(_var1 -> federated_value_at_server(<>))'
-    )
-    # pyformat: enable
-
-    self.assertIsInstance(after_broadcast, building_blocks.Lambda)
-    self.assertIsInstance(after_broadcast.result, building_blocks.Call)
-    self.assertEqual(after_broadcast.result.function.formatted_representation(),
-                     next_tree.formatted_representation())
-
-    # pyformat: disable
-    self.assertEqual(
-        after_broadcast.result.argument.formatted_representation(),
-        '_var2[0]'
-    )
-    # pyformat: enable
-
-
-class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
-    test_case.TestCase):
-
-  def test_returns_tree(self):
-    ip = get_iterative_process_for_sum_example_with_no_federated_aggregate()
-    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
-        ip.next._computation_proto)
-
-    before_aggregate, after_aggregate = form_utils._create_before_and_after_aggregate_for_no_federated_aggregate(
-        next_tree)
-
-    before_federated_secure_sum_bitwidth, after_federated_secure_sum_bitwidth = (
-        transformations.force_align_and_split_by_intrinsics(
-            next_tree, [intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri]))
-    self.assertIsInstance(before_aggregate, building_blocks.Lambda)
-    self.assertIsInstance(before_aggregate.result, building_blocks.Struct)
-    self.assertLen(before_aggregate.result, 2)
-
-    # pyformat: disable
-    self.assertEqual(
-        before_aggregate.result[0].formatted_representation(),
-        '<\n'
-        '  federated_value_at_clients(<>),\n'
-        '  <>,\n'
-        '  (_var1 -> <>),\n'
-        '  (_var2 -> <>),\n'
-        '  (_var3 -> <>)\n'
-        '>'
-    )
-    # pyformat: enable
-
-    # trees_equal will fail if computations refer to unbound references, so we
-    # create a new whimsy computation to bind them.
-    unbound_refs_in_before_agg_result = transformation_utils.get_map_of_unbound_references(
-        before_aggregate.result[1])[before_aggregate.result[1]]
-    unbound_refs_in_before_secure_sum_result = transformation_utils.get_map_of_unbound_references(
-        before_federated_secure_sum_bitwidth.result)[
-            before_federated_secure_sum_bitwidth.result]
-
-    whimsy_data = building_blocks.Data('data',
-                                       computation_types.AbstractType('T'))
-
-    blk_binding_refs_in_before_agg = building_blocks.Block(
-        [(name, whimsy_data) for name in unbound_refs_in_before_agg_result],
-        before_aggregate.result[1])
-    blk_binding_refs_in_before_secure_sum = building_blocks.Block([
-        (name, whimsy_data) for name in unbound_refs_in_before_secure_sum_result
-    ], before_federated_secure_sum_bitwidth.result)
-
-    self.assertTrue(
-        tree_analysis.trees_equal(blk_binding_refs_in_before_agg,
-                                  blk_binding_refs_in_before_secure_sum))
-
-    self.assertIsInstance(after_aggregate, building_blocks.Lambda)
-    self.assertIsInstance(after_aggregate.result, building_blocks.Call)
-    actual_after_aggregate_tree, _ = tree_transformations.uniquify_reference_names(
-        after_aggregate.result.function)
-    expected_after_aggregate_tree, _ = tree_transformations.uniquify_reference_names(
-        after_federated_secure_sum_bitwidth)
-    self.assertTrue(
-        tree_analysis.trees_equal(actual_after_aggregate_tree,
-                                  expected_after_aggregate_tree))
-
-    # pyformat: disable
-    self.assertEqual(
-        after_aggregate.result.argument.formatted_representation(),
-        '<\n'
-        '  _var4[0],\n'
-        '  _var4[1][1]\n'
-        '>'
-    )
-    # pyformat: enable
-
-
-class CreateBeforeAndAfterAggregateForNoSecureSumTest(test_case.TestCase):
-
-  def test_returns_tree(self):
-    ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum_bitwidth(
-    )
-    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
-        ip.next._computation_proto)
-    next_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
-        next_tree)
-
-    before_aggregate, after_aggregate = form_utils._create_before_and_after_aggregate_for_no_federated_secure_sum_bitwidth(
-        next_tree)
-
-    before_federated_aggregate, after_federated_aggregate = (
-        transformations.force_align_and_split_by_intrinsics(
-            next_tree, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
-    self.assertIsInstance(before_aggregate, building_blocks.Lambda)
-    self.assertIsInstance(before_aggregate.result, building_blocks.Struct)
-    self.assertLen(before_aggregate.result, 2)
-
-    # trees_equal will fail if computations refer to unbound references, so we
-    # create a new whimsy computation to bind them.
-    unbound_refs_in_before_agg_result = transformation_utils.get_map_of_unbound_references(
-        before_aggregate.result[0])[before_aggregate.result[0]]
-    unbound_refs_in_before_fed_agg_result = transformation_utils.get_map_of_unbound_references(
-        before_federated_aggregate.result)[before_federated_aggregate.result]
-
-    whimsy_data = building_blocks.Data('data',
-                                       computation_types.AbstractType('T'))
-
-    blk_binding_refs_in_before_agg = building_blocks.Block(
-        [(name, whimsy_data) for name in unbound_refs_in_before_agg_result],
-        before_aggregate.result[0])
-    blk_binding_refs_in_before_fed_agg = building_blocks.Block(
-        [(name, whimsy_data) for name in unbound_refs_in_before_fed_agg_result],
-        before_federated_aggregate.result)
-
-    self.assertTrue(
-        tree_analysis.trees_equal(blk_binding_refs_in_before_agg,
-                                  blk_binding_refs_in_before_fed_agg))
-
-    # pyformat: disable
-    self.assertEqual(
-        before_aggregate.result[1].formatted_representation(),
-        '<\n'
-        '  federated_value_at_clients(<>),\n'
-        '  <>\n'
-        '>'
-    )
-    # pyformat: enable
-
-    self.assertIsInstance(after_aggregate, building_blocks.Lambda)
-    self.assertIsInstance(after_aggregate.result, building_blocks.Call)
-
-    self.assertTrue(
-        tree_analysis.trees_equal(after_aggregate.result.function,
-                                  after_federated_aggregate))
-
-    # We manually check the structure of the expected result to avoid dependence
-    # on literal string names. We expect a structure like:
-
-    # '<\n'
-    # '  _ohm1[0],\n'
-    # '  _ohm1[1][0]\n'
-    # '>'
-
-    # Which is what we check below.
-
-    building_block_to_check = after_aggregate.result.argument
-    self.assertIsInstance(building_block_to_check, building_blocks.Struct)
-    self.assertLen(building_block_to_check, 2)
-    self.assertIsInstance(building_block_to_check[0], building_blocks.Selection)
-    self.assertEqual(building_block_to_check[0].index, 0)
-    self.assertIsInstance(building_block_to_check[0].source,
-                          building_blocks.Reference)
-    self.assertIsInstance(building_block_to_check[1], building_blocks.Selection)
-    self.assertEqual(building_block_to_check[1].index, 0)
-    self.assertIsInstance(building_block_to_check[1].source,
-                          building_blocks.Selection)
-    self.assertEqual(building_block_to_check[1].source.index, 1)
-    self.assertIsInstance(building_block_to_check[1].source.source,
-                          building_blocks.Reference)
-    self.assertEqual(building_block_to_check[1].source.source.name,
-                     building_block_to_check[0].source.name)
-    self.assertEqual(building_block_to_check[1].source.source.type_signature,
-                     building_block_to_check[0].source.type_signature)
-
-
 class GetTypeInfoTest(test_case.TestCase):
 
   def test_returns_type_info_for_sum_example(self):
@@ -750,15 +555,10 @@ class GetTypeInfoTest(test_case.TestCase):
         initialize_tree)
     next_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
         next_tree)
-    before_broadcast, after_broadcast = (
-        transformations.force_align_and_split_by_intrinsics(
-            next_tree, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
-    before_aggregate, after_aggregate = (
-        transformations.force_align_and_split_by_intrinsics(
-            after_broadcast, [
-                intrinsic_defs.FEDERATED_AGGREGATE.uri,
-                intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
-            ]))
+    before_broadcast, after_broadcast = form_utils._split_ast_on_broadcast(
+        next_tree)
+    before_aggregate, after_aggregate = form_utils._split_ast_on_aggregate(
+        after_broadcast)
 
     type_info = form_utils._get_type_info(initialize_tree, before_broadcast,
                                           after_broadcast, before_aggregate,
@@ -926,14 +726,10 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
 
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
-  def test_raises_value_error_for_sum_example_with_no_aggregation(self):
+  def test_returns_map_reduce_form_for_sum_example_with_no_aggregation(self):
     ip = get_iterative_process_for_sum_example_with_no_aggregation()
-
-    with self.assertRaisesRegex(
-        ValueError,
-        r'Expected .* containing at least one `federated_aggregate` or '
-        r'`federated_secure_sum_bitwidth`'):
-      form_utils.get_map_reduce_form_for_iterative_process(ip)
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(ip)
+    self.assertIsInstance(mrf, forms.MapReduceForm)
 
   def test_returns_map_reduce_form_with_indirection_to_intrinsic(self):
     ip = mapreduce_test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation(
@@ -964,12 +760,12 @@ class BroadcastFormTest(test_case.TestCase):
     self.assertEqual(bf.client_data_label, 'client_numbers')
     self.assert_types_equivalent(
         bf.compute_server_context.type_signature,
-        computation_types.FunctionType(tf.int32, tf.int32))
-    self.assertEqual(2, bf.compute_server_context(1))
+        computation_types.FunctionType(tf.int32, (tf.int32,)))
+    self.assertEqual(2, bf.compute_server_context(1)[0])
     self.assert_types_equivalent(
         bf.client_processing.type_signature,
-        computation_types.FunctionType((tf.int32, tf.int32), tf.int32))
-    self.assertEqual(3, bf.client_processing(1, 2))
+        computation_types.FunctionType(((tf.int32,), tf.int32), tf.int32))
+    self.assertEqual(3, bf.client_processing((1,), 2))
 
     round_trip_comp = form_utils.get_computation_for_broadcast_form(bf)
     self.assert_types_equivalent(round_trip_comp.type_signature,

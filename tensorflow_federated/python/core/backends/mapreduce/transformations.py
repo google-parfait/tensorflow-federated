@@ -63,11 +63,12 @@ divide-and-conquer.
 """
 
 import collections
+from typing import Dict, List, Set, Tuple
 
 from absl import logging
+import attr
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -223,7 +224,10 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   comp.type_signature.check_function()
-  unplaced, _ = tree_transformations.strip_placement(comp)
+  # Drop any unused subcomputations which may reference placements different
+  # from the result.
+  simplified, _ = transformations.transform_to_call_dominant(comp)
+  unplaced, _ = tree_transformations.strip_placement(simplified)
   extracted = parse_tff_to_tf(unplaced, grappler_config_proto)
   check_extraction_result(unplaced, extracted)
   return extracted
@@ -269,30 +273,278 @@ def parse_tff_to_tf(comp, grappler_config_proto):
   return tf_parsed
 
 
-def force_align_and_split_by_intrinsics(comp, uris):
-  """Splits the logic of `comp` into before-and-after of calls to an intrinsic.
+_NamedBinding = Tuple[str, building_blocks.ComputationBuildingBlock]
+
+
+@attr.s
+class _IntrinsicDependencies:
+  uri_to_locals: Dict[str, List[_NamedBinding]] = attr.ib(
+      factory=lambda: collections.defaultdict(list))
+  locals_dependent_on_intrinsics: List[_NamedBinding] = attr.ib(factory=list)
+  locals_not_dependent_on_intrinsics: List[_NamedBinding] = attr.ib(
+      factory=list)
+
+
+class _NonAlignableAlongIntrinsicError(ValueError):
+  pass
+
+
+def _compute_intrinsic_dependencies(
+    intrinsic_uris: Set[str],
+    parameter_name: str,
+    locals_list: List[_NamedBinding],
+    comp_repr,
+) -> _IntrinsicDependencies:
+  """Computes which locals have dependencies on which called intrinsics."""
+  result = _IntrinsicDependencies()
+  intrinsic_dependencies_for_ref: Dict[str, Set[str]] = {}
+  # Start by marking `comp.parameter_name` as independent of intrinsics.
+  intrinsic_dependencies_for_ref[parameter_name] = set()
+  for local_name, local_value in locals_list:
+    intrinsic_dependencies = set()
+
+    def record_dependencies(subvalue):
+      if subvalue.is_reference():
+        if subvalue.name not in intrinsic_dependencies_for_ref:
+          raise ValueError(
+              f'Can\'t resolve {subvalue.name} in {[(name, value.compact_representation()) for name, value in locals_list]}\n'
+              f'Current map {intrinsic_dependencies_for_ref}\n'
+              f'Original comp: {comp_repr}\n')
+        intrinsic_dependencies.update(  # pylint: disable=cell-var-from-loop
+            intrinsic_dependencies_for_ref[subvalue.name])
+      elif subvalue.is_lambda():
+        # We treat the lambdas that appear in CDF (inside intrinsic invocations)
+        # as though their parameters are independent of the rest of the
+        # computation. Note that we're not careful about saving and then
+        # restoring old variables here: this is okay because call-dominant form
+        # guarantees unique variable names.
+        intrinsic_dependencies_for_ref[subvalue.parameter_name] = set()
+      elif subvalue.is_block():
+        # Since we're in CDF, the only blocks inside the bodies of arguments
+        # are within lambda arguments to intrinsics. We don't need to record
+        # dependencies of these since they can't rely on the results of other
+        # intrinsics.
+        for subvalue_local_name, _ in subvalue.locals:
+          intrinsic_dependencies_for_ref[subvalue_local_name] = set()
+
+    tree_analysis.visit_preorder(local_value, record_dependencies)
+
+    # All intrinsic calls are guaranteed to be top-level in call-dominant form.
+    is_intrinsic_call = (
+        local_value.is_call() and local_value.function.is_intrinsic() and
+        local_value.function.uri in intrinsic_uris)
+    if is_intrinsic_call:
+      if intrinsic_dependencies:
+        raise _NonAlignableAlongIntrinsicError(
+            'Cannot force-align intrinsics:\n'
+            f'Call to intrinsic `{local_value.function.uri}` depends '
+            f'on calls to intrinsics:\n`{intrinsic_dependencies}`.')
+      intrinsic_dependencies_for_ref[local_name] = set(
+          [local_value.function.uri])
+      result.uri_to_locals[local_value.function.uri].append(
+          (local_name, local_value))
+    else:
+      intrinsic_dependencies_for_ref[local_name] = intrinsic_dependencies
+      if intrinsic_dependencies:
+        result.locals_dependent_on_intrinsics.append((local_name, local_value))
+      else:
+        result.locals_not_dependent_on_intrinsics.append(
+            (local_name, local_value))
+  return result
+
+
+@attr.s
+class _MergedIntrinsic:
+  uri: str = attr.ib()
+  args: building_blocks.ComputationBuildingBlock = attr.ib()
+  return_type: computation_types.Type = attr.ib()
+  unpack_to_locals: List[str] = attr.ib()
+
+
+def _compute_merged_intrinsics(
+    intrinsic_defaults: List[building_blocks.Call],
+    uri_to_locals: Dict[str, List[_NamedBinding]],
+    name_generator,
+) -> List[_MergedIntrinsic]:
+  """Computes a `_MergedIntrinsic` for each intrinsic in `intrinsic_defaults`.
+
+  Args:
+    intrinsic_defaults: A default call to each intrinsic URI to be merged. If no
+      entry with this URI is present in `uri_to_locals`, the resulting
+      `MergedIntrinsic` will describe only the provided default call.
+    uri_to_locals: A mapping from intrinsic URI to locals (name + building_block
+      pairs). The building block must be a `Call` to the intrinsic of the given
+      URI. The name will be used to bind the result of the merged intrinsic via
+      `_MergedIntrinsic.unpack_to_locals`.
+    name_generator: A generator used to create unique names.
+
+  Returns:
+    A list of `_MergedIntrinsic`s describing, for each intrinsic, how to invoke
+    the intrinsic exactly once and unpack the result.
+  """
+  results = []
+  for default_call in intrinsic_defaults:
+    uri = default_call.function.uri
+    locals_for_uri = uri_to_locals[uri]
+    if not locals_for_uri:
+      results.append(
+          _MergedIntrinsic(
+              uri=uri,
+              args=default_call.argument,
+              return_type=default_call.type_signature,
+              unpack_to_locals=[]))
+    else:
+      calls = [local[1] for local in locals_for_uri]
+      return_type = computation_types.FederatedType(
+          computation_types.StructType([
+              (None, call.type_signature.member) for call in calls
+          ]),
+          placement=calls[0].type_signature.placement)
+      abstract_parameter_type = default_call.function.intrinsic_def(
+      ).type_signature.parameter
+      results.append(
+          _MergedIntrinsic(
+              uri=uri,
+              args=_merge_args(abstract_parameter_type,
+                               [call.argument for call in calls],
+                               name_generator),
+              return_type=return_type,
+              unpack_to_locals=[name for (name, _) in locals_for_uri],
+          ))
+  return results
+
+
+def _merge_args(
+    abstract_parameter_type,
+    args: List[building_blocks.ComputationBuildingBlock],
+    name_generator,
+) -> building_blocks.ComputationBuildingBlock:
+  """Merges the arguments of multiple function invocations into one.
+
+  Args:
+    abstract_parameter_type: The abstract parameter type specification for the
+      function being invoked. This is used to determine whether any functional
+      parameters accept multiple arguments.
+    args: A list where each element contains the arguments to a single call.
+    name_generator: A generator used to create unique names.
+
+  Returns:
+    A building block to use as the new (merged) argument.
+  """
+  if abstract_parameter_type.is_federated():
+    zip_args = building_block_factory.create_federated_zip(
+        building_blocks.Struct(args))
+    # `create_federated_zip` introduces repeated names.
+    zip_args, _ = tree_transformations.uniquify_reference_names(
+        zip_args, name_generator)
+    return zip_args
+  if (abstract_parameter_type.is_tensor() or
+      abstract_parameter_type.is_abstract()):
+    return building_blocks.Struct([(None, arg) for arg in args])
+  if abstract_parameter_type.is_function():
+    # For functions, we must compose them differently depending on whether the
+    # abstract function (from the intrinsic definition) takes more than one
+    # parameter.
+    #
+    # If it does not, such as in the `fn` argument to `federated_map`, we can
+    # simply select out the argument and call the result:
+    # `(fn0(arg[0]), fn1(arg[1]), ..., fnN(arg[n]))`
+    #
+    # If it takes multiple arguments such as the `accumulate` argument to
+    # `federated_aggregate`, we have to select out the individual arguments to
+    # pass to each function:
+    #
+    # `(
+    #   fn0(arg[0][0], arg[1][0]),
+    #   fn1(arg[0][1], arg[1][1]),
+    #   ...
+    #   fnN(arg[0][n], arg[1][n]),
+    # )`
+    param_name = next(name_generator)
+    if abstract_parameter_type.parameter.is_struct():
+      num_args = len(abstract_parameter_type.parameter)
+      parameter_types = [[] for i in range(num_args)]
+      for arg in args:
+        for i in range(num_args):
+          parameter_types[i].append(arg.type_signature.parameter[i])
+      param_type = computation_types.StructType(parameter_types)
+      param_ref = building_blocks.Reference(param_name, param_type)
+      calls = []
+      for (n, fn) in enumerate(args):
+        args_to_fn = []
+        for i in range(num_args):
+          args_to_fn.append(
+              building_blocks.Selection(
+                  building_blocks.Selection(param_ref, index=i), index=n))
+        calls.append(
+            building_blocks.Call(
+                fn,
+                building_blocks.Struct([(None, arg) for arg in args_to_fn])))
+    else:
+      param_type = computation_types.StructType(
+          [arg.type_signature.parameter for arg in args])
+      param_ref = building_blocks.Reference(param_name, param_type)
+      calls = [
+          building_blocks.Call(fn,
+                               building_blocks.Selection(param_ref, index=n))
+          for (n, fn) in enumerate(args)
+      ]
+    return building_blocks.Lambda(
+        parameter_name=param_name,
+        parameter_type=param_type,
+        result=building_blocks.Struct([(None, call) for call in calls]))
+  if abstract_parameter_type.is_struct():
+    # Bind each argument to a name so that we can reference them multiple times.
+    arg_locals = []
+    arg_refs = []
+    for arg in args:
+      arg_name = next(name_generator)
+      arg_locals.append((arg_name, arg))
+      arg_refs.append(building_blocks.Reference(arg_name, arg.type_signature))
+    merged_args = []
+    for i in range(len(abstract_parameter_type)):
+      ith_args = [building_blocks.Selection(ref, index=i) for ref in arg_refs]
+      merged_args.append(
+          _merge_args(abstract_parameter_type[i], ith_args, name_generator))
+    return building_blocks.Block(
+        arg_locals,
+        building_blocks.Struct([(None, arg) for arg in merged_args]))
+  raise TypeError(f'Cannot merge args of type: {abstract_parameter_type}')
+
+
+def force_align_and_split_by_intrinsics(
+    comp: building_blocks.Lambda,
+    intrinsic_defaults: List[building_blocks.Call],
+) -> Tuple[building_blocks.Lambda, building_blocks.Lambda]:
+  """Divides `comp` into before-and-after of calls to one ore more intrinsics.
 
   The input computation `comp` must have the following properties:
 
   1. The computation `comp` is completely self-contained, i.e., there are no
      references to arguments introduced in a scope external to `comp`.
 
-  2. There must be at least a single instance of a call to the intrinsic with
-     the name specified as the second argument ('intrinsic`) above.
+  2. `comp`'s return value must not contain uncalled lambdas.
 
-  3. None of the `intrinsic` calls are in the body of an uncalled lambda except
-     for the `comp` itself which must be an uncalled lambda.
+  3. None of the calls to intrinsics in `intrinsic_defaults` may be
+     within a lambda passed to another external function (intrinsic or
+     compiled computation).
 
-  4. The arguments fed to these intrinsics are likewise self-contained (have
-     no external references), except for possibly a reference to the argument
-     of `comp` in case `comp` is a lambda.
+  4. No argument passed to an intrinsic in `intrinsic_defaults` may be
+     dependent on the result of a call to an intrinsic in
+     `intrinsic_uris_and_defaults`.
 
-  5. There are no called intrinsics of identity `uri` nested within the body of
-     another called intrinsic of identity `uri`.
+  5. All intrinsics in `intrinsic_defaults` must have "merge-able" arguments.
+     Structs will be merged element-wise, federated values will be zipped, and
+     functions will be composed:
+       `f = lambda f1_arg, f2_arg: (f1(f1_arg), f2(f2_arg))`
 
-  Under these conditions, this helper function must return a pair of building
-  blocks `before` and `after` such that `comp` is semantically equivalent to
-  the following expression:
+  6. All intrinsics in `intrinsic_defaults` must return a single federated value
+     whose member is the merged result of any merged calls, i.e.:
+       `f(merged_arg).member = (f1(f1_arg).member, f2(f2_arg).member)`
+
+  Under these conditions, this function will return two
+  `building_blocks.Lambda`s `before` and `after` such that `comp` is
+  semantically equivalent to the following expression*:
 
   ```
   (arg -> (let
@@ -303,6 +555,12 @@ def force_align_and_split_by_intrinsics(comp, uris):
    in after(<arg, <y,z,...>>)))
   ```
 
+  *Note that these expressions may not be entirely equivalent under
+  nondeterminism since there is no way in this case to handle computations in
+  which `before` creates a random variable that is then used in `after`, since
+  the only way for state to pass from `before` to `after` is for it to travel
+  through one of the intrinsics.
+
   In this expression, there is only a single call to `intrinsic` that results
   from consolidating all occurrences of this intrinsic in the original `comp`.
   All logic in `comp` that produced inputs to any these intrinsic calls is now
@@ -311,24 +569,19 @@ def force_align_and_split_by_intrinsics(comp, uris):
   including that which consumed the outputs of the intrinsic calls, must have
   been encapsulated into `after`.
 
-  Additionally, if the `intrinsic` takes a tuple of arguments, then`before`
-  should also be a `building_blocks.Struct`. Otherwise, both `before` and
-  `after` are instances of `building_blocks.ComputationBuildingBlock`.
-
   If the original computation `comp` had type `(T -> U)`, then `before` and
   `after` would be `(T -> X)` and `(<T,Y> -> U)`, respectively, where `X` is
-  the type of the argument to the single combined intrinsic call above, and
-  `Y` is the type of the result. Note that `after` takes the output of the
-  call to the intrinsic as well as the original argument `arg`, as it may be
-  dependent on both.
-
-  Whereas this helper function can be general, there are two special cases of
-  interest: `federated_broadcast` and `federated_aggregate`.
+  the type of the argument to the single combined intrinsic call above. Note
+  that `after` takes the output of the call to the intrinsic as well as the
+  original argument to `comp`, as it may be dependent on both.
 
   Args:
     comp: The instance of `building_blocks.Lambda` that serves as the input to
       this transformation, as described above.
-    uris: A Python `list` of URI of intrinsics to force align and split.
+    intrinsic_defaults: A list of intrinsics with which to split the
+      computation, provided as a list of `Call`s to insert if no intrinsic with
+      a matching URI is found. Intrinsics in this list will be merged, and
+      `comp` will be split across them.
 
   Returns:
     A pair of the form `(before, after)`, where each of `before` and `after`
@@ -336,472 +589,106 @@ def force_align_and_split_by_intrinsics(comp, uris):
     part of the result as specified above.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uris, list)
-  for uri in uris:
-    py_typecheck.check_type(uri, str)
-  _check_contains_called_intrinsics(comp, uris)
-  comp = _force_align_intrinsics_to_top_level_lambda(comp, uris)
-  return _split_by_intrinsics_in_top_level_lambda(comp)
+  py_typecheck.check_type(intrinsic_defaults, list)
+  comp_repr = comp.compact_representation()
 
+  # Flatten `comp` to call-dominant form so that we're working with just a
+  # linear list of intrinsic calls with no indirection via tupling, selection,
+  # blocks, called lambdas, or references.
+  comp, _ = transformations.transform_to_call_dominant(comp)
 
-def _check_contains_called_intrinsics(comp, uri):
-  """Checks if `comp` contains called intrinsics for the given `uri`.
-
-  Args:
-    comp: The `building_blocks.ComputationBuildingBlock` to test.
-    uri: A Python `list` of URI of intrinsics.
-
-  Returns:
-    `True` if `comp` contains called intrinsics for the given `uri`, otherwise
-    `False`.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(uri, list)
-  for x in uri:
-    py_typecheck.check_type(x, str)
-
-  def get_uri_for_all_called_intrinsics(comp):
-    existing_uri = set()
-
-    def _update(comp):
-      if building_block_analysis.is_called_intrinsic(comp, uri):
-        existing_uri.add(comp.function.uri)
-      return comp, False
-
-    transformation_utils.transform_postorder(comp, _update)
-    return existing_uri
-
-  actual_uri = get_uri_for_all_called_intrinsics(comp)
-  for expected_uri in uri:
-    if expected_uri not in actual_uri:
-      raise ValueError(
-          'Expected an AST containing an intrinsic with the uri: {}, found '
-          'none.'.format(expected_uri))
-
-
-def _force_align_intrinsics_to_top_level_lambda(comp, uri):
-  """Forcefully aligns `comp` by the intrinsics for the given `uri`.
-
-  This function transforms `comp` by extracting, grouping, and potentially
-  merging all the intrinsics for the given `uri`. The result of this
-  transformation should contain exactly one instance of the intrinsic for the
-  given `uri` that is bound only by the `parameter_name` of `comp`.
-
-  Args:
-    comp: The `building_blocks.Lambda` to align.
-    uri: A Python `list` of URI of intrinsics.
-
-  Returns:
-    A new computation with the transformation applied or the original `comp`.
-  """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uri, list)
-  for x in uri:
-    py_typecheck.check_type(x, str)
-
-  comp, _ = tree_transformations.uniquify_reference_names(comp)
-  if not _can_extract_intrinsics_to_top_level_lambda(comp, uri):
-    comp, _ = tree_transformations.replace_called_lambda_with_block(comp)
-  comp = _inline_block_variables_required_to_align_intrinsics(comp, uri)
-  comp, modified = _extract_intrinsics_to_top_level_lambda(comp, uri)
-  if modified:
-    if len(uri) > 1:
-      comp, _ = _group_by_intrinsics_in_top_level_lambda(comp)
-    modified = False
-    for intrinsic_uri in uri:
-      comp, transform_modified = transformations.dedupe_and_merge_tuple_intrinsics(
-          comp, intrinsic_uri)
-      if transform_modified:
-        # Required because merging called intrinsics invokes building block
-        # factories that do not name references uniquely.
-        comp, _ = tree_transformations.uniquify_reference_names(comp)
-      modified = modified or transform_modified
-    if modified:
-      # Required because merging called intrinsics will nest the called
-      # intrinsics such that they can no longer be split.
-      comp, _ = _extract_intrinsics_to_top_level_lambda(comp, uri)
-  return comp
-
-
-def _get_called_intrinsics(comp, uri):
-  """Returns a Python `list` of called intrinsics in `comp` for the given `uri`.
-
-  Args:
-    comp: The `building_blocks.ComputationBuildingBlock` to search.
-    uri: A Python `list` of URI of intrinsics.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(uri, list)
-  for x in uri:
-    py_typecheck.check_type(x, str)
-
-  intrinsics = []
-
-  def _update(comp):
-    if building_block_analysis.is_called_intrinsic(comp, uri):
-      intrinsics.append(comp)
-    return comp, False
-
-  transformation_utils.transform_postorder(comp, _update)
-  return intrinsics
-
-
-def _can_extract_intrinsics_to_top_level_lambda(comp, uri):
-  """Tests if the intrinsic for the given `uri` can be extracted.
-
-  This currently maps identically to: the called intrinsics we intend to hoist
-  don't close over any intermediate variables. That is, any variables other than
-  potentiall the top-level parameter the computation itself declares.
-
-  Args:
-    comp: The `building_blocks.Lambda` to test. The names of lambda parameters
-      and block variables in `comp` must be unique.
-    uri: A Python `list` of URI of intrinsics.
-
-  Returns:
-    `True` if the intrinsic can be extracted, otherwise `False`.
-  """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uri, list)
-  for x in uri:
-    py_typecheck.check_type(x, str)
-  tree_analysis.check_has_unique_names(comp)
-
-  intrinsics = _get_called_intrinsics(comp, uri)
-  return all(
-      tree_analysis.contains_no_unbound_references(x, comp.parameter_name)
-      for x in intrinsics)
-
-
-def _inline_block_variables_required_to_align_intrinsics(comp, uri):
-  """Inlines the variables required to align the intrinsic for the given `uri`.
-
-  This function inlines only the block variables required to align an intrinsic,
-  which is necessary because many transformations insert block variables that do
-  not impact alignment and should not be inlined.
-
-  Additionally, this function iteratively attempts to inline block variables a
-  long as the intrinsic can not be extracted to the top level lambda. Meaning,
-  that unbound references in variables that are inlined, will also be inlined.
-
-  Args:
-    comp: The `building_blocks.Lambda` to transform.
-    uri: A Python `list` of URI of intrinsics.
-
-  Returns:
-    A new computation with the transformation applied or the original `comp`.
-
-  Raises:
-    ValueError: If an there are unbound references, other than block variables,
-      preventing an intrinsic with the given `uri` from being aligned.
-  """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uri, list)
-  for x in uri:
-    py_typecheck.check_type(x, str)
-
-  while not _can_extract_intrinsics_to_top_level_lambda(comp, uri):
-    unbound_references = transformation_utils.get_map_of_unbound_references(
-        comp)
-    variable_names = set()
-    intrinsics = _get_called_intrinsics(comp, uri)
-    for intrinsic in intrinsics:
-      names = unbound_references[intrinsic]
-      names.discard(comp.parameter_name)
-      variable_names.update(names)
-    if not variable_names:
-      raise tree_transformations.TransformationError(
-          'Inlining `Block` variables has failed. Expected to find unbound '
-          'references for called `Intrisic`s matching the URI: \'{}\', but '
-          'none were found in the AST: \n{}'.format(
-              uri, comp.formatted_representation()))
-    comp, modified = tree_transformations.inline_block_locals(
-        comp, variable_names=variable_names)
-    if modified:
-      comp, _ = tree_transformations.uniquify_reference_names(comp)
+  # CDF can potentially return blocks if there are variables not dependent on
+  # the top-level parameter. We normalize these away.
+  if not comp.is_lambda():
+    comp.check_block()
+    comp.result.check_lambda()
+    if comp.result.result.is_block():
+      additional_locals = comp.result.result.locals
+      result = comp.result.result.result
     else:
-      raise tree_transformations.TransformationError(
-          'Inlining `Block` variables has failed, this will result in an '
-          'infinite loop. Expected to modify the AST by inlining the variable '
-          'names: \'{}\', but no transformations to the AST: \n{}'.format(
-              variable_names, comp.formatted_representation()))
-  return comp
+      additional_locals = []
+      result = comp.result.result
+    # Note: without uniqueness, a local in `comp.locals` could potentially
+    # shadow `comp.result.parameter_name`. However, `transform_to_call_dominant`
+    # above ensure that names are unique, as it ends in a call to
+    # `uniquify_reference_names`.
+    comp = building_blocks.Lambda(
+        comp.result.parameter_name, comp.result.parameter_type,
+        building_blocks.Block(comp.locals + additional_locals, result))
+  comp.check_lambda()
 
-
-def _extract_intrinsics_to_top_level_lambda(comp, uri):
-  r"""Extracts intrinsics in `comp` for the given `uri`.
-
-  This transformation creates an AST such that all the called intrinsics for the
-  given `uri` in body of the `building_blocks.Block` returned by the top level
-  lambda have been extracted to the top level lambda and replaced by selections
-  from a reference to the constructed variable.
-
-                       Lambda
-                       |
-                       Block
-                      /     \
-        [x=Struct, ...]       Comp
-           |
-           [Call,                  Call                   Call]
-           /    \                 /    \                 /    \
-  Intrinsic      Comp    Intrinsic      Comp    Intrinsic      Comp
-
-  The order of the extracted called intrinsics matches the order of `uri`.
-
-  Note: if this function is passed an AST which contains nested called
-  intrinsics, it will fail, as it will mutate the subcomputation containing
-  the lower-level called intrinsics on the way back up the tree.
-
-  Args:
-    comp: The `building_blocks.Lambda` to transform. The names of lambda
-      parameters and block variables in `comp` must be unique.
-    uri: A URI of an intrinsic.
-
-  Returns:
-    A new computation with the transformation applied or the original `comp`.
-
-  Raises:
-    ValueError: If all the intrinsics for the given `uri` in `comp` are not
-      exclusively bound by `comp`.
-  """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uri, list)
-  for x in uri:
-    py_typecheck.check_type(x, str)
-  tree_analysis.check_has_unique_names(comp)
+  # Simple computations with no intrinsic calls won't have a block.
+  # Normalize these as well.
+  if not comp.result.is_block():
+    comp = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                  building_blocks.Block([], comp.result))
+  comp.result.check_block()
 
   name_generator = building_block_factory.unique_name_generator(comp)
 
-  intrinsics = _get_called_intrinsics(comp, uri)
-  for intrinsic in intrinsics:
-    if not tree_analysis.contains_no_unbound_references(intrinsic,
-                                                        comp.parameter_name):
-      raise ValueError(
-          'Expected a computation which binds all the references in all the '
-          'intrinsic with the uri: {}.'.format(uri))
-  if len(intrinsics) > 1:
-    order = {}
-    for index, element in enumerate(uri):
-      if element not in order:
-        order[element] = index
-    intrinsics = sorted(intrinsics, key=lambda x: order[x.function.uri])
-    extracted_comp = building_blocks.Struct(intrinsics)
-  else:
-    extracted_comp = intrinsics[0]
-  ref_name = next(name_generator)
-  ref_type = computation_types.to_type(extracted_comp.type_signature)
-  ref = building_blocks.Reference(ref_name, ref_type)
+  intrinsic_uris = set(call.function.uri for call in intrinsic_defaults)
+  deps = _compute_intrinsic_dependencies(intrinsic_uris, comp.parameter_name,
+                                         comp.result.locals, comp_repr)
+  merged_intrinsics = _compute_merged_intrinsics(intrinsic_defaults,
+                                                 deps.uri_to_locals,
+                                                 name_generator)
 
-  def _should_transform(comp):
-    return building_block_analysis.is_called_intrinsic(comp, uri)
+  # Note: the outputs are labeled as `{uri}_param for convenience, e.g.
+  # `federated_secure_sum_param: ...`.
+  before = building_blocks.Lambda(
+      comp.parameter_name, comp.parameter_type,
+      building_blocks.Block(
+          deps.locals_not_dependent_on_intrinsics,
+          building_blocks.Struct([(f'{merged.uri}_param', merged.args)
+                                  for merged in merged_intrinsics])))
 
-  def _transform(comp):
-    if not _should_transform(comp):
-      return comp, False
-    if len(intrinsics) > 1:
-      index = intrinsics.index(comp)
-      comp = building_blocks.Selection(ref, index=index)
-      return comp, True
-    else:
-      return ref, True
-
-  comp, _ = transformation_utils.transform_postorder(comp, _transform)
-  comp = _insert_comp_in_top_level_lambda(
-      comp, name=ref.name, comp_to_insert=extracted_comp)
-  return comp, True
-
-
-def _insert_comp_in_top_level_lambda(comp, name, comp_to_insert):
-  """Inserts a computation into `comp` with the given `name`.
-
-  Args:
-    comp: The `building_blocks.Lambda` to transform. The names of lambda
-      parameters and block variables in `comp` must be unique.
-    name: The name to use.
-    comp_to_insert: The `building_blocks.ComputationBuildingBlock` to insert.
-
-  Returns:
-    A new computation with the transformation applied or the original `comp`.
-  """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(name, str)
-  py_typecheck.check_type(comp_to_insert,
-                          building_blocks.ComputationBuildingBlock)
-  tree_analysis.check_has_unique_names(comp)
-
-  result = comp.result
-  if result.is_block():
-    variables = result.locals
-    result = result.result
-  else:
-    variables = []
-  variables.insert(0, (name, comp_to_insert))
-  block = building_blocks.Block(variables, result)
-  return building_blocks.Lambda(comp.parameter_name, comp.parameter_type, block)
-
-
-def _group_by_intrinsics_in_top_level_lambda(comp):
-  """Groups the intrinsics in the frist block local in the result of `comp`.
-
-  This transformation creates an AST by replacing the tuple of called intrinsics
-  found as the first local in the `building_blocks.Block` returned by the top
-  level lambda with two new computations. The first computation is a tuple of
-  tuples of called intrinsics, representing the original tuple of called
-  intrinscis grouped by URI. The second computation is a tuple of selection from
-  the first computations, representing original tuple of called intrinsics.
-
-  It is necessary to group intrinsics before it is possible to merge them.
-
-  Args:
-    comp: The `building_blocks.Lambda` to transform.
-
-  Returns:
-    A `building_blocks.Lamda` that returns a `building_blocks.Block`, the first
-    local variables of the retunred `building_blocks.Block` will be a tuple of
-    tuples of called intrinsics representing the original tuple of called
-    intrinscis grouped by URI.
-
-  Raises:
-    ValueError: If the first local in the `building_blocks.Block` referenced by
-      the top level lambda is not a `building_blocks.Struct` of called
-      intrinsics.
-  """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(comp.result, building_blocks.Block)
-  tree_analysis.check_has_unique_names(comp)
-
-  name_generator = building_block_factory.unique_name_generator(comp)
-
-  name, first_local = comp.result.locals[0]
-  py_typecheck.check_type(first_local, building_blocks.Struct)
-  for element in first_local:
-    if not building_block_analysis.is_called_intrinsic(element):
-      raise ValueError(
-          'Expected all the elements of the `building_blocks.Struct` to be '
-          'called intrinsics, but found: \n{}'.format(element))
-
-  # Create collections of data describing how to pack and unpack the intrinsics
-  # into groups by their URI.
-  #
-  # packed_keys is a list of unique URI ordered by occurrence in the original
-  #   tuple of called intrinsics.
-  # packed_groups is a `collections.OrderedDict` where each key is a URI to
-  #   group by and each value is a list of intrinsics with that URI.
-  # packed_indexes is a list of tuples where each tuple contains two indexes:
-  #   the first index in the tuple is the index of the group that the intrinsic
-  #   was packed into; the second index in the tuple is the index of the
-  #   intrinsic in that group that the intrinsic was packed into; the index of
-  #   the tuple in packed_indexes corresponds to the index of the intrinsic in
-  #   the list of intrinsics that are beging grouped. Therefore, packed_indexes
-  #   represents an implicit mapping of packed indexes, keyed by unpacked index.
-  packed_keys = []
-  for called_intrinsic in first_local:
-    uri = called_intrinsic.function.uri
-    if uri not in packed_keys:
-      packed_keys.append(uri)
-  # If there are no duplicates, return early.
-  if len(packed_keys) == len(first_local):
-    return comp, False
-  packed_groups = collections.OrderedDict([(x, []) for x in packed_keys])
-  packed_indexes = []
-  for called_intrinsic in first_local:
-    packed_group = packed_groups[called_intrinsic.function.uri]
-    packed_group.append(called_intrinsic)
-    packed_indexes.append((
-        packed_keys.index(called_intrinsic.function.uri),
-        len(packed_group) - 1,
-    ))
-
-  packed_elements = []
-  for called_intrinsics in packed_groups.values():
-    if len(called_intrinsics) > 1:
-      element = building_blocks.Struct(called_intrinsics)
-    else:
-      element = called_intrinsics[0]
-    packed_elements.append(element)
-  packed_comp = building_blocks.Struct(packed_elements)
-
-  packed_ref_name = next(name_generator)
-  packed_ref_type = computation_types.to_type(packed_comp.type_signature)
-  packed_ref = building_blocks.Reference(packed_ref_name, packed_ref_type)
-
-  unpacked_elements = []
-  for indexes in packed_indexes:
-    group_index = indexes[0]
-    sel = building_blocks.Selection(packed_ref, index=group_index)
-    uri = packed_keys[group_index]
-    called_intrinsics = packed_groups[uri]
-    if len(called_intrinsics) > 1:
-      intrinsic_index = indexes[1]
-      sel = building_blocks.Selection(sel, index=intrinsic_index)
-    unpacked_elements.append(sel)
-  unpacked_comp = building_blocks.Struct(unpacked_elements)
-
-  variables = comp.result.locals
-  variables[0] = (name, unpacked_comp)
-  variables.insert(0, (packed_ref_name, packed_comp))
-  block = building_blocks.Block(variables, comp.result.result)
-  fn = building_blocks.Lambda(comp.parameter_name, comp.parameter_type, block)
-  return fn, True
-
-
-def _split_by_intrinsics_in_top_level_lambda(comp):
-  """Splits by the intrinsics in the frist block local in the result of `comp`.
-
-  This function splits `comp` into two computations `before` and `after` the
-  called intrinsic or tuple of called intrinsics found as the first local in the
-  `building_blocks.Block` returned by the top level lambda; and returns a Python
-  tuple representing the pair of `before` and `after` computations.
-
-  Args:
-    comp: The `building_blocks.Lambda` to split.
-
-  Returns:
-    A pair of `building_blocks.ComputationBuildingBlock`s.
-
-  Raises:
-    ValueError: If the first local in the `building_blocks.Block` referenced by
-      the top level lambda is not a called intrincs or a
-      `building_blocks.Struct` of called intrinsics.
-  """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(comp.result, building_blocks.Block)
-  tree_analysis.check_has_unique_names(comp)
-
-  name_generator = building_block_factory.unique_name_generator(comp)
-
-  name, first_local = comp.result.locals[0]
-  if building_block_analysis.is_called_intrinsic(first_local):
-    result = first_local.argument
-  elif first_local.is_struct():
-    elements = []
-    for element in first_local:
-      if not building_block_analysis.is_called_intrinsic(element):
-        raise ValueError(
-            'Expected all the elements of the `building_blocks.Struct` to be '
-            'called intrinsics, but found: \n{}'.format(element))
-      elements.append(element.argument)
-    result = building_blocks.Struct(elements)
-  else:
-    raise ValueError(
-        'Expected either a called intrinsic or a `building_blocks.Struct` of '
-        'called intrinsics, but found: \n{}'.format(first_local))
-
-  before = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
-                                  result)
-
-  ref_name = next(name_generator)
-  ref_type = computation_types.StructType(
-      (comp.parameter_type, first_local.type_signature))
-  ref = building_blocks.Reference(ref_name, ref_type)
-  sel_after_arg_1 = building_blocks.Selection(ref, index=0)
-  sel_after_arg_2 = building_blocks.Selection(ref, index=1)
-
-  variables = comp.result.locals
-  variables[0] = (name, sel_after_arg_2)
-  variables.insert(0, (comp.parameter_name, sel_after_arg_1))
-  block = building_blocks.Block(variables, comp.result.result)
-  after = building_blocks.Lambda(ref.name, ref.type_signature, block)
+  after_param_name = next(name_generator)
+  after_param_type = computation_types.StructType([
+      ('original_arg', comp.parameter_type),
+      ('intrinsic_results',
+       computation_types.StructType([(f'{merged.uri}_result',
+                                      merged.return_type)
+                                     for merged in merged_intrinsics])),
+  ])
+  after_param_ref = building_blocks.Reference(after_param_name,
+                                              after_param_type)
+  unzip_bindings = []
+  for merged in merged_intrinsics:
+    if merged.unpack_to_locals:
+      intrinsic_result = building_blocks.Selection(
+          building_blocks.Selection(after_param_ref, name='intrinsic_results'),
+          name=f'{merged.uri}_result')
+      select_param_type = intrinsic_result.type_signature.member
+      for i, binding_name in enumerate(merged.unpack_to_locals):
+        select_param_name = next(name_generator)
+        select_param_ref = building_blocks.Reference(select_param_name,
+                                                     select_param_type)
+        selected = building_block_factory.create_federated_map_or_apply(
+            building_blocks.Lambda(
+                select_param_name, select_param_type,
+                building_blocks.Selection(select_param_ref, index=i)),
+            intrinsic_result)
+        unzip_bindings.append((binding_name, selected))
+  after = building_blocks.Lambda(
+      after_param_name,
+      after_param_type,
+      building_blocks.Block(
+          [(comp.parameter_name,
+            building_blocks.Selection(after_param_ref, name='original_arg'))] +
+          # Note that we must duplicate `locals_not_dependent_on_intrinsics`
+          # across both the `before` and `after` computations since both can
+          # rely on them, and there's no way to plumb results from `before`
+          # through to `after` except via one of the intrinsics being split
+          # upon. In MapReduceForm, this limitation is caused by the fact that
+          # `prepare` has no output which serves as an input to `report`.
+          deps.locals_not_dependent_on_intrinsics + unzip_bindings +
+          deps.locals_dependent_on_intrinsics,
+          comp.result.result))
+  try:
+    tree_analysis.check_has_unique_names(before)
+    tree_analysis.check_has_unique_names(after)
+  except:
+    raise ValueError(f'nonunique names in result of splitting\n{comp}')
   return before, after
 
 
@@ -812,11 +699,12 @@ def select_output_from_lambda(comp, indices):
     comp: Instance of `building_blocks.Lambda` of result type `tff.StructType`
       from which we wish to select `indices`. Notice that this named tuple type
       must have elements of federated type.
-    indices: Instance of `int`, `list`, or `tuple`, specifying the indices we
-      wish to select from the result of `comp`. If `indices` is an `int`, the
-      result of the returned `comp` will be of type at index `indices` in
-      `comp.type_signature.result`. If `indices` is a `list` or `tuple`, the
-      result type will be a `tff.StructType` wrapping the specified selections.
+    indices: Instance of `str`, `int`, `list`, or `tuple`, specifying the
+      indices we wish to select from the result of `comp`. If `indices` is a
+      `str` or `int`, the result of the returned `comp` will be of type at index
+      `indices` in `comp.type_signature.result`. If `indices` is a `list` or
+      `tuple`, the result type will be a `tff.StructType` wrapping the specified
+      selections.
 
   Returns:
     A transformed version of `comp` with result value the selection from the
@@ -825,34 +713,29 @@ def select_output_from_lambda(comp, indices):
   py_typecheck.check_type(comp, building_blocks.Lambda)
   py_typecheck.check_type(comp.type_signature.result,
                           computation_types.StructType)
-  py_typecheck.check_type(indices, (int, tuple, list))
+  py_typecheck.check_type(indices, (str, int, tuple, list))
 
-  def _create_selected_output(comp, index, is_struct_opt):
-    if is_struct_opt:
+  def _select(comp, index):
+    if comp.is_struct():
       return comp[index]
-    else:
-      return building_blocks.Selection(comp, index=index)
+    if isinstance(index, str):
+      return building_blocks.Selection(comp, name=index)
+    return building_blocks.Selection(comp, index=index)
 
   result_tuple = comp.result
-  tuple_opt = result_tuple.is_struct()
   elements = []
   if isinstance(indices, (tuple, list)):
     for x in indices:
       if isinstance(x, (tuple, list)):
         selected_output = result_tuple
         for y in x:
-          tuple_opt = selected_output.is_struct()
-          selected_output = _create_selected_output(selected_output, y,
-                                                    tuple_opt)
+          selected_output = _select(selected_output, y)
       else:
-        selected_output = _create_selected_output(result_tuple, x, tuple_opt)
+        selected_output = _select(result_tuple, x)
       elements.append(selected_output)
     result = building_blocks.Struct(elements)
   else:
-    if tuple_opt:
-      result = result_tuple[indices]
-    else:
-      result = building_blocks.Selection(result_tuple, index=indices)
+    result = _select(result_tuple, indices)
   return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
                                 result)
 

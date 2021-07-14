@@ -576,6 +576,17 @@ def _unname_fn_parameter(fn, unnamed_parameter_type):
     return fn
 
 
+def create_null_federated_aggregate() -> building_blocks.Call:
+  unit = building_blocks.Struct([])
+  unit_type = unit.type_signature
+  value = create_federated_value(unit, placements.CLIENTS)
+  zero = unit
+  accumulate = create_tensorflow_binary_operator(lambda a, b: a, unit_type)
+  merge = accumulate
+  report = create_compiled_identity(computation_types.StructType([]))
+  return create_federated_aggregate(value, zero, accumulate, merge, report)
+
+
 def create_federated_aggregate(
     value: building_blocks.ComputationBuildingBlock,
     zero: building_blocks.ComputationBuildingBlock,
@@ -673,6 +684,11 @@ def create_federated_apply(
   return building_blocks.Call(intrinsic, values)
 
 
+def create_null_federated_broadcast():
+  return create_federated_broadcast(
+      create_federated_value(building_blocks.Struct([]), placements.SERVER))
+
+
 def create_federated_broadcast(
     value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated broadcast.
@@ -764,6 +780,12 @@ def create_federated_eval(
                                                   result_type)
   intrinsic = building_blocks.Intrinsic(uri, intrinsic_type)
   return building_blocks.Call(intrinsic, fn)
+
+
+def create_null_federated_map() -> building_blocks.Call:
+  return create_federated_map(
+      create_compiled_identity(computation_types.StructType([])),
+      create_federated_value(building_blocks.Struct([]), placements.CLIENTS))
 
 
 def create_federated_map(
@@ -952,6 +974,12 @@ def create_federated_secure_sum(
                                         intrinsic_type)
   values = building_blocks.Struct([value, max_input])
   return building_blocks.Call(intrinsic, values)
+
+
+def create_null_federated_secure_sum_bitwidth():
+  return create_federated_secure_sum_bitwidth(
+      create_federated_value(building_blocks.Struct([]), placements.CLIENTS),
+      building_blocks.Struct([]))
 
 
 def create_federated_secure_sum_bitwidth(

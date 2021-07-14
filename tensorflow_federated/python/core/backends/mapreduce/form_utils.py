@@ -30,7 +30,6 @@ from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
@@ -281,73 +280,35 @@ def check_iterative_process_compatible_with_map_reduce_form(
   return initialize_tree, next_tree
 
 
-def _create_before_and_after_broadcast_for_no_broadcast(tree):
-  r"""Creates a before and after broadcast computations for the given `tree`.
-
-  This function returns the two ASTs:
-
-  Lambda
-  |
-  Tuple
-  |
-  []
-
-       Lambda(x)
-       |
-       Call
-      /    \
-  Comp      Sel(0)
-           /
-     Ref(x)
-
-  The first AST is an empty structure that has a type signature satisfying the
-  requirements of before broadcast.
-
-  In the second AST, `Comp` is `tree`; `Lambda` has a type signature satisfying
-  the requirements of after broadcast; and the argument passed to `Comp` is a
-  selection from the parameter of `Lambda` which intentionally drops `c2` on the
-  floor.
-
-  This function is intended to be used by
-  `get_map_reduce_form_for_iterative_process` to create before and after
-  broadcast computations for the given `tree` when there is no
-  `intrinsic_defs.FEDERATED_BROADCAST` in `tree`. As a result, this function
-  does not assert that there is no `intrinsic_defs.FEDERATED_BROADCAST` in
-  `tree` and it does not assert that `tree` has the expected structure, the
-  caller is expected to perform these checks before calling this function.
-
-  Args:
-    tree: An instance of `building_blocks.ComputationBuildingBlock`.
-
-  Returns:
-    A pair of the form `(before, after)`, where each of `before` and `after`
-    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
-    result as specified by
-    `transformations.force_align_and_split_by_intrinsics`.
-  """
-  name_generator = building_block_factory.unique_name_generator(tree)
-
-  parameter_name = next(name_generator)
-  empty_tuple = building_blocks.Struct([])
-  value = building_block_factory.create_federated_value(empty_tuple,
-                                                        placements.SERVER)
-  before_broadcast = building_blocks.Lambda(parameter_name,
-                                            tree.type_signature.parameter,
-                                            value)
-  broadcasted_type = empty_tuple.type_signature
-  broadcast_input = computation_types.at_server(broadcasted_type)
-  broadcast_output = computation_types.at_clients(broadcasted_type)
-  before_broadcast.type_signature.result.check_identical_to(broadcast_input)
-
-  parameter_name = next(name_generator)
-  parameter_type = computation_types.StructType(
-      [tree.type_signature.parameter, broadcast_output])
-  ref = building_blocks.Reference(parameter_name, parameter_type)
-  arg = building_blocks.Selection(ref, index=0)
-  call = building_blocks.Call(tree, arg)
-  after_broadcast = building_blocks.Lambda(ref.name, ref.type_signature, call)
-
-  return before_broadcast, after_broadcast
+def _untuple_broadcast_only_before_after(before, after):
+  """Removes the tuple-ing of the `broadcast` params and results."""
+  # Since there is only a single intrinsic here, there's no need for the outer
+  # `{intrinsic_name}_param`/`{intrinsic_name}_result` tuples.
+  untupled_before = transformations.select_output_from_lambda(
+      before, 'federated_broadcast_param')
+  after_param_name = next(building_block_factory.unique_name_generator(after))
+  after_param_type = computation_types.StructType([
+      ('original_arg', after.parameter_type.original_arg),
+      ('federated_broadcast_result',
+       after.parameter_type.intrinsic_results.federated_broadcast_result),
+  ])
+  after_param_ref = building_blocks.Reference(after_param_name,
+                                              after_param_type)
+  untupled_after = building_blocks.Lambda(
+      after_param_name, after_param_type,
+      building_blocks.Call(
+          after,
+          building_blocks.Struct([
+              ('original_arg',
+               building_blocks.Selection(after_param_ref, 'original_arg')),
+              ('intrinsic_results',
+               building_blocks.Struct([
+                   ('federated_broadcast_result',
+                    building_blocks.Selection(after_param_ref,
+                                              'federated_broadcast_result'))
+               ]))
+          ])))
+  return untupled_before, untupled_after
 
 
 def _split_ast_on_broadcast(bb):
@@ -361,15 +322,9 @@ def _split_ast_on_broadcast(bb):
     argument of broadcast, and the second of which maps comp's input and
     broadcast's output to comp's output.
   """
-  if tree_analysis.contains_called_intrinsic(
-      bb, intrinsic_defs.FEDERATED_BROADCAST.uri):
-    before_broadcast, after_broadcast = (
-        transformations.force_align_and_split_by_intrinsics(
-            bb, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
-  else:
-    before_broadcast, after_broadcast = (
-        _create_before_and_after_broadcast_for_no_broadcast(bb))
-  return before_broadcast, after_broadcast
+  before, after = transformations.force_align_and_split_by_intrinsics(
+      bb, [building_block_factory.create_null_federated_broadcast()])
+  return _untuple_broadcast_only_before_after(before, after)
 
 
 def _split_ast_on_aggregate(bb):
@@ -385,227 +340,11 @@ def _split_ast_on_aggregate(bb):
     second of which maps comp's input and the output of `federated_aggregate`
     and `federated_secure_sum_bitwidth` to comp's output.
   """
-  contains_federated_aggregate = tree_analysis.contains_called_intrinsic(
-      bb, intrinsic_defs.FEDERATED_AGGREGATE.uri)
-  contains_federated_secure_sum_bitwidth = tree_analysis.contains_called_intrinsic(
-      bb, intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri)
-  if not (contains_federated_aggregate or
-          contains_federated_secure_sum_bitwidth):
-    raise ValueError(
-        'Expected an `tff.templates.IterativeProcess` containing at least one '
-        '`federated_aggregate` or `federated_secure_sum_bitwidth`, found none.')
-
-  if contains_federated_aggregate and contains_federated_secure_sum_bitwidth:
-    before_aggregate, after_aggregate = (
-        transformations.force_align_and_split_by_intrinsics(
-            bb, [
-                intrinsic_defs.FEDERATED_AGGREGATE.uri,
-                intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
-            ]))
-  elif contains_federated_secure_sum_bitwidth:
-    assert not contains_federated_aggregate
-    before_aggregate, after_aggregate = (
-        _create_before_and_after_aggregate_for_no_federated_aggregate(bb))
-  else:
-    assert contains_federated_aggregate and not contains_federated_secure_sum_bitwidth
-    before_aggregate, after_aggregate = (
-        _create_before_and_after_aggregate_for_no_federated_secure_sum_bitwidth(
-            bb))
-  return before_aggregate, after_aggregate
-
-
-def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
-  r"""Creates a before and after aggregate computations for the given `tree`.
-
-  This function returns the two ASTs:
-
-  Lambda
-  |
-  Tuple
-  |
-  [Tuple, Comp]
-   |
-   [Tuple, [], Lambda, Lambda, Lambda]
-    |          |       |       |
-    []         []      []      []
-
-       Lambda(x)
-       |
-       Call
-      /    \
-  Comp      Tuple
-            |
-            [Sel(0),      Sel(1)]
-            /            /
-         Ref(x)    Sel(1)
-                  /
-            Ref(x)
-
-  In the first AST, the second element returned by `Lambda`, `Comp`, is the
-  result of the before aggregate returned by force aligning and splitting `tree`
-  by `intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri` and the first element
-  returned by `Lambda` is an empty structure that represents the argument to the
-  federated aggregate intrinsic. Therefore, the first AST has a type signature
-  satisfying the requirements of before aggregate.
-
-  In the second AST, `Comp` is the after aggregate returned by force aligning
-  and splitting `tree` by intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri;
-  `Lambda` has a type signature satisfying the requirements of after aggregate;
-  and the argument passed to `Comp` is a selection from the parameter of
-  `Lambda` which intentionally drops `s3` on the floor.
-
-  This function is intended to be used by
-  `get_map_reduce_form_for_iterative_process` to create before and after
-  broadcast computations for the given `tree` when there is no
-  `intrinsic_defs.FEDERATED_AGGREGATE` in `tree`. As a result, this function
-  does not assert that there is no `intrinsic_defs.FEDERATED_AGGREGATE` in
-  `tree` and it does not assert that `tree` has the expected structure, the
-  caller is expected to perform these checks before calling this function.
-
-  Args:
-    tree: An instance of `building_blocks.ComputationBuildingBlock`.
-
-  Returns:
-    A pair of the form `(before, after)`, where each of `before` and `after`
-    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
-    result as specified by
-    `transformations.force_align_and_split_by_intrinsics`.
-  """
-  name_generator = building_block_factory.unique_name_generator(tree)
-
-  before_aggregate, after_aggregate = (
-      transformations.force_align_and_split_by_intrinsics(
-          tree, [intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri]))
-
-  def _create_empty_function(type_elements):
-    ref_name = next(name_generator)
-    ref_type = computation_types.StructType(type_elements)
-    ref = building_blocks.Reference(ref_name, ref_type)
-    empty_tuple = building_blocks.Struct([])
-    return building_blocks.Lambda(ref.name, ref.type_signature, empty_tuple)
-
-  empty_tuple = building_blocks.Struct([])
-  value = building_block_factory.create_federated_value(empty_tuple,
-                                                        placements.CLIENTS)
-  zero = empty_tuple
-  accumulate = _create_empty_function([[], []])
-  merge = _create_empty_function([[], []])
-  report = _create_empty_function([])
-  args = building_blocks.Struct([value, zero, accumulate, merge, report])
-  result = building_blocks.Struct([args, before_aggregate.result])
-  before_aggregate = building_blocks.Lambda(before_aggregate.parameter_name,
-                                            before_aggregate.parameter_type,
-                                            result)
-
-  ref_name = next(name_generator)
-  s3_type = computation_types.FederatedType([], placements.SERVER)
-  ref_type = computation_types.StructType([
-      after_aggregate.parameter_type[0],
-      computation_types.StructType([s3_type,
-                                    after_aggregate.parameter_type[1]]),
-  ])
-  ref = building_blocks.Reference(ref_name, ref_type)
-  sel_arg = building_blocks.Selection(ref, index=0)
-  sel = building_blocks.Selection(ref, index=1)
-  sel_s4 = building_blocks.Selection(sel, index=1)
-  arg = building_blocks.Struct([sel_arg, sel_s4])
-  call = building_blocks.Call(after_aggregate, arg)
-  after_aggregate = building_blocks.Lambda(ref.name, ref.type_signature, call)
-
-  return before_aggregate, after_aggregate
-
-
-def _create_before_and_after_aggregate_for_no_federated_secure_sum_bitwidth(
-    tree):
-  r"""Creates a before and after aggregate computations for the given `tree`.
-
-  Lambda
-  |
-  Tuple
-  |
-  [Comp, Tuple]
-         |
-         [Tuple, []]
-          |
-          []
-
-       Lambda(x)
-       |
-       Call
-      /    \
-  Comp      Tuple
-            |
-            [Sel(0),      Sel(0)]
-            /            /
-         Ref(x)    Sel(1)
-                  /
-            Ref(x)
-
-  In the first AST, the first element returned by `Lambda`, `Comp`, is the
-  result of the before aggregate returned by force aligning and splitting `tree`
-  by `intrinsic_defs.FEDERATED_AGGREGATE.uri` and the second element returned by
-  `Lambda` is an empty structure that represents the argument to the secure sum
-  intrinsic. Therefore, the first AST has a type signature satisfying the
-  requirements of before aggregate.
-
-  In the second AST, `Comp` is the after aggregate returned by force aligning
-  and splitting `tree` by intrinsic_defs.FEDERATED_AGGREGATE.uri; `Lambda` has a
-  type signature satisfying the requirements of after aggregate; and the
-  argument passed to `Comp` is a selection from the parameter of `Lambda` which
-  intentionally drops `s4` on the floor.
-
-  This function is intended to be used by
-  `get_map_reduce_form_for_iterative_process` to create before and after
-  broadcast computations for the given `tree` when there is no
-  `intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH` in `tree`. As a result, this
-  function does not assert that there is no
-  `intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH` in `tree` and it does not
-  assert that `tree` has the expected structure, the caller is expected to
-  perform these checks before calling this function.
-
-  Args:
-    tree: An instance of `building_blocks.ComputationBuildingBlock`.
-
-  Returns:
-    A pair of the form `(before, after)`, where each of `before` and `after`
-    is a `tff_framework.ComputationBuildingBlock` that represents a part of the
-    result as specified by
-    `transformations.force_align_and_split_by_intrinsics`.
-  """
-  name_generator = building_block_factory.unique_name_generator(tree)
-
-  before_aggregate, after_aggregate = (
-      transformations.force_align_and_split_by_intrinsics(
-          tree, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
-
-  empty_tuple = building_blocks.Struct([])
-  value = building_block_factory.create_federated_value(empty_tuple,
-                                                        placements.CLIENTS)
-  bitwidth = empty_tuple
-  args = building_blocks.Struct([value, bitwidth])
-  result = building_blocks.Struct([before_aggregate.result, args])
-  before_aggregate = building_blocks.Lambda(before_aggregate.parameter_name,
-                                            before_aggregate.parameter_type,
-                                            result)
-
-  ref_name = next(name_generator)
-  s4_type = computation_types.FederatedType([], placements.SERVER)
-  ref_type = computation_types.StructType([
-      after_aggregate.parameter_type[0],
-      computation_types.StructType([
-          after_aggregate.parameter_type[1],
-          s4_type,
-      ]),
-  ])
-  ref = building_blocks.Reference(ref_name, ref_type)
-  sel_arg = building_blocks.Selection(ref, index=0)
-  sel = building_blocks.Selection(ref, index=1)
-  sel_s3 = building_blocks.Selection(sel, index=0)
-  arg = building_blocks.Struct([sel_arg, sel_s3])
-  call = building_blocks.Call(after_aggregate, arg)
-  after_aggregate = building_blocks.Lambda(ref.name, ref.type_signature, call)
-
-  return before_aggregate, after_aggregate
+  return transformations.force_align_and_split_by_intrinsics(
+      bb, [
+          building_block_factory.create_null_federated_aggregate(),
+          building_block_factory.create_null_federated_secure_sum_bitwidth()
+      ])
 
 
 def _prepare_for_rebinding(bb):
@@ -867,7 +606,6 @@ def _extract_work(before_aggregate, grappler_config):
       c3_to_unzipped_c4_computation.parameter_type,
       building_block_factory.create_federated_zip(
           c3_to_unzipped_c4_computation.result))
-
   return transformations.consolidate_and_extract_local_processing(
       c3_to_c4_computation, grappler_config)
 
@@ -895,9 +633,8 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
     transformations.MapReduceFormCompilationError: If we extract an ASTs of the
       wrong type.
   """
-  federated_aggregate_index_in_before_aggregate_result = 0
   federated_aggregate = transformations.select_output_from_lambda(
-      before_aggregate, federated_aggregate_index_in_before_aggregate_result)
+      before_aggregate, 'federated_aggregate_param')
   zero_index_in_federated_aggregate_result = 1
   zero_tff = transformations.select_output_from_lambda(
       federated_aggregate, zero_index_in_federated_aggregate_result).result
@@ -1288,10 +1025,10 @@ def get_broadcast_form_for_computation(
       form. Computations are only compatible if they take in a single value
       placed at server, return a single value placed at clients, and do not
       contain any aggregations.
-    grappler_config: An instance of `tf.compat.v1.ConfigProto` to
-      configure Grappler graph optimization of the Tensorflow graphs backing the
-      resulting `tff.backends.mapreduce.BroadcastForm`. These options are
-      combined with a set of defaults that aggressively configure Grappler. If
+    grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
+      Grappler graph optimization of the Tensorflow graphs backing the resulting
+      `tff.backends.mapreduce.BroadcastForm`. These options are combined with a
+      set of defaults that aggressively configure Grappler. If
       `grappler_config_proto` has
       `graph_options.rewrite_options.disable_meta_optimizer=True`, Grappler is
       bypassed.
@@ -1373,6 +1110,7 @@ def get_map_reduce_form_for_iterative_process(
   py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
   grappler_config = _merge_grappler_config_with_default(grappler_config)
 
+  next_bb, _ = tree_transformations.uniquify_reference_names(next_bb)
   before_broadcast, after_broadcast = _split_ast_on_broadcast(next_bb)
   before_aggregate, after_aggregate = _split_ast_on_aggregate(after_broadcast)
 

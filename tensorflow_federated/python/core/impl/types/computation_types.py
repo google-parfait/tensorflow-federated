@@ -544,7 +544,7 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
     if convert:
       if py_typecheck.is_named_tuple(elements):
         elements = typing.cast(Any, elements)
-        # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather
+        # In Python 3.8 and later `_asdict` no longer return OrderedDict, rather
         # a regular `dict`.
         elements = collections.OrderedDict(elements._asdict())
       if isinstance(elements, collections.OrderedDict):

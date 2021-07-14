@@ -1664,7 +1664,7 @@ def uniquify_compiled_computation_names(comp):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
-def uniquify_reference_names(comp):
+def uniquify_reference_names(comp, name_generator=None):
   """Replaces all the bound reference names in `comp` with unique names.
 
   Notice that `uniquify_reference_names` simply leaves alone any reference
@@ -1672,6 +1672,7 @@ def uniquify_reference_names(comp):
 
   Args:
     comp: The computation building block in which to perform the replacements.
+    name_generator: An optional generator to use for creating unique names.
 
   Returns:
     Returns a transformed version of comp inside of which all variable names
@@ -1682,7 +1683,8 @@ def uniquify_reference_names(comp):
   # Passing `comp` to `unique_name_generator` here will ensure that the
   # generated names conflict with neither bindings in `comp` nor unbound
   # references in `comp`.
-  name_generator = building_block_factory.unique_name_generator(comp)
+  if name_generator is None:
+    name_generator = building_block_factory.unique_name_generator(comp)
 
   class _RenameNode(transformation_utils.BoundVariableTracker):
     """transformation_utils.SymbolTree node for renaming References in ASTs."""

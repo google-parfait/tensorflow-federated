@@ -31,6 +31,18 @@ _TypeOrTupleOfTypes = Union[
     Tuple[Type[building_blocks.ComputationBuildingBlock], ...]]
 
 
+def visit_preorder(
+    tree: building_blocks.ComputationBuildingBlock,
+    function: Callable[[building_blocks.ComputationBuildingBlock], None]):
+  py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
+
+  def _visit(building_block):
+    function(building_block)
+    return building_block, False
+
+  transformation_utils.transform_preorder(tree, _visit)
+
+
 def visit_postorder(
     tree: building_blocks.ComputationBuildingBlock,
     function: Callable[[building_blocks.ComputationBuildingBlock], None]):
@@ -123,8 +135,8 @@ def check_has_single_placement(comp, single_placement):
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock`.
-    single_placement: Instance of `placements.PlacementLiteral` which
-      should be the only placement present under `comp`.
+    single_placement: Instance of `placements.PlacementLiteral` which should be
+      the only placement present under `comp`.
 
   Raises:
     ValueError: If the AST under `comp` contains any
