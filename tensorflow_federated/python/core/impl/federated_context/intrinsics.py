@@ -619,6 +619,76 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
   return value_impl.Value(comp)
 
 
+def federated_secure_modular_sum(value, modulus):
+  """Computes a modular sum at `tff.SERVER` of a `value` from `tff.CLIENTS`.
+
+  This function computes a sum such that it should not be possible for the
+  server to learn any clients individual value. The specific algorithm and
+  mechanism used to compute the secure sum may vary depending on the target
+  runtime environment the computation is compiled for or executed on. See
+  https://research.google/pubs/pub47246/ for more information.
+
+  Not all executors support `tff.federated_secure_modular_sum()`; consult the
+  documentation for the specific executor or executor stack you plan on using
+  for the specific of how it's handled by that executor.
+
+  The `modulus` argument is the modulus under which the client values are added.
+  The result of this function will be equivalent to `SUM(value) % modulus`.
+  *Lower values may allow for improved communication efficiency.*
+
+  Example:
+
+  ```python
+  value = tff.federated_value(5, tff.CLIENTS)
+  result = tff.federated_secure_sum(value, 3)
+  # `result == (5 * num_clients % 3)@SERVER`
+
+  value = tff.federated_value((3, 9), tff.CLIENTS)
+  result = tff.federated_secure_sum(value, (100, 200))
+  # `result == (3 * num_clients % 100, 9 * num_clients % 100)@SERVER`
+  ```
+
+  Note: To sum non-integer values or to sum integers with fewer constraints and
+  weaker privacy properties, consider using `federated_sum`.
+
+  Args:
+    value: An integer or nested structure of integers placed at `tff.CLIENTS`,
+      in the range `[0, max_input]`.
+    modulus: A Python integer or nested structure of integers matching the
+      structure of `value`. If integer `modulus` is used with a nested `value`,
+      the same integer is used for each tensor in `value`.
+
+  Returns:
+    A representation of the modular sum of the member constituents of `value`
+    placed on the `tff.SERVER`.
+
+  Raises:
+    TypeError: If the argument is not a federated TFF value placed at
+      `tff.CLIENTS`.
+  """
+  value = value_impl.to_value(value, None)
+  value = value_utils.ensure_federated_value(value, placements.CLIENTS,
+                                             'value to be summed')
+  type_analysis.check_is_structure_of_integers(value.type_signature)
+  modulus_value = value_impl.to_value(modulus, None)
+  value_member_type = value.type_signature.member
+  modulus_type = modulus_value.type_signature
+  if not type_analysis.is_single_integer_or_matches_structure(
+      modulus_type, value_member_type):
+    raise TypeError(
+        'Expected `federated_secure_sum` parameter `modulus` to match '
+        'the structure of `value`, with one integer max per tensor in '
+        '`value`. Found `value` of `{}` and `modulus` of `{}`.'.format(
+            value_member_type, modulus_type))
+  if modulus_type.is_tensor() and value_member_type.is_struct():
+    modulus_value = value_impl.to_value(
+        structure.map_structure(lambda _: modulus, value_member_type), None)
+  comp = building_block_factory.create_federated_secure_modular_sum(
+      value.comp, modulus_value.comp)
+  comp = _bind_comp_as_reference(comp)
+  return value_impl.Value(comp)
+
+
 def federated_secure_sum(value, max_input):
   """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
 
@@ -633,7 +703,7 @@ def federated_secure_sum(value, max_input):
   for the specific of how it's handled by that executor.
 
   The `max_input` argument is the maximum value (inclusive) that may appear in
-  `value`. Lower values may allow for improved communication efficiency.
+  `value`. *Lower values may allow for improved communication efficiency.*
   Attempting to return a `value` higher than `max_input` is invalid, and will
   result in a failure at the given client.
 

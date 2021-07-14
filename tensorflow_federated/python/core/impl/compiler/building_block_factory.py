@@ -941,6 +941,40 @@ def create_federated_mean(
     return building_blocks.Call(intrinsic, value)
 
 
+def create_federated_secure_modular_sum(
+    value: building_blocks.ComputationBuildingBlock,
+    modulus: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
+  r"""Creates a called secure modular sum.
+
+            Call
+           /    \
+  Intrinsic      [Comp, Comp]
+
+  Args:
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
+    modulus: A `building_blocks.ComputationBuildingBlock` to use as the
+      `modulus` value.
+
+  Returns:
+    A `building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(modulus, building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placements.SERVER)
+  intrinsic_type = computation_types.FunctionType([
+      type_conversions.type_to_non_all_equal(value.type_signature),
+      modulus.type_signature,
+  ], result_type)
+  intrinsic = building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri, intrinsic_type)
+  values = building_blocks.Struct([value, modulus])
+  return building_blocks.Call(intrinsic, values)
+
+
 def create_federated_secure_sum(
     value: building_blocks.ComputationBuildingBlock,
     max_input: building_blocks.ComputationBuildingBlock
