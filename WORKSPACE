@@ -57,6 +57,12 @@ load("@upb//bazel:workspace_deps.bzl", "upb_deps")
 upb_deps()
 
 git_repository(
+    name = "pybind11_abseil",
+    remote = "https://github.com/pybind/pybind11_abseil.git",
+    commit = "d9614e4ea46b411d02674305245cba75cd91c1c6",
+)
+
+git_repository(
     name = "pybind11_bazel",
     remote = "https://github.com/pybind/pybind11_bazel.git",
     commit = "26973c0ff320cb4b39e45bc3e4297b82bc3a6c09",

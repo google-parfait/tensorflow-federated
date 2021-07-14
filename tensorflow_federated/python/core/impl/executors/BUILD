@@ -240,6 +240,7 @@ py_library(
 py_test(
     name = "executor_bindings_test",
     srcs = ["executor_bindings_test.py"],
+    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     python_version = "PY3",
     srcs_version = "PY3",
     tags = ["nokokoro"],
