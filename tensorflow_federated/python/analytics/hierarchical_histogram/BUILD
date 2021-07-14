@@ -31,3 +31,29 @@ py_test(
         "//tensorflow_federated/python/core/templates:measured_process",
     ],
 )
+
+py_library(
+    name = "hierarchical_histogram",
+    srcs = ["hierarchical_histogram.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":hierarchical_histogram_factory",
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_test(
+    name = "hierarchical_histogram_test",
+    srcs = ["hierarchical_histogram_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":hierarchical_histogram",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+    ],
+)
