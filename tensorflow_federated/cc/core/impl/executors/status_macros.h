@@ -18,36 +18,27 @@ limitations under the License
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/types/source_location.h"
 
 namespace tensorflow_federated::status_macros {
 
 // Internal-only helper for TFF_TRY
 // Handles the no-`suffix` case.
-inline absl::Status __get_status(absl::Status&& status,
-                                 absl::SourceLocation loc) {
-  return absl::Status(std::move(status), loc);
-}
+inline absl::Status __get_status(absl::Status&& status) { return status; }
 
 // Internal-only helper for TFF_TRY
 // Appends `suffix` to the message of the original status.
 inline absl::Status __get_status(absl::Status&& status,
-                                 absl::SourceLocation loc,
                                  const absl::string_view& suffix) {
-  absl::Status new_status(status.code(),
-                          absl::StrCat(status.message(), " ", suffix), loc);
-  for (const auto& location : status.GetSourceLocations()) {
-    new_status.AddSourceLocation(location);
-  }
-  return new_status;
+  return absl::Status(status.code(),
+                      absl::StrCat(status.message(), " ", suffix));
 }
 
 // Internal-only helper for TFF_TRY
 // Handles converting from a `StatusOr` to `Status` before delegating down.
 template <typename T, typename... VarArgs>
 inline absl::Status __get_status(absl::StatusOr<T>&& status_or,
-                                 absl::SourceLocation loc, VarArgs... varargs) {
-  return __get_status(std::move(status_or).status(), loc, varargs...);
+                                 VarArgs... varargs) {
+  return __get_status(std::move(status_or).status(), varargs...);
 }
 
 // Internal-only helper for TFF_TRY
@@ -66,15 +57,15 @@ inline T __void_or_result(absl::StatusOr<T>&& res) {
 //
 // The macro accepts an optional last argument for a `const absl::string_view&`
 // to append to the error message.
-#define TFF_TRY(expr, ...)                                                 \
-  ({                                                                       \
-    auto __tff_expr_res = expr;                                            \
-    if (!__tff_expr_res.ok()) {                                            \
-      return ::tensorflow_federated::status_macros::__get_status(          \
-          std::move(__tff_expr_res), ABSL_LOC __VA_OPT__(, ) __VA_ARGS__); \
-    }                                                                      \
-    ::tensorflow_federated::status_macros::__void_or_result(               \
-        std::move(__tff_expr_res));                                        \
+#define TFF_TRY(expr, ...)                                        \
+  ({                                                              \
+    auto __tff_expr_res = expr;                                   \
+    if (!__tff_expr_res.ok()) {                                   \
+      return ::tensorflow_federated::status_macros::__get_status( \
+          std::move(__tff_expr_res) __VA_OPT__(, ) __VA_ARGS__);  \
+    }                                                             \
+    ::tensorflow_federated::status_macros::__void_or_result(      \
+        std::move(__tff_expr_res));                               \
   })
 
 }  // namespace tensorflow_federated::status_macros
