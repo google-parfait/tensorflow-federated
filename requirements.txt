@@ -3,7 +3,7 @@
 # to tools/development/setup.py.
 absl-py~=0.10
 attrs~=19.3.0
-cachetools~=3.1.1
+cachetools~=4.2.0
 dm-tree~=0.1.1
 grpcio~=1.37.0
 jaxlib~=0.1.55
