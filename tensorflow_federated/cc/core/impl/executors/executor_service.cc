@@ -180,11 +180,8 @@ grpc::Status ExecutorService::Compute(grpc::ServerContext* context,
       TFF_TRY(RequireExecutor_("Compute"));
   ValueId requested_value = TFF_TRY(
       ResolveRemoteValue_(request->value_ref(), used_executor_generation));
-  absl::Status materialize_status =
-      live_executor->Materialize(requested_value, response->mutable_value());
-  if (!materialize_status.ok()) {
-    return materialize_status;
-  }
+  TFF_TRY(
+      live_executor->Materialize(requested_value, response->mutable_value()));
   return grpc::Status::OK;
 }
 
