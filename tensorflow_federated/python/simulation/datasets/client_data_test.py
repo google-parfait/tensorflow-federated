@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
-import warnings
-
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -51,10 +48,8 @@ class CheckRandomSeedTest(tf.test.TestCase, parameterized.TestCase):
       cd.check_numpy_random_seed(seed)
 
 
-def create_concrete_client_data(
-    serializable: bool = False,
-) -> Union[cd.ConcreteSerializableClientData, cd.ConcreteClientData]:
-  """Creates a simple `ConcreteSerializableClientData` instance.
+def create_concrete_client_data() -> cd.ConcreteClientData:
+  """Creates a simple `ConcreteClientData` instance.
 
   The resulting `ClientData` has the following clients and datasets (written as
   lists):
@@ -62,13 +57,8 @@ def create_concrete_client_data(
   *   client `2`: [0, 1]
   *   client `3`: [0, 1, 2]
 
-  Args:
-    serializable: A boolean indicating whether to create a `ConcreteClientData`
-      (`serializable = False`) or a `ConcreteSerializableClientData`
-      (`serializable = True`).
-
   Returns:
-    A `ConcreteSerializableClientData` instance.
+    A `ConcreteClientData` instance.
   """
   client_ids = ['1', '2', '3']
 
@@ -76,14 +66,8 @@ def create_concrete_client_data(
     num_examples = tf.strings.to_number(client_id, out_type=tf.int64)
     return tf.data.Dataset.range(num_examples)
 
-  if serializable:
-    concrete_client_data = cd.ClientData.from_clients_and_tf_fn(
-        client_ids=client_ids, serializable_dataset_fn=create_dataset_fn)
-  else:
-    concrete_client_data = cd.ClientData.from_clients_and_fn(
-        client_ids=client_ids,
-        create_tf_dataset_for_client_fn=create_dataset_fn)
-  return concrete_client_data
+  return cd.ClientData.from_clients_and_tf_fn(
+      client_ids=client_ids, serializable_dataset_fn=create_dataset_fn)
 
 
 def dataset_length(dataset):
@@ -180,44 +164,23 @@ class TrainTestClientSplitTest(tf.test.TestCase, parameterized.TestCase):
 
 class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_deprecation_warning_raised_on_from_clients_and_fn(self):
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
-      create_concrete_client_data(serializable=False)
-      self.assertNotEmpty(w)
-      self.assertEqual(w[0].category, DeprecationWarning)
-      self.assertRegex(
-          str(w[0].message),
-          'tff.simulation.datasets.ClientData.from_clients_and_fn is deprecated'
-      )
-
-  @parameterized.named_parameters(('nonserializable', False),
-                                  ('serializable', True))
-  def test_concrete_client_data_create_expected_datasets(self, serializable):
-    client_data = create_concrete_client_data(serializable=serializable)
+  def test_concrete_client_data_create_expected_datasets(self):
+    client_data = create_concrete_client_data()
     self.assertEqual(client_data.element_type_structure,
                      tf.TensorSpec(shape=(), dtype=tf.int64))
     for i in client_data.client_ids:
       client_dataset = client_data.create_tf_dataset_for_client(i)
       self.assertEqual(dataset_length(client_dataset), int(i))
 
-  @parameterized.named_parameters(('nonserializable', False),
-                                  ('serializable', True))
-  def test_datasets_lists_all_elements(self, serializable):
-    client_data = create_concrete_client_data(serializable=serializable)
+  def test_dataset_computation_lists_all_elements(self):
+    client_data = create_concrete_client_data()
+    for client_id in client_data.client_ids:
+      expected_values = list(range(int(client_id)))
+      client_dataset = client_data.dataset_computation(client_id)
+      actual_values = list(client_dataset.as_numpy_iterator())
+      self.assertEqual(expected_values, actual_values)
 
-    def ds_iterable_to_list_set(datasets):
-      return set(tuple(ds.as_numpy_iterator()) for ds in datasets)
-
-    datasets = ds_iterable_to_list_set(client_data.datasets())
-    expected = ds_iterable_to_list_set(
-        (client_data.create_tf_dataset_for_client(cid)
-         for cid in client_data.client_ids))
-    self.assertEqual(datasets, expected)
-
-  @parameterized.named_parameters(('nonserializable', False),
-                                  ('serializable', True))
-  def test_datasets_is_lazy(self, serializable):
+  def test_datasets_is_lazy(self):
     client_ids = [1, 2, 3]
 
     # Note: this is called once on initialization of ClientData
@@ -236,31 +199,21 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
       num_examples = client_id
       return tf.data.Dataset.range(num_examples)
 
-    if serializable:
-      client_data = cd.ClientData.from_clients_and_tf_fn(
-          client_ids=client_ids, serializable_dataset_fn=only_call_me_thrice)
-    else:
-      client_data = cd.ClientData.from_clients_and_fn(
-          client_ids=client_ids,
-          create_tf_dataset_for_client_fn=only_call_me_thrice)
-
+    client_data = cd.ClientData.from_clients_and_tf_fn(
+        client_ids=client_ids, serializable_dataset_fn=only_call_me_thrice)
     datasets_iter = client_data.datasets()
     next(datasets_iter)
     next(datasets_iter)
     with self.assertRaisesRegex(Exception, 'called too many times'):
       next(datasets_iter)
 
-  @parameterized.named_parameters(('nonserializable', False),
-                                  ('serializable', True))
-  def test_datasets_limit_count(self, serializable):
-    client_data = create_concrete_client_data(serializable=serializable)
+  def test_datasets_limit_count(self):
+    client_data = create_concrete_client_data()
     dataset_list = list(client_data.datasets(limit_count=1))
     self.assertLen(dataset_list, 1)
 
-  @parameterized.named_parameters(('nonserializable', False),
-                                  ('serializable', True))
-  def test_datasets_doesnt_shuffle_client_ids_list(self, serializable):
-    client_data = create_concrete_client_data(serializable=serializable)
+  def test_datasets_doesnt_shuffle_client_ids_list(self):
+    client_data = create_concrete_client_data()
     client_ids_copy = client_data.client_ids.copy()
 
     client_data.datasets()
@@ -280,7 +233,7 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
       ('none', None),
   )
   def test_datasets_does_not_raise_on_expected_random_seed(self, seed):
-    client_data = create_concrete_client_data(serializable=False)
+    client_data = create_concrete_client_data()
     next(client_data.datasets(seed=seed))
 
   @parameterized.named_parameters(
@@ -293,14 +246,12 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
       ('string', 'bad_seed'),
   )
   def test_datasets_raises_on_unexpected_random_seed(self, seed):
-    client_data = create_concrete_client_data(serializable=False)
+    client_data = create_concrete_client_data()
     with self.assertRaises(cd.InvalidRandomSeedError):
       next(client_data.datasets(seed=seed))
 
-  @parameterized.named_parameters(('nonserializable', False),
-                                  ('serializable', True))
-  def test_create_tf_dataset_from_all_clients(self, serializable):
-    client_data = create_concrete_client_data(serializable=serializable)
+  def test_create_tf_dataset_from_all_clients(self):
+    client_data = create_concrete_client_data()
     dataset = client_data.create_tf_dataset_from_all_clients()
     dataset_list = list(dataset.as_numpy_iterator())
     self.assertCountEqual(dataset_list, [0, 0, 0, 1, 1, 2])
@@ -315,7 +266,7 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
       ('none', None),
   )
   def test_create_from_all_does_not_raise_on_expected_random_seed(self, seed):
-    client_data = create_concrete_client_data(serializable=False)
+    client_data = create_concrete_client_data()
     client_data.create_tf_dataset_from_all_clients(seed=seed)
 
   @parameterized.named_parameters(
@@ -328,21 +279,9 @@ class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
       ('string', 'bad_seed'),
   )
   def test_create_from_all_raises_on_unexpected_random_seed(self, seed):
-    client_data = create_concrete_client_data(serializable=False)
+    client_data = create_concrete_client_data()
     with self.assertRaises(cd.InvalidRandomSeedError):
       client_data.create_tf_dataset_from_all_clients(seed=seed)
-
-
-class ConcreteSerializableClientDataTest(tf.test.TestCase,
-                                         parameterized.TestCase):
-
-  def test_dataset_computation_lists_all_elements(self):
-    client_data = create_concrete_client_data(serializable=True)
-    for client_id in client_data.client_ids:
-      expected_values = list(range(int(client_id)))
-      client_dataset = client_data.dataset_computation(client_id)
-      actual_values = list(client_dataset.as_numpy_iterator())
-      self.assertEqual(expected_values, actual_values)
 
   def test_dataset_from_large_client_list(self):
     client_ids = [str(x) for x in range(1_000_000)]
@@ -360,40 +299,11 @@ class ConcreteSerializableClientDataTest(tf.test.TestCase,
     except Exception as e:  # pylint: disable=broad-except
       self.fail(e)
 
-  @parameterized.named_parameters(
-      ('integer1', 0),
-      ('integer2', 1234),
-      ('integer3', 2**32 - 1),
-      ('sequence1', [0, 2, 323]),
-      ('sequence2', [1024]),
-      ('sequence3', [2**31, 2**32 - 1]),
-      ('none', None),
-  )
-  def test_create_from_all_does_not_raise_on_expected_random_seed(self, seed):
-    client_data = create_concrete_client_data(serializable=True)
-    client_data.create_tf_dataset_from_all_clients(seed=seed)
-
-  @parameterized.named_parameters(
-      ('integer1', -1),
-      ('integer2', 2**40),
-      ('integer3', 2**32),
-      ('sequence1', [0, 2, -1]),
-      ('sequence2', [2**33]),
-      ('sequence3', [2**31, 2**32 - 1, -500]),
-      ('string', 'bad_seed'),
-  )
-  def test_create_from_all_raises_on_unexpected_random_seed(self, seed):
-    client_data = create_concrete_client_data(serializable=True)
-    with self.assertRaises(cd.InvalidRandomSeedError):
-      client_data.create_tf_dataset_from_all_clients(seed=seed)
-
 
 class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(('nonserializable', False),
-                                  ('serializable', True))
-  def test_preprocess_creates_expected_client_datasets(self, serializable):
-    client_data = create_concrete_client_data(serializable=serializable)
+  def test_preprocess_creates_expected_client_datasets(self):
+    client_data = create_concrete_client_data()
 
     def preprocess_fn(dataset):
       return dataset.map(lambda x: 2 * x)
@@ -406,10 +316,8 @@ class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
       self.assertEqual(expected_dataset,
                        list(actual_dataset.as_numpy_iterator()))
 
-  @parameterized.named_parameters(('nonserializable', False),
-                                  ('serializable', True))
-  def test_preprocess_with_take_one(self, serializable):
-    client_data = create_concrete_client_data(serializable=serializable)
+  def test_preprocess_with_take_one(self):
+    client_data = create_concrete_client_data()
     preprocess_fn = lambda x: x.take(1)
 
     preprocess_client_data = client_data.preprocess(preprocess_fn)
@@ -423,9 +331,7 @@ class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
             preprocess_client_data.create_tf_dataset_from_all_clients()))
 
   def test_preprocess_creates_expected_client_datasets_with_dataset_comp(self):
-    # We only use `serializable=True`, since it has a `dataset_computation`
-    # attribute.
-    client_data = create_concrete_client_data(serializable=True)
+    client_data = create_concrete_client_data()
 
     def preprocess_fn(dataset):
       return dataset.map(lambda x: 2 * x)
@@ -437,10 +343,8 @@ class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
       self.assertEqual(expected_dataset,
                        list(actual_dataset.as_numpy_iterator()))
 
-  @parameterized.named_parameters(('nonserializable', False),
-                                  ('serializable', True))
-  def test_preprocess_creates_expected_amalgamated_dataset(self, serializable):
-    client_data = create_concrete_client_data(serializable=serializable)
+  def test_preprocess_creates_expected_amalgamated_dataset(self):
+    client_data = create_concrete_client_data()
 
     def preprocess_fn(dataset):
       return dataset.map(lambda x: 2 * x)
@@ -452,10 +356,8 @@ class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual(expected_amalgamated_dataset,
                           list(actual_amalgamated_dataset.as_numpy_iterator()))
 
-  @parameterized.named_parameters(('nonserializable', False),
-                                  ('serializable', True))
-  def test_preprocess_raises_on_tff_computation(self, serializable):
-    client_data = create_concrete_client_data(serializable=serializable)
+  def test_preprocess_raises_on_tff_computation(self):
+    client_data = create_concrete_client_data()
 
     @computations.tf_computation
     def foo():

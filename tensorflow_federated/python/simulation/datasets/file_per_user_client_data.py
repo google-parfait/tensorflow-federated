@@ -24,7 +24,7 @@ from tensorflow_federated.python.simulation.datasets import client_data
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-class FilePerUserClientData(client_data.SerializableClientData):
+class FilePerUserClientData(client_data.ClientData):
   """A `tff.simulation.datasets.ClientData` that maps a set of files to a dataset.
 
   This mapping is restricted to one file per user.
