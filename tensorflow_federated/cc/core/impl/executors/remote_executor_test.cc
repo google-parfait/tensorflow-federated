@@ -19,7 +19,6 @@ limitations under the License
 #include <memory>
 #include <optional>
 
-#include "net/grpc/testing/mocker/mock_grpc.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
@@ -27,8 +26,8 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
-#include "tensorflow_federated/proto/v0/executor.mocker.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.proto.h"
 
 using ::testing::EqualsProto;
@@ -111,8 +110,8 @@ class RemoteExecutorTest : public ::testing::Test {
   }
   ~RemoteExecutorTest() { test_executor_ = nullptr; }
 
-  net::grpc::testing::mocker::MockGrpcServer<v0::MockExecutor> mock_executor_;
-  v0::MockExecutor* mock_executor_service_;
+  MockGrpcExecutorServer mock_executor_;
+  MockGrpcExecutorService* mock_executor_service_;
   std::shared_ptr<Executor> test_executor_;
 };
 
