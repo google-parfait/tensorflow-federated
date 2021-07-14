@@ -25,7 +25,7 @@ py_library(
     srcs_version = "PY3",
     tags = ["nokokoro"],
     deps = [
-        "//tensorflow_federated/python/core/impl/bindings_utils:data_conversions",
+        "//tensorflow_federated/python/core/impl/executors:data_conversions",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],

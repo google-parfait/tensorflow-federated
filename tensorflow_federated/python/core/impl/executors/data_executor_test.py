@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for the data executor."""
 
 import asyncio
 import collections
+
 from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
+
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl

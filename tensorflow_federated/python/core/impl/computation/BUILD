@@ -4,7 +4,6 @@ package(default_visibility = [
     ":computation_packages",
     "//tensorflow_federated/experimental/python/core/impl/jax_context:jax_context_packages",
     "//tensorflow_federated/python/core/impl:impl_visibility",
-    "//tensorflow_federated/python/core/impl/bindings_utils:bindings_utils_packages",
     "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
     "//tensorflow_federated/python/core/impl/executors:executors_packages",
     "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
