@@ -106,7 +106,7 @@ main() {
   elif [[ "${nightly}" == "1" ]]; then
     flags+=("--nightly")
   fi
-  python "tensorflow_federated/tools/development/setup.py" bdist_wheel \
+  python "tensorflow_federated/tools/python_package/setup.py" bdist_wheel \
       --universal \
       "${flags[@]}"
   cp "${temp_dir}/dist/"* "${output_dir}"

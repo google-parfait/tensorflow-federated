@@ -1,5 +1,10 @@
 package(default_visibility = ["//visibility:private"])
 
+package_group(
+    name = "python_package_tool",
+    packages = ["//tensorflow_federated/tools/python_package/..."],
+)
+
 licenses(["notice"])
 
 # The data labels are needed otherwise Bazel will not know about the
@@ -7,8 +12,8 @@ licenses(["notice"])
 # rather than the packages, so in the Bazel dependency hierarchy, nothing is
 # dependent on the `__init__.py` files.
 sh_binary(
-    name = "build_pip_package",
-    srcs = ["build_pip_package.sh"],
+    name = "build_python_package",
+    srcs = ["build_python_package.sh"],
     data = [
         ":common",
         ":setup",
@@ -53,16 +58,16 @@ filegroup(
 )
 
 sh_binary(
-    name = "publish_pip_package",
-    srcs = ["publish_pip_package.sh"],
+    name = "publish_python_package",
+    srcs = ["publish_python_package.sh"],
     data = [
         ":common",
     ],
 )
 
 sh_binary(
-    name = "test_pip_package",
-    srcs = ["test_pip_package.sh"],
+    name = "test_python_package",
+    srcs = ["test_python_package.sh"],
     data = [
         ":common",
     ],

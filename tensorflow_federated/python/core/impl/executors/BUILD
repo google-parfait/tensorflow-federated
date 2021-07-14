@@ -19,7 +19,7 @@ py_library(
     name = "executors",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/tools:__subpackages__"],
+    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
 )
 
 py_library(
