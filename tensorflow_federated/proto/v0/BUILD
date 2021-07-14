@@ -34,7 +34,10 @@ py_test(
         "nofixdeps",
         "nokokoro",
     ],
-    deps = [":computation_py_pb2"],
+    deps = [
+        ":computation_py_pb2",
+        "@com_google_protobuf//:use_fast_cpp_protos",
+    ],
 )
 
 cc_proto_library(

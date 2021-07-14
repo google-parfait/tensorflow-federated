@@ -52,14 +52,12 @@ namespace tensorflow_federated {
 
 namespace {
 
-absl::string_view ErrLogImpl(absl::string_view msg, absl::SourceLocation loc) {
-  auto streamer = absl::LogErrorStreamer(std::move(loc));
-  streamer.stream() << msg;
-  return msg;
-}
-
 // Logs an error message to LOG(ERROR), returning the message.
-#define ERR_LOG(msg) ErrLogImpl(msg, ABSL_LOC)
+#define ERR_LOG(msg)   \
+  ([](std::string m) { \
+    LOG(ERROR) << m;   \
+    return m;          \
+  }(msg))
 
 const tensorflow::SessionOptions& get_session_options() {
   // Creates default SessionOptions on first call, and re-uses them for all
