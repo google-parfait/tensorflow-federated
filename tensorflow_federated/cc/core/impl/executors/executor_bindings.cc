@@ -133,10 +133,17 @@ PYBIND11_MODULE(executor_bindings, m) {
 
   py::class_<grpc::ChannelInterface, std::shared_ptr<grpc::ChannelInterface>>(
       m, "GRPCChannelInterface");
+
   m.def(
       "create_insecure_grpc_channel",
       [](const std::string& target) -> std::shared_ptr<grpc::ChannelInterface> {
-        return grpc::CreateChannel(target, grpc::InsecureChannelCredentials());
+        auto channel_options = grpc::ChannelArguments();
+        channel_options.SetMaxSendMessageSize(
+            std::numeric_limits<int32>::max());
+        channel_options.SetMaxReceiveMessageSize(
+            std::numeric_limits<int32>::max());
+        return grpc::CreateCustomChannel(
+            target, grpc::InsecureChannelCredentials(), channel_options);
       },
       pybind11::return_value_policy::take_ownership);
 }
