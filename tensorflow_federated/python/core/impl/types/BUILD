@@ -14,6 +14,7 @@ package(default_visibility = [
     "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_context_packages",
     "//tensorflow_federated/python/core/impl/utils:utils_packages",
     "//tensorflow_federated/python/core/impl/wrappers:wrappers_packages",
+    "//tensorflow_federated/python/core/impl/xla_context:xla_context_packages",
 ])
 
 package_group(

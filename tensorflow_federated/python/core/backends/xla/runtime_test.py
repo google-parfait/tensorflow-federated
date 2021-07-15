@@ -19,8 +19,8 @@ import numpy as np
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.xla import runtime
-from tensorflow_federated.python.core.backends.xla import xla_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.xla_context import xla_serialization
 
 
 class RuntimeTest(absltest.TestCase):
