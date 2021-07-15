@@ -2,14 +2,14 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":optimizers_packages",
-    "//tensorflow_federated/python/learning/framework:framework_packages",
     "//tensorflow_federated/python/learning:learning_visibility",
+    "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
 
-    # TODO(b/151441025): This package is temporary and can be removed once the
-    # dependencies between `tff.learning` and `tff.learning.optimizers` are
+    # TODO(b/151441025): This visibility is temporary and can be removed once
+    # the dependencies between `tff.learning` and `tff.learning.framework` are
     # cleaned up.
+    "//tensorflow_federated/python/learning/framework:framework_packages",
     "//tensorflow_federated/python/learning:__pkg__",
-    "//tensorflow_federated/experimental/python/learning:__pkg__",
 ])
 
 package_group(

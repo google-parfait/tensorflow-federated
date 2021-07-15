@@ -37,19 +37,19 @@ digraph {
   }
 
   // Learning
-  learning_framework -> learning
-  learning_optimizers -> learning
   learning_reconstruction -> learning
+  learning_reconstruction -> learning_optimizers
+  learning_optimizers -> learning
+  learning_framework -> learning
+  learning_framework -> learning [dir=back]
 
-  learning_framework -> learning_optimizers [arrowhead="none", style="invisible"]
-  learning_optimizers -> learning_reconstruction [arrowhead="none", style="invisible"]
   learning -> aggregators [arrowhead="none", style="invisible"]
 
   subgraph cluster_learning {
     graph [label="Learning", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning" target="_parent"]
-    learning_framework [label="framework", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/framework" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    learning_optimizers [label="optimizers", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/optimizers" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     learning_reconstruction [label="reconstruction", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/reconstruction" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    learning_optimizers [label="optimizers", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/optimizers" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    learning_framework [label="framework", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/framework" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     learning [href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
@@ -156,8 +156,9 @@ digraph {
   {rank=same; tff}
   {rank=same; simulation, simulation_baselines}
   {rank=same; simulation_models, simulation_datasets}
-  {rank=same; learning_framework, learning_optimizers, learning_reconstruction, analytics}
-  {rank=same; learning}
+  {rank=same; learning_reconstruction, analytics}
+  {rank=same; learning_optimizers}
+  {rank=same; learning, learning_framework}
   {rank=same; aggregators}
   {rank=same; core_backends, core_test}
   {rank=same; core_templates}
