@@ -16,6 +16,7 @@
 import abc
 import collections
 from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union
+import warnings
 
 from absl import logging
 import numpy as np
@@ -115,21 +116,9 @@ class ClientData(object, metaclass=abc.ABCMeta):
     """A list of string identifiers for clients in this dataset."""
     pass
 
-  @abc.abstractproperty
-  def serializable_dataset_fn(self):
-    """A callable accepting a client ID and returning a `tf.data.Dataset`.
-
-    Note that this callable must be traceable by TF, as it will be used in the
-    context of a `tf.function`.
-    """
-    pass
-
+  @abc.abstractmethod
   def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
     """Creates a new `tf.data.Dataset` containing the client training examples.
-
-    This function will create a dataset for a given client, given that
-    `client_id` is contained in the `client_ids` property of the `ClientData`.
-    Unlike `create_dataset`, this method need not be serializable.
 
     Args:
       client_id: The string client_id for the desired client.
@@ -137,29 +126,20 @@ class ClientData(object, metaclass=abc.ABCMeta):
     Returns:
       A `tf.data.Dataset` object.
     """
-    if client_id not in self.client_ids:
-      raise ValueError(
-          'ID [{i}] is not a client in this ClientData. See '
-          'property `client_ids` for the list of valid ids.'.format(
-              i=client_id))
-    return self.serializable_dataset_fn(client_id)
+    pass
 
-  @property
-  def dataset_computation(self):
+  @abc.abstractproperty
+  def dataset_computation(self) -> computation_base.Computation:
     """A `tff.Computation` accepting a client ID, returning a dataset.
 
     Note: the `dataset_computation` property is intended as a TFF-specific
-    performance optimization for distributed execution.
+    performance optimization for distributed execution, and subclasses of
+    `ClientData` may or may not support it.
+
+    `ClientData` implementations that don't support `dataset_computation`
+    should raise `NotImplementedError` if this attribute is accessed.
     """
-    if (not hasattr(self, '_cached_dataset_computation')) or (
-        self._cached_dataset_computation is None):
-
-      @computations.tf_computation(tf.string)
-      def dataset_computation(client_id):
-        return self.serializable_dataset_fn(client_id)
-
-      self._cached_dataset_computation = dataset_computation
-    return self._cached_dataset_computation
+    pass
 
   @abc.abstractproperty
   def element_type_structure(self):
@@ -222,34 +202,55 @@ class ClientData(object, metaclass=abc.ABCMeta):
       A `tf.data.Dataset` object.
     """
     check_numpy_random_seed(seed)
-    client_ids = self.client_ids.copy()
-    np.random.RandomState(seed=seed).shuffle(client_ids)
-    nested_dataset = tf.data.Dataset.from_tensor_slices(client_ids)
-    # We apply serializable_dataset_fn here to avoid loading all client datasets
-    # in memory, which is slow. Note that tf.data.Dataset.map implicitly wraps
-    # the input mapping in a tf.function.
-    example_dataset = nested_dataset.flat_map(self.serializable_dataset_fn)
+    # Note: simply calling Dataset.concatenate() will result in too deep
+    # recursion depth.
+    # Note: Tests are via the simple concrete from_tensor_slices_client_data.
+    client_datasets = list(self.datasets(seed=seed))
+    nested_dataset = tf.data.Dataset.from_tensor_slices(client_datasets)
+    example_dataset = nested_dataset.flat_map(lambda x: x)
     return example_dataset
 
   def preprocess(
-      self, preprocess_fn: Callable[[tf.data.Dataset],
-                                    tf.data.Dataset]) -> 'ClientData':
-    """Applies `preprocess_fn` to each client's data.
-
-    Args:
-      preprocess_fn: A callable accepting a `tf.data.Dataset` and returning a
-        preprocessed `tf.data.Dataset`. This function must be traceable by TF.
-
-    Returns:
-      A `tff.simulation.datasets.ClientData`.
-
-    Raises:
-      IncompatiblePreprocessFnError: If `preprocess_fn` is a `tff.Computation`.
-    """
+      self, preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]
+  ) -> 'PreprocessClientData':
+    """Applies `preprocess_fn` to each client's data."""
     py_typecheck.check_callable(preprocess_fn)
     if isinstance(preprocess_fn, computation_base.Computation):
       raise IncompatiblePreprocessFnError()
     return PreprocessClientData(self, preprocess_fn)
+
+# TODO(b/186139255): Delete this once the full deprecation period has passed.
+
+  @classmethod
+  def from_clients_and_fn(
+      cls,
+      client_ids: Iterable[str],
+      create_tf_dataset_for_client_fn: Callable[[str], tf.data.Dataset],
+  ) -> 'ConcreteClientData':
+    """Constructs a `ClientData` based on the given function.
+
+    WARNING: this method is deprecated and is slated for removal in July 2021.
+    Please use `tff.simulation.datasets.ClientData.from_clients_and_tf_fn`
+    instead.
+
+    Args:
+      client_ids: A non-empty list of client_ids which are valid inputs to the
+        create_tf_dataset_for_client_fn.
+      create_tf_dataset_for_client_fn: A function that takes a client_id from
+        the above list, and returns a `tf.data.Dataset`. If this function is
+        additionally a `tff.Computation`, the constructed `ClientData`
+        will expose a `dataset_computation` attribute which can be used for
+        high-performance distributed simulations.
+
+    Returns:
+      A `ClientData`.
+    """
+    warnings.warn(
+        'tff.simulation.datasets.ClientData.from_clients_and_fn is deprecated '
+        'and slated for removal in July 2021. Please use '
+        'tff.simulation.datasets.ClientData.from_clients_and_tf_fn instead.',
+        DeprecationWarning)
+    return ConcreteClientData(client_ids, create_tf_dataset_for_client_fn)
 
   @classmethod
   def from_clients_and_tf_fn(
@@ -270,7 +271,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
     Returns:
       A `ClientData` object.
     """
-    return ConcreteClientData(client_ids, serializable_dataset_fn)
+    return ConcreteSerializableClientData(client_ids, serializable_dataset_fn)
 
   @classmethod
   def train_test_client_split(
@@ -344,9 +345,9 @@ class ClientData(object, metaclass=abc.ABCMeta):
     # Invariant for successful exit of the above loop:
     assert len(test_client_ids) == num_test_clients
 
-    def from_ids(client_ids: Iterable[str]) -> 'ClientData':
-      return cls.from_clients_and_tf_fn(client_ids,
-                                        client_data.serializable_dataset_fn)
+    def from_ids(client_ids: Iterable[str]) -> 'ConcreteClientData':
+      return cls.from_clients_and_fn(client_ids,
+                                     client_data.create_tf_dataset_for_client)
 
     return (from_ids(train_client_ids + clients_with_insufficient_batches),
             from_ids(test_client_ids))
@@ -360,10 +361,217 @@ class PreprocessClientData(ClientData):
   where necessary.
   """
 
-  def __init__(  # pylint: disable=super-init-not-called
-      self, underlying_client_data: ClientData,
-      preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]):
+  def __init__(self, underlying_client_data: ClientData,
+               preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]):
     py_typecheck.check_type(underlying_client_data, ClientData)
+    py_typecheck.check_callable(preprocess_fn)
+    self._underlying_client_data = underlying_client_data
+    self._preprocess_fn = preprocess_fn
+    example_dataset = self._preprocess_fn(
+        self._underlying_client_data.create_tf_dataset_for_client(
+            next(iter(underlying_client_data.client_ids))))
+    self._element_type_structure = example_dataset.element_spec
+    self._dataset_computation = None
+
+  @property
+  def client_ids(self):
+    return self._underlying_client_data.client_ids
+
+  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
+    return self._preprocess_fn(
+        self._underlying_client_data.create_tf_dataset_for_client(client_id))
+
+  @property
+  def dataset_computation(self):
+    if self._dataset_computation is None:
+
+      @computations.tf_computation(tf.string)
+      def dataset_comp(client_id):
+        return self._preprocess_fn(
+            self._underlying_client_data.dataset_computation(client_id))
+
+      self._dataset_computation = dataset_comp
+
+    return self._dataset_computation
+
+  @property
+  def element_type_structure(self):
+    return self._element_type_structure
+
+
+class ConcreteClientData(ClientData):
+  """A generic `ClientData` object.
+
+  This is a simple implementation of client_data, where Datasets are specified
+  as a function from client_id to Dataset.
+
+  The `ConcreteClientData.preprocess` classmethod is provided as a utility
+  used to wrap another `ClientData` with an additional preprocessing function.
+  """
+
+  def __init__(
+      self,
+      client_ids: Iterable[str],
+      create_tf_dataset_for_client_fn: Callable[[str], tf.data.Dataset],
+  ):
+    """Arguments correspond to the corresponding members of `ClientData`.
+
+    Args:
+      client_ids: A non-empty list of string client_ids.
+      create_tf_dataset_for_client_fn: A function that takes a client_id from
+        the above list, and returns a `tf.data.Dataset`. If this function is
+        additionally a `tff.Computation`, the constructed `ConcreteClientData`
+        will expose a `dataset_computation` attribute which can be used for
+        high-performance distributed simulations.
+    """
+    py_typecheck.check_type(client_ids, collections.abc.Iterable)
+    py_typecheck.check_callable(create_tf_dataset_for_client_fn)
+
+    if not client_ids:
+      raise ValueError('At least one client_id is required.')
+
+    self._client_ids = list(client_ids)
+    self._create_tf_dataset_for_client_fn = create_tf_dataset_for_client_fn
+
+    if isinstance(self._create_tf_dataset_for_client_fn,
+                  computation_base.Computation):
+      self._dataset_computation = self._create_tf_dataset_for_client_fn
+    else:
+      self._dataset_computation = None
+
+    example_dataset = create_tf_dataset_for_client_fn(next(iter(client_ids)))
+    self._element_type_structure = example_dataset.element_spec
+
+  @property
+  def client_ids(self) -> List[str]:
+    return self._client_ids
+
+  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
+    return self._create_tf_dataset_for_client_fn(client_id)
+
+  @property
+  def element_type_structure(self):
+    return self._element_type_structure
+
+  @property
+  def dataset_computation(self):
+    if self._dataset_computation is not None:
+      return self._dataset_computation
+    raise NotImplementedError
+
+
+# TODO(b/186139255): Merge the classes below with the ones above once
+# ConcreteClientData is fully deprecated and removed.
+
+
+class SerializableClientData(ClientData, metaclass=abc.ABCMeta):
+  """Object to hold a federated dataset with serializable dataset construction.
+
+  In contrast to `ClientData`, this implementation uses a serializable dataset
+  constructor for each client. This enables all sub-classes to access
+  `SerializableClientData.dataset_computation`.
+  """
+
+  @abc.abstractproperty
+  def serializable_dataset_fn(self):
+    """A callable accepting a client ID and returning a `tf.data.Dataset`.
+
+    Note that this callable must be traceable by TF, as it will be used in the
+    context of a `tf.function`.
+    """
+    pass
+
+  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
+    """Creates a new `tf.data.Dataset` containing the client training examples.
+
+    This function will create a dataset for a given client, given that
+    `client_id` is contained in the `client_ids` property of the `ClientData`.
+    Unlike `create_dataset`, this method need not be serializable.
+
+    Args:
+      client_id: The string client_id for the desired client.
+
+    Returns:
+      A `tf.data.Dataset` object.
+    """
+    if client_id not in self.client_ids:
+      raise ValueError(
+          'ID [{i}] is not a client in this ClientData. See '
+          'property `client_ids` for the list of valid ids.'.format(
+              i=client_id))
+    return self.serializable_dataset_fn(client_id)
+
+  @property
+  def dataset_computation(self):
+    """A `tff.Computation` accepting a client ID, returning a dataset.
+
+    Note: the `dataset_computation` property is intended as a TFF-specific
+    performance optimization for distributed execution.
+    """
+    if (not hasattr(self, '_cached_dataset_computation')) or (
+        self._cached_dataset_computation is None):
+
+      @computations.tf_computation(tf.string)
+      def dataset_computation(client_id):
+        return self.serializable_dataset_fn(client_id)
+
+      self._cached_dataset_computation = dataset_computation
+    return self._cached_dataset_computation
+
+  def create_tf_dataset_from_all_clients(
+      self,
+      seed: Optional[Union[int, Sequence[int]]] = None) -> tf.data.Dataset:
+    """Creates a new `tf.data.Dataset` containing _all_ client examples.
+
+    This function is intended for use training centralized, non-distributed
+    models (num_clients=1). This can be useful as a point of comparison
+    against federated models.
+
+    Currently, the implementation produces a dataset that contains
+    all examples from a single client in order, and so generally additional
+    shuffling should be performed.
+
+    Args:
+      seed: Optional, a seed to determine the order in which clients are
+        processed in the joined dataset. The seed can be any nonnegative 32-bit
+        integer, an array of such integers, or `None`.
+
+    Returns:
+      A `tf.data.Dataset` object.
+    """
+    check_numpy_random_seed(seed)
+    client_ids = self.client_ids.copy()
+    np.random.RandomState(seed=seed).shuffle(client_ids)
+    nested_dataset = tf.data.Dataset.from_tensor_slices(client_ids)
+    # We apply serializable_dataset_fn here to avoid loading all client datasets
+    # in memory, which is slow. Note that tf.data.Dataset.map implicitly wraps
+    # the input mapping in a tf.function.
+    example_dataset = nested_dataset.flat_map(self.serializable_dataset_fn)
+    return example_dataset
+
+  def preprocess(
+      self, preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]
+  ) -> 'PreprocessSerializableClientData':
+    """Applies `preprocess_fn` to each client's data."""
+    py_typecheck.check_callable(preprocess_fn)
+    if isinstance(preprocess_fn, computation_base.Computation):
+      raise IncompatiblePreprocessFnError()
+    return PreprocessSerializableClientData(self, preprocess_fn)
+
+
+class PreprocessSerializableClientData(SerializableClientData):
+  """Applies a preprocessing function to every dataset it returns.
+
+  This class delegates all other aspects of implementation to its underlying
+  `SerializableClientData` object, simply wiring in its `preprocess_fn`
+  where necessary. Note that this `preprocess_fn` must be serializable by
+  TensorFlow.
+  """
+
+  def __init__(  # pylint: disable=super-init-not-called
+      self, underlying_client_data: SerializableClientData,
+      preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]):
+    py_typecheck.check_type(underlying_client_data, SerializableClientData)
     py_typecheck.check_callable(preprocess_fn)
     self._underlying_client_data = underlying_client_data
     self._preprocess_fn = preprocess_fn
@@ -396,14 +604,12 @@ class PreprocessClientData(ClientData):
     return self._element_type_structure
 
 
-class ConcreteClientData(ClientData):
-  """A generic `ClientData` object.
+class ConcreteSerializableClientData(SerializableClientData):
+  """A generic `SerializableClientData` object.
 
-  This is a simple implementation of client_data, where Datasets are specified
-  as a function from client_id to Dataset.
-
-  The `ConcreteClientData.preprocess` classmethod is provided as a utility
-  used to wrap another `ClientData` with an additional preprocessing function.
+  This is a simple implementation of `SerializableClientData`, where datasets
+  are specified as a function from `client_id` to a `tf.data.Dataset`, where
+  this function must be serializable by a `tf.function`.
   """
 
   def __init__(  # pylint: disable=super-init-not-called
@@ -411,7 +617,7 @@ class ConcreteClientData(ClientData):
       client_ids: Iterable[str],
       serializable_dataset_fn: Callable[[str], tf.data.Dataset],
   ):
-    """Creates a `ClientData` from clients and a mapping function.
+    """Creates a `SerializableClientData` from clients and a mapping function.
 
     Args:
       client_ids: A non-empty iterable of `string` objects, representing ids for

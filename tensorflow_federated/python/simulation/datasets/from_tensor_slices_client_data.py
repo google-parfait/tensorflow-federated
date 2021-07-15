@@ -26,7 +26,7 @@ def isnamedtuple(example_structure):
       example_structure, '_fields')
 
 
-class TestClientData(client_data.ClientData):
+class TestClientData(client_data.SerializableClientData):
   """"A `tff.simulation.datasets.ClientData` intended for test purposes.
 
   The implementation is based on `tf.data.Dataset.from_tensor_slices.` This

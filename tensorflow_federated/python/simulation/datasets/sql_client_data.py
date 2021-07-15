@@ -83,7 +83,7 @@ def _fetch_client_ids(database_filepath: str,
   return map(lambda x: x[0], result)
 
 
-class SqlClientData(client_data.ClientData):
+class SqlClientData(client_data.SerializableClientData):
   """A `tff.simulation.datasets.ClientData` backed by an SQL file.
 
   This class expects that the SQL file has an `examples` table where each
