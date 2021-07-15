@@ -36,7 +36,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
   (<{state_type}@SERVER,{float32}@CLIENTS> -> {state_type}@SERVER)
 
   Given a `state` of type `state_type`, the most recent estimate of the target
-  quantile can be retrieved using `get_current_estimate(state)`.
+  quantile can be retrieved using `report(state)`.
   """
 
   @classmethod
