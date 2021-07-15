@@ -57,7 +57,7 @@ DOCLINES = __doc__.split('\n')
 
 REQUIRED_PACKAGES = [
     'absl-py~=0.10',
-    'attrs~=19.3.0',
+    'attrs~=21.2.0',
     'cachetools~=3.1.1',
     'dm-tree~=0.1.1',
     'grpcio~=1.34.0',
@@ -68,7 +68,7 @@ REQUIRED_PACKAGES = [
     'retrying~=1.3.3',
     'semantic-version~=2.8.5',
     'tensorflow-model-optimization~=0.5.0',
-    'tensorflow-privacy~=0.6.0',
+    'tensorflow-privacy~=0.6.2',
     'tensorflow~=2.5.0',
     'tqdm~=4.28.1',
 ]
