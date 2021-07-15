@@ -1,9 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library")
 
-package(default_visibility = [
-    ":backends_packages",
-    "//tensorflow_federated/python/core:core_visibility",
-])
+package(default_visibility = ["//visibility:private"])
 
 package_group(
     name = "backends_packages",
