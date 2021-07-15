@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 licenses(["notice"])
@@ -15,6 +16,7 @@ py_library(
     srcs = ["serialization.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -32,6 +34,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":serialization",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",

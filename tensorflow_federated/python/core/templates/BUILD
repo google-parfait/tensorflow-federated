@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -46,6 +47,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":aggregation_process",
         ":errors",
         ":measured_process",
@@ -83,6 +85,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":errors",
         ":estimation_process",
         "//tensorflow_federated/python/core/api:computations",
@@ -112,6 +115,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":errors",
         ":iterative_process",
         "//tensorflow_federated/python/core/api:computations",
@@ -127,6 +131,7 @@ py_library(
     srcs = ["measured_process.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":errors",
         ":iterative_process",
         "//tensorflow_federated/python/core/api:computation_base",
@@ -141,6 +146,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":errors",
         ":measured_process",
         "//tensorflow_federated/python/core/api:computations",

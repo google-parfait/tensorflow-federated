@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -32,6 +33,7 @@ py_library(
     name = "data_processing",
     srcs = ["data_processing.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_test(
@@ -39,7 +41,11 @@ py_test(
     srcs = ["data_processing_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":data_processing"],
+    deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        ":data_processing",
+    ],
 )
 
 py_library(
@@ -47,12 +53,14 @@ py_library(
     testonly = True,
     srcs = ["histogram_test_utils.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_library(
     name = "histogram_processing",
     srcs = ["histogram_processing.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_test(
@@ -61,6 +69,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":histogram_processing",
         ":histogram_test_utils",
     ],

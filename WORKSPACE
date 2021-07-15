@@ -8,6 +8,12 @@ git_repository(
     tag = "0.2.0",
 )
 
+load("@rules_python//python:pip.bzl", "pip_install")
+pip_install(
+    name = "pip",
+    requirements = "//:requirements.txt",
+)
+
 git_repository(
     name = "com_google_protobuf",
     remote = "https://github.com/protocolbuffers/protobuf.git",

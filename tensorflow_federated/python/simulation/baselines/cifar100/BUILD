@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -24,7 +25,10 @@ py_library(
     name = "image_classification_preprocessing",
     srcs = ["image_classification_preprocessing.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
+    deps = [
+        requirement("tf-nightly"),
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+    ],
 )
 
 py_test(
@@ -34,6 +38,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":image_classification_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
@@ -45,6 +51,7 @@ py_library(
     srcs = ["image_classification_tasks.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":image_classification_preprocessing",
         ":resnet_models",
         "//tensorflow_federated/python/learning:keras_utils",
@@ -63,6 +70,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":image_classification_tasks",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
@@ -74,7 +83,10 @@ py_library(
     name = "resnet_models",
     srcs = ["resnet_models.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation/models:group_norm"],
+    deps = [
+        requirement("tf-nightly"),
+        "//tensorflow_federated/python/simulation/models:group_norm",
+    ],
 )
 
 py_test(
@@ -82,5 +94,8 @@ py_test(
     srcs = ["resnet_models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":resnet_models"],
+    deps = [
+        requirement("tf-nightly"),
+        ":resnet_models",
+    ],
 )

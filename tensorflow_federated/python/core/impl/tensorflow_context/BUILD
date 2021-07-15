@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -28,6 +29,7 @@ py_library(
     srcs = ["tensorflow_computation_context.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
@@ -45,6 +47,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":tensorflow_computation_context",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/api:computations",
@@ -61,6 +64,7 @@ py_library(
     srcs = ["tensorflow_serialization.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":tensorflow_computation_context",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -80,6 +84,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/common_libs:test_utils",

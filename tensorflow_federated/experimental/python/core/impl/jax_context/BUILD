@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -34,6 +35,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("absl-py"),
         ":jax_computation_context",
         "//tensorflow_federated/python/core/api:computations",
     ],
@@ -44,6 +47,8 @@ py_library(
     srcs = ["jax_serialization.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
         ":jax_computation_context",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -61,6 +66,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
+        requirement("absl-py"),
         ":jax_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/computation:function_utils",

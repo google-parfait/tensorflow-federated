@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -59,6 +60,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("absl-py"),
         ":context_stack_impl",
         ":context_stack_test_utils",
     ],
@@ -85,6 +87,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("absl-py"),
         ":context_stack_impl",
         ":get_context_stack",
     ],
@@ -114,6 +117,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("absl-py"),
         ":context_stack_impl",
         ":context_stack_test_utils",
         ":set_default_context",

@@ -1,4 +1,5 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -48,6 +49,7 @@ py_library(
     name = "client_weight_lib",
     srcs = ["client_weight_lib.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_library(
@@ -55,6 +57,7 @@ py_library(
     srcs = ["federated_averaging.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_weight_lib",
         ":model",
         ":model_utils",
@@ -79,6 +82,9 @@ py_cpu_gpu_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":client_weight_lib",
         ":federated_averaging",
         ":keras_utils",
@@ -98,6 +104,7 @@ py_library(
     srcs = ["federated_evaluation.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":model",
         ":model_utils",
         "//tensorflow_federated/python/core/api:computation_base",
@@ -116,6 +123,10 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tensorflow-model-optimization"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":federated_evaluation",
         ":keras_utils",
         ":model",
@@ -138,6 +149,7 @@ py_library(
     srcs = ["federated_sgd.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_weight_lib",
         ":model",
         ":model_utils",
@@ -160,6 +172,9 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":client_weight_lib",
         ":federated_sgd",
         ":keras_utils",
@@ -178,6 +193,7 @@ py_library(
     srcs = ["keras_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":model",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -197,6 +213,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":keras_utils",
         ":model",
         ":model_examples",
@@ -214,6 +233,7 @@ py_library(
     srcs = ["learning_process.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -230,6 +250,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":learning_process",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
@@ -244,7 +265,11 @@ py_library(
     name = "model",
     srcs = ["model.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/api:computation_base"],
+    deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
+        "//tensorflow_federated/python/core/api:computation_base",
+    ],
 )
 
 py_library(
@@ -252,6 +277,7 @@ py_library(
     srcs = ["model_examples.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":model",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
@@ -267,6 +293,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":model_examples",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
@@ -279,6 +307,8 @@ py_library(
     srcs = ["model_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
         ":model",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -310,6 +340,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":model_update_aggregator",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/core/api:computations",
@@ -328,6 +360,7 @@ py_library(
     srcs = ["personalization_eval.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":model_utils",
         "//tensorflow_federated/python/aggregators:sampling",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -345,6 +378,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":model",
         ":model_utils",
         "//tensorflow_federated/python/core/api:computations",
@@ -359,6 +393,9 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":keras_utils",
         ":model_examples",
         ":model_utils",

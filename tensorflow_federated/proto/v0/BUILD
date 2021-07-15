@@ -1,5 +1,6 @@
 load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
 load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
@@ -34,7 +35,10 @@ py_test(
         "nofixdeps",
         "nokokoro",
     ],
-    deps = [":computation_py_pb2"],
+    deps = [
+        requirement("absl-py"),
+        ":computation_py_pb2",
+    ],
 )
 
 cc_proto_library(

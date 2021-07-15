@@ -1,4 +1,5 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -36,6 +37,8 @@ py_library(
     srcs = ["client_works.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
@@ -58,6 +61,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_works",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
@@ -78,6 +82,7 @@ py_library(
     srcs = ["composers.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":client_works",
         ":distributors",
         ":finalizers",
@@ -103,6 +108,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":client_works",
         ":composers",
         ":distributors",
@@ -148,6 +155,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":distributors",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
@@ -165,6 +174,10 @@ py_library(
     srcs = ["encoding_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("dm-tree"),
+        requirement("tensorflow-model-optimization"),
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
@@ -184,6 +197,10 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tensorflow-model-optimization"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":encoding_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -221,6 +238,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":finalizers",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
@@ -240,6 +259,9 @@ py_library(
     srcs = ["optimizer_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -267,6 +289,9 @@ py_cpu_gpu_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":optimizer_utils",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
@@ -292,6 +317,7 @@ py_library(
     name = "dataset_reduce",
     srcs = ["dataset_reduce.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_cpu_gpu_test(
@@ -299,5 +325,10 @@ py_cpu_gpu_test(
     srcs = ["dataset_reduce_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":dataset_reduce"],
+    deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        ":dataset_reduce",
+    ],
 )

@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -42,6 +43,10 @@ py_library(
     name = "checkpoint_manager",
     srcs = ["checkpoint_manager.py"],
     srcs_version = "PY3",
+    deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+    ],
 )
 
 py_test(
@@ -49,14 +54,24 @@ py_test(
     srcs = ["checkpoint_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":checkpoint_manager"],
+    deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        ":checkpoint_manager",
+    ],
 )
 
 py_library(
     name = "csv_manager",
     srcs = ["csv_manager.py"],
     srcs_version = "PY3",
-    deps = [":metrics_manager"],
+    deps = [
+        requirement("dm-tree"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        ":metrics_manager",
+    ],
 )
 
 py_test(
@@ -64,7 +79,11 @@ py_test(
     srcs = ["csv_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":csv_manager"],
+    deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        ":csv_manager",
+    ],
 )
 
 py_library(
@@ -79,7 +98,10 @@ py_test(
     srcs = ["dictionary_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":dictionary_manager"],
+    deps = [
+        requirement("tf-nightly"),
+        ":dictionary_manager",
+    ],
 )
 
 py_library(
@@ -106,6 +128,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":iterative_process_compositions",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
@@ -125,6 +149,7 @@ py_library(
     name = "sampling_utils",
     srcs = ["sampling_utils.py"],
     srcs_version = "PY3",
+    deps = [requirement("numpy")],
 )
 
 py_test(
@@ -133,7 +158,11 @@ py_test(
     srcs = ["sampling_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":sampling_utils"],
+    deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        ":sampling_utils",
+    ],
 )
 
 py_library(
@@ -141,6 +170,8 @@ py_library(
     srcs = ["server_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
+        requirement("absl-py"),
         "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
@@ -155,6 +186,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("portpicker"),
         ":server_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
@@ -166,7 +198,13 @@ py_library(
     name = "tensorboard_manager",
     srcs = ["tensorboard_manager.py"],
     srcs_version = "PY3",
-    deps = [":metrics_manager"],
+    deps = [
+        requirement("dm-tree"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        ":metrics_manager",
+    ],
 )
 
 py_test(
@@ -174,7 +212,12 @@ py_test(
     srcs = ["tensorboard_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tensorboard_manager"],
+    deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        ":tensorboard_manager",
+    ],
 )
 
 py_library(
@@ -182,6 +225,7 @@ py_library(
     srcs = ["training_loop.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("absl-py"),
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/simulation:checkpoint_manager",
@@ -196,6 +240,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("absl-py"),
         ":training_loop",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/simulation:checkpoint_manager",
