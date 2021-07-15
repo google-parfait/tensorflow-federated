@@ -287,12 +287,12 @@ def build_basic_fedavg_process(model_fn: Callable[[], model_lib.Model],
 
   distributor = distributors.build_broadcast_process(model_weights_type)
   client_work = client_works.build_model_delta_client_work(
-      model_fn, sgdm.SGD(client_learning_rate))
+      model_fn, sgdm.build_sgdm(client_learning_rate))
   aggregator = mean.MeanFactory().create(
       client_work.next.type_signature.result.result.member.update,
       client_work.next.type_signature.result.result.member.update_weight)
   finalizer = finalizers.build_apply_optimizer_finalizer(
-      sgdm.SGD(1.0), model_weights_type)
+      sgdm.build_sgdm(1.0), model_weights_type)
 
   return compose_learning_process(initial_model_weights_fn, distributor,
                                   client_work, aggregator, finalizer)

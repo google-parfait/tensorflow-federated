@@ -271,7 +271,8 @@ class VanillaFedAvgTest(test_case.TestCase, parameterized.TestCase):
       composers.build_basic_fedavg_process(model_examples.LinearRegression(),
                                            0.1)
 
-  @parameterized.named_parameters(('int', 1), ('optimizer', sgdm.SGD(0.1)))
+  @parameterized.named_parameters(('int', 1),
+                                  ('optimizer', sgdm.build_sgdm(0.1)))
   def test_wrong_client_learning_rate_raises(self, bad_client_lr):
     with self.assertRaises(TypeError):
       composers.build_basic_fedavg_process(model_examples.LinearRegression(),

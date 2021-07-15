@@ -290,7 +290,7 @@ class UtilsTest(test_case.TestCase):
 
 
 def _tff_optimizer(learning_rate=0.1):
-  return sgdm.SGD(learning_rate=learning_rate)
+  return sgdm.build_sgdm(learning_rate=learning_rate)
 
 
 def _keras_optimizer_fn(learning_rate=0.1):
@@ -458,7 +458,8 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=sgdm.SGD(learning_rate=0.1, momentum=momentum))
+        server_optimizer_fn=sgdm.build_sgdm(
+            learning_rate=0.1, momentum=momentum))
     # Assert that the optimizer_state is empty for SGD without momentum;
     # and includes two tensors for the momentum: kernel and bias from the model.
     initialize_type = iterative_process.initialize.type_signature

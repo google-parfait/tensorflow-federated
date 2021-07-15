@@ -33,7 +33,7 @@ from tensorflow_federated.python.learning.optimizers import sgdm
 
 
 def _get_tff_optimizer(learning_rate=0.1):
-  return sgdm.SGD(learning_rate=learning_rate)
+  return sgdm.build_sgdm(learning_rate=learning_rate)
 
 
 def _get_keras_optimizer_fn(learning_rate=0.1):

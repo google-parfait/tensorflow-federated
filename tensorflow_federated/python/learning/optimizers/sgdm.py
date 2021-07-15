@@ -19,27 +19,8 @@ import tensorflow as tf
 from tensorflow_federated.python.learning.optimizers import optimizer
 
 
-class SGD(optimizer.Optimizer):
-  """Gradient descent optimizer.
-
-  This class supports the simple gradient descent and its variant with momentum.
-
-  If momentum is not used, the update rule given learning rate `lr`, weights `w`
-  and gradients `g` is:
-
-  ```
-  w = w - lr * g
-  ```
-
-  If momentum `m` (a float between `0.0` and `1.0`) is used, the update rule is
-
-  ```
-  v = m * v + g
-  w = w - lr * v
-  ```
-
-  where `v` is the velocity from previous steps of the optimizer.
-  """
+class _SGD(optimizer.Optimizer):
+  """Gradient descent optimizer, see `build_sgdm` for details."""
 
   def __init__(self, learning_rate: float, momentum: Optional[float] = None):
     """Initializes SGD optimizer."""
@@ -85,3 +66,32 @@ def _check_momentum_matches_weights(state, weights):
         f'matching the weights being optimized.'
         f'Provided state: {state}\n'
         f'Provided weights: {weights}')
+
+
+def build_sgdm(learning_rate: float = 0.01,
+               momentum: Optional[float] = None) -> _SGD:
+  """Returns a `tff.learning.optimizers.Optimizer` for momentum SGD.
+
+  This class supports the simple gradient descent and its variant with momentum.
+
+  If momentum is not used, the update rule given learning rate `lr`, weights `w`
+  and gradients `g` is:
+
+  ```
+  w = w - lr * g
+  ```
+
+  If momentum `m` (a float between `0.0` and `1.0`) is used, the update rule is
+
+  ```
+  v = m * v + g
+  w = w - lr * v
+  ```
+
+  where `v` is the velocity from previous steps of the optimizer.
+
+  Args:
+    learning_rate: A positive float for learning rate, default to 0.01.
+    momentum: A float between 0.0 and 1.0 for momentum.
+  """
+  return _SGD(learning_rate=learning_rate, momentum=momentum)

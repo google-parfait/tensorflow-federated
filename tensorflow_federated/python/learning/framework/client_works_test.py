@@ -366,7 +366,7 @@ class MinimalClientWorkComputationTest(test_case.TestCase):
   def test_type_properties(self):
     model_fn = model_examples.LinearRegression
     client_work_process = client_works.build_model_delta_client_work(
-        model_fn, sgdm.SGD(1.0))
+        model_fn, sgdm.build_sgdm(1.0))
     self.assertIsInstance(client_work_process, client_works.ClientWorkProcess)
 
     mw_type = model_utils.ModelWeights(
@@ -406,14 +406,14 @@ class MinimalClientWorkComputationTest(test_case.TestCase):
   def test_created_model_raises(self):
     with self.assertRaises(TypeError):
       client_works.build_model_delta_client_work(
-          model_examples.LinearRegression(), sgdm.SGD(1.0))
+          model_examples.LinearRegression(), sgdm.build_sgdm(1.0))
 
 
 class MinimalClientWorkExecutionTest(test_case.TestCase):
 
   def test_execution(self):
     client_work_process = client_works.build_model_delta_client_work(
-        model_examples.LinearRegression, sgdm.SGD(0.1))
+        model_examples.LinearRegression, sgdm.build_sgdm(0.1))
     data = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
             x=[[1.0, 2.0], [3.0, 4.0]],

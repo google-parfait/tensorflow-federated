@@ -14,3 +14,4 @@
 """Libraries for optimization algorithms."""
 
 from tensorflow_federated.python.learning.optimizers.optimizer import Optimizer
+from tensorflow_federated.python.learning.optimizers.sgdm import build_sgdm

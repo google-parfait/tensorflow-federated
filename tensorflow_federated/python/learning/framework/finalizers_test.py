@@ -312,7 +312,7 @@ class ApplyOptimizerFinalizerComputationTest(test_case.TestCase,
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
 
     finalizer = finalizers.build_apply_optimizer_finalizer(
-        sgdm.SGD(1.0), mw_type)
+        sgdm.build_sgdm(1.0), mw_type)
     self.assertIsInstance(finalizer, finalizers.FinalizerProcess)
 
     expected_param_weights_type = computation_types.at_server(mw_type)
@@ -349,7 +349,7 @@ class ApplyOptimizerFinalizerComputationTest(test_case.TestCase,
           MODEL_WEIGHTS_TYPE.member)))
   def test_incorrect_value_type_raises(self, bad_type):
     with self.assertRaises(TypeError):
-      finalizers.build_apply_optimizer_finalizer(sgdm.SGD(1.0), bad_type)
+      finalizers.build_apply_optimizer_finalizer(sgdm.build_sgdm(1.0), bad_type)
 
   def test_not_tff_optimizer_raises(self):
     optimizer = tf.keras.optimizers.SGD(1.0)
@@ -362,7 +362,7 @@ class ApplyOptimizerFinalizerExecutionTest(test_case.TestCase):
 
   def test_execution(self):
     finalizer = finalizers.build_apply_optimizer_finalizer(
-        sgdm.SGD(1.0), MODEL_WEIGHTS_TYPE.member)
+        sgdm.build_sgdm(1.0), MODEL_WEIGHTS_TYPE.member)
 
     weights = model_utils.ModelWeights(1.0, ())
     update = 0.1

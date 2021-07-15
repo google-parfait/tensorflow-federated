@@ -24,7 +24,10 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        ":sgdm",
+    ],
 )
 
 py_library(
@@ -97,6 +100,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":optimizer",
         ":optimizer_test_utils",
         ":sgdm",
         "//tensorflow_federated/python/core/api:test_case",
