@@ -19,7 +19,9 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
+from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.optimizers import optimizer_test_utils
+from tensorflow_federated.python.learning.optimizers import sgdm
 
 _SCALAR_SPEC = tf.TensorSpec([1], tf.float32)
 _STRUCT_SPEC = [tf.TensorSpec([2], tf.float32), tf.TensorSpec([3], tf.float32)]
@@ -180,6 +182,48 @@ class KerasOptimizerTest(test_case.TestCase, parameterized.TestCase):
     expected_variables = tf.nest.map_structure(
         lambda s: 0.7 * tf.ones(s.shape, s.dtype), specs)
     self.assertAllClose(expected_variables, variables)
+
+  @parameterized.named_parameters(
+      ('scalar_server', _SCALAR_SPEC, True),
+      ('struct_server', _STRUCT_SPEC, True),
+      ('nested_server', _NESTED_SPEC, True),
+      ('scalar_client', _SCALAR_SPEC, False),
+      ('struct_client', _STRUCT_SPEC, False),
+      ('nested_client', _NESTED_SPEC, False),
+  )
+  def test_build_tff_optimizer_keras(self, specs, disjoint_init_and_next):
+    optimizer_fn = lambda: tf.keras.optimizers.SGD(0.1)
+    variables = tf.nest.map_structure(
+        lambda s: tf.Variable(tf.ones(s.shape, s.dtype)), specs)
+    optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        optimizer_fn, variables, disjoint_init_and_next)
+    self.assertIsInstance(optimizer, optimizer_base.Optimizer)
+
+  def test_build_tff_optimizer_tff(self):
+    optimizer = sgdm.build_sgdm()
+    optimizer2 = keras_optimizer.build_or_verify_tff_optimizer(optimizer)
+    self.assertIs(optimizer, optimizer2)
+
+  @parameterized.named_parameters(
+      ('server', True),
+      ('client', False),
+  )
+  def test_build_tff_optimizer_raise(self, disjoint_init_and_next):
+    with self.assertRaisesRegex(TypeError,
+                                '`optimizer_fn` must be a callable or '):
+      keras_optimizer.build_or_verify_tff_optimizer(None, None,
+                                                    disjoint_init_and_next)
+
+  @parameterized.named_parameters(
+      ('server', True),
+      ('client', False),
+  )
+  def test_build_tff_optimizer_arg_callable(self, disjoint_init_and_next):
+    with self.assertRaises(TypeError):
+      keras_optimizer.build_or_verify_tff_optimizer(
+          optimizer_fn=lambda x: x,
+          trainable_weights=None,
+          disjoint_init_and_next=disjoint_init_and_next)
 
 
 if __name__ == '__main__':

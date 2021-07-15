@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Optimizer adapter for Keras optimizer."""
-
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.optimizers import optimizer
@@ -90,3 +89,44 @@ class KerasOptimizer(optimizer.Optimizer):
       return self._optimizer.variables(), weights
     else:
       return (), weights
+
+
+def build_or_verify_tff_optimizer(optimizer_fn,
+                                  trainable_weights=None,
+                                  disjoint_init_and_next=None):
+  """Returns `tff.learning.optimizers.Optimizer` for `optimizer_fn`.
+
+  This helper function is used for `tff.learning` to provide backward
+  compatibility of accepting an argument of a no-arg callable returns a
+  `tf.keras.optimizers.Optimizer`. Keras optimizer has to be eagerly created in
+  each TFF computation function. If the input `optimizer_fn` is already
+  a `tff.learning.optimizers.Optimizer`, it will be directly returned.
+
+  Args:
+    optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-argument
+      callable that constructs and returns a `tf.keras.optimizers.Optimizer`.
+    trainable_weights: Optional if `optimizer_fn` is a
+      `tff.learning.optimizers.Optimizer`. A (possibly nested) structure of
+      `tf.Variable` objects used to eagerly initialize Keras optimizers if
+      `optimizer_fn` is a callable.
+    disjoint_init_and_next: Optional if `optimizer_fn` is a
+      `tff.learning.optimizers.Optimizer`. A boolean, determining whether the
+      `initialize` and `next` methods are going to be invoked in the context of
+      the same `tff.tf_computation` if `optimizer_fn` is a callable.
+
+  Raises:
+    TypeError: Input `optimizer_fn` is not `tff.learning.optimizers.Optimizer`
+      or a callable.
+
+  Returns:
+    A `tff.learning.optimizers.Optimizer`.
+  """
+  if isinstance(optimizer_fn, optimizer.Optimizer):
+    return optimizer_fn
+  elif callable(optimizer_fn):
+    return KerasOptimizer(optimizer_fn, trainable_weights,
+                          disjoint_init_and_next)
+  else:
+    raise TypeError(
+        '`optimizer_fn` must be a callable or '
+        f'`tff.learning.optimizers.Optimizer`, got {type(optimizer_fn)}')

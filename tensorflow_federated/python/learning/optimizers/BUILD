@@ -44,7 +44,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":keras_optimizer",
+        ":optimizer",
         ":optimizer_test_utils",
+        ":sgdm",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",

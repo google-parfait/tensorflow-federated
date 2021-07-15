@@ -71,12 +71,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     """
     py_typecheck.check_type(model, model_lib.Model)
     self._model = model_utils.enhance(model)
-    if isinstance(optimizer, optimizer_base.Optimizer):
-      self._optimizer = optimizer
-    else:
-      py_typecheck.check_callable(optimizer)
-      self._optimizer = keras_optimizer.KerasOptimizer(
-          optimizer, self._model.weights.trainable, False)
+    self._optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        optimizer, self._model.weights.trainable, disjoint_init_and_next=False)
 
     py_typecheck.check_type(self._model, model_utils.EnhancedModel)
     client_weight_lib.check_is_client_weighting_or_callable(client_weighting)

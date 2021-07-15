@@ -203,19 +203,6 @@ def _apply_delta(
 # ==============================================================================
 
 
-def _construct_tff_optimizer(
-    optimizer_fn: _OptimizerConstructor,
-    model_weights: model_utils.ModelWeights) -> optimizer_base.Optimizer:
-  # This helper function is used inside several TFF computation functions as
-  # keras optimizer is eagerly constructed and has to be separately created in
-  # each computation graph.
-  if isinstance(optimizer_fn, optimizer_base.Optimizer):
-    return optimizer_fn
-  else:
-    return keras_optimizer.KerasOptimizer(optimizer_fn, model_weights.trainable,
-                                          True)
-
-
 def _build_initialize_computation(
     *,
     model_fn: _ModelConstructor,
@@ -253,7 +240,10 @@ def _build_initialize_computation(
       `tf.Variable`s for the global optimizer state.
     """
     model_variables = model_utils.ModelWeights.from_model(model_fn())
-    optimizer = _construct_tff_optimizer(server_optimizer_fn, model_variables)
+    optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        server_optimizer_fn,
+        model_variables.trainable,
+        disjoint_init_and_next=True)
     trainable_tensor_specs = tf.nest.map_structure(
         lambda v: tf.TensorSpec(v.shape, v.dtype), model_variables.trainable)
     optimizer_state = optimizer.initialize(trainable_tensor_specs)
@@ -318,7 +308,10 @@ def _build_one_round_computation(
         whimsy_model_for_metadata)
     model_weights_type = type_conversions.type_from_tensors(model_weights)
 
-    optimizer = _construct_tff_optimizer(server_optimizer_fn, model_weights)
+    optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        server_optimizer_fn,
+        model_weights.trainable,
+        disjoint_init_and_next=True)
     trainable_tensor_specs = tf.nest.map_structure(
         lambda v: tf.TensorSpec(v.shape, v.dtype), model_weights.trainable)
     optimizer_state_type = type_conversions.type_from_tensors(
@@ -334,7 +327,10 @@ def _build_one_round_computation(
       model_variables = tf.nest.map_structure(
           lambda t: tf.Variable(initial_value=tf.zeros(t.shape, t.dtype)),
           global_model)
-      optimizer = _construct_tff_optimizer(server_optimizer_fn, model_variables)
+      optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+          server_optimizer_fn,
+          model_variables.trainable,
+          disjoint_init_and_next=True)
 
     # Set the variables to the current global model, the optimizer will
     # update these variables.
@@ -566,11 +562,6 @@ def build_model_delta_optimizer_process(
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(model_to_client_delta_fn)
-  if not (callable(server_optimizer_fn) or
-          isinstance(server_optimizer_fn, optimizer_base.Optimizer)):
-    raise TypeError(
-        '`server_optimizer_fn` must be a callable or `tff.learning.optimizers.Optimizer`'
-    )
 
   model_weights_type = model_utils.weights_type_from_model(model_fn)
 
