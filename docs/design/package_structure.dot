@@ -79,7 +79,8 @@ digraph {
   core_api -> core_framework [arrowhead="none", style="invisible"]
   core_framework -> core_types [arrowhead="none", style="invisible"]
   core_api -> impl_wrappers [arrowhead="none", style="invisible"]
-  core_api -> impl_executors [arrowhead="none", style="invisible"]
+  core_types -> impl_executor_stacks [arrowhead="none", style="invisible"]
+  core_types -> impl_execution_contexts [arrowhead="none", style="invisible"]
 
   subgraph cluster_core {
     graph [label="Core", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core" target="_parent"]
@@ -92,13 +93,20 @@ digraph {
   }
 
   // Impl
-  impl_wrappers -> impl_tensorflow_context
-  impl_wrappers -> impl_federated_context
-  impl_wrappers -> impl_computation
-  impl_wrappers -> impl_compiler
-  impl_wrappers -> impl_utils
-  impl_wrappers -> impl_context_stack
-  impl_wrappers -> impl_types
+  impl_execution_contexts -> impl_federated_context
+  impl_execution_contexts -> impl_types
+  impl_execution_contexts -> impl_executors
+  impl_execution_contexts -> impl_context_stack
+  impl_execution_contexts -> impl_compiler
+  //impl_execution_contexts -> impl_executor_stacks [arrowhead="none", style="dotted"]
+  impl_executor_stacks -> impl_executors
+  impl_executor_stacks -> impl_tensorflow_context
+  impl_executor_stacks -> impl_federated_context
+  impl_executor_stacks -> impl_computation
+  impl_executor_stacks -> impl_compiler
+  impl_executor_stacks -> impl_utils
+  impl_executor_stacks -> impl_context_stack
+  impl_executor_stacks -> impl_types
   impl_executors -> impl_tensorflow_context
   impl_executors -> impl_federated_context
   impl_executors -> impl_computation
@@ -106,6 +114,14 @@ digraph {
   impl_executors -> impl_utils
   impl_executors -> impl_context_stack
   impl_executors -> impl_types
+  impl_wrappers -> impl_tensorflow_context
+  impl_wrappers -> impl_federated_context
+  impl_wrappers -> impl_computation
+  impl_wrappers -> impl_compiler
+  impl_wrappers -> impl_utils
+  impl_wrappers -> impl_context_stack
+  impl_wrappers -> impl_types
+  //impl_wrappers -> impl_execution_contexts [arrowhead="none", style="dotted"]
   impl_tensorflow_context -> impl_computation
   impl_tensorflow_context -> impl_utils
   impl_tensorflow_context -> impl_context_stack
@@ -129,8 +145,10 @@ digraph {
 
   subgraph cluster_impl {
     graph [label="Impl", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl" target="_parent"]
-    impl_wrappers [label="wrappers", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/wrappers" target="_parent"]
+    impl_execution_contexts [label="execution_contexts", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/execution_contexts" target="_parent"]
+    impl_executor_stacks [label="executor_stacks", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/executor_stacks" target="_parent"]
     impl_executors [label="executors", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/executors" target="_parent"]
+    impl_wrappers [label="wrappers", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/wrappers" target="_parent"]
     impl_tensorflow_context [label="tensorflow_context", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/tensorflow_context" target="_parent"]
     impl_federated_context [label="federated_context", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/federated_context" target="_parent"]
     impl_computation [label="computation", href="https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/computation" target="_parent"]
@@ -163,6 +181,7 @@ digraph {
   {rank=same; core_backends, core_test}
   {rank=same; core_templates}
   {rank=same; core_api, core_framework, core_types}
+  {rank=same; impl_execution_contexts, impl_executor_stacks}
   {rank=same; impl_executors, impl_wrappers}
   {rank=same; impl_tensorflow_context, impl_federated_context}
   {rank=same; impl_computation}
