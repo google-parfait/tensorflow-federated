@@ -89,7 +89,6 @@ py_library(
     name = "cardinality_carrying_base",
     srcs = ["cardinality_carrying_base.py"],
     srcs_version = "PY3",
-    deps = [],
 )
 
 py_library(
