@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Optimizer adapter for Keras optimizer."""
+from typing import Any, Callable, Optional, Union
+
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.optimizers import optimizer
@@ -43,7 +45,8 @@ class KerasOptimizer(optimizer.Optimizer):
   tff.learning.optimizers format.
   """
 
-  def __init__(self, optimizer_fn, weights, disjoint_init_and_next):
+  def __init__(self, optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer],
+               weights: Any, disjoint_init_and_next: bool):
     """Initializes `KerasOptimizer`.
 
     Args:
@@ -91,9 +94,12 @@ class KerasOptimizer(optimizer.Optimizer):
       return (), weights
 
 
-def build_or_verify_tff_optimizer(optimizer_fn,
-                                  trainable_weights=None,
-                                  disjoint_init_and_next=None):
+def build_or_verify_tff_optimizer(
+    optimizer_fn: Union[Callable[[], tf.keras.optimizers.Optimizer],
+                        optimizer.Optimizer],
+    trainable_weights: Optional[Any] = None,
+    disjoint_init_and_next: Optional[bool] = None
+) -> tf.keras.optimizers.Optimizer:
   """Returns `tff.learning.optimizers.Optimizer` for `optimizer_fn`.
 
   This helper function is used for `tff.learning` to provide backward
