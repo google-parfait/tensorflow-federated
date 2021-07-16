@@ -13,7 +13,6 @@
 # limitations under the License.
 """A collection of constructors for basic types of executor stacks."""
 
-import asyncio
 from concurrent import futures
 import math
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
@@ -889,30 +888,6 @@ class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
     self._underlying_stack.clean_up_executors()
 
 
-def _configure_remote_executor(ex, cardinalities, loop):
-  """Configures `ex` to run the appropriate number of clients."""
-  if loop.is_running():
-    asyncio.run_coroutine_threadsafe(ex.set_cardinalities(cardinalities), loop)
-  else:
-    loop.run_until_complete(ex.set_cardinalities(cardinalities))
-  return
-
-
-def _get_event_loop() -> Tuple[asyncio.AbstractEventLoop, bool]:
-  """Returns an event loop and whether the loop should be closed once done."""
-  try:
-    loop = asyncio.get_event_loop()
-    if loop.is_closed():
-      loop = asyncio.new_event_loop()
-      should_close_loop = True
-    else:
-      should_close_loop = False
-  except RuntimeError:
-    loop = asyncio.new_event_loop()
-    should_close_loop = True
-  return loop, should_close_loop
-
-
 class _CardinalitiesOrReadyListChanged():
   """Callable checking for changes to either the argument or a ready list.
 
@@ -937,28 +912,21 @@ class _CardinalitiesOrReadyListChanged():
 
 def _configure_remote_workers(default_num_clients, remote_executors):
   """"Configures `default_num_clients` across `remote_executors`."""
-  loop, must_close_loop = _get_event_loop()
   available_executors = [ex for ex in remote_executors if ex.is_ready]
   logging.info('%s TFF workers available out of a total of %s.',
                len(available_executors), len(remote_executors))
   if not available_executors:
     raise executors_errors.RetryableError(
         'No workers are ready; try again to reconnect.')
-  try:
-    remaining_clients = default_num_clients
-    live_workers = []
-    for ex_idx, ex in enumerate(available_executors):
-      remaining_executors = len(available_executors) - ex_idx
-      default_num_clients_to_host = remaining_clients // remaining_executors
-      remaining_clients -= default_num_clients_to_host
-      if default_num_clients_to_host > 0:
-        _configure_remote_executor(
-            ex, {placements.CLIENTS: default_num_clients_to_host}, loop)
-        live_workers.append(ex)
-  finally:
-    if must_close_loop:
-      loop.stop()
-      loop.close()
+  remaining_clients = default_num_clients
+  live_workers = []
+  for ex_idx, ex in enumerate(available_executors):
+    remaining_executors = len(available_executors) - ex_idx
+    default_num_clients_to_host = remaining_clients // remaining_executors
+    remaining_clients -= default_num_clients_to_host
+    if default_num_clients_to_host > 0:
+      ex.set_cardinalities({placements.CLIENTS: default_num_clients_to_host})
+      live_workers.append(ex)
   return [
       _wrap_executor_in_threading_stack(e, can_resolve_references=False)
       for e in live_workers

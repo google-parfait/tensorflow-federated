@@ -167,8 +167,9 @@ class RemoteExecutor(executor_base.Executor):
     _request(self._stub.Dispose, dispose_request)
 
   @tracing.trace(span=True)
-  async def set_cardinalities(
-      self, cardinalities: Mapping[placements.PlacementLiteral, int]):
+  def set_cardinalities(self,
+                        cardinalities: Mapping[placements.PlacementLiteral,
+                                               int]):
     serialized_cardinalities = executor_serialization.serialize_cardinalities(
         cardinalities)
     request = executor_pb2.SetCardinalitiesRequest(

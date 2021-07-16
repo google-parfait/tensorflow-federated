@@ -68,8 +68,7 @@ def test_context():
   channel = grpc.insecure_channel('localhost:{}'.format(port))
 
   remote_exec = remote_executor.RemoteExecutor(channel)
-  asyncio.get_event_loop().run_until_complete(
-      remote_exec.set_cardinalities({placements.CLIENTS: 3}))
+  remote_exec.set_cardinalities({placements.CLIENTS: 3})
   executor = reference_resolving_executor.ReferenceResolvingExecutor(
       remote_exec)
   try:
@@ -186,9 +185,7 @@ class RemoteExecutorTest(absltest.TestCase):
     instance = mock_stub.return_value
     instance.SetCardinalities = mock.Mock(side_effect=[response])
     executor = create_remote_executor()
-    loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(
-        executor.set_cardinalities({placements.CLIENTS: 3}))
+    result = executor.set_cardinalities({placements.CLIENTS: 3})
     self.assertIsNone(result)
 
   def test_create_value_returns_remote_value(self, mock_stub):

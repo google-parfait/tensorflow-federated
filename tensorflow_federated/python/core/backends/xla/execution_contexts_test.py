@@ -20,7 +20,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.xla import execution_contexts
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.execution_contexts import synchronous_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -35,8 +35,7 @@ class ExecutionContextsTest(absltest.TestCase):
 
   def test_create_local_execution_context(self):
     context = execution_contexts.create_local_execution_context()
-    self.assertIsInstance(context,
-                          synchronous_execution_context.ExecutionContext)
+    self.assertIsInstance(context, sync_execution_context.ExecutionContext)
 
   def test_set_local_execution_context_and_run_simple_xla_computation(self):
     builder = xla_client.XlaBuilder('comp')

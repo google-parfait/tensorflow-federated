@@ -18,7 +18,7 @@ import contextlib
 from typing import Any
 from typing import Callable
 from typing import Optional
-import retrying
+
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -31,15 +31,10 @@ from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
-
-
-def _is_retryable_error(exception):
-  return isinstance(exception, executors_errors.RetryableError)
 
 
 def _unwrap(value):
@@ -52,7 +47,7 @@ def _unwrap(value):
     return value
 
 
-class ExecutionContextValue(typed_object.TypedObject):
+class AsyncExecutionContextValue(typed_object.TypedObject):
   """Wrapper class for values produced by `ExecutionContext`."""
 
   def __init__(self, value, type_spec):
@@ -142,14 +137,19 @@ def _unwrap_execution_context_value(val):
     value_elements_iter = structure.iter_elements(val)
     return structure.Struct((name, _unwrap_execution_context_value(elem))
                             for name, elem in value_elements_iter)
-  elif isinstance(val, ExecutionContextValue):
+  elif isinstance(val, AsyncExecutionContextValue):
     return _unwrap_execution_context_value(val.value)
   else:
     return val
 
 
-class ExecutionContext(context_base.Context):
-  """Represents an execution context backed by an `executor_base.Executor`."""
+class AsyncExecutionContext(context_base.Context):
+  """An asynchronous execution context backed by an `executor_base.Executor`.
+
+  This context's `ingest` and `invoke` methods return Python coroutine objects
+  which represent the actual work of ingestion and invocation in the backing
+  executor.
+  """
 
   def __init__(self,
                executor_fn: executor_factory.ExecutorFactory,
@@ -163,30 +163,16 @@ class ExecutionContext(context_base.Context):
     """
     py_typecheck.check_type(executor_fn, executor_factory.ExecutorFactory)
     self._executor_factory = executor_fn
-
-    self._event_loop = asyncio.new_event_loop()
-    self._event_loop.set_task_factory(
-        tracing.propagate_trace_context_task_factory)
     if compiler_fn is not None:
       py_typecheck.check_callable(compiler_fn)
       self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
     else:
       self._compiler_pipeline = None
 
-  @property
-  def executor_factory(self):
-    return self._executor_factory
+  async def ingest(self, val, type_spec):
+    return AsyncExecutionContextValue(val, type_spec)
 
-  def ingest(self, val, type_spec):
-    return ExecutionContextValue(val, type_spec)
-
-  @retrying.retry(
-      retry_on_exception=_is_retryable_error,
-      wait_exponential_max=300000,  # in milliseconds
-      wait_exponential_multiplier=1000,  # in milliseconds
-      wait_jitter_max=1000  # in milliseconds
-  )
-  def invoke(self, comp, arg):
+  async def invoke(self, comp, arg):
     comp.type_signature.check_function()
     # Save the type signature before compiling. Compilation currently loses
     # container types, so we must remember them here so that they can be
@@ -207,7 +193,7 @@ class ExecutionContext(context_base.Context):
           raise e
 
       if arg is not None:
-        py_typecheck.check_type(arg, ExecutionContextValue)
+        py_typecheck.check_type(arg, AsyncExecutionContextValue)
         unwrapped_arg = _unwrap_execution_context_value(arg)
         cardinalities = cardinalities_utils.infer_cardinalities(
             unwrapped_arg, arg.type_signature)
@@ -219,10 +205,8 @@ class ExecutionContext(context_base.Context):
         py_typecheck.check_type(executor, executor_base.Executor)
 
         if arg is not None:
-          arg = self._event_loop.run_until_complete(
-              tracing.wrap_coroutine_in_current_trace_context(
-                  _ingest(executor, unwrapped_arg, arg.type_signature)))
+          arg = await tracing.wrap_coroutine_in_current_trace_context(
+              _ingest(executor, unwrapped_arg, arg.type_signature))
 
-        return self._event_loop.run_until_complete(
-            tracing.wrap_coroutine_in_current_trace_context(
-                _invoke(executor, comp, arg, result_type)))
+        return await tracing.wrap_coroutine_in_current_trace_context(
+            _invoke(executor, comp, arg, result_type))

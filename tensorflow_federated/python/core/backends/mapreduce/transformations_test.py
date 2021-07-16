@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
-from tensorflow_federated.python.core.impl.execution_contexts import synchronous_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -728,6 +728,6 @@ class NormalizedBitTest(test_case.TestCase):
 
 if __name__ == '__main__':
   factory = executor_stacks.local_executor_factory()
-  context = synchronous_execution_context.ExecutionContext(executor_fn=factory)
+  context = sync_execution_context.ExecutionContext(executor_fn=factory)
   set_default_context.set_default_context(context)
   test_case.main()

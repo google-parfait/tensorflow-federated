@@ -16,7 +16,7 @@
 from tensorflow_federated.python.core.backends.xla import compiler
 from tensorflow_federated.python.core.backends.xla import executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.execution_contexts import synchronous_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
@@ -35,7 +35,7 @@ def create_local_execution_context():
       support_sequence_ops=True,
       leaf_executor_fn=executor.XlaExecutor,
       local_computation_factory=compiler.XlaComputationFactory())
-  return synchronous_execution_context.ExecutionContext(executor_fn=factory)
+  return sync_execution_context.ExecutionContext(executor_fn=factory)
 
 
 def set_local_execution_context(*args, **kwargs):

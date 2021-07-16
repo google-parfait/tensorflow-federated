@@ -619,7 +619,7 @@ class RemoteExecutorFactoryTest(absltest.TestCase):
 
   def _make_set_cardinalities_patch(self, mock_obj):
 
-    async def set_cardinalities_patch(self, *args, **kwargs):
+    def set_cardinalities_patch(self, *args, **kwargs):
       del self  # Unused
       return mock_obj(*args, **kwargs)
 

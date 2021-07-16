@@ -70,7 +70,7 @@ py_test(
 
 py_test(
     name = "remote_runtime_integration_test",
-    timeout = "long",
+    timeout = "moderate",
     srcs = ["remote_runtime_integration_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

@@ -15,7 +15,7 @@
 
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.execution_contexts import synchronous_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
@@ -34,7 +34,7 @@ def create_test_execution_context(default_num_clients=0, clients_per_thread=1):
     return computation_wrapper_instances.building_block_to_computation(
         replaced_intrinsic_bodies)
 
-  return synchronous_execution_context.ExecutionContext(
+  return sync_execution_context.ExecutionContext(
       executor_fn=factory, compiler_fn=compiler)
 
 

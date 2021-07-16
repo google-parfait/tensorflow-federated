@@ -15,7 +15,7 @@
 
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.execution_contexts import synchronous_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
@@ -39,7 +39,7 @@ def create_local_execution_context(default_num_clients: int = 0,
         comp, transform_math_to_tf=not reference_resolving_clients)
     return native_form
 
-  return synchronous_execution_context.ExecutionContext(
+  return sync_execution_context.ExecutionContext(
       executor_fn=factory, compiler_fn=_compiler)
 
 
@@ -68,7 +68,7 @@ def create_sizing_execution_context(default_num_clients: int = 0,
       default_num_clients=default_num_clients,
       max_fanout=max_fanout,
       clients_per_thread=clients_per_thread)
-  return synchronous_execution_context.ExecutionContext(
+  return sync_execution_context.ExecutionContext(
       executor_fn=factory, compiler_fn=compiler.transform_to_native_form)
 
 
@@ -83,7 +83,7 @@ def create_thread_debugging_execution_context(default_num_clients: int = 0,
   def _debug_compiler(comp):
     return compiler.transform_to_native_form(comp, transform_math_to_tf=True)
 
-  return synchronous_execution_context.ExecutionContext(
+  return sync_execution_context.ExecutionContext(
       executor_fn=factory, compiler_fn=_debug_compiler)
 
 
@@ -110,7 +110,7 @@ def create_remote_execution_context(channels,
       default_num_clients=default_num_clients,
   )
 
-  return synchronous_execution_context.ExecutionContext(
+  return sync_execution_context.ExecutionContext(
       executor_fn=factory, compiler_fn=compiler.transform_to_native_form)
 
 

@@ -22,7 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.execution_contexts import synchronous_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -30,8 +30,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def _install_executor_in_synchronous_context(executor_factory_instance):
-  context = synchronous_execution_context.ExecutionContext(
-      executor_factory_instance)
+  context = sync_execution_context.ExecutionContext(executor_factory_instance)
   return context_stack_impl.context_stack.install(context)
 
 
@@ -39,13 +38,11 @@ class RetryableErrorTest(absltest.TestCase):
 
   def test_is_retryable_error(self):
     retryable_error = executors_errors.RetryableError()
-    self.assertTrue(
-        synchronous_execution_context._is_retryable_error(retryable_error))
-    self.assertFalse(
-        synchronous_execution_context._is_retryable_error(TypeError()))
-    self.assertFalse(synchronous_execution_context._is_retryable_error(1))
-    self.assertFalse(synchronous_execution_context._is_retryable_error('a'))
-    self.assertFalse(synchronous_execution_context._is_retryable_error(None))
+    self.assertTrue(sync_execution_context._is_retryable_error(retryable_error))
+    self.assertFalse(sync_execution_context._is_retryable_error(TypeError()))
+    self.assertFalse(sync_execution_context._is_retryable_error(1))
+    self.assertFalse(sync_execution_context._is_retryable_error('a'))
+    self.assertFalse(sync_execution_context._is_retryable_error(None))
 
 
 class ExecutionContextIntegrationTest(parameterized.TestCase):

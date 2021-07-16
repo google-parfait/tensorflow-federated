@@ -27,7 +27,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_reductions",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/execution_contexts:synchronous_execution_context",
+        "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
