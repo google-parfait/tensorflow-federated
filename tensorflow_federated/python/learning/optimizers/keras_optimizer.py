@@ -98,8 +98,7 @@ def build_or_verify_tff_optimizer(
     optimizer_fn: Union[Callable[[], tf.keras.optimizers.Optimizer],
                         optimizer.Optimizer],
     trainable_weights: Optional[Any] = None,
-    disjoint_init_and_next: Optional[bool] = None
-) -> tf.keras.optimizers.Optimizer:
+    disjoint_init_and_next: Optional[bool] = None) -> optimizer.Optimizer:
   """Returns `tff.learning.optimizers.Optimizer` for `optimizer_fn`.
 
   This helper function is used for `tff.learning` to provide backward
