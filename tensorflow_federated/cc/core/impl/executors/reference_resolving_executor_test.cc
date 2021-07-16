@@ -167,7 +167,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueChildExecutorError) {
   EXPECT_CALL(*mock_executor_, CreateValue(EqualsProto(tensor_value_pb)))
       .WillOnce([]() { return absl::InternalError("test"); });
   EXPECT_THAT(test_executor_->CreateValue(tensor_value_pb),
-              StatusIs(StatusCode::kInternal, "test"));
+              StatusIs(StatusCode::kInternal, HasSubstr("test")));
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueTensor) {
@@ -270,9 +270,11 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationTensorflow) {
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationXla) {
   v0::Value xla_value_pb;
   xla_value_pb.mutable_computation()->mutable_xla();
-  EXPECT_THAT(test_executor_->CreateValue(xla_value_pb),
-              StatusIs(StatusCode::kUnimplemented,
-                       "Evaluate not implemented for computation type [12]"));
+  EXPECT_THAT(
+      test_executor_->CreateValue(xla_value_pb),
+      StatusIs(
+          StatusCode::kUnimplemented,
+          HasSubstr("Evaluate not implemented for computation type [12]")));
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationData) {
@@ -548,9 +550,11 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationReferenceMissing) {
   EXPECT_CALL(*mock_executor_, Dispose(_)).Times(3);
   EXPECT_THAT(
       test_executor_->CreateValue(block_value_pb),
-      StatusIs(StatusCode::kNotFound,
-               "Could not find reference [test_ref3] while searching scope: "
-               "[]->[test_ref=V]->[test_ref2=<V>]"));
+      StatusIs(
+          StatusCode::kNotFound,
+          HasSubstr(
+              "Could not find reference [test_ref3] while searching scope: "
+              "[]->[test_ref=V]->[test_ref2=<V>]")));
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateCallFailsNonFunction) {

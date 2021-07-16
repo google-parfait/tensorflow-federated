@@ -31,7 +31,9 @@ limitations under the License
 #include "tensorflow_federated/proto/v0/executor.proto.h"
 
 using ::testing::EqualsProto;
+using ::testing::HasSubstr;
 using ::testing::proto::IgnoringRepeatedFieldOrdering;
+using ::testing::status::StatusIs;
 
 namespace tensorflow_federated {
 
@@ -138,9 +140,8 @@ TEST_F(RemoteExecutorTest, SetCardinalitiesErrorSurfaces) {
 
   absl::StatusOr<OwnedValueId> value_ref =
       test_executor_->CreateValue(tensor_two);
-  EXPECT_THAT(
-      value_ref.status(),
-      ::testing::status::StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+  EXPECT_THAT(value_ref.status(),
+              StatusIs(absl::StatusCode::kUnimplemented, HasSubstr("Test")));
 }
 
 TEST_F(RemoteExecutorTest, CreateValueTensor) {
@@ -198,9 +199,8 @@ TEST_F(RemoteExecutorTest, CreateValueWithError) {
   // Nor do we expect a dispose, because no value has been created.
   grpc::Status materialize_status =
       test_executor_->Materialize(value_ref, &materialized_value);
-  EXPECT_THAT(
-      materialize_status,
-      ::testing::status::StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+  EXPECT_THAT(materialize_status,
+              StatusIs(absl::StatusCode::kUnimplemented, HasSubstr("Test")));
 }
 
 TEST_F(RemoteExecutorTest, MaterializeWithError) {
@@ -230,9 +230,8 @@ TEST_F(RemoteExecutorTest, MaterializeWithError) {
         .WillOnce(::testing::Return(absl::UnimplementedError("Test")));
     materialize_status =
         test_executor_->Materialize(value_ref, &materialized_value);
-    EXPECT_THAT(
-        materialize_status,
-        ::testing::status::StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+    EXPECT_THAT(materialize_status,
+                StatusIs(absl::StatusCode::kUnimplemented, HasSubtstr("Test")));
 
     EXPECT_CALL(*mock_executor_service_,
                 Dispose(::testing::_, ::testing::_, ::testing::_))
@@ -393,9 +392,8 @@ TEST_F(RemoteExecutorTest, CreateCallError) {
     materialize_status =
         test_executor_->Materialize(call_result, &materialized_value);
   }
-  EXPECT_THAT(
-      materialize_status,
-      ::testing::status::StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+  EXPECT_THAT(materialize_status,
+              StatusIs(absl::StatusCode::kUnimplemented, HasSubstr("Test")));
   WaitForDone(done, "Final Dispose call.");
 }
 
@@ -521,9 +519,8 @@ TEST_F(RemoteExecutorTest, CreateStructWithError) {
   v0::Value materialized_value;
   grpc::Status materialize_status =
       test_executor_->Materialize(struct_result, &materialized_value);
-  EXPECT_THAT(
-      materialize_status,
-      ::testing::status::StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+  EXPECT_THAT(materialize_status,
+              StatusIs(absl::StatusCode::kUnimplemented, HasSubstr("Test")));
 }
 
 TEST_F(RemoteExecutorTest, CreateSelection) {
@@ -619,9 +616,8 @@ TEST_F(RemoteExecutorTest, CreateSelectionWithError) {
     materialize_status =
         test_executor_->Materialize(selection_result, &materialized_value);
   }
-  EXPECT_THAT(
-      materialize_status,
-      ::testing::status::StatusIs(absl::StatusCode::kUnimplemented, "Test"));
+  EXPECT_THAT(materialize_status,
+              StatusIs(absl::StatusCode::kUnimplemented, HasSubstr("Test")));
   WaitForDone(done, "Final Dispose call.");
 }
 

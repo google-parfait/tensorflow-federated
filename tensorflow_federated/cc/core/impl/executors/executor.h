@@ -285,20 +285,24 @@ class ExecutorBase : public Executor,
  public:
   absl::StatusOr<OwnedValueId> CreateValue(const v0::Value& value_pb) final {
     auto trace = Trace("CreateValue");
-    return TrackValue(TFF_TRY(CreateExecutorValue(value_pb)));
+    return TrackValue(TFF_TRY(CreateExecutorValue(value_pb),
+                              absl::StrCat(ExecutorName(), "::CreateValue")));
   }
 
   absl::StatusOr<OwnedValueId> CreateCall(
       const ValueId function,
       const std::optional<const ValueId> argument) final {
     auto trace = Trace("CreateCall");
-    ExecutorValue function_val = TFF_TRY(GetTracked(function));
+    ExecutorValue function_val = TFF_TRY(
+        GetTracked(function), absl::StrCat(ExecutorName(), "::CreateCall"));
     std::optional<ExecutorValue> argument_val;
     if (argument.has_value()) {
-      argument_val = TFF_TRY(GetTracked(argument.value()));
+      argument_val = TFF_TRY(GetTracked(argument.value()),
+                             absl::StrCat(ExecutorName(), "::CreateCall"));
     }
     return TrackValue(
-        TFF_TRY(CreateCall(std::move(function_val), std::move(argument_val))));
+        TFF_TRY(CreateCall(std::move(function_val), std::move(argument_val)),
+                absl::StrCat(ExecutorName(), "::CreateCall")));
   }
 
   absl::StatusOr<OwnedValueId> CreateStruct(
@@ -306,21 +310,32 @@ class ExecutorBase : public Executor,
     auto trace = Trace("CreateStruct");
     std::vector<ExecutorValue> member_values;
     for (const ValueId member_id : members) {
-      member_values.emplace_back(TFF_TRY(GetTracked(member_id)));
+      member_values.emplace_back(
+          TFF_TRY(GetTracked(member_id),
+                  absl::StrCat(ExecutorName(), "::CreateStruct")));
     }
-    return TrackValue(TFF_TRY(CreateStruct(std::move(member_values))));
+    return TrackValue(TFF_TRY(CreateStruct(std::move(member_values)),
+                              absl::StrCat(ExecutorName(), "::CreateStruct")));
   }
 
   absl::StatusOr<OwnedValueId> CreateSelection(const ValueId source,
                                                const uint32_t index) final {
     auto trace = Trace("CreateSelection");
-    return TrackValue(
-        TFF_TRY(CreateSelection(TFF_TRY(GetTracked(source)), index)));
+    return TrackValue(TFF_TRY(CreateSelection(
+        TFF_TRY(GetTracked(source),
+                absl::StrCat(ExecutorName(), "::CreateSelection")),
+        index)));
   }
 
   absl::Status Materialize(const ValueId value_id, v0::Value* value_pb) final {
     auto trace = Trace("Materialize");
-    return Materialize(TFF_TRY(GetTracked(value_id)), value_pb);
+    absl::Status status =
+        Materialize(TFF_TRY(GetTracked(value_id),
+                            absl::StrCat(ExecutorName(), "::Materialize")),
+                    value_pb);
+    // If status is not OK, we'll log an error here for easier debugging.
+    TFF_TRY(status, absl::StrCat(ExecutorName(), "::Materialize"));
+    return status;
   }
 
   absl::Status Dispose(const ValueId value) final {
