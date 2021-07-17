@@ -15,9 +15,12 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executor_stacks/remote_stacks.h"
 
+#include <chrono>  // NOLINT
+#include <limits>
 #include <memory>
 
 #include "net/grpc/public/include/grpcpp/grpcpp.h"
+#include "net/grpc/public/include/grpcpp/support/time.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
@@ -27,22 +30,45 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/threading.h"
 
 namespace tensorflow_federated {
 
 // This function queries the state of the incoming channels, filtering to those
-// which are ready or idle. This function blocks until the channels return their
-// state, though note that it does not block until connection.
+// which are ready or idle. This function blocks up to
+// `wait_connected_duration_millis` milliseconds, awaiting all channels in
+// `channels` to be ready.
 std::vector<const std::shared_ptr<grpc::ChannelInterface>>
 FilterToLiveChannels_(
-    absl::Span<const std::shared_ptr<grpc::ChannelInterface>> channels) {
+    absl::Span<const std::shared_ptr<grpc::ChannelInterface>> channels,
+    int wait_connected_duration_millis = 100) {
   std::vector<const std::shared_ptr<grpc::ChannelInterface>> live_channels;
+  auto wait_connected =
+      [&wait_connected_duration_millis](
+          std::shared_ptr<grpc::ChannelInterface> channel) -> absl::Status {
+    bool connected = channel->WaitForConnected(
+        std::chrono::system_clock::now() +
+        std::chrono::milliseconds(wait_connected_duration_millis));
+    if (connected) {
+      return absl::OkStatus();
+    } else {
+      return absl::UnavailableError("Channel not ready.");
+    }
+  };
+
+  ParallelTasks wait_connected_tasks;
   for (const std::shared_ptr<grpc::ChannelInterface>& channel : channels) {
-    auto channel_state = channel->GetState(/*try_to_connect=*/true);
-    bool channel_ready =
-        (channel_state == grpc_connectivity_state::GRPC_CHANNEL_READY) ||
-        (channel_state == grpc_connectivity_state::GRPC_CHANNEL_IDLE);
-    if (!channel_ready) {
+    wait_connected_tasks.add_task(std::bind(wait_connected, channel));
+  }
+  // Block up to WaitConnectedDuration for all tasks to complete.
+  absl::Status all_channels_ready = wait_connected_tasks.WaitAll();
+
+  for (const std::shared_ptr<grpc::ChannelInterface>& channel : channels) {
+    // We can wait 0 duration here since we have already blocked for all
+    // channels to attempt connection.
+    bool connected =
+        channel->WaitForConnected(std::chrono::system_clock::now());
+    if (!connected) {
       // This channel is not yet ready to serve requests.
       continue;
     } else {

@@ -96,22 +96,34 @@ TEST_F(RemoteExecutorStackTest, NoTargetsNonzeroClientsReturnsError) {
                        HasSubstr("Found 0 remote channels")));
 }
 
+// Our implementation of filtering to live workers uses WaitForConnected, which
+// polls the mock methods GetState and WaitForStateChangeImpl.
+void ExpectCallsToFailedChannel(
+    std::shared_ptr<MockGrpcChannelInterface> channel,
+    grpc_connectivity_state state) {
+  EXPECT_CALL(*channel, GetState(::testing::IsTrue()))
+      .WillRepeatedly(Return(state));
+  EXPECT_CALL(*channel, WaitForStateChangeImpl(::testing::_, ::testing::_))
+      .WillRepeatedly(Return(false));
+}
+
 TEST_F(RemoteExecutorStackTest, UnavailableChannelInterfacesReturnsError) {
-  // The three states below are all those we have defined to be unavailable; see
-  // https://grpc.github.io/grpc/cpp/connectivity__state_8h.html
   auto failed_channel =
       std::make_shared<StrictMock<MockGrpcChannelInterface>>();
   auto connecting_channel =
       std::make_shared<StrictMock<MockGrpcChannelInterface>>();
   auto shutdown_channel =
       std::make_shared<StrictMock<MockGrpcChannelInterface>>();
-  EXPECT_CALL(*failed_channel, GetState(::testing::IsTrue()))
-      .WillOnce(
-          Return(grpc_connectivity_state::GRPC_CHANNEL_TRANSIENT_FAILURE));
-  EXPECT_CALL(*connecting_channel, GetState(::testing::IsTrue()))
-      .WillOnce(Return(grpc_connectivity_state::GRPC_CHANNEL_CONNECTING));
-  EXPECT_CALL(*shutdown_channel, GetState(::testing::IsTrue()))
-      .WillOnce(Return(grpc_connectivity_state::GRPC_CHANNEL_SHUTDOWN));
+  auto idle_channel = std::make_shared<StrictMock<MockGrpcChannelInterface>>();
+
+  ExpectCallsToFailedChannel(
+      failed_channel, grpc_connectivity_state::GRPC_CHANNEL_TRANSIENT_FAILURE);
+  ExpectCallsToFailedChannel(connecting_channel,
+                             grpc_connectivity_state::GRPC_CHANNEL_CONNECTING);
+  ExpectCallsToFailedChannel(shutdown_channel,
+                             grpc_connectivity_state::GRPC_CHANNEL_SHUTDOWN);
+  ExpectCallsToFailedChannel(idle_channel,
+                             grpc_connectivity_state::GRPC_CHANNEL_IDLE);
   EXPECT_CALL(mock_executor_factory_, Call())
       .WillOnce(Return(get_mock_executor()));
   absl::StatusOr<std::shared_ptr<Executor>> status_or_executor =
@@ -146,20 +158,16 @@ TEST_F(RemoteExecutorStackTest, FailedChannelInterfacesNotAddressed) {
   for (int i = 0; i < 5; i++) {
     auto mock_channel =
         std::make_shared<StrictMock<MockGrpcChannelInterface>>();
-    if (i == 0) {
+    if (i < 3) {
       EXPECT_CALL(*mock_channel, GetState(::testing::IsTrue()))
-          .WillOnce(Return(grpc_connectivity_state::GRPC_CHANNEL_IDLE));
-      EXPECT_CALL(*mock_channel, RegisterMethod(::testing::_))
-          .WillRepeatedly(Return(nullptr));
-    } else if (i < 3) {
-      EXPECT_CALL(*mock_channel, GetState(::testing::IsTrue()))
-          .WillOnce(Return(grpc_connectivity_state::GRPC_CHANNEL_READY));
+          .Times(2)
+          .WillRepeatedly(Return(grpc_connectivity_state::GRPC_CHANNEL_READY));
       EXPECT_CALL(*mock_channel, RegisterMethod(::testing::_))
           .WillRepeatedly(Return(nullptr));
     } else {
-      EXPECT_CALL(*mock_channel, GetState(::testing::IsTrue()))
-          .WillOnce(
-              Return(grpc_connectivity_state::GRPC_CHANNEL_TRANSIENT_FAILURE));
+      ExpectCallsToFailedChannel(
+          mock_channel,
+          grpc_connectivity_state::GRPC_CHANNEL_TRANSIENT_FAILURE);
       // Since these failed channels should not be passed to a stub, we dont
       // expect them to see any RegisterMethod calls.
     }
@@ -195,7 +203,8 @@ TEST_F(RemoteExecutorStackTest, OneClientPassedToOnlyOneChild) {
     // We expect every ready channel to have TFF's executor.proto service
     // messages registered when the gRPC stub is constructed.
     EXPECT_CALL(*mock_channel, GetState(::testing::IsTrue()))
-        .WillOnce(Return(grpc_connectivity_state::GRPC_CHANNEL_READY));
+        .Times(2)
+        .WillRepeatedly(Return(grpc_connectivity_state::GRPC_CHANNEL_READY));
     EXPECT_CALL(*mock_channel, RegisterMethod(::testing::_))
         .WillRepeatedly(Return(nullptr));
     channel_args.emplace_back(mock_channel);
