@@ -28,6 +28,21 @@ limitations under the License
 
 namespace tensorflow_federated {
 
+inline absl::Status LogIfNotOk(absl::Status s) {
+  if (!s.ok()) {
+    LOG(ERROR) << s;
+  }
+  return s;
+}
+
+template <typename T>
+inline absl::StatusOr<T> LogIfNotOk(absl::StatusOr<T> s) {
+  if (!s.ok()) {
+    LOG(ERROR) << s.status();
+  }
+  return s;
+}
+
 absl::StatusOr<ValueId> ParseRef(const v0::ValueRef& value_ref_pb) {
   ValueId value_id;
   if (absl::SimpleAtoi(value_ref_pb.id(), &value_id)) {
@@ -87,7 +102,8 @@ absl::StatusOr<ValueId> ExecutorService::ResolveRemoteValue_(
   if (!absl::SimpleAtoi(id_and_generation[1], &reference_generation)) {
     return MalformattedValueStatus(remote_value_ref.id());
   }
-  TFF_TRY(EnsureGeneration_(reference_generation, expected_generation));
+  TFF_TRY(
+      LogIfNotOk(EnsureGeneration_(reference_generation, expected_generation)));
 
   ValueId embedded_value_id;
   if (!absl::SimpleAtoi(id_and_generation[0], &embedded_value_id)) {
@@ -101,9 +117,9 @@ grpc::Status ExecutorService::CreateValue(grpc::ServerContext* context,
                                           v0::CreateValueResponse* response) {
   std::pair<std::shared_ptr<Executor>, int> executor_and_generation;
   auto [live_executor, used_executor_generation] =
-      TFF_TRY(RequireExecutor_("CreateValue"));
+      TFF_TRY(LogIfNotOk(RequireExecutor_("CreateValue")));
   OwnedValueId owned_value_id =
-      TFF_TRY(live_executor->CreateValue(request->value()));
+      TFF_TRY(LogIfNotOk(live_executor->CreateValue(request->value())));
   response->mutable_value_ref()->mutable_id()->assign(
       CreateRemoteValue_(owned_value_id.ref(), used_executor_generation));
   // We must call forget on the embedded id to prevent the destructor from
@@ -118,18 +134,18 @@ grpc::Status ExecutorService::CreateCall(grpc::ServerContext* context,
                                          v0::CreateCallResponse* response) {
   std::pair<std::shared_ptr<Executor>, int> executor_and_generation;
   auto [live_executor, used_executor_generation] =
-      TFF_TRY(RequireExecutor_("CreateCall"));
-  ValueId embedded_fn = TFF_TRY(
-      ResolveRemoteValue_(request->function_ref(), used_executor_generation));
+      TFF_TRY(LogIfNotOk(RequireExecutor_("CreateCall")));
+  ValueId embedded_fn = TFF_TRY(LogIfNotOk(
+      ResolveRemoteValue_(request->function_ref(), used_executor_generation)));
   std::optional<ValueId> embedded_arg;
   if (request->has_argument_ref()) {
     // Callers should avoid setting the argument ref for invocation of a no-arg
     // fn.
-    embedded_arg = TFF_TRY(
-        ResolveRemoteValue_(request->argument_ref(), used_executor_generation));
+    embedded_arg = TFF_TRY(LogIfNotOk(ResolveRemoteValue_(
+        request->argument_ref(), used_executor_generation)));
   }
   OwnedValueId called_fn =
-      TFF_TRY(live_executor->CreateCall(embedded_fn, embedded_arg));
+      TFF_TRY(LogIfNotOk(live_executor->CreateCall(embedded_fn, embedded_arg)));
   response->mutable_value_ref()->mutable_id()->assign(
       CreateRemoteValue_(called_fn.ref(), used_executor_generation));
   // We must prevent this destructor from running similarly to CreateValue.
@@ -141,15 +157,15 @@ grpc::Status ExecutorService::CreateStruct(
     grpc::ServerContext* context, const v0::CreateStructRequest* request,
     v0::CreateStructResponse* response) {
   auto [live_executor, used_executor_generation] =
-      TFF_TRY(RequireExecutor_("CreateStruct"));
+      TFF_TRY(LogIfNotOk(RequireExecutor_("CreateStruct")));
   std::vector<ValueId> requested_ids;
   requested_ids.reserve(request->element().size());
   for (const v0::CreateStructRequest::Element& elem : request->element()) {
-    requested_ids.emplace_back(TFF_TRY(
-        ResolveRemoteValue_(elem.value_ref(), used_executor_generation)));
+    requested_ids.emplace_back(TFF_TRY(LogIfNotOk(
+        ResolveRemoteValue_(elem.value_ref(), used_executor_generation))));
   }
   OwnedValueId created_struct =
-      TFF_TRY(live_executor->CreateStruct(requested_ids));
+      TFF_TRY(LogIfNotOk(live_executor->CreateStruct(requested_ids)));
   response->mutable_value_ref()->mutable_id()->assign(
       CreateRemoteValue_(created_struct.ref(), used_executor_generation));
   // We must prevent this destructor from running similarly to CreateValue.
@@ -161,11 +177,11 @@ grpc::Status ExecutorService::CreateSelection(
     grpc::ServerContext* context, const v0::CreateSelectionRequest* request,
     v0::CreateSelectionResponse* response) {
   auto [live_executor, used_executor_generation] =
-      TFF_TRY(RequireExecutor_("CreateSelection"));
-  ValueId selection_source = TFF_TRY(
-      ResolveRemoteValue_(request->source_ref(), used_executor_generation));
-  OwnedValueId selected_element = TFF_TRY(
-      live_executor->CreateSelection(selection_source, request->index()));
+      TFF_TRY(LogIfNotOk(RequireExecutor_("CreateSelection")));
+  ValueId selection_source = TFF_TRY(LogIfNotOk(
+      ResolveRemoteValue_(request->source_ref(), used_executor_generation)));
+  OwnedValueId selected_element = TFF_TRY(LogIfNotOk(
+      live_executor->CreateSelection(selection_source, request->index())));
   response->mutable_value_ref()->mutable_id()->assign(
       CreateRemoteValue_(selected_element.ref(), used_executor_generation));
   // We must prevent this destructor from running similarly to CreateValue.
@@ -177,11 +193,11 @@ grpc::Status ExecutorService::Compute(grpc::ServerContext* context,
                                       const v0::ComputeRequest* request,
                                       v0::ComputeResponse* response) {
   auto [live_executor, used_executor_generation] =
-      TFF_TRY(RequireExecutor_("Compute"));
-  ValueId requested_value = TFF_TRY(
-      ResolveRemoteValue_(request->value_ref(), used_executor_generation));
-  TFF_TRY(
-      live_executor->Materialize(requested_value, response->mutable_value()));
+      TFF_TRY(LogIfNotOk(RequireExecutor_("Compute")));
+  ValueId requested_value = TFF_TRY(LogIfNotOk(
+      ResolveRemoteValue_(request->value_ref(), used_executor_generation)));
+  TFF_TRY(LogIfNotOk(
+      live_executor->Materialize(requested_value, response->mutable_value())));
   return grpc::Status::OK;
 }
 
@@ -195,7 +211,7 @@ grpc::Status ExecutorService::SetCardinalities(
   }
   {
     absl::WriterMutexLock writer_lock(&executor_mutex_);
-    auto new_executor = TFF_TRY(executor_factory_(cardinality_map));
+    auto new_executor = TFF_TRY(LogIfNotOk(executor_factory_(cardinality_map)));
     int new_generation = executor_and_generation_.second + 1;
     executor_and_generation_ =
         std::make_pair(std::move(new_executor), new_generation);
@@ -220,7 +236,7 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
                                       const v0::DisposeRequest* request,
                                       v0::DisposeResponse* response) {
   auto [live_executor, used_executor_generation] =
-      TFF_TRY(RequireExecutor_("Dispose"));
+      TFF_TRY(LogIfNotOk(RequireExecutor_("Dispose")));
   std::vector<ValueId> embedded_ids_to_dispose;
   embedded_ids_to_dispose.reserve(request->value_ref().size());
   // Filter the requested IDs to those corresponding to the currently live
@@ -231,7 +247,7 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
     absl::StatusOr<ValueId> embedded_value =
         ResolveRemoteValue_(disposed_value_ref, used_executor_generation);
     if (embedded_value.ok()) {
-      TFF_TRY(live_executor->Dispose(embedded_value.ValueOrDie()));
+      TFF_TRY(LogIfNotOk(live_executor->Dispose(embedded_value.ValueOrDie())));
     }
   }
   return grpc::Status::OK;
