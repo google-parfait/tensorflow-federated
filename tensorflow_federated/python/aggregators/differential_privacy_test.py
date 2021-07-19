@@ -102,7 +102,7 @@ class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
       factory_.create(bad_value_type)
 
 
-class DPFactoryExecutionTest(test_case.TestCase):
+class DPFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
 
   def test_simple_sum(self):
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
@@ -215,6 +215,24 @@ class DPFactoryExecutionTest(test_case.TestCase):
         noise_multiplier=1.0, clients_per_round=10, clip=1.0)
     self.assertIsInstance(process,
                           differential_privacy.DifferentiallyPrivateFactory)
+
+  @parameterized.product(clip_count_stddev=[None, 5.0])
+  def test_adaptive_clip_noise_params(self, clip_count_stddev):
+    noise_mult = 2.0
+    num_clients = 100.0
+    value_noise_mult, new_clip_count_stddev = differential_privacy.adaptive_clip_noise_params(
+        noise_mult, num_clients, clip_count_stddev)
+
+    # The effective noise for client values are larger as we're splitting the
+    # privacy budget (intended by the input noise level) with adaptive clipping.
+    self.assertGreater(value_noise_mult, noise_mult)
+
+    if clip_count_stddev is None:
+      # Check if the default value is assignend.
+      self.assertEqual(new_clip_count_stddev, 0.05 * num_clients)
+    else:
+      # Check if the specified value is kept.
+      self.assertEqual(new_clip_count_stddev, clip_count_stddev)
 
 
 if __name__ == '__main__':

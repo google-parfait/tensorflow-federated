@@ -14,7 +14,7 @@
 """Factory for aggregations parameterized by tensorflow_privacy DPQueries."""
 
 import collections
-from typing import Optional
+from typing import Optional, Tuple
 import warnings
 
 import tensorflow_privacy as tfp
@@ -28,6 +28,61 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
+
+
+def adaptive_clip_noise_params(
+    noise_multiplier: float,
+    expected_clients_per_round: float,
+    clipped_count_stddev: Optional[float] = None) -> Tuple[float, float]:
+  """Computes noising parameters for the adaptive L2 clipping procedure.
+
+  The adaptive clipping method (described in https://arxiv.org/abs/1905.03871)
+  runs a private quantile estimation procedure which may require the number of
+  clipped clients in a round to be also noised for privacy. Thus, to maintain
+  the same level of privacy as intended by the total noise multiplier, the
+  effective noise multiplier to be applied on the client records may need to be
+  (slightly) higher to account for the private quantile estimation.
+
+  Args:
+    noise_multiplier: The total noise multiplier for the mechanism.
+    expected_clients_per_round: A float specifying the expected number of
+      clients per round.
+    clipped_count_stddev: The stddev of the noise added to the clipped counts in
+      the adaptive clipping algorithm.
+
+  Returns:
+    A tuple with the `value_noise_multiplier` (to be applied to client records)
+    and the `clipped_count_stddev` (a default value if not specified).
+  """
+  if noise_multiplier > 0.0:
+    if clipped_count_stddev is None:
+      clipped_count_stddev = 0.05 * expected_clients_per_round
+
+    if noise_multiplier >= 2 * clipped_count_stddev:
+      raise ValueError(
+          f'clipped_count_stddev = {clipped_count_stddev} (defaults to '
+          f'0.05 * `expected_clients_per_round` if not specified) is too low '
+          f'to achieve the desired effective `noise_multiplier` '
+          f'({noise_multiplier}). You must either increase '
+          f'`clipped_count_stddev` or decrease `noise_multiplier`.')
+
+    value_noise_multiplier = (noise_multiplier**-2 -
+                              (2 * clipped_count_stddev)**-2)**-0.5
+
+    added_noise_factor = value_noise_multiplier / noise_multiplier
+    if added_noise_factor >= 2:
+      warnings.warn(
+          f'A significant amount of noise ({added_noise_factor:.2f}x) has to '
+          f'be added for record aggregation to achieve the desired effective '
+          f'`noise_multiplier` ({noise_multiplier}). If you are manually '
+          f'specifying `clipped_count_stddev` you may want to increase it. Or '
+          f'you may need more `expected_clients_per_round`.')
+  else:
+    if clipped_count_stddev is None:
+      clipped_count_stddev = 0.0
+    value_noise_multiplier = 0.0
+
+  return value_noise_multiplier, clipped_count_stddev
 
 
 class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
@@ -109,48 +164,11 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     _check_float_probability(target_unclipped_quantile,
                              'target_unclipped_quantile')
     _check_float_nonnegative(learning_rate, 'learning_rate')
-
-    if noise_multiplier > 0.0:
-      if clipped_count_stddev is None:
-        # Defaults to 0.05 * clients_per_round. The noised fraction of unclipped
-        # updates will be within 0.1 of the true fraction with 95.4% probability
-        # and will be within 0.15 of the true fraction with 99.7% probability.
-        # Even in this unlikely case, the error on the update would be a factor
-        # of exp(0.2 * 0.15) = 1.03, a small deviation. So this default gives
-        # maximal privacy for acceptable probability of deviation.
-        clipped_count_stddev = 0.05 * clients_per_round
-        if noise_multiplier >= 2 * clipped_count_stddev:
-          raise ValueError(
-              f'Default value of `clipped_count_stddev` ({clipped_count_stddev}'
-              f') is too low to achieve the desired effective noise multiplier '
-              f'({noise_multiplier}). You may increase `clients_per_round`, '
-              f'specify a larger value of `clipped_count_stddev`, or decrease '
-              f'`noise_multiplier`.')
-      else:
-        if noise_multiplier >= 2 * clipped_count_stddev:
-          raise ValueError(
-              f'`clipped_count_stddev` ({clipped_count_stddev}) is too low to '
-              f'achieve the desired effective noise multiplier '
-              f'({noise_multiplier}). You must either increase '
-              f'`clipped_count_stddev` or decrease `noise_multiplier`.')
-
+    if clipped_count_stddev is not None:
       _check_float_nonnegative(clipped_count_stddev, 'clipped_count_stddev')
 
-      value_noise_multiplier = (noise_multiplier**-2 -
-                                (2 * clipped_count_stddev)**-2)**-0.5
-
-      added_noise_factor = value_noise_multiplier / noise_multiplier
-      if added_noise_factor >= 2:
-        warnings.warn(
-            f'A significant amount of noise ({added_noise_factor:.2f}x) has to '
-            f'be added to achieve the desired effective noise multiplier '
-            f'({noise_multiplier}). If you are manually specifying '
-            f'`clipped_count_stddev` you may want to increase it. Or you may '
-            f'need more `clients_per_round`.')
-    else:
-      if clipped_count_stddev is None:
-        clipped_count_stddev = 0.0
-      value_noise_multiplier = 0.0
+    value_noise_multiplier, clipped_count_stddev = adaptive_clip_noise_params(
+        noise_multiplier, clients_per_round, clipped_count_stddev)
 
     query = tfp.QuantileAdaptiveClipSumQuery(
         initial_l2_norm_clip=initial_l2_norm_clip,
