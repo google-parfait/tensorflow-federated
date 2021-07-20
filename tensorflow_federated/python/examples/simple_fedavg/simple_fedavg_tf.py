@@ -27,12 +27,25 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 """
 
 import collections
+from typing import Union
+
 import attr
 import tensorflow as tf
 import tensorflow_federated as tff
 
 ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
 ModelOutputs = collections.namedtuple('ModelOutputs', 'loss')
+
+
+def get_model_weights(
+    model: Union[tff.learning.Model, 'KerasModelWrapper']
+) -> Union[tff.learning.ModelWeights, ModelWeights]:
+  """Gets the appropriate ModelWeights object based on the model type."""
+  if isinstance(model, tff.learning.Model):
+    return tff.learning.ModelWeights.from_model(model)
+  else:
+    # Using simple_fedavg custom Keras wrapper.
+    return model.weights
 
 
 class KerasModelWrapper(object):
@@ -153,7 +166,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
     An updated `ServerState`.
   """
   # Initialize the model with the current state.
-  model_weights = model.weights
+  model_weights = get_model_weights(model)
   tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
                         server_state.model_weights)
   tf.nest.map_structure(lambda v, t: v.assign(t), server_optimizer.variables(),
@@ -204,7 +217,7 @@ def client_update(model, dataset, server_message, client_optimizer):
   Returns:
     A 'ClientOutput`.
   """
-  model_weights = model.weights
+  model_weights = get_model_weights(model)
   initial_weights = server_message.model_weights
   tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
                         initial_weights)

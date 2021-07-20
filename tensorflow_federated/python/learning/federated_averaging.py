@@ -70,14 +70,13 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
         input dataset. An experimental reduce loop is used for simulation.
     """
     py_typecheck.check_type(model, model_lib.Model)
-    self._model = model_utils.enhance(model)
+    self._model = model
     self._optimizer = keras_optimizer.build_or_verify_tff_optimizer(
-        optimizer, self._model.weights.trainable, disjoint_init_and_next=False)
-
-    py_typecheck.check_type(self._model, model_utils.EnhancedModel)
+        optimizer,
+        model_utils.ModelWeights.from_model(self._model).trainable,
+        disjoint_init_and_next=False)
     client_weight_lib.check_is_client_weighting_or_callable(client_weighting)
     self._client_weighting = client_weighting
-
     self._dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
         use_experimental_simulation_loop)
 
@@ -89,7 +88,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   def __call__(self, dataset, initial_weights):
     model = self._model
     optimizer = self._optimizer
-    tf.nest.map_structure(lambda a, b: a.assign(b), model.weights,
+    model_weights = model_utils.ModelWeights.from_model(model)
+    tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
                           initial_weights)
 
     def reduce_fn(state, batch):
@@ -99,13 +99,13 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch, training=True)
 
-      gradients = tape.gradient(output.loss, model.weights.trainable)
+      gradients = tape.gradient(output.loss, model_weights.trainable)
       optimizer_state, updated_weights = optimizer.next(optimizer_state,
-                                                        model.weights.trainable,
+                                                        model_weights.trainable,
                                                         gradients)
       if not isinstance(optimizer, keras_optimizer.KerasOptimizer):
         # Keras optimizer mutates model variables within the `next` step.
-        tf.nest.map_structure(lambda a, b: a.assign(b), model.weights.trainable,
+        tf.nest.map_structure(lambda a, b: a.assign(b), model_weights.trainable,
                               updated_weights)
 
       if output.num_examples is None:
@@ -117,7 +117,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 
     def initial_state_for_reduce_fn():
       trainable_tensor_specs = tf.nest.map_structure(
-          lambda v: tf.TensorSpec(v.shape, v.dtype), model.weights.trainable)
+          lambda v: tf.TensorSpec(v.shape, v.dtype), model_weights.trainable)
       return tf.zeros(
           shape=[],
           dtype=tf.int64), optimizer.initialize(trainable_tensor_specs)
@@ -125,7 +125,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     num_examples_sum, _ = self._dataset_reduce_fn(
         reduce_fn, dataset, initial_state_fn=initial_state_for_reduce_fn)
 
-    weights_delta = tf.nest.map_structure(tf.subtract, model.weights.trainable,
+    weights_delta = tf.nest.map_structure(tf.subtract, model_weights.trainable,
                                           initial_weights.trainable)
     model_output = model.report_local_outputs()
 

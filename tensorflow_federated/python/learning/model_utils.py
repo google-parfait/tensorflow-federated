@@ -27,15 +27,6 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
 
 
-def model_initializer(model, name=None):
-  """Creates an initializer op for all of the model's variables."""
-  py_typecheck.check_type(model, model_lib.Model)
-  return tf.compat.v1.initializers.variables(
-      model.trainable_variables + model.non_trainable_variables +
-      model.local_variables,
-      name=(name or 'model_initializer'))
-
-
 @attr.s(eq=False, frozen=True, slots=True)
 class ModelWeights(object):
   """A container for the trainable and non-trainable variables of a `Model`.
@@ -111,84 +102,3 @@ def parameter_count_from_model(
   tensors_and_params = type_analysis.count_tensors_in_type(
       trainable_weights_type)
   return tensors_and_params
-
-
-def enhance(model):
-  """Wraps a `tff.learning.Model` as an `EnhancedModel`.
-
-  Args:
-    model: A `tff.learning.Model`.
-
-  Returns:
-    An `EnhancedModel`. If `model` has already been wrapped as such, this is a
-    no-op.
-  """
-  py_typecheck.check_type(model, model_lib.Model)
-  if isinstance(model, EnhancedModel):
-    return model
-  elif isinstance(model, model_lib.Model):
-    return EnhancedModel(model)
-  raise TypeError('Do not know how to wrap object of type [{t}]. Expected a '
-                  'tff.learning.Model'.format(t=type(model_lib.Model)))
-
-
-def _check_iterable_of_variables(variables):
-  py_typecheck.check_type(variables, collections.abc.Iterable)
-  for v in variables:
-    py_typecheck.check_type(v, tf.Variable)
-  return variables
-
-
-class EnhancedModel(model_lib.Model):
-  """A wrapper around a Model that adds sanity checking and metadata helpers."""
-
-  def __init__(self, model):
-    super().__init__()
-    py_typecheck.check_type(model, model_lib.Model)
-    if isinstance(model, EnhancedModel):
-      raise ValueError(
-          'Attempting to wrap an EnhancedModel in another EnhancedModel')
-    self._model = model
-
-  #
-  # Methods offering additional functionality and metadata:
-  #
-
-  @property
-  def weights(self):
-    """Returns a `tff.learning.ModelWeights`."""
-    return ModelWeights.from_model(self)
-
-  #
-  # The following delegate to the Model interface:
-  #
-
-  @property
-  def trainable_variables(self):
-    return _check_iterable_of_variables(self._model.trainable_variables)
-
-  @property
-  def non_trainable_variables(self):
-    return _check_iterable_of_variables(self._model.non_trainable_variables)
-
-  @property
-  def local_variables(self):
-    return _check_iterable_of_variables(self._model.local_variables)
-
-  @property
-  def input_spec(self):
-    return self._model.input_spec
-
-  def predict_on_batch(self, batch_input, training=True):
-    return self._model.predict_on_batch(batch_input, training)
-
-  def forward_pass(self, batch_input, training=True):
-    return py_typecheck.check_type(
-        self._model.forward_pass(batch_input, training), model_lib.BatchOutput)
-
-  def report_local_outputs(self):
-    return self._model.report_local_outputs()
-
-  @property
-  def federated_output_computation(self):
-    return self._model.federated_output_computation

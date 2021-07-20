@@ -178,7 +178,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":model",
-        ":model_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
@@ -198,6 +197,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":keras_utils",
+        ":model",
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:structure",
@@ -344,7 +344,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":model",
-        ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",

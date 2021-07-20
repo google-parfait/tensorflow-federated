@@ -239,13 +239,14 @@ class VanillaFedAvgTest(test_case.TestCase, parameterized.TestCase):
         )).batch(2)
 
   def _test_batch_loss(self, model, weights):
-    tf.nest.map_structure(lambda w, v: w.assign(v), model.weights, weights)
+    tf.nest.map_structure(lambda w, v: w.assign(v),
+                          model_utils.ModelWeights.from_model(model), weights)
     for batch in self._test_data().take(1):
       batch_output = model.forward_pass(batch, training=False)
     return batch_output.loss
 
   def test_loss_decreases(self):
-    model_fn = lambda: model_utils.enhance(model_examples.LinearRegression())
+    model_fn = model_examples.LinearRegression
     test_model = model_fn()
     fedavg = composers.build_basic_fedavg_process(
         model_fn=model_fn, client_learning_rate=0.1)

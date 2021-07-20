@@ -64,6 +64,11 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
         ],
         non_trainable=[0.0])
 
+  def test_clietsgd_fails_for_non_tff_model(self):
+    keras_model = tf.keras.Sequential([tf.keras.layers.Dense(1)])
+    with self.assertRaisesRegex(TypeError, 'Model'):
+      federated_sgd.ClientSgd(keras_model)
+
   @parameterized.named_parameters(
       ('non-simulation_weighted', False, True),
       ('non-simulation_unweighted', False, False),

@@ -31,6 +31,7 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.examples.stateful_clients.stateful_fedavg_tf import build_server_broadcast_message
 from tensorflow_federated.python.examples.stateful_clients.stateful_fedavg_tf import client_update
+from tensorflow_federated.python.examples.stateful_clients.stateful_fedavg_tf import get_model_weights
 from tensorflow_federated.python.examples.stateful_clients.stateful_fedavg_tf import server_update
 from tensorflow_federated.python.examples.stateful_clients.stateful_fedavg_tf import ServerState
 
@@ -42,8 +43,9 @@ def _initialize_optimizer_vars(model, optimizer):
   # creates the variables on first usage of the optimizer. Optimizers such as
   # Adam, Adagrad, or using momentum need to create a new set of variables shape
   # like the model weights.
-  zero_gradient = [tf.zeros_like(t) for t in model.weights.trainable]
-  optimizer.apply_gradients(zip(zero_gradient, model.weights.trainable))
+  model_weights = get_model_weights(model)
+  zero_gradient = [tf.zeros_like(t) for t in model_weights.trainable]
+  optimizer.apply_gradients(zip(zero_gradient, model_weights.trainable))
   assert optimizer.variables()
 
 
@@ -75,7 +77,7 @@ def build_federated_averaging_process(
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(
-        model_weights=model.weights,
+        model_weights=get_model_weights(model),
         optimizer_state=server_optimizer.variables(),
         round_num=0,
         total_iters_count=0)

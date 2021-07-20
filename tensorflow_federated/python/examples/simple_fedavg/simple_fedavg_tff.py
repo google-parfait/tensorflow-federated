@@ -26,24 +26,31 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
+from typing import Union
+
 import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import build_server_broadcast_message
 from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import client_update
+from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import get_model_weights
+from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import KerasModelWrapper
 from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import server_update
 from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import ServerState
 
 
-def _initialize_optimizer_vars(model, optimizer):
+def _initialize_optimizer_vars(model: Union[tff.learning.Model,
+                                            KerasModelWrapper],
+                               optimizer: tf.keras.optimizers.Optimizer):
   """Creates optimizer variables to assign the optimizer's state."""
   # Create zero gradients to force an update that doesn't modify.
   # Force eagerly constructing the optimizer variables. Normally Keras lazily
   # creates the variables on first usage of the optimizer. Optimizers such as
   # Adam, Adagrad, or using momentum need to create a new set of variables shape
   # like the model weights.
-  zero_gradient = [tf.zeros_like(t) for t in model.weights.trainable]
-  optimizer.apply_gradients(zip(zero_gradient, model.weights.trainable))
+  model_weights = get_model_weights(model)
+  zero_gradient = [tf.zeros_like(t) for t in model_weights.trainable]
+  optimizer.apply_gradients(zip(zero_gradient, model_weights.trainable))
   assert optimizer.variables()
 
 
@@ -70,10 +77,11 @@ def build_federated_averaging_process(
   @tff.tf_computation
   def server_init_tf():
     model = model_fn()
+    model_weights = get_model_weights(model)
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(
-        model_weights=model.weights,
+        model_weights=model_weights,
         optimizer_state=server_optimizer.variables(),
         round_num=0)
 
