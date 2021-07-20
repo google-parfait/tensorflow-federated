@@ -21,7 +21,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import tensorflow as tf
 
@@ -35,6 +35,7 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import optimizer_utils
+from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
@@ -158,8 +159,8 @@ DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
 # TODO(b/192094313): refactor to accept tff.learning.Optimizer arguments
 def build_federated_sgd_process(
     model_fn: Callable[[], model_lib.Model],
-    server_optimizer_fn: Callable[
-        [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
+    server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
+        [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
     *,  # Require named (non-positional) parameters for the following kwargs:
     client_weighting: Optional[client_weight_lib.ClientWeightType] = None,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
@@ -215,9 +216,9 @@ def build_federated_sgd_process(
       must *not* capture TensorFlow tensors or variables and use them. The model
       must be constructed entirely from scratch on each invocation, returning
       the same pre-constructed model each call will result in an error.
-    server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
-      `apply_gradients` method of this optimizer is used to apply client updates
-      to the server model.
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
+      callable that returns a `tf.keras.Optimizer`. The optimizer is used to
+      apply client updates to the server model.
     client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
       built-in weighting method, or a callable that takes the output of
       `model.report_local_outputs` and returns a tensor that provides the weight

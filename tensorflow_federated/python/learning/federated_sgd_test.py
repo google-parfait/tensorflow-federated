@@ -28,6 +28,15 @@ from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.optimizers import sgdm
+
+
+def _get_tff_optimizer(learning_rate=0.1):
+  return sgdm.build_sgdm(learning_rate=learning_rate)
+
+
+def _get_keras_optimizer_fn(learning_rate=0.1):
+  return lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
 
 
 class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
@@ -126,14 +135,24 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
 class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters([
-      ('unweighted', client_weight_lib.ClientWeighting.UNIFORM),
-      ('example_weighted', client_weight_lib.ClientWeighting.NUM_EXAMPLES),
-      ('custom_weighted', lambda _: tf.constant(1.5)),
+      ('unweighted_keras_opt', client_weight_lib.ClientWeighting.UNIFORM,
+       _get_keras_optimizer_fn),
+      ('example_weighted_keras_opt',
+       client_weight_lib.ClientWeighting.NUM_EXAMPLES, _get_keras_optimizer_fn),
+      ('custom_weighted_keras_opt', lambda _: tf.constant(1.5),
+       _get_keras_optimizer_fn),
+      ('unweighted_tff_opt', client_weight_lib.ClientWeighting.UNIFORM,
+       _get_tff_optimizer),
+      ('example_weighted_tff_opt',
+       client_weight_lib.ClientWeighting.NUM_EXAMPLES, _get_tff_optimizer),
+      ('custom_weighted_tff_opt', lambda _: tf.constant(1.5),
+       _get_tff_optimizer),
   ])
   @test_utils.skip_test_for_multi_gpu
-  def test_orchestration_execute(self, client_weighting):
+  def test_orchestration_execute(self, client_weighting, server_optimizer):
     iterative_process = federated_sgd.build_federated_sgd_process(
         model_fn=model_examples.LinearRegression,
+        server_optimizer_fn=server_optimizer(),
         client_weighting=client_weighting)
 
     # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
@@ -165,13 +184,22 @@ class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
       prev_loss = loss
 
   @parameterized.named_parameters([
-      ('functional_model',
-       model_examples.build_linear_regression_keras_functional_model),
-      ('sequential_model',
-       model_examples.build_linear_regression_keras_sequential_model),
+      ('functional_model_keras_opt',
+       model_examples.build_linear_regression_keras_functional_model,
+       _get_keras_optimizer_fn),
+      ('sequential_model_keras_opt',
+       model_examples.build_linear_regression_keras_sequential_model,
+       _get_keras_optimizer_fn),
+      ('functional_model_tff_opt',
+       model_examples.build_linear_regression_keras_functional_model,
+       _get_tff_optimizer),
+      ('sequential_model_tff_opt',
+       model_examples.build_linear_regression_keras_sequential_model,
+       _get_tff_optimizer),
   ])
   @test_utils.skip_test_for_multi_gpu
-  def test_orchestration_execute_from_keras(self, build_keras_model_fn):
+  def test_orchestration_execute_from_keras(self, build_keras_model_fn,
+                                            server_optimizer):
     # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
     # kernel = [1, 2], bias = [3].
     ds1 = tf.data.Dataset.from_tensor_slices(
@@ -195,7 +223,7 @@ class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
           loss=tf.keras.losses.MeanSquaredError())
 
     iterative_process = federated_sgd.build_federated_sgd_process(
-        model_fn=model_fn)
+        model_fn=model_fn, server_optimizer_fn=server_optimizer())
 
     server_state = iterative_process.initialize()
     prev_loss = np.inf
@@ -206,10 +234,15 @@ class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
       self.assertLess(new_loss, prev_loss)
       prev_loss = new_loss
 
+  @parameterized.named_parameters([
+      ('keras_opt', _get_keras_optimizer_fn),
+      ('tff_opt', _get_tff_optimizer),
+  ])
   @test_utils.skip_test_for_multi_gpu
-  def test_execute_empty_data(self):
+  def test_execute_empty_data(self, server_optimizer):
     iterative_process = federated_sgd.build_federated_sgd_process(
-        model_fn=model_examples.LinearRegression)
+        model_fn=model_examples.LinearRegression,
+        server_optimizer_fn=server_optimizer())
 
     # Results in empty dataset with correct types and shapes.
     ds = tf.data.Dataset.from_tensor_slices(
@@ -231,10 +264,15 @@ class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(metric_outputs['train']['num_examples'], 0)
     self.assertTrue(tf.math.is_nan(metric_outputs['train']['loss']))
 
+  @parameterized.named_parameters([
+      ('keras_opt', _get_keras_optimizer_fn),
+      ('tff_opt', _get_tff_optimizer),
+  ])
   @test_utils.skip_test_for_multi_gpu
-  def test_get_model_weights(self):
+  def test_get_model_weights(self, server_optimizer):
     iterative_process = federated_sgd.build_federated_sgd_process(
-        model_fn=model_examples.LinearRegression)
+        model_fn=model_examples.LinearRegression,
+        server_optimizer_fn=server_optimizer())
 
     num_clients = 3
     ds = tf.data.Dataset.from_tensor_slices(
@@ -257,12 +295,17 @@ class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
       self.assertAllClose(state.model.trainable,
                           iterative_process.get_model_weights(state).trainable)
 
-  def test_construction_calls_model_fn(self):
+  @parameterized.named_parameters([
+      ('keras_opt', _get_keras_optimizer_fn),
+      ('tff_opt', _get_tff_optimizer),
+  ])
+  def test_construction_calls_model_fn(self, server_optimizer):
     # Assert that the the process building does not call `model_fn` too many
     # times. `model_fn` can potentially be expensive (loading weights,
     # processing, etc).
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
-    federated_sgd.build_federated_sgd_process(model_fn=mock_model_fn)
+    federated_sgd.build_federated_sgd_process(
+        model_fn=mock_model_fn, server_optimizer_fn=server_optimizer())
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 4)
 

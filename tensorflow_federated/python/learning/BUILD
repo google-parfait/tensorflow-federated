@@ -147,13 +147,14 @@ py_library(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 
 py_cpu_gpu_test(
     name = "federated_sgd_test",
-    size = "medium",
+    size = "large",
     srcs = ["federated_sgd_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -167,6 +168,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )
 
