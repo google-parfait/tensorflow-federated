@@ -21,6 +21,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":build_tree_from_leaf",
         ":hierarchical_histogram_factory",
         "//tensorflow_federated/python/aggregators:differential_privacy",
         "//tensorflow_federated/python/core/api:test_case",
@@ -55,4 +56,35 @@ py_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
     ],
+)
+
+py_library(
+    name = "hierarchical_histogram_decoder",
+    srcs = ["hierarchical_histogram_decoder.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "hierarchical_histogram_decoder_test",
+    srcs = ["hierarchical_histogram_decoder_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":build_tree_from_leaf",
+        ":hierarchical_histogram_decoder",
+    ],
+)
+
+py_library(
+    name = "build_tree_from_leaf",
+    srcs = ["build_tree_from_leaf.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "build_tree_from_leaf_test",
+    srcs = ["build_tree_from_leaf_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":build_tree_from_leaf"],
 )

@@ -14,7 +14,6 @@
 """Tests for hierarchical_histogram_factory."""
 
 import collections
-import math
 
 from absl.testing import parameterized
 import numpy as np
@@ -22,6 +21,7 @@ import tensorflow as tf
 import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import differential_privacy
+from tensorflow_federated.python.analytics.hierarchical_histogram import build_tree_from_leaf
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory as hihi_factory
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
@@ -32,38 +32,6 @@ from tensorflow_federated.python.core.templates import measured_process
 
 _test_central_dp_query = tfp.privacy.dp_query.tree_aggregation_query.CentralTreeSumQuery(
     stddev=0.0)
-
-
-def _create_hierarchical_histogram(histogram, arity: int, depth: int = None):
-  """Utility function to create the hierarchical histogram.
-
-  Args:
-    histogram: The input histogram.
-    arity: The branching factor of the hierarchical histogram.
-    depth: The depth of the tree. If `depth is None`, then the depth is derived
-      from the size of `histogram`.
-
-  Returns:
-      A list of 1-D lists. Each inner list represents one layer of the
-      hierarchical histogram.
-  """
-  if depth is None:
-    depth = math.ceil(math.log(len(histogram), arity)) + 1
-  size_ = arity**(depth - 1)
-  histogram = np.pad(
-      histogram, (0, size_ - len(histogram)),
-      'constant',
-      constant_values=(0, 0)).tolist()
-
-  def _shrink_histogram(histogram):
-    return np.sum((np.reshape(histogram, (-1, arity))), axis=1).tolist()
-
-  hierarchical_histogram = [histogram]
-  for _ in range(depth - 1):
-    hierarchical_histogram = [_shrink_histogram(hierarchical_histogram[0])
-                             ] + hierarchical_histogram
-
-  return hierarchical_histogram
 
 
 class TreeAggregationFactoryComputationTest(test_case.TestCase,
@@ -208,7 +176,7 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
             max(l1_bound, np.linalg.norm(x, ord=1))) for x in client_histograms
     ]
     summed_histogram = np.sum(clipped_client_histograms, axis=0).tolist()
-    reference_hierarchical_histogram = _create_hierarchical_histogram(
+    reference_hierarchical_histogram = build_tree_from_leaf.create_hierarchical_histogram(
         summed_histogram, arity)
 
     self.assertAllClose(reference_hierarchical_histogram, output.result)
@@ -244,7 +212,7 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
             max(l1_bound, np.linalg.norm(x, ord=1))) for x in client_histograms
     ]
     summed_histogram = np.sum(clipped_client_histograms, axis=0).tolist()
-    reference_hierarchical_histogram = _create_hierarchical_histogram(
+    reference_hierarchical_histogram = build_tree_from_leaf.create_hierarchical_histogram(
         summed_histogram, arity)
 
     self.assertAllClose(
