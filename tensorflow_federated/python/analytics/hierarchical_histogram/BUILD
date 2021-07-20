@@ -62,6 +62,7 @@ py_library(
     name = "hierarchical_histogram_decoder",
     srcs = ["hierarchical_histogram_decoder.py"],
     srcs_version = "PY3",
+    deps = [":build_tree_from_leaf"],
 )
 
 py_test(

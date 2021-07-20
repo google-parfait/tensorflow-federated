@@ -16,7 +16,12 @@
 import math
 from typing import Tuple
 
+import numpy as np
+from scipy import optimize
+
 import tensorflow as tf
+
+from tensorflow_federated.python.analytics.hierarchical_histogram import build_tree_from_leaf
 
 # TODO(b/194028367): Re-organize the below class into several functions.
 
@@ -103,6 +108,66 @@ class HierarchicalHistogramDecoder():
     left_most_child = int(index * (self._arity**reverse_depth))
     right_most_child = int((index + 1) * (self._arity**reverse_depth) - 1)
     return left_most_child, right_most_child
+
+  def _flatten_hierarhical_hist(self):
+    """Flattens the hierarchical histogram."""
+    flattened_hh = []
+    for layer in range(self._num_layers):
+      flattened_hh.extend(self._hierarchical_histogram[layer])
+    return np.array(flattened_hh)
+
+  def _construct_matrix(self):
+    """Constructs the matrix for the least square optimization."""
+    row_size = (self._arity**self._num_layers - 1) // (self._arity - 1)
+    col_size = self._arity**(self._num_layers - 1)
+    matrix = np.zeros([row_size, col_size])
+
+    row_index = 0
+    for layer in range(self._num_layers):
+      node_num = self._arity**layer
+      for index in range(0, node_num):
+        left, right = self._left_right_most_leaf(layer, index)
+        for col_index in range(left, right + 1):
+          matrix[row_index][col_index] = 1
+        row_index += 1
+    return matrix
+
+  def _check_consistency(self) -> bool:
+    """Checks whether the hierarchical histogram is consistent."""
+    for layer in range(self._num_layers - 1):
+      for index in range(self._arity**layer):
+        parent = self._hierarchical_histogram[layer][index]
+        children_sum = 0.
+        for child in range(index * self._arity, (index + 1) * self._arity):
+          children_sum += self._hierarchical_histogram[layer + 1][child]
+        if not np.isclose(parent, children_sum):
+          return False
+    return True
+
+  def enforce_consistency(self):
+    """Make the tree consistent by solving a least square optimization problem.
+
+    See 'Answering Range Queries Under Local Differential Privacy. Graham
+    Cormode, Tejas Kulkarni, Divesh Srivastava' for details. Improve the
+    accuracy of range queries. When this function is invoked, `use_efficient`
+    will be automatically set to `False` because using both optimizations does
+    not further improve the accuracy.
+    """
+
+    # As consistency enforcement and Honaker trick together does not further
+    # improve the query accuracy. Honaker trick will be automatically disabled
+    # if this function is called.
+    self._use_efficient = False
+
+    if self._check_consistency():
+      return
+
+    ls_matrix = self._construct_matrix()
+    ls_rhs = self._flatten_hierarhical_hist()
+    consistent_hist = optimize.lsq_linear(
+        ls_matrix, ls_rhs, bounds=(0, np.inf)).x
+    self._hierarchical_histogram = build_tree_from_leaf.create_hierarchical_histogram(
+        consistent_hist, self._arity)
 
   def _check_index(self, layer: int, index: int):
     """Checks whether a node index is legal.

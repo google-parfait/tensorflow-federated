@@ -29,8 +29,49 @@ def _create_hierarchical_histogram(arity, depth):
   return tf.ragged.constant(hierarchical_histogram)
 
 
+def _create_noisy_hierarchical_histogram(arity, depth, scale=1.0):
+  """Utility function to create the hierarchical histogram with noise."""
+  hist = np.arange(arity**(depth - 1))
+  hierarchical_histogram = build_tree_from_leaf.create_hierarchical_histogram(
+      hist, arity)
+  noisy_hierarchical_histogram = [
+      v + np.random.normal(size=(len(v),), scale=scale)
+      for v in hierarchical_histogram
+  ]
+  return tf.ragged.constant(noisy_hierarchical_histogram)
+
+
 class HierarchicalHistogramDecoderTest(tf.test.TestCase,
                                        parameterized.TestCase):
+
+  @parameterized.product(
+      is_consistent=[True, False],
+      arity=[2, 3],
+      depth=[2, 4, 8],
+  )
+  def test_check_consistency(self, is_consistent, arity, depth):
+    if is_consistent:
+      hierarchical_histogram = _create_hierarchical_histogram(arity, depth)
+    else:
+      hierarchical_histogram = _create_noisy_hierarchical_histogram(
+          arity, depth)
+    decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
+        hierarchical_histogram)
+    self.assertEqual(decoder._check_consistency(), is_consistent)
+
+  @parameterized.product(
+      arity=[2, 3],
+      depth=[2, 3],
+      scale=[0.1, 1., 4.],
+  )
+  def test_enforce_consistency(self, arity, depth, scale):
+    noisy_hierarchical_histogram = _create_noisy_hierarchical_histogram(
+        arity, depth, scale)
+    decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
+        noisy_hierarchical_histogram)
+    decoder.enforce_consistency()
+
+    self.assertTrue(decoder._check_consistency())
 
   @parameterized.named_parameters(
       ('test_1', tf.ragged.constant([[0., 0.]])),
