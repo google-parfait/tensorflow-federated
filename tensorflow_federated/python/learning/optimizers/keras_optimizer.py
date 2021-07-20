@@ -126,6 +126,7 @@ def build_or_verify_tff_optimizer(
   Returns:
     A `tff.learning.optimizers.Optimizer`.
   """
+  print(f'mingqing: {type(optimizer_fn)}')
   if isinstance(optimizer_fn, optimizer.Optimizer):
     return optimizer_fn
   elif callable(optimizer_fn):
