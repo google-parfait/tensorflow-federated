@@ -176,13 +176,16 @@ class ConstructDatasetsOnClientsComputationTest(absltest.TestCase):
           int_identity, test_int64_sequence_struct_computation)
 
   def test_raises_computation_no_dataset_parameter(self):
-    no_dataset_comp = computations.federated_computation(lambda x: x, tf.int32)
-    with self.assertRaises(TypeError):
+    no_dataset_comp = computations.federated_computation(
+        lambda x: x, [tf.int32])
+    with self.assertRaises(
+        iterative_process_compositions.SequenceTypeNotFoundError):
       iterative_process_compositions.compose_dataset_computation_with_computation(
           int_dataset_computation, no_dataset_comp)
 
   def test_raises_mismatched_dataset_comp_return_type_and_sequence_type(self):
-    with self.assertRaises(TypeError):
+    with self.assertRaises(
+        iterative_process_compositions.SequenceTypeNotAssignableError):
       iterative_process_compositions.compose_dataset_computation_with_computation(
           float_dataset_computation, test_int64_sequence_struct_computation)
 

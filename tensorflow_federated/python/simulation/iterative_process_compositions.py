@@ -24,6 +24,14 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import iterative_process
 
 
+class SequenceTypeNotAssignableError(TypeError):
+  pass
+
+
+class SequenceTypeNotFoundError(TypeError):
+  pass
+
+
 def compose_dataset_computation_with_computation(
     dataset_computation: computation_base.Computation,
     computation_body: computation_base.Computation,
@@ -124,8 +132,9 @@ def compose_dataset_computation_with_computation(
         structure.iter_elements(comp_body_param_type)):
       if is_desired_federated_sequence(elem_type):
         if dataset_index is not None:
-          raise TypeError('Cannot accept an `computation_body` computation '
-                          'declares more than one sequence parameter; '
+          raise TypeError('Cannot accept a `computation_body` computation '
+                          'that declares more than one sequence parameter '
+                          'matching the expected dataset type; '
                           'received a computation declaring parameter '
                           '{}.'.format(comp_body_param_type))
         dataset_index = idx
@@ -133,11 +142,25 @@ def compose_dataset_computation_with_computation(
       else:
         new_param_elements.append((elem_name, elem_type))
     if dataset_index is None:
-      raise TypeError(
-          'No sequence parameter found in `computation_body` '
-          'argument signature matching `dataset_computation` result signature.'
-          '\nArgument signature: {}\nResult signature: {}'.format(
-              comp_body_param_type, dataset_return_type))
+      # Raise more informative error message in the case that computation_body
+      # accepts sequences.
+      sequence_types = []
+      for idx, (elem_name, elem_type) in enumerate(
+          structure.iter_elements(comp_body_param_type)):
+        if elem_type.is_federated() and elem_type.member.is_sequence():
+          sequence_types.append(elem_type.member)
+      if sequence_types:
+        raise SequenceTypeNotAssignableError(
+            'No sequence parameter assignable from expected dataset '
+            'computation result type found in `computation_body`. '
+            '\nList of sequences in argument signature: {}\nExpected sequence type: '
+            '{}'.format(sequence_types, dataset_return_type))
+      else:
+        raise SequenceTypeNotFoundError(
+            'No sequence parameter found in `computation_body`, but '
+            'composition with a computation yielding sequences requested.'
+            '\nArgument signature: {}\nExpected sequence type: {}'.format(
+                comp_body_param_type, dataset_return_type))
     new_param_type = computation_types.StructType(new_param_elements)
 
     @computations.federated_computation(new_param_type)
@@ -155,7 +178,7 @@ def compose_dataset_computation_with_computation(
     return new_computation
   else:
     raise TypeError(
-        '`computation_body` is not a single argument matching the'
+        '`computation_body` is not a single argument matching the '
         'signature of `dataset_computation` result signature, nor a struct '
         'of arguments.\n'
         'Argument signature: {}\n'
