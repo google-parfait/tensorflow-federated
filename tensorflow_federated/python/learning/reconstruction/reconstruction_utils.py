@@ -13,7 +13,7 @@
 # limitations under the License.
 """Shared utils for Federated Reconstruction training and evaluation."""
 
-from typing import Callable, Iterable, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import tensorflow as tf
 
@@ -166,16 +166,3 @@ def has_only_global_variables(model: model_lib.Model) -> bool:
   if local_variables_list:
     return False
   return True
-
-
-def create_optimizer_vars(
-    model: model_lib.Model,
-    optimizer: tf.keras.optimizers.Optimizer) -> Iterable[tf.Variable]:
-  """Applies a placeholder update to optimizer to enable getting its variables."""
-  delta = tf.nest.map_structure(tf.zeros_like,
-                                get_global_variables(model).trainable)
-  grads_and_vars = tf.nest.map_structure(
-      lambda x, v: (-1.0 * x, v), tf.nest.flatten(delta),
-      tf.nest.flatten(get_global_variables(model).trainable))
-  optimizer.apply_gradients(grads_and_vars, name='server_update')
-  return optimizer.variables()

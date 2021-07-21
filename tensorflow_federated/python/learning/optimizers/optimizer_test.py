@@ -22,7 +22,6 @@ from tensorflow_federated.python.learning.optimizers import optimizer
 class OptimizerChecksTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('zero', 0.0),
       ('negative', -1.0),
       ('none', None),
       ('not_float', '0.1'),

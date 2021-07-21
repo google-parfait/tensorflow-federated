@@ -73,8 +73,8 @@ class Optimizer(abc.ABC):
 
 def check_learning_rate(lr):
   py_typecheck.check_type(lr, float)
-  if lr <= 0.0:
-    raise ValueError('Learning rate must be positive.')
+  if lr < 0.0:
+    raise ValueError('Learning rate must be non-negative.')
 
 
 def check_momentum(momentum):

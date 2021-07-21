@@ -62,6 +62,8 @@ from tensorflow_federated.python.core.templates import iterative_process as iter
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning.framework import optimizer_utils
+from tensorflow_federated.python.learning.optimizers import keras_optimizer
+from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.reconstruction import keras_utils
 from tensorflow_federated.python.learning.reconstruction import model as model_lib
 from tensorflow_federated.python.learning.reconstruction import reconstruction_utils
@@ -73,7 +75,8 @@ AggregationFactory = Union[factory.WeightedAggregationFactory,
 LossFn = Callable[[], tf.keras.losses.Loss]
 MetricsFn = Callable[[], List[tf.keras.metrics.Metric]]
 ModelFn = Callable[[], model_lib.Model]
-OptimizerFn = Callable[[], tf.keras.optimizers.Optimizer]
+OptimizerFn = Union[Callable[[], tf.keras.optimizers.Optimizer],
+                    optimizer_base.Optimizer]
 
 
 @attr.s(eq=False, frozen=True)
@@ -104,8 +107,8 @@ def _build_server_init_fn(
   Args:
     model_fn: A no-arg function that returns a
       `tff.learning.reconstruction.Model`.
-    server_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer`.
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
+      function that returns a `tf.keras.optimizers.Optimizer`.
     aggregation_init_computation: A `tff.Computation` which initializes state
       for the aggregation process which will perform aggregation from clients to
       server.
@@ -121,14 +124,15 @@ def _build_server_init_fn(
   @computations.tf_computation
   def server_init_tf():
     """Initialize the TensorFlow-only portions of the server state."""
-    model = model_fn()
-    server_optimizer = server_optimizer_fn()
-    # Create optimizer variables so we have a place to assign the optimizer's
-    # state.
-    server_optimizer_vars = reconstruction_utils.create_optimizer_vars(
-        model, server_optimizer)
-    return reconstruction_utils.get_global_variables(
-        model), server_optimizer_vars
+    model_weights = reconstruction_utils.get_global_variables(model_fn())
+    optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        server_optimizer_fn,
+        model_weights.trainable,
+        disjoint_init_and_next=True)
+    trainable_tensor_specs = tf.nest.map_structure(
+        lambda v: tf.TensorSpec(v.shape, v.dtype), model_weights.trainable)
+    optimizer_state = optimizer.initialize(trainable_tensor_specs)
+    return model_weights, optimizer_state
 
   @computations.federated_computation()
   def server_init_tff():
@@ -157,8 +161,8 @@ def _build_server_update_fn(
   Args:
     model_fn: A no-arg function that returns a
       `tff.learning.reconstruction.Model`.
-    server_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer`.
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
+      function that returns a `tf.keras.optimizers.Optimizer`.
     server_state_type: Type of server state.
     model_weights_type: Type of model weights.
     aggregator_state_type: Type of the `state` element of the
@@ -190,33 +194,37 @@ def _build_server_update_fn(
     """
     with tf.init_scope():
       model = model_fn()
-      server_optimizer = server_optimizer_fn()
-      # Create optimizer variables so we have a place to assign the optimizer's
-      # state.
-      server_optimizer_vars = reconstruction_utils.create_optimizer_vars(
-          model, server_optimizer)
-
     global_model_weights = reconstruction_utils.get_global_variables(model)
+    optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        server_optimizer_fn,
+        global_model_weights.trainable,
+        disjoint_init_and_next=True)
+    optimizer_state = server_state.optimizer_state
+
     # Initialize the model with the current state.
-    tf.nest.map_structure(lambda a, b: a.assign(b),
-                          (global_model_weights, server_optimizer_vars),
-                          (server_state.model, server_state.optimizer_state))
+    tf.nest.map_structure(lambda a, b: a.assign(b), global_model_weights,
+                          server_state.model)
 
     weights_delta, has_non_finite_weight = (
         tensor_utils.zero_all_if_any_non_finite(weights_delta))
 
     # We ignore the update if the weights_delta is non finite.
     if tf.equal(has_non_finite_weight, 0):
-      grads_and_vars = tf.nest.map_structure(
-          lambda x, v: (-1.0 * x, v), tf.nest.flatten(weights_delta),
-          tf.nest.flatten(global_model_weights.trainable))
-      server_optimizer.apply_gradients(grads_and_vars, name='server_update')
+      negative_weights_delta = tf.nest.map_structure(lambda w: -1.0 * w,
+                                                     weights_delta)
+      optimizer_state, updated_weights = optimizer.next(
+          optimizer_state, global_model_weights.trainable,
+          negative_weights_delta)
+      if not isinstance(optimizer, keras_optimizer.KerasOptimizer):
+        # Keras optimizer mutates model variables within the `next` step.
+        tf.nest.map_structure(lambda a, b: a.assign(b),
+                              global_model_weights.trainable, updated_weights)
 
     # Create a new state based on the updated model.
     return structure.update_struct(
         server_state,
         model=global_model_weights,
-        optimizer_state=server_optimizer_vars,
+        optimizer_state=optimizer_state,
         model_broadcast_state=broadcaster_state,
         delta_aggregate_state=aggregator_state,
     )
@@ -253,13 +261,13 @@ def _build_client_update_fn(
       Metrics are not computed on reconstruction batches.
     dataset_type: Type of TF dataset.
     model_weights_type: Type of model weights.
-    client_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer` for training the model weights on the
-      client post-reconstruction.
-    reconstruction_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer` for reconstructing the local variables
-      with global variables frozen. This optimizer is used before the one given
-      by client_optimizer_fn.
+    client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
+      function that returns a `tf.keras.optimizers.Optimizer` for training
+      the model weights on the client post-reconstruction.
+    reconstruction_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a
+      no-arg function that returns a `tf.keras.optimizers.Optimizer` for
+      reconstructing the local variables with global variables frozen. This
+      optimizer is used before the one given by `client_optimizer_fn`.
     dataset_split_fn: A `reconstruction_utils.DatasetSplitFn` taking in a client
       dataset and producing two TF datasets. The first is iterated over during
       reconstruction, and the second is iterated over post-reconstruction. This
@@ -289,8 +297,6 @@ def _build_client_update_fn(
     """
     with tf.init_scope():
       model = model_fn()
-      client_optimizer = client_optimizer_fn()
-      reconstruction_optimizer = reconstruction_optimizer_fn()
 
       metrics = []
       if metrics_fn is not None:
@@ -305,32 +311,51 @@ def _build_client_update_fn(
     local_model_weights = reconstruction_utils.get_local_variables(model)
     tf.nest.map_structure(lambda a, b: a.assign(b), global_model_weights,
                           initial_model_weights)
+    client_optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        client_optimizer_fn,
+        global_model_weights.trainable,
+        disjoint_init_and_next=False)
+    reconstruction_optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        reconstruction_optimizer_fn,
+        local_model_weights.trainable,
+        disjoint_init_and_next=False)
 
     @tf.function
-    def reconstruction_reduce_fn(num_examples_sum, batch):
+    def reconstruction_reduce_fn(state, batch):
       """Runs reconstruction training on local client batch."""
+      num_examples_sum, optimizer_state = state
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch, training=True)
         batch_loss = client_loss(
             y_true=output.labels, y_pred=output.predictions)
 
       gradients = tape.gradient(batch_loss, local_model_weights.trainable)
-      reconstruction_optimizer.apply_gradients(
-          zip(gradients, local_model_weights.trainable))
+      optimizer_state, updated_weights = reconstruction_optimizer.next(
+          optimizer_state, local_model_weights.trainable, gradients)
+      if not isinstance(reconstruction_optimizer,
+                        keras_optimizer.KerasOptimizer):
+        # Keras optimizer mutates model variables within the `next` step.
+        tf.nest.map_structure(lambda a, b: a.assign(b),
+                              local_model_weights.trainable, updated_weights)
 
       return num_examples_sum + output.num_examples
 
     @tf.function
-    def train_reduce_fn(num_examples_sum, batch):
+    def train_reduce_fn(state, batch):
       """Runs one step of client optimizer on local client batch."""
+      num_examples_sum, optimizer_state = state
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch, training=True)
         batch_loss = client_loss(
             y_true=output.labels, y_pred=output.predictions)
 
       gradients = tape.gradient(batch_loss, global_model_weights.trainable)
-      client_optimizer.apply_gradients(
-          zip(gradients, global_model_weights.trainable))
+      optimizer_state, updated_weights = client_optimizer.next(
+          optimizer_state, global_model_weights.trainable, gradients)
+      if not isinstance(client_optimizer, keras_optimizer.KerasOptimizer):
+        # Keras optimizer mutates model variables within the `next` step.
+        tf.nest.map_structure(lambda a, b: a.assign(b),
+                              global_model_weights.trainable, updated_weights)
 
       # Update each metric.
       for metric in metrics:
@@ -345,12 +370,26 @@ def _build_client_update_fn(
     if local_model_weights.trainable:
       # Ignore output number of examples used in reconstruction, since this
       # isn't included in `client_weight`.
+      def initial_state_reconstruction_reduce():
+        trainable_tensor_specs = tf.nest.map_structure(
+            lambda v: tf.TensorSpec(v.shape, v.dtype),
+            local_model_weights.trainable)
+        return tf.constant(0), reconstruction_optimizer.initialize(
+            trainable_tensor_specs)
+
       recon_dataset.reduce(
-          initial_state=tf.constant(0), reduce_func=reconstruction_reduce_fn)
+          initial_state=initial_state_reconstruction_reduce(),
+          reduce_func=reconstruction_reduce_fn)
 
     # Train the global variables, keeping local variables frozen.
-    num_examples_sum = post_recon_dataset.reduce(
-        initial_state=tf.constant(0), reduce_func=train_reduce_fn)
+    def initial_state_train_reduce():
+      trainable_tensor_specs = tf.nest.map_structure(
+          lambda v: tf.TensorSpec(v.shape, v.dtype),
+          global_model_weights.trainable)
+      return tf.constant(0), client_optimizer.initialize(trainable_tensor_specs)
+
+    num_examples_sum, _ = post_recon_dataset.reduce(
+        initial_state=initial_state_train_reduce(), reduce_func=train_reduce_fn)
 
     weights_delta = tf.nest.map_structure(lambda a, b: a - b,
                                           global_model_weights.trainable,
@@ -550,15 +589,16 @@ def build_training_process(
       by the metric, and are aggregated across clients as in
       `federated_aggregate_keras_metric`. If None, no metrics are applied.
       Metrics are not computed on reconstruction batches.
-    server_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer` for applying updates to the global model
-      on the server.
-    client_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer` for local client training after
-      reconstruction.
-    reconstruction_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer` used to reconstruct the local variables,
-      with the global ones frozen, or the first stage described above.
+    server_optimizer_fn:  A `tff.learning.optimizers.Optimizer`, or a no-arg
+      function that returns a `tf.keras.optimizers.Optimizer` for applying
+      updates to the global model on the server.
+    client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
+      function that returns a `tf.keras.optimizers.Optimizer` for local client
+      training after reconstruction.
+    reconstruction_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a
+      no-arg function that returns a `tf.keras.optimizers.Optimizer` used to
+      reconstruct the local variables, with the global ones frozen, or the first
+      stage described above.
     dataset_split_fn: A `reconstruction_utils.DatasetSplitFn` taking in a single
       TF dataset and producing two TF datasets. The first is iterated over
       during reconstruction, and the second is iterated over
