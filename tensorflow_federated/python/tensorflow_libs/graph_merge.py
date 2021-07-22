@@ -21,15 +21,39 @@ import tensorflow as tf
 from tensorflow_federated.python.tensorflow_libs import graph_spec
 
 
+# TODO(b/168706001): the last usages of the uuid based implementation is in the
+# TFExecutor, which could potentially be moved to
+# `uniquify_shared_names_with_suffix`, or this could be updated to delegate to
+# that using a uuid suffix.
 def uniquify_shared_names(graph_def):
   """Appends unique identifier to any shared names present in `graph`."""
   # TODO(b/117428091): Upgrade our TF serialization mechanisms in order to
   # unblock using more modern TF compositional constructs, and avoid direct
   # proto manipulation as is happening here.
   for x in graph_def.node:
-    if 'shared_name' in list(x.attr.keys()):
-      uid = tf.compat.as_bytes(str(uuid.uuid1())[:8])
-      x.attr['shared_name'].s += uid
+    shared_name = x.attr.get('shared_name')
+    if shared_name is not None:
+      uid = str(uuid.uuid1())[:8].encode('utf-8')
+      shared_name.s += uid
+  return graph_def
+
+
+def uniquify_shared_names_with_suffix(graph_def: tf.compat.v1.GraphDef,
+                                      suffix: bytes) -> tf.compat.v1.GraphDef:
+  """Appends unique identifier to any shared names present in `graph`."""
+  # TODO(b/117428091): Upgrade our TF serialization mechanisms in order to
+  # unblock using more modern TF compositional constructs, and avoid direct
+  # proto manipulation as is happening here.
+  num_empty_shared_names = 0
+  for x in graph_def.node:
+    shared_name = x.attr.get('shared_name')
+    if shared_name is not None:
+      if not shared_name.s:
+        # Encountered an empty string shared name, avoid creating a shared name
+        # that starts with an underscore (not allowed by TF).
+        shared_name.s = f'empty_{num_empty_shared_names}'.encode('utf-8')
+        num_empty_shared_names += 1
+      shared_name.s += b'_' + suffix.encode('utf-8')
   return graph_def
 
 
@@ -56,7 +80,8 @@ def _concat_graphs(graph_def_list, graph_names_list):
   for k in range(len(graph_names_list)):
     # The GraphDef we are about to import must have its shared name attributes
     # set to unique values to avoid variables being wired together incorrectly.
-    graph_def_to_merge = uniquify_shared_names(graph_def_list[k])
+    graph_def_to_merge = uniquify_shared_names_with_suffix(
+        graph_def_list[k], graph_names_list[k])
     with merged_graph.as_default():
       tf.import_graph_def(graph_def_to_merge, name=graph_names_list[k])
   return merged_graph
@@ -136,7 +161,7 @@ def _parse_graph_spec_list(arg_list):
   init_op_names = [x.init_op for x in arg_list]
   in_names = [x.in_names for x in arg_list]
   out_names = [x.out_names for x in arg_list]
-  graph_names = ['graph_{}'.format(k) for k in range(len(arg_list))]
+  graph_names = [f'graph_{k}' for k in range(len(arg_list))]
 
   return (graph_defs, init_op_names, in_names, out_names, graph_names)
 
@@ -208,14 +233,16 @@ def compose_graph_specs(graph_spec_list):
     """
     with tf.Graph().as_default() as composed_graph:
       output_elements = tf.import_graph_def(
-          graph_def_list[0],
+          uniquify_shared_names_with_suffix(graph_def_list[0],
+                                            graph_names_list[0]),
           return_elements=out_names[0],
           name=graph_names_list[0])
     for k in range(1, len(graph_names_list)):
       # The GraphDef we are about to import must have its shared name
       # attributes set to unique values to avoid variables being wired together
       # incorrectly.
-      graph_def_to_merge = uniquify_shared_names(graph_def_list[k])
+      graph_def_to_merge = uniquify_shared_names_with_suffix(
+          graph_def_list[k], graph_names_list[k])
       input_map = dict(zip(in_names[k], output_elements))
       with composed_graph.as_default():
         output_elements = tf.import_graph_def(

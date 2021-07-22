@@ -31,7 +31,9 @@ def _make_add_variable_number_graph(var_name=None):
   with tf.Graph().as_default() as graph:
     input_val = tf.compat.v1.placeholder(tf.float32, name='input')
     var = tf.Variable(initial_value=0.0, name=var_name, import_scope='')
-    assign_op = var.assign_add(tf.constant(1.0))
+    one = tf.Variable(initial_value=0.0, name='one', import_scope='')
+    with tf.control_dependencies([one.assign_add(1)]):
+      assign_op = var.assign_add(one.read_value())
     out = tf.add(input_val, assign_op)
   return graph, input_val.name, out.name
 
@@ -79,15 +81,14 @@ class ConcatenateInputsAndOutputsTest(tf.test.TestCase):
     merged_graph, init_op_name, in_name_maps, out_name_maps = graph_merge.concatenate_inputs_and_outputs(
         arg_list)
 
-    with merged_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        sess.run(init_op_name)
-        outputs = sess.run(
-            [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
-            feed_dict={
-                in_name_maps[0][input_name_1]: 1.0,
-                in_name_maps[1][input_name_2]: 2.0
-            })
+    with tf.compat.v1.Session(graph=merged_graph) as sess:
+      sess.run(init_op_name)
+      outputs = sess.run(
+          [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
+          feed_dict={
+              in_name_maps[0][input_name_1]: 1.0,
+              in_name_maps[1][input_name_2]: 2.0
+          })
 
     self.assertAllClose(outputs, np.array([2., 3.]))
 
@@ -111,19 +112,18 @@ class ConcatenateInputsAndOutputsTest(tf.test.TestCase):
     merged_graph, init_op_name, in_name_maps, out_name_maps = graph_merge.concatenate_inputs_and_outputs(
         arg_list)
 
-    with merged_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        sess.run(init_op_name)
-        outputs = sess.run(
-            [
-                out_name_maps[0][output_name_1],
-                out_name_maps[1][output_name_2], out_name_maps[2][output_name_3]
-            ],
-            feed_dict={
-                in_name_maps[0][input_name_1]: 1.0,
-                in_name_maps[1][input_name_2]: 2.0,
-                in_name_maps[2][input_name_3]: 3.0
-            })
+    with tf.compat.v1.Session(graph=merged_graph) as sess:
+      sess.run(init_op_name)
+      outputs = sess.run(
+          [
+              out_name_maps[0][output_name_1], out_name_maps[1][output_name_2],
+              out_name_maps[2][output_name_3]
+          ],
+          feed_dict={
+              in_name_maps[0][input_name_1]: 1.0,
+              in_name_maps[1][input_name_2]: 2.0,
+              in_name_maps[2][input_name_3]: 3.0
+          })
 
     self.assertAllClose(outputs, np.array([2., 3., 4.]))
 
@@ -145,11 +145,10 @@ class ConcatenateInputsAndOutputsTest(tf.test.TestCase):
     merged_graph, init_op_name, _, out_name_maps = graph_merge.concatenate_inputs_and_outputs(
         arg_list)
 
-    with merged_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        sess.run(init_op_name)
-        outputs = sess.run(
-            [out_name_maps[0][out1.name], out_name_maps[1][out2.name]])
+    with tf.compat.v1.Session(graph=merged_graph) as sess:
+      sess.run(init_op_name)
+      outputs = sess.run(
+          [out_name_maps[0][out1.name], out_name_maps[1][out2.name]])
 
     self.assertAllClose(outputs, np.array([1., 2.]))
 
@@ -164,15 +163,14 @@ class ConcatenateInputsAndOutputsTest(tf.test.TestCase):
     merged_graph, init_op_name, in_name_maps, out_name_maps = graph_merge.concatenate_inputs_and_outputs(
         arg_list)
 
-    with merged_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        sess.run(init_op_name)
-        outputs = sess.run(
-            [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
-            feed_dict={
-                in_name_maps[0][input_name_1]: 1.0,
-                in_name_maps[1][input_name_2]: 2.0
-            })
+    with tf.compat.v1.Session(graph=merged_graph) as sess:
+      sess.run(init_op_name)
+      outputs = sess.run(
+          [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
+          feed_dict={
+              in_name_maps[0][input_name_1]: 1.0,
+              in_name_maps[1][input_name_2]: 2.0
+          })
 
     self.assertAllClose(outputs, np.array([2., 3.]))
 
@@ -191,30 +189,31 @@ class ConcatenateInputsAndOutputsTest(tf.test.TestCase):
     merged_graph, init_op_name, in_name_maps, out_name_maps = graph_merge.concatenate_inputs_and_outputs(
         arg_list)
 
-    with merged_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        sess.run(init_op_name)
-        outputs_1 = sess.run(
-            [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
-            feed_dict={
-                in_name_maps[0][input_name_1]: 1.0,
-                in_name_maps[1][input_name_2]: 2.0
-            })
-        outputs_2 = sess.run(
-            [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
-            feed_dict={
-                in_name_maps[0][input_name_1]: 1.0,
-                in_name_maps[1][input_name_2]: 2.0
-            })
-        outputs_3 = sess.run(
-            [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
-            feed_dict={
-                in_name_maps[0][input_name_1]: 1.0,
-                in_name_maps[1][input_name_2]: 2.0
-            })
+    with tf.compat.v1.Session(graph=merged_graph) as sess:
+      sess.run(init_op_name)
+      outputs_1 = sess.run(
+          [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
+          feed_dict={
+              in_name_maps[0][input_name_1]: 1.0,
+              in_name_maps[1][input_name_2]: 2.0
+          })
+      sess.run(init_op_name)  # TFF is functional, reset session state.
+      outputs_2 = sess.run(
+          [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
+          feed_dict={
+              in_name_maps[0][input_name_1]: 1.0,
+              in_name_maps[1][input_name_2]: 2.0
+          })
+      sess.run(init_op_name)  # TFF is functional, reset session state.
+      outputs_3 = sess.run(
+          [out_name_maps[0][output_name_1], out_name_maps[1][output_name_2]],
+          feed_dict={
+              in_name_maps[0][input_name_1]: 1.0,
+              in_name_maps[1][input_name_2]: 2.0
+          })
     self.assertAllClose(outputs_1, [2., 3.])
-    self.assertAllClose(outputs_2, [3., 4.])
-    self.assertAllClose(outputs_3, [4., 5.])
+    self.assertAllClose(outputs_2, [2., 3.])
+    self.assertAllClose(outputs_3, [2., 3.])
 
   def test_concatenate_inputs_and_outputs_with_dataset_wires_correctly(self):
     dataset_graph, _, dataset_out_name = _make_dataset_constructing_graph()
@@ -234,11 +233,10 @@ class ConcatenateInputsAndOutputsTest(tf.test.TestCase):
     merged_graph, init_op_name, _, out_name_maps = graph_merge.concatenate_inputs_and_outputs(
         arg_list)
 
-    with merged_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        sess.run(init_op_name)
-        tens = sess.run(
-            [out_name_maps[0][out_name_1], out_name_maps[1][out_name_2]])
+    with tf.compat.v1.Session(graph=merged_graph) as sess:
+      sess.run(init_op_name)
+      tens = sess.run(
+          [out_name_maps[0][out_name_1], out_name_maps[1][out_name_2]])
     self.assertEqual(tens, [10, 10])
 
 
@@ -292,14 +290,13 @@ class ComposeGraphSpecTest(tf.test.TestCase):
     composed_graph, init_op_name, in_name_map, out_name_map = graph_merge.compose_graph_specs(
         arg_list)
 
-    with composed_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        sess.run(init_op_name)
-        outputs = sess.run(
-            out_name_map[output_name_2],
-            feed_dict={
-                in_name_map[input_name_1]: 0.0,
-            })
+    with tf.compat.v1.Session(graph=composed_graph) as sess:
+      sess.run(init_op_name)
+      outputs = sess.run(
+          out_name_map[output_name_2],
+          feed_dict={
+              in_name_map[input_name_1]: 0.0,
+          })
 
     self.assertAllClose(outputs, np.array(2.))
 
@@ -327,18 +324,53 @@ class ComposeGraphSpecTest(tf.test.TestCase):
     composed_graph, _, in_name_map, out_name_map = graph_merge.compose_graph_specs(
         arg_list)
 
-    with composed_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        outputs = sess.run(
-            out_name_map[output_name_2],
-            feed_dict={
-                in_name_map[input_name_1]: 0.0,
-            })
+    with tf.compat.v1.Session(graph=composed_graph) as sess:
+      outputs = sess.run(
+          out_name_map[output_name_2],
+          feed_dict={
+              in_name_map[input_name_1]: 0.0,
+          })
 
     self.assertEqual(outputs, 1)
 
     with self.assertRaises(ValueError):
       graph_merge.compose_graph_specs(list(reversed(arg_list)))
+
+  def test_nested_composition_three_add_one_graphs_adds_three(self):
+    graph1, input_name_1, output_name_1 = _make_add_variable_number_graph()
+    graph2, input_name_2, output_name_2 = _make_add_variable_number_graph()
+    graph3, input_name_3, output_name_3 = _make_add_variable_number_graph()
+    with graph1.as_default():
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
+    with graph2.as_default():
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
+    with graph3.as_default():
+      init_op_name_3 = tf.compat.v1.global_variables_initializer().name
+    graph_spec_1 = graph_spec.GraphSpec(graph1.as_graph_def(), init_op_name_1,
+                                        [input_name_1], [output_name_1])
+    graph_spec_2 = graph_spec.GraphSpec(graph2.as_graph_def(), init_op_name_2,
+                                        [input_name_2], [output_name_2])
+    arg_list = [graph_spec_1, graph_spec_2]
+    (partial_merge_graph, partial_merge_init_op_name, partial_merge_in_name_map,
+     partial_merge_out_name_map) = graph_merge.compose_graph_specs(arg_list)
+
+    partial_graph_spec = graph_spec.GraphSpec(
+        partial_merge_graph.as_graph_def(), partial_merge_init_op_name,
+        partial_merge_in_name_map.values(), partial_merge_out_name_map.values())
+    graph_spec_3 = graph_spec.GraphSpec(graph3.as_graph_def(), init_op_name_3,
+                                        [input_name_3], [output_name_3])
+    composed_graph, init_op_name, in_name_map, out_name_map = graph_merge.compose_graph_specs(
+        [graph_spec_3, partial_graph_spec])
+
+    with tf.compat.v1.Session(graph=composed_graph) as sess:
+      sess.run(init_op_name)
+      outputs = sess.run(
+          out_name_map[output_name_3],
+          feed_dict={
+              in_name_map[partial_merge_in_name_map[input_name_1]]: 0.0,
+          })
+
+    self.assertAllClose(outputs, np.array(3.))
 
   def test_compose_three_add_one_graphs_adds_three(self):
     graph1, input_name_1, output_name_1 = _make_add_one_graph()
@@ -360,14 +392,13 @@ class ComposeGraphSpecTest(tf.test.TestCase):
     composed_graph, init_op_name, in_name_map, out_name_map = graph_merge.compose_graph_specs(
         arg_list)
 
-    with composed_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        sess.run(init_op_name)
-        outputs = sess.run(
-            out_name_map[output_name_3],
-            feed_dict={
-                in_name_map[input_name_1]: 0.0,
-            })
+    with tf.compat.v1.Session(graph=composed_graph) as sess:
+      sess.run(init_op_name)
+      outputs = sess.run(
+          out_name_map[output_name_3],
+          feed_dict={
+              in_name_map[input_name_1]: 0.0,
+          })
 
     self.assertAllClose(outputs, np.array(3.))
 
@@ -386,28 +417,29 @@ class ComposeGraphSpecTest(tf.test.TestCase):
     composed_graph, init_op_name, in_name_map, out_name_map = graph_merge.compose_graph_specs(
         arg_list)
 
-    with composed_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        sess.run(init_op_name)
-        output_one = sess.run(
-            out_name_map[output_name_2],
-            feed_dict={
-                in_name_map[input_name_1]: 0.0,
-            })
-        output_two = sess.run(
-            out_name_map[output_name_2],
-            feed_dict={
-                in_name_map[input_name_1]: 0.0,
-            })
-        output_three = sess.run(
-            out_name_map[output_name_2],
-            feed_dict={
-                in_name_map[input_name_1]: 0.0,
-            })
+    with tf.compat.v1.Session(graph=composed_graph) as sess:
+      sess.run(init_op_name)
+      output_one = sess.run(
+          out_name_map[output_name_2],
+          feed_dict={
+              in_name_map[input_name_1]: 0.0,
+          })
+      sess.run(init_op_name)  # TFF is functional, reset session state.
+      output_two = sess.run(
+          out_name_map[output_name_2],
+          feed_dict={
+              in_name_map[input_name_1]: 0.0,
+          })
+      sess.run(init_op_name)  # TFF is functional, reset session state.
+      output_three = sess.run(
+          out_name_map[output_name_2],
+          feed_dict={
+              in_name_map[input_name_1]: 0.0,
+          })
 
     self.assertAllClose(output_one, np.array(2.))
-    self.assertAllClose(output_two, np.array(4.))
-    self.assertAllClose(output_three, np.array(6.))
+    self.assertAllClose(output_two, np.array(2.))
+    self.assertAllClose(output_three, np.array(2.))
 
   def test_compose_with_dataset_wires_correctly(self):
     with tf.Graph().as_default() as dataset_graph:
@@ -439,9 +471,8 @@ class ComposeGraphSpecTest(tf.test.TestCase):
     composed_graph, _, _, out_name_map = graph_merge.compose_graph_specs(
         arg_list)
 
-    with composed_graph.as_default():
-      with tf.compat.v1.Session() as sess:
-        ten = sess.run(out_name_map[reduce_out_name])
+    with tf.compat.v1.Session(graph=composed_graph) as sess:
+      ten = sess.run(out_name_map[reduce_out_name])
     self.assertEqual(ten, 10)
 
 
