@@ -36,7 +36,7 @@ class TestClientData(client_data.ClientData):
   TensorFlow graph (which is memory intensive).
   """
 
-  def __init__(self, tensor_slices_dict):
+  def __init__(self, tensor_slices_dict, allow_empty_datasets=False):
     """Constructs the object from a dictionary of client data.
 
     Note: All clients are required to have non-empty data.
@@ -47,6 +47,9 @@ class TestClientData(client_data.ClientData):
         `tf.data.Dataset.from_tensor_slices`. Note that namedtuples and attrs
         classes are not explicitly supported, but a user can convert their data
         from those formats to a dict, and then use this class.
+      allow_empty_datasets: If True, allows creating client datasets with null
+        data. Defaults to False to protect users from inadvertently generating
+        empty datasets (e.g., programmatically).
 
     Raises:
       ValueError: If a client with no data is found.
@@ -113,6 +116,7 @@ class TestClientData(client_data.ClientData):
         check_types_match([tf.constant(s)], self._dtypes)
 
     self._tensor_slices_dict = tensor_slices_dict
+    self._allow_empty_datasets = allow_empty_datasets
     example_dataset = self.create_tf_dataset_for_client(self.client_ids[0])
     self._element_type_structure = example_dataset.element_spec
 
@@ -214,10 +218,13 @@ class TestClientData(client_data.ClientData):
 
   def create_tf_dataset_for_client(self, client_id):
     tensor_slices = self._tensor_slices_dict[client_id]
-    if tensor_slices:
+    if tensor_slices or self._allow_empty_datasets:
       return tf.data.Dataset.from_tensor_slices(tensor_slices)
     else:
-      raise ValueError('No data found for client {}'.format(client_id))
+      raise ValueError(
+          'No data found for client {}. If you intentionally desire empty '
+          'datasets, please set the `allow_empty_datasets` class argument to '
+          'True.'.format(client_id))
 
   @property
   def element_type_structure(self):

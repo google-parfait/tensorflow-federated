@@ -30,6 +30,10 @@ TEST_DATA = {
     'CLIENT C2': [[100, 101], [202, 203]],
 }
 CLIENT_ID_NOT_IN_TEST_DATA = 'CLIENT D'
+TEST_DATA_WITH_EMPTY_LIST = {
+    'CLIENT A': [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]],
+    'CLIENT B': [],
+}
 TEST_DATA_NOT_DICT = [[[1, 2]], [[1.0, 2.0]]]
 ExampleNamedTuple = collections.namedtuple('ExampleNamedTuple', 'x')
 TEST_DATA_WITH_NAMEDTUPLES = {
@@ -140,6 +144,27 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
           tf.data.Dataset.from_tensor_slices(TEST_DATA[client_id]),
           client_data.create_tf_dataset_for_client(client_id))
 
+  def test_where_client_data_includes_empty_tensor(self):
+    client_data = from_tensor_slices_client_data.TestClientData(
+        TEST_DATA_WITH_EMPTY_LIST, allow_empty_datasets=True)
+    self.assertCountEqual(TEST_DATA_WITH_EMPTY_LIST.keys(),
+                          client_data.client_ids)
+
+    self.assertEqual(client_data.element_type_structure,
+                     tf.TensorSpec(shape=(2,), dtype=tf.float32))
+
+    for client_id in TEST_DATA_WITH_EMPTY_LIST:
+      self.assertSameDatasets(
+          tf.data.Dataset.from_tensor_slices(
+              TEST_DATA_WITH_EMPTY_LIST[client_id]),
+          client_data.create_tf_dataset_for_client(client_id))
+
+  def test_raises_error_if_empty_client_found_and_allow_empty_datasets_is_false(
+      self):
+    with self.assertRaises(ValueError):
+      from_tensor_slices_client_data.TestClientData({'a': []},
+                                                    allow_empty_datasets=False)
+
   def test_where_client_data_is_tuples(self):
     client_data = from_tensor_slices_client_data.TestClientData(
         TEST_DATA_WITH_TUPLES)
@@ -171,9 +196,11 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
               TEST_DATA_WITH_ORDEREDDICTS[client_id]),
           client_data.create_tf_dataset_for_client(client_id))
 
-  def test_raises_error_if_empty_client_found(self):
-    with self.assertRaises(ValueError):
-      from_tensor_slices_client_data.TestClientData({'a': []})
+  def test_create_tf_dataset_for_client_raises_error_if_unknown_client_id(self):
+    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
+
+    with self.assertRaises(KeyError):
+      client_data.create_tf_dataset_for_client(CLIENT_ID_NOT_IN_TEST_DATA)
 
   def test_init_raises_error_if_slices_is_not_dict(self):
     with self.assertRaises(TypeError):
@@ -239,6 +266,35 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     # Iterate over each client, invoking the dataset_computation and ensuring
     # we received a tf.data.Dataset with the correct data.
     for client_id, expected_data in TEST_DATA.items():
+      tf_dataset = dataset_computation(client_id)
+      self.assertIsInstance(tf_dataset, tf.data.Dataset)
+      self.assertLen(expected_data, tf_dataset.cardinality())
+      # Check that everything in tf_dataset is an exact match for the contents
+      # of expected_data at the corresponding index.
+      for expected, actual in zip(expected_data, tf_dataset):
+        self.assertAllEqual(expected, actual.numpy())
+
+  def test_dataset_computation_where_client_data_includes_empty_tensor(self):
+    client_data = from_tensor_slices_client_data.TestClientData(
+        TEST_DATA_WITH_EMPTY_LIST, allow_empty_datasets=True)
+
+    dataset_computation = client_data.dataset_computation
+    self.assertIsInstance(dataset_computation, computation_base.Computation)
+
+    expected_dataset_comp_type_signature = computation_types.FunctionType(
+        computation_types.to_type(tf.string),
+        computation_types.SequenceType(
+            computation_types.TensorType(
+                client_data.element_type_structure.dtype,
+                tf.TensorShape(None))))
+
+    self.assertTrue(
+        dataset_computation.type_signature.is_equivalent_to(
+            expected_dataset_comp_type_signature))
+
+    # Iterate over each client, invoking the dataset_computation and ensuring
+    # we received a tf.data.Dataset with the correct data.
+    for client_id, expected_data in TEST_DATA_WITH_EMPTY_LIST.items():
       tf_dataset = dataset_computation(client_id)
       self.assertIsInstance(tf_dataset, tf.data.Dataset)
       self.assertLen(expected_data, tf_dataset.cardinality())
