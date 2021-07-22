@@ -290,11 +290,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(
         str(federated_data_type), '{<x=float32[?,784],y=int32[?,1]>*}@CLIENTS')
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_fed_recon_with_custom_client_weight_fn(self, optimizer_fn):
+  def test_fed_recon_with_custom_client_weight_fn(self):
     client_data = create_emnist_client_data()
     federated_data = [client_data()]
 
@@ -304,8 +300,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     it_process = training_process.build_training_process(
         local_recon_model_fn,
         loss_fn=tf.keras.losses.SparseCategoricalCrossentropy,
-        client_optimizer_fn=optimizer_fn(0.0001),
-        reconstruction_optimizer_fn=optimizer_fn(0.001),
+        client_optimizer_fn=_get_tff_optimizer(0.0001),
+        reconstruction_optimizer_fn=_get_tff_optimizer(0.001),
         client_weighting=client_weight_fn)
 
     _, train_outputs, _ = self._run_rounds(it_process, federated_data, 5)
@@ -313,11 +309,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
         np.mean([train_outputs[-1]['loss'], train_outputs[-2]['loss']]),
         train_outputs[0]['loss'])
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_server_update_with_inf_weight_is_noop(self, optimizer_fn):
+  def test_server_update_with_inf_weight_is_noop(self):
     client_data = create_emnist_client_data()
     federated_data = [client_data()]
     client_weight_fn = lambda x: np.inf
@@ -325,8 +317,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     it_process = training_process.build_training_process(
         local_recon_model_fn,
         loss_fn=tf.keras.losses.SparseCategoricalCrossentropy,
-        client_optimizer_fn=optimizer_fn(0.001),
-        reconstruction_optimizer_fn=optimizer_fn(0.001),
+        client_optimizer_fn=_get_keras_optimizer_fn(0.001),
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
         client_weighting=client_weight_fn)
 
     state, _, initial_state = self._run_rounds(it_process, federated_data, 1)
@@ -456,12 +448,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertCountEqual(output['aggregation'].keys(),
                           expected_aggregation_keys)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_keras_local_layer_client_weighting_enum_num_examples(
-      self, optimizer_fn):
+  def test_keras_local_layer_client_weighting_enum_num_examples(self):
 
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
@@ -477,8 +464,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
         local_recon_model_fn,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        client_optimizer_fn=optimizer_fn(0.001),
-        reconstruction_optimizer_fn=optimizer_fn(0.001),
+        client_optimizer_fn=_get_keras_optimizer_fn(0.001),
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
 
     server_state = it_process.initialize()
@@ -506,11 +493,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertCountEqual(output['aggregation'].keys(),
                           expected_aggregation_keys)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_keras_local_layer_client_weighting_enum_uniform(self, optimizer_fn):
+  def test_keras_local_layer_client_weighting_enum_uniform(self):
 
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
@@ -526,8 +509,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
         local_recon_model_fn,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        client_optimizer_fn=optimizer_fn(0.001),
-        reconstruction_optimizer_fn=optimizer_fn(0.001),
+        client_optimizer_fn=_get_keras_optimizer_fn(0.001),
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
         client_weighting=client_weight_lib.ClientWeighting.UNIFORM,
         dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
 
@@ -555,11 +538,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertCountEqual(output['aggregation'].keys(),
                           expected_aggregation_keys)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_keras_local_layer_metrics_empty_list(self, optimizer_fn):
+  def test_keras_local_layer_metrics_empty_list(self):
 
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
@@ -571,8 +550,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
         local_recon_model_fn,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        client_optimizer_fn=optimizer_fn(0.0001),
-        reconstruction_optimizer_fn=optimizer_fn(0.001))
+        client_optimizer_fn=_get_keras_optimizer_fn(0.0001),
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001))
 
     server_state = it_process.initialize()
 
@@ -587,11 +566,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     expected_train_keys = ['loss']
     self.assertCountEqual(output['train'].keys(), expected_train_keys)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_keras_local_layer_metrics_none(self, optimizer_fn):
+  def test_keras_local_layer_metrics_none(self):
 
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
@@ -600,8 +575,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
         local_recon_model_fn,
         loss_fn=loss_fn,
         metrics_fn=None,
-        client_optimizer_fn=optimizer_fn(0.001),
-        reconstruction_optimizer_fn=optimizer_fn(0.001))
+        client_optimizer_fn=_get_keras_optimizer_fn(0.001),
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001))
 
     server_state = it_process.initialize()
 
@@ -726,11 +701,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(outputs[0]['train']['num_batches_total'], 4.0)
     self.assertEqual(outputs[1]['train']['num_batches_total'], 4.0)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_custom_model_zeroing_clipping_aggregator_factory(self, optimizer_fn):
+  def test_custom_model_zeroing_clipping_aggregator_factory(self):
     client_data = create_emnist_client_data()
     train_data = [client_data(), client_data()]
 
@@ -754,9 +725,9 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
         MnistModel,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        server_optimizer_fn=optimizer_fn(0.01),
-        client_optimizer_fn=optimizer_fn(0.001),
-        reconstruction_optimizer_fn=optimizer_fn(0.0),
+        server_optimizer_fn=_get_keras_optimizer_fn(0.01),
+        client_optimizer_fn=_get_keras_optimizer_fn(0.001),
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.0),
         aggregation_factory=aggregation_factory,
         dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
     state = trainer.initialize()
@@ -786,12 +757,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(outputs[0]['train']['num_batches_total'], 4.0)
     self.assertEqual(outputs[1]['train']['num_batches_total'], 4.0)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_iterative_process_fails_with_dp_agg_and_client_weight_fn(
-      self, optimizer_fn):
+  def test_iterative_process_fails_with_dp_agg_and_client_weight_fn(self):
 
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
@@ -821,19 +787,14 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
           MnistModel,
           loss_fn=loss_fn,
           metrics_fn=metrics_fn,
-          server_optimizer_fn=optimizer_fn(0.01),
-          client_optimizer_fn=optimizer_fn(0.001),
-          reconstruction_optimizer_fn=optimizer_fn(0.0),
+          server_optimizer_fn=_get_keras_optimizer_fn(0.01),
+          client_optimizer_fn=_get_keras_optimizer_fn(0.001),
+          reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.0),
           aggregation_factory=dp_mean_factory,
           client_weighting=client_weight_fn,
           dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_iterative_process_fails_with_dp_agg_and_none_client_weighting(
-      self, optimizer_fn):
+  def test_iterative_process_fails_with_dp_agg_and_none_client_weighting(self):
 
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
@@ -859,18 +820,14 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
           MnistModel,
           loss_fn=loss_fn,
           metrics_fn=metrics_fn,
-          server_optimizer_fn=optimizer_fn(0.01),
-          client_optimizer_fn=optimizer_fn(0.001),
-          reconstruction_optimizer_fn=optimizer_fn(0.0),
+          server_optimizer_fn=_get_keras_optimizer_fn(0.01),
+          client_optimizer_fn=_get_keras_optimizer_fn(0.001),
+          reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.0),
           aggregation_factory=dp_mean_factory,
           client_weighting=None,
           dataset_split_fn=reconstruction_utils.simple_dataset_split_fn)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_execution_with_custom_dp_query(self, optimizer_fn):
+  def test_execution_with_custom_dp_query(self):
     client_data = create_emnist_client_data()
     train_data = [client_data(), client_data()]
 
@@ -899,9 +856,9 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
         MnistModel,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        server_optimizer_fn=optimizer_fn(0.01),
-        client_optimizer_fn=optimizer_fn(0.001),
-        reconstruction_optimizer_fn=optimizer_fn(0.0),
+        server_optimizer_fn=_get_keras_optimizer_fn(0.01),
+        client_optimizer_fn=_get_keras_optimizer_fn(0.001),
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.0),
         aggregation_factory=dp_mean_factory,
         dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
         client_weighting=client_weight_lib.ClientWeighting.UNIFORM,
@@ -933,11 +890,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(outputs[0]['train']['num_batches_total'], 4.0)
     self.assertEqual(outputs[1]['train']['num_batches_total'], 4.0)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_keras_local_layer_custom_broadcaster(self, optimizer_fn):
+  def test_keras_local_layer_custom_broadcaster(self):
 
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
@@ -979,8 +932,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
         local_recon_model_fn,
         loss_fn=loss_fn,
         metrics_fn=metrics_fn,
-        client_optimizer_fn=optimizer_fn(0.001),
-        reconstruction_optimizer_fn=optimizer_fn(0.001),
+        client_optimizer_fn=_get_keras_optimizer_fn(0.001),
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001),
         dataset_split_fn=reconstruction_utils.simple_dataset_split_fn,
         broadcast_process=build_custom_stateful_broadcaster(
             model_weights_type=model_weights_type))
@@ -1050,19 +1003,15 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(outputs[0]['train']['num_batches_total'], 6.0)
     self.assertEqual(outputs[1]['train']['num_batches_total'], 6.0)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_get_model_weights(self, optimizer_fn):
+  def test_get_model_weights(self):
     client_data = create_emnist_client_data()
     federated_data = [client_data()]
 
     it_process = training_process.build_training_process(
         local_recon_model_fn,
         loss_fn=tf.keras.losses.SparseCategoricalCrossentropy,
-        client_optimizer_fn=optimizer_fn(0.001),
-        reconstruction_optimizer_fn=optimizer_fn(0.001))
+        client_optimizer_fn=_get_keras_optimizer_fn(0.001),
+        reconstruction_optimizer_fn=_get_keras_optimizer_fn(0.001))
     state = it_process.initialize()
 
     self.assertIsInstance(
@@ -1077,11 +1026,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
       self.assertAllClose(state.model.trainable,
                           it_process.get_model_weights(state).trainable)
 
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_process_construction_calls_model_fn(self, optimizer_fn):
+  def test_process_construction_calls_model_fn(self):
     # Assert that the the process building does not call `model_fn` too many
     # times. `model_fn` can potentially be expensive (loading weights,
     # processing, etc).
@@ -1089,7 +1034,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     training_process.build_training_process(
         model_fn=mock_model_fn,
         loss_fn=tf.keras.losses.SparseCategoricalCrossentropy,
-        client_optimizer_fn=optimizer_fn())
+        client_optimizer_fn=_get_keras_optimizer_fn())
     # TODO(b/186451541): Reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 4)
 
