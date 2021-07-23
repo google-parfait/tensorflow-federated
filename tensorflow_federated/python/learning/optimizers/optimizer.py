@@ -59,7 +59,7 @@ class Optimizer(abc.ABC):
       state: State of the optimizer. A structure of tensors matching the
         structure returned by `initialize` method.
       weights: The weights to be updated by the optimizer. A collection of
-        Tensors matching the structure of `specs` provided in the `initialize`
+        tensors matching the structure of `specs` provided in the `initialize`
         method.
       gradients: The gradients to use for the update by the optimizer. A
         collection of tensors matching the structure of `specs` provided in the
@@ -89,8 +89,8 @@ def check_weights_gradients_match(weights, gradients):
   except (TypeError, ValueError):
     # Raises a more informative error message specific for optimizers.
     raise ValueError(
-        f'Provided weights and gradients must be collections of tensors of the '
-        f'same structure and the tensors must have the same shapes and dtypes. '
+        'Provided weights and gradients must be collections of tensors of the '
+        'same structure and the tensors must have the same shapes and dtypes.\n'
         f'Provided weights: {weights}\n'
         f'Provided gradients: {gradients}')
 
@@ -100,7 +100,7 @@ def handle_indexed_slices_gradients(gradients):
 
   The `tf.IndexedSlices` class is used principally in the definition of
   gradients for operations that have sparse gradients (e.g. `tf.gather`). See
-  also tf.GradientTape documentation. This method is an elementary utility
+  also `tf.GradientTape` documentation. This method is an elementary utility
   converting the slices to a tensor, which can be used to make an optimizer
   immediately compatible with such gradients. All other values are left
   unmodified.
