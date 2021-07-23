@@ -151,7 +151,7 @@ TEST_F(ComposingExecutorTest, CreateValueFailsWrongNumberClients) {
 TEST_F(ComposingExecutorTest, CreateMaterializeAtClientsAllEqual) {
   v0::Value tensor_pb = TensorV(2);
   v0::Value all_equal_value = ClientsV({tensor_pb}, true);
-  for (uint32 i = 0; i < mock_children_.size(); i++) {
+  for (uint32_t i = 0; i < mock_children_.size(); i++) {
     auto child = mock_children_[i];
     auto id = child->ExpectCreateValue(all_equal_value);
     child->ExpectMaterialize(
@@ -340,7 +340,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedAggregate) {
       ::testing::Exactly(mock_children_.size()));
   size_t num_total_merges = mock_children_.size() - 1;
   auto prev_merge_result = result_from_child_on_server;
-  for (uint32 i = 0; i < num_total_merges; i++) {
+  for (uint32_t i = 0; i < num_total_merges; i++) {
     auto merge_arg = mock_server_->ExpectCreateStruct(
         {prev_merge_result, result_from_child_on_server});
     prev_merge_result = mock_server_->ExpectCreateCall(server_merge, merge_arg);
@@ -420,11 +420,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtClients) {
   std::vector<v0::Value> client_vals_in;
   std::vector<v0::Value> client_vals_out;
   v0::Value fn = TensorV(24601);
-  for (uint32 i = 0; i < mock_children_.size(); i++) {
+  for (uint32_t i = 0; i < mock_children_.size(); i++) {
     const auto& child = mock_children_[i];
     std::vector<v0::Value> in_vec;
     std::vector<v0::Value> out_vec;
-    for (uint32 j = 0; j < clients_per_child_[i]; j++) {
+    for (uint32_t j = 0; j < clients_per_child_[i]; j++) {
       v0::Value in = TensorV(i * 10000 + j * 100);
       v0::Value out = TensorV(i * 10000 + j * 100 + 1);
       client_vals_in.push_back(in);
@@ -488,10 +488,10 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapOnUnplacedFails) {
 TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtClients) {
   v0::Value fn = TensorV(22);
   std::vector<v0::Value> client_results;
-  for (uint32 i = 0; i < mock_children_.size(); i++) {
+  for (uint32_t i = 0; i < mock_children_.size(); i++) {
     const auto& child = mock_children_[i];
     std::vector<v0::Value> child_results;
-    for (uint32 j = 0; j < clients_per_child_[i]; j++) {
+    for (uint32_t j = 0; j < clients_per_child_[i]; j++) {
       v0::Value result = TensorV(client_results.size());
       child_results.push_back(result);
       client_results.push_back(result);

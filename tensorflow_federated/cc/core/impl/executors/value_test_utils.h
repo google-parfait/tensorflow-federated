@@ -91,7 +91,7 @@ inline v0::Value StructV(const absl::Span<const v0::Value> elements) {
 }
 
 inline tensorflow::tstring CreateSerializedRangeDatasetGraphDef(
-    int64 stop, tensorflow::DataType dtype) {
+    int64_t stop, tensorflow::DataType dtype) {
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::internal::RangeDataset dataset(
       root, /*start=*/tensorflow::ops::Const(root, 0LL),
@@ -107,7 +107,7 @@ inline tensorflow::tstring CreateSerializedRangeDatasetGraphDef(
   return graph_def;
 }
 
-inline v0::Value SequenceV(int64 stop, tensorflow::DataType dtype) {
+inline v0::Value SequenceV(int64_t stop, tensorflow::DataType dtype) {
   tensorflow::tstring sequence_graph =
       CreateSerializedRangeDatasetGraphDef(stop, dtype);
   v0::Value value_proto;
@@ -143,7 +143,7 @@ inline v0::Value ComputationV(v0::Computation computation_pb) {
 }
 
 inline v0::Computation SelectionComputation(v0::Computation source_pb,
-                                            int32 index) {
+                                            int32_t index) {
   v0::Computation computation_pb;
   v0::Selection* selection_pb = computation_pb.mutable_selection();
   *selection_pb->mutable_source() = source_pb;

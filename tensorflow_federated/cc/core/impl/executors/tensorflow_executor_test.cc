@@ -184,7 +184,7 @@ TEST_F(TensorFlowExecutorTest, CreateValueEmptyStruct) {
 }
 
 TEST_F(TensorFlowExecutorTest, CreateValueSimpleTensor) {
-  int8 input_int = 9;
+  int8_t input_int = 9;
   v0::Value input_pb = TensorV(input_int);
   EXPECT_THAT(test_executor_->CreateValue(input_pb), IsOk());
 }
@@ -253,7 +253,7 @@ TEST_F(TensorFlowExecutorTest, RoundTripEmptyStruct) {
 }
 
 TEST_F(TensorFlowExecutorTest, RoundTripSimpleTensor) {
-  int8 an_int = 9;
+  int8_t an_int = 9;
   CheckTensorRoundTrip(an_int);
   float a_float = 1.0;
   CheckTensorRoundTrip(a_float);
@@ -381,7 +381,7 @@ TEST_F(TensorFlowExecutorTest, CallNoArgOneOutWithInitialize) {
       /*out_binding=*/TensorB(read_var), root,
       /*init_op=*/var_init);
   tensorflow::Tensor expected(tensorflow::DT_INT32, shape);
-  auto data = expected.flat<int32>();
+  auto data = expected.flat<int32_t>();
   data(0) = 1;
   data(1) = 2;
   data(2) = 3;

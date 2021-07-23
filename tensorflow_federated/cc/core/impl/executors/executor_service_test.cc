@@ -139,7 +139,7 @@ TEST(ExecutorServiceFailureTest, CreateValueBeforeSetCardinalities) {
 
 class ExecutorServiceTest : public ::testing::Test {
  public:
-  absl::StatusOr<OwnedValueId> TestId(uint64 id) {
+  absl::StatusOr<OwnedValueId> TestId(uint64_t id) {
     return OwnedValueId(executor_ptr_, id);
   }
 

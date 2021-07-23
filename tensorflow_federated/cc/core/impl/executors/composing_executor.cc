@@ -326,7 +326,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
  public:
   explicit ComposingExecutor(std::shared_ptr<Executor> server,
                              std::vector<ComposingChild> children,
-                             uint32 total_clients)
+                             uint32_t total_clients)
       : server_(std::move(server)),
         children_(std::move(children)),
         total_clients_(total_clients) {}
@@ -405,7 +405,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
-                                              const uint32 index) final {
+                                              const uint32_t index) final {
     return Map(
         std::vector<ValueFuture>({value}),
         [server = this->server_, index](std::vector<ExecutorValue>&& values)
@@ -448,7 +448,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
  private:
   std::shared_ptr<Executor> server_;
   std::vector<ComposingChild> children_;
-  uint32 total_clients_;
+  uint32_t total_clients_;
 
   Clients NewClients() const {
     return ::tensorflow_federated::NewClients(children_.size());
@@ -463,14 +463,14 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       }
       case FederatedKind::CLIENTS: {
         auto clients = NewClients();
-        uint32 next_client_index = 0;
-        for (uint32 i = 0; i < children_.size(); i++) {
+        uint32_t next_client_index = 0;
+        for (uint32_t i = 0; i < children_.size(); i++) {
           auto child = children_[i];
           v0::Value child_value;
           v0::Value_Federated* child_value_fed =
               child_value.mutable_federated();
           *child_value_fed->mutable_type() = federated.type();
-          uint32 stop_index = next_client_index + child.NumClients();
+          uint32_t stop_index = next_client_index + child.NumClients();
           for (; next_client_index < stop_index; next_client_index++) {
             *child_value_fed->add_value() = federated.value(next_client_index);
           }
@@ -588,7 +588,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     // TODO(b/192457028): parallelize this so that we're materializing more than
     // one value at a time and so that we can begin merging as soon as any
     // result is available.
-    for (uint32 i = 0; i < children_.size(); i++) {
+    for (uint32_t i = 0; i < children_.size(); i++) {
       const auto& child = children_[i].Executor();
       ValueId child_val = value.clients()->at(i)->ref();
       std::vector<OwnedValueId> arg_owners;
@@ -651,7 +651,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       v0::Value map_val;
       *map_val.mutable_computation()->mutable_intrinsic()->mutable_uri() =
           kFederatedMapAtClientsUri;
-      for (uint32 i = 0; i < children_.size(); i++) {
+      for (uint32_t i = 0; i < children_.size(); i++) {
         const auto& child = children_[i].Executor();
         auto child_map = TFF_TRY(child->CreateValue(map_val));
         auto child_fn = TFF_TRY(child->CreateValue(fn_val));
@@ -687,7 +687,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
            ->mutable_intrinsic()
            ->mutable_uri() = kFederatedZipAtClientsUri;
       auto pairs = NewClients();
-      for (uint32 i = 0; i < children_.size(); i++) {
+      for (uint32_t i = 0; i < children_.size(); i++) {
         auto child = children_[i].Executor();
         auto zip = TFF_TRY(child->CreateValue(zip_at_clients));
         auto arg = TFF_TRY(child->CreateStruct({
@@ -741,7 +741,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
   // Creates tasks to materialize values into the addresses pointed to by
   // `protos_out`.
-  void MaterializeChildClientValues(uint32 child_index, ValueId child_id,
+  void MaterializeChildClientValues(uint32_t child_index, ValueId child_id,
                                     absl::Span<v0::Value*> protos_out,
                                     ParallelTasks& tasks) const {
     CHECK(protos_out.size() == children_[child_index].NumClients());
@@ -762,7 +762,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
               child_value.federated().value_size(),
               ", but all-equal values must have only one value."));
         }
-        for (uint32 j = 0; j < child.NumClients(); j++) {
+        for (uint32_t j = 0; j < child.NumClients(); j++) {
           *(protos_out[j]) = child_value.federated().value(0);
         }
       } else {
@@ -772,7 +772,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
               " clients returned ", child_value.federated().value_size(),
               " client values."));
         }
-        for (uint32 j = 0; j < child.NumClients(); j++) {
+        for (uint32_t j = 0; j < child.NumClients(); j++) {
           *(protos_out[j]) =
               std::move(*child_value.mutable_federated()->mutable_value(j));
         }
@@ -796,7 +796,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         // Note: we'd like to use `AddNAlreadyReserved`, but unfortunately that
         // method only exists for `RepeatedField`, not `RepeatedPtrField`.
         v0::Value null_value;
-        for (uint32 i = 0; i < total_clients_; i++) {
+        for (uint32_t i = 0; i < total_clients_; i++) {
           *values_pb->Add() = null_value;
         }
         v0::FederatedType* type_pb = federated_pb->mutable_type();
@@ -807,7 +807,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         *type_pb->mutable_placement()->mutable_value()->mutable_uri() =
             kClientsUri;
         v0::Value** client_start = values_pb->mutable_data();
-        for (uint32 i = 0; i < children_.size(); i++) {
+        for (uint32_t i = 0; i < children_.size(); i++) {
           absl::Span<v0::Value*> client_value_pointers(
               client_start, children_[i].NumClients());
           ValueId child_value_id = value.clients()->at(i)->ref();
@@ -859,7 +859,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
 std::shared_ptr<Executor> CreateComposingExecutor(
     std::shared_ptr<Executor> server, std::vector<ComposingChild> children) {
-  uint32 total_clients = 0;
+  uint32_t total_clients = 0;
   for (const auto& child : children) {
     total_clients += child.NumClients();
   }

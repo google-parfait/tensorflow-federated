@@ -33,7 +33,7 @@ limitations under the License
 namespace tensorflow_federated {
 
 class OwnedValueId;
-using ValueId = uint64;
+using ValueId = uint64_t;
 
 // A dynamically-dispatched executor interface.
 //
