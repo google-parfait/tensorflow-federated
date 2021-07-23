@@ -11,17 +11,11 @@ git_repository(
 git_repository(
     name = "com_google_protobuf",
     remote = "https://github.com/protocolbuffers/protobuf.git",
-    tag = "v3.17.0",
+    tag = "v3.17.3",
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 protobuf_deps()
-
-# Required by com_google_protobuf
-bind(
-    name = "grpc_python_plugin",
-    actual = "@com_github_grpc_grpc//src/compiler:grpc_python_plugin",
-)
 
 git_repository(
     name = "com_github_grpc_grpc",
@@ -29,32 +23,17 @@ git_repository(
     tag = "v1.38.1",
 )
 
-# Required by com_github_grpc_grpc
-git_repository(
-    name = "build_bazel_rules_swift",
-    remote = "https://github.com/bazelbuild/rules_swift.git",
-    tag = "0.12.1",
-)
-
-# Required by com_github_grpc_grpc
-git_repository(
-    name = "bazel_skylib",
-    remote = "https://github.com/bazelbuild/bazel-skylib.git",
-    tag = "1.0.0",
-)
-
-# Required by com_github_grpc_grpc
-git_repository(
-    name = "build_bazel_apple_support",
-    remote = "https://github.com/bazelbuild/apple_support.git",
-    tag = "0.7.1",
-)
-
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()
 
-load("@upb//bazel:workspace_deps.bzl", "upb_deps")
-upb_deps()
+load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+grpc_extra_deps()
+
+git_repository(
+    name = "bazel_skylib",
+    remote = "https://github.com/bazelbuild/bazel-skylib.git",
+    tag = "1.0.3",
+)
 
 git_repository(
     name = "pybind11_abseil",
