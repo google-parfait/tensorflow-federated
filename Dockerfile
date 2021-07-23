@@ -62,6 +62,7 @@ RUN ${PIP} install --no-cache-dir --upgrade \
     attrs~=21.2.0 \
     cachetools~=3.1.1 \
     dm-tree~=0.1.1 \
+    farmhashpy~=0.4.0
     grpcio~=1.34.0 \
     jax~=0.2.8 \
     jaxlib~=0.1.55 \

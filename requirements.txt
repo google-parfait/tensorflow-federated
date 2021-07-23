@@ -5,6 +5,7 @@ absl-py~=0.10
 attrs~=21.2.0
 cachetools~=3.1.1
 dm-tree~=0.1.1
+farmhashpy~=0.4.0
 grpcio~=1.37.0
 jaxlib~=0.1.55
 jax~=0.2.8
