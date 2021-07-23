@@ -17,7 +17,6 @@ Note: Refer to `get_iterative_process_for_map_reduce_form()` for the meaning of
 variable names used in this module.
 """
 
-import collections
 from typing import Callable, Dict, List, Tuple
 
 import tensorflow as tf
@@ -38,7 +37,6 @@ from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
 
@@ -768,218 +766,6 @@ def _extract_update(after_aggregate, grappler_config):
       fn, grappler_config)
 
 
-def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
-                   before_aggregate, after_aggregate):
-  """Returns type information for an `tff.templates.IterativeProcess`.
-
-  This function is intended to be used by
-  `get_map_reduce_form_for_iterative_process` to create the expected type
-  signatures when compiling a given `tff.templates.IterativeProcess` into a
-  `tff.backends.mapreduce.MapReduceForm` and returns a `collections.OrderedDict`
-  whose keys and order match the explicit and intermediate componets of
-  `tff.backends.mapreduce.MapReduceForm` defined in the body of the
-  `next_computation` in `get_iterative_process_for_map_reduce_form`.
-
-  Note that the type signatures for the `initalize` and `next` components of the
-  `tff.templates.IterativeProcess` are (with the implicit understanding that
-  each component in the signatures below refers to the type of the referenced
-  building blocks):
-
-  initalize:  `( -> s1)`
-  next:       `(<s1,c1> -> <s8,s9>)`
-
-  However, the `next` component of an `tff.templates.IterativeProcess` has been
-  split into a before and after broadcast and a before and after aggregate with
-  the given semantics:
-
-  ```
-  (arg -> after(<arg, intrinsic(before(arg))>))
-  ```
-
-  as a result, the type signatures for the components split from the `next`
-  component of an `tff.templates.IterativeProcess` are:
-
-  before_broadcast:  `(<s1,c1> -> s2)`
-  after_broadcast:   `(<<s1,c1>,c2> -> <s8,s9>)`
-  before_aggregate:  `(<<s1,c1>,c2> -> <<c5,zero,accumulate,merge,report>,c6>)`
-  after_aggregate:   `(<<<s1,c1>,c2>,<s3,s4>> -> <s8,s9>)`
-
-  Args:
-    initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
-      representing the `initalize` component of an
-      `tff.templates.IterativeProcess`.
-    before_broadcast: The first result of splitting `next` component of an
-      `tff.templates.IterativeProcess` on broadcast.
-    after_broadcast: The second result of splitting `next` component of an
-      `tff.templates.IterativeProcess` on broadcast.
-    before_aggregate: The first result of splitting `next` component of an
-      `tff.templates.IterativeProcess` on aggregate.
-    after_aggregate: The second result of splitting `next` component of an
-      `tff.templates.IterativeProcess` on aggregate.
-
-  Raises:
-    transformations.MapReduceFormCompilationError: If the arguments are of the
-      wrong types.
-  """
-
-  # The type signature of `initalize` is: `( -> s1)`.
-  init_tree_ty = initialize_tree.type_signature
-  _check_type_is_no_arg_fn(init_tree_ty, '`initialize`')
-  _check_type(init_tree_ty.result, computation_types.FederatedType)
-  _check_placement(init_tree_ty.result, placements.SERVER)
-  # The named components of MapReduce form have no placement, so we must
-  # remove the placement on the return type of initialize_tree
-  initialize_type = computation_types.FunctionType(
-      initialize_tree.type_signature.parameter,
-      initialize_tree.type_signature.result.member)
-
-  # The type signature of `before_broadcast` is: `(<s1,c1> -> s2)`.
-  _check_type(before_broadcast.type_signature, computation_types.FunctionType)
-  _check_type(before_broadcast.type_signature.parameter,
-              computation_types.StructType)
-  _check_len(before_broadcast.type_signature.parameter, 2)
-  s1_type = before_broadcast.type_signature.parameter[0]
-  _check_type(s1_type, computation_types.FederatedType)
-  _check_placement(s1_type, placements.SERVER)
-  c1_type = before_broadcast.type_signature.parameter[1]
-  _check_type(c1_type, computation_types.FederatedType)
-  _check_placement(c1_type, placements.CLIENTS)
-  s2_type = before_broadcast.type_signature.result
-  _check_type(s2_type, computation_types.FederatedType)
-  _check_placement(s2_type, placements.SERVER)
-
-  prepare_type = computation_types.FunctionType(s1_type.member, s2_type.member)
-
-  # The type signature of `after_broadcast` is: `(<<s1,c1>,c2> -> <s8,s9>)'.
-  _check_type(after_broadcast.type_signature, computation_types.FunctionType)
-  _check_type(after_broadcast.type_signature.parameter,
-              computation_types.StructType)
-  _check_len(after_broadcast.type_signature.parameter, 2)
-  _check_type(after_broadcast.type_signature.parameter[0],
-              computation_types.StructType)
-  _check_len(after_broadcast.type_signature.parameter[0], 2)
-  _check_type_equal(after_broadcast.type_signature.parameter[0][0], s1_type)
-  _check_type_equal(after_broadcast.type_signature.parameter[0][1], c1_type)
-  c2_type = after_broadcast.type_signature.parameter[1]
-  _check_type(c2_type, computation_types.FederatedType)
-  _check_placement(c2_type, placements.CLIENTS)
-  _check_type(after_broadcast.type_signature.result,
-              computation_types.StructType)
-  _check_len(after_broadcast.type_signature.result, 2)
-  s8_type = after_broadcast.type_signature.result[0]
-  _check_type(s8_type, computation_types.FederatedType)
-  _check_placement(s8_type, placements.SERVER)
-  s9_type = after_broadcast.type_signature.result[1]
-  _check_type(s9_type, computation_types.FederatedType)
-  _check_placement(s9_type, placements.SERVER)
-
-  # The type signature of `before_aggregate` is:
-  # `(<<s1,c1>,c2> -> <<c5,zero,accumulate,merge,report>,<c6,bitwidth>>)`.
-  _check_type(before_aggregate.type_signature, computation_types.FunctionType)
-  _check_type(before_aggregate.type_signature.parameter,
-              computation_types.StructType)
-  _check_len(before_aggregate.type_signature.parameter, 2)
-  _check_type(before_aggregate.type_signature.parameter[0],
-              computation_types.StructType)
-  _check_len(before_aggregate.type_signature.parameter[0], 2)
-  _check_type_equal(before_aggregate.type_signature.parameter[0][0], s1_type)
-  _check_type_equal(before_aggregate.type_signature.parameter[0][1], c1_type)
-  _check_type_equal(before_aggregate.type_signature.parameter[1], c2_type)
-  _check_type(before_aggregate.type_signature.result,
-              computation_types.StructType)
-  _check_len(before_aggregate.type_signature.result, 2)
-  _check_len(before_aggregate.type_signature.result[0], 5)
-  c5_type = before_aggregate.type_signature.result[0][0]
-  _check_type(c5_type, computation_types.FederatedType)
-  _check_placement(c5_type, placements.CLIENTS)
-  zero_type = computation_types.FunctionType(
-      None, before_aggregate.type_signature.result[0][1])
-  type_analysis.check_tensorflow_compatible_type(zero_type.result)
-  accumulate_type = before_aggregate.type_signature.result[0][2]
-  _check_type(accumulate_type, computation_types.FunctionType)
-  merge_type = before_aggregate.type_signature.result[0][3]
-  _check_type(merge_type, computation_types.FunctionType)
-  report_type = before_aggregate.type_signature.result[0][4]
-  _check_type(report_type, computation_types.FunctionType)
-  _check_type(before_aggregate.type_signature.result[1],
-              computation_types.StructType)
-  _check_len(before_aggregate.type_signature.result[1], 2)
-  c6_type = before_aggregate.type_signature.result[1][0]
-  _check_type(c6_type, computation_types.FederatedType)
-  _check_placement(c6_type, placements.CLIENTS)
-  bitwidth_type = computation_types.FunctionType(
-      None, before_aggregate.type_signature.result[1][1])
-  type_analysis.check_tensorflow_compatible_type(bitwidth_type.result)
-
-  c3_type = computation_types.FederatedType([c1_type.member, c2_type.member],
-                                            placements.CLIENTS)
-  c4_type = computation_types.FederatedType([c5_type.member, c6_type.member],
-                                            placements.CLIENTS)
-
-  # The type signature of `after_aggregate` is:
-  # `(<<<s1,c1>,c2>,<s3,s4>> -> <s8,s9>)'.
-  _check_type(after_aggregate.type_signature, computation_types.FunctionType)
-  _check_type(after_aggregate.type_signature.parameter,
-              computation_types.StructType)
-  _check_len(after_aggregate.type_signature.parameter, 2)
-  _check_type(after_aggregate.type_signature.parameter[0],
-              computation_types.StructType)
-  _check_len(after_aggregate.type_signature.parameter[0], 2)
-  _check_type(after_aggregate.type_signature.parameter[0][0],
-              computation_types.StructType)
-  _check_len(after_aggregate.type_signature.parameter[0][0], 2)
-  _check_type_equal(after_aggregate.type_signature.parameter[0][0][0], s1_type)
-  _check_type_equal(after_aggregate.type_signature.parameter[0][0][1], c1_type)
-  _check_type_equal(after_aggregate.type_signature.parameter[0][1], c2_type)
-  _check_len(after_aggregate.type_signature.parameter[1], 2)
-  s3_type = after_aggregate.type_signature.parameter[1][0]
-  _check_type(s3_type, computation_types.FederatedType)
-  _check_placement(s3_type, placements.SERVER)
-  s4_type = after_aggregate.type_signature.parameter[1][1]
-  _check_type(s4_type, computation_types.FederatedType)
-  _check_placement(s4_type, placements.SERVER)
-  _check_len(after_aggregate.type_signature.result, 2)
-  _check_type_equal(after_aggregate.type_signature.result[0], s8_type)
-  _check_type_equal(after_aggregate.type_signature.result[1], s9_type)
-
-  work_type = computation_types.FunctionType(c3_type.member, c4_type.member)
-
-  s5_type = computation_types.FederatedType([s3_type.member, s4_type.member],
-                                            placements.SERVER)
-  s6_type = computation_types.FederatedType([s1_type.member, s5_type.member],
-                                            placements.SERVER)
-  s7_type = computation_types.FederatedType([s8_type.member, s9_type.member],
-                                            placements.SERVER)
-  update_type = computation_types.FunctionType(s6_type.member, s7_type.member)
-
-  return collections.OrderedDict(
-      initialize_type=initialize_type,
-      s1_type=s1_type,
-      c1_type=c1_type,
-      prepare_type=prepare_type,
-      s2_type=s2_type,
-      c2_type=c2_type,
-      c3_type=c3_type,
-      work_type=work_type,
-      c4_type=c4_type,
-      c5_type=c5_type,
-      c6_type=c6_type,
-      zero_type=zero_type,
-      accumulate_type=accumulate_type,
-      merge_type=merge_type,
-      report_type=report_type,
-      s3_type=s3_type,
-      bitwidth_type=bitwidth_type,
-      s4_type=s4_type,
-      s5_type=s5_type,
-      s6_type=s6_type,
-      update_type=update_type,
-      s7_type=s7_type,
-      s8_type=s8_type,
-      s9_type=s9_type,
-  )
-
-
 def _replace_lambda_body_with_call_dominant_form(
     comp: building_blocks.Lambda) -> building_blocks.Lambda:
   """Transforms the body of `comp` to call-dominant form.
@@ -1114,32 +900,15 @@ def get_map_reduce_form_for_iterative_process(
   before_broadcast, after_broadcast = _split_ast_on_broadcast(next_bb)
   before_aggregate, after_aggregate = _split_ast_on_aggregate(after_broadcast)
 
-  type_info = _get_type_info(initialize_bb, before_broadcast, after_broadcast,
-                             before_aggregate, after_aggregate)
-
   initialize = transformations.consolidate_and_extract_local_processing(
       initialize_bb, grappler_config)
-  _check_type_equal(initialize.type_signature, type_info['initialize_type'])
-
   prepare = _extract_prepare(before_broadcast, grappler_config)
-  _check_type_equal(prepare.type_signature, type_info['prepare_type'])
-
   work = _extract_work(before_aggregate, grappler_config)
-  _check_type_equal(work.type_signature, type_info['work_type'])
-
   zero, accumulate, merge, report = _extract_federated_aggregate_functions(
       before_aggregate, grappler_config)
-  _check_type_equal(zero.type_signature, type_info['zero_type'])
-  _check_type_equal(accumulate.type_signature, type_info['accumulate_type'])
-  _check_type_equal(merge.type_signature, type_info['merge_type'])
-  _check_type_equal(report.type_signature, type_info['report_type'])
-
   bitwidth = _extract_federated_secure_sum_bitwidth_functions(
       before_aggregate, grappler_config)
-  _check_type_equal(bitwidth.type_signature, type_info['bitwidth_type'])
-
   update = _extract_update(after_aggregate, grappler_config)
-  _check_type_equal(update.type_signature, type_info['update_type'])
 
   next_parameter_names = structure.name_list_with_nones(
       ip.next.type_signature.parameter)

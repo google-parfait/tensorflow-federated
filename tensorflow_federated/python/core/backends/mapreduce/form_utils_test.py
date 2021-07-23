@@ -18,7 +18,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
@@ -26,7 +25,6 @@ from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
 from tensorflow_federated.python.core.backends.reference import reference_context
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -541,41 +539,6 @@ class GetIterativeProcessForMapReduceFormTest(MapReduceFormTestCase):
     state, metrics = it.next(state, [[33.0], [34.0], [35.0], [36.0]])
     self.assertAllClose(metrics,
                         collections.OrderedDict(ratio_over_threshold=0.75))
-
-
-class GetTypeInfoTest(test_case.TestCase):
-
-  def test_returns_type_info_for_sum_example(self):
-    ip = get_iterative_process_for_sum_example()
-    initialize_tree = building_blocks.ComputationBuildingBlock.from_proto(
-        ip.initialize._computation_proto)
-    next_tree = building_blocks.ComputationBuildingBlock.from_proto(
-        ip.next._computation_proto)
-    initialize_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
-        initialize_tree)
-    next_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
-        next_tree)
-    before_broadcast, after_broadcast = form_utils._split_ast_on_broadcast(
-        next_tree)
-    before_aggregate, after_aggregate = form_utils._split_ast_on_aggregate(
-        after_broadcast)
-
-    type_info = form_utils._get_type_info(initialize_tree, before_broadcast,
-                                          after_broadcast, before_aggregate,
-                                          after_aggregate)
-
-    actual = '\n'.join(f'{label}: {type_signature.compact_representation()}'
-                       for label, type_signature in type_info.items())
-    notice = """\
-# Note: THE CONTENTS OF THIS DICTIONARY ARE NOT IMPORTANT.
-# The purpose of this test is not to assert that this value
-# returned by `form_utils._get_type_info`, but instead to act as a
-# signal when refactoring the code involved in compiling an
-# `tff.templates.IterativeProcess` into a
-# `tff.backends.mapreduce.MapReduceForm`.
-
-"""
-    golden.check_string('type_info_for_sum_example.expected', notice + actual)
 
 
 class CheckMapReduceFormCompatibleWithIterativeProcessTest(
