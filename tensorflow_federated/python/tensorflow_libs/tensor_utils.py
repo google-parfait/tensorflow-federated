@@ -14,9 +14,9 @@
 """General utilities specific to the manipulation of tensors and operators."""
 
 import collections
-import functools
 import operator
 
+from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -100,14 +100,14 @@ def zero_all_if_any_non_finite(structure):
      A tuple (input, 0) if all entries are finite or the structure is empty, or
      a tuple (zeros, 1) if any non-finite entries were found.
   """
-  flat = tf.nest.flatten(structure)
-  if not flat:
+  try:
+    tf.nest.map_structure(
+        lambda v: tf.debugging.check_numerics(v, message='Checking NaN/Inf.'),
+        structure)
     return (structure, tf.constant(0))
-  flat_bools = [tf.reduce_all(tf.math.is_finite(t)) for t in flat]
-  all_finite = functools.reduce(tf.logical_and, flat_bools)
-  if all_finite:
-    return (structure, tf.constant(0))
-  else:
+  except tf.errors.InvalidArgumentError:
+    logging.error(
+        'Exception: tf.errors.InvalidArgumentError. Tensor had NaN/Inf values.')
     return (tf.nest.map_structure(tf.zeros_like, structure), tf.constant(1))
 
 
