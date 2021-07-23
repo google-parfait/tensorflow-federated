@@ -91,7 +91,7 @@ absl::Status ExecutorService::EnsureGeneration_(int reference_generation,
 absl::StatusOr<ValueId> ExecutorService::ResolveRemoteValue_(
     const v0::ValueRef& remote_value_ref, int expected_generation) {
   // Incoming ref should have ID of the form a-b, where a is a
-  // uint64 and b s an int. a represents the ValueId in the
+  // uint64_t and b s an int. a represents the ValueId in the
   // service's executor, b represents the generation of this executor.
   std::vector<absl::string_view> id_and_generation =
       absl::StrSplit(remote_value_ref.id(), '-');

@@ -134,7 +134,7 @@ class ExecutorService : public v0::Executor::Service {
   absl::Status EnsureGeneration_(int, int);
   // We StatusOr here so that we can check whether the incoming RemoteValueIds
   // correspond to the currently live executor. RemoteValueId is a string of the
-  // format "a-b", where a is a uint64 and b is another int. a represents the
+  // format "a-b", where a is a uint64_t and b is another int. a represents the
   // ValueId of the underlying value in executor_, and b represents the
   // generation of executor_.
   absl::StatusOr<ValueId> ResolveRemoteValue_(const v0::ValueRef&, int);

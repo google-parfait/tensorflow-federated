@@ -108,7 +108,7 @@ template <typename ValueFuture>
 absl::StatusOr<bool> AllReady(const absl::Span<const ValueFuture> futures) {
   bool all_ready = true;
   for (const ValueFuture& future : futures) {
-    if (future.wait_for(std::chrono::duration<uint8>::zero()) ==
+    if (future.wait_for(std::chrono::duration<uint8_t>::zero()) ==
         std::future_status::ready) {
       if (!future.get().ok()) {
         return future.get().status();

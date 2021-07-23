@@ -48,7 +48,7 @@ using testing::intrinsic::FederatedZipAtServerV;
 using ::testing::status::IsOk;
 using ::testing::status::StatusIs;
 
-const uint16 NUM_CLIENTS = 10;
+const uint16_t NUM_CLIENTS = 10;
 
 const Cardinality ONCE = ::testing::Exactly(1);
 const Cardinality ONCE_PER_CLIENT = ::testing::Exactly(NUM_CLIENTS);

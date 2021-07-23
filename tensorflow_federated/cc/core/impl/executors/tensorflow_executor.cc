@@ -737,7 +737,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
  private:
   // A hash map of compiler generated TensorFlow function ids to already
   // construction Computation objects.
-  absl::flat_hash_map<uint64, std::shared_ptr<Computation>> function_cache_
+  absl::flat_hash_map<uint64_t, std::shared_ptr<Computation>> function_cache_
       ABSL_GUARDED_BY(function_cache_mutex_);
   absl::Mutex function_cache_mutex_;
 
@@ -777,7 +777,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
       return ExecutorValue(
           TFF_TRY(Computation::FromProto(comp_pb.tensorflow())));
     }
-    const uint64 function_id = comp_pb.tensorflow().cache_key().id();
+    const uint64_t function_id = comp_pb.tensorflow().cache_key().id();
     // Try the fast path first, reader locks are much cheaper.
     {
       absl::ReaderMutexLock reader_lock(&function_cache_mutex_);

@@ -139,9 +139,9 @@ PYBIND11_MODULE(executor_bindings, m) {
       [](const std::string& target) -> std::shared_ptr<grpc::ChannelInterface> {
         auto channel_options = grpc::ChannelArguments();
         channel_options.SetMaxSendMessageSize(
-            std::numeric_limits<int32>::max());
+            std::numeric_limits<int32_t>::max());
         channel_options.SetMaxReceiveMessageSize(
-            std::numeric_limits<int32>::max());
+            std::numeric_limits<int32_t>::max());
         return grpc::CreateCustomChannel(
             target, grpc::InsecureChannelCredentials(), channel_options);
       },
