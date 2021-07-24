@@ -80,7 +80,7 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
         upper_bound=4,
         num_bins=4,
         arity=2,
-        max_records_per_user=10,
+        max_records_per_user=1,
         epsilon=1.0,
         delta=1e-5)
 
@@ -99,7 +99,7 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
         upper_bound=4,
         num_bins=4,
         arity=2,
-        max_records_per_user=10,
+        max_records_per_user=1,
         epsilon=1.0,
         delta=1e-5,
         secure_sum=True)

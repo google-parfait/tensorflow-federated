@@ -170,7 +170,7 @@ def build_central_hierarchical_histogram_computation(
     upper_bound: float,
     num_bins: int,
     arity: int = 2,
-    max_records_per_user: int = 100,
+    max_records_per_user: int = 1,
     epsilon: float = 1,
     delta: float = 1e-5,
     secure_sum: bool = False):
@@ -182,7 +182,7 @@ def build_central_hierarchical_histogram_computation(
     num_bins: The integer number of bins to compute.
     arity: The branching factor of the tree. Defaults to 2.
     max_records_per_user: The maximum number of records each user is allowed to
-      contribute. Defaults to 100.
+      contribute. Defaults to 1.
     epsilon: Differential privacy parameter. Defaults to 1.
     delta: Differential privacy parameter. Defaults to 1e-5.
     secure_sum: A boolean deciding whether to use secure aggregation. Defaults
@@ -213,7 +213,7 @@ def build_central_hierarchical_histogram_computation(
   if epsilon == 0.:
     stddev = 0.
   else:
-    stddev = _find_noise_multiplier(
+    stddev = max_records_per_user * _find_noise_multiplier(
         epsilon, delta, steps=math.ceil(math.log(num_bins, arity)))
 
   central_tree_aggregation_factory = hierarchical_histogram_factory.create_central_hierarchical_histogram_factory(
