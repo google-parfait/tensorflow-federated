@@ -31,7 +31,6 @@ class OptimizerChecksTest(test_case.TestCase, parameterized.TestCase):
       optimizer.check_learning_rate(lr)
 
   @parameterized.named_parameters(
-      ('zero', 0.0),
       ('negative', -1.0),
       ('one', 1.0),
       ('large', 42.0),

@@ -31,7 +31,7 @@ class _SGD(optimizer.Optimizer):
     self._momentum = momentum
 
   def initialize(self, specs):
-    if self._momentum is None:
+    if self._momentum is None or self._momentum == 0:
       return ()
     else:
       return tf.nest.map_structure(lambda s: tf.zeros(s.shape, s.dtype), specs)
@@ -40,7 +40,7 @@ class _SGD(optimizer.Optimizer):
   def next(self, state, weights, gradients):
     optimizer.check_weights_gradients_match(weights, gradients)
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
-    if self._momentum is None:
+    if self._momentum is None or self._momentum == 0:
       updated_state = state
       updated_weights = tf.nest.map_structure(lambda w, g: w - self._lr * g,
                                               weights, gradients)
@@ -59,11 +59,11 @@ def _check_momentum_matches_weights(state, weights):
   except (TypeError, ValueError):
     # Raises a more informative error message.
     raise ValueError(
-        f'Provided state and weigths do not match. The momentum term in state '
-        f'the and weights must be collections of tensors of the same structure '
-        f'and the tensors must have the same shapes and dtypes. A possible '
-        f'reason is that the `initialize` method was invoked with `spect` not '
-        f'matching the weights being optimized.'
+        'Provided state and weigths do not match. The momentum term in state '
+        'the and weights must be collections of tensors of the same structure '
+        'and the tensors must have the same shapes and dtypes. A possible '
+        'reason is that the `initialize` method was invoked with `spect` not '
+        f'matching the weights being optimized.\n'
         f'Provided state: {state}\n'
         f'Provided weights: {weights}')
 

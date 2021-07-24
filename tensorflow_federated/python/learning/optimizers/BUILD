@@ -76,6 +76,10 @@ py_library(
     testonly = True,
     srcs = ["optimizer_test_utils.py"],
     srcs_version = "PY3",
+    deps = [
+        ":optimizer",
+        "//tensorflow_federated/python/core/api:test_case",
+    ],
 )
 
 py_test(
@@ -105,6 +109,5 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":sgdm",
-        "//tensorflow_federated/python/core/api:test_case",
     ],
 )

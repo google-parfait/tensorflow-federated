@@ -79,7 +79,7 @@ def check_learning_rate(lr):
 
 def check_momentum(momentum):
   py_typecheck.check_type(momentum, float)
-  if momentum <= 0.0 or momentum >= 1.0:
+  if momentum < 0.0 or momentum >= 1.0:
     raise ValueError('Momentum must be between 0.0 and 1.0.')
 
 
