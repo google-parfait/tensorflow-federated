@@ -41,7 +41,7 @@ namespace tensorflow_federated {
 std::vector<const std::shared_ptr<grpc::ChannelInterface>>
 FilterToLiveChannels_(
     absl::Span<const std::shared_ptr<grpc::ChannelInterface>> channels,
-    int wait_connected_duration_millis = 100) {
+    int wait_connected_duration_millis = 1000) {
   std::vector<const std::shared_ptr<grpc::ChannelInterface>> live_channels;
   auto wait_connected =
       [&wait_connected_duration_millis](
