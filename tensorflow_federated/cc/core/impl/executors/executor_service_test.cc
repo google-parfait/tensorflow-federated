@@ -18,7 +18,7 @@ limitations under the License
 #include <memory>
 #include <optional>
 
-#include "net/grpc/public/include/grpcpp/impl/codegen/server_context.h"
+#include "net/grpc/public/include/grpcpp/grpcpp.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"

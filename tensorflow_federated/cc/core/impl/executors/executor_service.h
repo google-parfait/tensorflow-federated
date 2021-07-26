@@ -19,8 +19,7 @@ limitations under the License
 #include <memory>
 #include <utility>
 
-#include "net/grpc/public/include/grpcpp/impl/codegen/server_context.h"
-#include "net/grpc/public/include/grpcpp/impl/codegen/status.h"
+#include "net/grpc/public/include/grpcpp/grpcpp.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
