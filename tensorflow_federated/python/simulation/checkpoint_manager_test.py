@@ -16,6 +16,7 @@ import collections
 import os
 import os.path
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import checkpoint_manager
@@ -168,7 +169,8 @@ class FileCheckpointManagerLoadCheckpointTest(tf.test.TestCase):
       checkpoint_mngr.load_checkpoint(structure, 1)
 
 
-class FileCheckpointManagerSaveCheckpointTest(tf.test.TestCase):
+class FileCheckpointManagerSaveCheckpointTest(tf.test.TestCase,
+                                              parameterized.TestCase):
 
   def test_saves_one_checkpoint(self):
     temp_dir = self.get_temp_dir()
@@ -210,6 +212,21 @@ class FileCheckpointManagerSaveCheckpointTest(tf.test.TestCase):
       checkpoint_mngr.save_checkpoint(test_state, i)
 
     self.assertCountEqual(os.listdir(temp_dir), ['ckpt_2', 'ckpt_3', 'ckpt_4'])
+
+  @parameterized.named_parameters(
+      ('keep_total_equal_to_zero', 0),
+      ('keep_total_smaller_than_zero', -1),
+  )
+  def test_keep_all_checkpoints(self, keep_total):
+    temp_dir = self.get_temp_dir()
+    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(
+        temp_dir, keep_total=keep_total, keep_first=False)
+
+    for i in range(1, 4):
+      test_state = _create_test_state(i)
+      checkpoint_mngr.save_checkpoint(test_state, i)
+
+    self.assertCountEqual(os.listdir(temp_dir), ['ckpt_1', 'ckpt_2', 'ckpt_3'])
 
   def test_raises_already_exists_error_with_existing_round_number(self):
     temp_dir = self.get_temp_dir()

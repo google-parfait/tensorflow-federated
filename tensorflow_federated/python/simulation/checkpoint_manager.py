@@ -59,7 +59,7 @@ class FileCheckpointManager():
       calling `FileCheckpointManager.save_checkpoint`, a  checkpoint will only
       be written for round numbers divisible by `step`.
       keep_total: An integer representing the total number of checkpoints to
-        keep.
+        keep. If the value is zero or smaller, all checkpoints will be kept.
       keep_first: A boolean indicating if the first checkpoint should be kept,
         irrespective of whether it is in the last `keep_total` checkpoints. This
         is desirable in settings where you would like to ensure full
@@ -199,6 +199,8 @@ class FileCheckpointManager():
 
   def _clear_old_checkpoints(self) -> None:
     """Removes old checkpoints."""
+    if self._keep_total <= 0:
+      return
     checkpoint_paths = self._get_all_checkpoint_paths()
     if len(checkpoint_paths) > self._keep_total:
       checkpoint_paths = sorted(checkpoint_paths, key=self._round_num)
