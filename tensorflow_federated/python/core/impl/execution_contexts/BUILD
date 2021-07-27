@@ -34,10 +34,23 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_value_base",
+        "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "//tensorflow_federated/python/core/impl/executors:ingestable_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:typed_object",
+    ],
+)
+
+py_test(
+    name = "async_execution_context_test",
+    size = "small",
+    srcs = ["async_execution_context_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":async_execution_context",
+        "//tensorflow_federated/python/core/impl/executors:executors_errors",
     ],
 )
 
@@ -52,7 +65,6 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executors_errors",
     ],
 )
 
@@ -68,7 +80,6 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
-        "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],

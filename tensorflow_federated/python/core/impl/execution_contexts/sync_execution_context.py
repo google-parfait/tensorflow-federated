@@ -17,7 +17,6 @@ import asyncio
 from typing import Any
 from typing import Callable
 from typing import Optional
-import retrying
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import tracing
@@ -25,12 +24,6 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_factory
-from tensorflow_federated.python.core.impl.executors import executors_errors
-
-
-# DTODO(b/193274408): Move retrying down to async level.
-def _is_retryable_error(exception):
-  return isinstance(exception, executors_errors.RetryableError)
 
 
 class ExecutionContext(context_base.Context):
@@ -63,12 +56,6 @@ class ExecutionContext(context_base.Context):
     return self._event_loop.run_until_complete(
         self._async_context.ingest(val, type_spec))
 
-  @retrying.retry(
-      retry_on_exception=_is_retryable_error,
-      wait_exponential_max=300000,  # in milliseconds
-      wait_exponential_multiplier=1000,  # in milliseconds
-      wait_jitter_max=1000  # in milliseconds
-  )
   def invoke(self, comp, arg):
     return self._event_loop.run_until_complete(
         self._async_context.invoke(comp, arg))

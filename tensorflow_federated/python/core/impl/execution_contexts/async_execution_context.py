@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -45,6 +46,33 @@ def _unwrap(value):
         (k, _unwrap(v)) for k, v in structure.iter_elements(value))
   else:
     return value
+
+
+def _is_retryable_error(exception):
+  return isinstance(exception, executors_errors.RetryableError)
+
+
+def retry_coro_fn(retry_on_exception, wait_max_ms, wait_multiplier):
+  """Coroutine function decorator retrying async functions."""
+
+  def retry_coro_fn_fn(coro_fn):
+
+    async def retry_fn(*args, **kwargs):
+
+      retry_wait_ms = 1.
+
+      while True:
+        try:
+          return await coro_fn(*args, **kwargs)
+        except Exception as e:  # pylint: disable=broad-except
+          if not retry_on_exception(e):
+            raise e
+          retry_wait_ms = min(wait_max_ms, retry_wait_ms * wait_multiplier)
+          await asyncio.sleep(retry_wait_ms / 1000)
+
+    return retry_fn
+
+  return retry_coro_fn_fn
 
 
 class AsyncExecutionContextValue(typed_object.TypedObject):
@@ -172,6 +200,10 @@ class AsyncExecutionContext(context_base.Context):
   async def ingest(self, val, type_spec):
     return AsyncExecutionContextValue(val, type_spec)
 
+  @retry_coro_fn(
+      retry_on_exception=_is_retryable_error,
+      wait_max_ms=300000,  # in milliseconds
+      wait_multiplier=2)
   async def invoke(self, comp, arg):
     comp.type_signature.check_function()
     # Save the type signature before compiling. Compilation currently loses
