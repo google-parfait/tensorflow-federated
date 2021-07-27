@@ -24,6 +24,9 @@ documentation can be found in the [TFF guides](../get_started.md).
 *   [Building Your Own Federated Learning Algorithm](building_your_own_federated_learning_algorithm.ipynb)
     shows how to use the TFF Core APIs to implement federated learning
     algorithms, using Federated Averaging as an example.
+*   [Custom Federated Algorithm with TFF Optimizers](custom_federated_algorithm_with_tff_optimizers.ipynb)
+    shows how to use `tff.learning.optimizers` to build a custom iterative
+    process for Federated Averaging.
 
 **Simulation best practices**
 

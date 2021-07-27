@@ -26,6 +26,8 @@ upper_tabs:
       - heading: Custom computations
       - title: "Building Your Own Federated Learning Algorithm"
         path: /federated/tutorials/building_your_own_federated_learning_algorithm
+      - title: "Custom Federated Algorithm with TFF Optimizers"
+        path: /federated/tutorials/custom_federated_algorithm_with_tff_optimizers
 
       - heading: Simulation Runtime
       - title: "High-performance Simulations with TFF"
