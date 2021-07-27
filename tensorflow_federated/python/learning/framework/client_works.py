@@ -213,7 +213,10 @@ def build_model_delta_client_work(model_fn: Callable[[], model_lib.Model],
   # tff.learning.optimizers.KerasOptimizer when ready.
   py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
   weights_type, data_type = _weights_and_data_type_from_model_fn(model_fn)
-  tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
+  # TODO(b/161529310): We flatten and convert the trainable specs to tuple, as
+  # "for batch in data:" pattern would try to stack the tensors in a list.
+  optimizer_tensor_specs = _flat_tuple(
+      type_conversions.type_to_tf_tensor_specs(weights_type.trainable))
 
   @computations.tf_computation(weights_type, data_type)
   @tf.function
@@ -227,7 +230,7 @@ def build_model_delta_client_work(model_fn: Callable[[], model_lib.Model],
     tf.nest.map_structure(lambda weight, value: weight.assign(value),
                           model_weights, initial_weights)
     num_examples = tf.constant(0, tf.int32)
-    optimizer_state = optimizer.initialize(tensor_specs)
+    optimizer_state = optimizer.initialize(optimizer_tensor_specs)
 
     # TODO(b/161529310): Different from creating an iterator using iter(data).
     for batch in data:
@@ -236,9 +239,11 @@ def build_model_delta_client_work(model_fn: Callable[[], model_lib.Model],
       gradients = tape.gradient(outputs.loss, model_weights.trainable)
       num_examples += tf.shape(outputs.predictions)[0]
 
-      optimizer_state, updated_weights = optimizer.next(optimizer_state,
-                                                        model_weights.trainable,
-                                                        gradients)
+      optimizer_state, updated_weights = optimizer.next(
+          optimizer_state, _flat_tuple(model_weights.trainable),
+          _flat_tuple(gradients))
+      updated_weights = tf.nest.pack_sequence_as(model_weights.trainable,
+                                                 updated_weights)
       tf.nest.map_structure(lambda weight, value: weight.assign(value),
                             model_weights.trainable, updated_weights)
 
@@ -273,3 +278,7 @@ def _weights_and_data_type_from_model_fn(model_fn):
   data_type = computation_types.SequenceType(model.input_spec)
   model_weights_type = model_utils.weights_type_from_model(model)
   return model_weights_type, data_type
+
+
+def _flat_tuple(struct):
+  return tuple(tf.nest.flatten(struct))

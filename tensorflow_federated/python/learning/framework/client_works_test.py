@@ -361,7 +361,7 @@ class ClientWorkTest(test_case.TestCase):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
 
-class MinimalClientWorkComputationTest(test_case.TestCase):
+class ModelDeltaClientWorkComputationTest(test_case.TestCase):
 
   def test_type_properties(self):
     model_fn = model_examples.LinearRegression
@@ -409,9 +409,9 @@ class MinimalClientWorkComputationTest(test_case.TestCase):
           model_examples.LinearRegression(), sgdm.build_sgdm(1.0))
 
 
-class MinimalClientWorkExecutionTest(test_case.TestCase):
+class ModelDeltaClientWorkExecutionTest(test_case.TestCase):
 
-  def test_execution(self):
+  def test_execution_stateless_optimizer(self):
     client_work_process = client_works.build_model_delta_client_work(
         model_examples.LinearRegression, sgdm.build_sgdm(0.1))
     data = tf.data.Dataset.from_tensor_slices(
@@ -431,6 +431,35 @@ class MinimalClientWorkExecutionTest(test_case.TestCase):
         client_works.ClientResult([[[-1.15], [-1.7]], -0.55], 2.0),
         client_works.ClientResult([[[-0.425], [-0.73]], -0.305], 4.0),
     )
+
+    self.assertEqual((), output.state)
+    for i in range(len(expected_result)):
+      self.assertAllClose(expected_result[i].update, output.result[i].update)
+      self.assertAllClose(expected_result[i].update_weight,
+                          output.result[i].update_weight)
+    self.assertEqual((), output.measurements)
+
+  def test_execution_stateful_optimizer(self):
+    client_work_process = client_works.build_model_delta_client_work(
+        model_examples.LinearRegression, sgdm.build_sgdm(0.1, momentum=0.9))
+    data = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0]],
+            y=[[5.0], [6.0]],
+        )).batch(2)
+    data = [data, data.repeat(2)]  # 1st client has 2 examples, 2nd has 4.
+    model_weights = model_utils.ModelWeights(
+        trainable=[[[0.0], [0.0]], 0.0], non_trainable=[0.0])
+    client_model_weights = [model_weights] * 2
+
+    state = client_work_process.initialize()
+    output = client_work_process.next(state, client_model_weights, data)
+
+    expected_result = (
+        client_works.ClientResult([[[-1.15], [-1.7]], -0.55], 2.0),
+        client_works.ClientResult([[[-1.46], [-2.26]], -0.8], 4.0),
+    )
+
     self.assertEqual((), output.state)
     for i in range(len(expected_result)):
       self.assertAllClose(expected_result[i].update, output.result[i].update)
