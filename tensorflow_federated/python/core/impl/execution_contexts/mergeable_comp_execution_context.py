@@ -13,12 +13,22 @@
 # limitations under the License.
 """Execution context for single-aggregation computations."""
 
+import functools
+import math
+from typing import Any, List
+
+import attr
+
+from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import typed_object
 
 
 class MergeTypeNotAssignableError(TypeError):
@@ -177,3 +187,166 @@ class MergeableCompForm:
     self.up_to_merge = up_to_merge
     self.merge = merge
     self.after_merge = after_merge
+
+
+@attr.s
+class _PartitioningValue:
+  """Data class to hold info on traversal while partitioning into subrounds."""
+  payload = attr.ib()
+  num_remaining_clients = attr.ib()
+  num_remaining_partitions = attr.ib()
+  last_client_index = attr.ib()
+
+
+def _partition_value(
+    val: _PartitioningValue,
+    type_signature: computation_types.Type) -> _PartitioningValue:
+  """Partitions value as specified in _split_value_into_subrounds."""
+  if type_signature.is_struct():
+    struct_val = structure.from_container(val.payload)
+    result_container = []
+    for (_, val_elem), (name, type_elem) in zip(
+        structure.iter_elements(struct_val),
+        structure.iter_elements(type_signature)):
+      partitioning_val_elem = _PartitioningValue(val_elem,
+                                                 val.num_remaining_clients,
+                                                 val.num_remaining_partitions,
+                                                 val.last_client_index)
+      partition_result = _partition_value(partitioning_val_elem, type_elem)
+      result_container.append((name, partition_result.payload))
+    return _PartitioningValue(
+        structure.Struct(result_container),
+        partition_result.num_remaining_clients,
+        partition_result.num_remaining_partitions,
+        partition_result.last_client_index)
+  elif (type_signature.is_federated() and
+        type_signature.placement.is_clients()):
+
+    if type_signature.all_equal:
+      # In this case we simply replicate the argument for every subround.
+      return val
+
+    py_typecheck.check_type(val.payload, (list, tuple))
+    num_clients_for_subround = math.ceil(val.num_remaining_clients /
+                                         val.num_remaining_partitions)
+    num_remaining_clients = val.num_remaining_clients - num_clients_for_subround
+    num_remaining_partitions = val.num_remaining_partitions - 1
+    values_to_return = val.payload[val.last_client_index:val.last_client_index +
+                                   num_clients_for_subround]
+    last_client_index = val.last_client_index + num_clients_for_subround
+    return _PartitioningValue(
+        payload=values_to_return,
+        num_remaining_clients=num_remaining_clients,
+        num_remaining_partitions=num_remaining_partitions,
+        last_client_index=last_client_index)
+  else:
+    return val
+
+
+def _split_value_into_subrounds(value: Any, type_spec: computation_types.Type,
+                                num_desired_subrounds: int) -> List[Any]:
+  """Partitions clients-placed values to subrounds, replicating other values.
+
+  This function should be applied to an argument of a computation which is
+  intended to be executed in subrounds; the semantics of this use case drive
+  the implementation of this function.
+
+  This function will return a list of values representing the appropriate
+  arguments to subrounds. Any value which is not CLIENTS-placed of not-all-equal
+  type will be replicated in the return value of this function. The returned
+  list will be up to `num_desired_subrounds` elements in length, possibly
+  shorter if the cardinality of clients represented by `value` is less than
+  `num_desired_subrounds`, to avoid constructing empty clients-placed arguments.
+
+  Args:
+    value: The argument to a computation intended to be invoked in subrounds,
+      which will be partitioned. `value` can be any structure understood by
+      TFF's native execution contexts.
+    type_spec: The `computation_types.Type` corresponding to `value`.
+    num_desired_subrounds: Int specifying the desired number of subrounds to
+      run. Specifies the maximum length of the returned list.
+
+  Returns:
+    A list of partitioned values as described above.
+  """
+  cardinalities = cardinalities_utils.infer_cardinalities(value, type_spec)
+  if cardinalities.get(placements.CLIENTS) is None:
+    # The argument contains no clients-placed values, but may still perform
+    # nontrivial clients-placed work.
+    return [value for _ in range(num_desired_subrounds)]
+  elif cardinalities[placements.CLIENTS] == 0:
+    # Here the argument contains an empty clients-placed value; therefore this
+    # computation should be run over an empty set of clients.
+    return [value]
+
+  partitioning_value = _PartitioningValue(
+      payload=value,
+      num_remaining_clients=cardinalities[placements.CLIENTS],
+      num_remaining_partitions=num_desired_subrounds,
+      last_client_index=0)
+
+  values_to_return = []
+  for _ in range(num_desired_subrounds):
+    if partitioning_value.num_remaining_clients > 0:
+      partitioned_value = _partition_value(partitioning_value, type_spec)
+      values_to_return.append(partitioned_value.payload)
+      partitioning_value = _PartitioningValue(
+          partitioning_value.payload,
+          num_remaining_clients=partitioned_value.num_remaining_clients,
+          num_remaining_partitions=partitioned_value.num_remaining_partitions,
+          last_client_index=partitioned_value.last_client_index)
+    else:
+      # Weve already partitioned all the clients we can. The underlying
+      # execution contexts will fail if we pass them empty clients-placed
+      # values.
+      break
+
+  return values_to_return
+
+
+def _repackage_partitioned_values(after_merge_results,
+                                  result_type_spec: computation_types.Type):
+  """Inverts `_split_value_into_subrounds` above."""
+  py_typecheck.check_type(after_merge_results, list)
+  if result_type_spec.is_struct():
+    after_merge_structs = [
+        structure.from_container(x) for x in after_merge_results
+    ]
+    result_container = []
+    for idx, (name, elem_type) in enumerate(
+        structure.iter_elements(result_type_spec)):
+      result_container.append(
+          (name,
+           _repackage_partitioned_values([x[idx] for x in after_merge_structs],
+                                         elem_type)))
+    return structure.Struct(result_container)
+  elif result_type_spec.is_federated(
+  ) and result_type_spec.placement.is_clients():
+    if result_type_spec.all_equal:
+      return after_merge_results[0]
+    for x in after_merge_results:
+      py_typecheck.check_type(x, (list, tuple))
+    # Merges all clients-placed values back together.
+    return functools.reduce(lambda x, y: x + y, after_merge_results)
+  else:
+    return after_merge_results[0]
+
+
+class MergeableCompExecutionContextValue(typed_object.TypedObject):
+  """Represents a value embedded in the `MergeableCompExecutionContext`."""
+
+  def __init__(self, value: Any, type_spec: computation_types.Type,
+               num_desired_subrounds: int):
+    py_typecheck.check_type(type_spec, computation_types.Type)
+    self._type_signature = type_spec
+    self._partitioned_value = _split_value_into_subrounds(
+        value,
+        self._type_signature,
+        num_desired_subrounds=num_desired_subrounds)
+
+  @property
+  def type_signature(self):
+    return self._type_signature
+
+  def value(self):
+    return self._partitioned_value
