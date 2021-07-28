@@ -17,7 +17,7 @@ Note: Refer to `get_iterative_process_for_map_reduce_form()` for the meaning of
 variable names used in this module.
 """
 
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, Tuple
 
 import tensorflow as tf
 
@@ -102,23 +102,23 @@ def get_iterative_process_for_map_reduce_form(
   @computations.federated_computation(next_parameter_type)
   def next_computation(arg):
     """The logic of a single MapReduce processing round."""
-    s1 = arg[0]
-    c1 = arg[1]
-    s2 = intrinsics.federated_map(mrf.prepare, s1)
-    c2 = intrinsics.federated_broadcast(s2)
-    c3 = intrinsics.federated_zip([c1, c2])
-    c4 = intrinsics.federated_map(mrf.work, c3)
-    c5 = c4[0]
-    c6 = c4[1]
-    s3 = intrinsics.federated_aggregate(c5, mrf.zero(), mrf.accumulate,
-                                        mrf.merge, mrf.report)
-    s4 = intrinsics.federated_secure_sum_bitwidth(c6, mrf.bitwidth())
-    s5 = intrinsics.federated_zip([s3, s4])
-    s6 = intrinsics.federated_zip([s1, s5])
-    s7 = intrinsics.federated_map(mrf.update, s6)
-    s8 = s7[0]
-    s9 = s7[1]
-    return s8, s9
+    server_state, client_data = arg
+    broadcast_input = intrinsics.federated_map(mrf.prepare, server_state)
+    broadcast_result = intrinsics.federated_broadcast(broadcast_input)
+    work_arg = intrinsics.federated_zip([client_data, broadcast_result])
+    aggregate_input, secagg_bitwidth_input = intrinsics.federated_map(
+        mrf.work, work_arg)
+    aggregate_result = intrinsics.federated_aggregate(aggregate_input,
+                                                      mrf.zero(),
+                                                      mrf.accumulate, mrf.merge,
+                                                      mrf.report)
+    secagg_bitwidth_result = intrinsics.federated_secure_sum_bitwidth(
+        secagg_bitwidth_input, mrf.bitwidth())
+    update_arg = intrinsics.federated_zip(
+        (server_state, (aggregate_result, secagg_bitwidth_result)))
+    updated_server_state, server_output = intrinsics.federated_map(
+        mrf.update, update_arg)
+    return updated_server_state, server_output
 
   return iterative_process.IterativeProcess(init_computation, next_computation)
 
@@ -451,7 +451,12 @@ def _as_function_of_single_subparameter(bb: building_blocks.Lambda,
 
 
 class _ParameterSelectionError(TypeError):
-  pass
+
+  def __init__(self, path, bb):
+    message = ('Attempted to rebind references to parameter selection path '
+               f'{path}, which is not a valid selection from type '
+               f'{bb.parameter_type}. Original AST:\n{bb}')
+    super().__init__(message)
 
 
 class _NonFederatedSelectionError(TypeError):
@@ -464,7 +469,7 @@ class _MismatchedSelectionPlacementError(TypeError):
 
 def _as_function_of_some_federated_subparameters(
     bb: building_blocks.Lambda,
-    paths: List[Tuple[int, ...]],
+    paths,
 ) -> building_blocks.Lambda:
   """Turns `x -> ...only uses parts of x...` into `parts_of_x -> ...`."""
   tree_analysis.check_has_unique_names(bb)
@@ -472,14 +477,22 @@ def _as_function_of_some_federated_subparameters(
   name_generator = building_block_factory.unique_name_generator(bb)
 
   type_list = []
+  int_paths = []
   for path in paths:
     selected_type = bb.parameter_type
+    int_path = []
     for index in path:
-      if not (selected_type.is_struct() and len(selected_type) > index):
-        raise _ParameterSelectionError(
-            'Attempted to rebind references to parameter selection path '
-            f'{path}, which is not a valid selection from type '
-            f'{bb.parameter_type}. Original AST:\n{bb}')
+      if not selected_type.is_struct():
+        raise _ParameterSelectionError(path, bb)
+      if isinstance(index, int):
+        if index > len(selected_type):
+          raise _ParameterSelectionError(path, bb)
+        int_path.append(index)
+      else:
+        py_typecheck.check_type(index, str)
+        if not structure.has_field(selected_type, index):
+          raise _ParameterSelectionError(path, bb)
+        int_path.append(structure.name_to_index_map(selected_type)[index])
       selected_type = selected_type[index]
     if not selected_type.is_federated():
       raise _NonFederatedSelectionError(
@@ -487,7 +500,7 @@ def _as_function_of_some_federated_subparameters(
           f'{path} from type {bb.parameter_type}, but the value at that path '
           f'was of non-federated type {selected_type}. Selections must all '
           f'be of federated type. Original AST:\n{bb}')
-
+    int_paths.append(tuple(int_path))
     type_list.append(selected_type)
 
   placement = type_list[0].placement
@@ -501,7 +514,7 @@ def _as_function_of_some_federated_subparameters(
                                              placement=placement)
   ref_to_zip = building_blocks.Reference(next(name_generator), zip_type)
   path_to_replacement = {}
-  for i, path in enumerate(paths):
+  for i, path in enumerate(int_paths):
     path_to_replacement[path] = _construct_selection_from_federated_tuple(
         ref_to_zip, i, name_generator)
 
@@ -564,11 +577,11 @@ def _extract_prepare(before_broadcast, grappler_config):
     transformations.MapReduceFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  s1_index_in_before_broadcast = 0
-  s1_to_s2_computation = _as_function_of_single_subparameter(
-      before_broadcast, s1_index_in_before_broadcast)
+  server_state_index_in_before_broadcast = 0
+  prepare = _as_function_of_single_subparameter(
+      before_broadcast, server_state_index_in_before_broadcast)
   return transformations.consolidate_and_extract_local_processing(
-      s1_to_s2_computation, grappler_config)
+      prepare, grappler_config)
 
 
 def _extract_work(before_aggregate, grappler_config):
@@ -593,19 +606,23 @@ def _extract_work(before_aggregate, grappler_config):
     transformations.MapReduceFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  c3_elements_in_before_aggregate_parameter = [(0, 1), (1,)]
-  c3_to_before_aggregate_computation = _as_function_of_some_federated_subparameters(
-      before_aggregate, c3_elements_in_before_aggregate_parameter)
-  c4_index_in_before_aggregate_result = [[0, 0], [1, 0]]
-  c3_to_unzipped_c4_computation = transformations.select_output_from_lambda(
-      c3_to_before_aggregate_computation, c4_index_in_before_aggregate_result)
-  c3_to_c4_computation = building_blocks.Lambda(
-      c3_to_unzipped_c4_computation.parameter_name,
-      c3_to_unzipped_c4_computation.parameter_type,
-      building_block_factory.create_federated_zip(
-          c3_to_unzipped_c4_computation.result))
+  # Indices of `work` args in `before_aggregate` parameter
+  client_data_index = ('original_arg', 1)
+  broadcast_result_index = ('federated_broadcast_result',)
+  work_to_before_aggregate = _as_function_of_some_federated_subparameters(
+      before_aggregate, [client_data_index, broadcast_result_index])
+
+  # Indices of `work` results in `before_aggregate` result
+  aggregate_input_index = ('federated_aggregate_param', 0)
+  secagg_bitwidth_input_index = ('federated_secure_sum_bitwidth_param', 0)
+  work_unzipped = transformations.select_output_from_lambda(
+      work_to_before_aggregate,
+      [aggregate_input_index, secagg_bitwidth_input_index])
+  work = building_blocks.Lambda(
+      work_unzipped.parameter_name, work_unzipped.parameter_type,
+      building_block_factory.create_federated_zip(work_unzipped.result))
   return transformations.consolidate_and_extract_local_processing(
-      c3_to_c4_computation, grappler_config)
+      work, grappler_config)
 
 
 def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
@@ -718,52 +735,57 @@ def _extract_update(after_aggregate, grappler_config):
     transformations.MapReduceFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  s7_elements_in_after_aggregate_result = [0, 1]
-  s7_output_extracted = transformations.select_output_from_lambda(
-      after_aggregate, s7_elements_in_after_aggregate_result)
-  s7_output_zipped = building_blocks.Lambda(
-      s7_output_extracted.parameter_name, s7_output_extracted.parameter_type,
-      building_block_factory.create_federated_zip(s7_output_extracted.result))
+  after_aggregate_zipped = building_blocks.Lambda(
+      after_aggregate.parameter_name, after_aggregate.parameter_type,
+      building_block_factory.create_federated_zip(after_aggregate.result))
   # `create_federated_zip` doesn't have unique reference names, but we need
   # them for `as_function_of_some_federated_subparameters`.
-  s7_output_zipped, _ = tree_transformations.uniquify_reference_names(
-      s7_output_zipped)
-  s6_elements_in_after_aggregate_parameter = [(0, 0, 0), (1, 0), (1, 1)]
-  s6_to_s7_computation = _as_function_of_some_federated_subparameters(
-      s7_output_zipped, s6_elements_in_after_aggregate_parameter)
+  after_aggregate_zipped, _ = tree_transformations.uniquify_reference_names(
+      after_aggregate_zipped)
+  server_state_index = ('original_arg', 'original_arg', 0)
+  aggregate_result_index = ('intrinsic_results', 'federated_aggregate_result')
+  secagg_bitwidth_result_index = ('intrinsic_results',
+                                  'federated_secure_sum_bitwidth_result')
+  update_with_flat_inputs = _as_function_of_some_federated_subparameters(
+      after_aggregate_zipped, (server_state_index, aggregate_result_index,
+                               secagg_bitwidth_result_index))
 
   # TODO(b/148942011): The transformation
   # `zip_selection_as_argument_to_lower_level_lambda` does not support selecting
-  # from nested structures, therefore we need to pack the type signature
-  # `<s1, s3, s4>` as `<s1, <s3, s4>>`.
+  # from nested structures, therefore we need to transform the input from
+  # <server_state, <aggregation_results...>> into
+  # <server_state, aggregation_results...>
+  # unpack = <v, <...>> -> <v, ...>
   name_generator = building_block_factory.unique_name_generator(
-      s6_to_s7_computation)
-
-  pack_ref_name = next(name_generator)
-  pack_ref_type = computation_types.StructType([
-      s6_to_s7_computation.parameter_type.member[0],
-      computation_types.StructType([
-          s6_to_s7_computation.parameter_type.member[1],
-          s6_to_s7_computation.parameter_type.member[2],
-      ]),
+      update_with_flat_inputs)
+  unpack_param_name = next(name_generator)
+  original_param_type = update_with_flat_inputs.parameter_type.member
+  unpack_param_type = computation_types.StructType([
+      original_param_type[0],
+      computation_types.StructType(original_param_type[1:]),
   ])
-  pack_ref = building_blocks.Reference(pack_ref_name, pack_ref_type)
-  sel_s1 = building_blocks.Selection(pack_ref, index=0)
-  sel = building_blocks.Selection(pack_ref, index=1)
-  sel_s3 = building_blocks.Selection(sel, index=0)
-  sel_s4 = building_blocks.Selection(sel, index=1)
-  result = building_blocks.Struct([sel_s1, sel_s3, sel_s4])
-  pack_fn = building_blocks.Lambda(pack_ref.name, pack_ref.type_signature,
-                                   result)
-  ref_name = next(name_generator)
-  ref_type = computation_types.FederatedType(pack_ref_type, placements.SERVER)
-  ref = building_blocks.Reference(ref_name, ref_type)
-  unpacked_args = building_block_factory.create_federated_map_or_apply(
-      pack_fn, ref)
-  call = building_blocks.Call(s6_to_s7_computation, unpacked_args)
-  fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
+  unpack_param_ref = building_blocks.Reference(unpack_param_name,
+                                               unpack_param_type)
+  select = lambda bb, i: building_blocks.Selection(bb, index=i)
+  unpack = building_blocks.Lambda(
+      unpack_param_name, unpack_param_type,
+      building_blocks.Struct([select(unpack_param_ref, 0)] + [
+          select(select(unpack_param_ref, 1), i)
+          for i in range(len(original_param_type) - 1)
+      ]))
+
+  # update = v -> update_with_flat_inputs(federated_map(unpack, v))
+  param_name = next(name_generator)
+  param_type = computation_types.at_server(unpack_param_type)
+  param_ref = building_blocks.Reference(param_name, param_type)
+  update = building_blocks.Lambda(
+      param_name, param_type,
+      building_blocks.Call(
+          update_with_flat_inputs,
+          building_block_factory.create_federated_map_or_apply(
+              unpack, param_ref)))
   return transformations.consolidate_and_extract_local_processing(
-      fn, grappler_config)
+      update, grappler_config)
 
 
 def _replace_lambda_body_with_call_dominant_form(

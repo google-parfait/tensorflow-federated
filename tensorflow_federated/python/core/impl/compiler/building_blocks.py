@@ -384,8 +384,8 @@ class Selection(ComputationBuildingBlock):
       length = len(source_type)
       if index < 0 or index >= length:
         raise ValueError(
-            'The index \'{}\' does not fit into the valid range in the '
-            'struct type: 0..{}.'.format(name, length))
+            f'The index `{index}` does not fit into the valid range in the '
+            f'struct type: 0..{length}')
       type_signature = source_type[index]
     super().__init__(type_signature)
     self._source = source
