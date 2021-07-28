@@ -65,7 +65,6 @@ REQUIRED_PACKAGES = [
     'jaxlib~=0.1.55',
     'numpy~=1.19.2',
     'portpicker~=1.3.1',
-    'retrying~=1.3.3',
     'semantic-version~=2.8.5',
     'tensorflow-model-optimization~=0.5.0',
     'tensorflow-privacy~=0.6.2',
