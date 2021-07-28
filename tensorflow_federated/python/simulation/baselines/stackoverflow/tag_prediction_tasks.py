@@ -39,7 +39,6 @@ def create_tag_prediction_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec],
     word_vocab_size: int,
-    tag_vocab_size: int,
     train_data: client_data.ClientData,
     test_data: client_data.ClientData,
     validation_data: client_data.ClientData,
@@ -56,9 +55,6 @@ def create_tag_prediction_task_from_datasets(
     word_vocab_size: Integer dictating the number of most frequent words in the
       entire corpus to use for the task's vocabulary. By default, this is set to
       `tff.simulation.baselines.stackoverflow.DEFAULT_WORD_VOCAB_SIZE`.
-    tag_vocab_size: Integer dictating the number of most frequent tags in the
-      entire corpus to use for the task's labels. By default, this is set to
-      `tff.simulation.baselines.stackoverflow.DEFAULT_TAG_VOCAB_SIZE`.
     train_data: A `tff.simulation.datasets.ClientData` used for training.
     test_data: A `tff.simulation.datasets.ClientData` used for testing.
     validation_data: A `tff.simulation.datasets.ClientData` used for validation.
@@ -66,6 +62,7 @@ def create_tag_prediction_task_from_datasets(
   Returns:
     A `tff.simulation.baselines.BaselineTask`.
   """
+  tag_vocab_size = 500
   if word_vocab_size < 1:
     raise ValueError('word_vocab_size must be a positive integer')
   if tag_vocab_size < 1:
@@ -109,7 +106,6 @@ def create_tag_prediction_task(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
     word_vocab_size: int = constants.DEFAULT_WORD_VOCAB_SIZE,
-    tag_vocab_size: int = constants.DEFAULT_TAG_VOCAB_SIZE,
     cache_dir: Optional[str] = None,
     use_synthetic_data: bool = False,
 ) -> baseline_task.BaselineTask:
@@ -128,9 +124,6 @@ def create_tag_prediction_task(
     word_vocab_size: Integer dictating the number of most frequent words in the
       entire corpus to use for the task's vocabulary. By default, this is set to
       `tff.simulation.baselines.stackoverflow.DEFAULT_WORD_VOCAB_SIZE`.
-    tag_vocab_size: Integer dictating the number of most frequent tags in the
-      entire corpus to use for the task's labels. By default, this is set to
-      `tff.simulation.baselines.stackoverflow.DEFAULT_TAG_VOCAB_SIZE`.
     cache_dir: An optional directory to cache the downloadeded datasets. If
       `None`, they will be cached to `~/.tff/`.
     use_synthetic_data: A boolean indicating whether to use synthetic Stack
@@ -150,5 +143,5 @@ def create_tag_prediction_task(
         stackoverflow.load_data(cache_dir=cache_dir))
 
   return create_tag_prediction_task_from_datasets(
-      train_client_spec, eval_client_spec, word_vocab_size, tag_vocab_size,
-      stackoverflow_train, stackoverflow_test, stackoverflow_validation)
+      train_client_spec, eval_client_spec, word_vocab_size, stackoverflow_train,
+      stackoverflow_test, stackoverflow_validation)

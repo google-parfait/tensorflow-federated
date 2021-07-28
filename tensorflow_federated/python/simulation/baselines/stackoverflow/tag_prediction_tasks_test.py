@@ -90,34 +90,34 @@ class TagPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
           word_vocab_size=word_vocab_size,
           use_synthetic_data=True)
 
-  @parameterized.named_parameters(
-      ('tag_vocab_size1', 1),
-      ('tag_vocab_size8', 8),
-      ('tag_vocab_size10', 10),
-      ('tag_vocab_size50', 50),
-  )
-  def test_constructs_with_different_tag_vocab_sizes(self, tag_vocab_size):
-    train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = tag_prediction_tasks.create_tag_prediction_task(
-        train_client_spec,
-        tag_vocab_size=tag_vocab_size,
-        use_synthetic_data=True)
-    self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
+#   @parameterized.named_parameters(
+#       ('tag_vocab_size1', 1),
+#       ('tag_vocab_size8', 8),
+#       ('tag_vocab_size10', 10),
+#       ('tag_vocab_size50', 50),
+#   )
+#   def test_constructs_with_different_tag_vocab_sizes(self, tag_vocab_size):
+#     train_client_spec = client_spec.ClientSpec(
+#         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+#     baseline_task_spec = tag_prediction_tasks.create_tag_prediction_task(
+#         train_client_spec,
+#         tag_vocab_size=tag_vocab_size,
+#         use_synthetic_data=True)
+#     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
-  @parameterized.named_parameters(
-      ('tag_vocab_size0', 0),
-      ('tag_vocab_size_minus1', -1),
-      ('tag_vocab_size_minus5', -5),
-  )
-  def test_raises_on_bad_tag_vocab_size(self, tag_vocab_size):
-    train_client_spec = client_spec.ClientSpec(
-        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    with self.assertRaises(ValueError):
-      tag_prediction_tasks.create_tag_prediction_task(
-          train_client_spec,
-          tag_vocab_size=tag_vocab_size,
-          use_synthetic_data=True)
+#   @parameterized.named_parameters(
+#       ('tag_vocab_size0', 0),
+#       ('tag_vocab_size_minus1', -1),
+#       ('tag_vocab_size_minus5', -5),
+#   )
+#   def test_raises_on_bad_tag_vocab_size(self, tag_vocab_size):
+#     train_client_spec = client_spec.ClientSpec(
+#         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+#     with self.assertRaises(ValueError):
+#       tag_prediction_tasks.create_tag_prediction_task(
+#           train_client_spec,
+#           tag_vocab_size=tag_vocab_size,
+#           use_synthetic_data=True)
 
 
 if __name__ == '__main__':
