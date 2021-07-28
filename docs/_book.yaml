@@ -48,6 +48,8 @@ upper_tabs:
         path: /federated/tutorials/sparse_federated_learning
       - title: "TFF for Federated Learning Research: Model and Update Compression"
         path: /federated/tutorials/tff_for_federated_learning_research_compression
+      - title: "Federated Learning with Differential Privacy in TFF"
+        path: /federated/tutorials/federated_learning_with_differential_privacy
       - title: "Custom Federated Algorithms Part 1 - Introduction to the Federated Core"
         path: /federated/tutorials/custom_federated_algorithms_1
       - title: "Custom Federated Algorithms Part 2 - Implementing Federated Averaging"

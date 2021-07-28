@@ -10,6 +10,7 @@ exports_files([
     "custom_federated_algorithms_2.ipynb",
     "federated_learning_for_image_classification.ipynb",
     "federated_learning_for_text_generation.ipynb",
+    "federated_learning_with_differential_privacy.ipynb",
     "federated_select.ipynb",
     "random_noise_generation.ipynb",
     "simulations.ipynb",

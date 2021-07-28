@@ -66,6 +66,10 @@ documentation can be found in the [TFF guides](../get_started.md).
     [tensor_encoding API](https://github.com/tensorflow/model-optimization/tree/master/tensorflow_model_optimization/python/core/internal/tensor_encoding)
     can be used in TFF.
 
+*   [Federated Learning with Differential Privacy in TFF](federated_learning_with_differential_privacy.ipynb)
+    demonstrates how to use TFF to train models with user-level differential
+    privacy.
+
 *   [Custom Federated Algorithms, Part 1: Introduction to the Federated Core](custom_federated_algorithms_1.ipynb)
     and
     [Part 2: Implementing Federated Averaging](custom_federated_algorithms_2.ipynb)
