@@ -27,9 +27,10 @@ from tensorflow_federated.python.simulation.sampling_utils import build_uniform_
 from tensorflow_federated.python.simulation.server_utils import run_server
 from tensorflow_federated.python.simulation.server_utils import server_context
 from tensorflow_federated.python.simulation.tensorboard_manager import TensorBoardManager
+from tensorflow_federated.python.simulation.training_loop import ROUND_TIME_KEY
+from tensorflow_federated.python.simulation.training_loop import ROUNDS_PER_HOUR_KEY
 from tensorflow_federated.python.simulation.training_loop import run_simulation
 from tensorflow_federated.python.simulation.training_loop import run_simulation_with_callbacks
-from tensorflow_federated.python.simulation.training_loop import TRAIN_STEP_TIME_KEY
-from tensorflow_federated.python.simulation.training_loop import TRAIN_STEPS_PER_HOUR_KEY
+from tensorflow_federated.python.simulation.training_loop import run_stateless_simulation
 from tensorflow_federated.python.simulation.training_loop import VALIDATION_METRICS_PREFIX
 from tensorflow_federated.python.simulation.training_loop import VALIDATION_TIME_KEY

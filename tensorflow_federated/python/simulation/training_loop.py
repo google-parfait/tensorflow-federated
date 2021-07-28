@@ -20,6 +20,7 @@ from typing import Any, Callable, List, MutableMapping, Optional, Tuple
 
 from absl import logging
 
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.simulation import checkpoint_manager
 from tensorflow_federated.python.simulation import metrics_manager
@@ -29,10 +30,10 @@ FileCheckpointManager = checkpoint_manager.FileCheckpointManager
 MetricsManager = metrics_manager.MetricsManager
 ValidationFnType = Callable[[Any, int], MetricsType]
 
-TRAIN_STEP_TIME_KEY = 'train_step_time_in_seconds'
-TRAIN_STEPS_PER_HOUR_KEY = 'train_steps_per_hour'
+ROUND_TIME_KEY = 'round_time_in_seconds'
+ROUNDS_PER_HOUR_KEY = 'rounds_per_hour'
 VALIDATION_METRICS_PREFIX = 'validation/'
-VALIDATION_TIME_KEY = 'validation/validation_time_in_seconds'
+VALIDATION_TIME_KEY = 'validation_time_in_seconds'
 
 
 def _load_initial_checkpoint(
@@ -79,7 +80,8 @@ def _compute_validation_metrics(state: Any, round_num: int,
   the output of `validation_fn` will be prefixed with
   `tff.simulation.VALIDATION_METRICS_PREFIX`. Additionally, the dictionary will
   contain a metric representing the number of seconds required to compute the
-  validation metrics, with key `tff.simulation.VALIDATION_TIME_KEY`.
+  validation metrics, with key `tff.simulation.VALIDATION_TIME_KEY`, prefixed
+  by `tff.simulation.VALIDATION_METRICS_PREFIX`.
 
   Args:
     state: The current state of a simulation.
@@ -95,7 +97,8 @@ def _compute_validation_metrics(state: Any, round_num: int,
   validation_metrics = validation_fn(state, round_num)
   validation_time = time.time() - validation_start_time
   prefixed_validation_metrics = collections.OrderedDict()
-  prefixed_validation_metrics[VALIDATION_TIME_KEY] = validation_time
+  prefixed_validation_metrics[VALIDATION_METRICS_PREFIX +
+                              VALIDATION_TIME_KEY] = validation_time
   for key, value in validation_metrics.items():
     prefixed_validation_metrics[VALIDATION_METRICS_PREFIX + key] = value
   return prefixed_validation_metrics
@@ -246,9 +249,10 @@ def run_simulation(
 
   This method also records how long it takes (in seconds) to call
   `client_selection_fn` and `process.next` at each round and add this to the
-  round metrics with key `tff.simulation.TRAIN_STEP_TIME_KEY`. We also record
-  how many training steps would occur per hour, which has key
-  `tff.simulation.TRAIN_STEPS_PER_HOUR_KEY`.
+  round metrics with key `tff.simulation.ROUND_TIME_KEY`. We also record
+  how many such iterations would occur per hour with the key
+  `tff.simulation.ROUNDS_PER_HOUR_KEY`. Note this does not include validation
+  time.
 
   In full generality, after each round, we compute validation metrics via
   `validation_fn` (if not `None`), add these to the metrics created by
@@ -306,9 +310,9 @@ def run_simulation_with_callbacks(
 
   This method also records how long it takes (in seconds) to call
   `client_selection_fn` and `process.next` at each round and add this to the
-  round metrics with key `tff.simulation.TRAIN_STEP_TIME_KEY`. We also record
-  how many training steps would occur per hour, which has key
-  `tff.simulation.TRAIN_STEPS_PER_HOUR_KEY`.
+  round metrics with key `tff.simulation.ROUND_TIME_KEY`. We also record
+  how many steps would occur per hour, which has key
+  `tff.simulation.ROUNDS_PER_HOUR_KEY`.
 
   This method uses up to two callbacks. The first, `on_loop_start`, accepts the
   initial state of `process`, and returns a starting `state` and `round_num` for
@@ -360,11 +364,11 @@ def run_simulation_with_callbacks(
 
     state, metrics = process.next(state, federated_train_data)
     train_time = time.time() - train_start_time
-    round_metrics[TRAIN_STEP_TIME_KEY] = train_time
+    round_metrics[ROUND_TIME_KEY] = train_time
     if train_time == 0.0:
-      round_metrics[TRAIN_STEPS_PER_HOUR_KEY] = None
+      round_metrics[ROUNDS_PER_HOUR_KEY] = None
     else:
-      round_metrics[TRAIN_STEPS_PER_HOUR_KEY] = 1 / train_time * 60.0 * 60.0
+      round_metrics[ROUNDS_PER_HOUR_KEY] = 1 / train_time * 60.0 * 60.0
     round_metrics.update(metrics)
 
     if on_round_end is not None:
@@ -374,3 +378,68 @@ def run_simulation_with_callbacks(
         round_num, pprint.pformat(round_metrics)))
 
   return state
+
+
+def run_stateless_simulation(
+    computation: computation_base.Computation,
+    client_selection_fn: Callable[[int], Any],
+    total_rounds: int,
+    metrics_managers: Optional[List[MetricsManager]] = None):
+  """Runs a federated computation on a given set of client data.
+
+  This method performs `total_rounds` calls to the `computation`. At each round,
+  this method samples client data via `client_selection_fn(round_num)`, and uses
+  this as input to `computation`. The output of `computation` is assumed to be
+  a mutable mapping with string-valued keys.
+
+  This method also records how long it takes (in seconds) to call
+  `client_selection_fn` and `computation` at each round and adds this to a
+  dictionary of  round metrics with key `tff.simulation.ROUND_TIME_KEY`. We also
+  record how many such iterations would occur per hour with the key
+  `tff.simulation.ROUNDS_PER_HOUR_KEY`.
+
+  Args:
+    computation: A `tff.Computation` to be executed. Must accept a single
+      argument (placed or unplaced).
+    client_selection_fn: Callable accepting an integer round number, and
+      returning a list of client data to use as federated data for that round.
+    total_rounds: The number of federated training rounds to perform.
+    metrics_managers: An optional list of `tff.simulation.MetricsManager`
+      objects used to save metrics throughout the simulation.
+
+  Returns:
+    An dictionary, keyed by round number, with values corresponding to the
+      outputs of each round's computation, with extra keys for timing
+      information.
+  """
+  # TODO(b/194841884): Add an optional checkpoint manager argument once the
+  # checkpoint managers have compatibility with "stateless" structures.
+  start_round = 0
+  if metrics_managers is not None:
+    for manager in metrics_managers:
+      manager.clear_metrics(start_round)
+
+  all_metrics = collections.OrderedDict()
+  for round_num in range(start_round, total_rounds):
+    round_metrics = collections.OrderedDict(round_num=round_num)
+    computation_start_time = time.time()
+
+    federated_data = client_selection_fn(round_num)
+    output = computation(federated_data)
+    computation_time = time.time() - computation_start_time
+    logging.info('Computation completed, took %.4f seconds', computation_time)
+
+    round_metrics.update(output)
+    round_metrics[ROUND_TIME_KEY] = computation_time
+    if computation_time == 0.0:
+      round_metrics[ROUNDS_PER_HOUR_KEY] = None
+    else:
+      round_metrics[ROUNDS_PER_HOUR_KEY] = 1 / computation_time * 60.0 * 60.0
+
+    if metrics_managers is not None:
+      for manager in metrics_managers:
+        manager.save_metrics(round_metrics, round_num)
+
+    all_metrics[round_num] = round_metrics
+
+  return all_metrics

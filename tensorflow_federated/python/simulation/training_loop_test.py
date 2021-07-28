@@ -74,8 +74,11 @@ class ComputeValidationMetricsTest(absltest.TestCase):
     validation_fn = lambda x, y: {}
     actual_metrics = training_loop._compute_validation_metrics(
         'state', 0, validation_fn)
-    self.assertIn(training_loop.VALIDATION_TIME_KEY, actual_metrics.keys())
-    actual_metrics.pop(training_loop.VALIDATION_TIME_KEY)
+    self.assertIn(
+        training_loop.VALIDATION_METRICS_PREFIX +
+        training_loop.VALIDATION_TIME_KEY, actual_metrics.keys())
+    actual_metrics.pop(training_loop.VALIDATION_METRICS_PREFIX +
+                       training_loop.VALIDATION_TIME_KEY)
     expected_metrics = {}
     self.assertDictEqual(actual_metrics, expected_metrics)
 
@@ -84,8 +87,11 @@ class ComputeValidationMetricsTest(absltest.TestCase):
     validation_fn = lambda x, y: metrics
     actual_metrics = training_loop._compute_validation_metrics(
         'state', 0, validation_fn)
-    self.assertIn(training_loop.VALIDATION_TIME_KEY, actual_metrics.keys())
-    actual_metrics.pop(training_loop.VALIDATION_TIME_KEY)
+    self.assertIn(
+        training_loop.VALIDATION_METRICS_PREFIX +
+        training_loop.VALIDATION_TIME_KEY, actual_metrics.keys())
+    actual_metrics.pop(training_loop.VALIDATION_METRICS_PREFIX +
+                       training_loop.VALIDATION_TIME_KEY)
 
     expected_metrics = {}
     for (key, value) in metrics.items():
@@ -555,12 +561,88 @@ class RunSimulationWithCallbacksTest(parameterized.TestCase):
     expected_metrics_passed_to_round_end = {
         'round_num': 1,
         'mock_train_metric': 1,
-        training_loop.TRAIN_STEP_TIME_KEY: 0,
-        training_loop.TRAIN_STEPS_PER_HOUR_KEY: None
+        training_loop.ROUND_TIME_KEY: 0,
+        training_loop.ROUNDS_PER_HOUR_KEY: None
     }
     actual_metrics_passed_to_round_end = on_round_end.call_args_list[0][0][-1]
     self.assertDictEqual(actual_metrics_passed_to_round_end,
                          expected_metrics_passed_to_round_end)
+
+
+class RunStatelessSimulationTest(absltest.TestCase):
+
+  @mock.patch('time.time')
+  def test_metrics_passed_to_output(self, mock_time):
+    mock_time.return_value = 0
+    computation = mock.MagicMock(return_value={'a': 4, 'b': 5})
+    client_selection_fn = mock.MagicMock()
+    output = training_loop.run_stateless_simulation(
+        computation, client_selection_fn, total_rounds=1)
+    expected_round_output = {
+        'a': 4,
+        'b': 5,
+        'round_num': 0,
+        training_loop.ROUND_TIME_KEY: 0,
+        training_loop.ROUNDS_PER_HOUR_KEY: None
+    }
+    self.assertEqual(list(output.keys()), [0])
+    self.assertDictEqual(output[0], expected_round_output)
+
+  @mock.patch('time.time')
+  def test_metrics_passed_to_output_with_multiple_rounds(self, mock_time):
+    mock_time.return_value = 0
+    computation = mock.MagicMock(return_value={'a': 4, 'b': 5})
+    client_selection_fn = mock.MagicMock()
+    output = training_loop.run_stateless_simulation(
+        computation, client_selection_fn, total_rounds=5)
+    self.assertEqual(list(output.keys()), list(range(5)))
+    for i in range(5):
+      expected_round_output = {
+          'a': 4,
+          'b': 5,
+          'round_num': i,
+          training_loop.ROUND_TIME_KEY: 0,
+          training_loop.ROUNDS_PER_HOUR_KEY: None
+      }
+      self.assertDictEqual(output[i], expected_round_output)
+
+  @mock.patch('time.time')
+  def test_metrics_passed_to_metrics_managers(self, mock_time):
+    mock_time.return_value = 0
+    computation = mock.MagicMock(return_value={'a': 4, 'b': 5})
+    client_selection_fn = mock.MagicMock()
+    metric_manager1 = mock.create_autospec(metrics_manager.MetricsManager)
+    metric_manager2 = mock.create_autospec(metrics_manager.MetricsManager)
+    metrics_managers = [metric_manager1, metric_manager2]
+    training_loop.run_stateless_simulation(
+        computation,
+        client_selection_fn,
+        total_rounds=1,
+        metrics_managers=metrics_managers)
+    for manager in metrics_managers:
+      manager.clear_metrics.assert_called_once_with(0)
+      manager.save_metrics.assert_called_once()
+      save_call = manager.save_metrics.call_args
+      self.assertEmpty(save_call[1])
+      unnamed_args = save_call[0]
+      self.assertLen(unnamed_args, 2)
+      self.assertEqual(unnamed_args[1], 0)
+      expected_metrics = {
+          'a': 4,
+          'b': 5,
+          'round_num': 0,
+          training_loop.ROUND_TIME_KEY: 0,
+          training_loop.ROUNDS_PER_HOUR_KEY: None
+      }
+      self.assertDictEqual(expected_metrics, unnamed_args[0])
+
+  def test_client_data_gets_passed_to_computation(self):
+    client_selection_fn = lambda x: x
+    computation = mock.MagicMock()
+    training_loop.run_stateless_simulation(
+        computation, client_selection_fn, total_rounds=5)
+    expected_call_args_list = [((x,),) for x in range(5)]
+    self.assertEqual(computation.call_args_list, expected_call_args_list)
 
 
 if __name__ == '__main__':
