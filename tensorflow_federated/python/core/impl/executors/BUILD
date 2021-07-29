@@ -507,6 +507,7 @@ py_library(
 py_library(
     name = "executors_errors",
     srcs = ["executors_errors.py"],
+    srcs_version = "PY3",
 )
 
 py_library(

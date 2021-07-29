@@ -20,6 +20,7 @@ licenses(["notice"])
 py_library(
     name = "simulation",
     srcs = ["__init__.py"],
+    srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":checkpoint_manager",

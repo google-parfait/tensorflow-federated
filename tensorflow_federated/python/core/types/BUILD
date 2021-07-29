@@ -15,6 +15,7 @@ licenses(["notice"])
 py_library(
     name = "types",
     srcs = ["__init__.py"],
+    srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         "//tensorflow_federated/python/core/impl/types:computation_types",
