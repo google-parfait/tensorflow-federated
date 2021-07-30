@@ -112,13 +112,9 @@ py_test(
 
 py_library(
     name = "test_utils",
+    testonly = True,
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
-    visibility = [
-        ":common_libs_packages",
-        "//tensorflow_federated/python:internal_packages",
-        "//tensorflow_federated/tools/python_package:python_package_tool",
-    ],
 )
 
 py_library(
