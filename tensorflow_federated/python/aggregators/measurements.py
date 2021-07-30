@@ -29,42 +29,59 @@ from tensorflow_federated.python.core.templates import measured_process
 def add_measurements(
     inner_agg_factory: factory.AggregationFactory,
     measurement_fn: Callable[..., Dict[str, Any]],
+    client_placed_input: bool = True,
 ) -> factory.AggregationFactory:
   """Wraps `AggregationFactory` to report additional measurements.
 
-  The function `measurement_fn` is a python callable that will be called on
-  `value` (if `inner_agg_factory` is an `UnweightedAggregationFactory`) or
-  `(value, weight)` (if `inner_agg_factory` is a `WeightedAggregationFactory`)
-  in the `next` function of the `AggregationProcess` produced by the returned
-  factory to generate additional measurements. It must be traceable by TFF and
-  expect `tff.Value` objects placed at `CLIENTS` as inputs, and return
-  `collections.OrderedDicts` mapping string names to tensor values placed at
-  `SERVER`, which will be added to the measurement dict produced by the
-  `inner_agg_factory`.
+  The additional measurements are either computed based on the `CLIENTS` placed
+  input to the aggregator or based on the `SERVER` placed output of the
+  aggregator, as specified by `client_placed_input`.
+
+  The function `measurement_fn` is a Python callable that will be invoked in
+  the scope of a `tff.federated_computation`, that is, must be traceable by TFF
+  and expect `tff.Value` objects as inputs, and return `collections.OrderedDict`
+  mapping string names to values placed at `SERVER`, which will be added to the
+  measurement dict produced by the `inner_agg_factory`.
+
+  If `client_placed_input` is `False`, the input to `measurement_fn` will be the
+  `SERVER` placed aggregated value returned by `inner_agg_factory`. If the
+  `client_placed_input` is `True`, the input to `measurement_fn` will be the
+  `CLIENTS` placed input values to the `inner_agg_factory`: `value` (if
+  `inner_agg_factory` is an `UnweightedAggregationFactory`) or `(value, weight)`
+  (if `inner_agg_factory` is a `WeightedAggregationFactory`).
 
   Args:
     inner_agg_factory: The factory to wrap and add measurements.
     measurement_fn: A python callable that will be called on `value` (and/or
       `weight`) provided to the `next` function to compute additional
       measurements.
+    client_placed_input: A boolean, determining whether the `CLIENTS` placed
+      input to aggregator is passed to `measurement_fn` or the `SERVER` placed
+      output of the aggregator.
 
   Returns:
     An `AggregationFactory` that reports additional measurements.
   """
   py_typecheck.check_callable(measurement_fn)
+  py_typecheck.check_type(client_placed_input, bool)
 
-  if isinstance(inner_agg_factory, factory.UnweightedAggregationFactory):
+  if client_placed_input:
+    if isinstance(inner_agg_factory, factory.UnweightedAggregationFactory):
+      if len(inspect.signature(measurement_fn).parameters) != 1:
+        raise ValueError('`measurement_fn` must take a single parameter if '
+                         '`inner_agg_factory` is unweighted.')
+    elif isinstance(inner_agg_factory, factory.WeightedAggregationFactory):
+      if len(inspect.signature(measurement_fn).parameters) != 2:
+        raise ValueError('`measurement_fn` must take a two parameters if '
+                         '`inner_agg_factory` is weighted.')
+    else:
+      raise TypeError(
+          f'`inner_agg_factory` must be of type `UnweightedAggregationFactory` '
+          f'or `WeightedAggregationFactory`. Found {type(inner_agg_factory)}.')
+  else:
     if len(inspect.signature(measurement_fn).parameters) != 1:
       raise ValueError('`measurement_fn` must take a single parameter if '
-                       '`inner_agg_factory` is unweighted.')
-  elif isinstance(inner_agg_factory, factory.WeightedAggregationFactory):
-    if len(inspect.signature(measurement_fn).parameters) != 2:
-      raise ValueError('`measurement_fn` must take a two parameters if '
-                       '`inner_agg_factory` is weighted.')
-  else:
-    raise TypeError(
-        f'`inner_agg_factory` must be of type `UnweightedAggregationFactory` or'
-        f'`WeightedAggregationFactory`. Found {type(inner_agg_factory)}.')
+                       '`client_placed_input` is False.')
 
   @computations.tf_computation()
   def dict_update(orig_dict, new_values):
@@ -76,7 +93,7 @@ def add_measurements(
   if isinstance(inner_agg_factory, factory.WeightedAggregationFactory):
 
     class WeightedWrappedFactory(factory.WeightedAggregationFactory):
-      """Wrapper for `WeightedAggregationFactory` that adds new measurements."""
+      """Wrapper for `WeightedAggregationFactory` adding new measurements."""
 
       def create(
           self, value_type: factory.ValueType, weight_type: factory.ValueType
@@ -93,7 +110,10 @@ def add_measurements(
             computation_types.at_clients(weight_type))
         def next_fn(state, value, weight):
           inner_agg_output = inner_agg_process.next(state, value, weight)
-          extra_measurements = measurement_fn(value, weight)
+          if client_placed_input:
+            extra_measurements = measurement_fn(value, weight)
+          else:
+            extra_measurements = measurement_fn(inner_agg_output.result)
           measurements = intrinsics.federated_map(
               dict_update, (inner_agg_output.measurements, extra_measurements))
           return measured_process.MeasuredProcessOutput(
@@ -107,7 +127,7 @@ def add_measurements(
   else:
 
     class UnweightedWrappedFactory(factory.UnweightedAggregationFactory):
-      """Wrapper for `UnweightedAggregationFactory` that adds new measurements."""
+      """Wrapper for `UnweightedAggregationFactory` adding new measurements."""
 
       def create(
           self, value_type: factory.ValueType
@@ -122,7 +142,10 @@ def add_measurements(
             computation_types.at_clients(value_type))
         def next_fn(state, value):
           inner_agg_output = inner_agg_process.next(state, value)
-          extra_measurements = measurement_fn(value)
+          if client_placed_input:
+            extra_measurements = measurement_fn(value)
+          else:
+            extra_measurements = measurement_fn(inner_agg_output.result)
           measurements = intrinsics.federated_map(
               dict_update, (inner_agg_output.measurements, extra_measurements))
           return measured_process.MeasuredProcessOutput(
