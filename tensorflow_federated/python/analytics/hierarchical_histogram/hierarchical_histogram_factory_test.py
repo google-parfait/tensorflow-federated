@@ -37,11 +37,24 @@ _test_central_dp_query = tfp.privacy.dp_query.tree_aggregation_query.CentralTree
 class TreeAggregationFactoryComputationTest(test_case.TestCase,
                                             parameterized.TestCase):
 
-  @parameterized.product(
-      value_type=[tf.float32, tf.int32],
-      value_shape=[3, 4, 7, 8],
-      arity=[2, 3],
-  )
+  @parameterized.named_parameters([
+      ('0', tf.float32, 3, 2),
+      ('1', tf.float32, 3, 3),
+      ('2', tf.float32, 4, 2),
+      ('3', tf.float32, 4, 3),
+      ('4', tf.float32, 7, 2),
+      ('5', tf.float32, 7, 3),
+      ('6', tf.float32, 8, 2),
+      ('7', tf.float32, 8, 3),
+      ('8', tf.int32, 3, 2),
+      ('9', tf.int32, 3, 3),
+      ('10', tf.int32, 4, 2),
+      ('11', tf.int32, 4, 3),
+      ('12', tf.int32, 7, 2),
+      ('13', tf.int32, 7, 3),
+      ('14', tf.int32, 8, 2),
+      ('15', tf.int32, 8, 3),
+  ])
   def test_central_aggregation_with_sum(self, value_type, value_shape, arity):
 
     value_type = computation_types.to_type((value_type, (value_shape,)))
@@ -86,11 +99,12 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type))
 
-  @parameterized.product(
-      value_shape=[4, 7],
-      arity=[2, 3],
-      l1_bound=[10],
-  )
+  @parameterized.named_parameters([
+      ('0', 4, 2, 10),
+      ('1', 4, 3, 10),
+      ('2', 7, 2, 10),
+      ('3', 7, 3, 10),
+  ])
   def test_central_aggregation_with_secure_sum(self, value_shape, arity,
                                                l1_bound):
 
@@ -146,13 +160,24 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
 class TreeAggregationFactoryExecutionTest(test_case.TestCase,
                                           parameterized.TestCase):
 
-  @parameterized.product(
-      histogram_size=[7, 8],
-      num_clients=[8, 13],
-      arity=[2, 3],
-      l1_bound=[10],
-      secure_sum=[True, False],
-  )
+  @parameterized.named_parameters([
+      ('0', 7, 8, 2, 10, True),
+      ('1', 7, 8, 2, 10, False),
+      ('2', 7, 8, 3, 10, True),
+      ('3', 7, 8, 3, 10, False),
+      ('4', 7, 13, 2, 10, True),
+      ('5', 7, 13, 2, 10, False),
+      ('6', 7, 13, 3, 10, True),
+      ('7', 7, 13, 3, 10, False),
+      ('8', 8, 8, 2, 10, True),
+      ('9', 8, 8, 2, 10, False),
+      ('10', 8, 8, 3, 10, True),
+      ('11', 8, 8, 3, 10, False),
+      ('12', 8, 13, 2, 10, True),
+      ('13', 8, 13, 2, 10, False),
+      ('14', 8, 13, 3, 10, True),
+      ('15', 8, 13, 3, 10, False),
+  ])
   def test_central_aggregation(self, histogram_size, num_clients, arity,
                                l1_bound, secure_sum):
     agg_factory = hihi_factory.create_central_hierarchical_histogram_factory(
@@ -181,14 +206,20 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
 
     self.assertAllClose(reference_hierarchical_histogram, output.result)
 
-  @parameterized.product(
-      histogram_size=[7],
-      num_clients=[4],
-      arity=[2, 3],
-      l1_bound=[10],
-      stddev=[0.1, 0.5, 1.0],
-      secure_sum=[True, False],
-  )
+  @parameterized.named_parameters([
+      ('0', 7, 4, 2, 10, 0.1, True),
+      ('1', 7, 4, 2, 10, 0.1, False),
+      ('2', 7, 4, 2, 10, 0.5, True),
+      ('3', 7, 4, 2, 10, 0.5, False),
+      ('4', 7, 4, 2, 10, 1.0, True),
+      ('5', 7, 4, 2, 10, 1.0, False),
+      ('6', 7, 4, 3, 10, 0.1, True),
+      ('7', 7, 4, 3, 10, 0.1, False),
+      ('8', 7, 4, 3, 10, 0.5, True),
+      ('9', 7, 4, 3, 10, 0.5, False),
+      ('10', 7, 4, 3, 10, 1.0, True),
+      ('11', 7, 4, 3, 10, 1.0, False),
+  ])
   def test_central_aggregation_with_noise(self, histogram_size, num_clients,
                                           arity, l1_bound, stddev, secure_sum):
     agg_factory = hihi_factory.create_central_hierarchical_histogram_factory(

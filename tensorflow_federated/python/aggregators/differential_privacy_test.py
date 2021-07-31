@@ -216,7 +216,10 @@ class DPFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
     self.assertIsInstance(process,
                           differential_privacy.DifferentiallyPrivateFactory)
 
-  @parameterized.product(clip_count_stddev=[None, 5.0])
+  @parameterized.named_parameters([
+      ('0', None),
+      ('1', 5.0),
+  ])
   def test_adaptive_clip_noise_params(self, clip_count_stddev):
     noise_mult = 2.0
     num_clients = 100.0

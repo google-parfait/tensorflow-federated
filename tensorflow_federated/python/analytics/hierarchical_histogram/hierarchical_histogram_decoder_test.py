@@ -44,11 +44,20 @@ def _create_noisy_hierarchical_histogram(arity, depth, scale=1.0):
 class HierarchicalHistogramDecoderTest(tf.test.TestCase,
                                        parameterized.TestCase):
 
-  @parameterized.product(
-      is_consistent=[True, False],
-      arity=[2, 3],
-      depth=[2, 4, 8],
-  )
+  @parameterized.named_parameters([
+      ('0', True, 2, 2),
+      ('1', True, 2, 4),
+      ('2', True, 2, 8),
+      ('3', True, 3, 2),
+      ('4', True, 3, 4),
+      ('5', True, 3, 8),
+      ('6', False, 2, 2),
+      ('7', False, 2, 4),
+      ('8', False, 2, 8),
+      ('9', False, 3, 2),
+      ('10', False, 3, 4),
+      ('11', False, 3, 8),
+  ])
   def test_check_consistency(self, is_consistent, arity, depth):
     if is_consistent:
       hierarchical_histogram = _create_hierarchical_histogram(arity, depth)
@@ -59,11 +68,20 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
         hierarchical_histogram)
     self.assertEqual(decoder._check_consistency(), is_consistent)
 
-  @parameterized.product(
-      arity=[2, 3],
-      depth=[2, 3],
-      scale=[0.1, 1., 4.],
-  )
+  @parameterized.named_parameters([
+      ('0', 2, 2, 0.1),
+      ('1', 2, 2, 1.0),
+      ('2', 2, 2, 4.0),
+      ('3', 2, 3, 0.1),
+      ('4', 2, 3, 1.0),
+      ('5', 2, 3, 4.0),
+      ('6', 3, 2, 0.1),
+      ('7', 3, 2, 1.0),
+      ('8', 3, 2, 4.0),
+      ('9', 3, 3, 0.1),
+      ('10', 3, 3, 1.0),
+      ('11', 3, 3, 4.0),
+  ])
   def test_enforce_consistency(self, arity, depth, scale):
     noisy_hierarchical_histogram = _create_noisy_hierarchical_histogram(
         arity, depth, scale)
@@ -182,8 +200,10 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
     quantile = decoder.quantile_query(q)
     self.assertEqual(quantile, expected_quantile)
 
-  @parameterized.product(
-      q=[-0.1, 1.1],)
+  @parameterized.named_parameters([
+      ('0', -0.1),
+      ('1', 1.1),
+  ])
   def test_quantile_query_raises_invalid_quantile(self, q):
     hierarchical_histogram = _create_hierarchical_histogram(arity=2, depth=2)
     decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
