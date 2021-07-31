@@ -41,6 +41,7 @@ py_library(
 py_test(
     name = "caching_executor_test",
     size = "small",
+    timeout = "moderate",
     srcs = ["caching_executor_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
