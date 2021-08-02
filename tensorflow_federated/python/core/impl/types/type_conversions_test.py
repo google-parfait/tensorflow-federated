@@ -449,8 +449,9 @@ class TypeToTfStructureTest(test_case.TestCase):
           computation_types.StructType([('a', tf.int32), tf.bool]))
 
   def test_with_no_elements(self):
-    with self.assertRaises(ValueError):
-      type_conversions.type_to_tf_structure(computation_types.StructType([]))
+    tf_structure = type_conversions.type_to_tf_structure(
+        computation_types.StructType([]))
+    self.assertEqual(tf_structure, ())
 
   def check_round_trip(self, first_spec):
     first_type = computation_types.to_type(first_spec)

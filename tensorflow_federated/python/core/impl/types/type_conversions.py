@@ -276,7 +276,7 @@ def type_to_tf_structure(type_spec: computation_types.Type):
   elif type_spec.is_struct():
     elements = structure.to_elements(type_spec)
     if not elements:
-      raise ValueError('Empty tuples are unsupported.')
+      return ()
     element_outputs = [(k, type_to_tf_structure(v)) for k, v in elements]
     named = element_outputs[0][0] is not None
     if not all((e[0] is not None) == named for e in element_outputs):

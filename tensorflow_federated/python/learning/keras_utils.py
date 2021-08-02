@@ -331,19 +331,18 @@ class _KerasModel(model_lib.Model):
   def input_spec(self):
     return self._input_spec
 
-  def predict_on_batch(self, batch_input, training=True):
-    return self._keras_model(batch_input, training=training)
+  @tf.function
+  def predict_on_batch(self, x, training=True):
+    return self._keras_model(x, training=training)
 
   def _forward_pass(self, batch_input, training=True):
-    if hasattr(batch_input, '_asdict'):
-      batch_input = batch_input._asdict()
     if isinstance(batch_input, collections.abc.Mapping):
       inputs = batch_input.get('x')
     else:
       inputs = batch_input[0]
     if inputs is None:
       raise KeyError('Received a batch_input that is missing required key `x`. '
-                     'Instead have keys {}'.format(list(batch_input.keys())))
+                     f'Instead have keys {list(batch_input.keys())}')
     predictions = self.predict_on_batch(inputs, training)
 
     if isinstance(batch_input, collections.abc.Mapping):
@@ -405,7 +404,3 @@ class _KerasModel(model_lib.Model):
   @property
   def federated_output_computation(self):
     return self._federated_output_computation
-
-  @classmethod
-  def make_batch(cls, x, y):
-    return cls.Batch(x=x, y=y)

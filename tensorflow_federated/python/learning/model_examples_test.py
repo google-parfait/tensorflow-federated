@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+
 from absl.testing import parameterized
 import tensorflow as tf
+
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -25,7 +28,7 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('', 1), ('_three_features', 3))
   def test_linear_regression(self, feature_dim):
     model = model_examples.LinearRegression(feature_dim=feature_dim)
-    batch = model.make_batch(
+    batch = collections.OrderedDict(
         x=tf.constant([[0.0] * feature_dim, [1.0] * feature_dim]),
         y=tf.constant([[0.0], [1.0]]))
 
@@ -57,7 +60,7 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
         return batch_output, local_output
 
       return _train(
-          batch=model.make_batch(
+          batch=collections.OrderedDict(
               x=tf.constant([[0.0, 0.0], [1.0, 1.0]]),
               y=tf.constant([[0.0], [1.0]])))
 

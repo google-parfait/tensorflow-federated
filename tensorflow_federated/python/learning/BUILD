@@ -38,6 +38,7 @@ py_library(
         ":personalization_eval",
         "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
+        "//tensorflow_federated/python/learning/models",
         "//tensorflow_federated/python/learning/optimizers",
         "//tensorflow_federated/python/learning/reconstruction",
     ],
@@ -255,6 +256,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
 

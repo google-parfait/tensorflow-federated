@@ -144,7 +144,7 @@ class Model(object, metaclass=abc.ABCMeta):
     pass
 
   @abc.abstractmethod
-  def predict_on_batch(self, batch_input, training=True):
+  def predict_on_batch(self, x, training=True):
     """Performs inference on a batch, produces predictions.
 
     Unlike `forward_pass`, this function must _not_ mutate any variables
@@ -155,10 +155,11 @@ class Model(object, metaclass=abc.ABCMeta):
     `forward_pass` will further compute loss and metrics updates.
 
     Args:
-      batch_input: A nested structure that matches the structure of
-        `Model.input_spec` and each tensor in `batch_input` satisfies
-        `tf.TensorSpec.is_compatible_with()` for the corresponding
-        `tf.TensorSpec` in `Model.input_spec`.
+      x: A nested structure of tensors that holds the prediction inputs for the
+        model. The structure must match the first element of the structure of
+        `Model.input_spec`, or the 'x' key if `Model.input_spec` is a mapping.
+        Each tensor in `x` satisfies `tf.TensorSpec.is_compatible_with()` for
+        the corresponding `tf.TensorSpec` in `Model.input_spec`.
       training: If `True`, allow updatable variables (e.g. BatchNorm variances
         and means) to be updated. Otherwise, run in inferece only mode with no
         variables mutated. The semantics are generally the same as the
@@ -168,11 +169,9 @@ class Model(object, metaclass=abc.ABCMeta):
     Returns:
       The model's inference result. The value must be understood by the loss
       function that will be used during training. In most cases this value will
-      be
-      the logits or probabilities of the last layer in the model, however
-      writers
-      are not restricted to these, the only requirement is their loss function
-      understands the result.
+      be the logits or probabilities of the last layer in the model, however
+      writers are not restricted to these, the only requirement is their loss
+      function understands the result.
     """
 
   @abc.abstractmethod

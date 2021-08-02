@@ -22,14 +22,12 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import model
 
 
 class LinearRegression(model.Model):
   """Example of a simple linear regression implemented directly."""
-
-  # A tuple (x, y), where 'x' represent features, and 'y' represent labels.
-  Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
 
   def __init__(self, feature_dim: int = 2):
     # Define all the variables, similar to what Keras Layers and Models
@@ -46,7 +44,7 @@ class LinearRegression(model.Model):
     # Define a non-trainable model variable (another bias term) for code
     # coverage in testing.
     self._c = tf.Variable(0.0, trainable=False)
-    self._input_spec = LinearRegression.make_batch(
+    self._input_spec = collections.OrderedDict(
         x=tf.TensorSpec([None, self._feature_dim], tf.float32),
         y=tf.TensorSpec([None, 1], tf.float32))
 
@@ -73,17 +71,15 @@ class LinearRegression(model.Model):
     return tf.matmul(x, self._a) + self._b + self._c
 
   @tf.function
-  def forward_pass(self, batch, training=True) -> model.BatchOutput:
-    if isinstance(batch, dict):
-      batch = self.make_batch(**batch)
-    if not self._input_spec.y.is_compatible_with(batch.y):
-      raise ValueError('Expected batch.y to be compatible with '
-                       '{} but found {}'.format(self._input_spec.y, batch.y))
-    if not self._input_spec.x.is_compatible_with(batch.x):
-      raise ValueError('Expected batch.x to be compatible with '
-                       '{} but found {}'.format(self._input_spec.x, batch.x))
-    predictions = self.predict_on_batch(batch.x, training)
-    residuals = predictions - batch.y
+  def forward_pass(self, batch_input, training=True) -> model.BatchOutput:
+    if not self._input_spec['y'].is_compatible_with(batch_input['y']):
+      raise ValueError("Expected batch_input['y'] to be compatible with "
+                       f"{self._input_spec['y']} but found {batch_input['y']}")
+    if not self._input_spec['x'].is_compatible_with(batch_input['x']):
+      raise ValueError("Expected batch_input['x'] to be compatible with "
+                       "{self._input_spec['x']} but found {batch_input['x']}")
+    predictions = self.predict_on_batch(x=batch_input['x'], training=training)
+    residuals = predictions - batch_input['y']
     num_examples = tf.gather(tf.shape(predictions), 0)
     total_loss = 0.5 * tf.reduce_sum(tf.pow(residuals, 2))
 
@@ -106,7 +102,13 @@ class LinearRegression(model.Model):
   @property
   def federated_output_computation(self) -> computation_base.Computation:
 
-    @computations.federated_computation
+    @computations.federated_computation(
+        computation_types.at_clients(
+            collections.OrderedDict(
+                num_examples=tf.int32,
+                num_examples_float=tf.float32,
+                num_batches=tf.int32,
+                loss=tf.float32)))
     def fed_output(local_outputs):
       # TODO(b/124070381): Remove need for using num_examples_float here.
       return collections.OrderedDict(
@@ -115,11 +117,6 @@ class LinearRegression(model.Model):
           num_examples=intrinsics.federated_sum(local_outputs.num_examples))
 
     return fed_output
-
-  @classmethod
-  def make_batch(cls, x, y):
-    """Returns a `Batch` to pass to the forward pass."""
-    return cls.Batch(x, y)
 
 
 def _dense_all_zeros_layer(input_dims=None, output_dim=1):

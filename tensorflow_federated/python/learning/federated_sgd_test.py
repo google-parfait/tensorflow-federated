@@ -44,7 +44,7 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
   def dataset(self):
     # Create a dataset with 4 examples:
     dataset = tf.data.Dataset.from_tensor_slices(
-        model_examples.LinearRegression.make_batch(
+        collections.OrderedDict(
             x=[[1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0]],
             y=[[1.0], [1.0], [1.0], [1.0]]))
     # Repeat the dataset 2 times with batches of 3 examples,
