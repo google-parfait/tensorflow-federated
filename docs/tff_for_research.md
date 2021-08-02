@@ -84,6 +84,14 @@ Datasets include:
     client. There are 9343 clients, each with at least 5 examples. The dataset
     can be split into train and test groups either by clients or by examples.
 
+*   [**iNaturalist**](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/inaturalist/load_data)
+    A dataset consists of photos of various species. The dataset contains
+    120,300 images for 1,203 species. Seven flavors of the dataset are
+    available. One of them is grouped by the photographer and it consists of
+    9257 clients. The rest of the datasets are grouped by the geo location where
+    the photo was taken. These six flavors of the dataset consists of 11 - 3,606
+    clients.
+
 ## High performance simulations
 
 While the wall-clock time of an FL _simulation_ is not a relevant metric for
