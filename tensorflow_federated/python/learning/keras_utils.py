@@ -71,8 +71,8 @@ def from_keras_model(
       compound structure of two elements, specifying both the data fed into the
       model (x) to generate predictions as well as the expected type of the
       ground truth (y). If provided as a list, it must be in the order [x, y].
-      If provided as a dictionary, the keys must explicitly be named `'x'` and
-      `'y'`.
+      If provided as a dictionary, the keys must explicitly be named `'{}'` and
+      `'{}'`.
     loss_weights: (Optional) A list of Python floats used to weight the loss
       contribution of each model output (when providing a list of losses for the
       `loss` argument).
@@ -93,7 +93,7 @@ def from_keras_model(
       specified but `loss` is not a list, if `input_spec` does not contain
       exactly two elements, or if `input_spec` is a dictionary and does not
       contain keys `'x'` and `'y'`.
-  """
+  """.format(model_lib.MODEL_ARG_NAME, model_lib.MODEL_LABEL_NAME)
   # Validate `keras_model`
   py_typecheck.check_type(keras_model, tf.keras.Model)
   if keras_model._is_compiled:  # pylint: disable=protected-access
@@ -147,16 +147,17 @@ def from_keras_model(
         lambda s: py_typecheck.check_type(s, tf.TensorSpec, 'input spec member'
                                          ), input_spec)
   if isinstance(input_spec, collections.abc.Mapping):
-    if 'x' not in input_spec:
+    if model_lib.MODEL_ARG_NAME not in input_spec:
       raise ValueError(
           'The `input_spec` is a collections.abc.Mapping (e.g., a dict), so it '
-          'must contain an entry with key `\'x\'`, representing the input(s) '
-          'to the Keras model.')
-    if 'y' not in input_spec:
+          'must contain an entry with key `\'{}\'`, representing the input(s) '
+          'to the Keras model.'.format(model_lib.MODEL_ARG_NAME))
+    if model_lib.MODEL_LABEL_NAME not in input_spec:
       raise ValueError(
           'The `input_spec` is a collections.abc.Mapping (e.g., a dict), so it '
-          'must contain an entry with key `\'y\'`, representing the label(s) '
-          'to be used in the Keras loss(es).')
+          'must contain an entry with key `\'{}\'`, representing the label(s) '
+          'to be used in the Keras loss(es).'.format(
+              model_lib.MODEL_LABEL_NAME))
 
   if metrics is None:
     metrics = []

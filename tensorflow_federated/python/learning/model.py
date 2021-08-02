@@ -22,6 +22,10 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computation_base
 
 
+MODEL_ARG_NAME = 'x'
+MODEL_LABEL_NAME = 'y'
+
+
 @attr.s(frozen=True, slots=True, eq=False)
 class BatchOutput():
   """A structure that holds the output of a `tff.learning.Model`.
@@ -99,8 +103,15 @@ class Model(object, metaclass=abc.ABCMeta):
     `forward_pass`. The tensors must include a batch dimension as the first
     dimension, but the batch dimension may be undefined.
 
+    If `input_spec` is an instance of `collections.abc.Mapping`, this mapping
+    must have an `{}` element which corresponds to the input to
+    `predict_on_batch`  and a `{}` element containing the batch labels.
+    Otherwise the first positional element of `input_spec` must correspond to
+    the input to `predict_on_batch`, and the second positional element the
+    labels.
+
     Similar in spirit to `tf.keras.models.Model.input_spec`.
-    """
+    """.format(MODEL_ARG_NAME, MODEL_LABEL_NAME)
     pass
 
   @abc.abstractmethod
@@ -144,7 +155,7 @@ class Model(object, metaclass=abc.ABCMeta):
     pass
 
   @abc.abstractmethod
-  def predict_on_batch(self, x, training=True):
+  def predict_on_batch(self, batch_input, training=True):
     """Performs inference on a batch, produces predictions.
 
     Unlike `forward_pass`, this function must _not_ mutate any variables
@@ -154,12 +165,17 @@ class Model(object, metaclass=abc.ABCMeta):
     method will be called from `forward_pass` to produce the predictions, and
     `forward_pass` will further compute loss and metrics updates.
 
+    Note that this implies `batch_input` will have a *different* signature for
+    `predict_on_batch` than for `forward_pass`; see the args section of this
+    documentation for a specification of the relationship.
+
     Args:
-      x: A nested structure of tensors that holds the prediction inputs for the
-        model. The structure must match the first element of the structure of
-        `Model.input_spec`, or the 'x' key if `Model.input_spec` is a mapping.
-        Each tensor in `x` satisfies `tf.TensorSpec.is_compatible_with()` for
-        the corresponding `tf.TensorSpec` in `Model.input_spec`.
+      batch_input: A nested structure of tensors that holds the prediction
+        inputs for the model. The structure must match the first element of the
+        structure of `Model.input_spec`, or the '{}' key if `Model.input_spec`
+        is a mapping. Each tensor in `x` satisfies
+        `tf.TensorSpec.is_compatible_with()` for the corresponding
+        `tf.TensorSpec` in `Model.input_spec`.
       training: If `True`, allow updatable variables (e.g. BatchNorm variances
         and means) to be updated. Otherwise, run in inferece only mode with no
         variables mutated. The semantics are generally the same as the
@@ -172,7 +188,7 @@ class Model(object, metaclass=abc.ABCMeta):
       be the logits or probabilities of the last layer in the model, however
       writers are not restricted to these, the only requirement is their loss
       function understands the result.
-    """
+    """.format(MODEL_ARG_NAME)
 
   @abc.abstractmethod
   def report_local_outputs(self):
