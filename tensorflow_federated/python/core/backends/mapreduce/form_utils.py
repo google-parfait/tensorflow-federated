@@ -699,18 +699,15 @@ def _extract_federated_secure_sum_bitwidth_functions(before_aggregate,
     transformations.MapReduceFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  federated_secure_sum_bitwidth_index_in_before_aggregate_result = 1
-  federated_secure_sum_bitwidth = transformations.select_output_from_lambda(
-      before_aggregate,
-      federated_secure_sum_bitwidth_index_in_before_aggregate_result)
-  bitwidth_index_in_federated_secure_sum_bitwidth_result = 1
-  bitwidth_tff = transformations.select_output_from_lambda(
-      federated_secure_sum_bitwidth,
-      bitwidth_index_in_federated_secure_sum_bitwidth_result).result
-  bitwidth_tff = building_blocks.Lambda(None, None, bitwidth_tff)
+  bitwidth_index_in_before_aggregate_result = (
+      'federated_secure_sum_bitwidth_param', 1)
+  bitwidth = transformations.select_output_from_lambda(
+      before_aggregate, bitwidth_index_in_before_aggregate_result)
+  # Bitwidth must be independent of any parameters.
+  bitwidth = building_blocks.Lambda(None, None, bitwidth.result)
 
   return transformations.consolidate_and_extract_local_processing(
-      bitwidth_tff, grappler_config)
+      bitwidth, grappler_config)
 
 
 def _extract_update(after_aggregate, grappler_config):

@@ -63,7 +63,7 @@ divide-and-conquer.
 """
 
 import collections
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Union
 
 from absl import logging
 import attr
@@ -692,50 +692,51 @@ def force_align_and_split_by_intrinsics(
   return before, after
 
 
-def select_output_from_lambda(comp, indices):
-  """Constructs a new function with result of selecting `indices` from `comp`.
+Index = Union[str, int]
+Path = Union[Index, Tuple[Index, ...]]
+
+
+def select_output_from_lambda(
+    comp: building_blocks.Lambda,
+    paths: Union[Path, List[Path]]) -> building_blocks.Lambda:
+  """Constructs a new function with result of selecting `paths` from `comp`.
 
   Args:
-    comp: Instance of `building_blocks.Lambda` of result type `tff.StructType`
-      from which we wish to select `indices`. Notice that this named tuple type
-      must have elements of federated type.
-    indices: Instance of `str`, `int`, `list`, or `tuple`, specifying the
-      indices we wish to select from the result of `comp`. If `indices` is a
-      `str` or `int`, the result of the returned `comp` will be of type at index
-      `indices` in `comp.type_signature.result`. If `indices` is a `list` or
-      `tuple`, the result type will be a `tff.StructType` wrapping the specified
-      selections.
+    comp: Lambda computation with result type `tff.StructType` from which we
+      wish to select the sub-results at `paths`.
+    paths: Either a `Path` or list of `Path`s specifying the indices we wish to
+      select from the result of `comp`. Each path must be a `tuple` of `str` or
+      `int` indices from which to select an output. If `paths` is a list, the
+      returned computation will have a `tff.StructType` result holding each of
+      the specified selections.
 
   Returns:
     A transformed version of `comp` with result value the selection from the
-    result of `comp` specified by `indices`.
+    result of `comp` specified by `paths`.
   """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(comp.type_signature.result,
-                          computation_types.StructType)
-  py_typecheck.check_type(indices, (str, int, tuple, list))
+  comp.check_lambda()
+  comp.type_signature.result.check_struct()
 
-  def _select(comp, index):
-    if comp.is_struct():
-      return comp[index]
-    if isinstance(index, str):
-      return building_blocks.Selection(comp, name=index)
-    return building_blocks.Selection(comp, index=index)
-
-  result_tuple = comp.result
-  elements = []
-  if isinstance(indices, (tuple, list)):
-    for x in indices:
-      if isinstance(x, (tuple, list)):
-        selected_output = result_tuple
-        for y in x:
-          selected_output = _select(selected_output, y)
+  def _select_path(result, path: Path):
+    if not isinstance(path, tuple):
+      path = (path,)
+    for index in path:
+      if result.is_struct():
+        result = result[index]
+      elif isinstance(index, str):
+        result = building_blocks.Selection(result, name=index)
+      elif isinstance(index, int):
+        result = building_blocks.Selection(result, index=index)
       else:
-        selected_output = _select(result_tuple, x)
-      elements.append(selected_output)
+        raise TypeError('Invalid selection type: expected `str` or `int`, '
+                        f'found value `{index}` of type `{type(index)}`.')
+    return result
+
+  if isinstance(paths, list):
+    elements = [_select_path(comp.result, path) for path in paths]
     result = building_blocks.Struct(elements)
   else:
-    result = _select(result_tuple, indices)
+    result = _select_path(comp.result, paths)
   return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
                                 result)
 

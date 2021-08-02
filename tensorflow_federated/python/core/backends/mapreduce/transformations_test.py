@@ -477,107 +477,92 @@ class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
     ])
 
 
-class SelectFederatedOutputFromLambdaTest(test_case.TestCase):
+def identity_for_type(
+    input_type: computation_types.Type) -> building_blocks.Lambda:
+  """Returns an identity computation for the provided `input_type`."""
+  return building_blocks.Lambda('x', input_type,
+                                building_blocks.Reference('x', input_type))
 
-  def test_raises_on_none(self):
-    with self.assertRaises(TypeError):
-      transformations.select_output_from_lambda(None, 0)
+
+class SelectOutputFromLambdaTest(test_case.TestCase):
 
   def test_raises_on_non_lambda(self):
-    fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    ref = building_blocks.Reference('x', [fed_type])
+    ref = building_blocks.Reference('x', tf.int32)
     with self.assertRaises(TypeError):
       transformations.select_output_from_lambda(ref, 0)
 
-  def test_selects_single_federated_output(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    ref = building_blocks.Reference('x', [fed_at_clients, fed_at_server])
-    lam = building_blocks.Lambda('x', ref.type_signature, ref)
+  def test_raises_on_non_str_int_index(self):
+    lam = identity_for_type(computation_types.StructType([tf.int32]))
+    with self.assertRaisesRegex(TypeError, 'Invalid selection type'):
+      transformations.select_output_from_lambda(lam, [dict()])
+
+  def test_selects_single_output(self):
+    input_type = computation_types.StructType([tf.int32, tf.float32])
+    lam = identity_for_type(input_type)
     zero_selected = transformations.select_output_from_lambda(lam, 0)
-    self.assertEqual(zero_selected.type_signature.parameter,
-                     lam.type_signature.parameter)
-    self.assertEqual(zero_selected.type_signature.result,
-                     lam.type_signature.result[0])
+    self.assert_types_equivalent(zero_selected.type_signature.parameter,
+                                 lam.type_signature.parameter)
+    self.assert_types_equivalent(zero_selected.type_signature.result,
+                                 lam.type_signature.result[0])
     self.assertEqual(str(zero_selected), '(x -> x[0])')
 
-  def test_selects_single_federated_output_by_str_name(self):
-    fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    ref = building_blocks.Reference('x', [('a', fed_type)])
-    lam = building_blocks.Lambda('x', ref.type_signature, ref)
+  def test_selects_single_output_by_str(self):
+    input_type = computation_types.StructType([('a', tf.int32)])
+    lam = identity_for_type(input_type)
     selected = transformations.select_output_from_lambda(lam, 'a')
     self.assert_types_equivalent(
         selected.type_signature,
         computation_types.FunctionType(lam.parameter_type,
                                        lam.type_signature.result['a']))
 
-  def test_selects_tuple_of_federated_outputs(self):
-    fed_at_clients = computation_types.at_clients(tf.int32)
-    fed_at_server = computation_types.at_server(tf.int32)
-    ref = building_blocks.Reference(
-        'x', [fed_at_clients, fed_at_clients, fed_at_server])
-    lam = building_blocks.Lambda('x', ref.type_signature, ref)
-    tuple_selected = transformations.select_output_from_lambda(lam, (0, 1))
-    self.assertEqual(tuple_selected.type_signature.parameter,
-                     lam.type_signature.parameter)
-    self.assertEqual(
+  def test_selects_from_struct_by_removing_struct_wrapper(self):
+    lam = building_blocks.Lambda(
+        'x', tf.int32,
+        building_blocks.Struct([building_blocks.Reference('x', tf.int32)]))
+    selected = transformations.select_output_from_lambda(lam, 0)
+    self.assert_types_equivalent(selected.type_signature.result,
+                                 computation_types.TensorType(tf.int32))
+    self.assertEqual(str(selected), '(x -> x)')
+
+  def test_selects_struct_of_outputs(self):
+    input_type = computation_types.StructType([tf.int32, tf.int64, tf.float32])
+    lam = identity_for_type(input_type)
+    tuple_selected = transformations.select_output_from_lambda(lam, [0, 1])
+    self.assert_types_equivalent(tuple_selected.type_signature.parameter,
+                                 lam.type_signature.parameter)
+    self.assert_types_equivalent(
         tuple_selected.type_signature.result,
         computation_types.StructType(
             [lam.type_signature.result[0], lam.type_signature.result[1]]))
     self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
 
-  def test_selects_tuple_of_federated_outputs_by_str_name(self):
-    fed_at_clients = computation_types.at_clients(tf.int32)
-    fed_at_server = computation_types.at_server(tf.int32)
-    ref = building_blocks.Reference('x', [('a', fed_at_clients),
-                                          ('b', fed_at_clients),
-                                          ('c', fed_at_server)])
-    lam = building_blocks.Lambda('x', ref.type_signature, ref)
-    selected = transformations.select_output_from_lambda(lam, ('a', 'b'))
+  def test_selects_struct_of_outputs_by_str_name(self):
+    input_type = computation_types.StructType([('a', tf.int32), ('b', tf.int64),
+                                               ('c', tf.float32)])
+    lam = identity_for_type(input_type)
+    selected = transformations.select_output_from_lambda(lam, ['a', 'b'])
     self.assert_types_equivalent(
         selected.type_signature,
         computation_types.FunctionType(
             lam.parameter_type,
             computation_types.StructType(
-                [lam.type_signature.result[0], lam.type_signature.result[1]])))
+                [lam.type_signature.result.a, lam.type_signature.result.b])))
 
-  def test_selects_list_of_federated_outputs(self):
-    fed_at_clients = computation_types.FederatedType(tf.int32,
-                                                     placements.CLIENTS)
-    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    ref = building_blocks.Reference(
-        'x', [fed_at_clients, fed_at_clients, fed_at_server])
-    lam = building_blocks.Lambda('x', ref.type_signature, ref)
-    tuple_selected = transformations.select_output_from_lambda(lam, [0, 1])
-    self.assertEqual(tuple_selected.type_signature.parameter,
-                     lam.type_signature.parameter)
-    self.assertEqual(
+  def test_selects_nested_federated_outputs(self):
+    input_type = computation_types.StructType([
+        ('a', computation_types.StructType([('inner', tf.int32)])),
+        ('b', tf.int32)
+    ])
+    lam = identity_for_type(input_type)
+    tuple_selected = transformations.select_output_from_lambda(
+        lam, [('a', 'inner'), 'b'])
+    self.assert_types_equivalent(tuple_selected.type_signature.parameter,
+                                 lam.type_signature.parameter)
+    self.assert_types_equivalent(
         tuple_selected.type_signature.result,
         computation_types.StructType(
-            [lam.type_signature.result[0], lam.type_signature.result[1]]))
-    self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
-
-  def test_selects_single_unplaced_output(self):
-    ref = building_blocks.Reference('x', [tf.int32, tf.float32, tf.int32])
-    lam = building_blocks.Lambda('x', ref.type_signature, ref)
-    int_selected = transformations.select_output_from_lambda(lam, 0)
-    self.assertEqual(int_selected.type_signature.parameter,
-                     lam.type_signature.parameter)
-    self.assertEqual(int_selected.type_signature.result,
-                     lam.type_signature.result[0])
-
-  def test_selects_multiple_unplaced_outputs(self):
-    ref = building_blocks.Reference('x', [tf.int32, tf.float32, tf.int32])
-    lam = building_blocks.Lambda('x', ref.type_signature, ref)
-    tuple_selected = transformations.select_output_from_lambda(lam, [0, 1])
-    self.assertEqual(tuple_selected.type_signature.parameter,
-                     lam.type_signature.parameter)
-    self.assertEqual(
-        tuple_selected.type_signature.result,
-        computation_types.StructType(
-            [lam.type_signature.result[0], lam.type_signature.result[1]]))
-    self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
+            [lam.type_signature.result.a.inner, lam.type_signature.result.b]))
+    self.assertEqual(str(tuple_selected), '(x -> <x.a.inner,x.b>)')
 
 
 class ConcatenateFunctionOutputsTest(test_case.TestCase):
