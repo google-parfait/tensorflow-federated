@@ -10,8 +10,14 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:differential_privacy",
-        "//tensorflow_federated/python/aggregators:secure",
+        "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:sum_factory",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
     ],
 )
 
@@ -23,10 +29,11 @@ py_test(
     deps = [
         ":build_tree_from_leaf",
         ":hierarchical_histogram_factory",
-        "//tensorflow_federated/python/aggregators:differential_privacy",
+        "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
