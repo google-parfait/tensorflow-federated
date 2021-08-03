@@ -159,6 +159,39 @@ py_test(
 )
 
 py_library(
+    name = "measurements",
+    srcs = ["measurements.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":factory",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)
+
+py_test(
+    name = "measurements_test",
+    srcs = ["measurements_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":mean",
+        ":measurements",
+        ":primitives",
+        ":sum_factory",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
     name = "primitives",
     srcs = ["primitives.py"],
     srcs_version = "PY3",
@@ -220,40 +253,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:estimation_process",
-    ],
-)
-
-py_library(
-    name = "measurements",
-    srcs = ["measurements.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":factory",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/templates:aggregation_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-    ],
-)
-
-py_test(
-    name = "measurements_test",
-    srcs = ["measurements_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":mean",
-        ":measurements",
-        ":primitives",
-        ":sum_factory",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 

@@ -26,32 +26,10 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-
-_float_type = computation_types.to_type(tf.float32)
-_float_type_clients = computation_types.FederatedType(_float_type,
-                                                      placements.CLIENTS)
-
-
-def _get_min(value):
-  min_value = primitives.federated_min(value)
-  return collections.OrderedDict(min_value=min_value)
-
-
-@computations.tf_computation()
-def _mul(value, weight):
-  return value * weight
-
-
-def _get_weighted_min(value, weight):
-  weighted_value = intrinsics.federated_map(_mul, (value, weight))
-  min_weighted_value = primitives.federated_min(weighted_value)
-  return collections.OrderedDict(min_weighted_value=min_weighted_value)
-
 
 _struct_type = computation_types.to_type([(tf.float32, (3,)), tf.float32])
-_struct_type_clients = computation_types.FederatedType(_struct_type,
-                                                       placements.CLIENTS)
+_struct_type_clients = computation_types.at_clients(_struct_type)
+_float_type = computation_types.to_type(tf.float32)
 
 
 @computations.tf_computation
@@ -60,6 +38,7 @@ def _get_norm(value):
 
 
 def _make_struct(x):
+  # L2 norm of this struct is just 2 * x.
   return [tf.constant(x, dtype=tf.float32, shape=(3,)), x]
 
 
@@ -69,7 +48,7 @@ def _get_min_norm(value):
   return collections.OrderedDict(min_norm=min_norm)
 
 
-@computations.tf_computation()
+@computations.tf_computation
 def _mul_struct(value, weight):
   return tf.nest.map_structure(lambda x: x * weight, value)
 
@@ -81,48 +60,33 @@ def _get_min_weighted_norm(value, weight):
   return collections.OrderedDict(min_weighted_norm=min_weighted_norm)
 
 
+def _get_server_norm(value):
+  server_norm = intrinsics.federated_map(_get_norm, value)
+  return collections.OrderedDict(server_norm=server_norm)
+
+
 class AddMeasurementsTest(test_case.TestCase):
 
   def test_raises_bad_measurement_fn(self):
     unweighted_factory = sum_factory.SumFactory()
     with self.assertRaisesRegex(ValueError, 'single parameter'):
-      measurements.add_measurements(unweighted_factory, _get_weighted_min)
+      measurements.add_measurements(
+          unweighted_factory, client_measurement_fn=_get_min_weighted_norm)
+
+    with self.assertRaisesRegex(ValueError, 'single parameter'):
+      measurements.add_measurements(
+          unweighted_factory, server_measurement_fn=_get_min_weighted_norm)
 
     weighted_factory = mean.MeanFactory()
     with self.assertRaisesRegex(ValueError, 'two parameters'):
-      measurements.add_measurements(weighted_factory, _get_min)
+      measurements.add_measurements(
+          weighted_factory, client_measurement_fn=_get_min_norm)
 
-  def test_unweighted(self):
-    factory = sum_factory.SumFactory()
-    factory = measurements.add_measurements(factory, _get_min)
-    process = factory.create(_float_type)
-
-    state = process.initialize()
-    client_data = [1.0, 2.0, 3.0]
-    output = process.next(state, client_data)
-    self.assertAllClose(6.0, output.result)
-    self.assertDictEqual(
-        collections.OrderedDict(min_value=1.0), output.measurements)
-
-  def test_weighted(self):
-    factory = mean.MeanFactory()
-    factory = measurements.add_measurements(factory, _get_weighted_min)
-    process = factory.create(_float_type, _float_type)
-
-    state = process.initialize()
-    client_values = [1.0, 2.0, 3.0]
-    client_weights = [3.0, 1.0, 2.0]
-    output = process.next(state, client_values, client_weights)
-    self.assertAllClose(11 / 6, output.result)
-    self.assertDictEqual(
-        collections.OrderedDict(
-            mean_value=(), mean_weight=(), min_weighted_value=2.0),
-        output.measurements)
-
-  def test_unweighted_struct(self):
+  def test_unweighted_client(self):
     factory = sum_factory.SumFactory()
 
-    factory = measurements.add_measurements(factory, _get_min_norm)
+    factory = measurements.add_measurements(
+        factory, client_measurement_fn=_get_min_norm)
     process = factory.create(_struct_type)
 
     state = process.initialize()
@@ -132,10 +96,11 @@ class AddMeasurementsTest(test_case.TestCase):
     self.assertDictEqual(
         collections.OrderedDict(min_norm=2.0), output.measurements)
 
-  def test_weighted_struct(self):
+  def test_weighted_client(self):
     factory = mean.MeanFactory()
 
-    factory = measurements.add_measurements(factory, _get_min_weighted_norm)
+    factory = measurements.add_measurements(
+        factory, client_measurement_fn=_get_min_weighted_norm)
     process = factory.create(_struct_type, _float_type)
 
     state = process.initialize()
@@ -147,6 +112,58 @@ class AddMeasurementsTest(test_case.TestCase):
         collections.OrderedDict(
             mean_value=(), mean_weight=(), min_weighted_norm=4.0),
         output.measurements)
+
+  def test_server(self):
+    factory = sum_factory.SumFactory()
+
+    factory = measurements.add_measurements(
+        factory, server_measurement_fn=_get_server_norm)
+    process = factory.create(_struct_type)
+
+    state = process.initialize()
+    client_data = [_make_struct(x) for x in [1.0, 2.0, 3.0]]
+    output = process.next(state, client_data)
+    self.assertAllClose(_make_struct(6.0), output.result)
+    self.assertDictEqual(
+        collections.OrderedDict(server_norm=12.0), output.measurements)
+
+  def test_unweighted_client_and_server(self):
+    factory = sum_factory.SumFactory()
+
+    factory = measurements.add_measurements(
+        factory,
+        client_measurement_fn=_get_min_norm,
+        server_measurement_fn=_get_server_norm)
+    process = factory.create(_struct_type)
+
+    state = process.initialize()
+    client_data = [_make_struct(x) for x in [1.0, 2.0, 3.0]]
+    output = process.next(state, client_data)
+    self.assertAllClose(_make_struct(6.0), output.result)
+    self.assertDictEqual(
+        collections.OrderedDict(min_norm=2.0, server_norm=12.0),
+        output.measurements)
+
+  def test_weighted_client_and_server(self):
+    factory = mean.MeanFactory()
+
+    factory = measurements.add_measurements(
+        factory,
+        client_measurement_fn=_get_min_weighted_norm,
+        server_measurement_fn=_get_server_norm)
+    process = factory.create(_struct_type, _float_type)
+
+    state = process.initialize()
+    client_data = [_make_struct(x) for x in [1.0, 2.0, 3.0]]
+    client_weights = [3.0, 1.0, 2.0]
+    output = process.next(state, client_data, client_weights)
+    self.assertAllClose(_make_struct(11 / 6), output.result)
+    self.assertAllClose(
+        collections.OrderedDict(
+            mean_value=(),
+            mean_weight=(),
+            min_weighted_norm=4.0,
+            server_norm=11 / 3), output.measurements)
 
 
 if __name__ == '__main__':
