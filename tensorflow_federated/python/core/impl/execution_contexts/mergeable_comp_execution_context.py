@@ -13,9 +13,10 @@
 # limitations under the License.
 """Execution context for single-aggregation computations."""
 
+import asyncio
 import functools
 import math
-from typing import Any, List
+from typing import Any, List, Sequence
 
 import attr
 
@@ -24,10 +25,14 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
@@ -350,3 +355,105 @@ class MergeableCompExecutionContextValue(typed_object.TypedObject):
 
   def value(self):
     return self._partitioned_value
+
+
+async def _invoke_up_to_merge_and_return_context(
+    comp: MergeableCompForm, arg,
+    context: async_execution_context.AsyncExecutionContext):
+  ingested_arg = await context.ingest(arg,
+                                      comp.up_to_merge.type_signature.parameter)
+  return await context.invoke(comp.up_to_merge, ingested_arg), context
+
+
+async def _merge_results(
+    comp: MergeableCompForm, merge_partial, value_to_merge,
+    context: async_execution_context.AsyncExecutionContext):
+  ingested_arg = await context.ingest((merge_partial, value_to_merge),
+                                      comp.merge.type_signature.parameter)
+  return await context.invoke(comp.merge, ingested_arg)
+
+
+async def _compute_after_merged(
+    comp: MergeableCompForm, original_arg, merge_result,
+    context: async_execution_context.AsyncExecutionContext):
+  ingested_arg = await context.ingest((original_arg, merge_result),
+                                      comp.after_merge.type_signature.parameter)
+  return await context.invoke(comp.after_merge, ingested_arg)
+
+
+async def _invoke_mergeable_comp_form(
+    comp: MergeableCompForm, arg: MergeableCompExecutionContextValue,
+    execution_contexts: Sequence[
+        async_execution_context.AsyncExecutionContext]):
+  """Invokes `comp` on `arg`, repackaging the results to a single value."""
+
+  arg_list = arg.value()
+
+  up_to_merge_futures = asyncio.as_completed([
+      _invoke_up_to_merge_and_return_context(comp, x, context)
+      for x, context in zip(arg_list, execution_contexts)
+  ])
+
+  # We compute merge using the most-recently completed context.
+  # TODO(b/195349085): merge in a hierarchical fashion here rather than
+  # linearly.
+  merge_result, merge_context = await next(up_to_merge_futures)
+
+  for up_to_merge_result_future in up_to_merge_futures:
+    to_merge, merge_context = await up_to_merge_result_future
+    merge_result = await _merge_results(comp, merge_result, to_merge,
+                                        merge_context)
+
+  if type_analysis.contains_only(comp.after_merge.type_signature.result,
+                                 lambda x: not x.is_federated() or x.all_equal):
+    # In this case, all contexts must return the same result, which must
+    # therefore be independent of which element in the arg_list is passed--so we
+    # avoid the extra work.
+    top_level_arg_slice = arg_list[0]
+    return await _compute_after_merged(comp, top_level_arg_slice, merge_result,
+                                       merge_context)
+
+  after_merge_results = await asyncio.gather(*[
+      _compute_after_merged(comp, x, merge_result, context)
+      for x, context in zip(arg_list, execution_contexts)
+  ])
+
+  repackaged_values = _repackage_partitioned_values(
+      after_merge_results,
+      result_type_spec=comp.after_merge.type_signature.result)
+  return repackaged_values
+
+
+class MergeableCompExecutionContext(context_base.Context):
+  """Context which executes mergeable computations in subrounds.
+
+  This context relies on retrying behavior of the  underlying asynchronous
+  execution contexts to localize retries to these subrounds. That is, if a
+  subround fails, this subround is the only computation that is retried. This
+  allows `MergeableCompExecutionContext` to execute larger rounds than a
+  runtime which retries the entire round in the case of e.g. a worker failure.
+  """
+
+  def __init__(self,
+               executor_factories: Sequence[executor_factory.ExecutorFactory]):
+    self._async_execution_contexts = [
+        async_execution_context.AsyncExecutionContext(ex_factory)
+        for ex_factory in executor_factories
+    ]
+    self._event_loop = asyncio.new_event_loop()
+
+  def ingest(
+      self, val: Any,
+      type_spec: computation_types.Type) -> MergeableCompExecutionContextValue:
+    return MergeableCompExecutionContextValue(
+        val, type_spec, len(self._async_execution_contexts))
+
+  def invoke(self, comp: MergeableCompForm,
+             arg: MergeableCompExecutionContextValue):
+    py_typecheck.check_type(comp, MergeableCompForm)
+    py_typecheck.check_type(arg, MergeableCompExecutionContextValue)
+    return type_conversions.type_to_py_container(
+        self._event_loop.run_until_complete(
+            _invoke_mergeable_comp_form(comp, arg,
+                                        self._async_execution_contexts)),
+        comp.after_merge.type_signature.result)

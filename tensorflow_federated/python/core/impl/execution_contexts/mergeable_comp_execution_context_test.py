@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import absltest
+from absl.testing import parameterized
 
 import tensorflow as tf
 
@@ -22,11 +23,13 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_conversions
 
 
-def build_whimsy_up_to_merge_computation(
+def build_sum_client_arg_computation(
     server_arg_type: computation_types.FederatedType,
     clients_arg_type: computation_types.FederatedType
 ) -> computation_base.Computation:
@@ -50,6 +53,16 @@ def build_whimsy_merge_computation(
   return merge
 
 
+def build_sum_merge_computation(
+    arg_type: computation_types.Type) -> computation_base.Computation:
+
+  @computations.tf_computation(arg_type, arg_type)
+  def merge(arg0, arg1):
+    return arg0 + arg1
+
+  return merge
+
+
 def build_whimsy_after_merge_computation(
     original_arg_type: computation_types.Type,
     merge_result_type: computation_types.Type) -> computation_base.Computation:
@@ -63,10 +76,40 @@ def build_whimsy_after_merge_computation(
   return after_merge
 
 
+def build_return_merge_result_computation(
+    original_arg_type: computation_types.Type,
+    merge_result_type: computation_types.Type) -> computation_base.Computation:
+
+  @computations.federated_computation(
+      original_arg_type, computation_types.at_server(merge_result_type))
+  def after_merge(original_arg, merge_result):
+    del original_arg  # Unused
+    return merge_result
+
+  return after_merge
+
+
+def build_sum_merge_with_first_arg_computation(
+    original_arg_type: computation_types.Type,
+    merge_result_type: computation_types.Type) -> computation_base.Computation:
+  """Assumes original_arg_type is federated, and compatible with summing with merge_result_type."""
+
+  @computations.tf_computation(original_arg_type[0].member, merge_result_type)
+  def add(x, y):
+    return x + y
+
+  @computations.federated_computation(
+      original_arg_type, computation_types.at_server(merge_result_type))
+  def after_merge(original_arg, merge_result):
+    return intrinsics.federated_map(add, (original_arg[0], merge_result))
+
+  return after_merge
+
+
 class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_mismatched_up_to_merge_and_merge(self):
-    up_to_merge = build_whimsy_up_to_merge_computation(
+    up_to_merge = build_sum_client_arg_computation(
         computation_types.at_server(tf.int32),
         computation_types.at_clients(tf.int32))
 
@@ -84,7 +127,7 @@ class MergeableCompFormTest(absltest.TestCase):
           up_to_merge=up_to_merge, merge=bad_merge, after_merge=after_merge)
 
   def test_raises_merge_computation_not_assignable_result(self):
-    up_to_merge = build_whimsy_up_to_merge_computation(
+    up_to_merge = build_sum_client_arg_computation(
         computation_types.at_server(tf.int32),
         computation_types.at_clients(tf.int32))
 
@@ -105,7 +148,7 @@ class MergeableCompFormTest(absltest.TestCase):
           up_to_merge=up_to_merge, merge=bad_merge, after_merge=after_merge)
 
   def test_raises_no_top_level_argument_in_after_agg(self):
-    up_to_merge = build_whimsy_up_to_merge_computation(
+    up_to_merge = build_sum_client_arg_computation(
         computation_types.at_server(tf.int32),
         computation_types.at_clients(tf.int32))
 
@@ -137,7 +180,7 @@ class MergeableCompFormTest(absltest.TestCase):
           up_to_merge=bad_up_to_merge, merge=merge, after_merge=after_merge)
 
   def test_raises_with_aggregation_in_after_agg(self):
-    up_to_merge = build_whimsy_up_to_merge_computation(
+    up_to_merge = build_sum_client_arg_computation(
         computation_types.at_server(tf.int32),
         computation_types.at_clients(tf.int32))
 
@@ -160,7 +203,7 @@ class MergeableCompFormTest(absltest.TestCase):
           after_merge=after_merge_with_sum)
 
   def test_raises_with_federated_collect_in_after_agg(self):
-    up_to_merge = build_whimsy_up_to_merge_computation(
+    up_to_merge = build_sum_client_arg_computation(
         computation_types.at_server(tf.int32),
         computation_types.at_clients(tf.int32))
 
@@ -183,7 +226,7 @@ class MergeableCompFormTest(absltest.TestCase):
           after_merge=after_merge_with_collect)
 
   def test_passes_with_correct_signatures(self):
-    up_to_merge = build_whimsy_up_to_merge_computation(
+    up_to_merge = build_sum_client_arg_computation(
         computation_types.at_server(tf.int32),
         computation_types.at_clients(tf.int32))
     merge = build_whimsy_merge_computation(tf.int32)
@@ -318,6 +361,87 @@ class RepackageResultsTest(absltest.TestCase):
     ])
     self.assertRoundTripEqual(value, type_signature,
                               structure.from_container(value))
+
+
+class MergeableCompExecutionContextTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(('100_clients', (0, list(range(100)))),
+                                  ('fewer_clients_than_subrounds', (0, [0])))
+  def test_runs_computation_with_clients_placed_return_values(self, arg):
+    up_to_merge = build_sum_client_arg_computation(
+        computation_types.at_server(tf.int32),
+        computation_types.at_clients(tf.int32))
+    merge = build_whimsy_merge_computation(tf.int32)
+    after_merge = build_whimsy_after_merge_computation(
+        up_to_merge.type_signature.parameter, merge.type_signature.result)
+
+    # Simply returns the original argument
+    mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
+        up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
+    ex_factories = [executor_stacks.local_executor_factory() for _ in range(5)]
+    mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
+        ex_factories)
+    # We preemptively package as a struct to work around shortcircuiting in
+    # type_to_py_container in a non-Struct argument case.
+    arg = structure.Struct.unnamed(*arg)
+    expected_result = type_conversions.type_to_py_container(
+        arg, after_merge.type_signature.result)
+    ingested_val = mergeable_comp_context.ingest(
+        arg, up_to_merge.type_signature.parameter)
+    result = mergeable_comp_context.invoke(mergeable_comp_form, ingested_val)
+
+    self.assertEqual(result, expected_result)
+
+  @parameterized.named_parameters(
+      ('500_clients', (0, list(range(500))), sum(range(500))),
+      ('500_clients_nonzero_server_values',
+       (1, list(range(500))), sum(range(500))),
+      ('fewer_clients_than_subrounds', (0, [1]), 1))
+  def test_computes_sum_of_clients_values(self, arg, expected_sum):
+    up_to_merge = build_sum_client_arg_computation(
+        computation_types.at_server(tf.int32),
+        computation_types.at_clients(tf.int32))
+    merge = build_sum_merge_computation(tf.int32)
+    after_merge = build_return_merge_result_computation(
+        up_to_merge.type_signature.parameter, merge.type_signature.result)
+
+    mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
+        up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
+    ex_factories = [executor_stacks.local_executor_factory() for _ in range(5)]
+    mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
+        ex_factories)
+
+    expected_result = type_conversions.type_to_py_container(
+        expected_sum, after_merge.type_signature.result)
+    ingested_val = mergeable_comp_context.ingest(
+        arg, up_to_merge.type_signature.parameter)
+    result = mergeable_comp_context.invoke(mergeable_comp_form, ingested_val)
+
+    self.assertEqual(result, expected_result)
+
+  @parameterized.named_parameters(
+      ('100_clients', (100, list(range(100))), sum(range(101))),
+      ('fewer_clients_than_subrounds', (1, [1]), 2))
+  def test_computes_sum_of_all_values(self, arg, expected_sum):
+    up_to_merge = build_sum_client_arg_computation(
+        computation_types.at_server(tf.int32),
+        computation_types.at_clients(tf.int32))
+    merge = build_sum_merge_computation(tf.int32)
+    after_merge = build_sum_merge_with_first_arg_computation(
+        up_to_merge.type_signature.parameter, merge.type_signature.result)
+
+    mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
+        up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
+    ex_factories = [executor_stacks.local_executor_factory() for _ in range(5)]
+    mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
+        ex_factories)
+
+    expected_result = type_conversions.type_to_py_container(
+        expected_sum, after_merge.type_signature.result)
+    ingested_val = mergeable_comp_context.ingest(
+        arg, up_to_merge.type_signature.parameter)
+    result = mergeable_comp_context.invoke(mergeable_comp_form, ingested_val)
+    self.assertEqual(expected_result, result)
 
 
 if __name__ == '__main__':
