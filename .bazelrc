@@ -29,3 +29,17 @@ build --define=use_fast_cpp_protos=true
 build --copt=-march=native
 build --host_copt=-march=native
 build --copt=-O3
+
+#
+# Remote execution capabilities.
+#
+
+# Enable authentication.
+build:remote --google_default_credentials=true
+
+# Enable remote cache.
+build:remote --remote_cache=grpcs://remotebuildexecution.googleapis.com
+
+# Project configuration.
+build:remote --remote_instance_name=projects/tensorflow-federated/instances/default_instance
+build:remote --project_id=tensorflow-federated
