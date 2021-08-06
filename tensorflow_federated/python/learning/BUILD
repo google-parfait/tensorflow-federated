@@ -90,6 +90,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -130,6 +131,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/framework:encoding_utils",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -170,6 +172,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -206,6 +209,7 @@ py_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -271,6 +275,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -320,6 +325,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -367,5 +373,6 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "@absl_py//absl/testing:parameterized",
     ],
 )

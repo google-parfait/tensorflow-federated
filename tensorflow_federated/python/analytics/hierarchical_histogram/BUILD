@@ -30,6 +30,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -55,6 +56,7 @@ py_test(
         ":hierarchical_histogram",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -73,6 +75,7 @@ py_test(
     deps = [
         ":build_tree_from_leaf",
         ":hierarchical_histogram_decoder",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -87,5 +90,8 @@ py_test(
     srcs = ["build_tree_from_leaf_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":build_tree_from_leaf"],
+    deps = [
+        ":build_tree_from_leaf",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )

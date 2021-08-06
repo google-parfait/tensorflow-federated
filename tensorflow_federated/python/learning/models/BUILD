@@ -43,5 +43,6 @@ py_test(
         "//tensorflow_federated/python/learning:keras_utils",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_examples",
+        "@absl_py//absl/testing:parameterized",
     ],
 )

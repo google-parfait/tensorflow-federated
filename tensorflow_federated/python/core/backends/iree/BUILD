@@ -29,7 +29,10 @@ py_test(
     srcs = ["backend_info_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":backend_info"],
+    deps = [
+        ":backend_info",
+        "@absl_py//absl/testing:absltest",
+    ],
 )
 
 py_library(

@@ -13,6 +13,8 @@ py_binary(
         ":stateful_fedavg_tf",
         ":stateful_fedavg_tff",
         "//tensorflow_federated",
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
     ],
 )
 
@@ -43,5 +45,6 @@ py_test(
         ":stateful_fedavg_tf",
         ":stateful_fedavg_tff",
         "//tensorflow_federated",
+        "@absl_py//absl/testing:parameterized",
     ],
 )

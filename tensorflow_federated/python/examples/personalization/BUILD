@@ -30,5 +30,6 @@ py_binary(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
+        "@absl_py//absl:app",
     ],
 )

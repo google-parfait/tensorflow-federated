@@ -58,7 +58,6 @@ RUN bazel version
 
 # Install the TensorFlow Federated development environment dependencies
 RUN ${PIP} install --no-cache-dir --upgrade \
-    absl-py~=0.10 \
     attrs~=21.2.0 \
     cachetools~=3.1.1 \
     dm-tree~=0.1.1 \

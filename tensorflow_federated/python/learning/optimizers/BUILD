@@ -50,6 +50,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -68,6 +69,7 @@ py_test(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/core/api:test_case",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -109,5 +111,6 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":sgdm",
+        "@absl_py//absl/testing:parameterized",
     ],
 )

@@ -50,6 +50,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -80,6 +81,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -114,5 +116,6 @@ py_test(
         ":emnist_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@absl_py//absl/testing:parameterized",
     ],
 )

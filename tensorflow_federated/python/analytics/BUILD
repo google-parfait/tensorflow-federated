@@ -39,7 +39,10 @@ py_test(
     srcs = ["data_processing_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":data_processing"],
+    deps = [
+        ":data_processing",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )
 
 py_library(
@@ -63,5 +66,6 @@ py_test(
     deps = [
         ":histogram_processing",
         ":histogram_test_utils",
+        "@absl_py//absl/testing:parameterized",
     ],
 )

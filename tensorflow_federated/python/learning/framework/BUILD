@@ -121,6 +121,7 @@ py_test(
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -157,6 +158,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -191,6 +193,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -232,6 +235,7 @@ py_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -285,6 +289,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -299,5 +304,8 @@ py_cpu_gpu_test(
     srcs = ["dataset_reduce_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":dataset_reduce"],
+    deps = [
+        ":dataset_reduce",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )
