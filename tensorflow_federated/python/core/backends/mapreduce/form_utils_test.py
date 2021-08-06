@@ -18,6 +18,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
@@ -453,17 +454,17 @@ def get_iterative_process_for_minimal_sum_example():
   @computations.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
-    zero = computations.tf_computation(lambda: [0, 0])
+    zero = computations.tf_computation(lambda: [0, 0, 0, 0])
     return intrinsics.federated_eval(zero, placements.SERVER)
 
   @computations.tf_computation(tf.int32)
   def work(client_data):
     del client_data  # Unused
-    return 1, 1
+    return 1, 1, 1, 1
 
   @computations.federated_computation([
-      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+      computation_types.at_server([tf.int32, tf.int32, tf.int32, tf.int32]),
+      computation_types.at_clients(tf.int32),
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
@@ -472,10 +473,16 @@ def get_iterative_process_for_minimal_sum_example():
     # No call to `federated_broadcast`.
     client_updates = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.federated_secure_sum_bitwidth(
-        client_updates[1], 8)
-    new_server_state = intrinsics.federated_zip(
-        [unsecure_update, secure_update])
+    secure_sum_bitwidth_update = intrinsics.federated_secure_sum_bitwidth(
+        client_updates[1], bitwidth=8)
+    secure_sum_update = intrinsics.federated_secure_sum(
+        client_updates[2], max_input=1)
+    secure_modular_sum_update = intrinsics.federated_secure_modular_sum(
+        client_updates[3], modulus=8)
+    new_server_state = intrinsics.federated_zip([
+        unsecure_update, secure_sum_bitwidth_update, secure_sum_update,
+        secure_modular_sum_update
+    ])
     # No call to `federated_map` with an `update` function.
     server_output = intrinsics.federated_value([], placements.SERVER)
     return new_server_state, server_output
@@ -701,6 +708,53 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
     mrf = form_utils.get_map_reduce_form_for_iterative_process(ip)
 
     self.assertIsInstance(mrf, forms.MapReduceForm)
+
+  def get_map_reduce_form_for_client_to_server_fn(
+      self, client_to_server_fn) -> forms.MapReduceForm:
+    """Produces a `MapReduceForm` for the provided `client_to_server_fn`.
+
+    Creates an `iterative_process.IterativeProcess` which uses
+    `client_to_server_fn` to map from `client_data` to `server_output`, then
+    passes this value through `get_map_reduce_form_for_iterative_process`.
+
+    Args:
+      client_to_server_fn: A function from client-placed data to server-placed
+        output.
+
+    Returns:
+      A `forms.MapReduceForm` which uses the embedded `client_to_server_fn`.
+    """
+
+    @computations.federated_computation
+    def init_fn():
+      return intrinsics.federated_value((), placements.SERVER)
+
+    @computations.federated_computation([
+        computation_types.at_server(()),
+        computation_types.at_clients(tf.int32),
+    ])
+    def next_fn(server_state, client_data):
+      server_output = client_to_server_fn(client_data)
+      return server_state, server_output
+
+    ip = iterative_process.IterativeProcess(init_fn, next_fn)
+    return form_utils.get_map_reduce_form_for_iterative_process(ip)
+
+  def test_returns_map_reduce_form_with_secure_sum_bitwidth(self):
+    mrf = self.get_map_reduce_form_for_client_to_server_fn(
+        lambda data: intrinsics.federated_secure_sum_bitwidth(data, 7))
+    self.assertEqual(mrf.secure_sum_bitwidth(), structure.Struct.unnamed(7))
+
+  def test_returns_map_reduce_form_with_secure_sum_max_input(self):
+    mrf = self.get_map_reduce_form_for_client_to_server_fn(
+        lambda data: intrinsics.federated_secure_sum(data, 12))
+    self.assertEqual(mrf.secure_sum_max_input(), structure.Struct.unnamed(12))
+
+  def test_returns_map_reduce_form_with_secure_modular_sum_modulus(self):
+    mrf = self.get_map_reduce_form_for_client_to_server_fn(
+        lambda data: intrinsics.federated_secure_modular_sum(data, 22))
+    self.assertEqual(mrf.secure_modular_sum_modulus(),
+                     structure.Struct.unnamed(22))
 
 
 class BroadcastFormTest(test_case.TestCase):

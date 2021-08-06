@@ -106,16 +106,21 @@ def get_iterative_process_for_map_reduce_form(
     broadcast_input = intrinsics.federated_map(mrf.prepare, server_state)
     broadcast_result = intrinsics.federated_broadcast(broadcast_input)
     work_arg = intrinsics.federated_zip([client_data, broadcast_result])
-    aggregate_input, secagg_bitwidth_input = intrinsics.federated_map(
-        mrf.work, work_arg)
+    (aggregate_input, secure_sum_bitwidth_input, secure_sum_input,
+     secure_modular_sum_input) = intrinsics.federated_map(mrf.work, work_arg)
     aggregate_result = intrinsics.federated_aggregate(aggregate_input,
                                                       mrf.zero(),
                                                       mrf.accumulate, mrf.merge,
                                                       mrf.report)
-    secagg_bitwidth_result = intrinsics.federated_secure_sum_bitwidth(
-        secagg_bitwidth_input, mrf.bitwidth())
+    secure_sum_bitwidth_result = intrinsics.federated_secure_sum_bitwidth(
+        secure_sum_bitwidth_input, mrf.secure_sum_bitwidth())
+    secure_sum_result = intrinsics.federated_secure_sum(
+        secure_sum_input, mrf.secure_sum_max_input())
+    secure_modular_sum_result = intrinsics.federated_secure_modular_sum(
+        secure_modular_sum_input, mrf.secure_modular_sum_modulus())
     update_arg = intrinsics.federated_zip(
-        (server_state, (aggregate_result, secagg_bitwidth_result)))
+        (server_state, (aggregate_result, secure_sum_bitwidth_result,
+                        secure_sum_result, secure_modular_sum_result)))
     updated_server_state, server_output = intrinsics.federated_map(
         mrf.update, update_arg)
     return updated_server_state, server_output
@@ -329,8 +334,9 @@ def _split_ast_on_aggregate(bb):
   """Splits an AST on reduced aggregation intrinsics.
 
   Args:
-    bb: An AST containing `federated_aggregate` or
-      `federated_secure_sum_bitwidth` aggregations.
+    bb: An AST to split on `federated_aggregate`,
+      `federated_secure_sum_bitwidth`, `federated_secure_sum`, and
+      `federated_secure_modular_sum`.
 
   Returns:
     Two ASTs, the first of which maps comp's input to the arguments
@@ -341,7 +347,9 @@ def _split_ast_on_aggregate(bb):
   return transformations.force_align_and_split_by_intrinsics(
       bb, [
           building_block_factory.create_null_federated_aggregate(),
-          building_block_factory.create_null_federated_secure_sum_bitwidth()
+          building_block_factory.create_null_federated_secure_sum_bitwidth(),
+          building_block_factory.create_null_federated_secure_sum(),
+          building_block_factory.create_null_federated_secure_modular_sum(),
       ])
 
 
@@ -614,15 +622,39 @@ def _extract_work(before_aggregate, grappler_config):
 
   # Indices of `work` results in `before_aggregate` result
   aggregate_input_index = ('federated_aggregate_param', 0)
-  secagg_bitwidth_input_index = ('federated_secure_sum_bitwidth_param', 0)
+  secure_sum_bitwidth_input_index = ('federated_secure_sum_bitwidth_param', 0)
+  secure_sum_input_index = ('federated_secure_sum_param', 0)
+  secure_modular_sum_input_index = ('federated_secure_modular_sum_param', 0)
   work_unzipped = transformations.select_output_from_lambda(
-      work_to_before_aggregate,
-      [aggregate_input_index, secagg_bitwidth_input_index])
+      work_to_before_aggregate, [
+          aggregate_input_index,
+          secure_sum_bitwidth_input_index,
+          secure_sum_input_index,
+          secure_modular_sum_input_index,
+      ])
   work = building_blocks.Lambda(
       work_unzipped.parameter_name, work_unzipped.parameter_type,
       building_block_factory.create_federated_zip(work_unzipped.result))
   return transformations.consolidate_and_extract_local_processing(
       work, grappler_config)
+
+
+def _compile_selected_output_to_no_argument_tensorflow(
+    comp: building_blocks.Lambda, path: transformations.Path,
+    grappler_config) -> building_blocks.CompiledComputation:
+  """Compiles the independent value result of `comp` at `path` to TensorFlow."""
+  extracted = transformations.select_output_from_lambda(comp, path).result
+  return transformations.consolidate_and_extract_local_processing(
+      building_blocks.Lambda(None, None, extracted), grappler_config)
+
+
+def _compile_selected_output_as_tensorflow_function(
+    comp: building_blocks.Lambda, path: transformations.Path,
+    grappler_config) -> building_blocks.CompiledComputation:
+  """Compiles the functional result of `comp` at `path` to TensorFlow."""
+  extracted = transformations.select_output_from_lambda(comp, path).result
+  return transformations.consolidate_and_extract_local_processing(
+      extracted, grappler_config)
 
 
 def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
@@ -650,64 +682,16 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
   """
   federated_aggregate = transformations.select_output_from_lambda(
       before_aggregate, 'federated_aggregate_param')
-  zero_index_in_federated_aggregate_result = 1
-  zero_tff = transformations.select_output_from_lambda(
-      federated_aggregate, zero_index_in_federated_aggregate_result).result
-  zero_tff = building_blocks.Lambda(None, None, zero_tff)
-  accumulate_index_in_federated_aggregate_result = 2
-  accumulate_tff = transformations.select_output_from_lambda(
-      federated_aggregate,
-      accumulate_index_in_federated_aggregate_result).result
-  merge_index_in_federated_aggregate_result = 3
-  merge_tff = transformations.select_output_from_lambda(
-      federated_aggregate, merge_index_in_federated_aggregate_result).result
-  report_index_in_federated_aggregate_result = 4
-  report_tff = transformations.select_output_from_lambda(
-      federated_aggregate, report_index_in_federated_aggregate_result).result
-
-  zero = transformations.consolidate_and_extract_local_processing(
-      zero_tff, grappler_config)
-  accumulate = transformations.consolidate_and_extract_local_processing(
-      accumulate_tff, grappler_config)
-  merge = transformations.consolidate_and_extract_local_processing(
-      merge_tff, grappler_config)
-  report = transformations.consolidate_and_extract_local_processing(
-      report_tff, grappler_config)
+  # Index `0` is the value being aggregated.
+  zero = _compile_selected_output_to_no_argument_tensorflow(
+      federated_aggregate, 1, grappler_config)
+  accumulate = _compile_selected_output_as_tensorflow_function(
+      federated_aggregate, 2, grappler_config)
+  merge = _compile_selected_output_as_tensorflow_function(
+      federated_aggregate, 3, grappler_config)
+  report = _compile_selected_output_as_tensorflow_function(
+      federated_aggregate, 4, grappler_config)
   return zero, accumulate, merge, report
-
-
-def _extract_federated_secure_sum_bitwidth_functions(before_aggregate,
-                                                     grappler_config):
-  """Extracts secure sum from `before_aggregate`.
-
-  This function is intended to be used by
-  `get_map_reduce_form_for_iterative_process` only. As a result, this function
-  does not assert that `before_aggregate` has the expected structure, the
-  caller is expected to perform these checks before calling this function.
-
-  Args:
-    before_aggregate: The first result of splitting `after_broadcast` on
-      aggregate intrinsics.
-    grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
-      Grappler graph optimization.
-
-  Returns:
-    `bitwidth` as specified by `forms.MapReduceForm`, an instance of
-    `building_blocks.CompiledComputation`.
-
-  Raises:
-    transformations.MapReduceFormCompilationError: If we extract an AST of the
-      wrong type.
-  """
-  bitwidth_index_in_before_aggregate_result = (
-      'federated_secure_sum_bitwidth_param', 1)
-  bitwidth = transformations.select_output_from_lambda(
-      before_aggregate, bitwidth_index_in_before_aggregate_result)
-  # Bitwidth must be independent of any parameters.
-  bitwidth = building_blocks.Lambda(None, None, bitwidth.result)
-
-  return transformations.consolidate_and_extract_local_processing(
-      bitwidth, grappler_config)
 
 
 def _extract_update(after_aggregate, grappler_config):
@@ -741,11 +725,19 @@ def _extract_update(after_aggregate, grappler_config):
       after_aggregate_zipped)
   server_state_index = ('original_arg', 'original_arg', 0)
   aggregate_result_index = ('intrinsic_results', 'federated_aggregate_result')
-  secagg_bitwidth_result_index = ('intrinsic_results',
-                                  'federated_secure_sum_bitwidth_result')
+  secure_sum_bitwidth_result_index = ('intrinsic_results',
+                                      'federated_secure_sum_bitwidth_result')
+  secure_sum_result_index = ('intrinsic_results', 'federated_secure_sum_result')
+  secure_modular_sum_result_index = ('intrinsic_results',
+                                     'federated_secure_modular_sum_result')
   update_with_flat_inputs = _as_function_of_some_federated_subparameters(
-      after_aggregate_zipped, (server_state_index, aggregate_result_index,
-                               secagg_bitwidth_result_index))
+      after_aggregate_zipped, (
+          server_state_index,
+          aggregate_result_index,
+          secure_sum_bitwidth_result_index,
+          secure_sum_result_index,
+          secure_modular_sum_result_index,
+      ))
 
   # TODO(b/148942011): The transformation
   # `zip_selection_as_argument_to_lower_level_lambda` does not support selecting
@@ -925,17 +917,25 @@ def get_map_reduce_form_for_iterative_process(
   work = _extract_work(before_aggregate, grappler_config)
   zero, accumulate, merge, report = _extract_federated_aggregate_functions(
       before_aggregate, grappler_config)
-  bitwidth = _extract_federated_secure_sum_bitwidth_functions(
-      before_aggregate, grappler_config)
+  secure_sum_bitwidth = _compile_selected_output_to_no_argument_tensorflow(
+      before_aggregate, ('federated_secure_sum_bitwidth_param', 1),
+      grappler_config)
+  secure_sum_max_input = _compile_selected_output_to_no_argument_tensorflow(
+      before_aggregate, ('federated_secure_sum_param', 1), grappler_config)
+  secure_sum_modulus = _compile_selected_output_to_no_argument_tensorflow(
+      before_aggregate, ('federated_secure_modular_sum_param', 1),
+      grappler_config)
   update = _extract_update(after_aggregate, grappler_config)
 
   next_parameter_names = structure.name_list_with_nones(
       ip.next.type_signature.parameter)
   server_state_label, client_data_label = next_parameter_names
+  blocks = (initialize, prepare, work, zero, accumulate, merge, report,
+            secure_sum_bitwidth, secure_sum_max_input, secure_sum_modulus,
+            update)
   comps = (
       computation_wrapper_instances.building_block_to_computation(bb)
-      for bb in (initialize, prepare, work, zero, accumulate, merge, report,
-                 bitwidth, update))
+      for bb in blocks)
   return forms.MapReduceForm(
       *comps,
       server_state_label=server_state_label,

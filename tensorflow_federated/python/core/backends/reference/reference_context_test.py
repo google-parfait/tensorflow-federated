@@ -924,12 +924,39 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
     self.assertEqual(foo([1, 2, 3]), 6)
 
+  def test_federated_secure_modular_sum_with_list_of_integers(self):
+
+    @computations.federated_computation(computation_types.at_clients(tf.int32))
+    def foo(x):
+      return intrinsics.federated_secure_modular_sum(x, modulus=4)
+
+    self.assertEqual(foo([1, 2, 3]), 2)
+
+  def test_federated_secure_modular_sum_with_integer_structure(self):
+
+    @computations.federated_computation(
+        computation_types.at_clients((tf.int32, tf.int32)))
+    def foo(x):
+      return intrinsics.federated_secure_modular_sum(x, modulus=(4, 5))
+
+    # (1 + 2 + 3) % 4 = 2
+    # (0 + 0 + 6) % 5 = 1
+    self.assertEqual(foo([(1, 0), (2, 0), (3, 6)]), (2, 1))
+
+  def test_federated_secure_sum_with_list_of_integers(self):
+
+    @computations.federated_computation(computation_types.at_clients(tf.int32))
+    def foo(x):
+      return intrinsics.federated_secure_sum(x, max_input=8)
+
+    self.assertEqual(foo([1, 2, 3]), 6)
+
   def test_federated_secure_sum_bitwidth_with_list_of_integers(self):
 
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def foo(x):
-      return intrinsics.federated_secure_sum_bitwidth(x, 8)
+      return intrinsics.federated_secure_sum_bitwidth(x, bitwidth=8)
 
     self.assertEqual(foo.type_signature.compact_representation(),
                      '({int32}@CLIENTS -> int32@SERVER)')

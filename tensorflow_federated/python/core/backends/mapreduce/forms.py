@@ -35,24 +35,26 @@ def _is_assignable_from_or_both_none(first, second):
   return first.is_assignable_from(second)
 
 
-def _is_two_tuple(t: computation_types.Type) -> bool:
-  return t.is_struct() and len(t) == 2
+def _is_tuple(type_signature: computation_types.Type, length: int) -> bool:
+  return type_signature.is_struct() and len(type_signature) == length
 
 
-def _check_accepts_two_tuple(label: str, comp: computation_base.Computation):
+def _check_accepts_tuple(label: str, comp: computation_base.Computation,
+                         length: int):
   param_type = comp.type_signature.parameter
-  if not _is_two_tuple(param_type):
+  if not _is_tuple(param_type, length):
     raise TypeError(
         f'The `{label}` computation accepts a parameter of type\n{param_type}\n'
-        'that is not a two-tuple.')
+        f'that is not a tuple of length {length}.')
 
 
-def _check_returns_two_tuple(label: str, comp: computation_base.Computation):
+def _check_returns_tuple(label: str, comp: computation_base.Computation,
+                         length: int):
   result_type = comp.type_signature.result
-  if not _is_two_tuple(result_type):
+  if not _is_tuple(result_type, length):
     raise TypeError(
         f'The `{label}` computation returns a result of type\n{result_type}\n'
-        'that is not a two-tuple.')
+        f'that is not a tuple of length {length}.')
 
 
 class BroadcastForm(object):
@@ -89,7 +91,7 @@ class BroadcastForm(object):
         ('client_processing', client_processing),
     ):
       _check_tensorflow_computation(label, comp)
-    _check_accepts_two_tuple('client_processing', client_processing)
+    _check_accepts_tuple('client_processing', client_processing, 2)
     client_first_arg_type = client_processing.type_signature.parameter[0]
     server_context_type = compute_server_context.type_signature.result
     if not _is_assignable_from_or_both_none(client_first_arg_type,
@@ -139,6 +141,14 @@ class BroadcastForm(object):
       # len('compute_server_context') == 22
       print_fn('{:<22}: {}'.format(
           label, comp.type_signature.compact_representation()))
+
+
+# `work` has a separate output for each aggregation path.
+WORK_UPDATE_INDEX = 0
+WORK_SECAGG_BITWIDTH_INDEX = 1
+WORK_SECAGG_MAX_INPUT_INDEX = 2
+WORK_SECAGG_MODULUS_INDEX = 3
+WORK_RESULT_LEN = 4
 
 
 class MapReduceForm(object):
@@ -201,7 +211,9 @@ class MapReduceForm(object):
                accumulate,
                merge,
                report,
-               bitwidth,
+               secure_sum_bitwidth,
+               secure_sum_max_input,
+               secure_modular_sum_modulus,
                update,
                server_state_label=None,
                client_data_label=None):
@@ -220,7 +232,12 @@ class MapReduceForm(object):
       merge: The computation to use for merging pairs of accumulators.
       report: The computation that produces the final server-side aggregate for
         the top level accumulator (the global update).
-      bitwidth: The computation that produces the bitwidth for secure sum.
+      secure_sum_bitwidth: The computation that produces the bitwidth for
+        bitwidth-based secure sums.
+      secure_sum_max_input: The computation that produces the maximum input for
+        `max_input`-based secure sums.
+      secure_modular_sum_modulus: The computation that produces the modulus for
+        secure modular sums.
       update: The computation that takes the global update and the server state
         and produces the new server state, as well as server-side output.
       server_state_label: Optional string label for the server state.
@@ -241,7 +258,9 @@ class MapReduceForm(object):
         ('accumulate', accumulate),
         ('merge', merge),
         ('report', report),
-        ('bitwidth', bitwidth),
+        ('secure_sum_bitwidth', secure_sum_bitwidth),
+        ('secure_sum_max_input', secure_sum_max_input),
+        ('secure_modular_sum_modulus', secure_modular_sum_modulus),
         ('update', update),
     ):
       _check_tensorflow_computation(label, comp)
@@ -254,7 +273,7 @@ class MapReduceForm(object):
           'which does not match the result type {} of `initialize`.'.format(
               prepare_arg_type, init_result_type))
 
-    _check_accepts_two_tuple('work', work)
+    _check_accepts_tuple('work', work, 2)
     work_2nd_arg_type = work.type_signature.parameter[1]
     prepare_result_type = prepare.type_signature.result
     if not _is_assignable_from_or_both_none(work_2nd_arg_type,
@@ -265,13 +284,13 @@ class MapReduceForm(object):
           'which does not match the result type {} of `prepare`.'.format(
               work_2nd_arg_type, prepare_result_type))
 
-    _check_returns_two_tuple('work', work)
+    _check_returns_tuple('work', work, WORK_RESULT_LEN)
 
     py_typecheck.check_len(accumulate.type_signature.parameter, 2)
     accumulate.type_signature.parameter[0].check_assignable_from(
         zero.type_signature.result)
     accumulate_2nd_arg_type = accumulate.type_signature.parameter[1]
-    work_client_update_type = work.type_signature.result[0]
+    work_client_update_type = work.type_signature.result[WORK_UPDATE_INDEX]
     if not _is_assignable_from_or_both_none(accumulate_2nd_arg_type,
                                             work_client_update_type):
 
@@ -296,7 +315,13 @@ class MapReduceForm(object):
 
     expected_update_parameter_type = computation_types.to_type([
         initialize.type_signature.result,
-        [report.type_signature.result, work.type_signature.result[1]],
+        [
+            report.type_signature.result,
+            # Update takes in the post-summation values of secure aggregation.
+            work.type_signature.result[WORK_SECAGG_BITWIDTH_INDEX],
+            work.type_signature.result[WORK_SECAGG_MAX_INPUT_INDEX],
+            work.type_signature.result[WORK_SECAGG_MODULUS_INDEX],
+        ],
     ])
     if not _is_assignable_from_or_both_none(update.type_signature.parameter,
                                             expected_update_parameter_type):
@@ -306,7 +331,7 @@ class MapReduceForm(object):
           'signatures of `initialize`, `report`, and `work`.'.format(
               update.type_signature.parameter, expected_update_parameter_type))
 
-    _check_returns_two_tuple('update', update)
+    _check_returns_tuple('update', update, 2)
 
     updated_state_type = update.type_signature.result[0]
     if not prepare_arg_type.is_assignable_from(updated_state_type):
@@ -324,7 +349,9 @@ class MapReduceForm(object):
     self._accumulate = accumulate
     self._merge = merge
     self._report = report
-    self._bitwidth = bitwidth
+    self._secure_sum_bitwidth = secure_sum_bitwidth
+    self._secure_sum_max_input = secure_sum_max_input
+    self._secure_modular_sum_modulus = secure_modular_sum_modulus
     self._update = update
 
     if server_state_label is not None:
@@ -363,8 +390,16 @@ class MapReduceForm(object):
     return self._report
 
   @property
-  def bitwidth(self):
-    return self._bitwidth
+  def secure_sum_bitwidth(self):
+    return self._secure_sum_bitwidth
+
+  @property
+  def secure_sum_max_input(self):
+    return self._secure_sum_max_input
+
+  @property
+  def secure_modular_sum_modulus(self):
+    return self._secure_modular_sum_modulus
 
   @property
   def update(self):
@@ -381,12 +416,16 @@ class MapReduceForm(object):
   @property
   def securely_aggregates_tensors(self) -> bool:
     """Whether the `MapReduceForm` uses secure aggregation."""
-    # Tensors aggregated over `federated_secure_sum_bitwidth` are output in the
-    # second tuple element from `work()`.
-    work_result_type = self.work.type_signature.result
-    assert len(work_result_type) == 2
-    secagg_result = work_result_type[1]
-    return type_analysis.contains_tensor_types(secagg_result)
+    # Tensors aggregated over `federated_secure_...` are the last three outputs
+    # of `work`.
+    _, secagg_bitwidth_type, secagg_max_input_type, secagg_modulus_type = (
+        self.work.type_signature.result)
+    for secagg_type in [
+        secagg_bitwidth_type, secagg_max_input_type, secagg_modulus_type
+    ]:
+      if type_analysis.contains_tensor_types(secagg_type):
+        return True
+    return False
 
   def summary(self, print_fn=print):
     """Prints a string summary of the `MapReduceForm`.
@@ -403,7 +442,9 @@ class MapReduceForm(object):
         ('accumulate', self.accumulate),
         ('merge', self.merge),
         ('report', self.report),
-        ('bitwidth', self.bitwidth),
+        ('secure_sum_bitwidth', self.secure_sum_bitwidth),
+        ('secure_sum_max_input', self.secure_sum_max_input),
+        ('secure_modular_sum_modulus', self.secure_modular_sum_modulus),
         ('update', self.update),
     ):
       # Add sufficient padding to align first column; len('initialize') == 10

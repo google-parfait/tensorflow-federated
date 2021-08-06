@@ -941,6 +941,12 @@ def create_federated_mean(
     return building_blocks.Call(intrinsic, value)
 
 
+def create_null_federated_secure_modular_sum():
+  return create_federated_secure_modular_sum(
+      create_federated_value(building_blocks.Struct([]), placements.CLIENTS),
+      building_blocks.Struct([]))
+
+
 def create_federated_secure_modular_sum(
     value: building_blocks.ComputationBuildingBlock,
     modulus: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
@@ -973,6 +979,12 @@ def create_federated_secure_modular_sum(
       intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri, intrinsic_type)
   values = building_blocks.Struct([value, modulus])
   return building_blocks.Call(intrinsic, values)
+
+
+def create_null_federated_secure_sum():
+  return create_federated_secure_sum(
+      create_federated_value(building_blocks.Struct([]), placements.CLIENTS),
+      building_blocks.Struct([]))
 
 
 def create_federated_secure_sum(

@@ -85,6 +85,7 @@ py_test(
         ":form_utils",
         ":forms",
         ":test_utils",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/reference:reference_context",

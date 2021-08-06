@@ -73,7 +73,7 @@ def get_temperature_sensor_example():
     }, fn)
     client_updates = collections.OrderedDict(
         is_over=reduce_result['max'] > state['max_temperature'])
-    return client_updates, []
+    return client_updates, [], [], []
 
   # The client update is a singleton tuple with a Boolean-typed `is_over`.
   client_update_type = collections.OrderedDict(is_over=tf.bool)
@@ -107,11 +107,13 @@ def get_temperature_sensor_example():
         ratio_over_threshold=(tf.cast(accumulator['num_over'], tf.float32) /
                               tf.cast(accumulator['num_total'], tf.float32)))
 
-  @computations.tf_computation
-  def bitwidth():
-    return []
+  unit_comp = computations.tf_computation(lambda: [])
+  bitwidth = unit_comp
+  max_input = unit_comp
+  modulus = unit_comp
 
-  update_type = (collections.OrderedDict(ratio_over_threshold=tf.float32), ())
+  update_type = (collections.OrderedDict(ratio_over_threshold=tf.float32), (),
+                 (), ())
 
   @computations.tf_computation(server_state_type, update_type)
   def update(state, update):
@@ -119,7 +121,7 @@ def get_temperature_sensor_example():
             update[0])
 
   return forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
-                             report, bitwidth, update)
+                             report, bitwidth, max_input, modulus, update)
 
 
 def get_federated_sum_example(*,
@@ -149,9 +151,9 @@ def get_federated_sum_example(*,
   def work(data, _):
     client_sum = data.reduce(initial_state=0, reduce_func=tf.add)
     if secure_sum:
-      return [], client_sum
+      return [], client_sum, [], []
     else:
-      return client_sum, []
+      return client_sum, [], [], []
 
   @computations.tf_computation
   def zero():
@@ -181,11 +183,16 @@ def get_federated_sum_example(*,
   def report(accumulator):
     return accumulator
 
-  @computations.tf_computation
-  def bitwidth():
-    return 32
+  bitwidth = computations.tf_computation(lambda: 32)
+  max_input = computations.tf_computation(lambda: 0)
+  modulus = computations.tf_computation(lambda: 0)
 
-  update_type = (merge.type_signature.result, work.type_signature.result[1])
+  update_type = (
+      merge.type_signature.result,
+      work.type_signature.result[1],
+      work.type_signature.result[2],
+      work.type_signature.result[3],
+  )
 
   @computations.tf_computation(server_state_type, update_type)
   def update(state, update):
@@ -195,7 +202,7 @@ def get_federated_sum_example(*,
       return state, update[0]
 
   return forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
-                             report, bitwidth, update)
+                             report, bitwidth, max_input, modulus, update)
 
 
 def get_mnist_training_example():
@@ -273,7 +280,8 @@ def get_mnist_training_example():
       with tf.control_dependencies([num_examples, total_loss]):
         loss = total_loss / tf.cast(num_examples, tf.float32)
 
-    return update_nt(model=model_vars, num_examples=num_examples, loss=loss), []
+    return update_nt(
+        model=model_vars, num_examples=num_examples, loss=loss), [], [], []
 
   accumulator_nt = update_nt
 
@@ -325,11 +333,12 @@ def get_mnist_training_example():
         num_examples=accumulator.num_examples,
         loss=accumulator.loss * scaling_factor)
 
-  @computations.tf_computation
-  def bitwidth():
-    return []
+  unit_computation = computations.tf_computation(lambda: [])
+  secure_sum_bitwidth = unit_computation
+  secure_sum_max_input = unit_computation
+  secure_sum_modulus = unit_computation
 
-  update_type = (accumulator_tff_type, ())
+  update_type = (accumulator_tff_type, (), (), ())
   metrics_nt = collections.namedtuple('Metrics', 'num_rounds num_examples loss')
 
   # Pass the newly averaged model along with an incremented round counter over
@@ -345,7 +354,8 @@ def get_mnist_training_example():
                 loss=report.loss))
 
   return forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
-                             report, bitwidth, update)
+                             report, secure_sum_bitwidth, secure_sum_max_input,
+                             secure_sum_modulus, update)
 
 
 def get_iterative_process_for_example_with_unused_lambda_arg():

@@ -400,6 +400,49 @@ def numpy_cast(value, dtype, shape):
     return value_as_numpy_array.flatten()[0]
 
 
+def modulus_by_structure(value: ComputedValue,
+                         modulus: ComputedValue) -> ComputedValue:
+  """Returns the remainder of `value` / `modulus` computed structures.
+
+  Args:
+    value: An instance of `ComputedValue` to divide.
+    modulus: An instance of `ComputedValue` to use as the modulus.
+
+  Returns:
+    An instance of `ComputedValue` that represents the result of the modulus.
+  """
+  py_typecheck.check_type(value, ComputedValue)
+  py_typecheck.check_type(modulus, ComputedValue)
+  if value.type_signature.is_tensor() and modulus.type_signature.is_tensor():
+    result_val = numpy_cast(value.value % modulus.value,
+                            value.type_signature.dtype,
+                            value.type_signature.shape)
+    return ComputedValue(result_val, value.type_signature)
+  elif value.type_signature.is_struct() and modulus.type_signature.is_struct():
+    value_length = len(value.type_signature)
+    modulus_length = len(modulus.type_signature)
+    if value_length != modulus_length:
+      raise ValueError(
+          f'Invalid modular division of value of kind {value.type_signature} '
+          f'by modulus of kind {modulus.type_signature}. The structures of '
+          '`value` and `modulus` must match, but `value` had length '
+          f'{value_length} while `modulus` had length {modulus_length}.')
+    result_elements = []
+    keys = structure.name_list_with_nones(value.value)
+    for idx in range(value_length):
+      result = modulus_by_structure(
+          ComputedValue(value.value[idx], value.type_signature[idx]),
+          ComputedValue(modulus.value[idx], modulus.type_signature[idx])).value
+      result_elements.append((keys[idx], result))
+    return ComputedValue(
+        structure.Struct(result_elements), value.type_signature)
+  else:
+    raise ValueError(
+        f'Invalid modular division of value of kind {value.type_signature} '
+        f'by modulus of kind {modulus.type_signature}. The structures of '
+        '`value` and `modulus` must match and may only be tensors or structs.')
+
+
 def multiply_by_scalar(value, multiplier):
   """Multiplies an instance of `ComputedValue` by a given scalar.
 
@@ -588,9 +631,9 @@ class ReferenceContext(context_base.Context):
   context is plugged in as the handler of computation invocations at the top
   level of the context stack.
 
-  Note: The `tff.federated_secure_sum_bitwidth()` intrinsic is implemented using
-  a non-secure algorithm in order to enable testing of the semantics of
-  federated computations using the  secure sum intrinsic.
+  Note: The `tff.federated_secure_...` intrinsics are implemented using
+  a non-secure algorithms in order to enable testing of the semantics of
+  federated computations using the secure intrinsics.
   """
 
   def __init__(self):
@@ -632,8 +675,12 @@ class ReferenceContext(context_base.Context):
             self._federated_map,
         intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri:
             self._federated_map_all_equal,
+        intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri:
+            self._federated_secure_modular_sum,
         intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri:
             self._federated_secure_sum_bitwidth,
+        intrinsic_defs.FEDERATED_SECURE_SUM.uri:
+            self._federated_secure_sum,
         intrinsic_defs.FEDERATED_SUM.uri:
             self._federated_sum,
         intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri:
@@ -989,6 +1036,25 @@ class ReferenceContext(context_base.Context):
     py_typecheck.check_len(arg.type_signature, 2)
     value = ComputedValue(arg.value[0], arg.type_signature[0])
     return self._federated_sum(value, context)
+
+  def _federated_secure_sum(self, arg, context):
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
+    py_typecheck.check_len(arg.type_signature, 2)
+    value = ComputedValue(arg.value[0], arg.type_signature[0])
+    return self._federated_sum(value, context)
+
+  def _federated_secure_modular_sum(self, arg, context):
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
+    py_typecheck.check_len(arg.type_signature, 2)
+    value = ComputedValue(arg.value[0], arg.type_signature[0])
+    server_sum = self._federated_sum(value, context)
+    modulus = ComputedValue(arg.value[1], arg.type_signature[1])
+    unplaced_result = modulus_by_structure(
+        ComputedValue(server_sum.value, server_sum.type_signature.member),
+        modulus)
+    return ComputedValue(
+        unplaced_result.value,
+        computation_types.at_server(unplaced_result.type_signature))
 
   def _federated_sum(self, arg, context):
     type_analysis.check_federated_type(arg.type_signature, None,

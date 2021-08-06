@@ -97,6 +97,8 @@ class MapReduceFormTest(tff.test.TestCase):
         '      num_examples=int64\n'
         '    >\n'
         '  >,\n'
+        '  <>,\n'
+        '  <>,\n'
         '  <>\n'
         '>)',
         cf.work.type_signature.formatted_representation())
