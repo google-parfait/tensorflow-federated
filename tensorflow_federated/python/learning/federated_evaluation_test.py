@@ -411,16 +411,14 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
             eval=collections.OrderedDict(accuracy=1.0, loss=0.0),
             stat=collections.OrderedDict(num_examples=12)))
 
-  @parameterized.named_parameters(('non-simulation', False),
-                                  ('simulation', True))
   @mock.patch.object(
       dataset_reduce,
       '_dataset_reduce_fn',
       wraps=dataset_reduce._dataset_reduce_fn)
   @test_utils.skip_test_for_multi_gpu
-  def test_federated_evaluation_dataset_reduce(self, simulation, mock_method):
+  def test_federated_evaluation_dataset_reduce(self, mock_method):
     evaluate_comp = federated_evaluation.build_federated_evaluation(
-        _model_fn_from_keras, use_experimental_simulation_loop=simulation)
+        _model_fn_from_keras, use_experimental_simulation_loop=False)
     initial_weights = tf.nest.map_structure(
         lambda x: x.read_value(),
         model_utils.ModelWeights.from_model(_model_fn_from_keras()))
@@ -436,10 +434,31 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
           _input_dict([6.0, 11.0])], [_input_dict([9.0, 12.0, 13.0])],
          [_input_dict([1.0]), _input_dict([22.0, 23.0])]])
 
-    if simulation:
-      mock_method.assert_not_called()
-    else:
-      mock_method.assert_called()
+    mock_method.assert_called()
+
+  @mock.patch.object(
+      dataset_reduce,
+      '_dataset_reduce_fn',
+      wraps=dataset_reduce._dataset_reduce_fn)
+  @test_utils.skip_test_for_gpu
+  def test_federated_evaluation_simulation_loop(self, mock_method):
+    evaluate_comp = federated_evaluation.build_federated_evaluation(
+        _model_fn_from_keras, use_experimental_simulation_loop=True)
+    initial_weights = tf.nest.map_structure(
+        lambda x: x.read_value(),
+        model_utils.ModelWeights.from_model(_model_fn_from_keras()))
+
+    def _input_dict(temps):
+      return collections.OrderedDict(
+          x=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)),
+          y=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)))
+
+    evaluate_comp(
+        initial_weights,
+        [[_input_dict([1.0, 10.0, 2.0, 7.0]),
+          _input_dict([6.0, 11.0])]])
+
+    mock_method.assert_not_called()
 
   def test_construction_calls_model_fn(self):
     # Assert that the the process building does not call `model_fn` too many
