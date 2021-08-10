@@ -13,54 +13,13 @@
 # limitations under the License.
 """The functions for creating the federated computation for hierarchical histogram aggregation."""
 
-import math
-
-from scipy import optimize
 import tensorflow as tf
-import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-
-# TODO(b/193903764): Replace these privacy utility functions with TensorFlow
-# Privacy version once they are upstreamed.
-
-
-# Standard privacy accounting mechanism
-def _get_eps(sampling_rate=1.0,
-             noise_multiplier=1.0,
-             steps=1,
-             target_delta=1e-10):
-  """Simple wrapper on rdp_accountant."""
-  rdp = tfp.privacy.analysis.rdp_accountant.compute_rdp(
-      q=sampling_rate,
-      noise_multiplier=noise_multiplier,
-      steps=steps,
-      orders=list(range(1, 2000)))
-  eps, _, _ = tfp.privacy.analysis.rdp_accountant.get_privacy_spent(
-      list(range(1, 2000)), rdp, target_delta=target_delta)
-  return eps
-
-
-def _find_noise_multiplier(eps=1.0, delta=0.001, steps=1):
-  """Given eps and delta, find the noise_multiplier."""
-
-  def get_eps_for_noise_multiplier(z):
-    eps = _get_eps(noise_multiplier=z, steps=steps, target_delta=delta)
-    return eps
-
-  opt_noise_multiplier, r = optimize.brentq(
-      lambda z: get_eps_for_noise_multiplier(z) - eps,
-      0.1,
-      10000,
-      full_output=True)
-  if r.converged:
-    return opt_noise_multiplier
-  else:
-    return -1
 
 
 @tf.function
@@ -171,8 +130,7 @@ def build_central_hierarchical_histogram_computation(
     num_bins: int,
     arity: int = 2,
     max_records_per_user: int = 1,
-    epsilon: float = 1,
-    delta: float = 1e-5,
+    noise_multiplier: float = 0.0,
     secure_sum: bool = False):
   """Create the tff federated computation for central hierarchical histogram aggregation.
 
@@ -183,8 +141,8 @@ def build_central_hierarchical_histogram_computation(
     arity: The branching factor of the tree. Defaults to 2.
     max_records_per_user: The maximum number of records each user is allowed to
       contribute. Defaults to 1.
-    epsilon: Differential privacy parameter. Defaults to 1.
-    delta: Differential privacy parameter. Defaults to 1e-5.
+    noise_multiplier: A `float` specifying the noise multiplier (central noise
+       stddev / L2 clip norm) for model updates. Defaults to 0.0.
     secure_sum: A boolean deciding whether to use secure aggregation. Defaults
       to `False`.
 
@@ -206,15 +164,7 @@ def build_central_hierarchical_histogram_computation(
     raise ValueError(f'Maximum records per user should be at least 1. '
                      f'max_records_per_user={max_records_per_user} is given.')
 
-  if epsilon < 0 or delta < 0 or delta > 1:
-    raise ValueError(f'Privacy parameters in wrong range: '
-                     f'(epsilon, delta): ({epsilon}, {delta})')
-
-  if epsilon == 0.:
-    stddev = 0.
-  else:
-    stddev = max_records_per_user * _find_noise_multiplier(
-        epsilon, delta, steps=math.ceil(math.log(num_bins, arity)))
+  stddev = max_records_per_user * noise_multiplier
 
   central_tree_aggregation_factory = hierarchical_histogram_factory.create_central_hierarchical_histogram_factory(
       stddev, arity, max_records_per_user, secure_sum=secure_sum)

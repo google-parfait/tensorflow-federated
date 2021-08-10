@@ -66,9 +66,7 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
         upper_bound=data_range[1],
         num_bins=num_bins,
         arity=arity,
-        max_records_per_user=max_records_per_user,
-        epsilon=0.,
-        delta=0.)
+        max_records_per_user=max_records_per_user)
     hi_hist = hihi_computation(client_data)
 
     self.assertAllClose(hi_hist, reference_hi_hist)
@@ -81,16 +79,13 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
         num_bins=4,
         arity=2,
         max_records_per_user=1,
-        epsilon=1.0,
-        delta=1e-5)
+        noise_multiplier=1.0)
 
     client_data = [[0.], [1.], [2.], [3.]]
     reference_flat_hi_hist = [4., 2., 2., 1., 1., 1., 1.]
     flat_hi_hist = hihi_computation(client_data).flat_values
 
-    # 20. is an integer approximation of three-sigma, set `atol` to 100 to avoid
-    # flakiness in tests.
-    self.assertAllClose(flat_hi_hist, reference_flat_hi_hist, atol=100.)
+    self.assertAllClose(flat_hi_hist, reference_flat_hi_hist, atol=10.)
 
   def test_build_central_hierarchical_histogram_computation_secure(self):
 
@@ -100,16 +95,14 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
         num_bins=4,
         arity=2,
         max_records_per_user=1,
-        epsilon=1.0,
-        delta=1e-5,
+        noise_multiplier=1.0,
         secure_sum=True)
 
     client_data = [[0.], [1.], [2.], [3.]]
     reference_flat_hi_hist = [4., 2., 2., 1., 1., 1., 1.]
     flat_hi_hist = hihi_computation(client_data).flat_values
 
-    # The magic number 20 is an integer approximation of three-sigma.
-    self.assertAllClose(flat_hi_hist, reference_flat_hi_hist, atol=20.)
+    self.assertAllClose(flat_hi_hist, reference_flat_hi_hist, atol=10.)
 
   @parameterized.named_parameters(
       ('test_data_range_error', [5, 1], 4, 2, 10),
@@ -126,8 +119,7 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
           num_bins=num_bins,
           arity=arity,
           max_records_per_user=max_records_per_user,
-          epsilon=0.,
-          delta=0.)
+          noise_multiplier=1.0)
 
 
 if __name__ == '__main__':
