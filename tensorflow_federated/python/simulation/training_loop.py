@@ -346,17 +346,20 @@ def run_simulation_with_callbacks(
       (potentially updated) mapping of metrics.
 
   Returns:
-    The `state` of the iterative process after training.
+    The `state` of the iterative process after trainingjj.
   """
+  logging.debug('Initializing simulation process')
   initial_state = process.initialize()
 
   if on_loop_start is not None:
+    logging.debug('call loop start callback')
     state, start_round = on_loop_start(initial_state)
   else:
     state = initial_state
     start_round = 1
 
   for round_num in range(start_round, total_rounds + 1):
+    logging.debug('Executing round %d', round_num)
     round_metrics = collections.OrderedDict(round_num=round_num)
 
     train_start_time = time.time()
@@ -372,6 +375,7 @@ def run_simulation_with_callbacks(
     round_metrics.update(metrics)
 
     if on_round_end is not None:
+      logging.info('running round end callback')
       state, round_metrics = on_round_end(state, round_num, round_metrics)
 
     logging.info('Output metrics at round {:d}:\n{!s}'.format(
