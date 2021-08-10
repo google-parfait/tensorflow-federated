@@ -121,3 +121,36 @@ py_test(
         "//tensorflow_federated/python/core/templates:measured_process",
     ],
 )
+
+py_library(
+    name = "clipping_factory",
+    srcs = ["clipping_factory.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:sum_factory",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+    ],
+)
+
+py_test(
+    name = "clipping_factory_test",
+    srcs = ["clipping_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":clipping_factory",
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)
