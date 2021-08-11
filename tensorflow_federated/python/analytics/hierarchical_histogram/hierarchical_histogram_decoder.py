@@ -184,7 +184,7 @@ class HierarchicalHistogramDecoder():
 
     ls_matrix = self._construct_matrix()
     ls_rhs = self._flatten_hierarhical_hist()
-    consistent_hist = np.maximum(np.linalg.lstsq(ls_matrix, ls_rhs)[0], 0.)
+    consistent_hist = np.linalg.lstsq(ls_matrix, ls_rhs)[0]
     self._hierarchical_histogram = build_tree_from_leaf.create_hierarchical_histogram(
         consistent_hist, self._arity)
 
