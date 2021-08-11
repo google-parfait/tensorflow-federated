@@ -373,7 +373,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=server_optimzier())
     # TODO(b/186451541): reduce the number of calls to model_fn.
-    self.assertEqual(mock_model_fn.call_count, 4)
+    self.assertEqual(mock_model_fn.call_count, 3)
 
   @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
                                    ('keras_optimizer', _keras_optimizer_fn)])

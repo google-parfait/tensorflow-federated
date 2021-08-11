@@ -312,7 +312,7 @@ class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
     federated_sgd.build_federated_sgd_process(
         model_fn=mock_model_fn, server_optimizer_fn=server_optimizer())
     # TODO(b/186451541): reduce the number of calls to model_fn.
-    self.assertEqual(mock_model_fn.call_count, 4)
+    self.assertEqual(mock_model_fn.call_count, 3)
 
 
 if __name__ == '__main__':

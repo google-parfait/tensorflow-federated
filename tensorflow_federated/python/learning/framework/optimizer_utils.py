@@ -205,21 +205,15 @@ def _apply_delta(
 
 def _build_initialize_computation(
     *,
-    model_fn: _ModelConstructor,
-    server_optimizer_fn: _OptimizerConstructor,
+    model_and_optimizer_init_fn: computation_base.Computation,
     broadcast_process: measured_process.MeasuredProcess,
     aggregation_process: measured_process.MeasuredProcess,
 ) -> computation_base.Computation:
   """Builds the `initialize` computation for a model delta averaging process.
 
   Args:
-    model_fn: A no-argument callable that constructs and returns a
-      `tff.learning.Model`. *Must* construct and return a new model when called.
-      Returning captured models from other scopes will raise errors.
-    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-argument
-      callable that constructs and returns a `tf.keras.optimizers.Optimizer`.
-      The callable *must* construct and return a new Keras optimizer when
-      called. Returning captured optimizers from other scopes will raise errors.
+    model_and_optimizer_init_fn: A no-arg non-federated `tff.Computation` that
+      returns initial model weights and initial state of the global optimizer.
     broadcast_process: A `tff.templates.MeasuredProcess` to broadcast the global
       model to the clients.
     aggregation_process: A `tff.templates.MeasuredProcess` to aggregate client
@@ -231,29 +225,11 @@ def _build_initialize_computation(
     with `tff.SERVER` placement.
   """
 
-  @computations.tf_computation
-  def server_init() -> Tuple[model_utils.ModelWeights, List[tf.Variable]]:
-    """Returns initial `tff.learning.framework.ServerState`.
-
-    Returns:
-      A `tuple` of `tff.learning.framework.ModelWeights` and a `list` of
-      `tf.Variable`s for the global optimizer state.
-    """
-    model_variables = model_utils.ModelWeights.from_model(model_fn())
-    optimizer = keras_optimizer.build_or_verify_tff_optimizer(
-        server_optimizer_fn,
-        model_variables.trainable,
-        disjoint_init_and_next=True)
-    trainable_tensor_specs = tf.nest.map_structure(
-        lambda v: tf.TensorSpec(v.shape, v.dtype), model_variables.trainable)
-    optimizer_state = optimizer.initialize(trainable_tensor_specs)
-    return model_variables, optimizer_state
-
   @computations.federated_computation()
   def initialize_computation():
     """Orchestration logic for server model initialization."""
     initial_global_model, initial_global_optimizer_state = intrinsics.federated_eval(
-        server_init, placements.SERVER)
+        model_and_optimizer_init_fn, placements.SERVER)
     return intrinsics.federated_zip(
         ServerState(
             model=initial_global_model,
@@ -563,7 +539,21 @@ def build_model_delta_optimizer_process(
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(model_to_client_delta_fn)
 
-  model_weights_type = model_utils.weights_type_from_model(model_fn)
+  @computations.tf_computation
+  def model_and_optimizer_init_fn(
+  ) -> Tuple[model_utils.ModelWeights, List[tf.Variable]]:
+    """Returns initial model weights and state of the global optimizer."""
+    model_variables = model_utils.ModelWeights.from_model(model_fn())
+    optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        server_optimizer_fn,
+        model_variables.trainable,
+        disjoint_init_and_next=True)
+    trainable_tensor_specs = tf.nest.map_structure(
+        lambda v: tf.TensorSpec(v.shape, v.dtype), model_variables.trainable)
+    optimizer_state = optimizer.initialize(trainable_tensor_specs)
+    return model_variables, optimizer_state
+
+  model_weights_type = model_and_optimizer_init_fn.type_signature.result[0]
 
   if broadcast_process is None:
     broadcast_process = build_stateless_broadcaster(
@@ -596,8 +586,7 @@ def build_model_delta_optimizer_process(
                     f'{result_server_value_type.member}.')
 
   initialize_computation = _build_initialize_computation(
-      model_fn=model_fn,
-      server_optimizer_fn=server_optimizer_fn,
+      model_and_optimizer_init_fn=model_and_optimizer_init_fn,
       broadcast_process=broadcast_process,
       aggregation_process=aggregation_process)
 

@@ -384,7 +384,7 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
     federated_averaging.build_federated_averaging_process(
         model_fn=mock_model_fn, client_optimizer_fn=tf.keras.optimizers.SGD)
     # TODO(b/186451541): reduce the number of calls to model_fn.
-    self.assertEqual(mock_model_fn.call_count, 4)
+    self.assertEqual(mock_model_fn.call_count, 3)
 
 
 if __name__ == '__main__':
