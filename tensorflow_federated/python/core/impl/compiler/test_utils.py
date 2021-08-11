@@ -476,7 +476,7 @@ def _stamp_value_into_graph(value, type_signature, graph):
   if value is None:
     return None
   if type_signature.is_tensor():
-    if isinstance(value, np.ndarray):
+    if isinstance(value, np.ndarray) or tf.is_tensor(value):
       value_type = computation_types.TensorType(
           tf.dtypes.as_dtype(value.dtype), tf.TensorShape(value.shape))
       type_signature.check_assignable_from(value_type)

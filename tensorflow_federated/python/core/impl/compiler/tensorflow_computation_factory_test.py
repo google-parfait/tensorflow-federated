@@ -231,18 +231,22 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
 
 class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
 
+  # TODO(b/142795960): arguments in parameterized are called before test main.
+  # `tf.constant` will error out on GPU and TPU without proper initialization.
+  # A suggested workaround is to use numpy as argument and transform to TF
+  # tensor inside the function.
   # pyformat: disable
   @parameterized.named_parameters(
       ('add_int_same_shape', tf.math.add,
        _StructType([_TensorType(tf.int32), _TensorType(tf.int32)]),
        [1, 2], 3),
       ('add_int_different_shape', tf.math.add,
-       _StructType([_TensorType(tf.int32, shape=[1]), _TensorType(tf.int32)]),
+       _StructType([_TensorType(tf.int64, shape=[1]), _TensorType(tf.int32)]),
        [np.array([1]), 2], 3),
       ('add_int_different_types', tf.math.add,
        _StructType([
            _StructType([
-               _TensorType(tf.int32, shape=[1])]),
+               _TensorType(tf.int64, shape=[1])]),
            _TensorType(tf.int32),
        ]),
        [[np.array([1])], 2],
@@ -251,12 +255,12 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
        _StructType([_TensorType(tf.int32), _TensorType(tf.int32)]),
        [1, 2], 2),
       ('multiply_int_different_shape', tf.math.multiply,
-       _StructType([_TensorType(tf.int32, shape=[1]), _TensorType(tf.int32)]),
+       _StructType([_TensorType(tf.int64, shape=[1]), _TensorType(tf.int32)]),
        [np.array([1]), 2], 2),
       ('multiply_int_different_types', tf.math.multiply,
        _StructType([
            _StructType([
-               _TensorType(tf.int32, shape=[1])]),
+               _TensorType(tf.int64, shape=[1])]),
            _TensorType(tf.int32)
        ]),
        [[np.array([1])], 2],
@@ -265,12 +269,12 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
        _StructType([_TensorType(tf.int32), _TensorType(tf.int32)]),
        [1, 2], 0.5),
       ('divide_int_different_shape', tf.math.divide,
-       _StructType([_TensorType(tf.int32, shape=[1]), _TensorType(tf.int32)]),
+       _StructType([_TensorType(tf.int64, shape=[1]), _TensorType(tf.int32)]),
        [np.array([1]), 2], 0.5),
       ('divide_int_different_types', tf.math.divide,
        _StructType([
            _StructType([
-               _TensorType(tf.int32, shape=[1])]),
+               _TensorType(tf.int64, shape=[1])]),
            _TensorType(tf.int32),
        ]),
        [[np.array([1])], 2],
@@ -278,25 +282,43 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
       ('divide_int_same_structure', tf.math.divide,
        _StructType([
            _StructType([
-               _TensorType(tf.int32, shape=[1]),
-               _TensorType(tf.int32, shape=[1]),
+               _TensorType(tf.int64, shape=[1]),
+               _TensorType(tf.int64, shape=[1]),
            ]),
            _StructType([
-               _TensorType(tf.int32),
-               _TensorType(tf.int32),
+               _TensorType(tf.int64),
+               _TensorType(tf.int64),
            ]),
        ]),
        [[np.array([1]), np.array([2])], [2, 8]],
        structure.Struct([(None, 0.5), (None, 0.25)])),
+      ('add_float_unknown_shape', tf.math.add,
+       _StructType([
+           _TensorType(dtype=tf.float64, shape=[None]),
+           _TensorType(dtype=tf.float64, shape=[1])
+       ]),
+       [np.array([1.0]), np.array([2.25])],
+       np.array([3.25])),
+      ('add_float_unknown_rank', tf.math.add,
+       _StructType([
+           _TensorType(dtype=tf.float64, shape=tf.TensorShape(None)),
+           _TensorType(dtype=tf.float64, shape=[1])
+       ]),
+       [np.array([1.0]), np.array([2.25])],
+       np.array([3.25])),
+      ('add_float_unknown_shape_inside_struct', tf.math.add,
+       _StructType([
+           _StructType([
+               _TensorType(dtype=tf.float64, shape=[None])
+           ]),
+           _TensorType(dtype=tf.float64, shape=[1])
+       ]),
+       [[np.array([1.0])], np.array([2.25])],
+       structure.Struct.unnamed([np.array([3.25])])),
   )
   # pyformat: enable
   def test_returns_computation(self, operator, type_signature, operands,
                                expected_result):
-    # TODO(b/142795960): arguments in parameterized are called before test main.
-    # `tf.constant` will error out on GPU and TPU without proper initialization.
-    # A suggested workaround is to use numpy as argument and transform to TF
-    # tensor inside the function.
-    operands = tf.nest.map_structure(tf.constant, operands)
     proto, _ = tensorflow_computation_factory.create_binary_operator_with_upcast(
         type_signature, operator)
 
@@ -319,30 +341,17 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
            ]),
            _StructType([_TensorType(tf.int32),
                         _TensorType(tf.int32)]),
-       ]), [1, [2, 3]]))
+       ]), [1, [2, 3]]),
+      ('shape_incompatible', tf.math.add,
+       _StructType([
+           _TensorType(dtype=tf.float64, shape=[None]),
+           _TensorType(dtype=tf.float64, shape=[1, 1])
+       ]), [np.array([1.0]), np.array([[2.25]])]))
   def test_fails(self, operator, type_signature, operands):
     operands = tf.nest.map_structure(tf.constant, operands)
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_binary_operator_with_upcast(
           type_signature, operator)
-
-  @parameterized.named_parameters(
-      ('add_float_unknown_shape', tf.math.add,
-       _TensorType(dtype=tf.float32, shape=[1]),
-       _TensorType(dtype=tf.float32, shape=[None]), [[1.0], [2.25]], 3.25))
-  def test_returns_computation_second_operand_type(self, operator, operand_type,
-                                                   second_operand_type,
-                                                   operands, expected_result):
-    self.skipTest('b/196220686')
-    struct_type = computation_types.to_type([operand_type, second_operand_type])
-    proto, _ = tensorflow_computation_factory.create_binary_operator_with_upcast(
-        struct_type, operator)
-
-    self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    self.assertIsInstance(actual_type, computation_types.FunctionType)
-    actual_result = test_utils.run_tensorflow(proto, operands)
-    self.assertEqual(actual_result, expected_result)
 
 
 class CreateEmptyTupleTest(test_case.TestCase):

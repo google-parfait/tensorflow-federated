@@ -303,7 +303,11 @@ def create_binary_operator_with_upcast(
       only containing structs or tensors in their type tree. The first and
       second element must match in structure, or the second element may be a
       single tensor type that is broadcasted (upcast) to the leaves of the
-      structure of the first type.
+      structure of the first type. This single tensor may be assignable to the
+      tensor types at the leaves, or in the case that the leaves have fully
+      defined shapes, this tensor may be `tf.broadcast`-ed to each of those
+      shapes. In the case of non-assignability and non-fully defined shapes
+      at the leaves of the structure, this function will raise.
     operator: Callable defining the operator.
 
   Returns:
@@ -323,14 +327,24 @@ def create_binary_operator_with_upcast(
         'supported on Tensors and StructTypes; you '
         'passed {t} which contains a SequenceType.'.format(t=type_signature))
 
-  def _pack_into_type(to_pack, type_spec):
+  def _pack_into_type(to_pack: tf.Tensor, type_spec: computation_types.Type):
     """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
     if type_spec.is_struct():
       elem_iter = structure.iter_elements(type_spec)
       return structure.Struct([(elem_name, _pack_into_type(to_pack, elem_type))
                                for elem_name, elem_type in elem_iter])
     elif type_spec.is_tensor():
-      return tf.broadcast_to(to_pack, type_spec.shape)
+      value_tensor_type = type_conversions.type_from_tensors(to_pack)
+      if type_spec.is_assignable_from(value_tensor_type):
+        return to_pack
+      elif not type_spec.shape.is_fully_defined():
+        raise TypeError('Cannot generate TensorFlow creating binary operator '
+                        'with first type not assignable from second, and '
+                        'first type without fully defined shapes. First '
+                        f'type contains an element of type: {type_spec}.\n'
+                        f'Packing value {to_pack} into this type is '
+                        'undefined.')
+      return tf.cast(tf.broadcast_to(to_pack, type_spec.shape), type_spec.dtype)
 
   with tf.Graph().as_default() as graph:
     first_arg, operand_1_binding = tensorflow_utils.stamp_parameter_in_graph(
@@ -349,7 +363,7 @@ def create_binary_operator_with_upcast(
         raise TypeError('Cannot upcast one structure to a different structure. '
                         '{x} -> {y}'.format(
                             x=type_signature[1], y=type_signature[0]))
-    elif type_signature[0].is_equivalent_to(type_signature[1]):
+    elif type_signature[0].is_assignable_from(type_signature[1]):
       second_arg = operand_2_value
     else:
       second_arg = _pack_into_type(operand_2_value, type_signature[0])
