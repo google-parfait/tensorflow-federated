@@ -326,6 +326,24 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
       tensorflow_computation_factory.create_binary_operator_with_upcast(
           type_signature, operator)
 
+  @parameterized.named_parameters(
+      ('add_float_unknown_shape', tf.math.add,
+       _TensorType(dtype=tf.float32, shape=[1]),
+       _TensorType(dtype=tf.float32, shape=[None]), [[1.0], [2.25]], 3.25))
+  def test_returns_computation_second_operand_type(self, operator, operand_type,
+                                                   second_operand_type,
+                                                   operands, expected_result):
+    self.skipTest('b/196220686')
+    struct_type = computation_types.to_type([operand_type, second_operand_type])
+    proto, _ = tensorflow_computation_factory.create_binary_operator_with_upcast(
+        struct_type, operator)
+
+    self.assertIsInstance(proto, pb.Computation)
+    actual_type = type_serialization.deserialize_type(proto.type)
+    self.assertIsInstance(actual_type, computation_types.FunctionType)
+    actual_result = test_utils.run_tensorflow(proto, operands)
+    self.assertEqual(actual_result, expected_result)
+
 
 class CreateEmptyTupleTest(test_case.TestCase):
 
