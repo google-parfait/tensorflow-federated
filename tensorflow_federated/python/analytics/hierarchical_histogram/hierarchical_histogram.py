@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """The functions for creating the federated computation for hierarchical histogram aggregation."""
+import math
 
 import tensorflow as tf
 
@@ -97,7 +98,9 @@ def build_hierarchical_histogram_computation(
     clip_mechanism: str = 'sub-sampling',
     max_records_per_user: int = 10,
     dp_mechanism: str = 'no-noise',
-    noise_multiplier: float = 0.0):
+    noise_multiplier: float = 0.0,
+    expected_clients_per_round: int = 10,
+    bits: int = 22):
   """Creates the TFF computation for hierarchical histogram aggregation.
 
   Args:
@@ -117,8 +120,28 @@ def build_hierarchical_histogram_computation(
       use. Currently supported mechanisms are
       - 'no-noise': (Default) Tree aggregation mechanism without noise.
       - 'central-gaussian': Tree aggregation with central Gaussian mechanism.
+      - 'distributed-discrete-gaussian': Tree aggregation mechanism with
+        the distributed discrete Gaussian mechanism in "The Distributed Discrete
+        Gaussian Mechanism for Federated Learning with Secure Aggregation. Peter
+        Kairouz, Ziyu Liu, Thomas Steinke".
      noise_multiplier: A `float` specifying the noise multiplier (central noise
        stddev / L2 clip norm) for model updates. Defaults to 0.0.
+    expected_clients_per_round: An `int` specifying the lower bound on the
+      expected number of clients. Only needed when `dp_mechanism` is
+      'distributed-discrete-gaussian'. Defaults to 10.
+    bits: A positive integer specifying the communication bit-width B (where
+      2**B will be the field size for SecAgg operations). Only needed when
+      `dp_mechanism` is 'distributed-discrete-gaussian'. Please read the below
+      precautions carefully and set `bits` accordingly. Otherwise, unexpected
+      overflow or accuracy degradation might happen.
+      (1) Should be in the inclusive range [1, 22] to avoid overflow inside
+      secure aggregation;
+      (2) Should be at least as large as
+      `log2(4 * sqrt(expected_clients_per_round)* noise_multiplier *
+      l2_norm_bound + expected_clients_per_round * max_records_per_user) + 1`
+      to avoid accuracy degradation caused by frequent modular clipping;
+      (3) If the number of clients exceed `expected_clients_per_round`, overflow
+      might happen.
 
   Returns:
     A federated computation that performs hierarchical histogram aggregation.
@@ -133,6 +156,10 @@ def build_hierarchical_histogram_computation(
                                   'max_records_per_user')
   _check_membership(dp_mechanism, hihi_factory.DP_MECHANISMS, 'dp_mechanism')
   _check_greater_than_equal_thres(noise_multiplier, 0., noise_multiplier)
+  _check_positive(expected_clients_per_round, 'expected_clients_per_round')
+  _check_in_range(bits, 'bits', 1, 22)
+  _check_greater_than_equal_thres(bits, math.log2(expected_clients_per_round),
+                                  'bits')
 
   @computations.tf_computation(computation_types.SequenceType(tf.float32))
   def client_work(client_data):
@@ -141,7 +168,7 @@ def build_hierarchical_histogram_computation(
 
   agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
       num_bins, arity, clip_mechanism, max_records_per_user, dp_mechanism,
-      noise_multiplier)
+      noise_multiplier, expected_clients_per_round, bits)
   process = agg_factory.create(client_work.type_signature.result)
 
   @computations.federated_computation(
@@ -179,4 +206,11 @@ def _check_non_negative(value, label):
 def _check_membership(value, valid_set, label):
   if value not in valid_set:
     raise ValueError(f'`{label}` must be one of {valid_set}. '
+                     f'Found {value}.')
+
+
+def _check_in_range(value, label, left, right):
+  """Checks that a scalar value is in specified range."""
+  if not value >= left or not value <= right:
+    raise ValueError(f'{label} should be within [{left}, {right}]. '
                      f'Found {value}.')
