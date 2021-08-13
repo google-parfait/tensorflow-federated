@@ -192,7 +192,8 @@ class TestClientData(client_data.ClientData):
 
     # Recover data relating to the given client_id from the hash table.
     tensor_slices_list = [
-        tf.io.parse_tensor(table.lookup(client_id), out_type=dtype)
+        tf.io.parse_tensor(
+            table.lookup(tf.convert_to_tensor(client_id)), out_type=dtype)
         for table, dtype in zip(hash_tables, self._dtypes)
     ]
 

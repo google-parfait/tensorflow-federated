@@ -112,13 +112,18 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
     from_tensor_slices_client_data.TestClientData(tensor_slices_dict)
     self.assertSameStructure(tensor_slices_dict, copy_of_tensor_slices_dict)
 
-  def test_basic(self):
+  def test_client_data_constructs_with_correct_clients_and_types(self):
     tensor_slices_dict = {'a': [1, 2, 3], 'b': [4, 5]}
     client_data = from_tensor_slices_client_data.TestClientData(
         tensor_slices_dict)
     self.assertCountEqual(client_data.client_ids, ['a', 'b'])
     self.assertEqual(client_data.element_type_structure,
                      tf.TensorSpec(shape=(), dtype=tf.int32))
+
+  def test_create_tf_dataset_for_client_constructs(self):
+    tensor_slices_dict = {'a': [1, 2, 3], 'b': [4, 5]}
+    client_data = from_tensor_slices_client_data.TestClientData(
+        tensor_slices_dict)
 
     def as_list(dataset):
       return [self.evaluate(x) for x in dataset]
@@ -127,6 +132,17 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
         as_list(client_data.create_tf_dataset_for_client('a')), [1, 2, 3])
     self.assertEqual(
         as_list(client_data.create_tf_dataset_for_client('b')), [4, 5])
+
+  def test_serializable_dataset_fn_constructs(self):
+    tensor_slices_dict = {'a': [1, 2, 3], 'b': [4, 5]}
+    client_data = from_tensor_slices_client_data.TestClientData(
+        tensor_slices_dict)
+
+    def as_list(dataset):
+      return [self.evaluate(x) for x in dataset]
+
+    self.assertEqual(
+        as_list(client_data.serializable_dataset_fn('a')), [1, 2, 3])
 
   def test_where_client_data_is_tensors(self):
     client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
