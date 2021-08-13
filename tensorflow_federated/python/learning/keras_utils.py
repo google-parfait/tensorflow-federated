@@ -332,7 +332,6 @@ class _KerasModel(model_lib.Model):
   def input_spec(self):
     return self._input_spec
 
-  @tf.function
   def predict_on_batch(self, x, training=True):
     return self._keras_model(x, training=training)
 
