@@ -14,9 +14,10 @@
 """Factory for aggregations parameterized by tensorflow_privacy DPQueries."""
 
 import collections
-from typing import Optional, Tuple
+from typing import Collection, Optional, Tuple
 import warnings
 
+import tensorflow as tf
 import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import factory
@@ -216,6 +217,64 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         denominator=clients_per_round)
 
     return cls(query)
+
+  @classmethod
+  def tree_aggregation(
+      cls,
+      noise_multiplier: float,
+      clients_per_round: float,
+      l2_norm_clip: float,
+      record_specs: Collection[tf.TensorSpec],
+      noise_seed: Optional[int] = None,
+      use_efficient: bool = True,
+  ) -> factory.UnweightedAggregationFactory:
+    """`DifferentiallyPrivateFactory` with tree aggregation noise.
+
+    Performs clipping on client, averages clients records, and adds noise for
+    differential privacy. The noise is estimated based on tree aggregation for
+    the cumulative summation over rounds, and then take the residual between the
+    current round and the previous round. Combining this aggregator with a SGD
+    optimizer on server can be used to implement the DP-FTRL algorithm in
+    "Practical and Private (Deep) Learning without Sampling or Shuffling"
+    (https://arxiv.org/abs/2103.00039).
+
+    The standard deviation of the Gaussian noise added at each tree node is
+    `l2_norm_clip * noise_multiplier`. Note that noise is added during summation
+    of client model updates per round, *before* normalization (the noise will be
+    scaled down when dividing by `clients_per_round`). Thus `noise_multiplier`
+    can be used to compute the (epsilon, delta) privacy guarantee as described
+    in the paper.
+
+    Args:
+      noise_multiplier: Noise multiplier for the Gaussian noise in tree
+        aggregation. Must be non-negative, zero means no noise is applied.
+      clients_per_round: A positive number specifying the expected number of
+        clients per round.
+      l2_norm_clip: The value of the clipping norm. Must be positive.
+      record_specs: The specs of client results to be aggregated.
+      noise_seed: Random seed for the Gaussian noise generator. If `None`, a
+        nondeterministic seed based on system time will be generated.
+      use_efficient: If true, use the efficient tree aggregation algorithm based
+        on the paper "Efficient Use of Differentially Private Binary Trees".
+
+    Returns:
+      A `DifferentiallyPrivateFactory` with Gaussian noise by tree aggregation.
+    """
+    if isinstance(clients_per_round, int):
+      clients_per_round = float(clients_per_round)
+
+    _check_float_nonnegative(noise_multiplier, 'noise_multiplier')
+    _check_float_positive(clients_per_round, 'clients_per_round')
+    _check_float_positive(l2_norm_clip, 'l2_norm_clip')
+
+    sum_query = tfp.TreeResidualSumQuery.build_l2_gaussian_query(
+        l2_norm_clip,
+        noise_multiplier,
+        record_specs,
+        noise_seed=noise_seed,
+        use_efficient=use_efficient)
+    mean_query = tfp.NormalizedQuery(sum_query, denominator=clients_per_round)
+    return cls(mean_query)
 
   def __init__(self,
                query: tfp.DPQuery,

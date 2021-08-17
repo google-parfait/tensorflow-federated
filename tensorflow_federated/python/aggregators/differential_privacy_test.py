@@ -237,6 +237,57 @@ class DPFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
       # Check if the specified value is kept.
       self.assertEqual(new_clip_count_stddev, clip_count_stddev)
 
+  @parameterized.named_parameters(
+      ('total5_std2', 5, 8., 2., False),
+      ('total6_std0d5', 6, 0.5, 0.5, False),
+      ('total7_std1', 7, 3., 1., False),
+      ('total8_std1', 8, 1., 1., False),
+      ('total3_std1_eff', 3, 1. + 2. / 3., 1., True),
+      ('total4_std1_eff', 4, 4. / 7., 1., True),
+  )
+  def test_tree_aggregation_factory(self, total_steps, expected_variance,
+                                    noise_std, use_efficient):
+    variable_shape, tolerance = [10000], 0.05
+    record = tf.zeros(variable_shape, tf.float32)
+    record_shape = tf.nest.map_structure(lambda t: t.shape, record)
+    record_type = computation_types.to_type((tf.float32, variable_shape))
+    specs = tf.nest.map_structure(tf.TensorSpec, record_shape)
+
+    tree_factory = differential_privacy.DifferentiallyPrivateFactory.tree_aggregation(
+        noise_multiplier=noise_std,
+        l2_norm_clip=1.,
+        record_specs=specs,
+        clients_per_round=1.,
+        noise_seed=1,
+        use_efficient=use_efficient,
+    )
+
+    process = tree_factory.create(record_type)
+
+    state = process.initialize()
+    client_data = [record]
+    cumsum_result = tf.zeros(variable_shape, tf.float32)
+    for _ in range(total_steps):
+      output = process.next(state, client_data)
+      state = output.state
+      cumsum_result += output.result
+    self.assertAllClose(
+        np.sqrt(expected_variance), np.std(cumsum_result), rtol=tolerance)
+
+  @parameterized.named_parameters(
+      ('negative_clip', -1., 0.),
+      ('zero_clip', 0., 0.),
+      ('negative_noise', 1., -1.),
+  )
+  def test_tree_aggregation_factory_raise(self, clip_norm, noise_multiplier):
+    with self.assertRaisesRegex(ValueError, 'must be'):
+      differential_privacy.DifferentiallyPrivateFactory.tree_aggregation(
+          noise_multiplier=noise_multiplier,
+          l2_norm_clip=clip_norm,
+          record_specs=tf.TensorSpec([]),
+          clients_per_round=1.,
+          noise_seed=1)
+
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
