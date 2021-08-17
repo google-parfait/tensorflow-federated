@@ -19,7 +19,7 @@ documentation can be found in the [TFF guides](../get_started.md).
     specialized aggregation routines offering robustness, differential privacy,
     compression, and more.
 
-**Getting started writing custom federated computations**
+**Writing custom federated computations**
 
 *   [Building Your Own Federated Learning Algorithm](building_your_own_federated_learning_algorithm.ipynb)
     shows how to use the TFF Core APIs to implement federated learning
@@ -27,6 +27,14 @@ documentation can be found in the [TFF guides](../get_started.md).
 *   [Custom Federated Algorithm with TFF Optimizers](custom_federated_algorithm_with_tff_optimizers.ipynb)
     shows how to use `tff.learning.optimizers` to build a custom iterative
     process for Federated Averaging.
+*   [Custom Federated Algorithms, Part 1: Introduction to the Federated Core](custom_federated_algorithms_1.ipynb)
+    and
+    [Part 2: Implementing Federated Averaging](custom_federated_algorithms_2.ipynb)
+    introduce the key concepts and interfaces offered by the Federated Core API
+    (FC API).
+*   [Implementing Custom Aggregations](custom_aggregators.ipynb) explains the
+    design principles behind the `tff.aggregators` module and best practices for
+    implementing custom aggregation of values from clients to server.
 
 **Simulation best practices**
 
@@ -42,10 +50,6 @@ documentation can be found in the [TFF guides](../get_started.md).
     simulation datasets into TFF computations.
 
 **Intermediate and advanced tutorials**
-
-*   [Implementing Custom Aggregations](custom_aggregators.ipynb) explains the
-    design principles behind the `tff.aggregators` module and best practices for
-    implementing custom aggregation of values from clients to server.
 
 *   [Random noise generation](random_noise_generation.ipynb) points out some
     subtlities with using randomness in decentralized computations, and proposes
@@ -69,12 +73,6 @@ documentation can be found in the [TFF guides](../get_started.md).
 *   [Federated Learning with Differential Privacy in TFF](federated_learning_with_differential_privacy.ipynb)
     demonstrates how to use TFF to train models with user-level differential
     privacy.
-
-*   [Custom Federated Algorithms, Part 1: Introduction to the Federated Core](custom_federated_algorithms_1.ipynb)
-    and
-    [Part 2: Implementing Federated Averaging](custom_federated_algorithms_2.ipynb)
-    introduce the key concepts and interfaces offered by the Federated Core API
-    (FC API).
 
 *   [Experimental support for JAX in TFF](../experimental/tutorials/jax_support.ipynb)
     shows how [JAX](https://github.com/google/jax) computations can be used in
