@@ -143,7 +143,6 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
     self.assertEqual(result, sum(range(5)))
 
   def test_create_tuple_of_value_sequence(self):
-    self.skipTest('b/197147669')
     datasets = (tf.data.Dataset.range(5), tf.data.Dataset.range(5))
     executor = executor_bindings.create_tensorflow_executor()
     struct_of_sequence_type = StructType([
