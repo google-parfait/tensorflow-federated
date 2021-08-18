@@ -25,7 +25,6 @@ pybind_extension(
         "@com_google_absl//absl/types:span",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
-        "@pybind11_protobuf//pybind11_protobuf:proto_casters",
     ],
 )
 

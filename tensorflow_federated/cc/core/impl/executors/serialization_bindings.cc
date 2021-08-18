@@ -29,7 +29,7 @@ limitations under the License
 #include "pybind11/include/pybind11/pytypes.h"
 #include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
-#include "pybind11_protobuf/proto_casters.h"
+#include "pybind11_protobuf/wrapped_proto_caster.h"
 #include "tensorflow/c/c_api.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/core/common_runtime/eager/tensor_handle.h"
@@ -39,6 +39,7 @@ limitations under the License
 #include "tensorflow/python/lib/core/safe_ptr.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow {
@@ -48,6 +49,8 @@ Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
 namespace tensorflow_federated {
 
 namespace py = ::pybind11;
+
+using ::pybind11::google::WithWrappedProtos;
 
 namespace {
 
@@ -61,27 +64,45 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 PYBIND11_MODULE(serialization_bindings, m) {
   py::google::ImportStatusModule();
-  py::google::ImportProtoModule();
-
-  pybind11::google::RegisterProtoMessageType<v0::Value>(m);
-  pybind11::google::RegisterProtoMessageType<v0::Value::Sequence>(m);
-  pybind11::google::RegisterProtoMessageType<v0::Value::Struct>(m);
-  pybind11::google::RegisterProtoMessageType<v0::Value::Struct::Element>(m);
-  pybind11::google::RegisterProtoMessageType<v0::Value::Federated>(m);
-  pybind11::google::RegisterProtoMessageType<
-      v0::SetCardinalitiesRequest::Cardinality>(m);
 
   m.doc() = "Bindings for the C++ value serialization";
 
+  // Native C++ protobuf constructors.
+  m.def("Value", WithWrappedProtos([]() -> std::shared_ptr<v0::Value> {
+          return std::make_shared<v0::Value>();
+        }));
+  m.def("Sequence",
+        WithWrappedProtos([]() -> std::shared_ptr<v0::Value::Sequence> {
+          return std::make_shared<v0::Value::Sequence>();
+        }));
+  m.def("Struct", WithWrappedProtos([]() -> std::shared_ptr<v0::Value::Struct> {
+          return std::make_shared<v0::Value::Struct>();
+        }));
+  m.def("Element",
+        WithWrappedProtos([]() -> std::shared_ptr<v0::Value::Struct::Element> {
+          return std::make_shared<v0::Value::Struct::Element>();
+        }));
+  m.def("Federated",
+        WithWrappedProtos([]() -> std::shared_ptr<v0::Value::Federated> {
+          return std::make_shared<v0::Value::Federated>();
+        }));
+  m.def(
+      "Cardinality",
+      WithWrappedProtos(
+          []() -> std::shared_ptr<v0::SetCardinalitiesRequest::Cardinality> {
+            return std::make_shared<v0::SetCardinalitiesRequest::Cardinality>();
+          }));
+
   // v0::Value serialization methods.
-  m.def("serialize_tensor_value",
-        [](const tensorflow::Tensor& tensor,
-           v0::Value* value_pb) -> absl::StatusOr<v0::Value*> {
-          TFF_TRY(SerializeTensorValue(tensor, value_pb));
-          // pybind11 seems to require us to return the pointer, not simply
-          // modify it, to get results on the Python side.
-          return value_pb;
-        });
+  m.def(
+      "serialize_tensor_value",
+      WithWrappedProtos([](const tensorflow::Tensor& tensor,
+                           v0::Value* value_pb) -> absl::StatusOr<v0::Value*> {
+        TFF_TRY(SerializeTensorValue(tensor, value_pb));
+        // pybind11 seems to require us to return the pointer, not simply
+        // modify it, to get results on the Python side.
+        return value_pb;
+      }));
   m.def("deserialize_tensor_value", &DeserializeTensorValue);
 }
 }  // namespace

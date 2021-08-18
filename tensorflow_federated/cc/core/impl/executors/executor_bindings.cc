@@ -28,7 +28,7 @@ limitations under the License
 #include "pybind11/include/pybind11/stl.h"
 #include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
-#include "pybind11_protobuf/proto_casters.h"
+#include "pybind11_protobuf/wrapped_proto_caster.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
@@ -42,6 +42,8 @@ namespace tensorflow_federated {
 
 namespace py = ::pybind11;
 
+using ::pybind11::google::WithWrappedProtos;
+
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,7 +55,6 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 PYBIND11_MODULE(executor_bindings, m) {
   py::google::ImportStatusModule();
-  py::google::ImportProtoModule();
 
   m.doc() = "Bindings for the C++ ";
 
@@ -98,19 +99,18 @@ PYBIND11_MODULE(executor_bindings, m) {
       .def("create_call", &Executor::CreateCall, py::arg("function"),
            // Allow `argument` to be `None`.
            py::arg("argument").none(true), py::return_value_policy::move)
-      .def(
-          "materialize",
-          [](Executor& e,
-             const ValueId& value_id) -> absl::StatusOr<v0::Value> {
-            // Construct a new `v0::Value` to write to and return it to Python.
-            v0::Value value_pb;
-            auto result = e.Materialize(value_id, &value_pb);
-            if (!result.ok()) {
-              return result;
-            }
-            return std::move(value_pb);
-          },
-          py::return_value_policy::move);
+      .def("materialize",
+           WithWrappedProtos([](Executor& e, const ValueId& value_id)
+                                 -> absl::StatusOr<v0::Value> {
+             // Construct a new `v0::Value` to write to and return it to Python.
+             v0::Value value_pb;
+             auto result = e.Materialize(value_id, &value_pb);
+             if (!result.ok()) {
+               return result;
+             }
+             return std::move(value_pb);
+           }),
+           py::return_value_policy::move);
 
   // Executor construction methods.
   m.def("create_tensorflow_executor", &CreateTensorFlowExecutor,
