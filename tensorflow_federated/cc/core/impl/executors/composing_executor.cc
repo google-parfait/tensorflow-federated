@@ -18,6 +18,7 @@ limitations under the License
 #include <future>  // NOLINT
 #include <memory>
 
+#include "google/protobuf/repeated_field.h"
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
