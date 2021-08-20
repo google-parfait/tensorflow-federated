@@ -15,8 +15,8 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory
+from tensorflow_federated.python.analytics.hierarchical_histogram import clipping_factory
+from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory as hihi_factory
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -86,88 +86,97 @@ def _discretized_histogram_counts(client_data: tf.data.Dataset,
   histogram = client_data.reduce(
       tf.zeros([num_bins], dtype=tf.int32), insert_record)
 
-  return tf.cast(histogram, tf.float32)
+  return histogram
 
 
-def _build_hierarchical_histogram_computation(
-    lower_bound: float, upper_bound: float, num_bins: int,
-    aggregation_factory: factory.UnweightedAggregationFactory):
-  """Utility function creating tff computation given the parameters and factory.
-
-  Args:
-    lower_bound: A `float` specifying the lower bound of the data range.
-    upper_bound: A `float` specifying the upper bound of the data range.
-    num_bins: The integer number of bins to compute.
-    aggregation_factory: The aggregation factory used to construct the federated
-      computation.
-
-  Returns:
-    A tff federated computation function.
-  """
-
-  @computations.tf_computation(computation_types.SequenceType(tf.float32))
-  def client_work(client_data):
-    return _discretized_histogram_counts(client_data, lower_bound, upper_bound,
-                                         num_bins)
-
-  aggregator = aggregation_factory.create(client_work.type_signature.result)
-
-  @computations.federated_computation(
-      computation_types.at_clients(client_work.type_signature.parameter))
-  def hierarchical_histogram_computation(federated_client_data):
-    # Work done at clients.
-    client_histogram = intrinsics.federated_map(client_work,
-                                                federated_client_data)
-    # Aggregation to server.
-    return aggregator.next(aggregator.initialize(), client_histogram).result
-
-  return hierarchical_histogram_computation
-
-
-def build_central_hierarchical_histogram_computation(
+def build_hierarchical_histogram_computation(
     lower_bound: float,
     upper_bound: float,
     num_bins: int,
     arity: int = 2,
-    max_records_per_user: int = 1,
-    noise_multiplier: float = 0.0,
-    secure_sum: bool = False):
-  """Create the tff federated computation for central hierarchical histogram aggregation.
+    clip_mechanism: str = 'sub-sampling',
+    max_records_per_user: int = 10,
+    dp_mechanism: str = 'no-noise',
+    noise_multiplier: float = 0.0):
+  """Creates the TFF computation for hierarchical histogram aggregation.
 
   Args:
     lower_bound: A `float` specifying the lower bound of the data range.
     upper_bound: A `float` specifying the upper bound of the data range.
     num_bins: The integer number of bins to compute.
     arity: The branching factor of the tree. Defaults to 2.
-    max_records_per_user: The maximum number of records each user is allowed to
-      contribute. Defaults to 1.
-    noise_multiplier: A `float` specifying the noise multiplier (central noise
+    clip_mechanism: A `str` representing the clipping mechanism. Currently
+      supported mechanisms are
+      - 'sub-sampling': (Default) Uniformly sample up to `max_records_per_user`
+        records without replacement from the client dataset.
+      - 'distinct': Uniquify client dataset and uniformly sample up to
+        `max_records_per_user` records without replacement from it.
+    max_records_per_user: An `int` representing the maximum of records each user
+      can include in their local histogram. Defaults to 10.
+    dp_mechanism: A `str` representing the differentially private mechanism to
+      use. Currently supported mechanisms are
+      - 'no-noise': (Default) Tree aggregation mechanism without noise.
+      - 'central-gaussian': Tree aggregation with central Gaussian mechanism.
+     noise_multiplier: A `float` specifying the noise multiplier (central noise
        stddev / L2 clip norm) for model updates. Defaults to 0.0.
-    secure_sum: A boolean deciding whether to use secure aggregation. Defaults
-      to `False`.
 
   Returns:
-    A tff.federated_computation function to perform central tree aggregation.
+    A federated computation that performs hierarchical histogram aggregation.
   """
+  _check_greater_than_equal(upper_bound, lower_bound, 'upper_bound',
+                            'lower_bound')
+  _check_positive(num_bins, 'num_bins')
+  _check_greater_than_equal_thres(arity, 2, 'arity')
+  _check_membership(clip_mechanism, clipping_factory.CLIP_MECHANISMS,
+                    'clip_mechanism')
+  _check_greater_than_equal_thres(max_records_per_user, 1,
+                                  'max_records_per_user')
+  _check_membership(dp_mechanism, hihi_factory.DP_MECHANISMS, 'dp_mechanism')
+  _check_greater_than_equal_thres(noise_multiplier, 0., noise_multiplier)
 
-  if upper_bound < lower_bound:
-    raise ValueError(f'upper_bound: {upper_bound} is smaller than '
-                     f'lower_bound: {lower_bound}.')
+  @computations.tf_computation(computation_types.SequenceType(tf.float32))
+  def client_work(client_data):
+    return _discretized_histogram_counts(client_data, lower_bound, upper_bound,
+                                         num_bins)
 
-  if num_bins <= 0:
-    raise ValueError(f'num_bins: {num_bins} smaller or equal to zero.')
+  agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
+      num_bins, arity, clip_mechanism, max_records_per_user, dp_mechanism,
+      noise_multiplier)
+  process = agg_factory.create(client_work.type_signature.result)
 
-  if arity < 2:
-    raise ValueError(f'Arity should be at least 2.' f'arity={arity} is given.')
+  @computations.federated_computation(
+      computation_types.at_clients(client_work.type_signature.parameter))
+  def hierarchical_histogram_computation(federated_client_data):
+    client_histogram = intrinsics.federated_map(client_work,
+                                                federated_client_data)
+    return process.next(process.initialize(), client_histogram).result
 
-  if max_records_per_user < 1:
-    raise ValueError(f'Maximum records per user should be at least 1. '
-                     f'max_records_per_user={max_records_per_user} is given.')
+  return hierarchical_histogram_computation
 
-  stddev = max_records_per_user * noise_multiplier
 
-  central_tree_aggregation_factory = hierarchical_histogram_factory.create_central_hierarchical_histogram_factory(
-      stddev, arity, max_records_per_user, secure_sum=secure_sum)
+def _check_greater_than_equal(lvalue, rvalue, llabel, rlabel):
+  if lvalue < rvalue:
+    raise ValueError(f'`{llabel}` should be no smaller than '
+                     f'`{rlabel}`. Found {lvalue} and '
+                     f'{rvalue}.')
 
-  return _build_hierarchical_histogram_computation(
-      lower_bound, upper_bound, num_bins, central_tree_aggregation_factory)
+
+def _check_greater_than_equal_thres(value, threshold, label):
+  if value < threshold:
+    raise ValueError(f'`{label}` must be at least {threshold}. Found {value}.')
+
+
+def _check_positive(value, label):
+  if value <= 0:
+    raise ValueError(f'{label} must be positive. Found {value}.')
+
+
+def _check_non_negative(value, label):
+  if value < 0:
+    raise ValueError(f'{label} must be non-negative. Found {value}.')
+
+
+def _check_membership(value, valid_set, label):
+  if value not in valid_set:
+    raise ValueError(f'`{label}` must be one of {valid_set}. '
+                     f'Found {value}.')
