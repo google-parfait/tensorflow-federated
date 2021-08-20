@@ -10,9 +10,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":clipping_factory",
-        ":modular_clipping_factory",
         "//tensorflow_federated/python/aggregators:differential_privacy",
-        "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/aggregators:sum_factory",
     ],
 )
