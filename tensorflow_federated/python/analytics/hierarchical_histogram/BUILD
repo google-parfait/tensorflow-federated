@@ -9,8 +9,8 @@ py_library(
     srcs = ["hierarchical_histogram_factory.py"],
     srcs_version = "PY3",
     deps = [
-        ":clipping_factory",
         "//tensorflow_federated/python/aggregators:differential_privacy",
+        "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/aggregators:sum_factory",
     ],
 )
@@ -23,7 +23,7 @@ py_test(
     deps = [
         ":build_tree_from_leaf",
         ":hierarchical_histogram_factory",
-        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:differential_privacy",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -38,8 +38,8 @@ py_library(
     srcs = ["hierarchical_histogram.py"],
     srcs_version = "PY3",
     deps = [
-        ":clipping_factory",
         ":hierarchical_histogram_factory",
+        "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",

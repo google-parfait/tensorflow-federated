@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
 
-from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.analytics.hierarchical_histogram import build_tree_from_leaf
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory as hihi_factory
 from tensorflow_federated.python.core.api import test_case
@@ -30,36 +30,47 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
+_test_central_dp_query = tfp.privacy.dp_query.tree_aggregation_query.CentralTreeSumQuery(
+    stddev=0.0)
+
 
 class TreeAggregationFactoryComputationTest(test_case.TestCase,
                                             parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      ('test_1_2_sub_sampling', 1, 2, 'sub-sampling'),
-      ('test_5_3_sub_sampling', 5, 3, 'sub-sampling'),
-      ('test_3_2_distinct', 3, 2, 'distinct'),
-      ('test_2_3_distinct', 2, 3, 'distinct'),
-  )
-  def test_no_noise_tree_aggregation(self, value_shape, arity, clip_mechanism):
+  @parameterized.named_parameters([
+      ('0', tf.float32, 3, 2),
+      ('1', tf.float32, 3, 3),
+      ('2', tf.float32, 4, 2),
+      ('3', tf.float32, 4, 3),
+      ('4', tf.float32, 7, 2),
+      ('5', tf.float32, 7, 3),
+      ('6', tf.float32, 8, 2),
+      ('7', tf.float32, 8, 3),
+      ('8', tf.int32, 3, 2),
+      ('9', tf.int32, 3, 3),
+      ('10', tf.int32, 4, 2),
+      ('11', tf.int32, 4, 3),
+      ('12', tf.int32, 7, 2),
+      ('13', tf.int32, 7, 3),
+      ('14', tf.int32, 8, 2),
+      ('15', tf.int32, 8, 3),
+  ])
+  def test_central_aggregation_with_sum(self, value_type, value_shape, arity):
 
-    agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
-        num_bins=value_shape,
-        arity=arity,
-        clip_mechanism=clip_mechanism,
-        dp_mechanism='no-noise',
-    )
-    self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
-    process = agg_factory.create(value_type)
+    value_type = computation_types.to_type((value_type, (value_shape,)))
+
+    factory_ = hihi_factory.create_central_hierarchical_histogram_factory(
+        arity=arity)
+    self.assertIsInstance(factory_,
+                          differential_privacy.DifferentiallyPrivateFactory)
+
+    process = factory_.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query = tfp.privacy.dp_query.tree_aggregation_query.TreeRangeSumQuery(
-        arity=arity,
-        inner_query=tfp.privacy.dp_query.no_privacy_query.NoPrivacySumQuery())
-    query_state = query.initial_global_state()
+    query_state = _test_central_dp_query.initial_global_state()
     query_state_type = type_conversions.type_from_tensors(query_state)
     query_metrics_type = type_conversions.type_from_tensors(
-        query.derive_metrics(query_state))
+        _test_central_dp_query.derive_metrics(query_state))
 
     server_state_type = computation_types.at_server((query_state_type, ()))
     expected_initialize_type = computation_types.FunctionType(
@@ -70,16 +81,12 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(dp_query_metrics=query_metrics_type, dp=()))
-
-    tree_depth = hihi_factory._tree_depth(value_shape, arity)
-    flat_tree_shape = (arity**tree_depth - 1) // (arity - 1)
     result_value_type = computation_types.to_type(
         collections.OrderedDict([
             ('flat_values',
-             computation_types.to_type((tf.int32, (flat_tree_shape,)))),
-            ('nested_row_splits', [(tf.int64, (tree_depth + 1,))])
+             computation_types.TensorType(tf.float32, tf.TensorShape(None))),
+            ('nested_row_splits', [(tf.int64, (None,))])
         ]))
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -88,35 +95,33 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
             state=server_state_type,
             result=computation_types.at_server(result_value_type),
             measurements=expected_measurements_type))
+
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type))
 
-  @parameterized.named_parameters(
-      ('test_1_2_sub_sampling', 1, 2, 'sub-sampling'),
-      ('test_5_3_sub_sampling', 5, 3, 'sub-sampling'),
-      ('test_3_2_distinct', 3, 2, 'distinct'),
-      ('test_2_3_distinct', 2, 3, 'distinct'),
-  )
-  def test_central_gaussian_tree_aggregation(self, value_shape, arity,
-                                             clip_mechanism):
+  @parameterized.named_parameters([
+      ('0', 4, 2, 10),
+      ('1', 4, 3, 10),
+      ('2', 7, 2, 10),
+      ('3', 7, 3, 10),
+  ])
+  def test_central_aggregation_with_secure_sum(self, value_shape, arity,
+                                               l1_bound):
 
-    agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
-        num_bins=value_shape,
-        arity=arity,
-        clip_mechanism=clip_mechanism,
-        dp_mechanism='central-gaussian',
-    )
-    self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
-    process = agg_factory.create(value_type)
+    value_type = computation_types.to_type((tf.float32, (value_shape,)))
+
+    factory_ = hihi_factory.create_central_hierarchical_histogram_factory(
+        arity=arity, secure_sum=True)
+    self.assertIsInstance(factory_,
+                          differential_privacy.DifferentiallyPrivateFactory)
+
+    process = factory_.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    query = tfp.privacy.dp_query.tree_aggregation_query.TreeRangeSumQuery.build_central_gaussian_query(
-        l2_norm_clip=1.0, stddev=0.0)
-    query_state = query.initial_global_state()
+    query_state = _test_central_dp_query.initial_global_state()
     query_state_type = type_conversions.type_from_tensors(query_state)
     query_metrics_type = type_conversions.type_from_tensors(
-        query.derive_metrics(query_state))
+        _test_central_dp_query.derive_metrics(query_state))
 
     server_state_type = computation_types.at_server((query_state_type, ()))
     expected_initialize_type = computation_types.FunctionType(
@@ -125,17 +130,20 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
         process.initialize.type_signature.is_equivalent_to(
             expected_initialize_type))
 
+    secure_dp_type = collections.OrderedDict(
+        secure_upper_clipped_count=tf.int32,
+        secure_lower_clipped_count=tf.int32,
+        secure_upper_threshold=tf.float32,
+        secure_lower_threshold=tf.float32)
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(dp_query_metrics=query_metrics_type, dp=()))
-    tree_depth = hihi_factory._tree_depth(value_shape, arity)
-    flat_tree_shape = (arity**tree_depth - 1) // (arity - 1)
+        collections.OrderedDict(
+            dp_query_metrics=query_metrics_type, dp=secure_dp_type))
     result_value_type = computation_types.to_type(
         collections.OrderedDict([
             ('flat_values',
-             computation_types.to_type((tf.float32, (flat_tree_shape,)))),
-            ('nested_row_splits', [(tf.int64, (tree_depth + 1,))])
+             computation_types.TensorType(tf.float32, tf.TensorShape(None))),
+            ('nested_row_splits', [(tf.int64, (None,))])
         ]))
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -144,6 +152,7 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
             state=server_state_type,
             result=computation_types.at_server(result_value_type),
             measurements=expected_measurements_type))
+
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type))
 
@@ -151,183 +160,105 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
 class TreeAggregationFactoryExecutionTest(test_case.TestCase,
                                           parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      ('non_positive_value_shape', 0, 2, 'sub-sampling', 1, 'central-gaussian',
-       1.),
-      ('invalid_arity', 1, 1, 'sub-sampling', 1, 'central-gaussian', 1.),
-      ('invalid_clip_mechanism', 1, 2, 'invalid', 1, 'central-gaussian', 1.),
-      ('non_positive_max_records_per_user', 1, 2, 'sub-sampling', 0,
-       'central-gaussian', 1.),
-      ('invalid_dp_mechanism', 1, 2, 'sub-sampling', 1, 'invalid', 1.),
-      ('negative_noise_multiplier', 1, 2, 'sub-sampling', 1, 'central-gaussian',
-       -1.),
-  )
-  def test_raises_error(self, value_shape, arity, clip_mechanism,
-                        max_records_per_user, dp_mechanism, noise_multiplier):
-    with self.assertRaises(ValueError):
-      hihi_factory.create_hierarchical_histogram_aggregation_factory(
-          value_shape, arity, clip_mechanism, max_records_per_user,
-          dp_mechanism, noise_multiplier)
-
-  @parameterized.named_parameters(
-      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling'),
-      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling'),
-      ('test_3_5_2_distinct', 3, 5, 2, 'distinct'),
-      ('test_5_3_3_distinct', 5, 3, 3, 'distinct'),
-  )
-  def test_no_noise_tree_aggregation_wo_clip(self, value_shape, num_clients,
-                                             arity, clip_mechanism):
-    client_records = []
-    for _ in range(num_clients):
-      client_records.append(np.arange(value_shape, dtype=int).tolist())
-
-    agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
-        num_bins=value_shape,
+  @parameterized.named_parameters([
+      ('0', 7, 8, 2, 10, True),
+      ('1', 7, 8, 2, 10, False),
+      ('2', 7, 8, 3, 10, True),
+      ('3', 7, 8, 3, 10, False),
+      ('4', 7, 13, 2, 10, True),
+      ('5', 7, 13, 2, 10, False),
+      ('6', 7, 13, 3, 10, True),
+      ('7', 7, 13, 3, 10, False),
+      ('8', 8, 8, 2, 10, True),
+      ('9', 8, 8, 2, 10, False),
+      ('10', 8, 8, 3, 10, True),
+      ('11', 8, 8, 3, 10, False),
+      ('12', 8, 13, 2, 10, True),
+      ('13', 8, 13, 2, 10, False),
+      ('14', 8, 13, 3, 10, True),
+      ('15', 8, 13, 3, 10, False),
+  ])
+  def test_central_aggregation(self, histogram_size, num_clients, arity,
+                               l1_bound, secure_sum):
+    agg_factory = hihi_factory.create_central_hierarchical_histogram_factory(
         arity=arity,
-        clip_mechanism=clip_mechanism,
-        max_records_per_user=5,
-        dp_mechanism='no-noise')
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+        max_records_per_user=l1_bound,
+        stddev=0.0,
+        secure_sum=secure_sum)
+    value_type = computation_types.to_type((tf.float32, (histogram_size,)))
     process = agg_factory.create(value_type)
-
     state = process.initialize()
 
-    output = process.next(state, client_records).result
-
-    if clip_mechanism == 'sub-sampling':
-      reference_aggregated_record = build_tree_from_leaf.create_hierarchical_histogram(
-          np.sum(client_records, axis=0).tolist(), arity)
-    else:
-      reference_aggregated_record = build_tree_from_leaf.create_hierarchical_histogram(
-          np.sum(np.minimum(client_records, 1), axis=0).tolist(), arity)
-
-    self.assertAllClose(output, reference_aggregated_record)
-
-  @parameterized.named_parameters(
-      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 1),
-      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 2),
-      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 3),
-      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 2),
-  )
-  def test_no_noise_tree_aggregation_w_clip(self, value_shape, num_clients,
-                                            arity, clip_mechanism,
-                                            max_records_per_user):
-    client_records = []
+    client_histograms = []
     for _ in range(num_clients):
-      client_records.append(np.arange(value_shape, dtype=int).tolist())
+      client_histograms.append(np.arange(histogram_size, dtype=float).tolist())
 
-    agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
-        num_bins=value_shape,
+    output = process.next(state, client_histograms)
+
+    clipped_client_histograms = [
+        np.divide(
+            np.multiply(x, l1_bound).tolist(),
+            max(l1_bound, np.linalg.norm(x, ord=1))) for x in client_histograms
+    ]
+    summed_histogram = np.sum(clipped_client_histograms, axis=0).tolist()
+    reference_hierarchical_histogram = build_tree_from_leaf.create_hierarchical_histogram(
+        summed_histogram, arity)
+
+    self.assertAllClose(reference_hierarchical_histogram, output.result)
+
+  @parameterized.named_parameters([
+      ('0', 7, 4, 2, 10, 0.1, True),
+      ('1', 7, 4, 2, 10, 0.1, False),
+      ('2', 7, 4, 2, 10, 0.5, True),
+      ('3', 7, 4, 2, 10, 0.5, False),
+      ('4', 7, 4, 2, 10, 1.0, True),
+      ('5', 7, 4, 2, 10, 1.0, False),
+      ('6', 7, 4, 3, 10, 0.1, True),
+      ('7', 7, 4, 3, 10, 0.1, False),
+      ('8', 7, 4, 3, 10, 0.5, True),
+      ('9', 7, 4, 3, 10, 0.5, False),
+      ('10', 7, 4, 3, 10, 1.0, True),
+      ('11', 7, 4, 3, 10, 1.0, False),
+  ])
+  def test_central_aggregation_with_noise(self, histogram_size, num_clients,
+                                          arity, l1_bound, stddev, secure_sum):
+    agg_factory = hihi_factory.create_central_hierarchical_histogram_factory(
+        stddev=stddev,
         arity=arity,
-        clip_mechanism=clip_mechanism,
-        max_records_per_user=max_records_per_user,
-        dp_mechanism='no-noise')
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
+        max_records_per_user=l1_bound,
+        secure_sum=secure_sum)
+    value_type = computation_types.to_type((tf.float32, (histogram_size,)))
     process = agg_factory.create(value_type)
-
     state = process.initialize()
-    output = process.next(state, client_records).result
 
-    if clip_mechanism == 'sub-sampling':
-      expected_l1_norm = np.sum([
-          min(np.linalg.norm(x, ord=1), max_records_per_user)
-          for x in client_records
-      ])
-    elif clip_mechanism == 'distinct':
-      expected_l1_norm = np.sum([
-          min(np.linalg.norm(x, ord=0), max_records_per_user)
-          for x in client_records
-      ])
-
-    for layer in range(hihi_factory._tree_depth(value_shape, arity)):
-      self.assertAllClose(tf.math.reduce_sum(output[layer]), expected_l1_norm)
-
-  @parameterized.named_parameters(
-      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 0.1),
-      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 1.0),
-      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 5.0),
-      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 10.0),
-  )
-  def test_central_gaussian_tree_aggregation_wo_clip(self, value_shape,
-                                                     num_clients, arity,
-                                                     clip_mechanism,
-                                                     noise_multiplier):
-    client_records = []
+    client_histograms = []
     for _ in range(num_clients):
-      client_records.append(np.arange(value_shape, dtype=int).tolist())
+      client_histograms.append(np.arange(histogram_size, dtype=float).tolist())
 
-    agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
-        num_bins=value_shape,
-        arity=arity,
-        clip_mechanism=clip_mechanism,
-        max_records_per_user=5,
-        dp_mechanism='central-gaussian',
-        noise_multiplier=noise_multiplier)
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
-    process = agg_factory.create(value_type)
+    output = process.next(state, client_histograms)
 
-    state = process.initialize()
-    output = process.next(state, client_records).result
+    clipped_client_histograms = [
+        np.divide(
+            np.multiply(x, l1_bound).tolist(),
+            max(l1_bound, np.linalg.norm(x, ord=1))) for x in client_histograms
+    ]
+    summed_histogram = np.sum(clipped_client_histograms, axis=0).tolist()
+    reference_hierarchical_histogram = build_tree_from_leaf.create_hierarchical_histogram(
+        summed_histogram, arity)
 
-    if clip_mechanism == 'sub-sampling':
-      reference_aggregated_record = build_tree_from_leaf.create_hierarchical_histogram(
-          np.sum(client_records, axis=0).astype(float).tolist(), arity)
-    else:
-      reference_aggregated_record = build_tree_from_leaf.create_hierarchical_histogram(
-          np.sum(np.minimum(client_records, 1), axis=0).astype(float).tolist(),
-          arity)
-
-    # 300 is a rough estimation of six-sigma considering the effect of the L2
-    # norm bound and the privacy composition.
     self.assertAllClose(
-        output, reference_aggregated_record, atol=300. * noise_multiplier)
+        reference_hierarchical_histogram, output.result, atol=6 * stddev)
 
   @parameterized.named_parameters(
-      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 1, 0.1),
-      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 2, 1.0),
-      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 3, 5.0),
-      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 2, 10.0),
+      ('stddev_error', -0.1, 2, 1),
+      ('arity_error', 0.1, 1, 1),
+      ('l1_bound', 0.1, 1, 0),
   )
-  def test_central_gaussian_tree_aggregation_w_clip(self, value_shape,
-                                                    num_clients, arity,
-                                                    clip_mechanism,
-                                                    max_records_per_user,
-                                                    noise_multiplier):
-    client_records = []
-    for _ in range(num_clients):
-      client_records.append(np.arange(value_shape, dtype=int).tolist())
+  def test_central_aggregation_raise(self, stddev, arity, l1_bound):
 
-    agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
-        num_bins=value_shape,
-        arity=arity,
-        clip_mechanism=clip_mechanism,
-        max_records_per_user=max_records_per_user,
-        dp_mechanism='central-gaussian',
-        noise_multiplier=noise_multiplier)
-    value_type = computation_types.to_type((tf.int32, (value_shape,)))
-    process = agg_factory.create(value_type)
-
-    state = process.initialize()
-    output = process.next(state, client_records).result
-
-    if clip_mechanism == 'sub-sampling':
-      expected_l1_norm = np.sum([
-          min(np.linalg.norm(x, ord=1), max_records_per_user)
-          for x in client_records
-      ])
-    elif clip_mechanism == 'distinct':
-      expected_l1_norm = np.sum([
-          min(np.linalg.norm(x, ord=0), max_records_per_user)
-          for x in client_records
-      ])
-
-    # 300 is a rough estimation of six-sigma considering the effect of the L2
-    # norm bound and the privacy composition.
-    for layer in range(hihi_factory._tree_depth(value_shape, arity)):
-      self.assertAllClose(
-          tf.math.reduce_sum(output[layer]),
-          expected_l1_norm,
-          atol=300. * np.sqrt(arity**layer) * noise_multiplier)
+    with self.assertRaises(ValueError):
+      hihi_factory.create_central_hierarchical_histogram_factory(
+          stddev=stddev, arity=arity, max_records_per_user=l1_bound)
 
 
 if __name__ == '__main__':
