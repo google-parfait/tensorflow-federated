@@ -102,7 +102,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "//tensorflow_federated/python/learning/framework:evaluation",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
     ],
 )

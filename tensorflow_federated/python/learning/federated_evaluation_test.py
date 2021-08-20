@@ -226,8 +226,7 @@ def _build_expected_test_quant_model_eval_signature():
           stat=collections.OrderedDict(num_examples=tf.int64)))
   return computation_types.FunctionType(
       parameter=collections.OrderedDict(
-          server_model_weights=weights_parameter_type,
-          federated_dataset=data_parameter_type),
+          server_value=weights_parameter_type, client_data=data_parameter_type),
       result=return_type)
 
 
@@ -241,9 +240,9 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
         evaluate.type_signature,
         FunctionType(
             parameter=StructType([
-                ('server_model_weights',
+                ('server_value',
                  computation_types.at_server(model_weights_type)),
-                ('federated_dataset',
+                ('client_data',
                  computation_types.at_clients(
                      SequenceType(
                          StructType([
