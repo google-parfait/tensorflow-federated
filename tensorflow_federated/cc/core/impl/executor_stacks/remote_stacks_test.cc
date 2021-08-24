@@ -17,7 +17,7 @@ limitations under the License
 
 #include <memory>
 
-#include "net/grpc/public/include/grpcpp/grpcpp.h"
+#include "grpcpp/grpcpp.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"

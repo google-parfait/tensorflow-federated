@@ -28,7 +28,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
-#include "tensorflow_federated/proto/v0/executor.proto.h"
+#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 using ::testing::EqualsProto;
 using ::testing::proto::IgnoringRepeatedFieldOrdering;

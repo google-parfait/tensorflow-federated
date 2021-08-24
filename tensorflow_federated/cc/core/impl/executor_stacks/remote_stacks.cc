@@ -19,7 +19,7 @@ limitations under the License
 #include <limits>
 #include <memory>
 
-#include "net/grpc/public/include/grpcpp/grpcpp.h"
+#include "grpcpp/grpcpp.h"
 #include "net/grpc/public/include/grpcpp/support/time.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"

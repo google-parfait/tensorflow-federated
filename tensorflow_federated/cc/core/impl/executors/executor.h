@@ -27,8 +27,8 @@ limitations under the License
 #include "absl/types/span.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/proto/v0/computation.proto.h"
-#include "tensorflow_federated/proto/v0/executor.proto.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 

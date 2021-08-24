@@ -16,8 +16,8 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
 
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
-#include "tensorflow_federated/proto/v0/computation.proto.h"
-#include "tensorflow_federated/proto/v0/executor.proto.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 

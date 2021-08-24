@@ -39,7 +39,7 @@ limitations under the License
 #include "tensorflow/python/lib/core/safe_ptr.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
-#include "tensorflow_federated/proto/v0/executor.proto.h"
+#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow {
 Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);

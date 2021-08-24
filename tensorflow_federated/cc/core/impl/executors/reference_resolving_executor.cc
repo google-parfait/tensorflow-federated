@@ -22,7 +22,7 @@ limitations under the License
 #include "tensorflow/core/platform/ctstring_internal.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
-#include "tensorflow_federated/proto/v0/computation.proto.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
 
 namespace tensorflow_federated {
 

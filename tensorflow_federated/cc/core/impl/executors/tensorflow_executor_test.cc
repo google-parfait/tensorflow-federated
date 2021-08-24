@@ -30,14 +30,14 @@ limitations under the License
 #include "tensorflow/cc/ops/math_ops.h"
 #include "tensorflow/cc/ops/resource_variable_ops.h"
 #include "tensorflow/cc/ops/state_ops.h"
-#include "tensorflow/core/framework/attr_value.proto.h"
-#include "tensorflow/core/framework/graph.proto.h"
+#include "tensorflow/core/framework/attr_value.pb.h"
+#include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "tensorflow/core/framework/types.proto.h"
+#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
-#include "tensorflow_federated/proto/v0/computation.proto.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
 
 namespace tensorflow_federated {
 namespace {
