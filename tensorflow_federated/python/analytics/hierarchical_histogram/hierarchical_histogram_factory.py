@@ -202,6 +202,8 @@ def create_hierarchical_histogram_aggregation_factory(
   # Constructs `DifferentiallyPrivateFactory` according to the chosen
   # `dp_mechanism`.
   if dp_mechanism == 'central-gaussian':
+    # TODO(b/197596864): change to `tfp.TreeRangeSumQuery` after next
+    # TFP release.
     query = tfp.privacy.dp_query.tree_aggregation_query.TreeRangeSumQuery.build_central_gaussian_query(
         l2_norm_bound, noise_multiplier * l2_norm_bound, arity)
     # If the inner `DifferentiallyPrivateFactory` uses `GaussianSumQuery`, then
@@ -216,7 +218,7 @@ def create_hierarchical_histogram_aggregation_factory(
     # before feeding to the DP factory.
     cast_to_float = False
   elif dp_mechanism == 'no-noise':
-    inner_query = tfp.privacy.dp_query.no_privacy_query.NoPrivacySumQuery()
+    inner_query = tfp.NoPrivacySumQuery()
     query = tfp.privacy.dp_query.tree_aggregation_query.TreeRangeSumQuery(
         arity=arity, inner_query=inner_query)
     # If the inner `DifferentiallyPrivateFactory` uses `NoPrivacyQuery`, then

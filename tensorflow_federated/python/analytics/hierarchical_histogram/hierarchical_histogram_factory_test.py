@@ -54,8 +54,7 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     query = tfp.privacy.dp_query.tree_aggregation_query.TreeRangeSumQuery(
-        arity=arity,
-        inner_query=tfp.privacy.dp_query.no_privacy_query.NoPrivacySumQuery())
+        arity=arity, inner_query=tfp.NoPrivacySumQuery())
     query_state = query.initial_global_state()
     query_state_type = type_conversions.type_from_tensors(query_state)
     query_metrics_type = type_conversions.type_from_tensors(
@@ -169,8 +168,7 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
 
     query = tfp.privacy.dp_query.tree_aggregation_query.TreeRangeSumQuery(
         arity=arity,
-        inner_query=tfp.privacy.dp_query.distributed_discrete_gaussian_query
-        .DistributedDiscreteGaussianSumQuery(
+        inner_query=tfp.DistributedDiscreteGaussianSumQuery(
             l2_norm_bound=1.0, local_stddev=1.0))
     query_state = query.initial_global_state()
     query_state_type = type_conversions.type_from_tensors(query_state)
