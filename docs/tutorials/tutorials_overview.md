@@ -13,11 +13,15 @@ documentation can be found in the [TFF guides](../get_started.md).
 *   [Federated Learning for text generation](federated_learning_for_text_generation.ipynb)
     further demonstrates how to use TFF's FL API to refine a serialized
     pre-trained model for a language modeling task.
-
 *   [Tuning recommended aggregations for learning](tuning_recommended_aggregators.ipynb)
     shows how the basic FL computations in `tff.learning` can be combined with
     specialized aggregation routines offering robustness, differential privacy,
     compression, and more.
+*   [Federated Reconstruction for Matrix Factorization](federated_reconstruction_for_matrix_factorization.ipynb)
+    introduces partially local federated learning, where some client parameters
+    are never aggregated on the server. The tutorial demonstrates how to use the
+    Federated Learning API to train a partially local matrix factorization
+    model.
 
 **Writing custom federated computations**
 
