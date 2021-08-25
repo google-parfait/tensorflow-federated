@@ -226,6 +226,8 @@ def federated_aggregate_keras_metric(
       # If type(metric) is subclass of another tf.keras.metric arguments passed
       # to __init__ must include arguments expected by the superclass and
       # specified in superclass get_config().
+      # TODO(b/197746608): finds a safer way of reconstructing the metric,
+      # default argument values in Metric constructors can cause problems here.
       keras_metric = None
       try:
         # This is some trickery to reconstruct a metric object in the current
