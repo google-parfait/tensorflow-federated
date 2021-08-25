@@ -301,3 +301,39 @@ py_cpu_gpu_test(
     srcs_version = "PY3",
     deps = [":dataset_reduce"],
 )
+
+py_library(
+    name = "evaluation",
+    srcs = ["evaluation.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":dataset_reduce",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning:model_utils",
+    ],
+)
+
+py_test(
+    name = "evaluation_test",
+    srcs = ["evaluation_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":evaluation",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning:model_utils",
+    ],
+)
