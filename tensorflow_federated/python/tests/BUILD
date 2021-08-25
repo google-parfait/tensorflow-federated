@@ -51,6 +51,38 @@ py_test(
 )
 
 py_test(
+    name = "federated_averaging_e2e_test",
+    size = "large",
+    srcs = ["federated_averaging_e2e_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":learning_test_models",
+        "//tensorflow_federated",
+    ],
+)
+
+py_test(
+    name = "federated_sgd_e2e_test",
+    size = "large",
+    srcs = ["federated_sgd_e2e_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":learning_test_models",
+        "//tensorflow_federated",
+    ],
+)
+
+py_library(
+    name = "learning_test_models",
+    testonly = True,
+    srcs = ["learning_test_models.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
     name = "map_reduce_form_test",
     size = "medium",
     srcs = ["map_reduce_form_test.py"],
