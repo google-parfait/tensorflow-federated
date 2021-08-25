@@ -30,6 +30,11 @@ build --copt=-march=native
 build --host_copt=-march=native
 build --copt=-O3
 
+# C++ compiler options.
+build --cxxopt=-std=c++17
+build --copt=-Wno-stringop-truncation
+# build --cxxopt=-stdlib=libc++
+
 #
 # Remote execution capabilities.
 #
@@ -43,3 +48,10 @@ build:remote --remote_cache=grpcs://remotebuildexecution.googleapis.com
 # Project configuration.
 build:remote --remote_instance_name=projects/tensorflow-federated/instances/default_instance
 build:remote --project_id=tensorflow-federated
+
+#
+# Required to build Tensorflow.
+#
+
+# Enable remote execution capabilities.
+common --experimental_repo_remote_exec
