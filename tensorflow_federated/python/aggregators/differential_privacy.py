@@ -106,9 +106,6 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
   mode of aggregation is consistent with the DPQuery. Note that the DPQuery's
   built-in aggregation functions (accumulate_preprocessed_record and
   merge_sample_states) are ignored in favor of the provided aggregator.
-
-  To obtain concrete (epsilon, delta) guarantees, one could use the analysis
-  tools provided in tensorflow_privacy by using QueryWithLedger.
   """
 
   @classmethod
