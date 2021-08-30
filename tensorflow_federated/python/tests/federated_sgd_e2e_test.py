@@ -159,10 +159,21 @@ class FederatedSGDE2ETest(tff.test.TestCase, parameterized.TestCase):
         list(metric_outputs.keys()),
         ['broadcast', 'aggregation', 'train', 'stat'])
     self.assertEmpty(metric_outputs['broadcast'])
-    self.assertEqual(metric_outputs['aggregation'],
-                     collections.OrderedDict(mean_value=(), mean_weight=()))
     self.assertEqual(metric_outputs['train']['num_examples'], 0)
     self.assertTrue(tf.math.is_nan(metric_outputs['train']['loss']))
+
+    # Test aggregation metrics with default model update aggregator
+    aggregation_metrics = collections.OrderedDict(mean_value=(), mean_weight=())
+    debug_measurements_keys = [
+        'average_client_norm', 'std_dev_client_norm', 'server_update_max',
+        'server_update_norm', 'server_update_min'
+    ]
+    expected_aggregation_keys = list(
+        aggregation_metrics.keys()) + debug_measurements_keys
+    self.assertEqual(
+        list(metric_outputs['aggregation'].keys()), expected_aggregation_keys)
+    for k, v in aggregation_metrics.items():
+      self.assertEqual(v, metric_outputs['aggregation'][k])
 
   @parameterized.named_parameters([
       ('keras_opt', _get_keras_optimizer_fn),

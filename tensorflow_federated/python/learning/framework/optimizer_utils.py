@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
+from tensorflow_federated.python.aggregators import measurements as measurements_lib
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
@@ -35,6 +36,7 @@ from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework import debug_measurements
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -528,6 +530,8 @@ def build_model_delta_optimizer_process(
       `tff.templates.AggregationProcess` for aggregating the client model
       updates on the server. If `None`, uses a default constructed
       `tff.aggregators.MeanFactory`, creating a stateless mean aggregation.
+      This default aggregation factory will produce measurements useful for
+      debugging, such as the average norm of the client updates each round.
 
   Returns:
     A `tff.templates.IterativeProcess`.
@@ -566,15 +570,26 @@ def build_model_delta_optimizer_process(
 
   if model_update_aggregation_factory is None:
     model_update_aggregation_factory = mean.MeanFactory()
-  py_typecheck.check_type(model_update_aggregation_factory,
-                          factory.AggregationFactory.__args__)
-  if isinstance(model_update_aggregation_factory,
-                factory.WeightedAggregationFactory):
+    client_measurement_fn, server_measurement_fn = (
+        debug_measurements.build_aggregator_measurement_fns(
+            weighted_aggregator=True))
+    model_update_aggregation_factory = measurements_lib.add_measurements(
+        model_update_aggregation_factory,
+        client_measurement_fn=client_measurement_fn,
+        server_measurement_fn=server_measurement_fn)
     aggregation_process = model_update_aggregation_factory.create(
         model_weights_type.trainable, computation_types.TensorType(tf.float32))
   else:
-    aggregation_process = model_update_aggregation_factory.create(
-        model_weights_type.trainable)
+    py_typecheck.check_type(model_update_aggregation_factory,
+                            factory.AggregationFactory.__args__)
+    if isinstance(model_update_aggregation_factory,
+                  factory.WeightedAggregationFactory):
+      aggregation_process = model_update_aggregation_factory.create(
+          model_weights_type.trainable,
+          computation_types.TensorType(tf.float32))
+    else:
+      aggregation_process = model_update_aggregation_factory.create(
+          model_weights_type.trainable)
   process_signature = aggregation_process.next.type_signature
   input_client_value_type = process_signature.parameter[1]
   result_server_value_type = process_signature.result[1]

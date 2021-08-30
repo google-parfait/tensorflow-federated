@@ -51,13 +51,22 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
     state = process.initialize()
     prev_loss = np.inf
     aggregation_metrics = collections.OrderedDict(mean_value=(), mean_weight=())
+    debug_measurements_keys = [
+        'average_client_norm', 'std_dev_client_norm', 'server_update_max',
+        'server_update_norm', 'server_update_min'
+    ]
+    expected_aggregation_keys = list(
+        aggregation_metrics.keys()) + debug_measurements_keys
     for _ in range(3):
       state, metric_outputs = process.next(state, datasets)
       self.assertEqual(
           list(metric_outputs.keys()),
           ['broadcast', 'aggregation', 'train', 'stat'])
       self.assertEmpty(metric_outputs['broadcast'])
-      self.assertEqual(aggregation_metrics, metric_outputs['aggregation'])
+      self.assertEqual(
+          list(metric_outputs['aggregation'].keys()), expected_aggregation_keys)
+      for k, v in aggregation_metrics.items():
+        self.assertEqual(v, metric_outputs['aggregation'][k])
       train_metrics = metric_outputs['train']
       self.assertEqual(train_metrics['num_examples'], expected_num_examples)
       self.assertLess(train_metrics['loss'], prev_loss)

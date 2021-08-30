@@ -361,9 +361,24 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             result=(server_state_type, metrics_type)),
         iterative_process.next.type_signature)
 
+  def test_default_model_aggregator_adds_debug_measurements(self):
+    process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_examples.LinearRegression,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=tf.keras.optimizers.SGD)
+    debug_measurements_keys = [
+        'average_client_norm', 'std_dev_client_norm', 'server_update_max',
+        'server_update_norm', 'server_update_min'
+    ]
+    debug_measurements_type = computation_types.TensorType(tf.float32)
+    measurements_type = process.next.type_signature.result[1].member
+    aggregation_type = measurements_type['aggregation']
+    for debug_key in debug_measurements_keys:
+      self.assertEqual(aggregation_type[debug_key], debug_measurements_type)
+
   @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
                                    ('keras_optimizer', _keras_optimizer_fn)])
-  def test_construction_calls_model_fn(self, server_optimzier):
+  def test_construction_calls_model_fn(self, server_optimizer):
     # Assert that the the process building does not call `model_fn` too many
     # times. `model_fn` can potentially be expensive (loading weights,
     # processing, etc).
@@ -371,7 +386,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     optimizer_utils.build_model_delta_optimizer_process(
         model_fn=mock_model_fn,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=server_optimzier())
+        server_optimizer_fn=server_optimizer())
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 

@@ -45,7 +45,8 @@ def construct_example_training_comp():
 
   return tff.learning.build_federated_averaging_process(
       model_fn,
-      client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
+      client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01),
+      model_update_aggregation_factory=tff.aggregators.MeanFactory())
 
 
 class MapReduceFormTest(tff.test.TestCase):

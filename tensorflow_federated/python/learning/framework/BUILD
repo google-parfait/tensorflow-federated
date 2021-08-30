@@ -314,8 +314,10 @@ py_library(
     srcs = ["optimizer_utils.py"],
     srcs_version = "PY3",
     deps = [
+        ":debug_measurements",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
+        "//tensorflow_federated/python/aggregators:measurements",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
