@@ -7,7 +7,35 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
-    deps = [":serialization"],
+    deps = [
+        ":functional",
+        ":serialization",
+    ],
+)
+
+py_library(
+    name = "functional",
+    srcs = ["functional.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/learning:model",
+    ],
+)
+
+py_test(
+    name = "functional_test",
+    srcs = ["functional_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":functional",
+        "//tensorflow_federated/python/learning:model",
+    ],
 )
 
 py_library(
