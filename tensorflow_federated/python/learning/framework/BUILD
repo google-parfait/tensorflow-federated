@@ -125,6 +125,44 @@ py_test(
 )
 
 py_library(
+    name = "dataset_reduce",
+    srcs = ["dataset_reduce.py"],
+    srcs_version = "PY3",
+)
+
+py_cpu_gpu_test(
+    name = "dataset_reduce_test",
+    srcs = ["dataset_reduce_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":dataset_reduce"],
+)
+
+py_library(
+    name = "debug_measurements",
+    srcs = ["debug_measurements.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_test(
+    name = "debug_measurements_test",
+    srcs = ["debug_measurements_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":debug_measurements",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
     name = "distributors",
     srcs = ["distributors.py"],
     srcs_version = "PY3",
@@ -191,6 +229,42 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
+    ],
+)
+
+py_library(
+    name = "evaluation",
+    srcs = ["evaluation.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":dataset_reduce",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning:model_utils",
+    ],
+)
+
+py_test(
+    name = "evaluation_test",
+    srcs = ["evaluation_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":evaluation",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning:model_utils",
     ],
 )
 
@@ -285,55 +359,5 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
-    ],
-)
-
-py_library(
-    name = "dataset_reduce",
-    srcs = ["dataset_reduce.py"],
-    srcs_version = "PY3",
-)
-
-py_cpu_gpu_test(
-    name = "dataset_reduce_test",
-    srcs = ["dataset_reduce_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":dataset_reduce"],
-)
-
-py_library(
-    name = "evaluation",
-    srcs = ["evaluation.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":dataset_reduce",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/learning:model",
-        "//tensorflow_federated/python/learning:model_utils",
-    ],
-)
-
-py_test(
-    name = "evaluation_test",
-    srcs = ["evaluation_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":evaluation",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/learning:keras_utils",
-        "//tensorflow_federated/python/learning:model_utils",
     ],
 )
