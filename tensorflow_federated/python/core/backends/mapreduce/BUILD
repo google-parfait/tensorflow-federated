@@ -158,7 +158,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_transformations",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )

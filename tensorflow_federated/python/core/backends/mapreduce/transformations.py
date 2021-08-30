@@ -395,11 +395,21 @@ def _compute_merged_intrinsics(
               unpack_to_locals=[]))
     else:
       calls = [local[1] for local in locals_for_uri]
+      result_placement = calls[0].type_signature.placement
+      result_all_equal = calls[0].type_signature.all_equal
+      for call in calls:
+        if call.type_signature.all_equal != result_all_equal:
+          raise ValueError('Encountered intrinsics to be merged with '
+                           f'mismatched all_equal bits. Intrinsic of URI {uri} '
+                           f'first call had all_equal bit {result_all_equal}, '
+                           'encountered call with all_equal value '
+                           f'{call.type_signature.all_equal}')
       return_type = computation_types.FederatedType(
           computation_types.StructType([
               (None, call.type_signature.member) for call in calls
           ]),
-          placement=calls[0].type_signature.placement)
+          placement=result_placement,
+          all_equal=result_all_equal)
       abstract_parameter_type = default_call.function.intrinsic_def(
       ).type_signature.parameter
       results.append(

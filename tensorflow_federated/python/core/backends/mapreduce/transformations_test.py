@@ -32,7 +32,6 @@ from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
-from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 DEFAULT_GRAPPLER_CONFIG = tf.compat.v1.ConfigProto()
@@ -237,19 +236,6 @@ class ConsolidateAndExtractTest(test_case.TestCase):
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
 
 
-def _remove_client_all_equals_from_type(type_signature):
-
-  def _transform(inner_type):
-    if (inner_type.is_federated() and inner_type.placement.is_clients() and
-        inner_type.all_equal):
-      return computation_types.FederatedType(inner_type.member,
-                                             inner_type.placement, False), True
-    return inner_type, False
-
-  return type_transformations.transform_type_postorder(type_signature,
-                                                       _transform)[0]
-
-
 class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
 
   def assert_splits_on(self, comp, calls):
@@ -291,13 +277,6 @@ class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
           before.type_signature.result[i],
           after.parameter_type.intrinsic_results[i])
       abstract_signature = calls[i].function.intrinsic_def().type_signature
-      # `force_align_and_split_by_intrinsics` loses all-equal data due to
-      # zipping and unzipping. This is okay because the resulting computations
-      # are not used together directly, but are compiled into unplaced TF code.
-      abstract_signature = _remove_client_all_equals_from_type(
-          abstract_signature)
-      concrete_signature = _remove_client_all_equals_from_type(
-          concrete_signature)
       type_analysis.check_concrete_instance_of(concrete_signature,
                                                abstract_signature)
 
