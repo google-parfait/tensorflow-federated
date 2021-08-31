@@ -14,9 +14,9 @@
 """Utilities for interacting with and manipulating TensorFlow graphs."""
 
 import collections
-import functools
 import itertools
 import typing
+from typing import Any, Iterable, Optional, Tuple, Type
 
 import attr
 import numpy as np
@@ -151,7 +151,26 @@ def make_dataset_from_variant_tensor(variant_tensor, type_spec):
           computation_types.to_type(type_spec))))
 
 
-def capture_result_from_graph(result, graph):
+class InvalidGraphResultError(TypeError):
+  """Error creating a TF type and binding for a TF graph result."""
+
+
+class DictionaryKeyMustBeStringError(InvalidGraphResultError):
+  """Error due to a non-string dictionary key in a TF graph result structure."""
+
+
+class InvalidDatasetElementSpecError(InvalidGraphResultError):
+  """Error due to invalid `element_spec` in dataset result of TF graph."""
+
+
+class UnsupportedGraphResultError(InvalidGraphResultError):
+  """Error due to unsupported type in a TF graph result structure."""
+
+
+def capture_result_from_graph(
+    result: Any,
+    graph: tf.Graph,
+) -> Tuple[computation_types.Type, pb.TensorFlow.Binding]:
   """Captures a result stamped into a tf.Graph as a type signature and binding.
 
   Args:
@@ -167,17 +186,31 @@ def capture_result_from_graph(result, graph):
     type relate to the tensors and ops that appear in the result.
 
   Raises:
-    TypeError: If the argument or any of its parts are of an uexpected type.
+    DictionaryKeyMustBeStringError: If `result` contains a dictionary with a
+      non-`str` key.
+    InvalidDatasetElementSpecError: If `result` contains a dataset with an
+      `element_spec` that is unsupported.
+    UnsupportedGraphResultError: If `result` contains a value which for which
+      conversion in to a `tf.Graph` output is not supported.
   """
 
-  def _get_bindings_for_elements(name_value_pairs, graph, type_fn):
+  def _get_bindings_for_elements(
+      name_value_pairs: Iterable[Tuple[str, Any]],
+      graph: tf.Graph,
+      container_type: Optional[Type[Any]],
+  ) -> Tuple[computation_types.Type, pb.TensorFlow.Binding]:
     """Build `(type_spec, binding)` tuple for name value pairs."""
     element_name_type_binding_triples = [
         ((k,) + capture_result_from_graph(v, graph))
         for k, v in name_value_pairs
     ]
-    type_spec = type_fn([((e[0], e[1]) if e[0] else e[1])
-                         for e in element_name_type_binding_triples])
+    type_members = [((e[0], e[1]) if e[0] else e[1])
+                    for e in element_name_type_binding_triples]
+    if container_type:
+      type_spec = computation_types.StructWithPythonType(
+          type_members, container_type=container_type)
+    else:
+      type_spec = computation_types.StructType(type_members)
     binding = pb.TensorFlow.Binding(
         struct=pb.TensorFlow.StructBinding(
             element=[e[2] for e in element_name_type_binding_triples]))
@@ -205,20 +238,14 @@ def capture_result_from_graph(result, graph):
     if isinstance(result, tf.RaggedTensor):
       name_value_pairs = (('flat_values', result.flat_values),
                           ('nested_row_splits', result.nested_row_splits))
-      return _get_bindings_for_elements(
-          name_value_pairs, graph,
-          functools.partial(
-              computation_types.StructWithPythonType,
-              container_type=tf.RaggedTensor))
+      return _get_bindings_for_elements(name_value_pairs, graph,
+                                        tf.RaggedTensor)
     elif isinstance(result, tf.SparseTensor):
       name_value_pairs = (('indices', result.indices),
                           ('values', result.values), ('dense_shape',
                                                       result.dense_shape))
-      return _get_bindings_for_elements(
-          name_value_pairs, graph,
-          functools.partial(
-              computation_types.StructWithPythonType,
-              container_type=tf.SparseTensor))
+      return _get_bindings_for_elements(name_value_pairs, graph,
+                                        tf.SparseTensor)
     else:
       return (computation_types.TensorType(result.dtype.base_dtype,
                                            result.shape),
@@ -232,32 +259,27 @@ def capture_result_from_graph(result, graph):
     # pylint: disable=protected-access
     name_value_pairs = result._asdict().items()
     # pylint: enable=protected-access
-    return _get_bindings_for_elements(
-        name_value_pairs, graph,
-        functools.partial(
-            computation_types.StructWithPythonType,
-            container_type=type(result)))
+    return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif py_typecheck.is_attrs(result):
     name_value_pairs = attr.asdict(
         result, dict_factory=collections.OrderedDict, recurse=False)
-    return _get_bindings_for_elements(
-        name_value_pairs.items(), graph,
-        functools.partial(
-            computation_types.StructWithPythonType,
-            container_type=type(result)))
+    return _get_bindings_for_elements(name_value_pairs.items(), graph,
+                                      type(result))
   elif isinstance(result, structure.Struct):
     return _get_bindings_for_elements(
-        structure.to_elements(result), graph, computation_types.StructType)
+        structure.to_elements(result), graph, None)
   elif isinstance(result, collections.abc.Mapping):
+    for key in result:
+      if not isinstance(key, str):
+        key_type_str = py_typecheck.type_string(type(key))
+        raise DictionaryKeyMustBeStringError(
+            'Dictionaries returned from TensorFlow graphs must be of type '
+            f'`str`, but found key `{key}` of type `{key_type_str}`.')
     if isinstance(result, collections.OrderedDict):
       name_value_pairs = result.items()
     else:
       name_value_pairs = sorted(result.items())
-    return _get_bindings_for_elements(
-        name_value_pairs, graph,
-        functools.partial(
-            computation_types.StructWithPythonType,
-            container_type=type(result)))
+    return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif isinstance(result, (list, tuple)):
     element_type_binding_pairs = [
         capture_result_from_graph(e, graph) for e in result
@@ -273,7 +295,7 @@ def capture_result_from_graph(result, graph):
     try:
       element_type = computation_types.to_type(element_structure)
     except TypeError as e:
-      raise TypeError(
+      raise InvalidDatasetElementSpecError(
           'Dataset has `element_spec` which is not a valid TFF type.\n'
           f'Found `element_spec`: {element_structure}\n'
           f'which is not a valid TFF type: {str(e)}') from None
@@ -282,8 +304,9 @@ def capture_result_from_graph(result, graph):
                 sequence=pb.TensorFlow.SequenceBinding(
                     variant_tensor_name=variant_tensor.name)))
   else:
-    raise TypeError('Cannot capture a result of an unsupported type {}.'.format(
-        py_typecheck.type_string(type(result))))
+    result_type_str = py_typecheck.type_string(type(result))
+    raise UnsupportedGraphResultError(
+        f'Cannot capture a result of an unsupported type {result_type_str}.')
 
 
 def compute_map_from_bindings(source, target):

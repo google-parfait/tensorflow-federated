@@ -90,14 +90,19 @@ def check_string(filename: str, value: str):
 
 
 def traceback_string(exc_type, exc_value, tb) -> str:
+  """Generates a standardized stringified version of an exception traceback."""
   exception_string_io = io.StringIO()
   traceback.print_exception(exc_type, exc_value, tb, file=exception_string_io)
   exception_string = exception_string_io.getvalue()
   # Strip path to TFF to normalize error messages
+  # First in filepaths.
   without_filepath = re.sub(r'\/\S*\/tensorflow_federated\/', '',
                             exception_string)
+  # Then also in class paths.
+  without_classpath = re.sub(r'(\S*\.)+?(?=tensorflow_federated)', '',
+                             without_filepath)
   # Strip line numbers to avoid churn
-  without_linenumber = re.sub(r', line \d*', '', without_filepath)
+  without_linenumber = re.sub(r', line \d*', '', without_classpath)
   return without_linenumber
 
 

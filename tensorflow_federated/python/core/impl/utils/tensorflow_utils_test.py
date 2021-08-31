@@ -336,6 +336,24 @@ class GraphUtilsTest(test_case.TestCase):
     self.assertIs(t.python_container, collections.OrderedDict)
 
   @test_utils.graph_mode_test
+  def test_capture_result_with_ordered_dict_with_non_string_keys_throws(self):
+    value = collections.OrderedDict([(1, 2)])
+    graph = tf.compat.v1.get_default_graph()
+    with self.assertRaises(tensorflow_utils.DictionaryKeyMustBeStringError):
+      tensorflow_utils.capture_result_from_graph(value, graph)
+
+  @test_utils.graph_mode_test
+  def test_capture_result_unknown_class_throws(self):
+
+    class UnknownClass:
+      pass
+
+    value = UnknownClass()
+    graph = tf.compat.v1.get_default_graph()
+    with self.assertRaises(tensorflow_utils.UnsupportedGraphResultError):
+      tensorflow_utils.capture_result_from_graph(value, graph)
+
+  @test_utils.graph_mode_test
   def test_capture_result_with_namedtuple_of_constants(self):
     test_named_tuple = collections.namedtuple('_', 'x y')
     t = self._checked_capture_result(
