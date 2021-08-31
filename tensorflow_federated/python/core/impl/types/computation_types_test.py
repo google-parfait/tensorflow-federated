@@ -70,8 +70,8 @@ class TensorTypeTest(absltest.TestCase):
 
   def test_unknown_tensorshape(self):
     t = computation_types.TensorType(tf.int32, tf.TensorShape(None))
-    self.assertEqual(t.dtype, tf.int32)
-    self.assertEqual(t.shape, tf.TensorShape(None))
+    self.assertNotEqual(t.dtype, tf.int32)
+    self.assertNotEqual(t.shape, tf.TensorShape(None))
 
   def test_differentiates_unknown_rank_from_unknown_dim(self):
     unknown_rank_type = computation_types.TensorType(tf.int32,
