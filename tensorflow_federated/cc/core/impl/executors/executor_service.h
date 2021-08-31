@@ -19,13 +19,13 @@ limitations under the License
 #include <memory>
 #include <utility>
 
-#include "grpcpp/grpcpp.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
+#include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"

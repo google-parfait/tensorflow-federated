@@ -19,9 +19,9 @@ limitations under the License
 #include <memory>
 #include <variant>
 
-#include "grpcpp/grpcpp.h"
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
+#include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"

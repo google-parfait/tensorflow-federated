@@ -19,11 +19,11 @@ limitations under the License
 #include <limits>
 #include <memory>
 
-#include "grpcpp/grpcpp.h"
-#include "net/grpc/public/include/grpcpp/support/time.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/time/time.h"
+#include "grpcpp/grpcpp.h"
+#include "grpc/include/grpcpp/support/time.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"

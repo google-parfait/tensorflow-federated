@@ -18,11 +18,11 @@ limitations under the License
 #include <memory>
 #include <optional>
 
-#include "grpcpp/grpcpp.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "grpcpp/grpcpp.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
