@@ -56,6 +56,7 @@ py_test(
     srcs = ["federated_averaging_e2e_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = ["nokokoro"],  # TODO(b/198312839): Replace kokoro tests after TFP Pip release
     deps = [
         ":learning_test_models",
         "//tensorflow_federated",

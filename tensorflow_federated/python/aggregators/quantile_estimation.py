@@ -148,7 +148,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
       # like basic sum, so we won't surface its measurements.
       del agg_measurements
 
-      _, new_quantile_query_state = intrinsics.federated_map(
+      _, new_quantile_query_state, _ = intrinsics.federated_map(
           get_noised_result, (agg_result, quantile_query_state))
 
       return intrinsics.federated_zip((new_quantile_query_state, new_agg_state))
