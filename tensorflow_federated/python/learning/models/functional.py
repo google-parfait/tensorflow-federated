@@ -27,6 +27,7 @@ from typing import Any, Callable, Mapping, Sequence, Tuple, Union
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -37,6 +38,14 @@ from tensorflow_federated.python.learning import model as model_lib
 Weight = Union[np.ndarray, int, float]
 WeightStruct = Union[Sequence[Weight], Mapping[str, Weight]]
 ModelWeights = Tuple[WeightStruct, WeightStruct]
+
+
+class CallableMustBeTFFunctionError(TypeError):
+  """Error raised when a callable is not decorated as a tf.function."""
+
+
+class ValueMustNotBeTFError(TypeError):
+  """Error raised a value must not be a `tf.Tensor` or `tf.Variable`."""
 
 
 class FunctionalModel():
@@ -106,9 +115,17 @@ class FunctionalModel():
         corresponds to batched labels for those inputs.
     """
 
+    def check_tf_function_decorated(fn, arg_name):
+      if not hasattr(fn, 'get_concrete_function'):
+        type_string = py_typecheck.type_string(type(fn))
+        raise CallableMustBeTFFunctionError(
+            f'{arg_name} does not have a `get_concrete_function` attribute '
+            'meaning it is not a callable decorated with `tf.function`. '
+            f'Got a {type_string} with value {fn!r}.')
+
     def check_non_tf_value(value):
       if tf.is_tensor(value) or isinstance(value, tf.Variable):
-        raise TypeError(
+        raise ValueMustNotBeTFError(
             'initial_weights may not contain TensorFlow values '
             f'(tf.Tensor or tf.Variable). Got: {type(value)!r}. Try '
             'converting to a np.ndarray by using the `.numpy()` '
@@ -117,7 +134,9 @@ class FunctionalModel():
 
     tf.nest.map_structure(check_non_tf_value, initial_weights)
     self._initial_weights = initial_weights
+    check_tf_function_decorated(forward_pass_fn, 'forward_pass_fn')
     self._forward_pass_fn = forward_pass_fn
+    check_tf_function_decorated(predict_on_batch_fn, 'predict_on_batch_fn')
     self._predict_on_batch_fn = predict_on_batch_fn
     self._input_spec = input_spec
 
@@ -125,6 +144,7 @@ class FunctionalModel():
   def initial_weights(self) -> ModelWeights:
     return self._initial_weights
 
+  @tf.function
   def forward_pass(self,
                    model_weights: ModelWeights,
                    batch_input: Any,
@@ -132,6 +152,7 @@ class FunctionalModel():
     """Runs the forward pass and returns results."""
     return self._forward_pass_fn(model_weights, batch_input, training)
 
+  @tf.function
   def predict_on_batch(self,
                        model_weights: ModelWeights,
                        x: Any,

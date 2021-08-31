@@ -18,6 +18,7 @@ py_library(
     srcs = ["functional.py"],
     srcs_version = "PY3",
     deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",

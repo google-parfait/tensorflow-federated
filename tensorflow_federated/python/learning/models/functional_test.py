@@ -28,6 +28,7 @@ def initial_weights():
   return (trainable_variables, non_trainable_variables)
 
 
+@tf.function
 def predict_on_batch(model_weights, x, training):
   """Test predict_on_batch implementing linear regression."""
   trainable = model_weights[0]
@@ -40,6 +41,7 @@ def predict_on_batch(model_weights, x, training):
     return tf.matmul(x, w, transpose_b=True)
 
 
+@tf.function
 def forward_pass(model_weights, batch_input, training):
   """Test forward_pass implementing linear regression on MSE."""
   x, y = batch_input
@@ -75,12 +77,28 @@ class FunctionalTest(tf.test.TestCase):
   def test_fail_construction_on_tf_value(self):
     dataset = create_test_dataset()
     input_spec = dataset.element_spec
-    with self.assertRaisesRegex(TypeError, 'initial_weights may not contain'):
+    with self.assertRaisesRegex(functional.ValueMustNotBeTFError,
+                                'initial_weights may not contain'):
       functional.FunctionalModel((tf.constant(1.0), ()), forward_pass,
                                  predict_on_batch, input_spec)
-    with self.assertRaisesRegex(TypeError, 'initial_weights may not contain'):
+    with self.assertRaisesRegex(functional.ValueMustNotBeTFError,
+                                'initial_weights may not contain'):
       functional.FunctionalModel((tf.Variable(1.0), ()), forward_pass,
                                  predict_on_batch, input_spec)
+
+  def test_fail_non_tf_function(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    with self.assertRaisesRegex(
+        functional.CallableMustBeTFFunctionError,
+        'forward_pass_fn does not have a `get_concrete_function`'):
+      functional.FunctionalModel((), forward_pass.python_function,
+                                 predict_on_batch, input_spec)
+    with self.assertRaisesRegex(
+        functional.CallableMustBeTFFunctionError,
+        'predict_on_batch_fn does not have a `get_concrete_function`'):
+      functional.FunctionalModel((), forward_pass,
+                                 predict_on_batch.python_function, input_spec)
 
   def test_predict_on_batch(self):
     dataset = create_test_dataset()
