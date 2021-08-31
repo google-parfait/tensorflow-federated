@@ -30,6 +30,11 @@ build --copt=-march=native
 build --host_copt=-march=native
 build --copt=-O3
 
+# gRPC on MacOS requires this define, see
+# https://github.com/bazelbuild/bazel/issues/4341#issuecomment-572050759 for
+# more information.
+build:macos --copt=-DGRPC_BAZEL_BUILD
+
 #
 # Remote execution capabilities.
 #
