@@ -21,7 +21,7 @@ pybind_extension(
     tags = ["nokokoro"],
     deps = [
         ":remote_stacks",
-        "//third_party/grpc:grpc++",
+        "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/types:span",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
@@ -70,7 +70,7 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/executors:remote_executor",
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_executor",
         "//tensorflow_federated/cc/core/impl/executors:threading",
-        "//third_party/grpc:grpc++",
+        "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
@@ -87,7 +87,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_executor",
-        "//third_party/grpc:grpc++",
+        "@com_github_grpc_grpc//:grpc++",
         "@com_google_googletest//:gtest_main",
     ],
 )
