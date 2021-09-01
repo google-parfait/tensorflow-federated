@@ -23,14 +23,17 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import serialization
 
 # Convenience aliases.
@@ -316,5 +319,199 @@ class SerializationTest(test_case.TestCase, parameterized.TestCase):
     self.assertNotEmpty(tflite_flatbuffer)
 
 
+def initial_weights():
+  """Returns lists of trainable variables and non-trainable variables."""
+  trainable_variables = (np.asarray([[0.0, 0.0, 0.0]], dtype=np.float32),
+                         np.asarray([0.0], dtype=np.float32))
+  non_trainable_variables = ()
+  return (trainable_variables, non_trainable_variables)
+
+
+@tf.function
+def predict_on_batch(model_weights, x, training):
+  del training  # Unused
+  trainable = model_weights[0]
+  return tf.matmul(x, trainable[0], transpose_b=True) + trainable[1]
+
+
+@tf.function
+def forward_pass(model_weights, batch_input, training):
+  predictions = predict_on_batch(model_weights, batch_input[0], training)
+  residuals = predictions - batch_input[1]
+  num_examples = tf.gather(tf.shape(predictions), 0)
+  total_loss = tf.reduce_sum(tf.pow(residuals, 2))
+  average_loss = total_loss / tf.cast(num_examples, tf.float32)
+  return model_lib.BatchOutput(
+      loss=average_loss, predictions=predictions, num_examples=num_examples)
+
+
+def preprocess(ds):
+
+  def generate_example(i, t):
+    del t  # Unused.
+    features = tf.random.stateless_uniform(shape=[3], seed=(0, i))
+    label = tf.expand_dims(
+        tf.reduce_sum(features * tf.constant([1.0, 2.0, 3.0])), axis=-1) + 5.0
+    return (features, label)
+
+  return ds.map(generate_example).batch(5, drop_remainder=True)
+
+
+def get_dataset():
+  return preprocess(tf.data.Dataset.range(15).enumerate())
+
+
+class FunctionalModelTest(tf.test.TestCase):
+
+  def test_functional_predict_on_batch(self):
+    dataset = get_dataset()
+    example_batch = next(iter(dataset))
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+    model_weights = functional_model.initial_weights
+    self.assertAllClose(
+        functional_model.predict_on_batch(model_weights, example_batch[0]),
+        [[0.]] * 5)
+
+  def test_construct_tff_model_from_functional_predict_on_batch(self):
+    dataset = get_dataset()
+    example_batch = next(iter(dataset))
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+
+    tff_model = functional.model_from_functional(functional_model)
+    self.assertAllClose(
+        tff_model.predict_on_batch(example_batch[0]), [[0.]] * 5)
+
+  def test_construct_tff_model_from_functional_and_train(self):
+    dataset = get_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+
+    def model_fn():
+      return functional.model_from_functional(functional_model)
+
+    training_process = federated_averaging.build_federated_averaging_process(
+        model_fn, lambda: tf.keras.optimizers.SGD(learning_rate=0.1))
+
+    state = training_process.initialize()
+    for _ in range(2):
+      state, _ = training_process.next(state, [dataset])
+
+  def test_save_functional_model(self):
+    dataset = get_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+    path = self.get_temp_dir()
+    serialization.save_functional_model(functional_model, path)
+
+  def test_save_and_load_functional_model(self):
+    dataset = get_dataset()
+    example_batch = next(iter(dataset))
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+    path = self.get_temp_dir()
+    serialization.save_functional_model(functional_model, path)
+    loaded_model = serialization.load_functional_model(path)
+    model_weights = loaded_model.initial_weights
+    self.assertAllClose(
+        loaded_model.predict_on_batch(
+            model_weights=model_weights, x=example_batch[0]), [[0.]] * 5)
+
+  def test_initial_model_weights_before_after_save(self):
+    dataset = get_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+    model_weights1 = functional_model.initial_weights
+    path = self.get_temp_dir()
+    serialization.save_functional_model(functional_model, path)
+    loaded_model = serialization.load_functional_model(path)
+    model_weights2 = loaded_model.initial_weights
+    self.assertAllClose(model_weights1, model_weights2)
+
+  def test_convert_to_tff_model(self):
+    dataset = get_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+    tff_model = functional.model_from_functional(functional_model)
+    example_batch = next(iter(dataset))
+    self.assertAllClose(
+        tff_model.predict_on_batch(x=example_batch[0]), [[0.]] * 5)
+
+  def test_save_load_convert_to_tff_model(self):
+    dataset = get_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+    path = self.get_temp_dir()
+    serialization.save_functional_model(functional_model, path)
+    loaded_model = serialization.load_functional_model(path)
+    tff_model = functional.model_from_functional(loaded_model)
+    example_batch = next(iter(dataset))
+    for training in [True, False]:
+      self.assertAllClose(
+          tff_model.predict_on_batch(x=example_batch[0], training=training),
+          [[0.]] * 5)
+    for training in [True, False]:
+      tf.nest.map_structure(
+          lambda x, y: self.assertAllClose(x, y, atol=1e-2, rtol=1e-2),
+          tff_model.forward_pass(batch_input=example_batch, training=training),
+          model_lib.BatchOutput(
+              loss=74.250, predictions=np.zeros(shape=[5, 1]), num_examples=5))
+
+  def test_save_load_convert_to_tff_model_and_train_to_convergence(self):
+    dataset = get_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+
+    path = self.get_temp_dir()
+    serialization.save_functional_model(functional_model, path)
+    loaded_model = serialization.load_functional_model(path)
+
+    def model_fn():
+      return functional.model_from_functional(loaded_model)
+
+    training_process = federated_averaging.build_federated_averaging_process(
+        model_fn, lambda: tf.keras.optimizers.SGD(learning_rate=0.05))
+    state = training_process.initialize()
+    self.assertAllClose(state.model.trainable,
+                        [np.zeros([1, 3]), np.zeros([1])])
+    num_rounds = 50
+    for _ in range(num_rounds):
+      state, _ = training_process.next(state, [dataset])
+    # Test that we came close to convergence.
+    self.assertAllClose(
+        state.model.trainable,
+        [np.asarray([[1.0, 2.0, 3.0]]),
+         np.asarray([5.0])],
+        atol=0.5)
+
+
 if __name__ == '__main__':
+  # TODO(b/198454066): the EagerTFExecutor in the local executions stack shares
+  # a global function library with this test. `tf.function` tracing happens in
+  # this test, and we end up with two conflicting FunctionDefs in the global
+  # eager context, one after the TFF disable grappler transformation which is
+  # later added during the `tf.compat.v1.wrap_function` call during execution.
+  # This conflict does not occur in the C++ executor that does not use the eager
+  # context.
+  tf.config.optimizer.set_experimental_options({'disable_meta_optimizer': True})
+  execution_contexts.set_local_execution_context()
   test_case.main()
