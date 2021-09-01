@@ -1,0 +1,22 @@
+diff --git tensorflow/BUILD tensorflow/BUILD
+index 04dcc5d82f3..f09a4988eb9 100644
+--- tensorflow/BUILD
++++ tensorflow/BUILD
+@@ -786,16 +786,7 @@ config_setting(
+ package_group(
+     name = "internal",
+     packages = [
+-        "//learning/brain/keras/...",
+-        "//learning/brain/mlir/...",
+-        "//learning/brain/tfrt/...",
+-        "//learning/lib/ami/simple_ml/...",
+-        "//tensorflow/...",
+-        "//tensorflow_decision_forests/...",
+-        "//tensorflow_federated/...",
+-        "//third_party/cloud_tpu/inference_converter/...",
+-        "//third_party/py/envlogger/...",
+-        "//third_party/yggdrasil_decision_forests/...",
++        "//...",
+     ],
+ )
+ 
