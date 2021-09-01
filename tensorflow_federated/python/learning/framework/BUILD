@@ -139,30 +139,6 @@ py_cpu_gpu_test(
 )
 
 py_library(
-    name = "debug_measurements",
-    srcs = ["debug_measurements.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_test(
-    name = "debug_measurements_test",
-    srcs = ["debug_measurements_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":debug_measurements",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
-
-py_library(
     name = "distributors",
     srcs = ["distributors.py"],
     srcs_version = "PY3",

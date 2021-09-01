@@ -18,6 +18,7 @@ from tensorflow_federated.python.learning import models
 from tensorflow_federated.python.learning import optimizers
 from tensorflow_federated.python.learning import reconstruction
 from tensorflow_federated.python.learning.client_weight_lib import ClientWeighting
+from tensorflow_federated.python.learning.debug_measurements import add_debug_measurements
 from tensorflow_federated.python.learning.federated_averaging import build_federated_averaging_process
 from tensorflow_federated.python.learning.federated_averaging import ClientFedAvg
 from tensorflow_federated.python.learning.federated_evaluation import build_federated_evaluation

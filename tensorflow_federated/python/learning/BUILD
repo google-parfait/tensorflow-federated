@@ -28,6 +28,7 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":client_weight_lib",
+        ":debug_measurements",
         ":federated_averaging",
         ":federated_evaluation",
         ":federated_sgd",
@@ -48,6 +49,33 @@ py_library(
     name = "client_weight_lib",
     srcs = ["client_weight_lib.py"],
     srcs_version = "PY3",
+)
+
+py_library(
+    name = "debug_measurements",
+    srcs = ["debug_measurements.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:measurements",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_test(
+    name = "debug_measurements_test",
+    srcs = ["debug_measurements_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":debug_measurements",
+        "//tensorflow_federated/python/aggregators:mean",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
 )
 
 py_library(

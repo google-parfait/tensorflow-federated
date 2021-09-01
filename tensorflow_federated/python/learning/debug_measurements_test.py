@@ -17,10 +17,11 @@ import collections
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.learning.framework import debug_measurements
+from tensorflow_federated.python.learning import debug_measurements
 
 TensorType = computation_types.TensorType
 FloatType = TensorType(tf.float32)
@@ -215,6 +216,106 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
     expected_client_statistics = collections.OrderedDict(
         average_client_norm=expected_norm, std_dev_client_norm=unbiased_std_dev)
     self.assertAllClose(actual_client_statistics, expected_client_statistics)
+
+  def test_add_measurements_to_weighted_aggregation_factory_types(self):
+    mean_factory = mean.MeanFactory()
+    debug_mean_factory = debug_measurements.add_debug_measurements(mean_factory)
+    value_type = computation_types.TensorType(tf.float32)
+    mean_aggregator = mean_factory.create(value_type, value_type)
+    debug_aggregator = debug_mean_factory.create(value_type, value_type)
+    self.assertTrue(debug_aggregator.is_weighted)
+    self.assertEqual(mean_aggregator.initialize.type_signature,
+                     debug_aggregator.initialize.type_signature)
+    self.assertEqual(mean_aggregator.next.type_signature.parameter,
+                     debug_aggregator.next.type_signature.parameter)
+    self.assertEqual(mean_aggregator.next.type_signature.result.state,
+                     debug_aggregator.next.type_signature.result.state)
+    self.assertEqual(mean_aggregator.next.type_signature.result.result,
+                     debug_aggregator.next.type_signature.result.result)
+
+  def test_add_measurements_to_weighted_aggregation_factory_output(self):
+    mean_factory = mean.MeanFactory()
+    debug_mean_factory = debug_measurements.add_debug_measurements(mean_factory)
+    value_type = computation_types.TensorType(tf.float32)
+    mean_aggregator = mean_factory.create(value_type, value_type)
+    debug_aggregator = debug_mean_factory.create(value_type, value_type)
+
+    state = mean_aggregator.initialize()
+    mean_output = mean_aggregator.next(state, [2.0, 4.0], [1.0, 1.0])
+    debug_output = debug_aggregator.next(state, [2.0, 4.0], [1.0, 1.0])
+    self.assertEqual(mean_output.state, debug_output.state)
+    self.assertNear(mean_output.result, debug_output.result, err=1e-6)
+
+    mean_measurements = mean_output.measurements
+    expected_debugging_measurements = {
+        'average_client_norm': 3.0,
+        'std_dev_client_norm': tf.math.sqrt(2.0),
+        'server_update_max': 3.0,
+        'server_update_norm': 3.0,
+        'server_update_min': 3.0,
+    }
+    debugging_measurements = debug_output.measurements
+    self.assertCountEqual(
+        list(debugging_measurements.keys()),
+        list(mean_measurements.keys()) +
+        list(expected_debugging_measurements.keys()))
+    for k in mean_output.measurements:
+      self.assertEqual(mean_measurements[k], debugging_measurements[k])
+    for k in expected_debugging_measurements:
+      self.assertNear(
+          debugging_measurements[k],
+          expected_debugging_measurements[k],
+          err=1e-6)
+
+  def test_add_measurements_to_unweighted_aggregation_factory_types(self):
+    mean_factory = mean.UnweightedMeanFactory()
+    debug_mean_factory = debug_measurements.add_debug_measurements(mean_factory)
+    value_type = computation_types.TensorType(tf.float32)
+    mean_aggregator = mean_factory.create(value_type)
+    debug_aggregator = debug_mean_factory.create(value_type)
+    self.assertFalse(debug_aggregator.is_weighted)
+    self.assertEqual(mean_aggregator.initialize.type_signature,
+                     debug_aggregator.initialize.type_signature)
+    self.assertEqual(mean_aggregator.next.type_signature.parameter,
+                     debug_aggregator.next.type_signature.parameter)
+    self.assertEqual(mean_aggregator.next.type_signature.result.state,
+                     debug_aggregator.next.type_signature.result.state)
+    self.assertEqual(mean_aggregator.next.type_signature.result.result,
+                     debug_aggregator.next.type_signature.result.result)
+
+  def test_add_measurements_to_unweighted_aggregation_factory_output(self):
+    mean_factory = mean.UnweightedMeanFactory()
+    debug_mean_factory = debug_measurements.add_debug_measurements(mean_factory)
+    value_type = computation_types.TensorType(tf.float32)
+    mean_aggregator = mean_factory.create(value_type)
+    debug_aggregator = debug_mean_factory.create(value_type)
+
+    state = mean_aggregator.initialize()
+    mean_output = mean_aggregator.next(state, [2.0, 4.0])
+    debug_output = debug_aggregator.next(state, [2.0, 4.0])
+    self.assertEqual(mean_output.state, debug_output.state)
+    self.assertNear(mean_output.result, debug_output.result, err=1e-6)
+
+    mean_measurements = mean_output.measurements
+    expected_debugging_measurements = {
+        'average_client_norm': 3.0,
+        'std_dev_client_norm': tf.math.sqrt(2.0),
+        'server_update_max': 3.0,
+        'server_update_norm': 3.0,
+        'server_update_min': 3.0,
+    }
+    debugging_measurements = debug_output.measurements
+    self.assertCountEqual(
+        list(debugging_measurements.keys()),
+        list(mean_measurements.keys()) +
+        list(expected_debugging_measurements.keys()))
+    for k in mean_output.measurements:
+      self.assertEqual(mean_measurements[k], debugging_measurements[k])
+    for k in expected_debugging_measurements:
+      self.assertNear(
+          debugging_measurements[k],
+          expected_debugging_measurements[k],
+          err=1e-6)
 
 
 if __name__ == '__main__':
