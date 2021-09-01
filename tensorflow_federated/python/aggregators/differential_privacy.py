@@ -349,7 +349,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       (new_agg_state, agg_result,
        agg_measurements) = record_agg_process.next(agg_state, record)
 
-      result, new_query_state = intrinsics.federated_map(
+      result, new_query_state, _ = intrinsics.federated_map(
           get_noised_result, (agg_result, query_state))
 
       query_metrics = intrinsics.federated_map(derive_metrics, new_query_state)
