@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for using Federated Analytics algorithms."""
+"""Libraries for computing private heavy hitters."""
 
-from tensorflow_federated.python.analytics import data_processing
-from tensorflow_federated.python.analytics import heavy_hitters
-from tensorflow_federated.python.analytics import histogram_processing
+from tensorflow_federated.python.analytics.heavy_hitters import iblt

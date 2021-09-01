@@ -25,6 +25,7 @@ py_library(
     deps = [
         ":data_processing",
         ":histogram_processing",
+        "//tensorflow_federated/python/analytics/heavy_hitters",
     ],
 )
 
