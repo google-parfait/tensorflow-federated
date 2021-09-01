@@ -34,6 +34,7 @@ py_library(
     deps = [
         ":chunkers",
         ":hyperedge_hashers",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -43,6 +44,7 @@ py_library(
         "chunkers.py",
     ],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_library(
@@ -51,6 +53,7 @@ py_library(
         "hyperedge_hashers.py",
     ],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
@@ -59,7 +62,11 @@ py_test(
     srcs = ["iblt_lib_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":iblt_lib"],
+    deps = [
+        ":iblt_lib",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -67,7 +74,11 @@ py_test(
     srcs = ["chunkers_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":chunkers"],
+    deps = [
+        ":chunkers",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -76,7 +87,11 @@ py_test(
     srcs = ["hyperedge_hashers_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":hyperedge_hashers"],
+    deps = [
+        ":hyperedge_hashers",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -93,6 +108,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -109,5 +125,7 @@ py_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
