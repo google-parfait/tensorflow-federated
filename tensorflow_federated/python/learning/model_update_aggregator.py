@@ -22,6 +22,7 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import secure
+from tensorflow_federated.python.learning import debug_measurements
 
 
 def _default_zeroing(
@@ -54,6 +55,7 @@ def robust_aggregator(
     zeroing: bool = True,
     clipping: bool = True,
     weighted: bool = True,
+    add_debug_measurements: bool = False,
 ) -> factory.AggregationFactory:
   """Creates aggregator for mean with adaptive zeroing and clipping.
 
@@ -69,11 +71,17 @@ def robust_aggregator(
     zeroing: Whether to enable adaptive zeroing for data corruption mitigation.
     clipping: Whether to enable adaptive clipping in the L2 norm for robustness.
     weighted: Whether the mean is weighted (vs. unweighted).
+    add_debug_measurements: Whether to add measurements suitable for debugging
+      learning algorithms. For more detail on these measurements, see
+      `tff.learning.add_debug_measurements`.
 
   Returns:
     A `tff.aggregators.AggregationFactory`.
   """
   factory_ = mean.MeanFactory() if weighted else mean.UnweightedMeanFactory()
+
+  if add_debug_measurements:
+    factory_ = debug_measurements.add_debug_measurements(factory_)
 
   if clipping:
     factory_ = _default_clipping(factory_)
@@ -123,6 +131,7 @@ def compression_aggregator(
     zeroing: bool = True,
     clipping: bool = True,
     weighted: bool = True,
+    add_debug_measurements: bool = False,
 ) -> factory.AggregationFactory:
   """Creates aggregator with compression and adaptive zeroing and clipping.
 
@@ -141,6 +150,9 @@ def compression_aggregator(
       Note this clipping is performed prior to the per-coordinate clipping
       required for quantization.
     weighted: Whether the mean is weighted (vs. unweighted).
+    add_debug_measurements: Whether to add measurements suitable for debugging
+      learning algorithms. For more detail on these measurements, see
+      `tff.learning.add_debug_measurements`.
 
   Returns:
     A `tff.aggregators.AggregationFactory`.
@@ -151,6 +163,9 @@ def compression_aggregator(
   factory_ = (
       mean.MeanFactory(factory_)
       if weighted else mean.UnweightedMeanFactory(factory_))
+
+  if add_debug_measurements:
+    factory_ = debug_measurements.add_debug_measurements(factory_)
 
   if clipping:
     factory_ = _default_clipping(factory_)

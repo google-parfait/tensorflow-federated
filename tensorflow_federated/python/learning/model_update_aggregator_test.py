@@ -33,14 +33,19 @@ _float_matrix_type = computation_types.TensorType(tf.float32, [200, 300])
 class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('simple', False, False),
-      ('zeroing', True, False),
-      ('clipping', False, True),
-      ('zeroing_and_clipping', False, False),
+      ('simple', False, False, False),
+      ('zeroing', True, False, False),
+      ('clipping', False, True, False),
+      ('zeroing_and_clipping', True, True, False),
+      ('debug_measurements', False, False, True),
+      ('zeroing_clipping_debug_measurements', True, True, True),
   )
-  def test_robust_aggregator_weighted(self, zeroing, clipping):
+  def test_robust_aggregator_weighted(self, zeroing, clipping,
+                                      add_debug_measurements):
     factory_ = model_update_aggregator.robust_aggregator(
-        zeroing=zeroing, clipping=clipping)
+        zeroing=zeroing,
+        clipping=clipping,
+        add_debug_measurements=add_debug_measurements)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
     process = factory_.create(_float_type, _float_type)
@@ -48,14 +53,20 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     self.assertTrue(process.is_weighted)
 
   @parameterized.named_parameters(
-      ('simple', False, False),
-      ('zeroing', True, False),
-      ('clipping', False, True),
-      ('zeroing_and_clipping', False, False),
+      ('simple', False, False, False),
+      ('zeroing', True, False, False),
+      ('clipping', False, True, False),
+      ('zeroing_and_clipping', True, True, False),
+      ('debug_measurements', False, False, True),
+      ('zeroing_clipping_debug_measurements', True, True, True),
   )
-  def test_robust_aggregator_unweighted(self, zeroing, clipping):
+  def test_robust_aggregator_unweighted(self, zeroing, clipping,
+                                        add_debug_measurements):
     factory_ = model_update_aggregator.robust_aggregator(
-        zeroing=zeroing, clipping=clipping, weighted=False)
+        zeroing=zeroing,
+        clipping=clipping,
+        weighted=False,
+        add_debug_measurements=add_debug_measurements)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create(_float_type)
@@ -79,7 +90,7 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
       ('simple', False, False),
       ('zeroing', True, False),
       ('clipping', False, True),
-      ('zeroing_and_clipping', False, False),
+      ('zeroing_and_clipping', True, True),
   )
   def test_secure_aggregator_weighted(self, zeroing, clipping):
     factory_ = model_update_aggregator.secure_aggregator(
@@ -94,7 +105,7 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
       ('simple', False, False),
       ('zeroing', True, False),
       ('clipping', False, True),
-      ('zeroing_and_clipping', False, False),
+      ('zeroing_and_clipping', True, True),
   )
   def test_secure_aggregator_unweighted(self, zeroing, clipping):
     factory_ = model_update_aggregator.secure_aggregator(
@@ -106,14 +117,19 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     self.assertFalse(process.is_weighted)
 
   @parameterized.named_parameters(
-      ('simple', False, False),
-      ('zeroing', True, False),
-      ('clipping', False, True),
-      ('zeroing_and_clipping', False, False),
+      ('simple', False, False, False),
+      ('zeroing', True, False, False),
+      ('clipping', False, True, False),
+      ('zeroing_and_clipping', True, True, False),
+      ('debug_measurements', False, False, True),
+      ('zeroing_clipping_debug_measurements', True, True, True),
   )
-  def test_compression_aggregator_weighted(self, zeroing, clipping):
+  def test_compression_aggregator_weighted(self, zeroing, clipping,
+                                           add_debug_measurements):
     factory_ = model_update_aggregator.compression_aggregator(
-        zeroing=zeroing, clipping=clipping)
+        zeroing=zeroing,
+        clipping=clipping,
+        add_debug_measurements=add_debug_measurements)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
     process = factory_.create(_float_type, _float_type)
@@ -121,14 +137,20 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     self.assertTrue(process.is_weighted)
 
   @parameterized.named_parameters(
-      ('simple', False, False),
-      ('zeroing', True, False),
-      ('clipping', False, True),
-      ('zeroing_and_clipping', False, False),
+      ('simple', False, False, False),
+      ('zeroing', True, False, False),
+      ('clipping', False, True, False),
+      ('zeroing_and_clipping', True, True, False),
+      ('debug_measurements', False, False, True),
+      ('zeroing_clipping_debug_measurements', True, True, True),
   )
-  def test_compression_aggregator_unweighted(self, zeroing, clipping):
+  def test_compression_aggregator_unweighted(self, zeroing, clipping,
+                                             add_debug_measurements):
     factory_ = model_update_aggregator.compression_aggregator(
-        zeroing=zeroing, clipping=clipping, weighted=False)
+        zeroing=zeroing,
+        clipping=clipping,
+        weighted=False,
+        add_debug_measurements=add_debug_measurements)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create(_float_type)
