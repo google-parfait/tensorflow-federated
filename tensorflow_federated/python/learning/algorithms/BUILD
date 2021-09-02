@@ -1,4 +1,5 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library")
 
 package(default_visibility = [
@@ -18,6 +19,7 @@ py_library(
     srcs = ["example_weighted_federated_averaging.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -47,6 +49,9 @@ py_cpu_gpu_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":example_weighted_federated_averaging",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/learning:model_examples",

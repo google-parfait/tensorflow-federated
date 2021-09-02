@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 package(default_visibility = ["//visibility:private"])
@@ -10,6 +11,9 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":stateful_fedavg_tf",
         ":stateful_fedavg_tff",
         "//tensorflow_federated",
@@ -20,7 +24,11 @@ py_library(
     name = "stateful_fedavg_tf",
     srcs = ["stateful_fedavg_tf.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
+        "//tensorflow_federated",
+    ],
 )
 
 py_library(
@@ -28,6 +36,7 @@ py_library(
     srcs = ["stateful_fedavg_tff.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":stateful_fedavg_tf",
         "//tensorflow_federated",
     ],
@@ -40,6 +49,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":stateful_fedavg_tf",
         ":stateful_fedavg_tff",
         "//tensorflow_federated",

@@ -112,3 +112,13 @@ grpc_deps()
 
 load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
 grpc_extra_deps()
+
+#
+# Python dependencies.
+#
+
+load("@rules_python//python:pip.bzl", "pip_install")
+pip_install(
+    name = "pip",
+    requirements = "//:requirements.txt",
+)

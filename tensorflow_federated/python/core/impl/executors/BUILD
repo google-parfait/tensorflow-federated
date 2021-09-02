@@ -1,4 +1,5 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -27,6 +28,9 @@ py_library(
     srcs = ["caching_executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("cachetools"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":executor_base",
         ":executor_utils",
         ":executor_value_base",
@@ -46,6 +50,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":caching_executor",
         ":eager_tf_executor",
         ":executor_base",
@@ -79,6 +86,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":cardinalities_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -115,6 +124,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("absl-py"),
         ":data_conversions",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
@@ -143,6 +153,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":data_backend_base",
         ":data_executor",
         ":eager_tf_executor",
@@ -162,6 +175,9 @@ py_library(
     srcs = ["eager_tf_executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("cachetools"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":executor_base",
         ":executor_utils",
         ":executor_value_base",
@@ -189,6 +205,9 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":eager_tf_executor",
         ":executor_stacks",
         ":executor_test_utils",
@@ -211,6 +230,8 @@ py_test(
     srcs_version = "PY3",
     tags = ["requires-gpu-nvidia"],
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":eager_tf_executor",
         "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computations",
@@ -244,6 +265,9 @@ py_test(
     srcs_version = "PY3",
     tags = ["nokokoro"],
     deps = [
+        requirement("portpicker"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":executor_bindings",
         ":value_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
@@ -270,6 +294,8 @@ py_library(
     srcs = ["executor_service.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
+        requirement("absl-py"),
         ":executor_factory",
         ":executor_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
@@ -287,6 +313,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
+        requirement("portpicker"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":eager_tf_executor",
         ":executor_base",
         ":executor_factory",
@@ -307,6 +337,8 @@ py_library(
     srcs = ["executor_serialization.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":executor_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
@@ -332,6 +364,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":executor_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
@@ -350,6 +383,11 @@ py_library(
     srcs = ["executor_stacks.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("cachetools"),
+        requirement("grpcio"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":caching_executor",
         ":eager_tf_executor",
         ":executor_base",
@@ -378,6 +416,10 @@ py_cpu_gpu_test(
     shard_count = 5,
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":eager_tf_executor",
         ":executor_base",
         ":executor_factory",
@@ -398,6 +440,9 @@ py_test(
     srcs_version = "PY3",
     tags = ["requires-gpu-nvidia"],
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":executor_base",
         ":executor_stacks",
         ":executor_test_utils",
@@ -414,6 +459,8 @@ py_library(
     srcs = ["executor_test_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":cardinalities_utils",
         ":executor_base",
         ":executor_stacks",
@@ -443,6 +490,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":eager_tf_executor",
         ":executor_stacks",
         ":executor_test_utils",
@@ -456,6 +505,7 @@ py_library(
     srcs = ["executor_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":executor_base",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -482,6 +532,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":eager_tf_executor",
         ":executor_test_utils",
         ":executor_utils",
@@ -515,6 +567,7 @@ py_library(
     srcs = ["federated_composing_strategy.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":executor_base",
         ":executor_utils",
         ":executor_value_base",
@@ -540,6 +593,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":eager_tf_executor",
         ":federated_composing_strategy",
         ":federated_resolving_strategy",
@@ -561,6 +616,8 @@ py_library(
     srcs = ["federated_resolving_strategy.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":executor_base",
         ":executor_utils",
         ":executor_value_base",
@@ -584,6 +641,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":eager_tf_executor",
         ":executor_test_utils",
         ":federated_resolving_strategy",
@@ -620,6 +679,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":eager_tf_executor",
         ":executor_test_utils",
         ":executor_value_base",
@@ -649,6 +710,7 @@ py_library(
     srcs = ["reference_resolving_executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("cachetools"),
         ":executor_base",
         ":executor_utils",
         ":executor_value_base",
@@ -671,6 +733,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":eager_tf_executor",
         ":executor_stacks",
         ":executor_test_utils",
@@ -691,6 +755,8 @@ py_library(
     srcs = ["remote_executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
+        requirement("absl-py"),
         ":executor_base",
         ":executor_serialization",
         ":executor_value_base",
@@ -712,6 +778,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
+        requirement("portpicker"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":executor_service",
         ":executor_stacks",
         ":executor_test_utils",
@@ -755,6 +825,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":eager_tf_executor",
         ":sequence_executor",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -782,6 +855,8 @@ py_test(
     srcs_version = "PY3",
     tags = ["nokokoro"],
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":serialization_bindings",
         "//tensorflow_federated/python/core/api:test_case",
     ],
@@ -792,6 +867,7 @@ py_library(
     srcs = ["sizing_executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":executor_base",
         ":executor_value_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -808,6 +884,8 @@ py_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":caching_executor",
         ":eager_tf_executor",
         ":reference_resolving_executor",
@@ -823,6 +901,7 @@ py_library(
     srcs = ["thread_delegating_executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("absl-py"),
         ":executor_base",
         ":executor_value_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -838,6 +917,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":caching_executor",
         ":eager_tf_executor",
         ":executor_base",
@@ -867,6 +948,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":executor_base",
         ":transforming_executor",
         "//tensorflow_federated/python/core/api:computations",
@@ -883,6 +966,7 @@ py_library(
     srcs_version = "PY3",
     tags = ["nokokoro"],
     deps = [
+        requirement("tf-nightly"),
         ":executor_utils",
         ":serialization_bindings",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -909,6 +993,7 @@ py_test(
     srcs_version = "PY3",
     tags = ["nokokoro"],
     deps = [
+        requirement("tf-nightly"),
         ":value_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",

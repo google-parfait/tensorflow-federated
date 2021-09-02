@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -43,6 +44,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
         ":computation_wrapper",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
@@ -96,6 +99,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
         ":computation_wrapper",
         ":computation_wrapper_instances",
         "//tensorflow_federated/python/common_libs:golden",

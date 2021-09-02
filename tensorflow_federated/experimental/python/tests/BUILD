@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_test")
 
 package(default_visibility = [":test_packages"])
@@ -14,5 +15,10 @@ py_test(
     srcs = ["jax_training_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        requirement("jax"),
+        requirement("numpy"),
+        requirement("absl-py"),
+        "//tensorflow_federated",
+    ],
 )

@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_binary")
 
 package(default_visibility = ["//visibility:private"])
@@ -9,5 +10,11 @@ py_binary(
     srcs = ["remote_executor_example.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        requirement("grpcio"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        "//tensorflow_federated",
+    ],
 )

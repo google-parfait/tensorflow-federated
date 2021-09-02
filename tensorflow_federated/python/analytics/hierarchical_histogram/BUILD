@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = ["//tensorflow_federated/python/analytics:__subpackages__"])
@@ -9,6 +10,7 @@ py_library(
     srcs = ["hierarchical_histogram_factory.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tensorflow-privacy"),
         ":clipping_factory",
         ":modular_clipping_factory",
         "//tensorflow_federated/python/aggregators:differential_privacy",
@@ -23,6 +25,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tensorflow-privacy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":build_tree_from_leaf",
         ":hierarchical_histogram_factory",
         "//tensorflow_federated/python/aggregators:factory",
@@ -40,6 +46,7 @@ py_library(
     srcs = ["hierarchical_histogram.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":clipping_factory",
         ":hierarchical_histogram_factory",
         "//tensorflow_federated/python/core/api:computations",
@@ -54,6 +61,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":hierarchical_histogram",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
@@ -64,7 +74,11 @@ py_library(
     name = "hierarchical_histogram_decoder",
     srcs = ["hierarchical_histogram_decoder.py"],
     srcs_version = "PY3",
-    deps = [":build_tree_from_leaf"],
+    deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        ":build_tree_from_leaf",
+    ],
 )
 
 py_test(
@@ -73,6 +87,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":build_tree_from_leaf",
         ":hierarchical_histogram_decoder",
     ],
@@ -82,6 +99,7 @@ py_library(
     name = "build_tree_from_leaf",
     srcs = ["build_tree_from_leaf.py"],
     srcs_version = "PY3",
+    deps = [requirement("numpy")],
 )
 
 py_test(
@@ -89,7 +107,11 @@ py_test(
     srcs = ["build_tree_from_leaf_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":build_tree_from_leaf"],
+    deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        ":build_tree_from_leaf",
+    ],
 )
 
 py_library(
@@ -97,6 +119,7 @@ py_library(
     srcs = ["modular_clipping_factory.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/api:computations",
@@ -115,6 +138,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":modular_clipping_factory",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
@@ -129,6 +154,7 @@ py_library(
     srcs = ["clipping_factory.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/api:computations",
@@ -146,6 +172,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":clipping_factory",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/core/api:test_case",

@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -24,6 +25,7 @@ py_library(
     srcs = ["async_execution_context.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:retrying",
         "//tensorflow_federated/python/common_libs:structure",
@@ -50,6 +52,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("absl-py"),
         ":async_execution_context",
         "//tensorflow_federated/python/core/impl/executors:executors_errors",
     ],
@@ -76,6 +79,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":sync_execution_context",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
@@ -91,6 +97,7 @@ py_library(
     srcs = ["mergeable_comp_execution_context.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":async_execution_context",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -115,6 +122,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":mergeable_comp_execution_context",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_base",

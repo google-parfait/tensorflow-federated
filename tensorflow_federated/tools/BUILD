@@ -1,4 +1,5 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_binary")
 
 package(default_visibility = [":tools_packages"])
@@ -21,4 +22,5 @@ py_binary(
     srcs = ["build_docs.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    deps = [requirement("absl-py")],
 )

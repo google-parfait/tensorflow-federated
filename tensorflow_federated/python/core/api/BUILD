@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -51,7 +52,11 @@ py_library(
     name = "test_case",
     srcs = ["test_case.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
+    deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
 )
 
 py_test(

@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -36,6 +37,9 @@ py_library(
     srcs = ["computation_types.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":placements",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -66,6 +70,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":computation_types",
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
@@ -85,7 +93,10 @@ py_test(
     srcs = ["placements_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":placements"],
+    deps = [
+        requirement("absl-py"),
+        ":placements",
+    ],
 )
 
 py_library(
@@ -93,6 +104,7 @@ py_library(
     srcs = ["type_analysis.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":computation_types",
         ":placements",
         ":type_conversions",
@@ -109,6 +121,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":computation_types",
         ":placements",
         ":type_analysis",
@@ -121,6 +135,9 @@ py_library(
     srcs = ["type_conversions.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":computation_types",
         ":typed_object",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -135,6 +152,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":computation_types",
         ":placements",
         ":type_conversions",
@@ -158,6 +179,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":computation_types",
         ":type_factory",
     ],
@@ -168,6 +191,7 @@ py_library(
     srcs = ["type_serialization.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":computation_types",
         ":placements",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -182,6 +206,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":computation_types",
         ":placements",
         ":type_serialization",
@@ -208,6 +234,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":computation_types",
         ":placements",
         ":type_transformations",

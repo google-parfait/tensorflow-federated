@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -35,7 +36,10 @@ py_library(
     name = "keras_optimizer",
     srcs = ["keras_optimizer.py"],
     srcs_version = "PY3",
-    deps = [":optimizer"],
+    deps = [
+        requirement("tf-nightly"),
+        ":optimizer",
+    ],
 )
 
 py_test(
@@ -44,6 +48,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":keras_optimizer",
         ":optimizer",
         ":optimizer_test_utils",
@@ -58,7 +64,10 @@ py_library(
     name = "optimizer",
     srcs = ["optimizer.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        requirement("tf-nightly"),
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
 )
 
 py_test(
@@ -67,6 +76,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":optimizer",
         "//tensorflow_federated/python/core/api:test_case",
     ],
@@ -78,6 +89,7 @@ py_library(
     srcs = ["optimizer_test_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         "//tensorflow_federated/python/core/api:test_case",
     ],
@@ -89,6 +101,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer_test_utils",
         "//tensorflow_federated/python/core/api:test_case",
     ],
@@ -98,7 +111,10 @@ py_library(
     name = "sgdm",
     srcs = ["sgdm.py"],
     srcs_version = "PY3",
-    deps = [":optimizer"],
+    deps = [
+        requirement("tf-nightly"),
+        ":optimizer",
+    ],
 )
 
 py_test(
@@ -107,6 +123,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":optimizer",
         ":optimizer_test_utils",
         ":sgdm",

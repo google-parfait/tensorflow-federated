@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -27,6 +28,7 @@ py_library(
     testonly = True,
     srcs = ["golden.py"],
     srcs_version = "PY3",
+    deps = [requirement("absl-py")],
 )
 
 py_test(
@@ -51,13 +53,17 @@ py_test(
     ],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":golden"],
+    deps = [
+        requirement("absl-py"),
+        ":golden",
+    ],
 )
 
 py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
     srcs_version = "PY3",
+    deps = [requirement("attrs")],
 )
 
 py_test(
@@ -67,6 +73,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("absl-py"),
         ":py_typecheck",
         ":structure",
     ],
@@ -87,7 +95,10 @@ py_test(
     srcs = ["retrying_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":retrying"],
+    deps = [
+        requirement("absl-py"),
+        ":retrying",
+    ],
 )
 
 py_library(
@@ -95,6 +106,7 @@ py_library(
     srcs = ["serialization_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":py_typecheck",
         "@com_google_protobuf//:protobuf_python",
     ],
@@ -107,6 +119,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
+        requirement("absl-py"),
         ":serialization_utils",
         "@com_google_protobuf//:protobuf_python",
     ],
@@ -116,7 +130,11 @@ py_library(
     name = "structure",
     srcs = ["structure.py"],
     srcs_version = "PY3",
-    deps = [":py_typecheck"],
+    deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
+        ":py_typecheck",
+    ],
 )
 
 py_test(
@@ -125,7 +143,11 @@ py_test(
     srcs = ["structure_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":structure"],
+    deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
+        ":structure",
+    ],
 )
 
 py_library(
@@ -133,13 +155,17 @@ py_library(
     testonly = True,
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_library(
     name = "tracing",
     srcs = ["tracing.py"],
     srcs_version = "PY3",
-    deps = [":py_typecheck"],
+    deps = [
+        requirement("absl-py"),
+        ":py_typecheck",
+    ],
 )
 
 py_test(
@@ -148,5 +174,8 @@ py_test(
     srcs = ["tracing_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tracing"],
+    deps = [
+        requirement("absl-py"),
+        ":tracing",
+    ],
 )
