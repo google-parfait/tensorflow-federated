@@ -81,7 +81,7 @@ set_default_context.set_default_context(context)
 However, there are some common configurations:
 
 The
-[execution_context.set_local_execution_context](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/native/execution_context.py)
+[execution_context.set_local_python_execution_context](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/native/execution_context.py)
 function constructs an `ExecutionContext` with a native compiler and a
 [local execution stack](execution.md#local-execution-stack).
 

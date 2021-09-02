@@ -72,7 +72,7 @@ def main(argv):
   server_endpoint = f'[::]:{FLAGS.worker_port}'
   insecure_channel = grpc.insecure_channel(
       server_endpoint, options=GRPC_CHANNEL_OPTIONS)
-  ex_context = tff.backends.native.create_remote_execution_context(
+  ex_context = tff.backends.native.create_remote_python_execution_context(
       channels=[insecure_channel])
 
   with tff.simulation.server_context(

@@ -90,7 +90,7 @@ class LocalExecutorMultiTPUTest(tf.test.TestCase, parameterized.TestCase):
     tf_devices = tf.config.list_logical_devices(tf_device)
     server_tf_device = None if not tf_devices else tf_devices[0]
     client_devices = tf.config.list_logical_devices('TPU')
-    tff.backends.native.set_local_execution_context(
+    tff.backends.native.set_local_python_execution_context(
         server_tf_device=server_tf_device, client_tf_devices=client_devices)
     parallel_client_run = create_tff_parallel_clients_fn()
     client_data = [

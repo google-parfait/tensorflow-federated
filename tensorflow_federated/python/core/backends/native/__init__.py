@@ -14,10 +14,10 @@
 """Libraries for interacting with native backends."""
 
 from tensorflow_federated.python.core.backends.native.compiler import transform_to_native_form
-from tensorflow_federated.python.core.backends.native.execution_contexts import create_local_execution_context
-from tensorflow_federated.python.core.backends.native.execution_contexts import create_remote_execution_context
+from tensorflow_federated.python.core.backends.native.execution_contexts import create_local_python_execution_context
+from tensorflow_federated.python.core.backends.native.execution_contexts import create_remote_python_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_sizing_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_thread_debugging_execution_context
-from tensorflow_federated.python.core.backends.native.execution_contexts import set_local_execution_context
-from tensorflow_federated.python.core.backends.native.execution_contexts import set_remote_execution_context
+from tensorflow_federated.python.core.backends.native.execution_contexts import set_local_python_execution_context
+from tensorflow_federated.python.core.backends.native.execution_contexts import set_remote_python_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import set_thread_debugging_execution_context

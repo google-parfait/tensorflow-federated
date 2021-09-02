@@ -13,5 +13,5 @@
 # limitations under the License.
 """Libraries for interacting with XLA backends."""
 
-from tensorflow_federated.python.core.backends.xla.execution_contexts import create_local_execution_context
-from tensorflow_federated.python.core.backends.xla.execution_contexts import set_local_execution_context
+from tensorflow_federated.python.core.backends.xla.execution_contexts import create_local_python_execution_context
+from tensorflow_federated.python.core.backends.xla.execution_contexts import set_local_python_execution_context

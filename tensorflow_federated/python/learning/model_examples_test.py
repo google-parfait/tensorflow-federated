@@ -79,5 +79,5 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_local_execution_context()
+  execution_contexts.set_local_python_execution_context()
   test_case.main()

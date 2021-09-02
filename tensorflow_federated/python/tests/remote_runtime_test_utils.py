@@ -33,9 +33,10 @@ def create_localhost_remote_context(ports: Sequence[str],
       grpc.insecure_channel('localhost:{}'.format(port)) for port in ports
   ]
   if default_num_clients is None:
-    context = tff.backends.native.create_remote_execution_context(channels)
+    context = tff.backends.native.create_remote_python_execution_context(
+        channels)
   else:
-    context = tff.backends.native.create_remote_execution_context(
+    context = tff.backends.native.create_remote_python_execution_context(
         channels, default_num_clients=default_num_clients)
   return context
 

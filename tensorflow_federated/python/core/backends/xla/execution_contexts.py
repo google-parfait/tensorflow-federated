@@ -20,7 +20,7 @@ from tensorflow_federated.python.core.impl.execution_contexts import sync_execut
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
-def create_local_execution_context():
+def create_local_python_execution_context():
   """Creates an XLA-based local execution context.
 
   NOTE: This context is only directly backed by an XLA executor. It does not
@@ -38,7 +38,7 @@ def create_local_execution_context():
   return sync_execution_context.ExecutionContext(executor_fn=factory)
 
 
-def set_local_execution_context(*args, **kwargs):
+def set_local_python_execution_context(*args, **kwargs):
   """Sets an XLA-based local execution context.
 
   Invokes `create_local_execution_context` to contruct an execution context,
@@ -49,5 +49,5 @@ def set_local_execution_context(*args, **kwargs):
     *args: Positional args for `create_local_execution_context`.
     **kwargs: Keyword args for `create_local_execution_context`.
   """
-  context = create_local_execution_context(*args, **kwargs)
+  context = create_local_python_execution_context(*args, **kwargs)
   context_stack_impl.context_stack.set_default_context(context)

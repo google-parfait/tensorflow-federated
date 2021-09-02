@@ -19,12 +19,12 @@ from tensorflow_federated.python.core.impl.execution_contexts import sync_execut
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
-def create_local_execution_context(default_num_clients: int = 0,
-                                   max_fanout=100,
-                                   clients_per_thread=1,
-                                   server_tf_device=None,
-                                   client_tf_devices=tuple(),
-                                   reference_resolving_clients=False):
+def create_local_python_execution_context(default_num_clients: int = 0,
+                                          max_fanout=100,
+                                          clients_per_thread=1,
+                                          server_tf_device=None,
+                                          client_tf_devices=tuple(),
+                                          reference_resolving_clients=False):
   """Creates an execution context that executes computations locally."""
   factory = executor_stacks.local_executor_factory(
       default_num_clients=default_num_clients,
@@ -43,14 +43,14 @@ def create_local_execution_context(default_num_clients: int = 0,
       executor_fn=factory, compiler_fn=_compiler)
 
 
-def set_local_execution_context(default_num_clients: int = 0,
-                                max_fanout=100,
-                                clients_per_thread=1,
-                                server_tf_device=None,
-                                client_tf_devices=tuple(),
-                                reference_resolving_clients=False):
+def set_local_python_execution_context(default_num_clients: int = 0,
+                                       max_fanout=100,
+                                       clients_per_thread=1,
+                                       server_tf_device=None,
+                                       client_tf_devices=tuple(),
+                                       reference_resolving_clients=False):
   """Sets an execution context that executes computations locally."""
-  context = create_local_execution_context(
+  context = create_local_python_execution_context(
       default_num_clients=default_num_clients,
       max_fanout=max_fanout,
       clients_per_thread=clients_per_thread,
@@ -96,11 +96,11 @@ def set_thread_debugging_execution_context(default_num_clients: int = 0,
   context_stack_impl.context_stack.set_default_context(context)
 
 
-def create_remote_execution_context(channels,
-                                    thread_pool_executor=None,
-                                    dispose_batch_size=20,
-                                    max_fanout: int = 100,
-                                    default_num_clients: int = 0):
+def create_remote_python_execution_context(channels,
+                                           thread_pool_executor=None,
+                                           dispose_batch_size=20,
+                                           max_fanout: int = 100,
+                                           default_num_clients: int = 0):
   """Creates context to execute computations with workers on `channels`."""
   factory = executor_stacks.remote_executor_factory(
       channels=channels,
@@ -114,13 +114,13 @@ def create_remote_execution_context(channels,
       executor_fn=factory, compiler_fn=compiler.transform_to_native_form)
 
 
-def set_remote_execution_context(channels,
-                                 thread_pool_executor=None,
-                                 dispose_batch_size=20,
-                                 max_fanout: int = 100,
-                                 default_num_clients: int = 0):
+def set_remote_python_execution_context(channels,
+                                        thread_pool_executor=None,
+                                        dispose_batch_size=20,
+                                        max_fanout: int = 100,
+                                        default_num_clients: int = 0):
   """Installs context to execute computations with workers on `channels`."""
-  context = create_remote_execution_context(
+  context = create_remote_python_execution_context(
       channels=channels,
       thread_pool_executor=thread_pool_executor,
       dispose_batch_size=dispose_batch_size,

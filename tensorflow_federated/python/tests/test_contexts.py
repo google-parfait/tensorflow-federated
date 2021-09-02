@@ -41,7 +41,7 @@ def create_native_local_caching_context():
 def _get_all_contexts():
   # pyformat: disable
   return [
-      ('native_local', tff.backends.native.create_local_execution_context()),
+      ('native_local', tff.backends.native.create_local_python_execution_context()),
       ('native_local_caching', create_native_local_caching_context()),
       ('native_remote',
        remote_runtime_test_utils.create_localhost_remote_context(WORKER_PORTS),

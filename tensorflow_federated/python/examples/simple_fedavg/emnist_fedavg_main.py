@@ -137,7 +137,7 @@ def main(argv):
   # detected by TF.
   client_devices = tf.config.list_logical_devices('GPU')
   server_device = tf.config.list_logical_devices('CPU')[0]
-  tff.backends.native.set_local_execution_context(
+  tff.backends.native.set_local_python_execution_context(
       server_tf_device=server_device, client_tf_devices=client_devices)
 
   train_data, test_data = get_emnist_dataset()

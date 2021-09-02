@@ -216,7 +216,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
 
   # pyformat: disable
   @test_contexts.with_contexts(
-      ('native_local', tff.backends.native.create_local_execution_context()),
+      ('native_local', tff.backends.native.create_local_python_execution_context()),
       ('native_local_caching', test_contexts.create_native_local_caching_context()),
       ('native_remote',
        remote_runtime_test_utils.create_localhost_remote_context(test_contexts.WORKER_PORTS),
@@ -243,7 +243,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
 
   # pyformat: disable
   @test_contexts.with_contexts(
-      ('native_local', tff.backends.native.create_local_execution_context()),
+      ('native_local', tff.backends.native.create_local_python_execution_context()),
       ('native_local_caching', test_contexts.create_native_local_caching_context()),
       ('native_remote',
        remote_runtime_test_utils.create_localhost_remote_context(test_contexts.WORKER_PORTS),

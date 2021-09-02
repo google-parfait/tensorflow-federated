@@ -301,5 +301,5 @@ class BroadcastProcessExecutionTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_local_execution_context(default_num_clients=1)
+  execution_contexts.set_local_python_execution_context(default_num_clients=1)
   test_case.main()

@@ -73,4 +73,4 @@ if sys.version_info[0] < 3 or sys.version_info[1] < 7:
 
 # Initialize a default execution context. This is implicitly executed the
 # first time a module in the `core` package is imported.
-backends.native.set_local_execution_context()
+backends.native.set_local_python_execution_context()

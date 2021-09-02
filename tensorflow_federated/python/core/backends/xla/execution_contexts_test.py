@@ -34,10 +34,11 @@ from tensorflow_federated.python.core.impl.xla_context import xla_serialization
 class ExecutionContextsTest(absltest.TestCase):
 
   def test_create_local_execution_context(self):
-    context = execution_contexts.create_local_execution_context()
+    context = execution_contexts.create_local_python_execution_context()
     self.assertIsInstance(context, sync_execution_context.ExecutionContext)
 
-  def test_set_local_execution_context_and_run_simple_xla_computation(self):
+  def test_set_local_python_execution_context_and_run_simple_xla_computation(
+      self):
     builder = xla_client.XlaBuilder('comp')
     xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
     xla_client.ops.Constant(builder, np.int32(10))
@@ -47,7 +48,7 @@ class ExecutionContextsTest(absltest.TestCase):
         xla_comp, [], comp_type)
     ctx_stack = context_stack_impl.context_stack
     comp = computation_impl.ComputationImpl(comp_pb, ctx_stack)
-    execution_contexts.set_local_execution_context()
+    execution_contexts.set_local_python_execution_context()
     self.assertEqual(comp(), 10)
 
   def test_federated_sum_in_xla_execution_context(self):
@@ -57,7 +58,7 @@ class ExecutionContextsTest(absltest.TestCase):
     def comp(x):
       return intrinsics.federated_sum(x)
 
-    execution_contexts.set_local_execution_context()
+    execution_contexts.set_local_python_execution_context()
     self.assertEqual(comp([1, 2, 3]), 6)
 
   def test_unweighted_federated_mean_in_xla_execution_context(self):
@@ -67,7 +68,7 @@ class ExecutionContextsTest(absltest.TestCase):
     def comp(x):
       return intrinsics.federated_mean(x)
 
-    execution_contexts.set_local_execution_context()
+    execution_contexts.set_local_python_execution_context()
     self.assertEqual(comp([1.0, 2.0, 3.0]), 2.0)
 
 
