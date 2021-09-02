@@ -13,6 +13,7 @@
 # limitations under the License.
 """A library of static analysis functions for ASTs."""
 
+import functools
 from typing import Callable, List, Optional, Tuple, Type, Union
 
 import tensorflow as tf
@@ -491,6 +492,10 @@ def contains_no_unbound_references(tree, excluding=None):
   return len(names) == 0  # pylint: disable=g-explicit-length-test
 
 
+# Repeated calls to `_compiled_comp_equal` can become a bottleneck on some
+# large computation graph transformations. Caching repeated calls significantly
+# improves execution time performance for these cases.
+@functools.lru_cache()
 def _compiled_comp_equal(comp_1, comp_2):
   """Returns `True` iff the computations are entirely identical.
 
