@@ -16,23 +16,23 @@ At a high level, there are three components to tracing a Federated computation.
 
 Internally, a TFF computation only ever have zero or one argument. The arguments
 provided to the
-[computations.federated_computation](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/api/computations.py)
+[computations.federated_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/api/computations.py)
 decorator describe type signature of the arguments to the TFF computation. TFF
 uses this information to to determine how to pack the arguments of the Python
 function into a single
-[structure.Struct](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/common_libs/structure.py).
+[structure.Struct](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/common_libs/structure.py).
 
 Note: Using `Struct` as a single data structure to represent both Python `args`
 and `kwargs` is the reason that `Struct` accepts both named and unnamed fields.
 
 See
-[function_utils.create_argument_unpacking_fn](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/computation/function_utils.py)
+[function_utils.create_argument_unpacking_fn](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/computation/function_utils.py)
 for more information.
 
 ### Tracing the function
 
 When tracing a `federated_computation`, the user's function is called using
-[value_impl.Value](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/federated_context/value_impl.py)
+[value_impl.Value](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context/value_impl.py)
 as a stand-in replacement for each argument. `Value` attempts to emulate the
 behavior of the original argument type by implementing common Python dunder
 methods (e.g. `__getattr__`).
@@ -40,9 +40,9 @@ methods (e.g. `__getattr__`).
 In more detail, when there is exactly one argument, tracing is accomplished by:
 
 1.  Constructing a
-    [value_impl.ValueImpl](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/federated_context/value_impl.py)
+    [value_impl.ValueImpl](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context/value_impl.py)
     backed by a
-    [building_blocks.Reference](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
+    [building_blocks.Reference](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
     with appropriate type signature to represent the argument.
 
 2.  Invoking the function on the `ValueImpl`. This causes the Python runtime to
@@ -61,7 +61,7 @@ Here the function’s parameter is a tuple and in the body of the fuction the 0t
 element is selected. This invokes Python’s `__getitem__` method, which is
 overridden on `ValueImpl`. In the simplest case, the implementation of
 `ValueImpl.__getitem__` constructs a
-[building_blocks.Selection](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
+[building_blocks.Selection](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
 to represent the invocation of `__getitem__` and returns a `ValueImpl` backed by
 this new `Selection`.
 
@@ -72,9 +72,9 @@ dunder methods to be invoked.
 ### Constructing the AST
 
 The result of tracing the function is packaged into a
-[building_blocks.Lambda](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
+[building_blocks.Lambda](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
 whose `parameter_name` and `parameter_type` map to the
-[building_block.Reference](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
+[building_block.Reference](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
 created to represent the packed arguments. The resulting `Lambda` is then
 returned as a Python object that fully represents the user’s Python function.
 

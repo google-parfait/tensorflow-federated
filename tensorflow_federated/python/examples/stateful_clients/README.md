@@ -9,7 +9,7 @@ protection.
 
 This project is based on the standalone implementaion of Federated Averaging
 algorithm in
-[`simple_fedavg`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples/simple_fedavg).
+[`simple_fedavg`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg).
 We introduce a coutner on each client, which tracks the total number of
 iterations for model training on the clients. For example, if client A has been
 sampled m times at round n, and each time local model training has been run with

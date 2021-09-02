@@ -80,7 +80,7 @@ blocks such as `tff.federated_sum`, `tff.federated_reduce`, or
 
 TFF uses an internal language to represent federated computations, the syntax of
 which is defined by the serializable representation in
-[computation.proto](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/proto/v0/computation.proto).
+[computation.proto](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/proto/v0/computation.proto).
 Users of FC API generally won't need to interact with this language directly,
 though. Rather, we provide a Python API (the `tff` namespace) that wraps arounds
 it as a way to define computations.

@@ -14,14 +14,14 @@ There are two principal modes of deployment for TFF computations:
 *   **Native backends**. We're going to refer to a backend as *native* if it is
     capable of interpreting the syntactic structure of TFF computations as
     defined in
-    [`computation.proto`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/proto/v0/computation.proto).
+    [`computation.proto`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/proto/v0/computation.proto).
     A native backend does not necessarily have to support all language
     constructs or intrinsics. Native backends must implement one of the standard
     TFF *executor* interfaces, such as
     [`tff.framework.Executor`](https://www.tensorflow.org/federated/api_docs/python/tff/framework/Executor)
     for consumption by Python code, or the language-independent version of it
     defined in
-    [`executor.proto`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/proto/v0/executor.proto)
+    [`executor.proto`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/proto/v0/executor.proto)
     exposed as a gRPC endpoint.
 
     Native backends that support the above interfaces can be used interactively

@@ -84,7 +84,7 @@ information on using pull requests.
 
 Include a license at the top of new files.
 
-*   [Python license example](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/__init__.py#L1)
+*   [Python license example](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/__init__.py#L1)
 
 ### TensorFlow Guidelines.
 

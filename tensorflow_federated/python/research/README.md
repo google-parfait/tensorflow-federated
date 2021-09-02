@@ -8,5 +8,5 @@ deprecated. Please check out the new
 deciated to federated research.
 
 See
-[Using TFF for Federated Learning Research](https://github.com/tensorflow/federated/blob/master/docs/tff_for_research.md)
+[Using TFF for Federated Learning Research](https://github.com/tensorflow/federated/blob/main/docs/tff_for_research.md)
 for information about Federated Learning research in TFF.
