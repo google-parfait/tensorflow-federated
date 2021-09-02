@@ -53,6 +53,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -75,6 +77,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -188,6 +191,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -224,6 +230,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -247,6 +255,7 @@ py_library(
         "//tensorflow_federated/python/tensorflow_libs:graph_merge",
         "//tensorflow_federated/python/tensorflow_libs:graph_optimizations",
         "//tensorflow_federated/python/tensorflow_libs:graph_spec",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -271,6 +280,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -297,6 +308,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -308,6 +321,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_factory",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -325,6 +339,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -341,6 +356,9 @@ py_test(
         ":tree_analysis",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -350,7 +368,11 @@ py_test(
     srcs = ["intrinsic_defs_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":intrinsic_defs"],
+    deps = [
+        ":intrinsic_defs",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )
 
 py_library(
@@ -402,6 +424,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -419,6 +442,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -431,6 +456,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -451,6 +477,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -468,6 +496,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -510,6 +539,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -538,6 +568,9 @@ py_test(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -554,6 +587,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -575,6 +609,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -606,6 +643,7 @@ py_test(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -701,5 +739,7 @@ py_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

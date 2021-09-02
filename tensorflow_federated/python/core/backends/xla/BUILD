@@ -46,6 +46,7 @@ py_test(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -77,6 +78,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -111,6 +113,7 @@ py_test(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -139,5 +142,6 @@ py_test(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
+        "@absl_py//absl/testing:absltest",
     ],
 )
