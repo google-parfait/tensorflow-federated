@@ -13,6 +13,7 @@
 # limitations under the License.
 """Libraries for developing Federated Learning algorithms."""
 
+from tensorflow_federated.python.core.impl.computation.function_utils import ConcreteFunction
 from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_broadcast_process_from_model
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_process
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_stateless_broadcaster

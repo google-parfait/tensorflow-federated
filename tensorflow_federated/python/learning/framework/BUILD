@@ -27,6 +27,7 @@ py_library(
     deps = [
         ":encoding_utils",
         ":optimizer_utils",
+        "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/learning:model_utils",
     ],
 )
