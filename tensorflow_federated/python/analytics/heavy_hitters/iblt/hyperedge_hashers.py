@@ -80,7 +80,7 @@ class RandomHyperEdgeHasher():
       raise ValueError('repetitions must be at least 3.')
 
     self._seed = seed
-    self._salt = [str(seed + i) + _SEPARATOR for i in range(repetitions + 1)]
+    self._salt = [str(seed + i) + _SEPARATOR for i in range(repetitions)]
     self._table_size = table_size
     self._repetitions = repetitions
 
@@ -166,7 +166,7 @@ class CoupledHyperEdgeHasher():
                        f' rescale_factor = {rescale_factor}')
 
     self._seed = seed
-    self._salt = [str(seed + i) + _SEPARATOR for i in range(repetitions + 1)]
+    self._salt = [str(seed + i) + _SEPARATOR for i in range(repetitions)]
     self._table_size = table_size
     self._repetitions = repetitions
     self._rescale_factor = rescale_factor
