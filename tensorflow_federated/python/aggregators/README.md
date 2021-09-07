@@ -2,4 +2,4 @@
 
 Contact: @prachetit, @zacharygarrett
 
-TBW
+For the public module description, see `__init__.py`.
