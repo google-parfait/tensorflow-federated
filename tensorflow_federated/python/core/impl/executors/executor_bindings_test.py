@@ -19,10 +19,10 @@ import portpicker
 import tensorflow as tf
 
 from pybind11_abseil import status
+from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.executors import executor_bindings
-from tensorflow_federated.python.core.impl.executors import serialization_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -132,7 +132,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
           tf.constant(0, ds.element_spec.dtype),
           lambda s, x: s + tf.reduce_sum(x))
 
-    comp_pb = serialization_bindings.Value(
+    comp_pb = executor_pb2.Value(
         computation=sum_examples.get_proto(sum_examples))
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
@@ -165,8 +165,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
 
       return add_preprocessing(*datasets)
 
-    comp_pb = serialization_bindings.Value(
-        computation=preprocess.get_proto(preprocess))
+    comp_pb = executor_pb2.Value(computation=preprocess.get_proto(preprocess))
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
@@ -245,7 +244,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
     def foo(a, b):
       return tf.add(a, b)
 
-    comp_pb = serialization_bindings.Value(computation=foo.get_proto(foo))
+    comp_pb = executor_pb2.Value(computation=foo.get_proto(foo))
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     result_value_pb = executor.materialize(result.ref)
@@ -259,7 +258,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
     def foo():
       return tf.constant(123.0)
 
-    comp_pb = serialization_bindings.Value(computation=foo.get_proto(foo))
+    comp_pb = executor_pb2.Value(computation=foo.get_proto(foo))
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, None)
     result_value_pb = executor.materialize(result.ref)
@@ -410,7 +409,7 @@ class ReferenceResolvingExecutorBindingsTest(test_case.TestCase):
     def foo(a, b):
       return tf.add(a, b)
 
-    comp_pb = serialization_bindings.Value(computation=foo.get_proto(foo))
+    comp_pb = executor_pb2.Value(computation=foo.get_proto(foo))
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, arg.ref)
     result_value_pb = executor.materialize(result.ref)
@@ -425,7 +424,7 @@ class ReferenceResolvingExecutorBindingsTest(test_case.TestCase):
     def foo():
       return tf.constant(123.0)
 
-    comp_pb = serialization_bindings.Value(computation=foo.get_proto(foo))
+    comp_pb = executor_pb2.Value(computation=foo.get_proto(foo))
     comp = executor.create_value(comp_pb)
     result = executor.create_call(comp.ref, None)
     result_value_pb = executor.materialize(result.ref)

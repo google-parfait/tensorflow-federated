@@ -30,9 +30,8 @@ class SerializeTensorTest(test_case.TestCase, parameterized.TestCase):
       ('tensor_string', [[b'abc', b'xyz']], tf.string),
   )
   def test_serialize(self, input_value, dtype):
-    value_proto = serialization_bindings.Value()
     value_proto = serialization_bindings.serialize_tensor_value(
-        tf.convert_to_tensor(input_value, dtype), value_proto)
+        tf.convert_to_tensor(input_value, dtype))
     tensor_proto = tf.make_tensor_proto(values=0)
     self.assertTrue(value_proto.tensor.Unpack(tensor_proto))
     roundtrip_value = tf.make_ndarray(tensor_proto)
@@ -47,9 +46,8 @@ class SerializeTensorTest(test_case.TestCase, parameterized.TestCase):
       ('tensor_string', [[b'abc', b'xyz']], tf.string),
   )
   def test_roundtrip(self, input_value, dtype):
-    value_proto = serialization_bindings.Value()
     value_proto = serialization_bindings.serialize_tensor_value(
-        tf.convert_to_tensor(input_value, dtype), value_proto)
+        tf.convert_to_tensor(input_value, dtype))
     roundtrip_value = serialization_bindings.deserialize_tensor_value(
         value_proto)
     self.assertAllEqual(roundtrip_value, input_value)

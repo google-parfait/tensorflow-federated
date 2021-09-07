@@ -15,14 +15,6 @@
 
 from tensorflow_federated.cc.core.impl.executors import serialization_bindings
 
-# Protobuf constructors.
-Value = serialization_bindings.Value
-Sequence = serialization_bindings.Sequence
-Struct = serialization_bindings.Struct
-Element = serialization_bindings.Element
-Federated = serialization_bindings.Federated
-Cardinality = serialization_bindings.Cardinality
-
 # Serialization methods.
 serialize_tensor_value = serialization_bindings.serialize_tensor_value
 deserialize_tensor_value = serialization_bindings.deserialize_tensor_value

@@ -17,11 +17,11 @@ import collections
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
+from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.impl.executors import serialization_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -34,7 +34,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     x = tf.constant(10.0)
     type_spec = computation_types.TensorType(tf.as_dtype(x.dtype), x.shape)
     value_proto, value_type = value_serialization.serialize_value(x, type_spec)
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type,
                                 computation_types.TensorType(tf.float32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -46,7 +46,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     x = tf.constant(10.0)
     value_proto, value_type = value_serialization.serialize_value(
         x, computation_types.TensorType(tf.int32))
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type,
                                 computation_types.TensorType(tf.int32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -58,7 +58,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     x = tf.constant([10, 20, 30])
     value_proto, value_type = value_serialization.serialize_value(
         x, computation_types.TensorType(tf.int32, [3]))
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type,
                                 computation_types.TensorType(tf.int32, [3]))
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -93,7 +93,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     ds = tf.data.Dataset.range(5).map(lambda x: x * 2)
     value_proto, value_type = value_serialization.serialize_value(
         ds, computation_types.SequenceType(tf.int64))
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type,
                                 computation_types.SequenceType(tf.int64))
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -112,7 +112,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
             element=(tf.int64, tf.int32, tf.float32)))
     expected_type = computation_types.SequenceType(
         (tf.int64, tf.int32, tf.float32))
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type, expected_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # Only checking for equivalence, we don't have the Python container
@@ -135,7 +135,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     sequence_type = computation_types.SequenceType(element=element_type)
     value_proto, value_type = value_serialization.serialize_value(
         ds, sequence_type)
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assertEqual(value_type, sequence_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     self.assert_types_equivalent(type_spec, sequence_type)
@@ -172,7 +172,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     sequence_type = computation_types.SequenceType(element=element_type)
     value_proto, value_type = value_serialization.serialize_value(
         ds, sequence_type)
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type, sequence_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # These aren't the same because ser/de destroys the PyContainer
@@ -224,7 +224,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
             b=[tf.int32, tf.int32],
             c=collections.OrderedDict(d=tf.int32)))
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # Don't assert on the Python container since it is lost in serialization.
@@ -235,7 +235,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     x = (10, 20)
     x_type = computation_types.to_type((tf.int32, tf.int32))
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     self.assert_types_equivalent(type_spec, x_type)
@@ -245,7 +245,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     x = [10, 20]
     x_type = computation_types.at_clients(tf.int32)
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type,
                                 computation_types.at_clients(tf.int32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -264,13 +264,12 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
         placement=fully_specified_type_at_clients.federated.placement,
         all_equal=fully_specified_type_at_clients.federated.all_equal)
 
-    federated_proto = serialization_bindings.Federated(
+    federated_proto = executor_pb2.Value.Federated(
         type=unspecified_member_federated_type, value=[member_proto])
-    federated_value_proto = serialization_bindings.Value(
-        federated=federated_proto)
+    federated_value_proto = executor_pb2.Value(federated=federated_proto)
 
-    self.assertIsInstance(member_proto, serialization_bindings.Value)
-    self.assertIsInstance(federated_value_proto, serialization_bindings.Value)
+    self.assertIsInstance(member_proto, executor_pb2.Value)
+    self.assertIsInstance(federated_value_proto, executor_pb2.Value)
 
     deserialized_federated_value, deserialized_type_spec = value_serialization.deserialize_value(
         federated_value_proto)
@@ -293,15 +292,14 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
         placement=fully_specified_type_at_clients.federated.placement,
         all_equal=False)
 
-    federated_proto = serialization_bindings.Federated(
+    federated_proto = executor_pb2.Value.Federated(
         type=unspecified_member_federated_type,
         value=[int_member_proto, float_member_proto])
-    federated_value_proto = serialization_bindings.Value(
-        federated=federated_proto)
+    federated_value_proto = executor_pb2.Value(federated=federated_proto)
 
-    self.assertIsInstance(int_member_proto, serialization_bindings.Value)
-    self.assertIsInstance(float_member_proto, serialization_bindings.Value)
-    self.assertIsInstance(federated_value_proto, serialization_bindings.Value)
+    self.assertIsInstance(int_member_proto, executor_pb2.Value)
+    self.assertIsInstance(float_member_proto, executor_pb2.Value)
+    self.assertIsInstance(federated_value_proto, executor_pb2.Value)
 
     with self.assertRaises(TypeError):
       value_serialization.deserialize_value(federated_value_proto)
@@ -324,17 +322,14 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     unspecified_member_federated_type = computation_pb2.FederatedType(
         placement=type_at_clients.federated.placement, all_equal=False)
 
-    federated_proto = serialization_bindings.Federated(
+    federated_proto = executor_pb2.Value.Federated(
         type=unspecified_member_federated_type,
         value=[larger_type_member_proto, smaller_type_member_proto])
-    federated_value_proto = serialization_bindings.Value(
-        federated=federated_proto)
+    federated_value_proto = executor_pb2.Value(federated=federated_proto)
 
-    self.assertIsInstance(smaller_type_member_proto,
-                          serialization_bindings.Value)
-    self.assertIsInstance(larger_type_member_proto,
-                          serialization_bindings.Value)
-    self.assertIsInstance(federated_value_proto, serialization_bindings.Value)
+    self.assertIsInstance(smaller_type_member_proto, executor_pb2.Value)
+    self.assertIsInstance(larger_type_member_proto, executor_pb2.Value)
+    self.assertIsInstance(federated_value_proto, executor_pb2.Value)
 
     _, deserialized_type_spec = value_serialization.deserialize_value(
         federated_value_proto)
@@ -345,7 +340,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     x = 10
     x_type = computation_types.at_server(tf.int32)
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    self.assertIsInstance(value_proto, serialization_bindings.Value)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type,
                                 computation_types.at_server(tf.int32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -464,7 +459,8 @@ class SerializeCardinalitiesTest(test_case.TestCase):
     cardinalities_list = value_serialization.serialize_cardinalities(
         client_and_server_cardinalities)
     for cardinality in cardinalities_list:
-      self.assertIsInstance(cardinality, serialization_bindings.Cardinality)
+      self.assertIsInstance(cardinality,
+                            executor_pb2.SetCardinalitiesRequest.Cardinality)
     reconstructed_cardinalities = value_serialization.deserialize_cardinalities(
         cardinalities_list)
     self.assertEqual(client_and_server_cardinalities,
@@ -475,7 +471,8 @@ class SerializeCardinalitiesTest(test_case.TestCase):
     cardinalities_list = value_serialization.serialize_cardinalities(
         client_cardinalities)
     for cardinality in cardinalities_list:
-      self.assertIsInstance(cardinality, serialization_bindings.Cardinality)
+      self.assertIsInstance(cardinality,
+                            executor_pb2.SetCardinalitiesRequest.Cardinality)
     reconstructed_cardinalities = value_serialization.deserialize_cardinalities(
         cardinalities_list)
     self.assertEqual(client_cardinalities, reconstructed_cardinalities)

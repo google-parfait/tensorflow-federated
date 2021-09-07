@@ -24,6 +24,7 @@ import zipfile
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
+from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -38,8 +39,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
-_SerializeReturnType = Tuple[serialization_bindings.Value,
-                             computation_types.Type]
+_SerializeReturnType = Tuple[executor_pb2.Value, computation_types.Type]
 _DeserializeReturnType = Tuple[Any, computation_types.Type]
 
 # The maximum size allowed for serialized sequence values. Sequence that
@@ -61,24 +61,22 @@ def _serialize_computation(
   """Serializes a TFF computation."""
   type_spec = executor_utils.reconcile_value_type_with_type_spec(
       type_serialization.deserialize_type(comp.type), type_spec)
-  return serialization_bindings.Value(computation=comp), type_spec
+  return executor_pb2.Value(computation=comp), type_spec
 
 
 @tracing.trace
 def _serialize_tensor_value(
-    value_proto: serialization_bindings.Value, value: Any,
+    value: Any,
     type_spec: computation_types.TensorType) -> computation_types.TensorType:
-  """Serializes a tensor value into `serialization_bindings.Value`.
+  """Serializes a tensor value into `executor_pb2.Value`.
 
   Args:
-    value_proto: A `serialization_bindings.Value` proto to serialize the `value`
-      into.
     value: A Numpy array or other object understood by `tf.make_tensor_proto`.
     type_spec: A `tff.TensorType`.
 
   Returns:
     A tuple `(value_proto, ret_type_spec)` in which `value_proto` is an instance
-    of `serialization_bindings.Value` with the serialized content of `value`,
+    of `executor_pb2.Value` with the serialized content of `value`,
     and `ret_type_spec` is the type of the serialized value. The `ret_type_spec`
     is the same as the argument `type_spec` if that argument was not `None`. If
     the argument was `None`, `ret_type_spec` is a type determined from `value`.
@@ -94,8 +92,7 @@ def _serialize_tensor_value(
                     f'shape {type_spec.shape}.')
   if value.dtype != type_spec.dtype:
     value = tf.cast(value, type_spec.dtype)
-  return serialization_bindings.serialize_tensor_value(value,
-                                                       value_proto), type_spec
+  return serialization_bindings.serialize_tensor_value(value), type_spec
 
 
 def _serialize_dataset(
@@ -131,22 +128,19 @@ def _serialize_dataset(
 
 @tracing.trace
 def _serialize_sequence_value(
-    value_proto: serialization_bindings.Value,
     value: Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES],
     type_spec: computation_types.SequenceType
 ) -> computation_types.SequenceType:
-  """Serializes a `tf.data.Dataset` value into `serialization_bindings.Value`.
+  """Serializes a `tf.data.Dataset` value into `executor_pb2.Value`.
 
   Args:
-    value_proto: A `serialization_bindings.Value` proto to serialize the `value`
-      into.
     value: A `tf.data.Dataset`, or equivalent.
     type_spec: A `computation_types.Type` specifying the TFF sequence type of
       `value.`
 
   Returns:
     A tuple `(value_proto, type_spec)` in which `value_proto` is an instance
-    of `serialization_bindings.Value` with the serialized content of `value`,
+    of `executor_pb2.Value` with the serialized content of `value`,
     and `type_spec` is the type of the serialized value.
   """
   if not isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
@@ -160,6 +154,7 @@ def _serialize_sequence_value(
     raise TypeError(
         'Cannot serialize dataset with elements of type {!s} as TFF type {!s}.'
         .format(value_type, type_spec if type_spec is not None else 'unknown'))
+  value_proto = executor_pb2.Value()
   # TFF must store the type spec here because TF will lose the ordering of the
   # names for `tf.data.Dataset` that return elements of
   # `collections.abc.Mapping` type. This allows TFF to preserve and restore the
@@ -172,7 +167,6 @@ def _serialize_sequence_value(
 
 @tracing.trace
 def _serialize_struct_type(
-    value_proto: serialization_bindings.Value,
     struct_typed_value: Any,
     type_spec: computation_types.StructType,
 ) -> computation_types.StructType:
@@ -185,19 +179,22 @@ def _serialize_struct_type(
                     f'\n{struct_typed_value!r}\nto\n{type_spec}.')
   type_elem_iter = structure.iter_elements(type_spec)
   val_elem_iter = structure.iter_elements(value_structure)
-  struct_proto = value_proto.struct
+  elements = []
   for (e_name, e_type), (_, e_val) in zip(type_elem_iter, val_elem_iter):
-    element_proto = struct_proto.element.add()
-    serialize_value(e_val, e_type, value_proto=element_proto.value)
+    e_value, _ = serialize_value(e_val, e_type)
     if e_name:
-      element_proto.name = e_name
+      element = executor_pb2.Value.Struct.Element(name=e_name, value=e_value)
+    else:
+      element = executor_pb2.Value.Struct.Element(value=e_value)
+    elements.append(element)
+  value_proto = executor_pb2.Value(
+      struct=executor_pb2.Value.Struct(element=elements))
   return value_proto, type_spec
 
 
 @tracing.trace
 def _serialize_federated_value(
-    value_proto: serialization_bindings.Value, federated_value: Any,
-    type_spec: computation_types.FederatedType
+    federated_value: Any, type_spec: computation_types.FederatedType
 ) -> computation_types.FederatedType:
   """Serializes a value of federated type."""
   if type_spec.all_equal:
@@ -205,11 +202,11 @@ def _serialize_federated_value(
   else:
     value = federated_value
   py_typecheck.check_type(value, list)
+  value_proto = executor_pb2.Value()
   for v in value:
-    federated_value_proto = value_proto.federated.value.add()
-    _, it_type = serialize_value(
-        v, type_spec.member, value_proto=federated_value_proto)
+    federated_value_proto, it_type = serialize_value(v, type_spec.member)
     type_spec.member.check_assignable_from(it_type)
+    value_proto.federated.value.append(federated_value_proto)
   value_proto.federated.type.CopyFrom(
       type_serialization.serialize_type(type_spec).federated)
   return value_proto, type_spec
@@ -219,10 +216,8 @@ def _serialize_federated_value(
 def serialize_value(
     value: Any,
     type_spec: Optional[computation_types.Type] = None,
-    *,
-    value_proto: Optional[serialization_bindings.Value] = None
-) -> computation_types.Type:
-  """Serializes a value into `serialization_bindings.Value`.
+) -> _SerializeReturnType:
+  """Serializes a value into `executor_pb2.Value`.
 
   We use a switch/function pattern in the body here (and in `deserialize_value`
   below in order to persist more information in traces and profiling.
@@ -230,19 +225,15 @@ def serialize_value(
   Args:
     value: A value to be serialized.
     type_spec: Optional type spec, a `tff.Type` or something convertible to it.
-    value_proto: The protobuf instance to serialize into. `value_proto` will
-      first be cleared before serializing.
 
   Returns:
-    An instance of `tff.Type` that represents the TFF type of the serialized
-    value.
+    A 2-tuple of serialized value and `tff.Type` that represents the TFF type of
+    the serialized value.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
-  if value_proto is None:
-    value_proto = serialization_bindings.Value()
   type_spec = computation_types.to_type(type_spec)
   if isinstance(value, computation_pb2.Computation):
     return _serialize_computation(value, type_spec)
@@ -256,14 +247,13 @@ def serialize_value(
                     ' of type {t} with None type spec.'.format(
                         v=value, t=type(value)))
   elif type_spec.is_tensor():
-    return _serialize_tensor_value(value_proto, value, type_spec)
+    return _serialize_tensor_value(value, type_spec)
   elif type_spec.is_sequence():
-    return _serialize_sequence_value(value_proto, value, type_spec)
+    return _serialize_sequence_value(value, type_spec)
   elif type_spec.is_struct():
-    return _serialize_struct_type(value_proto, value, type_spec)
+    return _serialize_struct_type(value, type_spec)
   elif type_spec.is_federated():
-    proto, type_spec = _serialize_federated_value(value_proto, value, type_spec)
-    return proto, type_spec
+    return _serialize_federated_value(value, type_spec)
   else:
     raise ValueError(
         'Unable to serialize value with Python type {} and {} TFF type.'.format(
@@ -273,7 +263,7 @@ def serialize_value(
 
 @tracing.trace
 def _deserialize_computation(
-    value_proto: serialization_bindings.Value) -> _DeserializeReturnType:
+    value_proto: executor_pb2.Value) -> _DeserializeReturnType:
   """Deserializes a TFF computation."""
   return (value_proto.computation,
           type_serialization.deserialize_type(value_proto.computation.type))
@@ -281,11 +271,11 @@ def _deserialize_computation(
 
 @tracing.trace
 def _deserialize_tensor_value(
-    value_proto: serialization_bindings.Value) -> _DeserializeReturnType:
-  """Deserializes a tensor value from `serialization_bindings.Value`.
+    value_proto: executor_pb2.Value) -> _DeserializeReturnType:
+  """Deserializes a tensor value from `.Value`.
 
   Args:
-    value_proto: An instance of `serialization_bindings.Value`.
+    value_proto: An instance of `executor_pb2.Value`.
 
   Returns:
     A tuple `(value, type_spec)`, where `value` is a Numpy array that represents
@@ -415,7 +405,7 @@ def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
 
 @tracing.trace
 def _deserialize_sequence_value(
-    sequence_value_proto: serialization_bindings.Sequence,
+    sequence_value_proto: executor_pb2.Value.Sequence,
     type_hint: Optional[computation_types.Type] = None
 ) -> _DeserializeReturnType:
   """Deserializes a `tf.data.Dataset`.
@@ -461,7 +451,7 @@ def _deserialize_sequence_value(
 
 @tracing.trace
 def _deserialize_struct_value(
-    value_proto: serialization_bindings.Value,
+    value_proto: executor_pb2.Value,
     type_hint: Optional[computation_types.Type] = None
 ) -> _DeserializeReturnType:
   """Deserializes a value of struct type."""
@@ -511,7 +501,7 @@ def _ensure_deserialized_types_compatible(
 
 @tracing.trace
 def _deserialize_federated_value(
-    value_proto: serialization_bindings.Value,
+    value_proto: executor_pb2.Value,
     type_hint: Optional[computation_types.Type] = None
 ) -> _DeserializeReturnType:
   """Deserializes a value of federated type."""
@@ -547,13 +537,13 @@ def _deserialize_federated_value(
 
 @tracing.trace
 def deserialize_value(
-    value_proto: serialization_bindings.Value,
+    value_proto: executor_pb2.Value,
     type_hint: Optional[computation_types.Type] = None
 ) -> _DeserializeReturnType:
-  """Deserializes a value (of any type) from `serialization_bindings.Value`.
+  """Deserializes a value (of any type) from `executor_pb2.Value`.
 
   Args:
-    value_proto: An instance of `serialization_bindings.Value`.
+    value_proto: An instance of `executor_pb2.Value`.
     type_hint: A `comptuations_types.Type` that hints at what the value type
       should be for executors that only return values.
 
@@ -591,10 +581,10 @@ CardinalitiesType = Mapping[placements.PlacementLiteral, int]
 
 def serialize_cardinalities(
     cardinalities: CardinalitiesType
-) -> List[serialization_bindings.Cardinality]:
+) -> List[executor_pb2.SetCardinalitiesRequest.Cardinality]:
   serialized_cardinalities = []
   for placement, cardinality in cardinalities.items():
-    cardinality_message = serialization_bindings.Cardinality(
+    cardinality_message = executor_pb2.SetCardinalitiesRequest.Cardinality(
         placement=computation_pb2.Placement(uri=placement.uri),
         cardinality=cardinality)
     serialized_cardinalities.append(cardinality_message)
@@ -602,7 +592,8 @@ def serialize_cardinalities(
 
 
 def deserialize_cardinalities(
-    serialized_cardinalities: Collection[serialization_bindings.Cardinality]
+    serialized_cardinalities: Collection[
+        executor_pb2.SetCardinalitiesRequest.Cardinality]
 ) -> CardinalitiesType:
   cardinalities_dict = {}
   for cardinality_spec in serialized_cardinalities:

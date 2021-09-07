@@ -84,10 +84,10 @@ pybind_extension(
         ":tensorflow_executor",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "//third_party/pybind11_protobuf:wrapped_proto_caster",
         "@com_github_grpc_grpc//:grpc++",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
-        "@pybind11_protobuf//pybind11_protobuf:proto_casters",
     ],
 )
 
@@ -316,7 +316,7 @@ pybind_extension(
         ":status_macros",
         ":tensor_serialization",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
-        "@org_tensorflow//tensorflow/c:c_api",
+        "//third_party/pybind11_protobuf:wrapped_proto_caster",
         "@org_tensorflow//tensorflow/c/eager:c_api",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core/common_runtime/eager:tensor_handle",
@@ -325,7 +325,6 @@ pybind_extension(
         "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
-        "@pybind11_protobuf//pybind11_protobuf:proto_casters",
     ],
 )
 

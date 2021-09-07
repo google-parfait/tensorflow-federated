@@ -29,7 +29,7 @@ limitations under the License
 #include "pybind11/include/pybind11/pytypes.h"
 #include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
-#include "pybind11_protobuf/proto_casters.h"
+#include "pybind11_protobuf/wrapped_proto_caster.h"
 #include "tensorflow/c/c_api.h"
 #include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/core/common_runtime/eager/tensor_handle.h"
@@ -61,28 +61,19 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 PYBIND11_MODULE(serialization_bindings, m) {
   py::google::ImportStatusModule();
-  py::google::ImportProtoModule();
-
-  pybind11::google::RegisterProtoMessageType<v0::Value>(m);
-  pybind11::google::RegisterProtoMessageType<v0::Value::Sequence>(m);
-  pybind11::google::RegisterProtoMessageType<v0::Value::Struct>(m);
-  pybind11::google::RegisterProtoMessageType<v0::Value::Struct::Element>(m);
-  pybind11::google::RegisterProtoMessageType<v0::Value::Federated>(m);
-  pybind11::google::RegisterProtoMessageType<
-      v0::SetCardinalitiesRequest::Cardinality>(m);
 
   m.doc() = "Bindings for the C++ value serialization";
 
   // v0::Value serialization methods.
   m.def("serialize_tensor_value",
-        [](const tensorflow::Tensor& tensor,
-           v0::Value* value_pb) -> absl::StatusOr<v0::Value*> {
-          TFF_TRY(SerializeTensorValue(tensor, value_pb));
-          // pybind11 seems to require us to return the pointer, not simply
-          // modify it, to get results on the Python side.
-          return value_pb;
-        });
-  m.def("deserialize_tensor_value", &DeserializeTensorValue);
+        py::google::WithWrappedProtos(
+            [](const tensorflow::Tensor& tensor) -> absl::StatusOr<v0::Value> {
+              v0::Value value_pb;
+              TFF_TRY(SerializeTensorValue(tensor, &value_pb));
+              return value_pb;
+            }));
+  m.def("deserialize_tensor_value",
+        py::google::WithWrappedProtos(&DeserializeTensorValue));
 }
 }  // namespace
 }  // namespace tensorflow_federated
