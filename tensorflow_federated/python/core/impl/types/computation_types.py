@@ -937,12 +937,12 @@ class FederatedType(Type, metaclass=_Intern):
             self.placement is source_type.placement)
 
 
-def at_server(type_spec: Type) -> Type:
+def at_server(type_spec: Type) -> FederatedType:
   """Constructs a federated type of the form `T@SERVER`."""
   return FederatedType(type_spec, placements.SERVER, all_equal=True)
 
 
-def at_clients(type_spec: Type, all_equal: bool = False) -> Type:
+def at_clients(type_spec: Type, all_equal: bool = False) -> FederatedType:
   """Constructs a federated type of the form `{T}@CLIENTS`.
 
   Args:
