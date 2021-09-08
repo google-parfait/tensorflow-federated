@@ -63,7 +63,6 @@ py_test(
     srcs = ["differential_privacy_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],  # TODO(b/198312839): Replace kokoro tests after TFP Pip release
     deps = [
         ":differential_privacy",
         ":factory",
@@ -246,7 +245,6 @@ py_test(
     srcs = ["quantile_estimation_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],  # TODO(b/198312839): Replace kokoro tests after TFP Pip release
     deps = [
         ":quantile_estimation",
         "//tensorflow_federated/python/core/api:test_case",

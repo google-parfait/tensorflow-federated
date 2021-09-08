@@ -106,7 +106,6 @@ py_cpu_gpu_test(
     python_version = "PY3",
     shard_count = 10,
     srcs_version = "PY3",
-    tags = ["nokokoro"],  # TODO(b/198312839): Replace kokoro tests after TFP Pip release
     deps = [
         ":client_weight_lib",
         ":federated_averaging",
@@ -185,7 +184,6 @@ py_cpu_gpu_test(
     srcs = ["federated_sgd_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],  # TODO(b/198312839): Replace kokoro tests after TFP Pip release
     deps = [
         ":client_weight_lib",
         ":federated_sgd",
@@ -335,7 +333,6 @@ py_test(
     srcs = ["model_update_aggregator_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],  # TODO(b/198312839): Replace kokoro tests after TFP Pip release
     deps = [
         ":model_update_aggregator",
         "//tensorflow_federated/python/aggregators:factory",

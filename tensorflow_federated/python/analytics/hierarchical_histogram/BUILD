@@ -22,7 +22,6 @@ py_test(
     srcs = ["hierarchical_histogram_factory_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],
     deps = [
         ":build_tree_from_leaf",
         ":hierarchical_histogram_factory",
@@ -54,7 +53,6 @@ py_test(
     srcs = ["hierarchical_histogram_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],
     deps = [
         ":hierarchical_histogram",
         "//tensorflow_federated/python/core/api:test_case",

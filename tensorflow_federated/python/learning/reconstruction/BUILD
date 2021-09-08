@@ -112,7 +112,6 @@ py_test(
     srcs = ["training_process_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],
     deps = [
         ":keras_utils",
         ":model",
