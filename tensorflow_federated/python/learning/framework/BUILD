@@ -249,7 +249,6 @@ py_library(
     srcs = ["finalizers.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
@@ -260,6 +259,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
     ],
 )

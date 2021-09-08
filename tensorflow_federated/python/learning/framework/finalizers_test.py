@@ -351,7 +351,7 @@ class ApplyOptimizerFinalizerComputationTest(test_case.TestCase,
     with self.assertRaises(TypeError):
       finalizers.build_apply_optimizer_finalizer(sgdm.build_sgdm(1.0), bad_type)
 
-  def test_not_tff_optimizer_raises(self):
+  def test_unexpected_optimizer_fn_raises(self):
     optimizer = tf.keras.optimizers.SGD(1.0)
     with self.assertRaises(TypeError):
       finalizers.build_apply_optimizer_finalizer(optimizer,
@@ -360,16 +360,83 @@ class ApplyOptimizerFinalizerComputationTest(test_case.TestCase,
 
 class ApplyOptimizerFinalizerExecutionTest(test_case.TestCase):
 
-  def test_execution(self):
+  def test_execution_with_stateless_tff_optimizer(self):
     finalizer = finalizers.build_apply_optimizer_finalizer(
         sgdm.build_sgdm(1.0), MODEL_WEIGHTS_TYPE.member)
 
     weights = model_utils.ModelWeights(1.0, ())
     update = 0.1
-    output = finalizer.next(finalizer.initialize(), weights, update)
-    self.assertEqual((), output.state)
-    self.assertAllClose(0.9, output.result.trainable)
-    self.assertEqual((), output.measurements)
+    optimizer_state = finalizer.initialize()
+    for i in range(5):
+      output = finalizer.next(optimizer_state, weights, update)
+      optimizer_state = output.state
+      weights = output.result
+      self.assertEqual((), optimizer_state)
+      self.assertAllClose(1.0 - 0.1 * (i + 1), weights.trainable)
+      self.assertEqual((), output.measurements)
+
+  def test_execution_with_nearly_stateless_keras_optimizer(self):
+    server_optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+    # Note that SGD only maintains a counter of how many times it has been
+    # called. No other state is used.
+    finalizer = finalizers.build_apply_optimizer_finalizer(
+        server_optimizer_fn, MODEL_WEIGHTS_TYPE.member)
+
+    weights = model_utils.ModelWeights(1.0, ())
+    update = 0.1
+    optimizer_state = finalizer.initialize()
+    for i in range(5):
+      output = finalizer.next(optimizer_state, weights, update)
+      optimizer_state = output.state
+      weights = output.result
+      # We check that the optimizer state is the number of calls.
+      self.assertEqual([i + 1], optimizer_state)
+      self.assertAllClose(1.0 - 0.1 * (i + 1), weights.trainable)
+      self.assertEqual((), output.measurements)
+
+  def test_execution_with_stateful_tff_optimizer(self):
+    momentum = 0.5
+    finalizer = finalizers.build_apply_optimizer_finalizer(
+        sgdm.build_sgdm(1.0, momentum=momentum), MODEL_WEIGHTS_TYPE.member)
+
+    weights = model_utils.ModelWeights(1.0, ())
+    update = 0.1
+    expected_velocity = 0.0
+    optimizer_state = finalizer.initialize()
+    for _ in range(5):
+      output = finalizer.next(optimizer_state, weights, update)
+      optimizer_state = output.state
+      expected_velocity = expected_velocity * momentum + update
+      self.assertNear(expected_velocity, optimizer_state, 1e-6)
+      self.assertAllClose(weights.trainable - expected_velocity,
+                          output.result.trainable)
+      self.assertEqual((), output.measurements)
+      weights = output.result
+
+  def test_execution_with_stateful_keras_optimizer(self):
+    momentum = 0.5
+
+    def server_optimizer_fn():
+      return tf.keras.optimizers.SGD(learning_rate=1.0, momentum=0.5)
+
+    finalizer = finalizers.build_apply_optimizer_finalizer(
+        server_optimizer_fn, MODEL_WEIGHTS_TYPE.member)
+
+    weights = model_utils.ModelWeights(1.0, ())
+    update = 0.1
+    expected_velocity = 0.0
+    optimizer_state = finalizer.initialize()
+    for i in range(5):
+      output = finalizer.next(optimizer_state, weights, update)
+      optimizer_state = output.state
+      expected_velocity = expected_velocity * momentum + update
+      # Keras stores the negative of the velocity term used by
+      # tff.learning.optimizers.SGDM
+      self.assertAllClose([i + 1, -expected_velocity], optimizer_state)
+      self.assertAllClose(weights.trainable - expected_velocity,
+                          output.result.trainable)
+      self.assertEqual((), output.measurements)
+      weights = output.result
 
 
 if __name__ == '__main__':

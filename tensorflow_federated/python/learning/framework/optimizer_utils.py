@@ -515,9 +515,8 @@ def build_model_delta_optimizer_process(
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
     model_to_client_delta_fn: A function from a `model_fn` to a `ClientDeltaFn`.
-    server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
-      `apply_gradients` method of this optimizer is used to apply client updates
-      to the server model.
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer` or a no-arg
+      function that returns a `tf.keras.optimizers.Optimizer`.
     broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`. If set to default None,

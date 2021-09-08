@@ -13,7 +13,10 @@
 # limitations under the License.
 """Abstractions for finalization in learning algorithms."""
 
-from tensorflow_federated.python.common_libs import py_typecheck
+from typing import Callable, Union
+
+import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -24,6 +27,7 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 
 
@@ -141,8 +145,78 @@ class FinalizerProcess(measured_process.MeasuredProcess):
           f'placed at SERVER, but found {next_fn_result.measurements}.')
 
 
+def _build_tff_optimizer_initialize_and_next(
+    model_weights_type: computation_types.Type,
+    optimizer: optimizer_base.Optimizer):
+  """Creates finalizer initialize and next functions for TFF optimizers."""
+
+  @computations.tf_computation
+  def init_fn():
+    tensor_specs = type_conversions.type_to_tf_tensor_specs(
+        model_weights_type.trainable)
+    return optimizer.initialize(tensor_specs)
+
+  optimizer_state_type = init_fn.type_signature.result
+
+  @computations.tf_computation(optimizer_state_type,
+                               model_weights_type.trainable,
+                               model_weights_type.trainable)
+  @tf.function
+  def next_fn(optimizer_state, trainable_weights, update):
+    return optimizer.next(optimizer_state, trainable_weights, update)
+
+  return init_fn, next_fn
+
+
+def _build_keras_optimizer_initialize_and_next(
+    model_weights_type: computation_types.Type,
+    optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer]):
+  """Creates finalizer initialize and next functions for Keras optimizers."""
+
+  @computations.tf_computation
+  def init_fn():
+    tensor_specs = type_conversions.type_to_tf_tensor_specs(
+        model_weights_type.trainable)
+    model_variables = tf.nest.map_structure(
+        lambda s: tf.Variable(initial_value=tf.zeros(s.shape, s.dtype)),
+        tensor_specs)
+    optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+        optimizer_fn, model_variables, disjoint_init_and_next=True)
+    return optimizer.initialize(tensor_specs)
+
+  optimizer_state_type = init_fn.type_signature.result
+
+  @computations.tf_computation(optimizer_state_type,
+                               model_weights_type.trainable,
+                               model_weights_type.trainable)
+  @tf.function
+  def next_fn(optimizer_state, trainable_weights, update):
+    with tf.init_scope():
+      # Create a structure of variables that the server optimizer can update.
+      trainable_variables = tf.nest.map_structure(
+          lambda t: tf.Variable(initial_value=tf.zeros(t.shape, t.dtype)),
+          trainable_weights)
+      optimizer = keras_optimizer.build_or_verify_tff_optimizer(
+          optimizer_fn, trainable_variables, disjoint_init_and_next=True)
+
+    tf.nest.map_structure(lambda a, b: a.assign(b), trainable_variables,
+                          trainable_weights)
+    optimizer_state, updated_weights = optimizer.next(optimizer_state,
+                                                      trainable_variables,
+                                                      update)
+    # Keras optimizers mutate model variables in with the `next` step above, so
+    # we skip calling the assignment for those optimizers.
+    if not isinstance(optimizer, keras_optimizer.KerasOptimizer):
+      tf.nest.map_structure(lambda a, b: a.assign(b), trainable_variables,
+                            updated_weights)
+    return optimizer_state, trainable_variables
+
+  return init_fn, next_fn
+
+
 def build_apply_optimizer_finalizer(
-    optimizer: optimizer_base.Optimizer,
+    optimizer_fn: Union[optimizer_base.Optimizer,
+                        Callable[[], tf.keras.optimizers.Optimizer]],
     model_weights_type: computation_types.StructType):
   """Builds finalizer that applies a step of an optimizer.
 
@@ -158,7 +232,9 @@ def build_apply_optimizer_finalizer(
   returns empty measurements.
 
   Args:
-    optimizer: A `tff.learning.optimizers.Optimizer`.
+    optimizer_fn: A `tff.learning.optimizers.Optimizer` or a no-arg function
+      that returns a `tf.keras.optimizers.Optimizer`.
+      This optimizer is used to apply client updates to the server model.
     model_weights_type: A non-federated `tff.Type` of the model weights to be
       optimized, which must have a `tff.learning.ModelWeights` container.
 
@@ -169,10 +245,13 @@ def build_apply_optimizer_finalizer(
     TypeError: If `value_type` does not have a `tff.learning.ModelWeights`
       Python container, or contains a `tff.types.FederatedType`.
   """
+  if not isinstance(optimizer_fn, optimizer_base.Optimizer):
+    if not callable(optimizer_fn) or not isinstance(
+        optimizer_fn(), tf.keras.optimizers.Optimizer):
+      raise TypeError(
+          'The optimizer_fn must be a `tff.learning.optimizers.Optimizer`, or '
+          'a no-arg callable returning a `tf.keras.optimizers.Optimizer`.')
 
-  # TODO(b/190334722): Include support for Keras optimizers via
-  # tff.learning.optimizers.KerasOptimizer when ready.
-  py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
   if (not model_weights_type.is_struct_with_python() or
       model_weights_type.python_container != model_utils.ModelWeights or
       type_analysis.contains_federated_types(model_weights_type)):
@@ -181,13 +260,16 @@ def build_apply_optimizer_finalizer(
         f'container being tff.learning.ModelWeights, not containing a '
         f'tff.types.FederatedType, but found: {model_weights_type}')
 
+  if isinstance(optimizer_fn, optimizer_base.Optimizer):
+    init_tf, next_tf = _build_tff_optimizer_initialize_and_next(
+        model_weights_type, optimizer_fn)
+  else:
+    init_tf, next_tf = _build_keras_optimizer_initialize_and_next(
+        model_weights_type, optimizer_fn)
+
   @computations.federated_computation
   def init_fn():
-    tensor_specs = type_conversions.type_to_tf_tensor_specs(
-        model_weights_type.trainable)
-    return intrinsics.federated_eval(
-        computations.tf_computation(lambda: optimizer.initialize(tensor_specs)),
-        placements.SERVER)
+    return intrinsics.federated_eval(init_tf, placements.SERVER)
 
   @computations.federated_computation(
       init_fn.type_signature.result,
@@ -195,8 +277,7 @@ def build_apply_optimizer_finalizer(
       computation_types.at_server(model_weights_type.trainable))
   def next_fn(state, weights, update):
     optimizer_state, new_trainable_weights = intrinsics.federated_map(
-        computations.tf_computation(optimizer.next),
-        (state, weights.trainable, update))
+        next_tf, (state, weights.trainable, update))
     new_weights = intrinsics.federated_zip(
         model_utils.ModelWeights(new_trainable_weights, weights.non_trainable))
     empty_measurements = intrinsics.federated_value((), placements.SERVER)
