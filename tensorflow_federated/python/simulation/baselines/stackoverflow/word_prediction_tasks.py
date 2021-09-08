@@ -13,7 +13,7 @@
 # limitations under the License.
 """Library for creating word prediction tasks on Stack Overflow."""
 
-from typing import Optional
+from typing import List, Optional
 
 import tensorflow as tf
 
@@ -34,7 +34,7 @@ def create_word_prediction_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec],
     sequence_length: int,
-    vocab_size: int,
+    vocab: List[str],
     num_out_of_vocab_buckets: int,
     train_data: client_data.ClientData,
     test_data: client_data.ClientData,
@@ -56,9 +56,7 @@ def create_word_prediction_task_from_datasets(
     sequence_length: A positive integer dictating the length of each word
       sequence in a client's dataset. By default, this is set to
       `tff.simulation.baselines.stackoverflow.DEFAULT_SEQUENCE_LENGTH`.
-    vocab_size: Integer dictating the number of most frequent words in the
-      entire corpus to use for the task's vocabulary. By default, this is set to
-      `tff.simulation.baselines.stackoverflow.DEFAULT_WORD_VOCAB_SIZE`.
+    vocab: A list of strings used for the task's vocabulary.
     num_out_of_vocab_buckets: The number of out-of-vocabulary buckets to use.
     train_data: A `tff.simulation.datasets.ClientData` used for training.
     test_data: A `tff.simulation.datasets.ClientData` used for testing.
@@ -69,12 +67,11 @@ def create_word_prediction_task_from_datasets(
   """
   if sequence_length < 1:
     raise ValueError('sequence_length must be a positive integer')
+  vocab_size = len(vocab)
   if vocab_size < 1:
-    raise ValueError('vocab_size must be a positive integer')
+    raise ValueError('vocab must have length at least one')
   if num_out_of_vocab_buckets < 1:
     raise ValueError('num_out_of_vocab_buckets must be a positive integer')
-
-  vocab = list(stackoverflow.load_word_counts(vocab_size=vocab_size).keys())
 
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
@@ -168,21 +165,29 @@ def create_word_prediction_task(
       `None`, they will be cached to `~/.tff/`.
     use_synthetic_data: A boolean indicating whether to use synthetic Stack
       Overflow data. This option should only be used for testing purposes, in
-      order to avoid downloading the entire Stack Overflow dataset.
+      order to avoid downloading the entire Stack Overflow dataset. A synthetic
+      vocabulary will also be used (not necessarily of the size `vocab_size`).
 
   Returns:
     A `tff.simulation.baselines.BaselineTask`.
   """
+  if vocab_size < 1:
+    raise ValueError('vocab_size must be a positive integer')
+
   if use_synthetic_data:
     synthetic_data = stackoverflow.get_synthetic()
     stackoverflow_train = synthetic_data
     stackoverflow_validation = synthetic_data
     stackoverflow_test = synthetic_data
+    vocab_dict = stackoverflow.get_synthetic_word_counts()
   else:
     stackoverflow_train, stackoverflow_validation, stackoverflow_test = (
         stackoverflow.load_data(cache_dir=cache_dir))
+    vocab_dict = stackoverflow.load_word_counts(vocab_size=vocab_size)
+
+  vocab = list(vocab_dict.keys())[:vocab_size]
 
   return create_word_prediction_task_from_datasets(
-      train_client_spec, eval_client_spec, sequence_length, vocab_size,
+      train_client_spec, eval_client_spec, sequence_length, vocab,
       num_out_of_vocab_buckets, stackoverflow_train, stackoverflow_test,
       stackoverflow_validation)

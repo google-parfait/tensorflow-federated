@@ -43,6 +43,22 @@ class StackoverflowTest(absltest.TestCase):
         next(iter(synthetic_data_dictionary.keys())))
     self.assertEqual(dataset.element_spec, EXPECTED_ELEMENT_TYPE)
 
+  def test_get_synthetic_word_counts(self):
+    word_counts = stackoverflow.get_synthetic_word_counts()
+    self.assertIsInstance(word_counts, collections.OrderedDict)
+    for k, v in word_counts.items():
+      self.assertIsInstance(k, str)
+      self.assertIsInstance(v, int)
+      self.assertGreater(v, 0)
+
+  def test_get_synthetic_tag_counts(self):
+    tag_counts = stackoverflow.get_synthetic_tag_counts()
+    self.assertIsInstance(tag_counts, collections.OrderedDict)
+    for k, v in tag_counts.items():
+      self.assertIsInstance(k, str)
+      self.assertIsInstance(v, int)
+      self.assertGreater(v, 0)
+
   def test_load_word_counts(self):
     self.skipTest(
         "CI infrastructure doesn't support downloading from GCS. Remove "

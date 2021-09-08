@@ -13,7 +13,7 @@
 # limitations under the License.
 """Library for creating tag prediction tasks on Stack Overflow."""
 
-from typing import Optional
+from typing import List, Optional
 
 import tensorflow as tf
 
@@ -38,8 +38,8 @@ def _build_logistic_regression_model(input_size: int, output_size: int):
 def create_tag_prediction_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec],
-    word_vocab_size: int,
-    tag_vocab_size: int,
+    word_vocab: List[str],
+    tag_vocab: List[str],
     train_data: client_data.ClientData,
     test_data: client_data.ClientData,
     validation_data: client_data.ClientData,
@@ -53,12 +53,8 @@ def create_tag_prediction_task_from_datasets(
       specifying how to preprocess evaluation client data. If set to `None`, the
       evaluation datasets will use a batch size of 64 with no extra
       preprocessing.
-    word_vocab_size: Integer dictating the number of most frequent words in the
-      entire corpus to use for the task's vocabulary. By default, this is set to
-      `tff.simulation.baselines.stackoverflow.DEFAULT_WORD_VOCAB_SIZE`.
-    tag_vocab_size: Integer dictating the number of most frequent tags in the
-      entire corpus to use for the task's labels. By default, this is set to
-      `tff.simulation.baselines.stackoverflow.DEFAULT_TAG_VOCAB_SIZE`.
+    word_vocab: A list of strings used for the task's word vocabulary.
+    tag_vocab: A list of strings used for the task's tag vocabulary.
     train_data: A `tff.simulation.datasets.ClientData` used for training.
     test_data: A `tff.simulation.datasets.ClientData` used for testing.
     validation_data: A `tff.simulation.datasets.ClientData` used for validation.
@@ -66,23 +62,16 @@ def create_tag_prediction_task_from_datasets(
   Returns:
     A `tff.simulation.baselines.BaselineTask`.
   """
-  if word_vocab_size < 1:
-    raise ValueError('word_vocab_size must be a positive integer')
-  if tag_vocab_size < 1:
-    raise ValueError('tag_vocab_size must be a positive integer')
-
-  word_vocab = list(stackoverflow.load_word_counts(vocab_size=word_vocab_size))
-  tag_vocab = list(stackoverflow.load_tag_counts().keys())[:tag_vocab_size]
-
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=100, shuffle_buffer_size=1)
 
+  word_vocab_size = len(word_vocab)
+  tag_vocab_size = len(tag_vocab)
   train_preprocess_fn = tag_prediction_preprocessing.create_preprocess_fn(
       train_client_spec, word_vocab, tag_vocab)
   eval_preprocess_fn = tag_prediction_preprocessing.create_preprocess_fn(
       eval_client_spec, word_vocab, tag_vocab)
-
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=train_data,
       test_data=test_data,
@@ -135,20 +124,34 @@ def create_tag_prediction_task(
       `None`, they will be cached to `~/.tff/`.
     use_synthetic_data: A boolean indicating whether to use synthetic Stack
       Overflow data. This option should only be used for testing purposes, in
-      order to avoid downloading the entire Stack Overflow dataset.
+      order to avoid downloading the entire Stack Overflow dataset. Synthetic
+      word vocabularies and tag vocabularies will also be used (not necessarily
+      of sizes `word_vocab_size` and `tag_vocab_size`).
 
   Returns:
     A `tff.simulation.baselines.BaselineTask`.
   """
+  if word_vocab_size < 1:
+    raise ValueError('word_vocab_size must be a positive integer')
+  if tag_vocab_size < 1:
+    raise ValueError('tag_vocab_size must be a positive integer')
+
   if use_synthetic_data:
     synthetic_data = stackoverflow.get_synthetic()
     stackoverflow_train = synthetic_data
     stackoverflow_validation = synthetic_data
     stackoverflow_test = synthetic_data
+    word_vocab_dict = stackoverflow.get_synthetic_word_counts()
+    tag_vocab_dict = stackoverflow.get_synthetic_tag_counts()
   else:
     stackoverflow_train, stackoverflow_validation, stackoverflow_test = (
         stackoverflow.load_data(cache_dir=cache_dir))
+    word_vocab_dict = stackoverflow.load_word_counts(vocab_size=word_vocab_size)
+    tag_vocab_dict = stackoverflow.load_tag_counts()
+
+  word_vocab = list(word_vocab_dict.keys())[:word_vocab_size]
+  tag_vocab = list(tag_vocab_dict.keys())[:tag_vocab_size]
 
   return create_tag_prediction_task_from_datasets(
-      train_client_spec, eval_client_spec, word_vocab_size, tag_vocab_size,
+      train_client_spec, eval_client_spec, word_vocab, tag_vocab,
       stackoverflow_train, stackoverflow_test, stackoverflow_validation)

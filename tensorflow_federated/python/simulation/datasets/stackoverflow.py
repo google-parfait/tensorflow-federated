@@ -301,3 +301,55 @@ def create_synthetic_data_dictionary():
               ],
           )
   }
+
+
+def get_synthetic_word_counts():
+  """Returns a small dictionary of word counts.
+
+  Specifically, this provides the aggregate word counts for all sentences in
+  `tff.simulation.datasets.stackoverflow.get_synthetic`.
+
+  Returns:
+     An ordered dictionary mapping words to their respective count.
+  """
+  return collections.OrderedDict([('.', 4), ('is', 3), ('a', 3), (':', 3),
+                                  ('to', 3), ('if', 2), (',', 2), ('the', 2),
+                                  ('edit', 2), ("you're", 1), ('using', 1),
+                                  ('sql', 1), ('2005', 1), ('or', 1),
+                                  ('better', 1), ('this', 1), ('nice', 1),
+                                  ('simple-ish', 1), ('median', 1),
+                                  ('calculation', 1), ('for', 1), ('single', 1),
+                                  ('column', 1), ('in', 1), ('table', 1),
+                                  ('css3', 1), ('does', 1), ('finally', 1),
+                                  ('define', 1), ('which', 1), ('exactly', 1),
+                                  ('how', 1), ("you'd", 1), ('want', 1),
+                                  ('it', 1), ('work', 1),
+                                  ('you', 1), ('are', 1), ('on', 1), ('mac', 1),
+                                  ('osx', 1), ('i', 1), ('found', 1),
+                                  ('<URL>', 1), ('"', 1), ('>', 1),
+                                  ('versions', 1), ('be', 1), ('an', 1),
+                                  ('incredible', 1), ('(', 1), ('free', 1),
+                                  (')', 1), ('gui', 1), ('front-end', 1),
+                                  ('svn', 1), ('thanks', 1), ('spec', 1),
+                                  ('available', 1), ('here', 1)])
+
+
+def get_synthetic_tag_counts():
+  """Returns a small dictionary of tag counts.
+
+  Specifically, this provides the aggregate tag counts for all tags in
+  `tff.simulation.datasets.stackoverflow.get_synthetic`.
+
+  Returns:
+     An ordered dictionary mapping tags to their respective count.
+  """
+  return collections.OrderedDict([('css', 2), ('cross-browser', 2),
+                                  ('rounded-corners', 2), ('css3', 2),
+                                  ('android', 2), ('android-emulator', 2),
+                                  ('monkey', 2), ('vb . net', 2),
+                                  ('design-patterns', 2), ('iterator', 2),
+                                  ('yield', 2), ('sql', 1), ('sql-server', 1),
+                                  ('aggregate-functions', 1), ('median', 1),
+                                  ('git', 1), ('svn', 1),
+                                  ('version-control', 1),
+                                  ('language-agnostic', 1), ('dvcs', 1)])
