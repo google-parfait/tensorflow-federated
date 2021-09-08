@@ -869,11 +869,14 @@ class FederatedType(Type, metaclass=_Intern):
       all_equal = placement.default_all_equal
     return (member, placement, all_equal)
 
-  def __init__(self, member, placement, all_equal=None):
+  def __init__(self,
+               member: Any,
+               placement: placements.PlacementLiteral,
+               all_equal: Optional[bool] = None):
     """Constructs a new federated type instance.
 
     Args:
-      member: An instance of `tff.Type` (or something convertible to it) that
+      member: An instance of `tff.Type` or something convertible to it, that
         represents the type of the member components of each value of this
         federated type.
       placement: The specification of placement that the member components of
@@ -937,16 +940,23 @@ class FederatedType(Type, metaclass=_Intern):
             self.placement is source_type.placement)
 
 
-def at_server(type_spec: Type) -> FederatedType:
-  """Constructs a federated type of the form `T@SERVER`."""
+def at_server(type_spec: Any) -> FederatedType:
+  """Constructs a federated type of the form `T@SERVER`.
+
+  Args:
+    type_spec: An instance of `tff.Type` or something convertible to it.
+
+  Returns:
+    The type of the form `T@SERVER`, where `T` is the `type_spec`.
+  """
   return FederatedType(type_spec, placements.SERVER, all_equal=True)
 
 
-def at_clients(type_spec: Type, all_equal: bool = False) -> FederatedType:
+def at_clients(type_spec: Any, all_equal: bool = False) -> FederatedType:
   """Constructs a federated type of the form `{T}@CLIENTS`.
 
   Args:
-    type_spec: A `Type`.
+    type_spec: An instance of `tff.Type` or something convertible to it.
     all_equal: The `all_equal` bit, `False` by default.
 
   Returns:
