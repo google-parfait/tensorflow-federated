@@ -22,6 +22,7 @@ construct learning processes expecting stateful models, wrap the functional
 model with `tff.learning.models.model_from_functional`.
 """
 
+import collections
 from typing import Any, Callable, Mapping, Sequence, Tuple, Union
 
 import numpy as np
@@ -32,7 +33,6 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning import model as model_lib
 
 Weight = Union[np.ndarray, int, float]
@@ -177,6 +177,8 @@ class _ModelFromFunctional(model_lib.Model):
         tf.Variable(x, trainable=False) for x in non_trainable)
     self._model_weights = (self._trainable_variables,
                            self._non_trainable_variables)
+    self._num_examples = tf.Variable(0, trainable=False)
+    self._loss_sum = tf.Variable(0.0, trainable=False)
 
   @property
   def trainable_variables(self) -> Tuple[tf.Variable, ...]:
@@ -188,7 +190,7 @@ class _ModelFromFunctional(model_lib.Model):
 
   @property
   def local_variables(self) -> Tuple[tf.Variable, ...]:
-    return ()
+    return (self._loss_sum, self._num_examples)
 
   @property
   def input_spec(self):
@@ -196,11 +198,15 @@ class _ModelFromFunctional(model_lib.Model):
 
   @tf.function
   def forward_pass(self, batch_input, training=True):
-    return self._functional_model.forward_pass(
+    batch_output = self._functional_model.forward_pass(
         model_weights=tf.nest.map_structure(lambda v: v.read_value(),
                                             self._model_weights),
         batch_input=batch_input,
         training=training)
+    self._num_examples.assign_add(batch_output.num_examples)
+    self._loss_sum.assign_add(batch_output.loss *
+                              tf.cast(batch_output.num_examples, tf.float32))
+    return batch_output
 
   @tf.function
   def predict_on_batch(self, x, training=True):
@@ -212,15 +218,21 @@ class _ModelFromFunctional(model_lib.Model):
 
   @tf.function
   def report_local_outputs(self):
-    return {}
+    return collections.OrderedDict(
+        loss_sum=self._loss_sum,
+        num_examples=tf.cast(self._num_examples, tf.float32))
 
   @property
   def federated_output_computation(self) -> computation_base.Computation:
 
-    @computations.federated_computation(computation_types.at_clients(()))
+    @computations.federated_computation(
+        computation_types.at_clients(
+            collections.OrderedDict(
+                loss_sum=tf.float32, num_examples=tf.float32)))
     def aggregate(values):
-      del values  # Unused.
-      return intrinsics.federated_value((), placements.SERVER)
+      return collections.OrderedDict(
+          loss=intrinsics.federated_mean(
+              values['loss_sum'], weight=values['num_examples']))
 
     return aggregate
 

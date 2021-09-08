@@ -1,5 +1,4 @@
-# Copyright 2021, The TensorFlow Federated Authors.
-#
+# Copyright 2021, The TensorFlow Federated Authors.  #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for FunctionModel."""
+
+import collections
 
 import numpy as np
 import tensorflow as tf
@@ -185,6 +186,9 @@ class FunctionalTest(tf.test.TestCase):
     self.assertLess(loss, 0.1)
     self.assertAllClose(
         tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
+    self.assertAllClose(
+        tff_model.report_local_outputs(),
+        collections.OrderedDict(loss_sum=1066.19628, num_examples=1250.0))
 
 
 if __name__ == '__main__':
