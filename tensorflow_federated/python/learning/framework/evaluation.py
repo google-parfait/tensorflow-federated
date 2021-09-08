@@ -19,8 +19,8 @@ from typing import Callable
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -34,7 +34,7 @@ def build_eval_work(
     model_weights_type: computation_types.Type,
     data_type: computation_types.Type,
     use_experimental_simulation_loop: bool = False
-) -> computation_base.Computation:
+) -> computation_impl.ComputationImpl:
   """Builds a `tff.Computation` for evaluating a model on a dataset.
 
   This function accepts model weights matching `model_weights_type` and data
@@ -83,7 +83,7 @@ def build_eval_work(
 
 def build_model_metrics_aggregator(
     model: model_lib.Model,
-    metrics_type: computation_types.Type) -> computation_base.Computation:
+    metrics_type: computation_types.Type) -> computation_impl.ComputationImpl:
   """Creates a stateless aggregator for client metrics."""
 
   @computations.federated_computation(
@@ -117,13 +117,16 @@ def check_federated_type_with_correct_placement(value_type, placement):
   return False
 
 
-def _validate_eval_types(stateless_distributor: computation_base.Computation,
-                         client_eval_work: computation_base.Computation,
-                         stateless_aggregator: computation_base.Computation):
+def _validate_eval_types(
+    stateless_distributor: computation_impl.ComputationImpl,
+    client_eval_work: computation_impl.ComputationImpl,
+    stateless_aggregator: computation_impl.ComputationImpl):
   """Checks `compose_eval_computation` arguments meet documented constraints."""
-  py_typecheck.check_type(stateless_distributor, computation_base.Computation)
-  py_typecheck.check_type(client_eval_work, computation_base.Computation)
-  py_typecheck.check_type(stateless_aggregator, computation_base.Computation)
+  py_typecheck.check_type(stateless_distributor,
+                          computation_impl.ComputationImpl)
+  py_typecheck.check_type(client_eval_work, computation_impl.ComputationImpl)
+  py_typecheck.check_type(stateless_aggregator,
+                          computation_impl.ComputationImpl)
 
   distributor_type = stateless_distributor.type_signature
   distributor_parameter = distributor_type.parameter
@@ -178,9 +181,9 @@ def _validate_eval_types(stateless_distributor: computation_base.Computation,
 
 
 def compose_eval_computation(
-    stateless_distributor: computation_base.Computation,
-    client_eval_work: computation_base.Computation,
-    stateless_metrics_aggregator: computation_base.Computation):
+    stateless_distributor: computation_impl.ComputationImpl,
+    client_eval_work: computation_impl.ComputationImpl,
+    stateless_metrics_aggregator: computation_impl.ComputationImpl):
   """Builds a TFF computation performing stateless evaluation across clients.
 
   The resulting computation has type signature

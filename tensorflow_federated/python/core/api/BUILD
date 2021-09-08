@@ -37,10 +37,7 @@ py_library(
     name = "computation_base",
     srcs = ["computation_base.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/types:typed_object",
-    ],
+    deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
 )
 
 py_library(

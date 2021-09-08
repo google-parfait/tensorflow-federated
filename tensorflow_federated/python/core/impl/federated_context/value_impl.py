@@ -24,11 +24,11 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
@@ -358,7 +358,8 @@ def to_value(
   elif isinstance(arg, placements.PlacementLiteral):
     result = Value(building_blocks.Placement(arg))
   elif isinstance(
-      arg, (computation_base.Computation, function_utils.PolymorphicFunction)):
+      arg,
+      (computation_impl.ComputationImpl, function_utils.PolymorphicFunction)):
     if isinstance(arg, function_utils.PolymorphicFunction):
       if parameter_type_hint is None:
         raise TypeError(
@@ -371,7 +372,7 @@ def to_value(
             'as an argument to the encompassing `to_value` conversion.')
       parameter_type_hint = computation_types.to_type(parameter_type_hint)
       arg = arg.fn_for_argument_type(parameter_type_hint)
-    py_typecheck.check_type(arg, computation_base.Computation)
+    py_typecheck.check_type(arg, computation_impl.ComputationImpl)
     result = Value(arg.to_compiled_building_block())
   elif type_spec is not None and type_spec.is_sequence():
     result = _wrap_sequence_as_value(arg, type_spec.element)
