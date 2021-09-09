@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for the end-to-end user experiecnes of the FedAvg algorithm.
+"""Tests for the end-to-end user experiences of the FedAvg algorithm.
 
 This includes integrations wtih tff.aggregators, tf.keras, and other
 dependencies. Tests that models trained on TFF provided datasets converge.
@@ -160,61 +160,6 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
         iterative_process,
         datasets=[ds] * num_clients,
         expected_num_examples=3 * num_clients)
-
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_clients_without_data_do_affect_training(self, client_optimizer):
-    iterative_process = tff.learning.build_federated_averaging_process(
-        model_fn=learning_test_models.LinearRegression,
-        client_optimizer_fn=client_optimizer())
-
-    # Results in empty dataset with correct types and shapes.
-    ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[[1.0, 2.0]],
-            y=[[5.0]],
-        )).batch(
-            5, drop_remainder=True)
-
-    server_state = iterative_process.initialize()
-
-    first_state, metric_outputs = iterative_process.next(server_state, [ds] * 2)
-    self.assertAllClose(
-        list(first_state.model.trainable), [[[0.0], [0.0]], 0.0])
-    self.assertEqual(metric_outputs['train']['num_examples'], 0)
-    self.assertTrue(tf.math.is_nan(metric_outputs['train']['loss']))
-
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_get_model_weights_from_trained_model(self, client_optimizer):
-    iterative_process = tff.learning.build_federated_averaging_process(
-        model_fn=learning_test_models.LinearRegression,
-        client_optimizer_fn=client_optimizer())
-
-    num_clients = 3
-    ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[[1.0, 2.0], [3.0, 4.0]],
-            y=[[5.0], [6.0]],
-        )).batch(2)
-    datasets = [ds] * num_clients
-
-    state = iterative_process.initialize()
-    self.assertIsInstance(
-        iterative_process.get_model_weights(state), tff.learning.ModelWeights)
-    self.assertAllClose(state.model.trainable,
-                        iterative_process.get_model_weights(state).trainable)
-
-    for _ in range(3):
-      state, _ = iterative_process.next(state, datasets)
-      self.assertIsInstance(
-          iterative_process.get_model_weights(state), tff.learning.ModelWeights)
-      self.assertAllClose(state.model.trainable,
-                          iterative_process.get_model_weights(state).trainable)
 
   @parameterized.named_parameters([
       ('robust_tff_opt', tff.learning.robust_aggregator, _get_tff_optimizer),

@@ -174,6 +174,60 @@ class FederatedAveragingTest(test_case.TestCase, parameterized.TestCase):
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 
+  @parameterized.named_parameters([
+      ('keras_optimizer', tf.keras.optimizers.SGD),
+      ('tff_optimizer', sgdm.build_sgdm(learning_rate=0.1)),
+  ])
+  def test_clients_without_data_affect_training(self, client_optimizer):
+    iterative_process = federated_averaging.build_federated_averaging_process(
+        model_fn=model_examples.LinearRegression,
+        client_optimizer_fn=client_optimizer())
+
+    # Results in an empty dataset with correct types and shapes.
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[1.0, 2.0]],
+            y=[[5.0]],
+        )).batch(
+            5, drop_remainder=True)
+
+    server_state = iterative_process.initialize()
+
+    first_state, metric_outputs = iterative_process.next(server_state, [ds] * 2)
+    self.assertAllClose(
+        list(first_state.model.trainable), [[[0.0], [0.0]], 0.0])
+    self.assertEqual(metric_outputs['train']['num_examples'], 0)
+    self.assertTrue(tf.math.is_nan(metric_outputs['train']['loss']))
+
+  @parameterized.named_parameters([
+      ('keras_optimizer', tf.keras.optimizers.SGD),
+      ('tff_optimizer', sgdm.build_sgdm(learning_rate=0.1)),
+  ])
+  def test_get_model_weights_from_trained_model(self, client_optimizer):
+    iterative_process = federated_averaging.build_federated_averaging_process(
+        model_fn=model_examples.LinearRegression,
+        client_optimizer_fn=client_optimizer())
+
+    num_clients = 3
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0]],
+            y=[[5.0], [6.0]],
+        )).batch(2)
+    datasets = [ds] * num_clients
+
+    state = iterative_process.initialize()
+    self.assertIsInstance(
+        iterative_process.get_model_weights(state), model_utils.ModelWeights)
+    self.assertAllClose(state.model.trainable,
+                        iterative_process.get_model_weights(state).trainable)
+
+    state, _ = iterative_process.next(state, datasets)
+    self.assertIsInstance(
+        iterative_process.get_model_weights(state), model_utils.ModelWeights)
+    self.assertAllClose(state.model.trainable,
+                        iterative_process.get_model_weights(state).trainable)
+
 
 if __name__ == '__main__':
   test_case.main()
