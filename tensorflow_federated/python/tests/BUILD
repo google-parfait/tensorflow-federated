@@ -56,6 +56,11 @@ py_test(
     srcs = ["federated_averaging_e2e_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "guitar",
+        "learning",
+        "manual",
+    ],
     deps = [
         ":learning_test_models",
         "//tensorflow_federated",
@@ -68,6 +73,11 @@ py_test(
     srcs = ["federated_sgd_e2e_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "guitar",
+        "learning",
+        "manual",
+    ],
     deps = [
         ":learning_test_models",
         "//tensorflow_federated",
