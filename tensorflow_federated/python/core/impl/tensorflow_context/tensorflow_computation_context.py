@@ -16,7 +16,6 @@
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -41,10 +40,10 @@ class TensorFlowComputationContext(context_base.Context):
     type_analysis.check_type(val, type_spec)
     return val
 
-  def invoke(self, comp, arg):
+  def invoke(self, comp: computation_impl.ComputationImpl, arg):
     # We are invoking a tff.tf_computation inside of another
     # tf_computation.
-    py_typecheck.check_type(comp, computation_base.Computation)
+    py_typecheck.check_type(comp, computation_impl.ComputationImpl)
     computation_proto = computation_impl.ComputationImpl.get_proto(comp)
     computation_oneof = computation_proto.WhichOneof('computation')
     if computation_oneof != 'tensorflow':

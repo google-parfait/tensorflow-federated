@@ -21,7 +21,7 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def _check_tensorflow_computation(label, comp):
-  py_typecheck.check_type(comp, computation_base.Computation, label)
+  py_typecheck.check_type(comp, computation_impl.ComputationImpl, label)
   comp_proto = computation_impl.ComputationImpl.get_proto(comp)
   which_comp = comp_proto.WhichOneof('computation')
   if which_comp != 'tensorflow':

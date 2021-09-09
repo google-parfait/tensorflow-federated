@@ -18,7 +18,6 @@ import numpy as np
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import tracing
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import compiler
 from tensorflow_federated.python.core.backends.iree import runtime
@@ -60,7 +59,7 @@ def to_representation_for_type(value, type_spec=None, backend=None):
   type_spec = executor_utils.reconcile_value_with_type_spec(value, type_spec)
   if backend is not None:
     py_typecheck.check_type(backend, backend_info.BackendInfo)
-  if isinstance(value, computation_base.Computation):
+  if isinstance(value, computation_impl.ComputationImpl):
     return to_representation_for_type(
         computation_impl.ComputationImpl.get_proto(value),
         type_spec=type_spec,

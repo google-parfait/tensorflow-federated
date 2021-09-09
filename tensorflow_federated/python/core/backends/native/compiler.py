@@ -19,7 +19,6 @@ from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import tracing
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
@@ -28,10 +27,10 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 
 
 def transform_to_native_form(
-    comp: computation_base.Computation,
+    comp: computation_impl.ComputationImpl,
     transform_math_to_tf: bool = False,
     grappler_config: Optional[tf.compat.v1.ConfigProto] = None
-) -> computation_base.Computation:
+) -> computation_impl.ComputationImpl:
   """Compiles a computation for execution in the TFF native runtime.
 
   This function transforms the proto underlying `comp` by transforming it
@@ -39,7 +38,7 @@ def transform_to_native_form(
   definition).
 
   Args:
-    comp: Instance of `computation_base.Computation` to compile.
+    comp: Instance of `computation_impl.ComputationImpl` to compile.
     transform_math_to_tf: Whether to additional transform math to TensorFlow
       graphs. Necessary if running on a execution state without
       ReferenceResolvingExecutors underneath FederatingExecutors.
@@ -48,8 +47,8 @@ def transform_to_native_form(
       optimizations wil be applied.
 
   Returns:
-    A new `computation_base.Computation` representing the compiled version of
-    `comp`.
+    A new `computation_impl.ComputationImpl` representing the compiled version
+      of `comp`.
   """
   proto = computation_impl.ComputationImpl.get_proto(comp)
   computation_building_block = building_blocks.ComputationBuildingBlock.from_proto(
