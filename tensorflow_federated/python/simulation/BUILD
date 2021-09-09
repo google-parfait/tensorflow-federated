@@ -28,6 +28,7 @@ py_library(
         ":dictionary_manager",
         ":iterative_process_compositions",
         ":metrics_manager",
+        ":program_state_manager",
         ":sampling_utils",
         ":server_utils",
         ":tensorboard_manager",
@@ -112,6 +113,23 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
+    ],
+)
+
+py_library(
+    name = "program_state_manager",
+    srcs = ["program_state_manager.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "program_state_manager_test",
+    srcs = ["program_state_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":program_state_manager",
+        "//third_party/py/absl/testing:absltest",
     ],
 )
 
