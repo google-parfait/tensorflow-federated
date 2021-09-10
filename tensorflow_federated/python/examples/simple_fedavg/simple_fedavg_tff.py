@@ -26,21 +26,16 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
-from typing import Union
-
 import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import build_server_broadcast_message
 from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import client_update
-from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import get_model_weights
-from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import KerasModelWrapper
 from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import server_update
 from tensorflow_federated.python.examples.simple_fedavg.simple_fedavg_tf import ServerState
 
 
-def _initialize_optimizer_vars(model: Union[tff.learning.Model,
-                                            KerasModelWrapper],
+def _initialize_optimizer_vars(model: tff.learning.Model,
                                optimizer: tf.keras.optimizers.Optimizer):
   """Creates optimizer variables to assign the optimizer's state."""
   # Create zero gradients to force an update that doesn't modify.
@@ -48,7 +43,7 @@ def _initialize_optimizer_vars(model: Union[tff.learning.Model,
   # creates the variables on first usage of the optimizer. Optimizers such as
   # Adam, Adagrad, or using momentum need to create a new set of variables shape
   # like the model weights.
-  model_weights = get_model_weights(model)
+  model_weights = tff.learning.ModelWeights.from_model(model)
   zero_gradient = [tf.zeros_like(t) for t in model_weights.trainable]
   optimizer.apply_gradients(zip(zero_gradient, model_weights.trainable))
   assert optimizer.variables()
@@ -57,12 +52,11 @@ def _initialize_optimizer_vars(model: Union[tff.learning.Model,
 def build_federated_averaging_process(
     model_fn,
     server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
-    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1)):
+    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02)):
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
-    model_fn: A no-arg function that returns a
-      `simple_fedavg_tf.KerasModelWrapper`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
     server_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer` for server update.
     client_optimizer_fn: A no-arg function that returns a
@@ -77,7 +71,7 @@ def build_federated_averaging_process(
   @tff.tf_computation
   def server_init_tf():
     model = model_fn()
-    model_weights = get_model_weights(model)
+    model_weights = tff.learning.ModelWeights.from_model(model)
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(
@@ -86,7 +80,6 @@ def build_federated_averaging_process(
         round_num=0)
 
   server_state_type = server_init_tf.type_signature.result
-
   model_weights_type = server_state_type.model_weights
 
   @tff.tf_computation(server_state_type, model_weights_type.trainable)
@@ -118,9 +111,10 @@ def build_federated_averaging_process(
     """Orchestration logic for one round of computation.
 
     Args:
-      server_state: A `ServerState`.
+      server_state: A `ServerState` containing the state of the training process
+        up to the current round.
       federated_dataset: A federated `tf.data.Dataset` with placement
-        `tff.CLIENTS`.
+        `tff.CLIENTS` containing data to train the current round on.
 
     Returns:
       A tuple of updated `ServerState` and `tf.Tensor` of average loss.
@@ -145,7 +139,7 @@ def build_federated_averaging_process(
   @tff.federated_computation
   def server_init_tff():
     """Orchestration logic for server model initialization."""
-    return tff.federated_value(server_init_tf(), tff.SERVER)
+    return tff.federated_eval(server_init_tf, tff.SERVER)
 
   return tff.templates.IterativeProcess(
       initialize_fn=server_init_tff, next_fn=run_one_round)

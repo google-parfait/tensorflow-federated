@@ -26,73 +26,15 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
-import collections
-from typing import Union
-
 import attr
 import tensorflow as tf
 import tensorflow_federated as tff
 
-ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
-ModelOutputs = collections.namedtuple('ModelOutputs', 'loss')
 
-
-def get_model_weights(
-    model: Union[tff.learning.Model, 'KerasModelWrapper']
-) -> Union[tff.learning.ModelWeights, ModelWeights]:
-  """Gets the appropriate ModelWeights object based on the model type."""
-  if isinstance(model, tff.learning.Model):
-    return tff.learning.ModelWeights.from_model(model)
-  else:
-    # Using simple_fedavg custom Keras wrapper.
-    return model.weights
-
-
-class KerasModelWrapper(object):
-  """A standalone keras wrapper to be used in TFF."""
-
-  def __init__(self, keras_model, input_spec, loss):
-    """A wrapper class that provides necessary API handles for TFF.
-
-    Args:
-      keras_model: A `tf.keras.Model` to be trained.
-      input_spec: Metadata of dataset that desribes the input tensors, which
-        will be converted to `tff.Type` specifying the expected type of input
-        and output of the model.
-      loss: A `tf.keras.losses.Loss` instance to be used for training.
-    """
-    self.keras_model = keras_model
-    self.input_spec = input_spec
-    self.loss = loss
-
-  def forward_pass(self, batch_input, training=True):
-    """Forward pass of the model to get loss for a batch of data.
-
-    Args:
-      batch_input: A `collections.abc.Mapping` with two keys, `x` for inputs and
-        `y` for labels.
-      training: Boolean scalar indicating training or inference mode.
-
-    Returns:
-      A scalar tf.float32 `tf.Tensor` loss for current batch input.
-    """
-    preds = self.keras_model(batch_input['x'], training=training)
-    loss = self.loss(batch_input['y'], preds)
-    return ModelOutputs(loss=loss)
-
-  @property
-  def weights(self):
-    return ModelWeights(
-        trainable=self.keras_model.trainable_variables,
-        non_trainable=self.keras_model.non_trainable_variables)
-
-  def from_weights(self, model_weights):
-    tf.nest.map_structure(lambda v, t: v.assign(t),
-                          self.keras_model.trainable_variables,
-                          list(model_weights.trainable))
-    tf.nest.map_structure(lambda v, t: v.assign(t),
-                          self.keras_model.non_trainable_variables,
-                          list(model_weights.non_trainable))
+@attr.s
+class ModelOutputs:
+  """A container of local client training outputs."""
+  loss = attr.ib()
 
 
 def keras_evaluate(model, test_data, metric):
@@ -107,12 +49,11 @@ def keras_evaluate(model, test_data, metric):
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
 
-  Fields:
-  -   `weights_delta`: A dictionary of updates to the model's trainable
-      variables.
-  -   `client_weight`: Weight to be used in a weighted mean when
-      aggregating `weights_delta`.
-  -   `model_output`: A structure matching
+  Attributes:
+    weights_delta: A dictionary of updates to the model's trainable variables.
+    client_weight: Weight to be used in a weighted mean when aggregating
+      `weights_delta`.
+    model_output: A structure matching
       `tff.learning.Model.report_local_outputs`, reflecting the results of
       training on the input dataset.
   """
@@ -125,10 +66,10 @@ class ClientOutput(object):
 class ServerState(object):
   """Structure for state on the server.
 
-  Fields:
-  -   `model_weights`: A dictionary of model's trainable variables.
-  -   `optimizer_state`: Variables of optimizer.
-  -   'round_num': Current round index
+  Attributes:
+    model_weights: A dictionary of model's trainable variables.
+    optimizer_state: Variables of optimizer.
+    round_num: The current round in the training process.
   """
   model_weights = attr.ib()
   optimizer_state = attr.ib()
@@ -139,12 +80,12 @@ class ServerState(object):
 class BroadcastMessage(object):
   """Structure for tensors broadcasted by server during federated optimization.
 
-  Fields:
-  -   `model_weights`: A dictionary of model's trainable tensors.
-  -   `round_num`: Round index to broadcast. We use `round_num` as an example to
-          show how to broadcast auxiliary information that can be helpful on
-          clients. It is not explicitly used, but can be applied to enable
-          learning rate scheduling.
+  Attributes:
+    model_weights: A dictionary of model's trainable tensors.
+    round_num: Round index to broadcast. We use `round_num` as an example to
+      show how to broadcast auxiliary information that can be helpful on
+      clients. It is not explicitly used, but can be applied to enable learning
+      rate scheduling.
   """
   model_weights = attr.ib()
   round_num = attr.ib()
@@ -166,7 +107,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
     An updated `ServerState`.
   """
   # Initialize the model with the current state.
-  model_weights = get_model_weights(model)
+  model_weights = tff.learning.ModelWeights.from_model(model)
   tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
                         server_state.model_weights)
   tf.nest.map_structure(lambda v, t: v.assign(t), server_optimizer.variables(),
@@ -209,15 +150,17 @@ def client_update(model, dataset, server_message, client_optimizer):
   """Performans client local training of `model` on `dataset`.
 
   Args:
-    model: A `tff.learning.Model`.
-    dataset: A 'tf.data.Dataset'.
-    server_message: A `BroadcastMessage` from server.
-    client_optimizer: A `tf.keras.optimizers.Optimizer`.
+    model: A `tff.learning.Model` to train locally on the client.
+    dataset: A 'tf.data.Dataset' representing the clients local dataset.
+    server_message: A `BroadcastMessage` from serve containing the initial
+      model weights to train.
+    client_optimizer: A `tf.keras.optimizers.Optimizer` used to update the local
+      model during training.
 
   Returns:
-    A 'ClientOutput`.
+    A `ClientOutput` instance with a model update to aggregate on the server.
   """
-  model_weights = get_model_weights(model)
+  model_weights = tff.learning.ModelWeights.from_model(model)
   initial_weights = server_message.model_weights
   tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
                         initial_weights)

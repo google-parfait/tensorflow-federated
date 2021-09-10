@@ -15,9 +15,10 @@
 
 import collections
 import functools
-from absl.testing import parameterized
-import numpy as np
 
+from absl.testing import parameterized
+import attr
+import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -26,10 +27,9 @@ from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tff
 
 
 def _create_test_cnn_model():
-  """A simple CNN model for test."""
+  """Creates a deterministic CNN model for testing."""
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
-
   max_pool = functools.partial(
       tf.keras.layers.MaxPooling2D,
       pool_size=(2, 2),
@@ -41,12 +41,11 @@ def _create_test_cnn_model():
       padding='same',
       data_format=data_format,
       activation=tf.nn.relu)
-
   model = tf.keras.models.Sequential([
       conv2d(filters=32, input_shape=input_shape),
       max_pool(),
       tf.keras.layers.Flatten(),
-      tf.keras.layers.Dense(10),
+      tf.keras.layers.Dense(10, kernel_initializer='zeros'),
       tf.keras.layers.Activation(tf.nn.softmax),
   ])
 
@@ -59,17 +58,8 @@ def _create_random_batch():
       y=tf.constant(1, dtype=tf.int32, shape=[1]))
 
 
-def _simple_fedavg_model_fn():
-  keras_model = _create_test_cnn_model()
-  loss = tf.keras.losses.SparseCategoricalCrossentropy()
-  input_spec = collections.OrderedDict(
-      x=tf.TensorSpec([None, 28, 28, 1], tf.float32),
-      y=tf.TensorSpec([None], tf.int32))
-  return simple_fedavg_tf.KerasModelWrapper(
-      keras_model=keras_model, input_spec=input_spec, loss=loss)
-
-
 def _tff_learning_model_fn():
+  """Constructs a test `tff.learning.Model`."""
   keras_model = _create_test_cnn_model()
   loss = tf.keras.losses.SparseCategoricalCrossentropy()
   input_spec = collections.OrderedDict(
@@ -79,20 +69,23 @@ def _tff_learning_model_fn():
       keras_model=keras_model, input_spec=input_spec, loss=loss)
 
 
-MnistVariables = collections.namedtuple(
-    'MnistVariables', 'weights bias num_examples loss_sum accuracy_sum')
+@attr.s
+class MnistVariables:
+  weights = attr.ib()
+  bias = attr.ib()
+  num_examples = attr.ib()
+  loss_sum = attr.ib()
+  accuracy_sum = attr.ib()
 
 
 def _create_mnist_variables():
   return MnistVariables(
       weights=tf.Variable(
-          lambda: tf.zeros(dtype=tf.float32, shape=(784, 10)),
+          np.zeros(dtype=np.float32, shape=(784, 10)),
           name='weights',
           trainable=True),
       bias=tf.Variable(
-          lambda: tf.zeros(dtype=tf.float32, shape=(10)),
-          name='bias',
-          trainable=True),
+          np.zeros(dtype=np.float32, shape=(10)), name='bias', trainable=True),
       num_examples=tf.Variable(0.0, name='num_examples', trainable=False),
       loss_sum=tf.Variable(0.0, name='loss_sum', trainable=False),
       accuracy_sum=tf.Variable(0.0, name='accuracy_sum', trainable=False))
@@ -106,19 +99,15 @@ def _mnist_inference(variables, inputs):
 
 def _mnist_forward_pass(variables, batch):
   y, predictions = _mnist_inference(variables, batch['x'])
-
   flat_labels = tf.reshape(batch['y'], [-1])
   loss = -tf.reduce_mean(
       tf.reduce_sum(tf.one_hot(flat_labels, 10) * tf.math.log(y), axis=[1]))
   accuracy = tf.reduce_mean(
       tf.cast(tf.equal(predictions, flat_labels), tf.float32))
-
   num_examples = tf.cast(tf.size(batch['y']), tf.float32)
-
   variables.num_examples.assign_add(num_examples)
   variables.loss_sum.assign_add(loss * num_examples)
   variables.accuracy_sum.assign_add(accuracy * num_examples)
-
   return tff.learning.BatchOutput(
       loss=loss, predictions=predictions, num_examples=num_examples)
 
@@ -192,14 +181,11 @@ class MnistModel(tff.learning.Model):
 def _create_client_data():
   emnist_batch = collections.OrderedDict(
       label=[5], pixels=np.random.rand(28, 28))
-
   output_types = collections.OrderedDict(label=tf.int32, pixels=tf.float32)
-
   output_shapes = collections.OrderedDict(
       label=tf.TensorShape([1]),
       pixels=tf.TensorShape([28, 28]),
   )
-
   dataset = tf.data.Dataset.from_generator(lambda: (yield emnist_batch),
                                            output_types, output_shapes)
 
@@ -210,24 +196,25 @@ def _create_client_data():
   return client_data
 
 
-class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
+class SimpleFedAvgTest(tff.test.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      ('simple_fedavg_wrapper', _simple_fedavg_model_fn),
-      ('tff.learning.Model_wrapper', _tff_learning_model_fn))
-  def test_something(self, model_fn):
-    it_process = simple_fedavg_tff.build_federated_averaging_process(model_fn)
+  def test_process_construction(self):
+    it_process = simple_fedavg_tff.build_federated_averaging_process(
+        _tff_learning_model_fn)
     self.assertIsInstance(it_process, tff.templates.IterativeProcess)
     federated_data_type = it_process.next.type_signature.parameter[1]
-    self.assertEqual(
-        str(federated_data_type),
-        '{<x=float32[?,28,28,1],y=int32[?]>*}@CLIENTS')
+    self.assert_types_identical(
+        federated_data_type,
+        tff.types.at_clients(
+            tff.types.SequenceType(
+                collections.OrderedDict(
+                    x=tff.types.TensorType(
+                        shape=[None, 28, 28, 1], dtype=tf.float32),
+                    y=tff.types.TensorType(shape=[None], dtype=tf.int32)))))
 
-  @parameterized.named_parameters(
-      ('simple_fedavg_wrapper', _simple_fedavg_model_fn),
-      ('tff.learning.Model_wrapper', _tff_learning_model_fn))
-  def test_simple_training(self, model_fn):
-    it_process = simple_fedavg_tff.build_federated_averaging_process(model_fn)
+  def test_training_keras_model_converges(self):
+    it_process = simple_fedavg_tff.build_federated_averaging_process(
+        _tff_learning_model_fn)
     server_state = it_process.initialize()
 
     def deterministic_batch():
@@ -238,25 +225,27 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     batch = tff.tf_computation(deterministic_batch)()
     federated_data = [[batch]]
 
-    loss_list = []
-    for _ in range(3):
+    previous_loss = None
+    for _ in range(10):
       server_state, loss = it_process.next(server_state, federated_data)
-      loss_list.append(loss)
+      if previous_loss is not None:
+        self.assertLess(loss, previous_loss)
+      previous_loss = loss
+    self.assertLess(loss, 0.1)
 
-    self.assertLess(np.mean(loss_list[1:]), loss_list[0])
-
-  def test_self_contained_example_custom_model(self):
-
+  def test_training_custom_model_converges(self):
     client_data = _create_client_data()
     train_data = [client_data()]
 
     trainer = simple_fedavg_tff.build_federated_averaging_process(MnistModel)
     state = trainer.initialize()
-    losses = []
-    for _ in range(2):
+    previous_loss = None
+    for _ in range(10):
       state, loss = trainer.next(state, train_data)
-      losses.append(loss)
-    self.assertLess(losses[1], losses[0])
+      if previous_loss is not None:
+        self.assertLess(loss, previous_loss)
+      previous_loss = loss
+    self.assertLess(loss, 0.1)
 
   def test_keras_evaluate(self):
     keras_model = _create_test_cnn_model()
@@ -339,9 +328,7 @@ class ServerTest(tf.test.TestCase):
 class ClientTest(tf.test.TestCase):
 
   def test_self_contained_example(self):
-
     client_data = _create_client_data()
-
     model = MnistModel()
     optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
     losses = []
@@ -389,20 +376,28 @@ def _rnn_model_fn() -> tff.learning.Model:
       keras_model=keras_model, input_spec=input_spec, loss=loss)
 
 
-class RNNTest(tf.test.TestCase, parameterized.TestCase):
+class RNNTest(tff.test.TestCase, parameterized.TestCase):
 
   def test_build_fedavg_process(self):
     it_process = simple_fedavg_tff.build_federated_averaging_process(
         _rnn_model_fn)
     self.assertIsInstance(it_process, tff.templates.IterativeProcess)
-    federated_type = it_process.next.type_signature.parameter
+    global_model_type, client_datasets_type = it_process.next.type_signature.parameter
     model_type = tff.learning.framework.weights_type_from_model(_rnn_model_fn)
-    self.assertEqual(
-        str(federated_type[0]),
-        '<model_weights={},optimizer_state=<int64>,round_num=int32>@SERVER'
-        .format(model_type))
-    self.assertEqual(
-        str(federated_type[1]), '{<x=int32[?,5],y=int32[?,5]>*}@CLIENTS')
+    self.assert_types_identical(
+        global_model_type,
+        tff.types.at_server(
+            simple_fedavg_tf.ServerState(
+                model_weights=model_type,
+                optimizer_state=[tf.int64],
+                round_num=tf.int32)))
+    self.assert_types_identical(
+        client_datasets_type,
+        tff.types.at_clients(
+            tff.types.SequenceType(
+                collections.OrderedDict(
+                    x=tff.types.TensorType(shape=[None, 5], dtype=tf.int32),
+                    y=tff.types.TensorType(shape=[None, 5], dtype=tf.int32)))))
 
   def test_client_adagrad_train(self):
     it_process = simple_fedavg_tff.build_federated_averaging_process(
@@ -428,4 +423,5 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  np.random.seed(42)
+  tff.test.main()
