@@ -247,40 +247,6 @@ class SimpleFedAvgTest(tff.test.TestCase, parameterized.TestCase):
       previous_loss = loss
     self.assertLess(loss, 0.1)
 
-  def test_keras_evaluate(self):
-    keras_model = _create_test_cnn_model()
-    sample_data = [
-        collections.OrderedDict(
-            x=np.ones([1, 28, 28, 1], dtype=np.float32),
-            y=np.ones([1], dtype=np.int32))
-    ]
-    metric = tf.keras.metrics.SparseCategoricalAccuracy()
-    accuracy = simple_fedavg_tf.keras_evaluate(keras_model, sample_data, metric)
-    self.assertIsInstance(accuracy, tf.Tensor)
-    self.assertBetween(accuracy, 0.0, 1.0)
-
-  def test_tff_learning_evaluate(self):
-    it_process = simple_fedavg_tff.build_federated_averaging_process(
-        _tff_learning_model_fn)
-    server_state = it_process.initialize()
-    sample_data = [
-        collections.OrderedDict(
-            x=np.ones([1, 28, 28, 1], dtype=np.float32),
-            y=np.ones([1], dtype=np.int32))
-    ]
-    keras_model = _create_test_cnn_model()
-    server_state.model_weights.assign_weights_to(keras_model)
-
-    sample_data = [
-        collections.OrderedDict(
-            x=np.ones([1, 28, 28, 1], dtype=np.float32),
-            y=np.ones([1], dtype=np.int32))
-    ]
-    metric = tf.keras.metrics.SparseCategoricalAccuracy()
-    accuracy = simple_fedavg_tf.keras_evaluate(keras_model, sample_data, metric)
-    self.assertIsInstance(accuracy, tf.Tensor)
-    self.assertBetween(accuracy, 0.0, 1.0)
-
 
 def _server_init(model, optimizer):
   """Returns initial `ServerState`.

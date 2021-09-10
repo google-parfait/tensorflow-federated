@@ -17,15 +17,14 @@ This is intended to be a minimal stand-alone experiment script built on top of
 core TFF.
 """
 
-import collections
 import functools
+
 from absl import app
 from absl import flags
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tf
 from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tff
 
 # Training hyperparameters
@@ -58,8 +57,7 @@ def get_emnist_dataset():
       only_digits=True)
 
   def element_fn(element):
-    return collections.OrderedDict(
-        x=tf.expand_dims(element['pixels'], -1), y=element['label'])
+    return (tf.expand_dims(element['pixels'], -1), element['label'])
 
   def preprocess_train_dataset(dataset):
     # Use buffer_size same as the maximum client dataset size,
@@ -91,7 +89,6 @@ def create_original_fedavg_cnn_model(only_digits=True):
   """
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
-
   max_pool = functools.partial(
       tf.keras.layers.MaxPooling2D,
       pool_size=(2, 2),
@@ -103,7 +100,6 @@ def create_original_fedavg_cnn_model(only_digits=True):
       padding='same',
       data_format=data_format,
       activation=tf.nn.relu)
-
   model = tf.keras.models.Sequential([
       conv2d(filters=32, input_shape=input_shape),
       max_pool(),
@@ -113,7 +109,6 @@ def create_original_fedavg_cnn_model(only_digits=True):
       tf.keras.layers.Dense(512, activation=tf.nn.relu),
       tf.keras.layers.Dense(10 if only_digits else 62),
   ])
-
   return model
 
 
@@ -146,15 +141,18 @@ def main(argv):
     """Constructs a fully initialized model for use in federated averaging."""
     keras_model = create_original_fedavg_cnn_model(only_digits=True)
     loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-    return simple_fedavg_tf.KerasModelWrapper(keras_model,
-                                              test_data.element_spec, loss)
+    return tff.learning.from_keras_model(
+        keras_model, loss=loss, input_spec=train_data.element_type_structure)
 
   iterative_process = simple_fedavg_tff.build_federated_averaging_process(
       tff_model_fn, server_optimizer_fn, client_optimizer_fn)
   server_state = iterative_process.initialize()
 
-  metric = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
-  model = tff_model_fn()
+  # Keras model that represents the global model we'll evaluate test data on.
+  keras_model = create_original_fedavg_cnn_model(only_digits=True)
+  keras_model.compile(metrics=[
+      tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
+  ])
   for round_num in range(FLAGS.total_rounds):
     sampled_clients = np.random.choice(
         train_data.client_ids,
@@ -168,9 +166,8 @@ def main(argv):
         server_state, sampled_train_data)
     print(f'Round {round_num} training loss: {train_metrics}')
     if round_num % FLAGS.rounds_per_eval == 0:
-      model.from_weights(server_state.model_weights)
-      accuracy = simple_fedavg_tf.keras_evaluate(model.keras_model, test_data,
-                                                 metric)
+      server_state.model_weights.assign_weights_to(keras_model)
+      _, accuracy = keras_model.evaluate(test_data, verbose=0)
       print(f'Round {round_num} validation accuracy: {accuracy * 100.0}')
 
 
