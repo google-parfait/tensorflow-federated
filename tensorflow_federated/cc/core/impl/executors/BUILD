@@ -58,6 +58,7 @@ cc_test(
         ":executor_test_base",
         ":federated_intrinsics",
         ":mock_executor",
+        ":status_matchers",
         ":value_test_utils",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_googletest//:gtest_main",
@@ -139,6 +140,7 @@ cc_test(
         ":executor",
         ":executor_service",
         ":mock_executor",
+        ":status_matchers",
         ":value_test_utils",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -159,6 +161,7 @@ cc_library(
     tags = ["nokokoro"],
     deps = [
         ":mock_executor",
+        ":status_matchers",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_googletest//:gtest",
     ],
@@ -198,6 +201,7 @@ cc_test(
         ":executor_test_base",
         ":federating_executor",
         ":mock_executor",
+        ":status_matchers",
         ":value_test_utils",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_googletest//:gtest_main",
@@ -254,6 +258,7 @@ cc_test(
         ":executor_test_base",
         ":mock_executor",
         ":reference_resolving_executor",
+        ":status_matchers",
         ":value_test_utils",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -297,6 +302,7 @@ cc_test(
         ":executor",
         ":mock_grpc",
         ":remote_executor",
+        ":status_matchers",
         ":value_test_utils",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -335,6 +341,21 @@ cc_library(
     deps = [
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_library(
+    name = "status_matchers",
+    testonly = True,
+    srcs = ["status_matchers.cc"],
+    hdrs = ["status_matchers.h"],
+    tags = ["nokokoro"],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -391,6 +412,7 @@ cc_cpu_gpu_test(
     deps = [
         ":executor",
         ":status_macros",
+        ":status_matchers",
         ":tensorflow_executor",
         ":value_test_utils",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -429,6 +451,7 @@ cc_test(
     srcs = ["threading_test.cc"],
     tags = ["nokokoro"],
     deps = [
+        ":status_matchers",
         ":threading",
         "@com_google_googletest//:gtest_main",
     ],
@@ -471,6 +494,7 @@ cc_test(
     srcs = ["value_validation_test.cc"],
     tags = ["nokokoro"],
     deps = [
+        ":status_matchers",
         ":value_test_utils",
         ":value_validation",
         "//tensorflow_federated/proto/v0:computation_cc_proto",

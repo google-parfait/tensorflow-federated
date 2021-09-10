@@ -27,6 +27,7 @@ limitations under the License
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -130,11 +131,9 @@ TEST(ExecutorServiceFailureTest, CreateValueBeforeSetCardinalities) {
   auto response_status =
       executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
 
-  ASSERT_THAT(
-      response_status,
-      ::testing::status::StatusIs(
-          grpc::StatusCode::UNAVAILABLE,
-          ::testing::HasSubstr("CreateValue before setting cardinalities")));
+  ASSERT_THAT(response_status,
+              GrpcStatusIs(grpc::StatusCode::UNAVAILABLE,
+                           "CreateValue before setting cardinalities"));
 }
 
 class ExecutorServiceTest : public ::testing::Test {
@@ -167,10 +166,8 @@ TEST_F(ExecutorServiceTest, SetCardinalitiesReturnsOK) {
   v0::SetCardinalitiesResponse response_pb;
   grpc::ServerContext server_context;
 
-  auto response_status = executor_service_.SetCardinalities(
-      &server_context, &request_pb, &response_pb);
-
-  ASSERT_THAT(response_status, ::testing::status::IsOk());
+  TFF_EXPECT_OK(executor_service_.SetCardinalities(&server_context, &request_pb,
+                                                   &response_pb));
 }
 
 TEST_F(ExecutorServiceTest, CreateValueReturnsZeroRef) {
@@ -182,10 +179,8 @@ TEST_F(ExecutorServiceTest, CreateValueReturnsZeroRef) {
     return TestId(0);
   });
 
-  auto response_status =
-      executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
-
-  ASSERT_THAT(response_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(executor_service_.CreateValue(&server_context, &request_pb,
+                                              &response_pb));
   // First element in the id is the id in the mock executor; the second is the
   // executor's generation.
   EXPECT_THAT(response_pb, ::testing::EqualsProto("value_ref { id: '0-0' }"));
@@ -215,10 +210,10 @@ TEST_F(ExecutorServiceTest, SetCardinalitiesIncrementsExecutorGeneration) {
   auto second_response_status = executor_service_.CreateValue(
       &server_context, &request_pb, &second_response_pb);
 
-  ASSERT_THAT(first_response_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(first_response_status);
   EXPECT_THAT(first_response_pb,
               ::testing::EqualsProto("value_ref { id: '0-0' }"));
-  ASSERT_THAT(second_response_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(second_response_status);
   EXPECT_THAT(second_response_pb,
               ::testing::EqualsProto("value_ref { id: '0-1' }"));
 }
@@ -232,11 +227,9 @@ TEST_F(ExecutorServiceTest, ComputeWithMalformedRefFails) {
 
   auto compute_response_status = executor_service_.Compute(
       &server_context, &compute_request_pb, &compute_response_pb);
-  ASSERT_THAT(
-      compute_response_status,
-      ::testing::status::StatusIs(
-          grpc::StatusCode::INVALID_ARGUMENT,
-          ::testing::HasSubstr("Remote value ID malformed_id malformed")));
+  ASSERT_THAT(compute_response_status,
+              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+                           "Remote value ID malformed_id malformed"));
 }
 
 TEST_F(ExecutorServiceTest, ComputeWithNoIntsInRefFails) {
@@ -248,11 +241,9 @@ TEST_F(ExecutorServiceTest, ComputeWithNoIntsInRefFails) {
 
   auto compute_response_status = executor_service_.Compute(
       &server_context, &compute_request_pb, &compute_response_pb);
-  ASSERT_THAT(
-      compute_response_status,
-      ::testing::status::StatusIs(
-          grpc::StatusCode::INVALID_ARGUMENT,
-          ::testing::HasSubstr("Remote value ID malformed-id malformed")));
+  ASSERT_THAT(compute_response_status,
+              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+                           "Remote value ID malformed-id malformed"));
 }
 
 TEST_F(ExecutorServiceTest, ComputeWithDashOnlyFails) {
@@ -265,9 +256,8 @@ TEST_F(ExecutorServiceTest, ComputeWithDashOnlyFails) {
   auto compute_response_status = executor_service_.Compute(
       &server_context, &compute_request_pb, &compute_response_pb);
   ASSERT_THAT(compute_response_status,
-              ::testing::status::StatusIs(
-                  grpc::StatusCode::INVALID_ARGUMENT,
-                  ::testing::HasSubstr("Remote value ID - malformed")));
+              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+                           "Remote value ID - malformed"));
 }
 
 TEST_F(ExecutorServiceTest, ComputeUnknownRefForwardsFromMock) {
@@ -288,8 +278,7 @@ TEST_F(ExecutorServiceTest, ComputeUnknownRefForwardsFromMock) {
       &server_context, &compute_request_pb, &compute_response_pb);
   ASSERT_THAT(
       compute_response_status,
-      ::testing::status::StatusIs(grpc::StatusCode::INVALID_ARGUMENT,
-                                  ::testing::HasSubstr("Unknown value ref")));
+      GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT, "Unknown value ref"));
 }
 
 TEST_F(ExecutorServiceTest, ComputeBadGenerationFails) {
@@ -303,9 +292,8 @@ TEST_F(ExecutorServiceTest, ComputeBadGenerationFails) {
   auto compute_response_status = executor_service_.Compute(
       &server_context, &compute_request_pb, &compute_response_pb);
   ASSERT_THAT(compute_response_status,
-              ::testing::status::StatusIs(
-                  grpc::StatusCode::INVALID_ARGUMENT,
-                  ::testing::HasSubstr("non-live executor generation.")));
+              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+                           "non-live executor generation."));
 }
 
 TEST_F(ExecutorServiceTest, ComputeReturnsMockValue) {
@@ -327,15 +315,13 @@ TEST_F(ExecutorServiceTest, ComputeReturnsMockValue) {
         return grpc::Status::OK;
       });
 
-  auto create_value_response_status = executor_service_.CreateValue(
-      &server_context, &request_pb, &create_value_response_pb);
-  ASSERT_THAT(create_value_response_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(executor_service_.CreateValue(&server_context, &request_pb,
+                                              &create_value_response_pb));
 
   v0::ComputeRequest compute_request_pb =
       ComputeRequestForId(create_value_response_pb.value_ref().id());
-  auto compute_response_status = executor_service_.Compute(
-      &server_context, &compute_request_pb, &compute_response_pb);
-  ASSERT_THAT(compute_response_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(executor_service_.Compute(&server_context, &compute_request_pb,
+                                          &compute_response_pb));
   EXPECT_THAT(compute_response_pb.value(),
               ::testing::EqualsProto(expected_value));
 }
@@ -378,8 +364,8 @@ TEST_F(ExecutorServiceTest, ComputeTwoValuesReturnsAppropriateValues) {
   auto second_create_value_response_status = executor_service_.CreateValue(
       &server_context, &request_pb, &second_value_response_pb);
 
-  ASSERT_THAT(first_create_value_response_status, ::testing::status::IsOk());
-  ASSERT_THAT(second_create_value_response_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(first_create_value_response_status);
+  TFF_ASSERT_OK(second_create_value_response_status);
 
   v0::ComputeRequest first_compute_request_pb =
       ComputeRequestForId(first_value_response_pb.value_ref().id());
@@ -389,8 +375,8 @@ TEST_F(ExecutorServiceTest, ComputeTwoValuesReturnsAppropriateValues) {
       &server_context, &first_compute_request_pb, &first_compute_response_pb);
   auto second_compute_response_status = executor_service_.Compute(
       &server_context, &second_compute_request_pb, &second_compute_response_pb);
-  ASSERT_THAT(first_compute_response_status, ::testing::status::IsOk());
-  ASSERT_THAT(second_compute_response_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(first_compute_response_status);
+  TFF_ASSERT_OK(second_compute_response_status);
 
   // We expect materializing the 0th id to retun 3, the 1st to return 4.
   EXPECT_THAT(first_compute_response_pb.value(),
@@ -409,7 +395,7 @@ TEST_F(ExecutorServiceTest, DisposePassesCallsDown) {
   EXPECT_CALL(*executor_ptr_, Dispose(1)).WillOnce(ReturnOk);
   auto dispose_status = executor_service_.Dispose(
       &server_context, &dispose_request, &dispose_response);
-  ASSERT_THAT(dispose_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(dispose_status);
 }
 
 TEST_F(ExecutorServiceTest, DisposeFiltersBadGeneration) {
@@ -421,9 +407,8 @@ TEST_F(ExecutorServiceTest, DisposeFiltersBadGeneration) {
   // We expect one forwarded dispose call, as the generation of the second id is
   // not live.
   EXPECT_CALL(*executor_ptr_, Dispose(0)).WillOnce(ReturnOk);
-  auto dispose_status = executor_service_.Dispose(
-      &server_context, &dispose_request, &dispose_response);
-  ASSERT_THAT(dispose_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(executor_service_.Dispose(&server_context, &dispose_request,
+                                          &dispose_response));
 }
 
 TEST_F(ExecutorServiceTest, ClearExecutorThenCreateValueFails) {
@@ -434,18 +419,16 @@ TEST_F(ExecutorServiceTest, ClearExecutorThenCreateValueFails) {
   auto request_pb = CreateValueFloatRequest(2.0f);
   v0::CreateValueResponse response_pb;
 
-  auto clear_executor_status = executor_service_.ClearExecutor(
-      &server_context, &clear_executor_request, &clear_executor_response);
-  ASSERT_THAT(clear_executor_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(executor_service_.ClearExecutor(
+      &server_context, &clear_executor_request, &clear_executor_response));
 
   auto create_value_response_status =
       executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
 
-  ASSERT_THAT(
-      create_value_response_status,
-      ::testing::status::StatusIs(
-          grpc::StatusCode::UNAVAILABLE,
-          ::testing::HasSubstr("CreateValue before setting cardinalities")));
+  ASSERT_THAT(create_value_response_status,
+              GrpcStatusIs(grpc::StatusCode::UNAVAILABLE,
+
+                           "CreateValue before setting cardinalities"));
 }
 
 TEST_F(ExecutorServiceTest, ClearExecutorThenDisposeFails) {
@@ -455,18 +438,15 @@ TEST_F(ExecutorServiceTest, ClearExecutorThenDisposeFails) {
   v0::DisposeResponse dispose_response;
   grpc::ServerContext server_context;
 
-  auto clear_executor_status = executor_service_.ClearExecutor(
-      &server_context, &clear_executor_request, &clear_executor_response);
-  ASSERT_THAT(clear_executor_status, ::testing::status::IsOk());
+  TFF_ASSERT_OK(executor_service_.ClearExecutor(
+      &server_context, &clear_executor_request, &clear_executor_response));
 
   auto dispose_response_status = executor_service_.Dispose(
       &server_context, &dispose_request, &dispose_response);
 
-  ASSERT_THAT(
-      dispose_response_status,
-      ::testing::status::StatusIs(
-          grpc::StatusCode::UNAVAILABLE,
-          ::testing::HasSubstr("Dispose before setting cardinalities")));
+  ASSERT_THAT(dispose_response_status,
+              GrpcStatusIs(grpc::StatusCode::UNAVAILABLE,
+                           "Dispose before setting cardinalities"));
 }
 
 TEST_F(ExecutorServiceTest, CreateCallNoArgFnArgumentSetToEmptyString) {
@@ -480,8 +460,7 @@ TEST_F(ExecutorServiceTest, CreateCallNoArgFnArgumentSetToEmptyString) {
       &server_context, &call_request, &create_call_response_pb);
 
   ASSERT_THAT(create_call_response_status,
-              ::testing::status::StatusIs(grpc::StatusCode::INVALID_ARGUMENT,
-                                          ::testing::HasSubstr("malformed")));
+              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT, "malformed"));
 }
 
 TEST_F(ExecutorServiceTest, CreateCallNoArgFn) {
@@ -495,10 +474,9 @@ TEST_F(ExecutorServiceTest, CreateCallNoArgFn) {
   EXPECT_CALL(*executor_ptr_, CreateCall(0, ::testing::Eq(std::nullopt)))
       .WillOnce([this] { return TestId(1); });
 
-  auto create_call_response_status = executor_service_.CreateCall(
-      &server_context, &call_request, &create_call_response_pb);
+  TFF_ASSERT_OK(executor_service_.CreateCall(&server_context, &call_request,
+                                             &create_call_response_pb));
 
-  ASSERT_THAT(create_call_response_status, ::testing::status::IsOk());
   EXPECT_THAT(create_call_response_pb,
               ::testing::EqualsProto("value_ref { id: '1-0' }"));
 }
@@ -511,10 +489,9 @@ TEST_F(ExecutorServiceTest, CreateCallFunctionWithArgument) {
   EXPECT_CALL(*executor_ptr_, CreateCall(0, ::testing::Optional(1)))
       .WillOnce([this] { return TestId(2); });
 
-  auto create_call_response_status = executor_service_.CreateCall(
-      &server_context, &call_request, &create_call_response_pb);
+  TFF_ASSERT_OK(executor_service_.CreateCall(&server_context, &call_request,
+                                             &create_call_response_pb));
 
-  ASSERT_THAT(create_call_response_status, ::testing::status::IsOk());
   EXPECT_THAT(create_call_response_pb,
               ::testing::EqualsProto("value_ref { id: '2-0' }"));
 }
@@ -545,10 +522,8 @@ TEST_F(ExecutorServiceTest, CreateSelection) {
                                         &second_selection_request,
                                         &second_create_selection_response_pb);
 
-  ASSERT_THAT(first_create_selection_response_status,
-              ::testing::status::IsOk());
-  ASSERT_THAT(second_create_selection_response_status,
-              ::testing::status::IsOk());
+  TFF_ASSERT_OK(first_create_selection_response_status);
+  TFF_ASSERT_OK(second_create_selection_response_status);
   EXPECT_THAT(first_create_selection_response_pb,
               ::testing::EqualsProto("value_ref { id: '1-0' }"));
   EXPECT_THAT(second_create_selection_response_pb,
@@ -564,9 +539,8 @@ TEST_F(ExecutorServiceTest, CreateStructFailsWithBadGeneration) {
       &server_context, &struct_request, &struct_response_pb);
 
   ASSERT_THAT(create_struct_response_status,
-              ::testing::status::StatusIs(
-                  grpc::StatusCode::INVALID_ARGUMENT,
-                  ::testing::HasSubstr("non-live executor generation.")));
+              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+                           "non-live executor generation."));
 }
 
 TEST_F(ExecutorServiceTest, CreateEmptyStruct) {
@@ -578,10 +552,9 @@ TEST_F(ExecutorServiceTest, CreateEmptyStruct) {
               CreateStruct(::testing::Eq(std::vector<ValueId>{})))
       .WillOnce([this] { return TestId(0); });
 
-  auto create_struct_response_status = executor_service_.CreateStruct(
-      &server_context, &struct_request, &struct_response_pb);
+  TFF_ASSERT_OK(executor_service_.CreateStruct(&server_context, &struct_request,
+                                               &struct_response_pb));
 
-  ASSERT_THAT(create_struct_response_status, ::testing::status::IsOk());
   EXPECT_THAT(struct_response_pb,
               ::testing::EqualsProto("value_ref { id: '0-0' }"));
 }
@@ -595,10 +568,9 @@ TEST_F(ExecutorServiceTest, CreateNonemptyStruct) {
               CreateStruct(::testing::Eq(std::vector<ValueId>{0, 1})))
       .WillOnce([this] { return TestId(0); });
 
-  auto create_struct_response_status = executor_service_.CreateStruct(
-      &server_context, &struct_request, &struct_response_pb);
+  TFF_ASSERT_OK(executor_service_.CreateStruct(&server_context, &struct_request,
+                                               &struct_response_pb));
 
-  ASSERT_THAT(create_struct_response_status, ::testing::status::IsOk());
   EXPECT_THAT(struct_response_pb,
               ::testing::EqualsProto("value_ref { id: '0-0' }"));
 }
@@ -613,10 +585,9 @@ TEST_F(ExecutorServiceTest, CreateNamedNonemptyStruct) {
               CreateStruct(::testing::Eq(std::vector<ValueId>{0, 1})))
       .WillOnce([this] { return TestId(0); });
 
-  auto create_struct_response_status = executor_service_.CreateStruct(
-      &server_context, &struct_request, &struct_response_pb);
+  TFF_ASSERT_OK(executor_service_.CreateStruct(&server_context, &struct_request,
+                                               &struct_response_pb));
 
-  ASSERT_THAT(create_struct_response_status, ::testing::status::IsOk());
   EXPECT_THAT(struct_response_pb,
               ::testing::EqualsProto("value_ref { id: '0-0' }"));
 }

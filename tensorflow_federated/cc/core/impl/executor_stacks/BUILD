@@ -85,6 +85,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
         "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
+        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_executor",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_googletest//:gtest_main",

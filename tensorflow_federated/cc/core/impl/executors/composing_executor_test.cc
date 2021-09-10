@@ -24,6 +24,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -46,13 +47,11 @@ using testing::intrinsic::FederatedValueAtClientsV;
 using testing::intrinsic::FederatedValueAtServerV;
 using testing::intrinsic::FederatedZipAtClientsV;
 using testing::intrinsic::FederatedZipAtServerV;
-using ::testing::status::IsOk;
-using ::testing::status::StatusIs;
 
 class ComposingExecutorTest : public ExecutorTestBase {
  public:
   ComposingExecutorTest() {
-    // Extra method required in order to use `ASSERT_OK_AND_ASSIGN`.
+    // Extra method required in order to use `TFF_ASSERT_OK_AND_ASSIGN`.
     Initialize();
   }
 
@@ -65,7 +64,7 @@ class ComposingExecutorTest : public ExecutorTestBase {
     for (uint32_t num_clients : clients_per_child_) {
       total_clients_ += num_clients;
       auto exec = std::make_shared<::testing::StrictMock<MockExecutor>>();
-      ASSERT_OK_AND_ASSIGN(
+      TFF_ASSERT_OK_AND_ASSIGN(
           auto child, ComposingChild::Make(exec, {{"clients", num_clients}}));
       composing_children.push_back(child);
       mock_children_.push_back(std::move(exec));
@@ -103,7 +102,8 @@ TEST_F(ComposingExecutorTest, CreateValueBadIntrinsic) {
 }
 
 TEST_F(ComposingExecutorTest, MaterializeIntrinsicFails) {
-  ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(FederatedMapV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto id,
+                           test_executor_->CreateValue(FederatedMapV()));
   EXPECT_THAT(test_executor_->Materialize(id),
               StatusIs(StatusCode::kUnimplemented));
 }
@@ -157,7 +157,8 @@ TEST_F(ComposingExecutorTest, CreateMaterializeAtClientsAllEqual) {
     child->ExpectMaterialize(
         id, ClientsV(std::vector(clients_per_child_[i], tensor_pb)));
   }
-  ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(all_equal_value));
+  TFF_ASSERT_OK_AND_ASSIGN(auto id,
+                           test_executor_->CreateValue(all_equal_value));
   ExpectMaterialize(id, ClientsV(std::vector(total_clients_, tensor_pb)));
 }
 
@@ -190,16 +191,18 @@ TEST_F(ComposingExecutorTest, CreateMaterializeStructOfMixedValues) {
 TEST_F(ComposingExecutorTest, CreateStructOfTensors) {
   v0::Value tensor_v1 = TensorV(5);
   v0::Value tensor_v2 = TensorV(6);
-  ASSERT_OK_AND_ASSIGN(auto v1_id, test_executor_->CreateValue(tensor_v1));
-  ASSERT_OK_AND_ASSIGN(auto v2_id, test_executor_->CreateValue(tensor_v2));
-  ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateStruct({v1_id, v2_id}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto v1_id, test_executor_->CreateValue(tensor_v1));
+  TFF_ASSERT_OK_AND_ASSIGN(auto v2_id, test_executor_->CreateValue(tensor_v2));
+  TFF_ASSERT_OK_AND_ASSIGN(auto id,
+                           test_executor_->CreateStruct({v1_id, v2_id}));
   ExpectMaterialize(id, StructV({tensor_v1, tensor_v2}));
 }
 
 TEST_F(ComposingExecutorTest, CreateSelection) {
   v0::Value tensor = TensorV(5);
-  ASSERT_OK_AND_ASSIGN(auto s, test_executor_->CreateValue(StructV({tensor})));
-  ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateSelection(s, 0));
+  TFF_ASSERT_OK_AND_ASSIGN(auto s,
+                           test_executor_->CreateValue(StructV({tensor})));
+  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateSelection(s, 0));
   ExpectMaterialize(id, tensor);
 }
 
@@ -209,8 +212,8 @@ TEST_F(ComposingExecutorTest, CreateSelectionFromEmbeddedValue) {
   ValueId child_id = mock_server_->ExpectCreateValue(pretend_struct);
   ValueId child_selected_id = mock_server_->ExpectCreateSelection(child_id, 0);
   mock_server_->ExpectMaterialize(child_selected_id, selected_tensor);
-  ASSERT_OK_AND_ASSIGN(auto s, test_executor_->CreateValue(pretend_struct));
-  ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateSelection(s, 0));
+  TFF_ASSERT_OK_AND_ASSIGN(auto s, test_executor_->CreateValue(pretend_struct));
+  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateSelection(s, 0));
   ExpectMaterialize(id, selected_tensor);
 }
 
@@ -218,19 +221,20 @@ TEST_F(ComposingExecutorTest, CreateSelectionFromFederatedValueFails) {
   v0::Value struct_pb = StructV({TensorV(6)});
   v0::Value fed = ServerV(struct_pb);
   mock_server_->ExpectCreateValue(struct_pb);
-  ASSERT_OK_AND_ASSIGN(auto fed_id, test_executor_->CreateValue(fed));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fed_id, test_executor_->CreateValue(fed));
   EXPECT_THAT(test_executor_->CreateSelection(fed_id, 0),
               StatusIs(StatusCode::kInvalidArgument));
 }
 
 TEST_F(ComposingExecutorTest, CreateSelectionFromIntrinsicFails) {
-  ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(FederatedMapV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto id,
+                           test_executor_->CreateValue(FederatedMapV()));
   EXPECT_THAT(test_executor_->CreateSelection(id, 0),
               StatusIs(StatusCode::kInvalidArgument));
 }
 
 TEST_F(ComposingExecutorTest, CreateSelectionOutOfBoundsFails) {
-  ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(StructV({})));
+  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(StructV({})));
   EXPECT_THAT(test_executor_->CreateSelection(id, 0),
               StatusIs(StatusCode::kInvalidArgument));
 }
@@ -239,11 +243,11 @@ TEST_F(ComposingExecutorTest, CreateCallEmbeddedNoArg) {
   v0::Value fn = TensorV(5);
   v0::Value result = TensorV(22);
   ValueId fn_server_id = mock_server_->ExpectCreateValue(fn);
-  ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   ValueId fn_result_child_id =
       mock_server_->ExpectCreateCall(fn_server_id, std::nullopt);
-  ASSERT_OK_AND_ASSIGN(auto fn_result_id,
-                       test_executor_->CreateCall(fn_id, std::nullopt));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_result_id,
+                           test_executor_->CreateCall(fn_id, std::nullopt));
   mock_server_->ExpectMaterialize(fn_result_child_id, result);
   ExpectMaterialize(fn_result_id, result);
 }
@@ -256,10 +260,10 @@ TEST_F(ComposingExecutorTest, CreateCallEmbeddedSingleArg) {
   ValueId arg_child_id = mock_server_->ExpectCreateValue(arg);
   ValueId fn_result_child_id =
       mock_server_->ExpectCreateCall(fn_child_id, arg_child_id);
-  ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-  ASSERT_OK_AND_ASSIGN(auto arg_id, test_executor_->CreateValue(arg));
-  ASSERT_OK_AND_ASSIGN(auto fn_result_id,
-                       test_executor_->CreateCall(fn_id, arg_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  TFF_ASSERT_OK_AND_ASSIGN(auto arg_id, test_executor_->CreateValue(arg));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_result_id,
+                           test_executor_->CreateCall(fn_id, arg_id));
   mock_server_->ExpectMaterialize(fn_result_child_id, result);
   ExpectMaterialize(fn_result_id, result);
 }
@@ -272,15 +276,15 @@ TEST_F(ComposingExecutorTest, CreateCallEmbedsStructArg) {
   ValueId fn_child_id = mock_server_->ExpectCreateValue(fn);
   ValueId arg_1_child_id = mock_server_->ExpectCreateValue(arg_1);
   ValueId arg_2_child_id = mock_server_->ExpectCreateValue(arg_2);
-  ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-  ASSERT_OK_AND_ASSIGN(auto arg_id,
-                       test_executor_->CreateValue(StructV({arg_1, arg_2})));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto arg_id, test_executor_->CreateValue(StructV({arg_1, arg_2})));
   ValueId arg_child_id =
       mock_server_->ExpectCreateStruct({arg_1_child_id, arg_2_child_id});
   ValueId fn_result_child_id =
       mock_server_->ExpectCreateCall(fn_child_id, arg_child_id);
-  ASSERT_OK_AND_ASSIGN(auto fn_result_id,
-                       test_executor_->CreateCall(fn_id, arg_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_result_id,
+                           test_executor_->CreateCall(fn_id, arg_id));
   mock_server_->ExpectMaterialize(fn_result_child_id, result);
   ExpectMaterialize(fn_result_id, result);
 }
@@ -288,10 +292,10 @@ TEST_F(ComposingExecutorTest, CreateCallEmbedsStructArg) {
 TEST_F(ComposingExecutorTest, CreateCallFederatedValueFails) {
   v0::Value tensor = TensorV(1);
   mock_server_->ExpectCreateValue(tensor);
-  ASSERT_OK_AND_ASSIGN(auto fed_id,
-                       test_executor_->CreateValue(ServerV(tensor)));
-  ASSERT_OK_AND_ASSIGN(auto res_id,
-                       test_executor_->CreateCall(fed_id, std::nullopt));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fed_id,
+                           test_executor_->CreateValue(ServerV(tensor)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
+                           test_executor_->CreateCall(fed_id, std::nullopt));
   // We don't see the error until materializing due to asynchrony caused by
   // evaluating the call in another thread.
   EXPECT_THAT(test_executor_->Materialize(res_id),
@@ -300,10 +304,10 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedValueFails) {
 
 TEST_F(ComposingExecutorTest, CreateCallStructFails) {
   v0::Value tensor = TensorV(1);
-  ASSERT_OK_AND_ASSIGN(auto struct_id,
-                       test_executor_->CreateValue(StructV({tensor})));
-  ASSERT_OK_AND_ASSIGN(auto res_id,
-                       test_executor_->CreateCall(struct_id, std::nullopt));
+  TFF_ASSERT_OK_AND_ASSIGN(auto struct_id,
+                           test_executor_->CreateValue(StructV({tensor})));
+  TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
+                           test_executor_->CreateCall(struct_id, std::nullopt));
   // We don't see the error until materializing due to asynchrony caused by
   // evaluating the call in another thread.
   EXPECT_THAT(test_executor_->Materialize(res_id),
@@ -348,42 +352,43 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedAggregate) {
   auto post_report =
       mock_server_->ExpectCreateCall(server_report, prev_merge_result);
   mock_server_->ExpectMaterialize(post_report, final_result_unfed);
-  ASSERT_OK_AND_ASSIGN(auto controller_value,
-                       test_executor_->CreateValue(value));
-  ASSERT_OK_AND_ASSIGN(auto controller_zero, test_executor_->CreateValue(zero));
-  ASSERT_OK_AND_ASSIGN(auto controller_accumulate,
-                       test_executor_->CreateValue(accumulate));
-  ASSERT_OK_AND_ASSIGN(auto controller_merge,
-                       test_executor_->CreateValue(merge));
-  ASSERT_OK_AND_ASSIGN(auto controller_report,
-                       test_executor_->CreateValue(report));
-  ASSERT_OK_AND_ASSIGN(auto controller_agg,
-                       test_executor_->CreateValue(FederatedAggregateV()));
-  ASSERT_OK_AND_ASSIGN(
+  TFF_ASSERT_OK_AND_ASSIGN(auto controller_value,
+                           test_executor_->CreateValue(value));
+  TFF_ASSERT_OK_AND_ASSIGN(auto controller_zero,
+                           test_executor_->CreateValue(zero));
+  TFF_ASSERT_OK_AND_ASSIGN(auto controller_accumulate,
+                           test_executor_->CreateValue(accumulate));
+  TFF_ASSERT_OK_AND_ASSIGN(auto controller_merge,
+                           test_executor_->CreateValue(merge));
+  TFF_ASSERT_OK_AND_ASSIGN(auto controller_report,
+                           test_executor_->CreateValue(report));
+  TFF_ASSERT_OK_AND_ASSIGN(auto controller_agg,
+                           test_executor_->CreateValue(FederatedAggregateV()));
+  TFF_ASSERT_OK_AND_ASSIGN(
       auto agg_arg,
       test_executor_->CreateStruct({controller_value, controller_zero,
                                     controller_accumulate, controller_merge,
                                     controller_report}));
-  ASSERT_OK_AND_ASSIGN(auto res,
-                       test_executor_->CreateCall(controller_agg, agg_arg));
+  TFF_ASSERT_OK_AND_ASSIGN(auto res,
+                           test_executor_->CreateCall(controller_agg, agg_arg));
   ExpectMaterialize(res, ServerV(final_result_unfed));
 }
 
 TEST_F(ComposingExecutorTest,
        CreateCallFederatedAggregateFailsWithNonClientsPlacedValue) {
   v0::Value unplaced_value = TensorV(1);
-  ASSERT_OK_AND_ASSIGN(auto unplaced_id,
-                       test_executor_->CreateValue(unplaced_value));
-  ASSERT_OK_AND_ASSIGN(auto arg, test_executor_->CreateStruct({
-                                     unplaced_id,  // value
-                                     unplaced_id,  // zero
-                                     unplaced_id,  // accumulate
-                                     unplaced_id,  // merge
-                                     unplaced_id,  // report
-                                 }));
-  ASSERT_OK_AND_ASSIGN(auto agg,
-                       test_executor_->CreateValue(FederatedAggregateV()));
-  ASSERT_OK_AND_ASSIGN(auto res, test_executor_->CreateCall(agg, arg));
+  TFF_ASSERT_OK_AND_ASSIGN(auto unplaced_id,
+                           test_executor_->CreateValue(unplaced_value));
+  TFF_ASSERT_OK_AND_ASSIGN(auto arg, test_executor_->CreateStruct({
+                                         unplaced_id,  // value
+                                         unplaced_id,  // zero
+                                         unplaced_id,  // accumulate
+                                         unplaced_id,  // merge
+                                         unplaced_id,  // report
+                                     }));
+  TFF_ASSERT_OK_AND_ASSIGN(auto agg,
+                           test_executor_->CreateValue(FederatedAggregateV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto res, test_executor_->CreateCall(agg, arg));
   EXPECT_THAT(test_executor_->Materialize(res),
               StatusIs(StatusCode::kInvalidArgument));
 }
@@ -394,12 +399,12 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedBroadcast) {
   for (const auto& child : mock_children_) {
     child->ExpectCreateMaterialize(ClientsV({tensor}, true));
   }
-  ASSERT_OK_AND_ASSIGN(auto server_id,
-                       test_executor_->CreateValue(ServerV(tensor)));
-  ASSERT_OK_AND_ASSIGN(auto broadcast_id,
-                       test_executor_->CreateValue(FederatedBroadcastV()));
-  ASSERT_OK_AND_ASSIGN(auto clients_id,
-                       test_executor_->CreateCall(broadcast_id, server_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto server_id,
+                           test_executor_->CreateValue(ServerV(tensor)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto broadcast_id,
+                           test_executor_->CreateValue(FederatedBroadcastV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto clients_id,
+                           test_executor_->CreateCall(broadcast_id, server_id));
   ExpectMaterialize(clients_id,
                     ClientsV(std::vector<v0::Value>(total_clients_, tensor)));
 }
@@ -407,11 +412,12 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedBroadcast) {
 TEST_F(ComposingExecutorTest,
        CreateCallFederatedBroadcastFailsOnNonServerPlacedValue) {
   v0::Value tensor = TensorV(1);
-  ASSERT_OK_AND_ASSIGN(auto unplaced_id, test_executor_->CreateValue(tensor));
-  ASSERT_OK_AND_ASSIGN(auto broadcast_id,
-                       test_executor_->CreateValue(FederatedBroadcastV()));
-  ASSERT_OK_AND_ASSIGN(auto clients_id,
-                       test_executor_->CreateCall(broadcast_id, unplaced_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto unplaced_id,
+                           test_executor_->CreateValue(tensor));
+  TFF_ASSERT_OK_AND_ASSIGN(auto broadcast_id,
+                           test_executor_->CreateValue(FederatedBroadcastV()));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto clients_id, test_executor_->CreateCall(broadcast_id, unplaced_id));
   EXPECT_THAT(test_executor_->Materialize(clients_id),
               StatusIs(StatusCode::kInvalidArgument));
 }
@@ -439,33 +445,34 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtClients) {
     auto res_id = child->ExpectCreateCall(map_id, args_id);
     child->ExpectMaterialize(res_id, ClientsV(out_vec));
   }
-  ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-  ASSERT_OK_AND_ASSIGN(auto input_id,
-                       test_executor_->CreateValue(ClientsV(client_vals_in)));
-  ASSERT_OK_AND_ASSIGN(auto map_id,
-                       test_executor_->CreateValue(FederatedMapV()));
-  ASSERT_OK_AND_ASSIGN(auto arg_id,
-                       test_executor_->CreateStruct({fn_id, input_id}));
-  ASSERT_OK_AND_ASSIGN(auto res_id, test_executor_->CreateCall(map_id, arg_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto input_id, test_executor_->CreateValue(ClientsV(client_vals_in)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto map_id,
+                           test_executor_->CreateValue(FederatedMapV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
+                           test_executor_->CreateStruct({fn_id, input_id}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
+                           test_executor_->CreateCall(map_id, arg_id));
   ExpectMaterialize(res_id, ClientsV(client_vals_out));
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtServer) {
   v0::Value tensor = TensorV(23);
   ValueId tensor_child_id = mock_server_->ExpectCreateValue(tensor);
-  ASSERT_OK_AND_ASSIGN(auto server_id,
-                       test_executor_->CreateValue(ServerV(tensor)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto server_id,
+                           test_executor_->CreateValue(ServerV(tensor)));
   v0::Value fn = TensorV(44);
   ValueId fn_child_id = mock_server_->ExpectCreateValue(fn);
-  ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-  ASSERT_OK_AND_ASSIGN(auto map_id,
-                       test_executor_->CreateValue(FederatedMapV()));
-  ASSERT_OK_AND_ASSIGN(auto arg_id,
-                       test_executor_->CreateStruct({fn_id, server_id}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  TFF_ASSERT_OK_AND_ASSIGN(auto map_id,
+                           test_executor_->CreateValue(FederatedMapV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
+                           test_executor_->CreateStruct({fn_id, server_id}));
   ValueId result_child_id =
       mock_server_->ExpectCreateCall(fn_child_id, tensor_child_id);
-  ASSERT_OK_AND_ASSIGN(auto result_id,
-                       test_executor_->CreateCall(map_id, arg_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(map_id, arg_id));
   v0::Value output_tensor = TensorV(89);
   mock_server_->ExpectMaterialize(result_child_id, output_tensor);
   ExpectMaterialize(result_id, ServerV(output_tensor));
@@ -473,14 +480,16 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtServer) {
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedMapOnUnplacedFails) {
   v0::Value tensor = TensorV(23);
-  ASSERT_OK_AND_ASSIGN(auto unplaced_id, test_executor_->CreateValue(tensor));
+  TFF_ASSERT_OK_AND_ASSIGN(auto unplaced_id,
+                           test_executor_->CreateValue(tensor));
   v0::Value fn = TensorV(44);
-  ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-  ASSERT_OK_AND_ASSIGN(auto map_id,
-                       test_executor_->CreateValue(FederatedMapV()));
-  ASSERT_OK_AND_ASSIGN(auto arg_id,
-                       test_executor_->CreateStruct({fn_id, unplaced_id}));
-  ASSERT_OK_AND_ASSIGN(auto res_id, test_executor_->CreateCall(map_id, arg_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  TFF_ASSERT_OK_AND_ASSIGN(auto map_id,
+                           test_executor_->CreateValue(FederatedMapV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
+                           test_executor_->CreateStruct({fn_id, unplaced_id}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
+                           test_executor_->CreateCall(map_id, arg_id));
   EXPECT_THAT(test_executor_->Materialize(res_id),
               StatusIs(StatusCode::kInvalidArgument));
 }
@@ -501,24 +510,24 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtClients) {
     ValueId child_res = child->ExpectCreateCall(child_eval, child_fn);
     child->ExpectMaterialize(child_res, ClientsV(child_results));
   }
-  ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-  ASSERT_OK_AND_ASSIGN(auto fed_eval_id,
-                       test_executor_->CreateValue(FederatedEvalAtClientsV()));
-  ASSERT_OK_AND_ASSIGN(auto result_id,
-                       test_executor_->CreateCall(fed_eval_id, fn_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto fed_eval_id, test_executor_->CreateValue(FederatedEvalAtClientsV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(fed_eval_id, fn_id));
   ExpectMaterialize(result_id, ClientsV(client_results));
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtServer) {
   v0::Value fn = TensorV(1);
   ValueId fn_child_id = mock_server_->ExpectCreateValue(fn);
-  ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   ValueId result_child_id =
       mock_server_->ExpectCreateCall(fn_child_id, std::nullopt);
-  ASSERT_OK_AND_ASSIGN(auto fed_eval_id,
-                       test_executor_->CreateValue(FederatedEvalAtServerV()));
-  ASSERT_OK_AND_ASSIGN(auto result_id,
-                       test_executor_->CreateCall(fed_eval_id, fn_id));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto fed_eval_id, test_executor_->CreateValue(FederatedEvalAtServerV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(fed_eval_id, fn_id));
   v0::Value result_tensor = TensorV(3);
   mock_server_->ExpectMaterialize(result_child_id, result_tensor);
   ExpectMaterialize(result_id, ServerV(result_tensor));
@@ -529,11 +538,11 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedValueAtClients) {
   for (const auto& child : mock_children_) {
     child->ExpectCreateMaterialize(ClientsV({tensor}, true));
   }
-  ASSERT_OK_AND_ASSIGN(auto tensor_id, test_executor_->CreateValue(tensor));
-  ASSERT_OK_AND_ASSIGN(auto fed_val_id,
-                       test_executor_->CreateValue(FederatedValueAtClientsV()));
-  ASSERT_OK_AND_ASSIGN(auto result_id,
-                       test_executor_->CreateCall(fed_val_id, tensor_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto tensor_id, test_executor_->CreateValue(tensor));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto fed_val_id, test_executor_->CreateValue(FederatedValueAtClientsV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(fed_val_id, tensor_id));
   ExpectMaterialize(result_id,
                     ClientsV(std::vector<v0::Value>(total_clients_, tensor)));
 }
@@ -553,15 +562,15 @@ TEST_F(ComposingExecutorTest,
     child->ExpectCreateMaterialize(ClientsV({tensor}, true));
   }
 
-  ASSERT_OK_AND_ASSIGN(auto tensor_id, test_executor_->CreateValue(tensor));
-  ASSERT_OK_AND_ASSIGN(auto identity_id,
-                       test_executor_->CreateValue(identity_lambda));
-  ASSERT_OK_AND_ASSIGN(auto computed_tensor_id,
-                       test_executor_->CreateCall(identity_id, tensor_id));
-  ASSERT_OK_AND_ASSIGN(auto fed_val_id,
-                       test_executor_->CreateValue(FederatedValueAtClientsV()));
-  ASSERT_OK_AND_ASSIGN(auto result_id, test_executor_->CreateCall(
-                                           fed_val_id, computed_tensor_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto tensor_id, test_executor_->CreateValue(tensor));
+  TFF_ASSERT_OK_AND_ASSIGN(auto identity_id,
+                           test_executor_->CreateValue(identity_lambda));
+  TFF_ASSERT_OK_AND_ASSIGN(auto computed_tensor_id,
+                           test_executor_->CreateCall(identity_id, tensor_id));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto fed_val_id, test_executor_->CreateValue(FederatedValueAtClientsV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id, test_executor_->CreateCall(
+                                               fed_val_id, computed_tensor_id));
   ExpectMaterialize(result_id,
                     ClientsV(std::vector<v0::Value>(total_clients_, tensor)));
 }
@@ -569,11 +578,11 @@ TEST_F(ComposingExecutorTest,
 TEST_F(ComposingExecutorTest, CreateCallFederatedValueAtServer) {
   v0::Value tensor = TensorV(1);
   mock_server_->ExpectCreateMaterialize(tensor);
-  ASSERT_OK_AND_ASSIGN(auto tensor_id, test_executor_->CreateValue(tensor));
-  ASSERT_OK_AND_ASSIGN(auto fed_val_id,
-                       test_executor_->CreateValue(FederatedValueAtServerV()));
-  ASSERT_OK_AND_ASSIGN(auto result_id,
-                       test_executor_->CreateCall(fed_val_id, tensor_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto tensor_id, test_executor_->CreateValue(tensor));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto fed_val_id, test_executor_->CreateValue(FederatedValueAtServerV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(fed_val_id, tensor_id));
   ExpectMaterialize(result_id, ServerV(tensor));
 }
 
@@ -590,11 +599,12 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClients) {
     auto child_res = child->ExpectCreateCall(child_zip, child_zip_arg);
     child->ExpectMaterialize(child_res, merged);
   }
-  ASSERT_OK_AND_ASSIGN(auto arg_id,
-                       test_executor_->CreateValue(StructV({v1, v2})));
-  ASSERT_OK_AND_ASSIGN(auto zip_id,
-                       test_executor_->CreateValue(FederatedZipAtServerV()));
-  ASSERT_OK_AND_ASSIGN(auto res_id, test_executor_->CreateCall(zip_id, arg_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
+                           test_executor_->CreateValue(StructV({v1, v2})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto zip_id, test_executor_->CreateValue(FederatedZipAtServerV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
+                           test_executor_->CreateCall(zip_id, arg_id));
   ExpectMaterialize(
       res_id, ClientsV(std::vector<v0::Value>(total_clients_, merged_struct)));
 }
@@ -604,14 +614,14 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtServer) {
   v0::Value v2 = TensorV(2);
   ValueId v1_child_id = mock_server_->ExpectCreateValue(v1);
   ValueId v2_child_id = mock_server_->ExpectCreateValue(v2);
-  ASSERT_OK_AND_ASSIGN(auto v_id, test_executor_->CreateValue(
-                                      StructV({ServerV(v1), ServerV(v2)})));
-  ASSERT_OK_AND_ASSIGN(auto zip_id,
-                       test_executor_->CreateValue(FederatedZipAtServerV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto v_id, test_executor_->CreateValue(
+                                          StructV({ServerV(v1), ServerV(v2)})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto zip_id, test_executor_->CreateValue(FederatedZipAtServerV()));
   ValueId struct_child_id =
       mock_server_->ExpectCreateStruct({v1_child_id, v2_child_id});
-  ASSERT_OK_AND_ASSIGN(auto result_id,
-                       test_executor_->CreateCall(zip_id, v_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(zip_id, v_id));
   mock_server_->ExpectMaterialize(struct_child_id, StructV({v1, v2}));
   ExpectMaterialize(result_id, ServerV(StructV({v1, v2})));
 }
@@ -624,11 +634,12 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipDifferentPlacementsFails) {
     child->ExpectCreateValue(v1);
   }
   mock_server_->ExpectCreateValue(v2_inner);
-  ASSERT_OK_AND_ASSIGN(auto arg_id,
-                       test_executor_->CreateValue(StructV({v1, v2})));
-  ASSERT_OK_AND_ASSIGN(auto zip_id,
-                       test_executor_->CreateValue(FederatedZipAtServerV()));
-  ASSERT_OK_AND_ASSIGN(auto res_id, test_executor_->CreateCall(zip_id, arg_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
+                           test_executor_->CreateValue(StructV({v1, v2})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto zip_id, test_executor_->CreateValue(FederatedZipAtServerV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
+                           test_executor_->CreateCall(zip_id, arg_id));
   EXPECT_THAT(test_executor_->Materialize(res_id),
               StatusIs(StatusCode::kInvalidArgument));
 }
@@ -636,12 +647,12 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipDifferentPlacementsFails) {
 TEST_F(ComposingExecutorTest, CreateCallFederatedZipUnplacedFails) {
   v0::Value v1 = TensorV(1);
   v0::Value v2 = TensorV(2);
-  ASSERT_OK_AND_ASSIGN(auto v_id,
-                       test_executor_->CreateValue(StructV({v1, v2})));
-  ASSERT_OK_AND_ASSIGN(auto zip_id,
-                       test_executor_->CreateValue(FederatedZipAtServerV()));
-  ASSERT_OK_AND_ASSIGN(auto result_id,
-                       test_executor_->CreateCall(zip_id, v_id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto v_id,
+                           test_executor_->CreateValue(StructV({v1, v2})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto zip_id, test_executor_->CreateValue(FederatedZipAtServerV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(zip_id, v_id));
   EXPECT_THAT(test_executor_->Materialize(result_id),
               StatusIs(StatusCode::kInvalidArgument));
 }

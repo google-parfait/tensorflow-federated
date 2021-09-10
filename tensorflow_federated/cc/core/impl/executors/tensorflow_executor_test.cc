@@ -36,6 +36,7 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 
@@ -46,8 +47,6 @@ using testing::CreateSerializedRangeDatasetGraphDef;
 using ::testing::EqualsProto;
 using testing::StructV;
 using testing::TensorV;
-using ::testing::status::IsOk;
-using ::testing::status::StatusIs;
 
 template <class TfOp>
 inline v0::TensorFlow::Binding TensorB(const TfOp& op) {
@@ -103,8 +102,8 @@ class TensorFlowExecutorTest : public ::testing::Test {
   TensorFlowExecutorTest() { test_executor_ = CreateTensorFlowExecutor(); }
   std::shared_ptr<Executor> test_executor_;
   void CheckRoundTrip(v0::Value& input_pb) {
-    ASSERT_OK_AND_ASSIGN(OwnedValueId id,
-                         test_executor_->CreateValue(input_pb));
+    TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId id,
+                             test_executor_->CreateValue(input_pb));
     v0::Value output_pb;
     EXPECT_THAT(test_executor_->Materialize(id, &output_pb), IsOk());
     EXPECT_THAT(output_pb, ::testing::proto::IgnoringRepeatedFieldOrdering(
@@ -120,31 +119,33 @@ class TensorFlowExecutorTest : public ::testing::Test {
   void CheckCallEqualsProto(const v0::Value& fn,
                             const std::optional<v0::Value>& arg,
                             const v0::Value& expected) {
-    ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+    TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
     std::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
-      ASSERT_OK_AND_ASSIGN(arg_id, test_executor_->CreateValue(arg.value()));
+      TFF_ASSERT_OK_AND_ASSIGN(arg_id,
+                               test_executor_->CreateValue(arg.value()));
     }
-    ASSERT_OK_AND_ASSIGN(auto result,
-                         test_executor_->CreateCall(fn_id, arg_id));
-    ASSERT_OK_AND_ASSIGN(auto result_proto,
-                         test_executor_->Materialize(result));
+    TFF_ASSERT_OK_AND_ASSIGN(auto result,
+                             test_executor_->CreateCall(fn_id, arg_id));
+    TFF_ASSERT_OK_AND_ASSIGN(auto result_proto,
+                             test_executor_->Materialize(result));
     EXPECT_THAT(result_proto, EqualsProto(expected));
   }
 
   void CheckCallRepeatedlyEqualsProto(const v0::Value& fn,
                                       const std::optional<v0::Value>& arg,
                                       const v0::Value& expected) {
-    ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+    TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
     std::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
-      ASSERT_OK_AND_ASSIGN(arg_id, test_executor_->CreateValue(arg.value()));
+      TFF_ASSERT_OK_AND_ASSIGN(arg_id,
+                               test_executor_->CreateValue(arg.value()));
     }
     for (int i = 0; i < 3; i++) {
-      ASSERT_OK_AND_ASSIGN(auto result,
-                           test_executor_->CreateCall(fn_id, arg_id));
-      ASSERT_OK_AND_ASSIGN(auto result_proto,
-                           test_executor_->Materialize(result));
+      TFF_ASSERT_OK_AND_ASSIGN(auto result,
+                               test_executor_->CreateCall(fn_id, arg_id));
+      TFF_ASSERT_OK_AND_ASSIGN(auto result_proto,
+                               test_executor_->Materialize(result));
       EXPECT_THAT(result_proto, EqualsProto(expected));
     }
   }
@@ -152,10 +153,11 @@ class TensorFlowExecutorTest : public ::testing::Test {
   void CheckCallParallelEqualsProto(const v0::Value& fn,
                                     const std::optional<v0::Value>& arg,
                                     const v0::Value& expected) {
-    ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+    TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
     std::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
-      ASSERT_OK_AND_ASSIGN(arg_id, test_executor_->CreateValue(arg.value()));
+      TFF_ASSERT_OK_AND_ASSIGN(arg_id,
+                               test_executor_->CreateValue(arg.value()));
     }
     const int NUM_TEST_THREADS = 32;
     std::vector<std::future<absl::StatusOr<v0::Value>>> results;
@@ -215,7 +217,7 @@ TEST_F(TensorFlowExecutorTest, CreateValueSimpleTensor) {
 //   v0::TensorType* element_type_pb =
 //       sequence_pb->mutable_element_type()->mutable_tensor();
 //   element_type_pb->set_dtype(v0::TensorType::DT_INT64);
-//   ASSERT_OK_AND_ASSIGN(OwnedValueId value_id,
+//   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId value_id,
 //                        test_executor_->CreateValue(value_pb));
 //
 //   tensorflow::Scope function_scope = tensorflow::Scope::NewRootScope();
@@ -237,12 +239,12 @@ TEST_F(TensorFlowExecutorTest, CreateValueSimpleTensor) {
 //       Computation(SequenceB(input_dataset.operation.output(0)),
 //                   TensorB(reduce_dataset.operation.output(0)),
 //                   function_scope);
-//   ASSERT_OK_AND_ASSIGN(OwnedValueId computation_id,
+//   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId computation_id,
 //                        test_executor_->CreateValue(reduce_computation));
-//   ASSERT_OK_AND_ASSIGN(
+//   TFF_ASSERT_OK_AND_ASSIGN(
 //       OwnedValueId result_id,
 //       test_executor_->CreateCall(computation_id.ref(), value_id.ref()));
-//   ASSERT_OK_AND_ASSIGN(auto output,
+//   TFF_ASSERT_OK_AND_ASSIGN(auto output,
 //                        test_executor_->Materialize(result_id.ref()));
 // }
 
@@ -280,7 +282,8 @@ TEST_F(TensorFlowExecutorTest, RoundTripSequence) {
       std::string(graph_def.data(), graph_def.size());
   // We can't simply `CheckRoundTrip` because the serialized graph defs
   // don't have deterministic node orders.
-  ASSERT_OK_AND_ASSIGN(OwnedValueId id, test_executor_->CreateValue(value_pb));
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId id,
+                           test_executor_->CreateValue(value_pb));
   v0::Value output_pb;
   EXPECT_THAT(test_executor_->Materialize(id, &output_pb), IsOk());
   // Compare GraphDef protos without ordering.
@@ -296,9 +299,9 @@ TEST_F(TensorFlowExecutorTest, RoundTripSequence) {
 
 TEST_F(TensorFlowExecutorTest, CreateStructOneElement) {
   v0::Value input = TensorV(5);
-  ASSERT_OK_AND_ASSIGN(auto value, test_executor_->CreateValue(input));
-  ASSERT_OK_AND_ASSIGN(auto struct_, test_executor_->CreateStruct({value}));
-  ASSERT_OK_AND_ASSIGN(auto output, test_executor_->Materialize(struct_));
+  TFF_ASSERT_OK_AND_ASSIGN(auto value, test_executor_->CreateValue(input));
+  TFF_ASSERT_OK_AND_ASSIGN(auto struct_, test_executor_->CreateStruct({value}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto output, test_executor_->Materialize(struct_));
   EXPECT_THAT(output, EqualsProto(StructV({input})));
 }
 
@@ -307,43 +310,44 @@ TEST_F(TensorFlowExecutorTest, CreateStructSeveralElements) {
   v0::Value t2 = TensorV(6);
   v0::Value t3 = TensorV(7);
   v0::Value struct_ = StructV({TensorV(5), TensorV(6), TensorV(7)});
-  ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(t1));
-  ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(t2));
-  ASSERT_OK_AND_ASSIGN(auto t3id, test_executor_->CreateValue(t3));
-  ASSERT_OK_AND_ASSIGN(auto structid,
-                       test_executor_->CreateStruct({t1id, t2id, t3id}));
-  ASSERT_OK_AND_ASSIGN(auto output, test_executor_->Materialize(structid));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(t1));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(t2));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t3id, test_executor_->CreateValue(t3));
+  TFF_ASSERT_OK_AND_ASSIGN(auto structid,
+                           test_executor_->CreateStruct({t1id, t2id, t3id}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto output, test_executor_->Materialize(structid));
   EXPECT_THAT(output, EqualsProto(struct_));
 }
 
 TEST_F(TensorFlowExecutorTest, CreateSelectionFromCreateValue) {
   v0::Value input = StructV({TensorV(1), TensorV(2)});
-  ASSERT_OK_AND_ASSIGN(auto vid, test_executor_->CreateValue(input));
-  ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateSelection(vid, 0));
-  ASSERT_OK_AND_ASSIGN(auto t1, test_executor_->Materialize(t1id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto vid, test_executor_->CreateValue(input));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateSelection(vid, 0));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1, test_executor_->Materialize(t1id));
   EXPECT_THAT(t1, EqualsProto(TensorV(1)));
 }
 
 TEST_F(TensorFlowExecutorTest, CreateSelectionFromCreateStruct) {
-  ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(TensorV(1)));
-  ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(TensorV(2)));
-  ASSERT_OK_AND_ASSIGN(auto structid,
-                       test_executor_->CreateStruct({t1id, t2id}));
-  ASSERT_OK_AND_ASSIGN(auto selectedid,
-                       test_executor_->CreateSelection(structid, 1));
-  ASSERT_OK_AND_ASSIGN(auto selected, test_executor_->Materialize(selectedid));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(TensorV(1)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(TensorV(2)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto structid,
+                           test_executor_->CreateStruct({t1id, t2id}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto selectedid,
+                           test_executor_->CreateSelection(structid, 1));
+  TFF_ASSERT_OK_AND_ASSIGN(auto selected,
+                           test_executor_->Materialize(selectedid));
   EXPECT_THAT(selected, EqualsProto(TensorV(2)));
 }
 
 TEST_F(TensorFlowExecutorTest, CreateSelectionNonStructImmediate) {
-  ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(TensorV(1)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(TensorV(1)));
   EXPECT_THAT(test_executor_->CreateSelection(id, 0),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "Cannot create selection on non-struct value."));
 }
 
 TEST_F(TensorFlowExecutorTest, CreateSelectionOOBImmediate) {
-  ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(StructV({})));
+  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(StructV({})));
   EXPECT_THAT(test_executor_->CreateSelection(id, 0),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "Attempted to access index 0 of a 0-length struct."));

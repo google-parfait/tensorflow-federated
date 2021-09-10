@@ -19,6 +19,7 @@ limitations under the License
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -28,12 +29,12 @@ class ExecutorTestBase : public ::testing::Test {
   std::shared_ptr<Executor> test_executor_;
 
   void ExpectMaterialize(ValueId id, v0::Value value) {
-    ASSERT_OK_AND_ASSIGN(auto result, test_executor_->Materialize(id));
+    auto result = TFF_ASSERT_OK(test_executor_->Materialize(id));
     EXPECT_THAT(result, ::testing::EqualsProto(value));
   }
 
   void ExpectCreateMaterialize(v0::Value value) {
-    ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(value));
+    auto id = TFF_ASSERT_OK(test_executor_->CreateValue(value));
     ExpectMaterialize(id, value);
   }
 };

@@ -17,6 +17,7 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -29,8 +30,6 @@ using ::absl::StatusCode;
 using testing::ClientsV;
 using testing::ServerV;
 using testing::TensorV;
-using ::testing::status::IsOkAndHolds;
-using ::testing::status::StatusIs;
 
 const uint32_t NUM_CLIENTS = 5;
 const v0::Value TENSOR = TensorV(1.0);

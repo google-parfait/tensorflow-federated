@@ -19,14 +19,13 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated {
 
 namespace {
 
 using ::absl::StatusCode;
-using ::testing::status::IsOk;
-using ::testing::status::StatusIs;
 
 class ThreadingTest : public ::testing::Test {};
 

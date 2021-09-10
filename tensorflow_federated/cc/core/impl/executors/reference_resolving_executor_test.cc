@@ -43,6 +43,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -75,9 +76,6 @@ using ::testing::StrictMock;
 using testing::StructComputation;
 using testing::StructV;
 using testing::TensorV;
-using ::testing::status::IsOk;
-using ::testing::status::IsOkAndHolds;
-using ::testing::status::StatusIs;
 
 MATCHER_P(HasValueId, expected_id,
           absl::StrCat("matches ValueId ", expected_id)) {

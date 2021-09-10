@@ -23,6 +23,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 
 using absl::StatusCode;
@@ -31,7 +32,6 @@ using ::testing::HasSubstr;
 using ::testing::MockFunction;
 using ::testing::Return;
 using ::testing::StrictMock;
-using ::testing::status::StatusIs;
 
 namespace tensorflow_federated {
 
@@ -133,8 +133,8 @@ TEST_F(RemoteExecutorStackTest, UnavailableChannelInterfacesReturnsError) {
           mock_executor_factory_.AsStdFunction(),
           mock_composing_child_factory_.AsStdFunction());
   EXPECT_THAT(status_or_executor.status(),
-              testing::status::StatusIs(StatusCode::kUnavailable,
-                                        HasSubstr("No TFF workers are ready")));
+              StatusIs(StatusCode::kUnavailable,
+                       HasSubstr("No TFF workers are ready")));
 }
 
 TEST_F(RemoteExecutorStackTest,
