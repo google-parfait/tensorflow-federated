@@ -73,6 +73,24 @@ py_test(
 )
 
 py_library(
+    name = "retrying",
+    srcs = ["retrying.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":py_typecheck",
+    ],
+)
+
+py_test(
+    name = "retrying_test",
+    size = "small",
+    srcs = ["retrying_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":retrying"],
+)
+
+py_library(
     name = "serialization_utils",
     srcs = ["serialization_utils.py"],
     srcs_version = "PY3",
