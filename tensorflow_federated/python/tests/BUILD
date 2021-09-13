@@ -51,9 +51,9 @@ py_test(
 )
 
 py_test(
-    name = "federated_averaging_e2e_convergence_test",
+    name = "federated_averaging_e2e_test",
     size = "large",
-    srcs = ["federated_averaging_e2e_convergence_test.py"],
+    srcs = ["federated_averaging_e2e_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
@@ -68,21 +68,9 @@ py_test(
 )
 
 py_test(
-    name = "federated_averaging_integration_test",
+    name = "federated_sgd_e2e_test",
     size = "large",
-    srcs = ["federated_averaging_integration_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":learning_test_models",
-        "//tensorflow_federated",
-    ],
-)
-
-py_test(
-    name = "federated_sgd_e2e_convergence_test",
-    size = "large",
-    srcs = ["federated_sgd_e2e_convergence_test.py"],
+    srcs = ["federated_sgd_e2e_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
@@ -90,18 +78,6 @@ py_test(
         "learning",
         "manual",
     ],
-    deps = [
-        ":learning_test_models",
-        "//tensorflow_federated",
-    ],
-)
-
-py_test(
-    name = "federated_sgd_integration_test",
-    size = "large",
-    srcs = ["federated_sgd_integration_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":learning_test_models",
         "//tensorflow_federated",
