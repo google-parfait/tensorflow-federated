@@ -47,11 +47,11 @@ class NumExamplesCounter(tf.keras.metrics.Sum):
 
 class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
 
-  def _run_test(self, process, *, datasets, expected_num_examples):
+  def _run_test(self, process, *, datasets, expected_num_examples, num_rounds):
     state = process.initialize()
     prev_loss = np.inf
     aggregation_metrics = collections.OrderedDict(mean_value=(), mean_weight=())
-    for _ in range(3):
+    for _ in range(num_rounds):
       state, metric_outputs = process.next(state, datasets)
       self.assertEqual(
           list(metric_outputs.keys()),
@@ -62,6 +62,7 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
       self.assertEqual(train_metrics['num_examples'], expected_num_examples)
       self.assertLess(train_metrics['loss'], prev_loss)
       prev_loss = train_metrics['loss']
+    return train_metrics['loss']
 
   @parameterized.named_parameters([
       ('unweighted_keras_opt', tff.learning.ClientWeighting.UNIFORM,
@@ -90,10 +91,12 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
         )).batch(2)
 
     num_clients = 3
-    self._run_test(
+    final_loss = self._run_test(
         iterative_process,
         datasets=[ds] * num_clients,
-        expected_num_examples=2 * num_clients)
+        expected_num_examples=2 * num_clients,
+        num_rounds=25)
+    self.assertLess(final_loss, 0.4)
 
   @parameterized.named_parameters([
       ('functional_model_keras_opt',
@@ -130,10 +133,12 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
         client_optimizer_fn=client_optimizer(learning_rate=0.01))
 
     num_clients = 3
-    self._run_test(
+    final_loss = self._run_test(
         iterative_process,
         datasets=[ds] * num_clients,
-        expected_num_examples=2 * num_clients)
+        expected_num_examples=2 * num_clients,
+        num_rounds=25)
+    self.assertLess(final_loss, 1.64)
 
   @parameterized.named_parameters([
       ('keras_opt', _get_keras_optimizer_fn),
@@ -156,10 +161,12 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
         model_fn=model_fn, client_optimizer_fn=client_optimizer())
 
     num_clients = 3
-    self._run_test(
+    final_loss = self._run_test(
         iterative_process,
         datasets=[ds] * num_clients,
-        expected_num_examples=3 * num_clients)
+        expected_num_examples=3 * num_clients,
+        num_rounds=10)
+    self.assertLess(final_loss, 2e-3)
 
 
 if __name__ == '__main__':
