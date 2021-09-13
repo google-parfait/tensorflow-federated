@@ -26,6 +26,7 @@ py_library(
         ":checkpoint_manager",
         ":csv_manager",
         ":dictionary_manager",
+        ":file_program_state_manager",
         ":iterative_process_compositions",
         ":metrics_manager",
         ":program_state_manager",
@@ -81,6 +82,24 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":dictionary_manager"],
+)
+
+py_library(
+    name = "file_program_state_manager",
+    srcs = ["file_program_state_manager.py"],
+    srcs_version = "PY3",
+    deps = [":program_state_manager"],
+)
+
+py_test(
+    name = "file_program_state_manager_test",
+    srcs = ["file_program_state_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":file_program_state_manager",
+        ":program_state_manager",
+    ],
 )
 
 py_library(

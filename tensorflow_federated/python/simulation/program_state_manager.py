@@ -1,4 +1,4 @@
-# Copyright 2021, Google LLC.
+# Copyright 2021, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,17 +32,10 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def versions(self) -> Optional[List[int]]:
-    """Returns a list of saved versions or `None`."""
-    raise NotImplementedError
+    """Returns a list of saved versions or `None`.
 
-  @abc.abstractmethod
-  def save(self, program_state: Any, version: int):
-    """Saves `program_state` for the given `version`.
-
-    Args:
-      program_state: The program state to save.
-      version: A monotonically increasing integer representing the version of
-        the `program_state`.
+    Returns:
+      A list of saved versions or `None` if there is no saved program state.
     """
     raise NotImplementedError
 
@@ -51,8 +44,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     """Returns the saved program state for the given `version`.
 
     Args:
-      version: A monotonically increasing integer representing the version of
-        the `program_state`.
+      version: A integer representing the version of a saved program state.
 
     Raises:
       VersionError: If there is no program state for the given `version`.
@@ -74,3 +66,14 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
       return self.load(latest_version), latest_version
     except VersionError:
       return None, 0
+
+  @abc.abstractmethod
+  def save(self, program_state: Any, version: int):
+    """Saves `program_state` for the given `version`.
+
+    Args:
+      program_state: The program state to save.
+      version: A strictly increasing integer representing the version of a saved
+        `program_state`
+    """
+    raise NotImplementedError
