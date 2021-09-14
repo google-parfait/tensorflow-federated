@@ -82,7 +82,7 @@ def build_jax_federated_averaging_process(batch_type, model_type, loss_fn,
   def _train_on_one_batch(model, batch):
     params = structure.flatten(structure.from_container(model, recursive=True))
     grads = structure.flatten(
-        structure.from_container(jax.api.grad(loss_fn)(model, batch)))
+        structure.from_container(jax.grad(loss_fn)(model, batch)))
     updated_params = [_apply_update(x, y) for (x, y) in zip(params, grads)]
     trained_model = structure.pack_sequence_as(model_type, updated_params)
     return type_conversions.type_to_py_container(trained_model, model_type)
