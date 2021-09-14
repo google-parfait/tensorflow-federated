@@ -37,14 +37,6 @@ class ModelOutputs:
   loss = attr.ib()
 
 
-def keras_evaluate(model, test_data, metric):
-  metric.reset_states()
-  for batch in test_data:
-    preds = model(batch['x'], training=False)
-    metric.update_state(y_true=batch['y'], y_pred=preds)
-  return metric.result()
-
-
 @attr.s(eq=False, frozen=True, slots=True)
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
@@ -175,7 +167,7 @@ def client_update(model, dataset, server_message, client_optimizer):
       outputs = model.forward_pass(batch)
     grads = tape.gradient(outputs.loss, model_weights.trainable)
     client_optimizer.apply_gradients(zip(grads, model_weights.trainable))
-    batch_size = tf.shape(batch['x'])[0]
+    batch_size = tf.shape(batch['y'])[0]
     num_examples += batch_size
     loss_sum += outputs.loss * tf.cast(batch_size, tf.float32)
 

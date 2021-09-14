@@ -11,7 +11,6 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":simple_fedavg_tf",
         ":simple_fedavg_tff",
         "//tensorflow_federated",
     ],
