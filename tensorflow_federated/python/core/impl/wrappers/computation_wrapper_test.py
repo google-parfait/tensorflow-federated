@@ -17,12 +17,14 @@ import collections
 import attr
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.impl.computation import function_utils
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 
 tffint32 = computation_types.TensorType(tf.int32)
@@ -50,14 +52,14 @@ def _zero_tracer(parameter_type, name=None):
   yield ZeroTracedFunction(parameter_type, zero_result)
 
 
-class ZeroTracedFunction(function_utils.ConcreteFunction):
+class ZeroTracedFunction(computation_impl.ComputationImpl):
   """A class that represents a traced function for testing purposes."""
 
   def __init__(self, parameter_type, zero_result):
     self.zero_result = zero_result
-    super().__init__(
-        computation_types.FunctionType(parameter_type, tf.string),
-        context_stack_impl.context_stack)
+    fn_type = computation_types.FunctionType(parameter_type, tf.string)
+    test_proto = pb.Computation(type=type_serialization.serialize_type(fn_type))
+    super().__init__(test_proto, context_stack_impl.context_stack, fn_type)
 
 
 class ContextForTest(context_base.Context):

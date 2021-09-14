@@ -21,6 +21,7 @@ from typing import Optional, Tuple
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.tensorflow_libs import function
@@ -62,7 +63,7 @@ def _check_parameters(parameters):
 def _wrap_concrete(fn_name: Optional[str],
                    wrapper_fn,
                    parameter_type,
-                   unpack=None) -> function_utils.ConcreteFunction:
+                   unpack=None) -> computation_impl.ComputationImpl:
   """Wraps with `wrapper_fn` given the provided `parameter_type`."""
   generator = wrapper_fn(parameter_type, fn_name)
   arg = next(generator)
@@ -71,7 +72,7 @@ def _wrap_concrete(fn_name: Optional[str],
   except Exception as e:  # pylint: disable=broad-except
     generator.throw(e)
   concrete_fn = generator.send(result)
-  py_typecheck.check_type(concrete_fn, function_utils.ConcreteFunction,
+  py_typecheck.check_type(concrete_fn, computation_impl.ComputationImpl,
                           'value returned by the wrapper')
   result_parameter_type = concrete_fn.type_signature.parameter
   if (result_parameter_type is not None and
@@ -189,7 +190,7 @@ class PythonTracingStrategy(object):
   def my_wrapper_fn(parameter_type, name=None):
     ...generate some stand-in argument structure matching `parameter_type`...
     result_of_calling_function = yield argument_structure
-    ...postprocess the result and generate a function_utils.ConcreteFunction...
+    ...postprocess the result and generate a `computation_impl.ComputationImpl`
     yield concrete_function
 
   xyz = computation_wrapper.ComputationWrapper(

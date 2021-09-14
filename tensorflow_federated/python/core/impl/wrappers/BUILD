@@ -29,6 +29,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/tensorflow_libs:function",
@@ -43,12 +44,14 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_wrapper",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/impl/computation:function_utils",
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
 )
 

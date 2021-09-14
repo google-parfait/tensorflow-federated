@@ -15,6 +15,7 @@
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
@@ -22,8 +23,15 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-class ComputationImpl(function_utils.ConcreteFunction):
-  """An implementation of the base interface cb.Computation."""
+class ComputationImpl(computation_base.Computation):
+  """A representation of a `pb.Computation` in the `tff.Computation` interface.
+
+  This implementation exposes methods to retrieve the backing `pb.Computation`,
+  as well as the Python representation of this protocol buffer represented by
+  an instance of `building_blocks.ComputationBuildingBlock`. Leverages the
+  implementation of `__call__` inherited from `function_utils.ConcreteFunction`
+  to pass `self` to the currently installed context.
+  """
 
   @classmethod
   def get_proto(cls, value: 'ComputationImpl') -> pb.Computation:
@@ -70,7 +78,8 @@ class ComputationImpl(function_utils.ConcreteFunction):
       raise TypeError('{} is not a functional type, from proto: {}'.format(
           str(type_spec), str(computation_proto)))
 
-    super().__init__(type_spec, context_stack)
+    self._type_signature = type_spec
+    self._context_stack = context_stack
     self._computation_proto = computation_proto
 
   def __eq__(self, other):
@@ -79,6 +88,16 @@ class ComputationImpl(function_utils.ConcreteFunction):
     elif not isinstance(other, ComputationImpl):
       return NotImplemented
     return self._computation_proto == other._computation_proto
+
+  @property
+  def type_signature(self):
+    return self._type_signature
+
+  def __call__(self, *args, **kwargs):
+    context = self._context_stack.current
+    arg = function_utils.pack_args(self._type_signature.parameter, args, kwargs,
+                                   context)
+    return context.invoke(self, arg)
 
   def __hash__(self) -> int:
     return hash(self._computation_proto.SerializeToString(deterministic=True))

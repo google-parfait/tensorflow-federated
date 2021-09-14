@@ -23,7 +23,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -492,59 +491,28 @@ def create_argument_unpacking_fn(
     return functools.partial(_ensure_arg_type, parameter_type)
 
 
-class ConcreteFunction(computation_base.Computation):
-  """A base class for concretely-typed (non-polymorphic) functions."""
-
-  def __init__(self, type_signature, context_stack):
-    """Constructs this concrete function with the give type signature.
-
-    Args:
-      type_signature: An instance of computation_types.FunctionType.
-      context_stack: The context stack to use.
-
-    Raises:
-      TypeError: if the arguments are of the wrong computation_types.
-    """
-    py_typecheck.check_type(type_signature, computation_types.FunctionType)
-    py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-    self._type_signature = type_signature
-    self._context_stack = context_stack
-
-  @property
-  def type_signature(self):
-    return self._type_signature
-
-  def __call__(self, *args, **kwargs):
-    context = self._context_stack.current
-    arg = pack_args(self._type_signature.parameter, args, kwargs, context)
-    return context.invoke(self, arg)
-
-  def __hash__(self):
-    raise NotImplementedError(
-        'Hash must be implemented by the subclasses of `ConcreteFunction`.')
-
-
 class PolymorphicFunction(object):
   """A generic polymorphic function that accepts arguments of diverse types."""
 
   def __init__(self, concrete_function_factory: Callable[
-      [computation_types.Type, Optional[bool]], ConcreteFunction]):
+      [computation_types.Type, Optional[bool]], computation_base.Computation]):
     """Crates a polymorphic function with a given function factory.
 
     Args:
       concrete_function_factory: A callable that accepts a (non-None) TFF type
         as an argument, as well as an optional boolean `unpack` argument which
         should be treated as documented in `create_argument_unpacking_fn`
-        above. The callable must return a ConcreteFunction instance that's been
+        above. The callable must return a `Computation` instance that's been
         created to accept a single positional argument of this TFF type (to be
         reused for future calls with parameters of a matching type).
     """
     self._concrete_function_factory = concrete_function_factory
     self._concrete_function_cache = {}
 
-  def fn_for_argument_type(self,
-                           arg_type: computation_types.Type,
-                           unpack: Optional[bool] = None) -> ConcreteFunction:
+  def fn_for_argument_type(
+      self,
+      arg_type: computation_types.Type,
+      unpack: Optional[bool] = None) -> computation_base.Computation:
     """Concretizes this function with the provided `arg_type`.
 
     The first time this function is called with a particular type on a
@@ -560,15 +528,15 @@ class PolymorphicFunction(object):
         (`None`).
 
     Returns:
-      The `ConcreteFunction` that results from tracing this
+      The `computation_base.Computation` that results from tracing this
       `PolymorphicFunction` with `arg_type.
     """
     key = repr(arg_type) + str(unpack)
     concrete_fn = self._concrete_function_cache.get(key)
     if not concrete_fn:
       concrete_fn = (self._concrete_function_factory)(arg_type, unpack)
-      py_typecheck.check_type(concrete_fn, ConcreteFunction,
-                              'concrete function')
+      py_typecheck.check_type(concrete_fn, computation_base.Computation,
+                              'computation')
       if concrete_fn.type_signature.parameter != arg_type:
         raise TypeError(
             'Expected a concrete function that takes parameter {}, got one '

@@ -19,13 +19,16 @@ import itertools
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 class NoopIngestContextForTest(context_base.Context):
@@ -403,14 +406,16 @@ class PolymorphicFunctionTest(test_case.TestCase):
 
     context_stack = TestContextStack()
 
-    class TestFunction(function_utils.ConcreteFunction):
+    class TestFunction(computation_impl.ComputationImpl):
 
       def __init__(self, name, unpack, parameter_type):
         self._name = name
         self._unpack = unpack
         type_signature = computation_types.FunctionType(parameter_type,
                                                         tf.string)
-        super().__init__(type_signature, context_stack)
+        test_proto = pb.Computation(
+            type=type_serialization.serialize_type(type_signature))
+        super().__init__(test_proto, context_stack, type_signature)
 
       @property
       def name(self):
