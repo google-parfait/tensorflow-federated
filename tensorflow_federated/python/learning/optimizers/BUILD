@@ -3,6 +3,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package(default_visibility = [
     ":optimizers_packages",
     "//tensorflow_federated/python/learning:learning_visibility",
+    "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
     "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
 
     # TODO(b/151441025): This visibility is temporary and can be removed once
