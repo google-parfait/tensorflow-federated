@@ -788,7 +788,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     switch (value.type()) {
       case ExecutorValue::ValueType::CLIENTS: {
         v0::Value_Federated* federated_pb = value_pb->mutable_federated();
-        proto2::RepeatedPtrField<v0::Value>* values_pb =
+        google::protobuf::RepeatedPtrField<v0::Value>* values_pb =
             federated_pb->mutable_value();
         // Ensure that the `values_pb` array does not grow, changing the
         // addresses to which `MaterializeChildClientValues` should load.
