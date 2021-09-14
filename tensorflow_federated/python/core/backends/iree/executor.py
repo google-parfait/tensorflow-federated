@@ -35,7 +35,7 @@ def to_representation_for_type(value, type_spec=None, backend=None):
 
   The following kinds of `value` are supported:
 
-  * Computations, either `pb.Computation` or `computation_impl.ComputationImpl`.
+  * Computations, `pb.Computation` or `computation_impl.ConcreteComputation`.
     These are compiled and converted into `runtime.ComputationCallable`.
 
   * Numpy arrays and scalars, or Python scalars that are converted to Numpy.
@@ -59,9 +59,9 @@ def to_representation_for_type(value, type_spec=None, backend=None):
   type_spec = executor_utils.reconcile_value_with_type_spec(value, type_spec)
   if backend is not None:
     py_typecheck.check_type(backend, backend_info.BackendInfo)
-  if isinstance(value, computation_impl.ComputationImpl):
+  if isinstance(value, computation_impl.ConcreteComputation):
     return to_representation_for_type(
-        computation_impl.ComputationImpl.get_proto(value),
+        computation_impl.ConcreteComputation.get_proto(value),
         type_spec=type_spec,
         backend=backend)
   elif isinstance(value, pb.Computation):

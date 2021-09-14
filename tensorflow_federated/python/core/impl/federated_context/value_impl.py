@@ -357,9 +357,8 @@ def to_value(
     result = Value(arg)
   elif isinstance(arg, placements.PlacementLiteral):
     result = Value(building_blocks.Placement(arg))
-  elif isinstance(
-      arg,
-      (computation_impl.ComputationImpl, function_utils.PolymorphicFunction)):
+  elif isinstance(arg, (computation_impl.ConcreteComputation,
+                        function_utils.PolymorphicFunction)):
     if isinstance(arg, function_utils.PolymorphicFunction):
       if parameter_type_hint is None:
         raise TypeError(
@@ -372,7 +371,7 @@ def to_value(
             'as an argument to the encompassing `to_value` conversion.')
       parameter_type_hint = computation_types.to_type(parameter_type_hint)
       arg = arg.fn_for_argument_type(parameter_type_hint)
-    py_typecheck.check_type(arg, computation_impl.ComputationImpl)
+    py_typecheck.check_type(arg, computation_impl.ConcreteComputation)
     result = Value(arg.to_compiled_building_block())
   elif type_spec is not None and type_spec.is_sequence():
     result = _wrap_sequence_as_value(arg, type_spec.element)

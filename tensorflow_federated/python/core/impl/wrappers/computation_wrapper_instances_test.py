@@ -414,7 +414,7 @@ class FederatedComputationWrapperTest(test_case.TestCase):
     def foo(f, x):
       return f(f(x))
 
-    self.assertIsInstance(foo, computation_impl.ComputationImpl)
+    self.assertIsInstance(foo, computation_impl.ConcreteComputation)
     self.assertEqual(
         str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
 
@@ -442,7 +442,7 @@ class FederatedComputationWrapperTest(test_case.TestCase):
     def foo(x):
       return x
 
-    self.assertIsInstance(foo, computation_impl.ComputationImpl)
+    self.assertIsInstance(foo, computation_impl.ConcreteComputation)
     self.assertEqual(str(foo.type_signature), '(<> -> <>)')
 
     self.assertEqual(str(foo.to_building_block()), '(foo_arg -> foo_arg)')
@@ -575,7 +575,7 @@ class ToComputationImplTest(test_case.TestCase):
     computation_impl_lambda = computation_wrapper_instances.building_block_to_computation(
         lam)
     self.assertIsInstance(computation_impl_lambda,
-                          computation_impl.ComputationImpl)
+                          computation_impl.ConcreteComputation)
 
 
 if __name__ == '__main__':

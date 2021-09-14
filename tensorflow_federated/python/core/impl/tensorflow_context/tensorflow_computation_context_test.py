@@ -32,7 +32,7 @@ class TensorFlowComputationContextTest(test_case.TestCase):
             computation_types.to_type(
                 computation_types.FunctionType(tf.int32, tf.int32))),
         reference=pb.Reference(name='boogledy'))
-    non_tf_computation = computation_impl.ComputationImpl(
+    non_tf_computation = computation_impl.ConcreteComputation(
         bogus_proto, context_stack_impl.context_stack)
 
     context = tensorflow_computation_context.TensorFlowComputationContext(

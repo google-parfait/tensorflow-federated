@@ -155,18 +155,18 @@ class GetHashableKeyTest(absltest.TestCase):
     self.assertNotEqual(hash(first_key), hash(second_key))
 
   def test_get_key_for_identical_computations(self):
-    foo_proto = computation_impl.ComputationImpl.get_proto(foo)
+    foo_proto = computation_impl.ConcreteComputation.get_proto(foo)
     foo_type = foo.type_signature
     first_key = caching_executor._get_hashable_key(foo_proto, foo_type)
-    second_foo_proto = computation_impl.ComputationImpl.get_proto(foo)
+    second_foo_proto = computation_impl.ConcreteComputation.get_proto(foo)
     second_key = caching_executor._get_hashable_key(second_foo_proto, foo_type)
     self.assertEqual(hash(first_key), hash(second_key))
 
   def test_get_key_for_different_computations(self):
-    foo_proto = computation_impl.ComputationImpl.get_proto(foo)
+    foo_proto = computation_impl.ConcreteComputation.get_proto(foo)
     foo_type = foo.type_signature
     first_key = caching_executor._get_hashable_key(foo_proto, foo_type)
-    bar_proto = computation_impl.ComputationImpl.get_proto(bar)
+    bar_proto = computation_impl.ConcreteComputation.get_proto(bar)
     bar_type = bar.type_signature
     second_key = caching_executor._get_hashable_key(bar_proto, bar_type)
     self.assertNotEqual(hash(first_key), hash(second_key))
@@ -420,7 +420,7 @@ class CachingExecutorTest(absltest.TestCase):
     c4 = loop.run_until_complete(v4.compute())
     self.assertEqual(c4.numpy(), 10)
     expected_trace = [('create_value',
-                       computation_impl.ComputationImpl.get_proto(foo),
+                       computation_impl.ConcreteComputation.get_proto(foo),
                        foo.type_signature, 1), ('create_call', 1, 2),
                       ('compute', 2, c4)]
     self.assertLen(tracer.trace, len(expected_trace))
@@ -449,12 +449,12 @@ class CachingExecutorTest(absltest.TestCase):
     self.assertIs(v6, v3)
     c6 = loop.run_until_complete(v6.compute())
     self.assertEqual(c6.numpy(), 11)
-    expected_trace = [
-        ('create_value', computation_impl.ComputationImpl.get_proto(add_one),
-         add_one.type_signature, 1),
-        ('create_value', 10, computation_types.TensorType(tf.int32), 2),
-        ('create_call', 1, 2, 3), ('compute', 3, c6)
-    ]
+    expected_trace = [('create_value',
+                       computation_impl.ConcreteComputation.get_proto(add_one),
+                       add_one.type_signature, 1),
+                      ('create_value', 10,
+                       computation_types.TensorType(tf.int32), 2),
+                      ('create_call', 1, 2, 3), ('compute', 3, c6)]
     self.assertLen(tracer.trace, len(expected_trace))
     for x, y in zip(tracer.trace, expected_trace):
       self.assertCountEqual(_tensor_to_id(x), _tensor_to_id(y))

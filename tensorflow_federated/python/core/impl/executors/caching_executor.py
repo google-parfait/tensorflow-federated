@@ -206,9 +206,9 @@ class CachingExecutor(executor_base.Executor):
 
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
-    if isinstance(value, computation_impl.ComputationImpl):
+    if isinstance(value, computation_impl.ConcreteComputation):
       return await self.create_value(
-          computation_impl.ComputationImpl.get_proto(value),
+          computation_impl.ConcreteComputation.get_proto(value),
           executor_utils.reconcile_value_with_type_spec(value, type_spec))
     py_typecheck.check_type(type_spec, computation_types.Type)
     hashable_key = _get_hashable_key(value, type_spec)

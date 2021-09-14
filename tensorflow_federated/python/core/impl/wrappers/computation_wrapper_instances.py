@@ -57,7 +57,8 @@ def _tf_wrapper_fn(parameter_type, name):
     tf_serializer.throw(e)
   comp_pb, extra_type_spec = tf_serializer.send(result)
   tf_serializer.close()
-  yield computation_impl.ComputationImpl(comp_pb, ctx_stack, extra_type_spec)
+  yield computation_impl.ConcreteComputation(comp_pb, ctx_stack,
+                                             extra_type_spec)
 
 
 tensorflow_wrapper = computation_wrapper.ComputationWrapper(
@@ -87,8 +88,8 @@ def _federated_computation_wrapper_fn(parameter_type, name):
     fn_generator.throw(e)
   target_lambda, extra_type_spec = fn_generator.send(result)
   fn_generator.close()
-  yield computation_impl.ComputationImpl(target_lambda.proto, ctx_stack,
-                                         extra_type_spec)
+  yield computation_impl.ConcreteComputation(target_lambda.proto, ctx_stack,
+                                             extra_type_spec)
 
 
 federated_computation_wrapper = computation_wrapper.ComputationWrapper(
@@ -102,8 +103,8 @@ def building_block_to_computation(building_block):
   """Converts a computation building block to a computation impl."""
   py_typecheck.check_type(building_block,
                           building_blocks.ComputationBuildingBlock)
-  return computation_impl.ComputationImpl(building_block.proto,
-                                          context_stack_impl.context_stack)
+  return computation_impl.ConcreteComputation(building_block.proto,
+                                              context_stack_impl.context_stack)
 
 
 def _check_returns_type_helper(fn, expected_return_type):

@@ -29,7 +29,7 @@ class JaxWrapperTest(absltest.TestCase):
     def foo(x):
       return jax.numpy.add(x, np.int32(10))
 
-    self.assertIsInstance(foo, computation_impl.ComputationImpl)
+    self.assertIsInstance(foo, computation_impl.ConcreteComputation)
     self.assertEqual(str(foo.type_signature), '(int32 -> int32)')
 
   def test_invoke_with_two_arg_fn(self):
@@ -38,7 +38,7 @@ class JaxWrapperTest(absltest.TestCase):
     def foo(x, y):
       return jax.numpy.add(x, y)
 
-    self.assertIsInstance(foo, computation_impl.ComputationImpl)
+    self.assertIsInstance(foo, computation_impl.ConcreteComputation)
     self.assertEqual(str(foo.type_signature), '(<x=int32,y=int32> -> int32)')
 
   def test_arg_ordering(self):
@@ -48,7 +48,7 @@ class JaxWrapperTest(absltest.TestCase):
     def foo(b, a):
       return jax.numpy.add(a, jax.numpy.sum(b))
 
-    self.assertIsInstance(foo, computation_impl.ComputationImpl)
+    self.assertIsInstance(foo, computation_impl.ConcreteComputation)
     self.assertEqual(
         str(foo.type_signature), '(<b=int32[10],a=int32> -> int32)')
 

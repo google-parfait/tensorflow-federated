@@ -171,7 +171,7 @@ class CompilerTest(tf.test.TestCase):
     Returns:
       A tuple consisting of the compiler module and MLIR.
     """
-    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+    comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
     module = compiler.import_tensorflow_computation(comp_proto)
     self.assertIsInstance(module, computation_module.ComputationModule)
     assert isinstance(module.compiler_module, bytes)

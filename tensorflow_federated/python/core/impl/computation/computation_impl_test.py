@@ -30,7 +30,7 @@ class ComputationImplTest(absltest.TestCase):
 
     # At the moment, this should succeed, as both the computation body and the
     # type are well-formed.
-    computation_impl.ComputationImpl(
+    computation_impl.ConcreteComputation(
         pb.Computation(
             **{
                 'type':
@@ -41,11 +41,11 @@ class ComputationImplTest(absltest.TestCase):
             }), context_stack_impl.context_stack)
 
     # This should fail, as the proto is not well-formed.
-    self.assertRaises(TypeError, computation_impl.ComputationImpl,
+    self.assertRaises(TypeError, computation_impl.ConcreteComputation,
                       pb.Computation(), context_stack_impl.context_stack)
 
     # This should fail, as "10" is not an instance of pb.Computation.
-    self.assertRaises(TypeError, computation_impl.ComputationImpl, 10,
+    self.assertRaises(TypeError, computation_impl.ConcreteComputation, 10,
                       context_stack_impl.context_stack)
 
 

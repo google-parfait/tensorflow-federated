@@ -60,10 +60,10 @@ class Context(object, metaclass=abc.ABCMeta):
 
     Args:
       comp: The computation being invoked. The Python type of `comp` expected
-        here (e.g., `pb.Computation`. `ComputationImpl`, or other) may depend on
-        the context. It is the responsibility of the concrete implementation of
-        this interface to verify that the type of `comp` matches what the
-        context is expecting.
+        here (e.g., `pb.Computation`. `ConcreteComputation`, or other) may
+        depend on the context. It is the responsibility of the concrete
+        implementation of this interface to verify that the type of `comp`
+        matches what the context is expecting.
       arg: The optional argument of the call (possibly an argument tuple with a
         nested structure), or `None` if no argument was supplied. Computations
         accept arguments in a variety of forms, but those are first ingested by

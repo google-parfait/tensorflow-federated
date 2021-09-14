@@ -47,7 +47,7 @@ class ExecutionContextsTest(absltest.TestCase):
     comp_pb = xla_serialization.create_xla_tff_computation(
         xla_comp, [], comp_type)
     ctx_stack = context_stack_impl.context_stack
-    comp = computation_impl.ComputationImpl(comp_pb, ctx_stack)
+    comp = computation_impl.ConcreteComputation(comp_pb, ctx_stack)
     execution_contexts.set_local_python_execution_context()
     self.assertEqual(comp(), 10)
 

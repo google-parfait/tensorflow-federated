@@ -44,7 +44,7 @@ def assert_contains_secure_aggregation(comp):
       identified. This may result from calls to references or other
       indirect structures.
   """
-  py_typecheck.check_type(comp, computation_impl.ComputationImpl)
+  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
   comp = comp.to_building_block()
   calls = tree_analysis.find_secure_aggregation_in_tree(comp)
   if len(calls) == 0:  # pylint: disable=g-explicit-length-test
@@ -68,7 +68,7 @@ def assert_not_contains_secure_aggregation(comp):
       identified. This may result from calls to references or other
       indirect structures.
   """
-  py_typecheck.check_type(comp, computation_impl.ComputationImpl)
+  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
   comp = comp.to_building_block()
   calls = tree_analysis.find_secure_aggregation_in_tree(comp)
   if len(calls) != 0:  # pylint: disable=g-explicit-length-test
@@ -90,7 +90,7 @@ def assert_contains_unsecure_aggregation(comp):
       identified. This may result from calls to references or other
       indirect structures.
   """
-  py_typecheck.check_type(comp, computation_impl.ComputationImpl)
+  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
   comp = comp.to_building_block()
   calls = tree_analysis.find_unsecure_aggregation_in_tree(comp)
   if len(calls) == 0:  # pylint: disable=g-explicit-length-test
@@ -114,7 +114,7 @@ def assert_not_contains_unsecure_aggregation(comp):
       identified. This may result from calls to references or other
       indirect structures.
   """
-  py_typecheck.check_type(comp, computation_impl.ComputationImpl)
+  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
   comp = comp.to_building_block()
   calls = tree_analysis.find_unsecure_aggregation_in_tree(comp)
   if len(calls) != 0:  # pylint: disable=g-explicit-length-test

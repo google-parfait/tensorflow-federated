@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-class ComputationImpl(computation_base.Computation):
+class ConcreteComputation(computation_base.Computation):
   """A representation of a `pb.Computation` in the `tff.Computation` interface.
 
   This implementation exposes methods to retrieve the backing `pb.Computation`,
@@ -34,7 +34,7 @@ class ComputationImpl(computation_base.Computation):
   """
 
   @classmethod
-  def get_proto(cls, value: 'ComputationImpl') -> pb.Computation:
+  def get_proto(cls, value: 'ConcreteComputation') -> pb.Computation:
     py_typecheck.check_type(value, cls)
     return value._computation_proto  # pylint: disable=protected-access
 
@@ -49,7 +49,7 @@ class ComputationImpl(computation_base.Computation):
         self._computation_proto, type_signature=self.type_signature)
 
   def __init__(self, computation_proto, context_stack, annotated_type=None):
-    """Constructs a new instance of ComputationImpl from the computation_proto.
+    """Constructs a new instance of ConcreteComputation from the computation_proto.
 
     Args:
       computation_proto: The protocol buffer that represents the computation, an
@@ -85,7 +85,7 @@ class ComputationImpl(computation_base.Computation):
   def __eq__(self, other):
     if self is other:
       return True
-    elif not isinstance(other, ComputationImpl):
+    elif not isinstance(other, ConcreteComputation):
       return NotImplemented
     return self._computation_proto == other._computation_proto
 

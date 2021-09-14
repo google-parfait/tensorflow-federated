@@ -51,7 +51,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
       return x + 1
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ComputationImpl.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp))
     result = fn(tf.constant(10))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 11)
@@ -63,7 +63,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
       return x + 0.5
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ComputationImpl.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp))
     result = fn(tf.constant(10.0))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 10.5)
@@ -75,7 +75,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
       return 1000
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ComputationImpl.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp))
     result = fn()
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 1000)
@@ -88,7 +88,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
       return ds.reduce(np.int32(0), lambda p, q: p + q)
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ComputationImpl.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp))
     result = fn(tf.data.Dataset.from_tensor_slices([10, 20]))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 30)
@@ -100,7 +100,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
       return {'sum': a + b}
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ComputationImpl.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp))
     p = tf.constant(10)
     q = tf.constant(20)
     result = fn(structure.Struct([('a', p), ('b', q)]))
@@ -118,7 +118,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
         return tf.add(x, 20)
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ComputationImpl.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp))
     result = fn()
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 30)
@@ -133,7 +133,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
           return tf.add(x, v)
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        computation_impl.ComputationImpl.get_proto(comp))
+        computation_impl.ConcreteComputation.get_proto(comp))
     result = fn(tf.constant(30))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 60)
@@ -154,7 +154,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
 
     fns = [
         eager_tf_executor.embed_tensorflow_computation(
-            computation_impl.ComputationImpl.get_proto(x))
+            computation_impl.ConcreteComputation.get_proto(x))
         for x in [comp1, comp2]
     ]
     results = [f() for f in fns]
@@ -199,7 +199,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
     def comp(x):
       return tf.add(x, 1)
 
-    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+    comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
 
     fn = eager_tf_executor.embed_tensorflow_computation(
         comp_proto, comp.type_signature, device=device)
@@ -231,7 +231,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
       return tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
 
     wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
-        computation_impl.ComputationImpl.get_proto(comp),
+        computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
         device=_get_first_logical_device(device_type))
@@ -253,7 +253,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
       return value
 
     wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
-        computation_impl.ComputationImpl.get_proto(comp),
+        computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
         device=_get_first_logical_device(device_type))
@@ -272,7 +272,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
           initial_val, lambda p, q: p + q)
 
     wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
-        computation_impl.ComputationImpl.get_proto(comp),
+        computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
         device=_get_first_logical_device(device_type))
@@ -307,7 +307,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
       return dataset_reduce_fn_wrapper(ds, whimsy_val)
 
     wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
-        computation_impl.ComputationImpl.get_proto(comp),
+        computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
         device=_get_first_logical_device(device_type))
@@ -388,7 +388,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
     def comp(x):
       return tf.add(x, 1)
 
-    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+    comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
 
     fn = eager_tf_executor.to_representation_for_type(
         comp_proto, {}, comp.type_signature, device=device)
@@ -479,7 +479,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
     def comp():
       return 1000
 
-    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+    comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
     val = asyncio.get_event_loop().run_until_complete(
         ex.create_value(comp_proto,
                         computation_types.FunctionType(None, tf.int32)))
@@ -497,7 +497,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
     def comp(a, b):
       return a + b
 
-    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+    comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
     val = asyncio.get_event_loop().run_until_complete(
         ex.create_value(
             comp_proto,

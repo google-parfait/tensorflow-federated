@@ -47,9 +47,9 @@ class TransformingExecutor(executor_base.Executor):
   # nested structures with computations in them (also to be transformed).
 
   async def create_value(self, value, type_spec=None):
-    if isinstance(value, computation_impl.ComputationImpl):
+    if isinstance(value, computation_impl.ConcreteComputation):
       return await self.create_value(
-          computation_impl.ComputationImpl.get_proto(value),
+          computation_impl.ConcreteComputation.get_proto(value),
           executor_utils.reconcile_value_with_type_spec(value, type_spec))
     elif isinstance(value, pb.Computation):
       return await self.create_value(

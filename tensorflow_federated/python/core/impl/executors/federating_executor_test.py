@@ -171,8 +171,8 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: enable
   def test_returns_value_with_computation_impl(self, proto, type_signature):
     executor = create_test_executor()
-    value = computation_impl.ComputationImpl(proto,
-                                             context_stack_impl.context_stack)
+    value = computation_impl.ConcreteComputation(
+        proto, context_stack_impl.context_stack)
 
     result = self.run_sync(executor.create_value(value, type_signature))
 

@@ -141,7 +141,7 @@ class SequenceExecutorTest(absltest.TestCase):
 
   def test_create_value_with_tf_computation(self):
     comp = computations.tf_computation(lambda x: x + 1, tf.int32)
-    comp_pb = computation_impl.ComputationImpl.get_proto(comp)
+    comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     type_spec = comp.type_signature
     val = _run_sync(self._sequence_executor.create_value(comp_pb, type_spec))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
@@ -159,7 +159,7 @@ class SequenceExecutorTest(absltest.TestCase):
 
   def test_call_tf_comp_with_int(self):
     comp = computations.tf_computation(lambda x: x + 1, tf.int32)
-    comp_pb = computation_impl.ComputationImpl.get_proto(comp)
+    comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     comp_type = comp.type_signature
     comp_val = _run_sync(
         self._sequence_executor.create_value(comp_pb, comp_type))
@@ -174,7 +174,7 @@ class SequenceExecutorTest(absltest.TestCase):
 
   def test_call_tf_comp_with_int_tuple(self):
     comp = computations.tf_computation(lambda x, y: x + y, tf.int32, tf.int32)
-    comp_pb = computation_impl.ComputationImpl.get_proto(comp)
+    comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     comp_type = comp.type_signature
     comp_val = _run_sync(
         self._sequence_executor.create_value(comp_pb, comp_type))
@@ -204,7 +204,7 @@ class SequenceExecutorTest(absltest.TestCase):
     comp = computations.tf_computation(
         (lambda x: x.reduce(np.int64(0), lambda x, y: x + y)),
         computation_types.SequenceType(tf.int64))
-    comp_pb = computation_impl.ComputationImpl.get_proto(comp)
+    comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     comp_type = comp.type_signature
     comp_val = _run_sync(
         self._sequence_executor.create_value(comp_pb, comp_type))
@@ -237,7 +237,8 @@ class SequenceExecutorTest(absltest.TestCase):
     zero_val = _run_sync(self._sequence_executor.create_value(0, tf.int64))
     op_val = _run_sync(
         self._sequence_executor.create_value(
-            computation_impl.ComputationImpl.get_proto(op), op.type_signature))
+            computation_impl.ConcreteComputation.get_proto(op),
+            op.type_signature))
     arg_val = _run_sync(
         self._sequence_executor.create_struct([ds_val, zero_val, op_val]))
     result_val = _run_sync(
@@ -256,7 +257,8 @@ class SequenceExecutorTest(absltest.TestCase):
     zero_val = _run_sync(self._sequence_executor.create_value(0, tf.int64))
     op_val = _run_sync(
         self._sequence_executor.create_value(
-            computation_impl.ComputationImpl.get_proto(op), op.type_signature))
+            computation_impl.ConcreteComputation.get_proto(op),
+            op.type_signature))
     arg_val = _run_sync(
         self._sequence_executor.create_struct([ds_val, zero_val, op_val]))
     result_val = _run_sync(
@@ -282,7 +284,7 @@ class SequenceExecutorTest(absltest.TestCase):
             ds, computation_types.SequenceType(tf.int64)))
     map_fn_val = _run_sync(
         self._sequence_executor.create_value(
-            computation_impl.ComputationImpl.get_proto(map_fn),
+            computation_impl.ConcreteComputation.get_proto(map_fn),
             map_fn.type_signature))
     arg_val = _run_sync(
         self._sequence_executor.create_struct([map_fn_val, ds_val]))
@@ -312,11 +314,11 @@ class SequenceExecutorTest(absltest.TestCase):
 
     map_fn_1_val = _run_sync(
         self._sequence_executor.create_value(
-            computation_impl.ComputationImpl.get_proto(map_fn_1),
+            computation_impl.ConcreteComputation.get_proto(map_fn_1),
             map_fn_1.type_signature))
     map_fn_2_val = _run_sync(
         self._sequence_executor.create_value(
-            computation_impl.ComputationImpl.get_proto(map_fn_2),
+            computation_impl.ConcreteComputation.get_proto(map_fn_2),
             map_fn_2.type_signature))
     sequence_map_1_val = _make_sequence_map_value(
         self._sequence_executor, map_fn_1.type_signature.parameter,
@@ -347,7 +349,7 @@ class SequenceExecutorTest(absltest.TestCase):
     map_fn = computations.tf_computation(lambda x: x + 2, tf.int64)
     map_fn_val = _run_sync(
         self._sequence_executor.create_value(
-            computation_impl.ComputationImpl.get_proto(map_fn),
+            computation_impl.ConcreteComputation.get_proto(map_fn),
             map_fn.type_signature))
     sequence_map_val = _make_sequence_map_value(self._sequence_executor,
                                                 tf.int64, tf.int64)
@@ -359,7 +361,8 @@ class SequenceExecutorTest(absltest.TestCase):
     op = computations.tf_computation(lambda x, y: x + y, tf.int64, tf.int64)
     op_val = _run_sync(
         self._sequence_executor.create_value(
-            computation_impl.ComputationImpl.get_proto(op), op.type_signature))
+            computation_impl.ConcreteComputation.get_proto(op),
+            op.type_signature))
     sequence_reduce_val = _make_sequence_reduce_value(self._sequence_executor,
                                                       tf.int64, tf.int64)
     arg_2_val = _run_sync(
@@ -378,7 +381,7 @@ class SequenceExecutorTest(absltest.TestCase):
     map_fn = computations.tf_computation(lambda x: x + 2, tf.int64)
     map_fn_val = _run_sync(
         self._sequence_executor.create_value(
-            computation_impl.ComputationImpl.get_proto(map_fn),
+            computation_impl.ConcreteComputation.get_proto(map_fn),
             map_fn.type_signature))
     sequence_map_val = _make_sequence_map_value(self._sequence_executor,
                                                 tf.int64, tf.int64)
@@ -389,7 +392,7 @@ class SequenceExecutorTest(absltest.TestCase):
     comp = computations.tf_computation(
         (lambda x: x.reduce(np.int64(0), lambda x, y: x + y)),
         computation_types.SequenceType(tf.int64))
-    comp_pb = computation_impl.ComputationImpl.get_proto(comp)
+    comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     comp_type = comp.type_signature
     comp_val = _run_sync(
         self._sequence_executor.create_value(comp_pb, comp_type))

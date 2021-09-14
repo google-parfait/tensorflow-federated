@@ -32,7 +32,7 @@ def _jax_strategy_fn(fn_to_wrap, fn_name, parameter_type, unpack):
     unpack: See `unpack` in `function_utils.create_argument_unpacking_fn`.
 
   Returns:
-    An instance of `computation_impl.ComputationImpl` with the constructed
+    An instance of `computation_impl.ConcreteComputation` with the constructed
     computation.
   """
   del fn_name  # Unused.
@@ -43,7 +43,7 @@ def _jax_strategy_fn(fn_to_wrap, fn_name, parameter_type, unpack):
                                                         unpack_arguments_fn,
                                                         parameter_type,
                                                         ctx_stack)
-  return computation_impl.ComputationImpl(comp_pb, ctx_stack)
+  return computation_impl.ConcreteComputation(comp_pb, ctx_stack)
 
 
 jax_wrapper = computation_wrapper.ComputationWrapper(_jax_strategy_fn)

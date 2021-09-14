@@ -63,7 +63,7 @@ def _check_parameters(parameters):
 def _wrap_concrete(fn_name: Optional[str],
                    wrapper_fn,
                    parameter_type,
-                   unpack=None) -> computation_impl.ComputationImpl:
+                   unpack=None) -> computation_impl.ConcreteComputation:
   """Wraps with `wrapper_fn` given the provided `parameter_type`."""
   generator = wrapper_fn(parameter_type, fn_name)
   arg = next(generator)
@@ -72,7 +72,7 @@ def _wrap_concrete(fn_name: Optional[str],
   except Exception as e:  # pylint: disable=broad-except
     generator.throw(e)
   concrete_fn = generator.send(result)
-  py_typecheck.check_type(concrete_fn, computation_impl.ComputationImpl,
+  py_typecheck.check_type(concrete_fn, computation_impl.ConcreteComputation,
                           'value returned by the wrapper')
   result_parameter_type = concrete_fn.type_signature.parameter
   if (result_parameter_type is not None and
@@ -190,7 +190,7 @@ class PythonTracingStrategy(object):
   def my_wrapper_fn(parameter_type, name=None):
     ...generate some stand-in argument structure matching `parameter_type`...
     result_of_calling_function = yield argument_structure
-    ...postprocess the result and generate a `computation_impl.ComputationImpl`
+    ...postprocess the result, generate a `computation_impl.ConcreteComputation`
     yield concrete_function
 
   xyz = computation_wrapper.ComputationWrapper(
@@ -396,8 +396,8 @@ class ComputationWrapper(object):
         Python parameters to the TFF computation's parameter, and has the
         semantics identical to the `unpack` flag in the specification of
         `function_utils.create_argument_unpacking_fn`. Second, it must return a
-        result of type `computation_impl.ComputationImpl` that represents the
-        constructed computation.
+        result of type `computation_impl.ConcreteComputation` that represents
+        the constructed computation.
 
     Raises:
       TypeError: if the arguments are of the wrong types.

@@ -17,7 +17,7 @@ import collections
 import os
 import os.path
 import tempfile
-from typing import Any, Collection, Optional, List, Mapping, Tuple, Union
+from typing import Any, Collection, List, Mapping, Optional, Tuple, Union
 import warnings
 import zipfile
 
@@ -237,9 +237,9 @@ def serialize_value(
   type_spec = computation_types.to_type(type_spec)
   if isinstance(value, computation_pb2.Computation):
     return _serialize_computation(value, type_spec)
-  elif isinstance(value, computation_impl.ComputationImpl):
+  elif isinstance(value, computation_impl.ConcreteComputation):
     return _serialize_computation(
-        computation_impl.ComputationImpl.get_proto(value),
+        computation_impl.ConcreteComputation.get_proto(value),
         executor_utils.reconcile_value_with_type_spec(value, type_spec))
   elif type_spec is None:
     raise TypeError('A type hint is required when serializing a value which '

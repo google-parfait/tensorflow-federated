@@ -41,7 +41,7 @@ class ValueUtilsTest(parameterized.TestCase):
   def test_get_curried(self):
     add_numbers = value_impl.Value(
         building_blocks.ComputationBuildingBlock.from_proto(
-            computation_impl.ComputationImpl.get_proto(
+            computation_impl.ConcreteComputation.get_proto(
                 computations.tf_computation(
                     lambda a, b: tf.add(a, b),  # pylint: disable=unnecessary-lambda
                     [tf.int32, tf.int32]))))

@@ -406,7 +406,7 @@ class PolymorphicFunctionTest(test_case.TestCase):
 
     context_stack = TestContextStack()
 
-    class TestFunction(computation_impl.ComputationImpl):
+    class TestFunction(computation_impl.ConcreteComputation):
 
       def __init__(self, name, unpack, parameter_type):
         self._name = name

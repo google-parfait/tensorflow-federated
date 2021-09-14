@@ -58,7 +58,7 @@ class MultiGPUTest(tf.test.TestCase):
       return value
 
     wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
-        computation_impl.ComputationImpl.get_proto(comp),
+        computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
         device=None)
@@ -74,7 +74,7 @@ class MultiGPUTest(tf.test.TestCase):
         return tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
 
     wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
-        computation_impl.ComputationImpl.get_proto(comp),
+        computation_impl.ConcreteComputation.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
         device=None)

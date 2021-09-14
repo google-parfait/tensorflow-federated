@@ -52,7 +52,7 @@ def _zero_tracer(parameter_type, name=None):
   yield ZeroTracedFunction(parameter_type, zero_result)
 
 
-class ZeroTracedFunction(computation_impl.ComputationImpl):
+class ZeroTracedFunction(computation_impl.ConcreteComputation):
   """A class that represents a traced function for testing purposes."""
 
   def __init__(self, parameter_type, zero_result):

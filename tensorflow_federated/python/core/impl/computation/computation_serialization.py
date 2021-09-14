@@ -24,7 +24,7 @@ def serialize_computation(
     computation: computation_base.Computation) -> pb.Computation:
   """Serializes 'tff.Computation' as a pb.Computation.
 
-  Note: Currently only serialization for computation_impl.ComputationImpl is
+  Note: Currently only serialization for computation_impl.ConcreteComputation is
   implemented.
 
   Args:
@@ -40,10 +40,10 @@ def serialize_computation(
   """
   py_typecheck.check_type(computation, computation_base.Computation)
 
-  if isinstance(computation, computation_impl.ComputationImpl):
+  if isinstance(computation, computation_impl.ConcreteComputation):
     computation_proto = pb.Computation()
     computation_proto.CopyFrom(
-        computation_impl.ComputationImpl.get_proto(computation))
+        computation_impl.ConcreteComputation.get_proto(computation))
     return computation_proto
   else:
     raise NotImplementedError('Serialization of type {} is not currently'
@@ -64,5 +64,5 @@ def deserialize_computation(
     TypeError: If the argument is of the wrong type.
   """
   py_typecheck.check_type(computation_proto, pb.Computation)
-  return computation_impl.ComputationImpl(computation_proto,
-                                          context_stack_impl.context_stack)
+  return computation_impl.ConcreteComputation(computation_proto,
+                                              context_stack_impl.context_stack)

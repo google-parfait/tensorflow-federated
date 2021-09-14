@@ -27,10 +27,10 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 
 
 def transform_to_native_form(
-    comp: computation_impl.ComputationImpl,
+    comp: computation_impl.ConcreteComputation,
     transform_math_to_tf: bool = False,
     grappler_config: Optional[tf.compat.v1.ConfigProto] = None
-) -> computation_impl.ComputationImpl:
+) -> computation_impl.ConcreteComputation:
   """Compiles a computation for execution in the TFF native runtime.
 
   This function transforms the proto underlying `comp` by transforming it
@@ -38,7 +38,7 @@ def transform_to_native_form(
   definition).
 
   Args:
-    comp: Instance of `computation_impl.ComputationImpl` to compile.
+    comp: Instance of `computation_impl.ConcreteComputation` to compile.
     transform_math_to_tf: Whether to additional transform math to TensorFlow
       graphs. Necessary if running on a execution state without
       ReferenceResolvingExecutors underneath FederatingExecutors.
@@ -47,10 +47,10 @@ def transform_to_native_form(
       optimizations wil be applied.
 
   Returns:
-    A new `computation_impl.ComputationImpl` representing the compiled version
-      of `comp`.
+    A new `computation_impl.ConcreteComputation` representing the compiled
+      version of `comp`.
   """
-  proto = computation_impl.ComputationImpl.get_proto(comp)
+  proto = computation_impl.ConcreteComputation.get_proto(comp)
   computation_building_block = building_blocks.ComputationBuildingBlock.from_proto(
       proto)
   try:

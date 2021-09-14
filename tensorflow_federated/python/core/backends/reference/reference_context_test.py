@@ -767,7 +767,7 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
 
   def test_execute_with_nested_lambda(self):
     int32_add = bb.ComputationBuildingBlock.from_proto(
-        computation_impl.ComputationImpl.get_proto(
+        computation_impl.ConcreteComputation.get_proto(
             computations.tf_computation(
                 lambda a, b: tf.add(a, b),  # pylint: disable=unnecessary-lambda
                 [tf.int32, tf.int32])))
@@ -782,23 +782,23 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
                            ('b', bb.Reference('y', tf.int32))]))))
 
     make_10 = bb.ComputationBuildingBlock.from_proto(
-        computation_impl.ComputationImpl.get_proto(
+        computation_impl.ConcreteComputation.get_proto(
             computations.tf_computation(lambda: tf.constant(10))))
 
     add_10 = bb.Call(curried_int32_add, bb.Call(make_10))
 
-    add_10_computation = computation_impl.ComputationImpl(
+    add_10_computation = computation_impl.ConcreteComputation(
         add_10.proto, context_stack_impl.context_stack)
 
     self.assertEqual(add_10_computation(5), 15)
 
   def test_execute_with_block(self):
     add_one = bb.ComputationBuildingBlock.from_proto(
-        computation_impl.ComputationImpl.get_proto(
+        computation_impl.ConcreteComputation.get_proto(
             computations.tf_computation(lambda x: x + 1, tf.int32)))
 
     make_10 = bb.ComputationBuildingBlock.from_proto(
-        computation_impl.ComputationImpl.get_proto(
+        computation_impl.ConcreteComputation.get_proto(
             computations.tf_computation(lambda: tf.constant(10))))
 
     make_13 = bb.Lambda(
@@ -809,7 +809,7 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
                   ('x', bb.Call(add_one, bb.Reference('x', tf.int32)))],
                  bb.Reference('x', tf.int32)))
 
-    make_13_computation = computation_impl.ComputationImpl(
+    make_13_computation = computation_impl.ConcreteComputation(
         make_13.proto, context_stack_impl.context_stack)
 
     self.assertEqual(make_13_computation(), 13)

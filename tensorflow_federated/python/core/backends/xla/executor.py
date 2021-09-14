@@ -35,7 +35,7 @@ def to_representation_for_type(value, type_spec, backend=None):
 
   The following kinds of `value` are supported:
 
-  * Computations, either `pb.Computation` or `computation_impl.ComputationImpl`.
+  * Computations, `pb.Computation` or `computation_impl.ConcreteComputation`.
 
   * Numpy arrays and scalars, or Python scalars that are converted to Numpy.
 
@@ -61,9 +61,10 @@ def to_representation_for_type(value, type_spec, backend=None):
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
   type_spec = executor_utils.reconcile_value_with_type_spec(value, type_spec)
-  if isinstance(value, computation_impl.ComputationImpl):
+  if isinstance(value, computation_impl.ConcreteComputation):
     return to_representation_for_type(
-        computation_impl.ComputationImpl.get_proto(value), type_spec, backend)
+        computation_impl.ConcreteComputation.get_proto(value), type_spec,
+        backend)
   if isinstance(value, pb.Computation):
     comp_type = type_serialization.deserialize_type(value.type)
     if type_spec is not None:

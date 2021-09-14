@@ -365,9 +365,9 @@ class FederatingExecutor(executor_base.Executor):
         type_spec = computation_types.PlacementType()
       type_spec.check_placement()
       return self._strategy.ingest_value(value, type_spec)
-    elif isinstance(value, computation_impl.ComputationImpl):
+    elif isinstance(value, computation_impl.ConcreteComputation):
       return await self.create_value(
-          computation_impl.ComputationImpl.get_proto(value),
+          computation_impl.ConcreteComputation.get_proto(value),
           executor_utils.reconcile_value_with_type_spec(value, type_spec))
     elif isinstance(value, pb.Computation):
       deserialized_type = type_serialization.deserialize_type(value.type)

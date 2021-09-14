@@ -642,16 +642,16 @@ class ReferenceContext(context_base.Context):
     # e.g., a way to specify how data URIs are mapped to physical resources.
 
     def _compilation_fn(
-        comp: computation_impl.ComputationImpl
-    ) -> computation_impl.ComputationImpl:
-      proto = computation_impl.ComputationImpl.get_proto(comp)
+        comp: computation_impl.ConcreteComputation
+    ) -> computation_impl.ConcreteComputation:
+      proto = computation_impl.ConcreteComputation.get_proto(comp)
       bb_to_transform = building_blocks.ComputationBuildingBlock.from_proto(
           proto)
       intrinsics_reduced, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
           bb_to_transform)
       dupes_removed, _ = transformations.remove_duplicate_building_blocks(
           intrinsics_reduced)
-      comp_to_return = computation_impl.ComputationImpl(
+      comp_to_return = computation_impl.ConcreteComputation(
           dupes_removed.proto, context_stack_impl.context_stack)
       return comp_to_return
 
@@ -708,7 +708,7 @@ class ReferenceContext(context_base.Context):
   def ingest(self, arg, type_spec):
 
     def _handle_callable(fn, fn_type):
-      py_typecheck.check_type(fn, computation_impl.ComputationImpl)
+      py_typecheck.check_type(fn, computation_impl.ConcreteComputation)
       fn.type_signature.check_assignable_from(fn_type)
       return fn
 
@@ -721,7 +721,7 @@ class ReferenceContext(context_base.Context):
     if arg is not None:
 
       def _handle_callable(fn, fn_type):
-        py_typecheck.check_type(fn, computation_impl.ComputationImpl)
+        py_typecheck.check_type(fn, computation_impl.ConcreteComputation)
         fn.type_signature.check_assignable_from(fn_type)
         computed_fn = self._compute(self._compile(fn), root_context)
         return computed_fn.value
@@ -753,22 +753,22 @@ class ReferenceContext(context_base.Context):
       fn_result_type = fn.type_signature.result
       return type_conversions.type_to_py_container(value, fn_result_type)
 
-  def _compile(self, comp: computation_impl.ComputationImpl):
-    """Compiles a `computation_impl.ComputationImpl` to prepare it for execution.
+  def _compile(self, comp: computation_impl.ConcreteComputation):
+    """Compiles a `computation_impl.ConcreteComputation` to prepare it for execution.
 
     Args:
-      comp: An instance of `computation_impl.ComputationImpl`.
+      comp: An instance of `computation_impl.ConcreteComputation`.
 
     Returns:
       An instance of `building_blocks.ComputationBuildingBlock` that
       contains the compiled logic of `comp`.
     """
-    py_typecheck.check_type(comp, computation_impl.ComputationImpl)
+    py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
     if self._compiler is not None:
       comp = self._compiler.compile(comp)
     comp, _ = tree_transformations.uniquify_compiled_computation_names(
         building_blocks.ComputationBuildingBlock.from_proto(
-            computation_impl.ComputationImpl.get_proto(comp)))
+            computation_impl.ConcreteComputation.get_proto(comp)))
     return comp
 
   def _compute(self, comp, context):
