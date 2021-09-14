@@ -13,19 +13,20 @@
 # limitations under the License.
 """Simple FedAvg to train EMNIST.
 
-This is intended to be a minimal stand-alone experiment script built on top of
-core TFF.
+This is intended to be a minimal stand-alone experiment script demonstrating
+usage of TFF's Federated Compute API for a from-scratch Federated Avearging
+implementation.
 """
 
 import collections
 import functools
+
 from absl import app
 from absl import flags
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tf
 from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tff
 
 # Training hyperparameters
@@ -45,6 +46,15 @@ flags.DEFINE_float('client_learning_rate', 0.1, 'Client learning rate.')
 FLAGS = flags.FLAGS
 
 
+def evaluate(keras_model, test_dataset):
+  """Evaluate the acurracy of a keras model on a test dataset."""
+  metric = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
+  for batch in test_dataset:
+    predictions = keras_model(batch['x'])
+    metric.update_state(y_true=batch['y'], y_pred=predictions)
+  return metric.result()
+
+
 def get_emnist_dataset():
   """Loads and preprocesses the EMNIST dataset.
 
@@ -56,7 +66,6 @@ def get_emnist_dataset():
   """
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
       only_digits=True)
-
   def element_fn(element):
     return collections.OrderedDict(
         x=tf.expand_dims(element['pixels'], -1), y=element['label'])
@@ -67,11 +76,9 @@ def get_emnist_dataset():
     return dataset.map(element_fn).shuffle(buffer_size=418).repeat(
         count=FLAGS.client_epochs_per_round).batch(
             FLAGS.batch_size, drop_remainder=False)
-
   def preprocess_test_dataset(dataset):
     return dataset.map(element_fn).batch(
         FLAGS.test_batch_size, drop_remainder=False)
-
   emnist_train = emnist_train.preprocess(preprocess_train_dataset)
   emnist_test = preprocess_test_dataset(
       emnist_test.create_tf_dataset_from_all_clients())
@@ -91,7 +98,6 @@ def create_original_fedavg_cnn_model(only_digits=True):
   """
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
-
   max_pool = functools.partial(
       tf.keras.layers.MaxPooling2D,
       pool_size=(2, 2),
@@ -103,7 +109,6 @@ def create_original_fedavg_cnn_model(only_digits=True):
       padding='same',
       data_format=data_format,
       activation=tf.nn.relu)
-
   model = tf.keras.models.Sequential([
       conv2d(filters=32, input_shape=input_shape),
       max_pool(),
@@ -113,7 +118,6 @@ def create_original_fedavg_cnn_model(only_digits=True):
       tf.keras.layers.Dense(512, activation=tf.nn.relu),
       tf.keras.layers.Dense(10 if only_digits else 62),
   ])
-
   return model
 
 
@@ -128,7 +132,6 @@ def client_optimizer_fn():
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
-
   # If GPU is provided, TFF will by default use the first GPU like TF. The
   # following lines will configure TFF to use multi-GPUs and distribute client
   # computation on the GPUs. Note that we put server computatoin on CPU to avoid
@@ -139,22 +142,20 @@ def main(argv):
   server_device = tf.config.list_logical_devices('CPU')[0]
   tff.backends.native.set_local_python_execution_context(
       server_tf_device=server_device, client_tf_devices=client_devices)
-
   train_data, test_data = get_emnist_dataset()
 
   def tff_model_fn():
     """Constructs a fully initialized model for use in federated averaging."""
     keras_model = create_original_fedavg_cnn_model(only_digits=True)
     loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-    return simple_fedavg_tf.KerasModelWrapper(keras_model,
-                                              test_data.element_spec, loss)
+    return tff.learning.from_keras_model(
+        keras_model, loss=loss, input_spec=train_data.element_type_structure)
 
   iterative_process = simple_fedavg_tff.build_federated_averaging_process(
       tff_model_fn, server_optimizer_fn, client_optimizer_fn)
   server_state = iterative_process.initialize()
-
-  metric = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
-  model = tff_model_fn()
+  # Keras model that represents the global model we'll evaluate test data on.
+  keras_model = create_original_fedavg_cnn_model(only_digits=True)
   for round_num in range(FLAGS.total_rounds):
     sampled_clients = np.random.choice(
         train_data.client_ids,
@@ -166,12 +167,12 @@ def main(argv):
     ]
     server_state, train_metrics = iterative_process.next(
         server_state, sampled_train_data)
-    print(f'Round {round_num} training loss: {train_metrics}')
+    print(f'Round {round_num}')
+    print(f'\tTraining loss: {train_metrics:.4f}')
     if round_num % FLAGS.rounds_per_eval == 0:
-      model.from_weights(server_state.model_weights)
-      accuracy = simple_fedavg_tf.keras_evaluate(model.keras_model, test_data,
-                                                 metric)
-      print(f'Round {round_num} validation accuracy: {accuracy * 100.0}')
+      server_state.model_weights.assign_weights_to(keras_model)
+      accuracy = evaluate(keras_model, test_data)
+      print(f'\tValidation accuracy: {accuracy * 100.0:.2f}%')
 
 
 if __name__ == '__main__':
