@@ -17,7 +17,11 @@ import abc
 from typing import Any, List, Optional, Tuple
 
 
-class VersionError(Exception):
+class VersionAlreadyExistsError(Exception):
+  pass
+
+
+class VersionNotFoundError(Exception):
   pass
 
 
@@ -47,7 +51,8 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
       version: A integer representing the version of a saved program state.
 
     Raises:
-      VersionError: If there is no program state for the given `version`.
+      VersionNotFoundError: If there is no program state for the given
+        `version`.
     """
     raise NotImplementedError
 
@@ -64,7 +69,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     latest_version = max(versions)
     try:
       return self.load(latest_version), latest_version
-    except VersionError:
+    except VersionNotFoundError:
       return None, 0
 
   @abc.abstractmethod
@@ -75,5 +80,9 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
       program_state: The program state to save.
       version: A strictly increasing integer representing the version of a saved
         `program_state`
+
+    Raises:
+      VersionAlreadyExistsError: If there already exists program state for the
+        given `version`.
     """
     raise NotImplementedError
