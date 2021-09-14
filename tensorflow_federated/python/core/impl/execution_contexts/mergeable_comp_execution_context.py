@@ -179,8 +179,12 @@ class MergeableCompForm:
         return True
       return False
 
-    if tree_analysis.contains(after_merge.to_building_block(),
-                              _aggregation_predicate):
+    # We only know how to statically analyze computations which are backed by
+    # computation.protos; to avoid opening up a visibility hole that isn't
+    # technically necessary here, we prefer to simply skip the static check here
+    # for computations which cannot convert themselves to building blocks.
+    if hasattr(after_merge, 'to_building_block') and tree_analysis.contains(
+        after_merge.to_building_block(), _aggregation_predicate):
       formatted_aggregations = ', '.join(
           '{}: {}'.format(elem[0], elem[1]) for elem in aggregations)
       raise AfterMergeStructureError(

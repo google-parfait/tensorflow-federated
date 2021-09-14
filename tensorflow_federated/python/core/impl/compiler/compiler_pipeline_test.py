@@ -32,9 +32,6 @@ class CompilerPipelineTest(test_case.TestCase):
       def __hash__(self):
         return hash(self.v)
 
-      def to_building_block(self):
-        raise NotImplementedError()
-
       def type_signature(self):
         raise NotImplementedError()
 
