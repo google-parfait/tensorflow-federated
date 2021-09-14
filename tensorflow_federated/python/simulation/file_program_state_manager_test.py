@@ -106,17 +106,17 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
     expected_program_state = _create_test_program_state(version)
     self.assertEqual(actual_program_state, expected_program_state)
 
-  def test_raises_version_error_with_no_saved_program_states(self):
+  def test_raises_version_not_found_error_with_no_saved_program_states(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         temp_dir)
     structure = _create_test_program_state()
     program_state_mngr.set_structure(structure)
 
-    with self.assertRaises(program_state_manager.VersionError):
+    with self.assertRaises(program_state_manager.VersionNotFoundError):
       _ = program_state_mngr.load(0)
 
-  def test_raises_version_error_with_unknown_version(self):
+  def test_raises_version_not_found_error_with_unknown_version(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         temp_dir)
@@ -125,7 +125,7 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
     test_program_state_1 = _create_test_program_state(1)
     program_state_mngr.save(test_program_state_1, 1)
 
-    with self.assertRaises(program_state_manager.VersionError):
+    with self.assertRaises(program_state_manager.VersionNotFoundError):
       _ = program_state_mngr.load(10)
 
   def test_raises_value_error_with_no_structure(self):
@@ -193,7 +193,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase):
             'program_state_40',
         ])
 
-  def test_raises_already_exists_error_with_existing_version(self):
+  def test_raises_version_already_exists_error_with_existing_version(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         temp_dir)
@@ -201,7 +201,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase):
     test_program_state_1 = _create_test_program_state(1)
     program_state_mngr.save(test_program_state_1, 1)
 
-    with self.assertRaises(tf.errors.AlreadyExistsError):
+    with self.assertRaises(program_state_manager.VersionAlreadyExistsError):
       program_state_mngr.save(test_program_state_1, 1)
 
 

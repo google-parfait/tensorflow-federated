@@ -53,7 +53,7 @@ class ProgramStateManagerTest(absltest.TestCase):
 
       def load(self, version: int) -> Any:
         del version  # Unused.
-        raise program_state_manager.VersionError()
+        raise program_state_manager.VersionNotFoundError()
 
     program_state_mngr = _TestProgramStateManager()
 
@@ -74,7 +74,7 @@ class ProgramStateManagerTest(absltest.TestCase):
 
       def load(self, version: int) -> Any:
         del version  # Unused.
-        raise program_state_manager.VersionError()
+        raise program_state_manager.VersionNotFoundError()
 
     program_state_mngr = _TestProgramStateManager()
 

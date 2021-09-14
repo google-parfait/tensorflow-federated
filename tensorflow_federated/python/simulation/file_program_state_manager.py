@@ -129,11 +129,12 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       version: A integer representing the version of a saved program state.
 
     Raises:
-      VersionError: If there is no program state for the given `version`.
+      VersionNotFoundError: If there is no program state for the given
+        `version`.
     """
     path = self._get_path_for_version(version)
     if not tf.io.gfile.exists(path):
-      raise program_state_manager.VersionError(
+      raise program_state_manager.VersionNotFoundError(
           'No program state found for version: {}'.format(version))
     model = tf.saved_model.load(path)
     flat_obj = model.build_obj_fn()
@@ -150,6 +151,9 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
         `program_state`
     """
     path = self._get_path_for_version(version)
+    if tf.io.gfile.exists(path):
+      raise program_state_manager.VersionAlreadyExistsError(
+          'Program state already exists for version: {}'.format(version))
     flat_obj = tf.nest.flatten(program_state)
     model = tf.Module()
     model.obj = flat_obj
