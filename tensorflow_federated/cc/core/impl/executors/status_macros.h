@@ -62,7 +62,7 @@ inline T __void_or_result(absl::StatusOr<T>&& res) {
     auto __tff_expr_res = expr;                                   \
     if (!__tff_expr_res.ok()) {                                   \
       return ::tensorflow_federated::status_macros::__get_status( \
-          std::move(__tff_expr_res) __VA_OPT__(, ) __VA_ARGS__);  \
+          std::move(__tff_expr_res), ##__VA_ARGS__);              \
     }                                                             \
     ::tensorflow_federated::status_macros::__void_or_result(      \
         std::move(__tff_expr_res));                               \
