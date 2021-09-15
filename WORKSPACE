@@ -9,7 +9,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_r
 git_repository(
     name = "absl_py",
     remote = "https://github.com/abseil/abseil-py.git",
-    tag = "pypi-v0.9.0",
+    tag = "pypi-v0.10.0",
 )
 
 git_repository(
@@ -52,7 +52,7 @@ git_repository(
 git_repository(
     name = "pybind11_protobuf",
     remote = "https://github.com/pybind/pybind11_protobuf.git",
-    commit = "b2e7ae2294b8520f01842e4da8e6d030d58c4a27",
+    commit = "be940fff1f40b693741543aaaf10fdbec2c2603c",
 )
 
 git_repository(
