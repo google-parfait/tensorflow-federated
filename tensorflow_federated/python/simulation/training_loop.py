@@ -16,24 +16,34 @@
 import collections
 import pprint
 import time
-from typing import Any, Callable, List, MutableMapping, Optional, Tuple
+import typing
+from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Tuple
+import warnings
 
 from absl import logging
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.simulation import checkpoint_manager
-from tensorflow_federated.python.simulation import metrics_manager
+from tensorflow_federated.python.simulation import file_program_state_manager as file_program_state_manager_lib
+from tensorflow_federated.python.simulation import metrics_manager as metrics_manager_lib
+from tensorflow_federated.python.simulation import program_state_manager as program_state_manager_lib
 
 MetricsType = MutableMapping[str, Any]
 FileCheckpointManager = checkpoint_manager.FileCheckpointManager
-MetricsManager = metrics_manager.MetricsManager
+MetricsManager = metrics_manager_lib.MetricsManager
 ValidationFnType = Callable[[Any, int], MetricsType]
 
 ROUND_TIME_KEY = 'round_time_in_seconds'
 ROUNDS_PER_HOUR_KEY = 'rounds_per_hour'
 VALIDATION_METRICS_PREFIX = 'validation/'
 VALIDATION_TIME_KEY = 'validation_time_in_seconds'
+
+ROUND_NUMBER_KEY = 'round_number'
+TRAINING_TIME_KEY = 'training_time_in_seconds'
+TRAINING_ROUNDS_PER_HOUR_KEY = 'training_rounds_per_hour'
+EVALUATION_METRICS_PREFIX = 'evaluation/'
+EVALUATION_TIME_KEY = 'evaluation_time_in_seconds'
 
 
 def _load_initial_checkpoint(
@@ -155,8 +165,8 @@ def _create_on_loop_start_fn(
       start_state = initial_state
       start_round = 0
 
-    for metrics_mngr in metrics_managers:
-      metrics_mngr.clear_metrics(start_round)
+    for metrics_manager in metrics_managers:
+      metrics_manager.clear_metrics(start_round)
 
     if start_round == 0:
       # Perform pre-training actions, including computing initial validation
@@ -164,8 +174,8 @@ def _create_on_loop_start_fn(
       if validation_fn is not None:
         validation_metrics = _compute_validation_metrics(
             start_state, 0, validation_fn)
-        for metrics_mngr in metrics_managers:
-          metrics_mngr.save_metrics(validation_metrics, 0)
+        for metrics_manager in metrics_managers:
+          metrics_manager.save_metrics(validation_metrics, 0)
 
       if file_checkpoint_manager is not None:
         file_checkpoint_manager.save_checkpoint(start_state, round_num=0)
@@ -214,8 +224,8 @@ def _create_on_round_end_fn(
                                                        validation_fn)
       round_metrics.update(validation_metrics)
 
-    for metrics_mngr in metrics_managers:
-      metrics_mngr.save_metrics(round_metrics, round_num)
+    for metrics_manager in metrics_managers:
+      metrics_manager.save_metrics(round_metrics, round_num)
 
     if file_checkpoint_manager is not None:
       file_checkpoint_manager.save_checkpoint(state, round_num)
@@ -233,6 +243,9 @@ def run_simulation(
     metrics_managers: Optional[List[MetricsManager]] = None,
     validation_fn: Optional[ValidationFnType] = None):
   """Runs a federated training simulation for a given iterative process.
+
+  DEPRECATED: `tff.simulation.run_simulation` is deprecated, please use
+  `tff.simulation.run_training_process` instead.
 
   We assume that the iterative process has the following functional type
   signatures:
@@ -277,6 +290,9 @@ def run_simulation(
   Returns:
     The `state` of the iterative process after training.
   """
+  warnings.warn(
+      '`tff.simulation.run_simulation` is deprecated, please use '
+      '`tff.simulation.run_training_process` instead.', DeprecationWarning)
   on_loop_start = _create_on_loop_start_fn(file_checkpoint_manager,
                                            metrics_managers, validation_fn)
   on_round_end = _create_on_round_end_fn(file_checkpoint_manager,
@@ -294,6 +310,9 @@ def run_simulation_with_callbacks(
     on_round_end: Optional[Callable[[Any, int, MetricsType],
                                     Tuple[Any, MetricsType]]] = None):
   """Runs federated training for a given `tff.templates.IterativeProcess`.
+
+  DEPRECATED: `tff.simulation.run_simulation_with_callbacks` is deprecated,
+  please use `tff.simulation.run_training_process` instead.
 
   We assume that the iterative process has the following functional type
   signatures:
@@ -348,6 +367,10 @@ def run_simulation_with_callbacks(
   Returns:
     The `state` of the iterative process after trainingjj.
   """
+  warnings.warn(
+      '`tff.simulation.run_simulation_with_callbacks` is deprecated, please '
+      'use `tff.simulation.run_training_process` instead.', DeprecationWarning)
+
   logging.debug('Initializing simulation process')
   initial_state = process.initialize()
 
@@ -447,3 +470,160 @@ def run_stateless_simulation(
     all_metrics[round_num] = round_metrics
 
   return all_metrics
+
+
+def _run_training(training_fn: computation_base.Computation,
+                  client_selection_fn: Callable[[int], Any], state: Any,
+                  round_num: int) -> Tuple[Any, Mapping[str, Any]]:
+  """Runs one round of federated training."""
+  logging.debug('Running training at round %d', round_num)
+  metrics = collections.OrderedDict()
+  training_time_start = time.time()
+  training_data = client_selection_fn(round_num)
+  state, training_metrics = training_fn(state, training_data)
+  training_time = time.time() - training_time_start
+  metrics.update(training_metrics)
+  metrics[TRAINING_TIME_KEY] = training_time
+  if training_time == 0.0:
+    training_rounds_per_hour = None
+  else:
+    training_rounds_per_hour = 1 / training_time * 60.0 * 60.0
+  metrics[TRAINING_ROUNDS_PER_HOUR_KEY] = training_rounds_per_hour
+  metrics[ROUND_NUMBER_KEY] = round_num
+  return state, metrics
+
+
+def _run_evaluation(evaluation_fn: computation_base.Computation,
+                    client_selection_fn: Callable[[int], Any], state: Any,
+                    round_num: int) -> Mapping[str, Any]:
+  """Runs one round of federated evaluation."""
+  logging.debug('Running evaluation at round %d', round_num)
+  metrics = collections.OrderedDict()
+  evaluation_time_start = time.time()
+  evaluation_data = client_selection_fn(round_num)
+  evaluation_metrics = evaluation_fn(state, evaluation_data)
+  evaluation_time = time.time() - evaluation_time_start
+  metrics.update(evaluation_metrics)
+  metrics[EVALUATION_TIME_KEY] = evaluation_time
+  return {EVALUATION_METRICS_PREFIX + k: v for (k, v) in metrics.items()}
+
+
+def run_training_process(
+    training_process: iterative_process.IterativeProcess,
+    training_selection_fn: Callable[[int], Any],
+    total_rounds: int,
+    evaluation_fn: Optional[computation_base.Computation] = None,
+    evaluation_selection_fn: Optional[Callable[[int], Any]] = None,
+    rounds_per_evaluation: int = 1,
+    program_state_manager: Optional[
+        program_state_manager_lib.ProgramStateManager] = None,
+    rounds_per_saving_program_state: int = 1,
+    metrics_managers: Optional[Iterable[
+        metrics_manager_lib.MetricsManager]] = None):
+  """Runs a federated `training_process`.
+
+  The following `tff.Computation` types signaures are required:
+
+  *   `training_process.initialize`: `( -> state)`.
+  *   `training_process.next`: `<state, client_data> -> <state, metrics>`
+  *   `evaulation_fn`:  `<state, client_data> -> metrics`
+
+  This function performs up to `total_rounds` updates to the `state` of the
+  given `training_process`. At each training round, this update occurs by
+  invoking `training_process.next` with `state` and the output of
+  `training_selection_fn`. Depending on `rounds_per_evaluation` and
+  `rounds_per_saving_program_state`, each training round may be followed by an
+  invocation of the `evaluation_fn` and by saving the program state.
+
+  Note: Round 0 represents saving an initial program model state and computing
+  initial evaluation metrics and round 1 through total_rounds + 1 represent the
+  training rounds.
+
+  In addition to the training metrics and evaluation metrics, this function adds
+  the following performance metrics (key and descriptions):
+
+  * tff.simulation.ROUND_NUMBER_KEY: The round number.
+  * tff.simulation.TRAINING_TIME_KEY: The amount of time (in seconds) it takes
+    to run one round of training.
+  * tff.simulation.TRAINING_ROUNDS_PER_HOUR_KEY: The number of training rounds
+    that would occur per hour
+  * tff.simulation.EVALUATION_TIME_KEY: The amount of time (in seconds) it takes
+    to run one round of evaluation.
+
+  Args:
+    training_process: A `tff.templates.IterativeProcess` to run for training.
+    training_selection_fn: A `Callable` accepting an integer round number, and
+      returning a list of client data to use for trainig in that round.
+    total_rounds: The number of training rounds to run.
+    evaluation_fn: An optional `tff.Computation` to run for evaluation.
+    evaluation_selection_fn: A optional `Callable` accepting an integer round
+      number, and returning a list of client data to use for evaluation in that
+      round.
+    rounds_per_evaluation: The number of training rounds to run between each
+      invocation of `evaluation_fn`.
+    program_state_manager: An optional `tff.simulation.ProgramStateManager` to
+      use to save program state for fault tolerance.
+    rounds_per_saving_program_state: The number of training rounds to run
+      between saving program state.
+    metrics_managers: An optional list of `tff.simulation.MetricsManager`s to
+      use to save metrics.
+  """
+  logging.debug('Running training process')
+
+  # TODO(b/199737690): Update `FileProgramStateManager` to not require a
+  # structure to load program state; once this is fixed, we can move the
+  # initialize invocation down so it's only called if required.
+  initial_state = training_process.initialize()
+  if isinstance(program_state_manager,
+                file_program_state_manager_lib.FileProgramStateManager):
+    file_program_state_manager = typing.cast(
+        file_program_state_manager_lib.FileProgramStateManager,
+        program_state_manager)
+    file_program_state_manager.set_structure(initial_state)
+
+  if program_state_manager is not None:
+    program_state, version = program_state_manager.load_latest()
+  else:
+    program_state = None
+  if program_state is not None:
+    logging.debug('Loaded program state at version %d', version)
+    state = program_state
+    start_round = version
+  else:
+    logging.debug('Initializing training process')
+    state = initial_state
+    start_round = 1
+
+    if evaluation_fn is not None and evaluation_selection_fn is not None:
+      evaluation_metrics = _run_evaluation(evaluation_fn,
+                                           evaluation_selection_fn, state, 0)
+
+      if metrics_managers is not None:
+        for metrics_manager in metrics_managers:
+          metrics_manager.save_metrics(evaluation_metrics, 0)
+
+    if program_state_manager is not None:
+      program_state_manager.save(state, 0)
+
+  for round_num in range(start_round, total_rounds + 1):
+    logging.debug('Starting round %d', round_num)
+    round_metrics = collections.OrderedDict()
+    state, training_metrics = _run_training(training_process.next,
+                                            training_selection_fn, state,
+                                            round_num)
+    round_metrics.update(training_metrics)
+
+    if evaluation_fn is not None and evaluation_selection_fn is not None:
+      if round_num % rounds_per_evaluation == 0:
+        evaluation_metrics = _run_evaluation(evaluation_fn,
+                                             evaluation_selection_fn, state,
+                                             round_num)
+        round_metrics.update(evaluation_metrics)
+
+    if metrics_managers is not None:
+      for metrics_manager in metrics_managers:
+        metrics_manager.save_metrics(round_metrics, round_num)
+
+    if program_state_manager is not None:
+      if round_num % rounds_per_saving_program_state == 0:
+        program_state_manager.save(state, round_num)

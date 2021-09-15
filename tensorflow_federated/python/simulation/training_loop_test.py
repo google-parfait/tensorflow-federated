@@ -18,9 +18,10 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.simulation import checkpoint_manager
-from tensorflow_federated.python.simulation import metrics_manager
+from tensorflow_federated.python.simulation import metrics_manager as metrics_manager_lib
 from tensorflow_federated.python.simulation import training_loop
 
 
@@ -169,8 +170,8 @@ class BuildOnLoopStartFnTest(parameterized.TestCase):
               'training_loop._compute_validation_metrics')
   def test_calls_with_only_metrics_managers(self, mock_compute_validation,
                                             mock_initialize):
-    metric_manager1 = mock.create_autospec(metrics_manager.MetricsManager)
-    metric_manager2 = mock.create_autospec(metrics_manager.MetricsManager)
+    metric_manager1 = mock.create_autospec(metrics_manager_lib.MetricsManager)
+    metric_manager2 = mock.create_autospec(metrics_manager_lib.MetricsManager)
     metrics_managers = [metric_manager1, metric_manager2]
     on_loop_start_fn = training_loop._create_on_loop_start_fn(
         metrics_managers=metrics_managers)
@@ -214,8 +215,8 @@ class BuildOnLoopStartFnTest(parameterized.TestCase):
               'training_loop._compute_validation_metrics')
   def test_calls_with_metrics_managers_and_validation_fn(
       self, mock_compute_validation, mock_initialize):
-    metric_manager1 = mock.create_autospec(metrics_manager.MetricsManager)
-    metric_manager2 = mock.create_autospec(metrics_manager.MetricsManager)
+    metric_manager1 = mock.create_autospec(metrics_manager_lib.MetricsManager)
+    metric_manager2 = mock.create_autospec(metrics_manager_lib.MetricsManager)
     metrics_managers = [metric_manager1, metric_manager2]
     validation_fn = mock.MagicMock()
     metrics = {'metric1': 2}
@@ -296,8 +297,10 @@ class CreateOnRoundEndTest(absltest.TestCase):
   @mock.patch('tensorflow_federated.python.simulation.'
               'training_loop._compute_validation_metrics')
   def test_calls_with_only_metrics_managers(self, mock_compute_validation):
-    mock_metrics_manager1 = mock.create_autospec(metrics_manager.MetricsManager)
-    mock_metrics_manager2 = mock.create_autospec(metrics_manager.MetricsManager)
+    mock_metrics_manager1 = mock.create_autospec(
+        metrics_manager_lib.MetricsManager)
+    mock_metrics_manager2 = mock.create_autospec(
+        metrics_manager_lib.MetricsManager)
     metrics_managers = [mock_metrics_manager1, mock_metrics_manager2]
     on_round_end_fn = training_loop._create_on_round_end_fn(
         metrics_managers=metrics_managers)
@@ -334,8 +337,10 @@ class CreateOnRoundEndTest(absltest.TestCase):
               'training_loop._compute_validation_metrics')
   def test_calls_with_validation_fn_and_metrics_managers(
       self, mock_compute_validation):
-    mock_metrics_manager1 = mock.create_autospec(metrics_manager.MetricsManager)
-    mock_metrics_manager2 = mock.create_autospec(metrics_manager.MetricsManager)
+    mock_metrics_manager1 = mock.create_autospec(
+        metrics_manager_lib.MetricsManager)
+    mock_metrics_manager2 = mock.create_autospec(
+        metrics_manager_lib.MetricsManager)
     metrics_managers = [mock_metrics_manager1, mock_metrics_manager2]
     validation_fn = mock.MagicMock()
     mock_compute_validation.return_value = {'validation_metric': 2}
@@ -611,8 +616,8 @@ class RunStatelessSimulationTest(absltest.TestCase):
     mock_time.return_value = 0
     computation = mock.MagicMock(return_value={'a': 4, 'b': 5})
     client_selection_fn = mock.MagicMock()
-    metric_manager1 = mock.create_autospec(metrics_manager.MetricsManager)
-    metric_manager2 = mock.create_autospec(metrics_manager.MetricsManager)
+    metric_manager1 = mock.create_autospec(metrics_manager_lib.MetricsManager)
+    metric_manager2 = mock.create_autospec(metrics_manager_lib.MetricsManager)
     metrics_managers = [metric_manager1, metric_manager2]
     training_loop.run_stateless_simulation(
         computation,
@@ -643,6 +648,278 @@ class RunStatelessSimulationTest(absltest.TestCase):
         computation, client_selection_fn, total_rounds=5)
     expected_call_args_list = [((x,),) for x in range(5)]
     self.assertEqual(computation.call_args_list, expected_call_args_list)
+
+
+class RunTrainingProcessTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('2', 2),
+      ('10', 10),
+  )
+  def test_training_fns_called(self, total_rounds):
+    training_process = mock.create_autospec(iterative_process.IterativeProcess)
+    training_process.initialize.return_value = 'initialize'
+    training_process.next.return_value = ('update', {'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    training_selection_fn.return_value = [0]
+
+    training_loop.run_training_process(
+        training_process=training_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds)
+
+    self.assertEqual(training_process.initialize.call_count, 1)
+    calls = []
+    for round_num in range(1, total_rounds + 1):
+      call = mock.call(round_num)
+      calls.append(call)
+    training_selection_fn.assert_has_calls(calls)
+    calls = []
+    for round_num in range(1, total_rounds + 1):
+      if round_num == 1:
+        state = 'initialize'
+      else:
+        state = 'update'
+      call = mock.call(state, [0])
+      calls.append(call)
+    training_process.next.assert_has_calls(calls)
+
+  @parameterized.named_parameters(
+      ('0_1', 0, 1),
+      ('1_1', 1, 1),
+      ('1_2', 1, 2),
+      ('2_1', 2, 1),
+      ('2_2', 2, 2),
+      ('10_1', 10, 1),
+      ('10_5', 10, 5),
+  )
+  def test_evaluation_fns_called(self, total_rounds, rounds_per_evaluation):
+    training_process = mock.create_autospec(iterative_process.IterativeProcess)
+    training_process.initialize.return_value = 'initialize'
+    training_process.next.return_value = ('update', {'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    evaluation_fn = mock.create_autospec(
+        computation_base.Computation, return_value={'metric': 0})
+    evaluation_selection_fn = mock.MagicMock()
+    evaluation_selection_fn.return_value = [0]
+
+    training_loop.run_training_process(
+        training_process=training_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds,
+        evaluation_fn=evaluation_fn,
+        evaluation_selection_fn=evaluation_selection_fn,
+        rounds_per_evaluation=rounds_per_evaluation)
+
+    calls = [mock.call(0)]
+    for round_num in range(1, total_rounds + 1):
+      if round_num % rounds_per_evaluation == 0:
+        call = mock.call(round_num)
+        calls.append(call)
+    evaluation_selection_fn.assert_has_calls(calls)
+    calls = [mock.call('initialize', [0])]
+    for round_num in range(1, total_rounds + 1):
+      if round_num % rounds_per_evaluation == 0:
+        call = mock.call('update', [0])
+        calls.append(call)
+    evaluation_fn.assert_has_calls(calls)
+
+  @parameterized.named_parameters(
+      ('without_program_state_0_1', 0, 1, None, 0),
+      ('without_program_state_1_1', 1, 1, None, 0),
+      ('without_program_state_1_2', 1, 2, None, 0),
+      ('without_program_state_2_1', 2, 1, None, 0),
+      ('without_program_state_2_2', 2, 2, None, 0),
+      ('without_program_state_10_1', 10, 1, None, 0),
+      ('without_program_state_10_5', 10, 5, None, 0),
+      ('with_program_state_0_1', 0, 1, 'update', 1),
+      ('with_program_state_1_1', 1, 1, 'update', 1),
+      ('with_program_state_1_2', 1, 2, 'update', 1),
+      ('with_program_state_2_1', 2, 1, 'update', 1),
+      ('with_program_state_2_2', 2, 2, 'update', 1),
+      ('with_program_state_10_1', 10, 1, 'update', 1),
+      ('with_program_state_10_5', 10, 5, 'update', 1),
+  )
+  def test_program_state_manager_called(self, total_rounds,
+                                        rounds_per_saving_program_state,
+                                        program_state, version):
+    training_process = mock.create_autospec(iterative_process.IterativeProcess)
+    training_process.initialize.return_value = 'initialize'
+    training_process.next.return_value = ('update', {'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    program_state_manager = mock.MagicMock()
+    program_state_manager.load_latest.return_value = (program_state, version)
+
+    training_loop.run_training_process(
+        training_process=training_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds,
+        program_state_manager=program_state_manager,
+        rounds_per_saving_program_state=rounds_per_saving_program_state)
+
+    self.assertEqual(program_state_manager.load_latest.call_count, 1)
+    calls = []
+    if version == 0:
+      call = mock.call('initialize', 0)
+      calls.append(call)
+    for round_num in range(1, total_rounds + 1):
+      if round_num % rounds_per_saving_program_state == 0:
+        call = mock.call('update', round_num)
+        calls.append(call)
+    program_state_manager.save.assert_has_calls(calls)
+
+  @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('2', 2),
+      ('10', 10),
+  )
+  def test_metrics_managers_called_without_evaluation(self, total_rounds):
+    training_process = mock.create_autospec(iterative_process.IterativeProcess)
+    training_process.initialize.return_value = 'initialize'
+    training_process.next.return_value = ('update', {'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    metrics_manager_1 = mock.MagicMock()
+    metrics_manager_2 = mock.MagicMock()
+    metrics_manager_3 = mock.MagicMock()
+
+    training_loop.run_training_process(
+        training_process=training_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds,
+        metrics_managers=[
+            metrics_manager_1, metrics_manager_2, metrics_manager_3
+        ])
+
+    calls = []
+    for round_num in range(1, total_rounds + 1):
+      metrics = collections.OrderedDict([
+          ('metric', 0),
+          ('training_time_in_seconds', mock.ANY),
+          ('training_rounds_per_hour', mock.ANY),
+          ('round_number', round_num),
+      ])
+      call = mock.call(metrics, round_num)
+      calls.append(call)
+    metrics_manager_1.save_metrics.assert_has_calls(calls)
+    metrics_manager_2.save_metrics.assert_has_calls(calls)
+    metrics_manager_3.save_metrics.assert_has_calls(calls)
+
+  @parameterized.named_parameters(
+      ('0_1', 0, 1),
+      ('1_1', 1, 1),
+      ('1_2', 1, 2),
+      ('2_1', 2, 1),
+      ('2_2', 2, 2),
+      ('10_1', 10, 1),
+      ('10_5', 10, 5),
+  )
+  def test_metrics_managers_called_with_evaluation(self, total_rounds,
+                                                   rounds_per_evaluation):
+    training_process = mock.create_autospec(iterative_process.IterativeProcess)
+    training_process.initialize.return_value = 'initialize'
+    training_process.next.return_value = ('update', {'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    evaluation_fn = mock.create_autospec(
+        computation_base.Computation, return_value={'metric': 0})
+    evaluation_selection_fn = mock.MagicMock()
+    metrics_manager_1 = mock.MagicMock()
+    metrics_manager_2 = mock.MagicMock()
+    metrics_manager_3 = mock.MagicMock()
+
+    training_loop.run_training_process(
+        training_process=training_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds,
+        evaluation_fn=evaluation_fn,
+        evaluation_selection_fn=evaluation_selection_fn,
+        rounds_per_evaluation=rounds_per_evaluation,
+        metrics_managers=[
+            metrics_manager_1, metrics_manager_2, metrics_manager_3
+        ])
+
+    calls = []
+    metrics = collections.OrderedDict([
+        ('evaluation/metric', 0),
+        ('evaluation/evaluation_time_in_seconds', mock.ANY),
+    ])
+    call = mock.call(metrics, 0)
+    calls.append(call)
+    for round_num in range(1, total_rounds + 1):
+      metrics = collections.OrderedDict([
+          ('metric', 0),
+          ('training_time_in_seconds', mock.ANY),
+          ('training_rounds_per_hour', mock.ANY),
+          ('round_number', round_num),
+      ])
+      if round_num % rounds_per_evaluation == 0:
+        metrics.update([
+            ('evaluation/metric', 0),
+            ('evaluation/evaluation_time_in_seconds', mock.ANY),
+        ])
+      call = mock.call(metrics, round_num)
+      calls.append(call)
+    metrics_manager_1.save_metrics.assert_has_calls(calls)
+    metrics_manager_2.save_metrics.assert_has_calls(calls)
+    metrics_manager_3.save_metrics.assert_has_calls(calls)
+
+  def test_performance_metrics_with_training_time_0(self):
+    training_process = mock.create_autospec(iterative_process.IterativeProcess)
+    training_process.initialize.return_value = 'initialize'
+    training_process.next.return_value = ('update', {'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    metrics_manager = mock.MagicMock()
+
+    with mock.patch('time.time') as mock_time:
+      mock_time.return_value = 0.0
+      training_loop.run_training_process(
+          training_process=training_process,
+          training_selection_fn=training_selection_fn,
+          total_rounds=1,
+          metrics_managers=[metrics_manager])
+
+    for call in metrics_manager.save_metrics.mock_calls:
+      _, args, _ = call
+      metrics, round_num = args
+      self.assertEqual(metrics[training_loop.ROUND_NUMBER_KEY], 1)
+      self.assertEqual(metrics[training_loop.TRAINING_TIME_KEY], 0)
+      self.assertIsNone(metrics[training_loop.TRAINING_ROUNDS_PER_HOUR_KEY])
+      self.assertEqual(round_num, 1)
+
+  def test_performance_metrics_with_training_and_evaluation_time_10(self):
+    training_process = mock.create_autospec(iterative_process.IterativeProcess)
+    training_process.initialize.return_value = 'initialize'
+    training_process.next.return_value = ('update', {'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    evaluation_fn = mock.create_autospec(
+        computation_base.Computation, return_value={'metric': 0})
+    evaluation_selection_fn = mock.MagicMock()
+    metrics_manager = mock.MagicMock()
+
+    with mock.patch('time.time') as mock_time:
+      mock_time.side_effect = [0.0, 10.0] * 3
+      training_loop.run_training_process(
+          training_process=training_process,
+          training_selection_fn=training_selection_fn,
+          total_rounds=1,
+          evaluation_fn=evaluation_fn,
+          evaluation_selection_fn=evaluation_selection_fn,
+          metrics_managers=[metrics_manager])
+
+    for index, call in enumerate(metrics_manager.save_metrics.mock_calls):
+      _, args, _ = call
+      metrics, round_num = args
+      if round_num > 0:
+        self.assertEqual(metrics[training_loop.ROUND_NUMBER_KEY], 1)
+        self.assertEqual(metrics[training_loop.TRAINING_TIME_KEY], 10.0)
+        self.assertEqual(metrics[training_loop.TRAINING_ROUNDS_PER_HOUR_KEY],
+                         60.0 * 60.0 / 10.0)
+      self.assertEqual(
+          metrics[training_loop.EVALUATION_METRICS_PREFIX +
+                  training_loop.EVALUATION_TIME_KEY], 10.0)
+      self.assertEqual(round_num, index)
 
 
 if __name__ == '__main__':
