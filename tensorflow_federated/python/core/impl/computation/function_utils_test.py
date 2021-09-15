@@ -377,7 +377,7 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
 
-class PolymorphicFunctionTest(test_case.TestCase):
+class PolymorphicComputationTest(test_case.TestCase):
 
   def test_call_returns_result(self):
 
@@ -434,7 +434,7 @@ class PolymorphicFunctionTest(test_case.TestCase):
         self._count = self._count + 1
         return TestFunction(str(self._count), str(unpack), parameter_type)
 
-    fn = function_utils.PolymorphicFunction(TestFunctionFactory())
+    fn = function_utils.PolymorphicComputation(TestFunctionFactory())
 
     self.assertEqual(fn(10), 'name=1,type=<int32>,arg=<10>,unpack=True')
     self.assertEqual(

@@ -482,7 +482,7 @@ class ComputationWrapper(object):
         return self._strategy(
             fn_to_wrap, fn_name, parameter_type, unpack=unpack)
 
-      wrapped_func = function_utils.PolymorphicFunction(_polymorphic_wrapper)
+      wrapped_func = function_utils.PolymorphicComputation(_polymorphic_wrapper)
     else:
       # Either we have a concrete parameter type, or this is no-arg function.
       parameter_type = _parameter_type(parameters, parameter_types)

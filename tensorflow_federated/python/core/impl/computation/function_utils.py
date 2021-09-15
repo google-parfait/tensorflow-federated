@@ -491,7 +491,7 @@ def create_argument_unpacking_fn(
     return functools.partial(_ensure_arg_type, parameter_type)
 
 
-class PolymorphicFunction(object):
+class PolymorphicComputation(object):
   """A generic polymorphic function that accepts arguments of diverse types."""
 
   def __init__(self, concrete_function_factory: Callable[
@@ -516,7 +516,7 @@ class PolymorphicFunction(object):
     """Concretizes this function with the provided `arg_type`.
 
     The first time this function is called with a particular type on a
-    given `PolymorphicFunction` (or this `PolymorphicFunction` is called
+    given `PolymorphicComputation` (or this `PolymorphicComputation` is called
     with an argument of the given type), the underlying function will be
     traced using the provided argument type as input. Later calls will
     return the cached computed concrete function.
@@ -529,7 +529,7 @@ class PolymorphicFunction(object):
 
     Returns:
       The `computation_base.Computation` that results from tracing this
-      `PolymorphicFunction` with `arg_type.
+      `PolymorphicComputation` with `arg_type.
     """
     key = repr(arg_type) + str(unpack)
     concrete_fn = self._concrete_function_cache.get(key)
