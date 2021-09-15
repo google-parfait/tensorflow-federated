@@ -52,7 +52,7 @@ py_test(
 
 py_test(
     name = "federated_averaging_e2e_convergence_test",
-    size = "large",
+    timeout = "eternal",
     srcs = ["federated_averaging_e2e_convergence_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -60,11 +60,9 @@ py_test(
         "guitar",
         "learning",
         "manual",
+        "notap",
     ],
-    deps = [
-        ":learning_test_models",
-        "//tensorflow_federated",
-    ],
+    deps = ["//tensorflow_federated"],
 )
 
 py_test(
@@ -73,6 +71,11 @@ py_test(
     srcs = ["federated_averaging_integration_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "guitar",
+        "learning",
+        "manual",
+    ],
     deps = [
         ":learning_test_models",
         "//tensorflow_federated",

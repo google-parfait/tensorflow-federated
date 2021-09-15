@@ -381,9 +381,10 @@ def build_lookup_table_keras_model():
   embedded_lookup_feature = tf.feature_column.embedding_column(
       tf.feature_column.categorical_column_with_vocabulary_list(
           key='colors', vocabulary_list=('R', 'G', 'B')),
-      dimension=16)
+      dimension=16,
+      initializer=tf.initializers.identity())
   dense_features = l.DenseFeatures([embedded_lookup_feature])({'colors': a})
-  output = l.Dense(1)(dense_features)
+  output = _dense_all_zeros_layer()(dense_features)
   return tf.keras.Model(inputs=[a], outputs=[output])
 
 

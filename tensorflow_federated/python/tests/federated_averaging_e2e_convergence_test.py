@@ -11,20 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for the end-to-end user experiecnes of the FedAvg algorithm.
-
-This includes integrations wtih tff.aggregators, tf.keras, and other
-dependencies, as well as the convergence of the algorithm.
-"""
-
-import collections
+"""End-to-end convergence tests for the FedAvg algorithm on realistic data."""
 
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
-
-from tensorflow_federated.python.tests import learning_test_models
 
 
 def _get_tff_optimizer(learning_rate=0.1):
@@ -35,131 +27,47 @@ def _get_keras_optimizer_fn(learning_rate=0.1):
   return lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
 
 
-class NumExamplesCounter(tf.keras.metrics.Sum):
-  """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
-
-  def __init__(self, name='num_examples', dtype=tf.int64):  # pylint: disable=useless-super-delegation
-    super().__init__(name, dtype)
-
-  def update_state(self, y_true, y_pred, sample_weight=None):
-    return super().update_state(tf.shape(y_pred)[0], sample_weight)
-
-
 class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
 
-  def _run_test(self, process, *, datasets, expected_num_examples):
+  @parameterized.named_parameters([
+      ('keras_opt', _get_keras_optimizer_fn()),
+      ('tff_opt', _get_tff_optimizer()),
+  ])
+  def test_emnist10_cnn_convergence(self, client_optimizer_fn):
+    train_client_spec = tff.simulation.baselines.ClientSpec(
+        num_epochs=1, batch_size=32, shuffle_buffer_size=1)
+    task = tff.simulation.baselines.emnist.create_character_recognition_task(
+        train_client_spec, model_id='cnn', only_digits=True)
+    train_client_ids = sorted(task.datasets.train_data.client_ids)
+    preprocessed_train_data = task.datasets.train_data.preprocess(
+        task.datasets.train_preprocess_fn)
+
+    def client_selection_fn(round_num):
+      random_state = np.random.RandomState(round_num)
+      return random_state.choice(train_client_ids, size=10, replace=False)
+
+    process = tff.learning.build_federated_averaging_process(
+        model_fn=task.model_fn, client_optimizer_fn=client_optimizer_fn)
     state = process.initialize()
-    prev_loss = np.inf
-    aggregation_metrics = collections.OrderedDict(mean_value=(), mean_weight=())
-    for _ in range(3):
-      state, metric_outputs = process.next(state, datasets)
-      self.assertEqual(
-          list(metric_outputs.keys()),
-          ['broadcast', 'aggregation', 'train', 'stat'])
-      self.assertEmpty(metric_outputs['broadcast'])
-      self.assertEqual(aggregation_metrics, metric_outputs['aggregation'])
-      train_metrics = metric_outputs['train']
-      self.assertEqual(train_metrics['num_examples'], expected_num_examples)
-      self.assertLess(train_metrics['loss'], prev_loss)
-      prev_loss = train_metrics['loss']
+    training_metrics = []
+    for round_num in range(200):
+      selected_clients = client_selection_fn(round_num)
+      client_data = [
+          preprocessed_train_data.create_tf_dataset_for_client(a)
+          for a in selected_clients
+      ]
+      state, metrics = process.next(state, client_data)
+      training_metrics.append(metrics['train'])
 
-  @parameterized.named_parameters([
-      ('unweighted_keras_opt', tff.learning.ClientWeighting.UNIFORM,
-       _get_keras_optimizer_fn),
-      ('example_weighted_keras_opt', tff.learning.ClientWeighting.NUM_EXAMPLES,
-       _get_keras_optimizer_fn),
-      ('custom_weighted_keras_opt', lambda _: tf.constant(1.5),
-       _get_keras_optimizer_fn),
-      ('unweighted_tff_opt', tff.learning.ClientWeighting.UNIFORM,
-       _get_tff_optimizer),
-      ('example_weighted_tff_opt', tff.learning.ClientWeighting.NUM_EXAMPLES,
-       _get_tff_optimizer),
-      ('custom_weighted_tff_opt', lambda _: tf.constant(1.5),
-       _get_tff_optimizer),
-  ])
-  def test_client_weighting_converges(self, client_weighting, client_optimizer):
-    iterative_process = tff.learning.build_federated_averaging_process(
-        model_fn=learning_test_models.LinearRegression,
-        client_optimizer_fn=client_optimizer(),
-        client_weighting=client_weighting)
+    loss_last_10_rounds = [a['loss'] for a in training_metrics[-10:]]
+    accuracy_last_10_rounds = [
+        a['sparse_categorical_accuracy'] for a in training_metrics[-10:]
+    ]
+    average_loss_last_10_rounds = np.mean(loss_last_10_rounds)
+    average_accuracy_last_10_rounds = np.mean(accuracy_last_10_rounds)
 
-    ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[[1.0, 2.0], [3.0, 4.0]],
-            y=[[5.0], [6.0]],
-        )).batch(2)
-
-    num_clients = 3
-    self._run_test(
-        iterative_process,
-        datasets=[ds] * num_clients,
-        expected_num_examples=2 * num_clients)
-
-  @parameterized.named_parameters([
-      ('functional_model_keras_opt',
-       learning_test_models.build_linear_regression_keras_functional_model,
-       _get_keras_optimizer_fn),
-      ('sequential_model_keras_opt',
-       learning_test_models.build_linear_regression_keras_sequential_model,
-       _get_keras_optimizer_fn),
-      ('functional_model_tff_opt',
-       learning_test_models.build_linear_regression_keras_functional_model,
-       _get_tff_optimizer),
-      ('sequential_model_tff_opt',
-       learning_test_models.build_linear_regression_keras_sequential_model,
-       _get_tff_optimizer),
-  ])
-  def test_models_defined_in_keras_converge(self, build_keras_model_fn,
-                                            client_optimizer):
-    ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[[1.0, 2.0], [3.0, 4.0]],
-            y=[[5.0], [6.0]],
-        )).batch(2)
-
-    def model_fn():
-      keras_model = build_keras_model_fn(feature_dims=2)
-      return tff.learning.from_keras_model(
-          keras_model,
-          loss=tf.keras.losses.MeanSquaredError(),
-          input_spec=ds.element_spec,
-          metrics=[NumExamplesCounter()])
-
-    iterative_process = tff.learning.build_federated_averaging_process(
-        model_fn=model_fn,
-        client_optimizer_fn=client_optimizer(learning_rate=0.01))
-
-    num_clients = 3
-    self._run_test(
-        iterative_process,
-        datasets=[ds] * num_clients,
-        expected_num_examples=2 * num_clients)
-
-  @parameterized.named_parameters([
-      ('keras_opt', _get_keras_optimizer_fn),
-      ('tff_opt', _get_tff_optimizer),
-  ])
-  def test_keras_model_with_lookup_table_converges(self, client_optimizer):
-    ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[['R'], ['G'], ['B']], y=[[1.0], [2.0], [3.0]])).batch(2)
-
-    def model_fn():
-      keras_model = learning_test_models.build_lookup_table_keras_model()
-      return tff.learning.from_keras_model(
-          keras_model,
-          loss=tf.keras.losses.MeanSquaredError(),
-          input_spec=ds.element_spec,
-          metrics=[NumExamplesCounter()])
-
-    iterative_process = tff.learning.build_federated_averaging_process(
-        model_fn=model_fn, client_optimizer_fn=client_optimizer())
-
-    num_clients = 3
-    self._run_test(
-        iterative_process,
-        datasets=[ds] * num_clients,
-        expected_num_examples=3 * num_clients)
+    self.assertLessEqual(average_loss_last_10_rounds, 0.15)
+    self.assertGreater(average_accuracy_last_10_rounds, 0.95)
 
 
 if __name__ == '__main__':
