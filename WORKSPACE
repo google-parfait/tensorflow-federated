@@ -31,6 +31,13 @@ git_repository(
 )
 
 git_repository(
+    name = "org_tensorflow",
+    remote = "https://github.com/tensorflow/tensorflow.git",
+    tag = "v2.6.0",
+    patches = ["//third_party/tensorflow:internal_visibility.patch"],
+)
+
+git_repository(
     name = "pybind11_abseil",
     remote = "https://github.com/pybind/pybind11_abseil.git",
     commit = "d9614e4ea46b411d02674305245cba75cd91c1c6",
@@ -70,15 +77,8 @@ new_git_repository(
 # python_configure(name = "local_config_python")
 
 #
-# Other dependencies
+# Transitive dependencies, grouped by direct dependency.
 #
-
-git_repository(
-    name = "org_tensorflow",
-    remote = "https://github.com/tensorflow/tensorflow.git",
-    tag = "v2.6.0",
-    patches = ["//third_party/tensorflow:internal_visibility.patch"],
-)
 
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
 tf_workspace3()
@@ -112,7 +112,3 @@ grpc_deps()
 
 load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
 grpc_extra_deps()
-
-#
-# Transitive dependencies, grouped by direct dependency.
-#
