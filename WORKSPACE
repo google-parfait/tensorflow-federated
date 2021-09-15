@@ -12,11 +12,11 @@ git_repository(
     tag = "pypi-v0.9.0",
 )
 
-# git_repository(
-#     name = "bazel_skylib",
-#     remote = "https://github.com/bazelbuild/bazel-skylib.git",
-#     tag = "1.0.3",
-# )
+git_repository(
+    name = "bazel_skylib",
+    remote = "https://github.com/bazelbuild/bazel-skylib.git",
+    tag = "1.0.3",
+)
 
 git_repository(
     name = "com_google_absl",
