@@ -92,12 +92,14 @@ def from_keras_model(
       length to the number of outputs of `keras_model`, if `loss_weights` is
       specified but `loss` is not a list, if `input_spec` does not contain
       exactly two elements, or if `input_spec` is a dictionary and does not
-      contain keys `'x'` and `'y'`.
+      contain keys `'x'` and `'y'`, if `keras_model` has non-trainable varaibles.
   """.format(model_lib.MODEL_ARG_NAME, model_lib.MODEL_LABEL_NAME)
   # Validate `keras_model`
   py_typecheck.check_type(keras_model, tf.keras.Model)
   if keras_model._is_compiled:  # pylint: disable=protected-access
     raise ValueError('`keras_model` must not be compiled')
+  if keras_model.non_trainable_variables:
+    raise ValueError('`keras_model` has unaveraged variables')
 
   # Validate and normalize `loss` and `loss_weights`
   if not isinstance(loss, list):

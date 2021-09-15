@@ -490,51 +490,18 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         self.evaluate(orig_model_output.loss),
         self.evaluate(loaded_model_output.loss))
 
-  def test_keras_model_using_batch_norm(self):
-    model = model_examples.build_conv_batch_norm_keras_model()
+  def test_keras_model_fails_using_batch_norm(self):
+    keras_model = model_examples.build_conv_batch_norm_keras_model()
     input_spec = collections.OrderedDict(
         x=tf.TensorSpec(shape=[None, 28 * 28], dtype=tf.float32),
         y=tf.TensorSpec(shape=[None, 1], dtype=tf.int64))
-    tff_model = keras_utils.from_keras_model(
-        keras_model=model,
-        input_spec=input_spec,
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
-
-    batch_size = 2
-    batch = collections.OrderedDict(
-        x=np.random.uniform(low=0.0, high=1.0,
-                            size=[batch_size, 28 * 28]).astype(np.float32),
-        y=np.random.random_integers(low=0, high=9, size=[batch_size,
-                                                         1]).astype(np.int64))
-
-    num_train_steps = 2
-    for _ in range(num_train_steps):
-      self.evaluate(tff_model.forward_pass(batch))
-
-    m = self.evaluate(tff_model.report_local_outputs())
-    self.assertEqual(m['num_batches'], [num_train_steps])
-    self.assertEqual(m['num_examples'], [batch_size * num_train_steps])
-    self.assertGreater(m['loss'][0], 0.0)
-    self.assertEqual(m['loss'][1], batch_size * num_train_steps)
-
-    # Ensure we can assign the FL trained model weights to a new model.
-    tff_weights = model_utils.ModelWeights.from_model(tff_model)
-    keras_model = model_examples.build_conv_batch_norm_keras_model()
-    tff_weights.assign_weights_to(keras_model)
-
-    def assert_all_weights_close(keras_weights, tff_weights):
-      for keras_w, tff_w in zip(keras_weights, tff_weights):
-        self.assertAllClose(
-            self.evaluate(keras_w),
-            self.evaluate(tff_w),
-            atol=1e-4,
-            msg='Variable [{}]'.format(keras_w.name))
-
-    assert_all_weights_close(keras_model.trainable_weights,
-                             tff_weights.trainable)
-    assert_all_weights_close(keras_model.non_trainable_weights,
-                             tff_weights.non_trainable)
+    with self.assertRaisesRegex(ValueError, 'unaveraged variables'):
+      keras_utils.from_keras_model(
+          keras_model=keras_model,
+          input_spec=input_spec,
+          loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+          metrics=[NumBatchesCounter(),
+                   NumExamplesCounter()])
 
   def test_keras_model_federated_output_computation(self):
     feature_dims = 3
