@@ -19,6 +19,12 @@ git_repository(
 )
 
 git_repository(
+    name = "com_github_grpc_grpc",
+    remote = "https://github.com/grpc/grpc.git",
+    tag = "v1.40.0",
+)
+
+git_repository(
     name = "com_google_absl",
     remote = "https://github.com/abseil/abseil-cpp.git",
     tag = "20210324.2",
@@ -100,12 +106,6 @@ git_repository(
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 protobuf_deps()
-
-git_repository(
-    name = "com_github_grpc_grpc",
-    remote = "https://github.com/grpc/grpc.git",
-    tag = "v1.38.1",
-)
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 grpc_deps()
