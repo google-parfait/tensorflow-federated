@@ -28,10 +28,13 @@ build --define=use_fast_cpp_protos=true
 # Processor native optimizations (depends on build host capabilities).
 build --copt=-march=native
 build --host_copt=-march=native
+# Only use level three optimizations for target, not necessarily for host
+# since host artifacts don't need to be fast.
 build --copt=-O3
 
 # C++ compiler options.
 build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
 build:linux --copt=-Wno-stringop-truncation
 
 # gRPC on MacOS requires this define, see
