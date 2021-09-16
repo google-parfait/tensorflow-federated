@@ -48,9 +48,9 @@ class FederatedTasksTest(tf.test.TestCase, parameterized.TestCase):
       del round_num
       return baseline_task.datasets.sample_train_clients(num_clients=1)
 
-    tff.simulation.run_simulation(
-        process=process,
-        client_selection_fn=client_selection_fn,
+    tff.simulation.run_training_process(
+        training_process=process,
+        training_selection_fn=client_selection_fn,
         total_rounds=2)
 
 
