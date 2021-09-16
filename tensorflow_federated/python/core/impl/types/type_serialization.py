@@ -150,10 +150,9 @@ def deserialize_type(
         return None
       return s
 
-    return computation_types.StructType(
-        [(empty_str_to_none(e.name), deserialize_type(e.value))
-         for e in type_proto.struct.element],
-        convert=False)
+    return computation_types.StructType([(empty_str_to_none(e.name),
+                                          deserialize_type(e.value))
+                                         for e in type_proto.struct.element])
   elif type_variant == 'function':
     return computation_types.FunctionType(
         parameter=deserialize_type(type_proto.function.parameter),

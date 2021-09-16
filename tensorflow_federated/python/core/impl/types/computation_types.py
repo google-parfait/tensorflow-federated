@@ -354,7 +354,7 @@ class _Intern(abc.ABCMeta):
 
   def __call__(cls, *args, **kwargs):
     try:
-      normalized_args = cls._normalize_init_args(*args, **kwargs)
+      normalized_args = cls._normalize_init_args(*args, **kwargs)  # pytype: disable=attribute-error
     except Exception as e:
       # We want to hide the existence of `_normalize_init_args` from end users.
       message = str(e).replace('_normalize_init_args', cls.__name__)
@@ -430,7 +430,7 @@ class TensorType(Type, metaclass=_Intern):
   def _hash_normalized_args(dtype, shape_container):
     return hash((dtype, shape_container))
 
-  def __init__(self, dtype, shape=None):
+  def __init__(self, dtype, shape: Any = None):
     """Constructs a new instance from the given `dtype` and `shape`.
 
     Args:
@@ -445,10 +445,12 @@ class TensorType(Type, metaclass=_Intern):
     self._dtype = dtype
     # We mapped the `shape` argument to a `_TensorShapeContainer` in
     # `_normalize_init_args`.
-    if not shape.has_rank:
-      shape = tf.TensorShape(None)
-    else:
-      shape = tf.TensorShape(shape.shape_tuple)
+    if isinstance(shape, tf.TensorShape):
+      shape = typing.cast(tf.TensorShape, shape)
+      if not shape.has_rank:
+        shape = tf.TensorShape(None)
+      else:
+        shape = tf.TensorShape(shape.shape_tuple)
 
     self._shape = shape
     self._hash = None
@@ -461,11 +463,11 @@ class TensorType(Type, metaclass=_Intern):
     return True
 
   @property
-  def dtype(self):
+  def dtype(self) -> tf.DType:
     return self._dtype
 
   @property
-  def shape(self):
+  def shape(self) -> tf.TensorShape:
     return self._shape
 
   def __repr__(self):
