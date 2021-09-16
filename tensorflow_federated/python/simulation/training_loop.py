@@ -365,7 +365,7 @@ def run_simulation_with_callbacks(
       (potentially updated) mapping of metrics.
 
   Returns:
-    The `state` of the iterative process after trainingjj.
+    The `state` of the iterative process after training.
   """
   warnings.warn(
       '`tff.simulation.run_simulation_with_callbacks` is deprecated, please '
@@ -567,6 +567,9 @@ def run_training_process(
       between saving program state.
     metrics_managers: An optional list of `tff.simulation.MetricsManager`s to
       use to save metrics.
+
+  Returns:
+    The `state` of the training process after training.
   """
   logging.debug('Running training process')
 
@@ -627,3 +630,5 @@ def run_training_process(
     if program_state_manager is not None:
       if round_num % rounds_per_saving_program_state == 0:
         program_state_manager.save(state, round_num)
+
+  return state
