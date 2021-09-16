@@ -87,6 +87,8 @@ def _serialize_tensor_value(
   """
   if not tf.is_tensor(value):
     value = tf.convert_to_tensor(value, dtype=type_spec.dtype)
+  elif isinstance(value, tf.Variable):
+    value = value.read_value()
   if not value.shape.is_compatible_with(type_spec.shape):
     raise TypeError(f'Cannot serialize tensor with shape {value.shape} to '
                     f'shape {type_spec.shape}.')

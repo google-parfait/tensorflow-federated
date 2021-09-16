@@ -42,6 +42,18 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
                                 computation_types.TensorType(tf.float32))
     self.assertAllEqual(x, y)
 
+  def test_serialize_deserialize_variable_as_tensor_value(self):
+    x = tf.Variable(10.0)
+    type_spec = computation_types.TensorType(tf.as_dtype(x.dtype), x.shape)
+    value_proto, value_type = value_serialization.serialize_value(x, type_spec)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
+    self.assert_types_identical(value_type,
+                                computation_types.TensorType(tf.float32))
+    y, type_spec = value_serialization.deserialize_value(value_proto)
+    self.assert_types_identical(type_spec,
+                                computation_types.TensorType(tf.float32))
+    self.assertAllEqual(x, y)
+
   def test_serialize_deserialize_tensor_value_with_different_dtype(self):
     x = tf.constant(10.0)
     value_proto, value_type = value_serialization.serialize_value(
