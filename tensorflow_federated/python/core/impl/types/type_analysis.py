@@ -426,14 +426,14 @@ def is_single_integer_or_matches_structure(
 
 
 def check_federated_type(
-    type_spec: computation_types.Type,
+    type_spec: computation_types.FederatedType,
     member: Optional[computation_types.Type] = None,
     placement: Optional[placements.PlacementLiteral] = None,
     all_equal: Optional[bool] = None):
   """Checks that `type_spec` is a federated type with the given parameters.
 
   Args:
-    type_spec: The `tff.Type` to check.
+    type_spec: The `tff.FederatedType` to check.
     member: The expected member type, or `None` if unspecified.
     placement: The desired placement, or `None` if unspecified.
     all_equal: The desired result of accessing the property
