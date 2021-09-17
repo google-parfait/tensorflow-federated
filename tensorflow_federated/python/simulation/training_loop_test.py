@@ -899,14 +899,16 @@ class RunTrainingProcessTest(parameterized.TestCase):
     metrics_manager = mock.MagicMock()
 
     with mock.patch('time.time') as mock_time:
-      mock_time.side_effect = [0.0, 10.0] * 3
-      training_loop.run_training_process(
-          training_process=training_process,
-          training_selection_fn=training_selection_fn,
-          total_rounds=1,
-          evaluation_fn=evaluation_fn,
-          evaluation_selection_fn=evaluation_selection_fn,
-          metrics_managers=[metrics_manager])
+      # Since absl.logging.info uses a call to time.time, we mock it out.
+      with mock.patch('absl.logging.info'):
+        mock_time.side_effect = [0.0, 10.0] * 3
+        training_loop.run_training_process(
+            training_process=training_process,
+            training_selection_fn=training_selection_fn,
+            total_rounds=1,
+            evaluation_fn=evaluation_fn,
+            evaluation_selection_fn=evaluation_selection_fn,
+            metrics_managers=[metrics_manager])
 
     for index, call in enumerate(metrics_manager.save_metrics.mock_calls):
       _, args, _ = call

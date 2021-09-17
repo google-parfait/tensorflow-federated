@@ -371,18 +371,18 @@ def run_simulation_with_callbacks(
       '`tff.simulation.run_simulation_with_callbacks` is deprecated, please '
       'use `tff.simulation.run_training_process` instead.', DeprecationWarning)
 
-  logging.debug('Initializing simulation process')
+  logging.info('Initializing simulation process')
   initial_state = process.initialize()
 
   if on_loop_start is not None:
-    logging.debug('call loop start callback')
+    logging.info('Running on loop start callback')
     state, start_round = on_loop_start(initial_state)
   else:
     state = initial_state
     start_round = 1
 
   for round_num in range(start_round, total_rounds + 1):
-    logging.debug('Executing round %d', round_num)
+    logging.info('Executing round %d', round_num)
     round_metrics = collections.OrderedDict(round_num=round_num)
 
     train_start_time = time.time()
@@ -476,7 +476,7 @@ def _run_training(training_fn: computation_base.Computation,
                   client_selection_fn: Callable[[int], Any], state: Any,
                   round_num: int) -> Tuple[Any, Mapping[str, Any]]:
   """Runs one round of federated training."""
-  logging.debug('Running training at round %d', round_num)
+  logging.info('Running training at round %d', round_num)
   metrics = collections.OrderedDict()
   training_time_start = time.time()
   training_data = client_selection_fn(round_num)
@@ -497,7 +497,7 @@ def _run_evaluation(evaluation_fn: computation_base.Computation,
                     client_selection_fn: Callable[[int], Any], state: Any,
                     round_num: int) -> Mapping[str, Any]:
   """Runs one round of federated evaluation."""
-  logging.debug('Running evaluation at round %d', round_num)
+  logging.info('Running evaluation at round %d', round_num)
   metrics = collections.OrderedDict()
   evaluation_time_start = time.time()
   evaluation_data = client_selection_fn(round_num)
@@ -571,7 +571,7 @@ def run_training_process(
   Returns:
     The `state` of the training process after training.
   """
-  logging.debug('Running training process')
+  logging.info('Running training process')
 
   # TODO(b/199737690): Update `FileProgramStateManager` to not require a
   # structure to load program state; once this is fixed, we can move the
@@ -589,11 +589,11 @@ def run_training_process(
   else:
     program_state = None
   if program_state is not None:
-    logging.debug('Loaded program state at version %d', version)
+    logging.info('Loaded program state at version %d', version)
     state = program_state
     start_round = version
   else:
-    logging.debug('Initializing training process')
+    logging.info('Initializing training process')
     state = initial_state
     start_round = 1
 
@@ -609,7 +609,7 @@ def run_training_process(
       program_state_manager.save(state, 0)
 
   for round_num in range(start_round, total_rounds + 1):
-    logging.debug('Starting round %d', round_num)
+    logging.info('Starting round %d', round_num)
     round_metrics = collections.OrderedDict()
     state, training_metrics = _run_training(training_process.next,
                                             training_selection_fn, state,
