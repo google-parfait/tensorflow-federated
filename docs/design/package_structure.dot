@@ -23,8 +23,6 @@ digraph {
   simulation_baselines -> simulation_models
   simulation_baselines -> simulation_datasets
 
-  simulation_models -> learning_framework [arrowhead="none", style="invisible"]
-  simulation_models -> learning_optimizers [arrowhead="none", style="invisible"]
   simulation_models -> learning_reconstruction [arrowhead="none", style="invisible"]
   simulation_datasets -> analytics [arrowhead="none", style="invisible"]
 
@@ -44,6 +42,7 @@ digraph {
   learning_framework -> learning [dir=back]
 
   learning -> aggregators [arrowhead="none", style="invisible"]
+  learning -> program [arrowhead="none", style="invisible"]
 
   subgraph cluster_learning {
     graph [label="Learning", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
@@ -55,6 +54,7 @@ digraph {
 
   // Analytics
   analytics -> aggregators [arrowhead="none", style="invisible"]
+  analytics -> program [arrowhead="none", style="invisible"]
 
   subgraph cluster_analytics {
     graph [label="Analytics", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics" target="_parent"]
@@ -68,6 +68,15 @@ digraph {
   subgraph cluster_aggregators {
     graph [label="Aggregators", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/aggregators" target="_parent"]
     aggregators [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/aggregators" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+  }
+
+  // Program
+  program -> core_backends [arrowhead="none", style="invisible"]
+  program -> core_test [arrowhead="none", style="invisible"]
+
+  subgraph cluster_program {
+    graph [label="Program", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/program" target="_parent"]
+    program [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/program" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
   // Core

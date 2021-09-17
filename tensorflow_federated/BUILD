@@ -33,6 +33,7 @@ py_library(
         "//tensorflow_federated/python/core/test",
         "//tensorflow_federated/python/core/types",
         "//tensorflow_federated/python/learning",
+        "//tensorflow_federated/python/program",
         "//tensorflow_federated/python/simulation",
     ],
 )

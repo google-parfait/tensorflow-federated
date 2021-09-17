@@ -21,6 +21,7 @@ from tensorflow_federated import experimental
 from tensorflow_federated.python import aggregators
 from tensorflow_federated.python import analytics
 from tensorflow_federated.python import learning
+from tensorflow_federated.python import program
 from tensorflow_federated.python import simulation
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing as profiler
