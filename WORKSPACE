@@ -1,5 +1,6 @@
 workspace(name = "org_tensorflow_federated")
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 
 #
@@ -28,6 +29,14 @@ git_repository(
     name = "com_google_googletest",
     remote = "https://github.com/google/googletest.git",
     tag = "release-1.11.0",
+)
+
+git_repository(
+    name = "com_google_protobuf",
+    remote = "https://github.com/protocolbuffers/protobuf.git",
+    tag = "v3.18.0-rc1",
+    # Patched to give visibility into private targets to pybind11_protobuf
+    patches = ["//third_party/protobuf:com_google_protobuf_build.patch"],
 )
 
 git_repository(
@@ -73,6 +82,18 @@ new_git_repository(
     tag = "v2.7.1",
 )
 
+# Required by absl_py
+http_archive(
+    name = "six",
+    urls = [
+        "https://storage.googleapis.com/mirror.tensorflow.org/pypi.python.org/packages/source/s/six/six-1.15.0.tar.gz",
+        "https://pypi.python.org/packages/source/s/six/six-1.15.0.tar.gz",
+    ],
+    sha256 = "30639c035cdb23534cd4aa2dd52c3bf48f06e5f4a941509c8bafd8ce11080259",
+    strip_prefix = "six-1.15.0",
+    build_file = "//third_party:six.BUILD",
+)
+
 # load("@pybind11_bazel//:python_configure.bzl", "python_configure")
 # python_configure(name = "local_config_python")
 
@@ -91,12 +112,6 @@ tf_workspace1()
 
 load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
 tf_workspace0()
-
-git_repository(
-    name = "com_google_protobuf",
-    remote = "https://github.com/protocolbuffers/protobuf.git",
-    tag = "v3.17.3",
-)
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 protobuf_deps()
