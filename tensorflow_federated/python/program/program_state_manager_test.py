@@ -16,7 +16,7 @@ from typing import Any, List, Optional
 
 from absl.testing import absltest
 
-from tensorflow_federated.python.simulation import program_state_manager
+from tensorflow_federated.python.program import program_state_manager
 
 
 class ProgramStateManagerTest(absltest.TestCase):
@@ -53,7 +53,7 @@ class ProgramStateManagerTest(absltest.TestCase):
 
       def load(self, version: int) -> Any:
         del version  # Unused.
-        raise program_state_manager.VersionNotFoundError()
+        raise program_state_manager.ProgramStateManagerVersionNotFoundError()
 
     program_state_mngr = _TestProgramStateManager()
 
@@ -74,7 +74,7 @@ class ProgramStateManagerTest(absltest.TestCase):
 
       def load(self, version: int) -> Any:
         del version  # Unused.
-        raise program_state_manager.VersionNotFoundError()
+        raise program_state_manager.ProgramStateManagerVersionNotFoundError()
 
     program_state_mngr = _TestProgramStateManager()
 

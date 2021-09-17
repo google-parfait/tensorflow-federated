@@ -20,7 +20,7 @@ from typing import Any, List, Optional
 from absl import logging
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import program_state_manager
+from tensorflow_federated.python.program import program_state_manager
 
 
 class FileProgramStateManager(program_state_manager.ProgramStateManager):
@@ -129,12 +129,12 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       version: A integer representing the version of a saved program state.
 
     Raises:
-      VersionNotFoundError: If there is no program state for the given
-        `version`.
+      ProgramStateManagerVersionNotFoundError: If there is no program state for
+        the given `version`.
     """
     path = self._get_path_for_version(version)
     if not tf.io.gfile.exists(path):
-      raise program_state_manager.VersionNotFoundError(
+      raise program_state_manager.ProgramStateManagerVersionNotFoundError(
           'No program state found for version: {}'.format(version))
     model = tf.saved_model.load(path)
     flat_obj = model.build_obj_fn()
@@ -152,7 +152,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     """
     path = self._get_path_for_version(version)
     if tf.io.gfile.exists(path):
-      raise program_state_manager.VersionAlreadyExistsError(
+      raise program_state_manager.ProgramStateManagerVersionAlreadyExistsError(
           'Program state already exists for version: {}'.format(version))
     flat_obj = tf.nest.flatten(program_state)
     model = tf.Module()

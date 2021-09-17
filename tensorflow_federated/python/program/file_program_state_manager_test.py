@@ -20,8 +20,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import file_program_state_manager
-from tensorflow_federated.python.simulation import program_state_manager
+from tensorflow_federated.python.program import file_program_state_manager
+from tensorflow_federated.python.program import program_state_manager
 
 
 def _create_test_program_state(value: int = 0):
@@ -113,7 +113,8 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
     structure = _create_test_program_state()
     program_state_mngr.set_structure(structure)
 
-    with self.assertRaises(program_state_manager.VersionNotFoundError):
+    with self.assertRaises(
+        program_state_manager.ProgramStateManagerVersionNotFoundError):
       _ = program_state_mngr.load(0)
 
   def test_raises_version_not_found_error_with_unknown_version(self):
@@ -125,7 +126,8 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
     test_program_state_1 = _create_test_program_state(1)
     program_state_mngr.save(test_program_state_1, 1)
 
-    with self.assertRaises(program_state_manager.VersionNotFoundError):
+    with self.assertRaises(
+        program_state_manager.ProgramStateManagerVersionNotFoundError):
       _ = program_state_mngr.load(10)
 
   def test_raises_value_error_with_no_structure(self):
@@ -201,7 +203,8 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase):
     test_program_state_1 = _create_test_program_state(1)
     program_state_mngr.save(test_program_state_1, 1)
 
-    with self.assertRaises(program_state_manager.VersionAlreadyExistsError):
+    with self.assertRaises(
+        program_state_manager.ProgramStateManagerVersionAlreadyExistsError):
       program_state_mngr.save(test_program_state_1, 1)
 
 

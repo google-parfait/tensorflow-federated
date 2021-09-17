@@ -25,8 +25,8 @@ import tensorflow as tf
 class FileCheckpointManager():
   """A checkpoint manager backed by a file system.
 
-  DEPRECATED: `FileCheckpointManager` is deprecated, please use
-  `FileProgramStateManager` instead.
+  DEPRECATED: `tff.simulation.FileCheckpointManager` is deprecated, please use
+  `tff.program.FileProgramStateManager` instead.
 
   This checkpoint manager is a utility to save and load checkpoints. While
   the checkpoint manager is compatible with any nested structure supported by
@@ -73,8 +73,8 @@ class FileCheckpointManager():
         different results.
     """
     warnings.warn(
-        '`FileCheckpointManager` is deprecated, please use '
-        '`FileProgramStateManager` instead.', DeprecationWarning)
+        '`tff.simulation.FileCheckpointManager` is deprecated, please use '
+        '`tff.program.FileProgramStateManager` instead.', DeprecationWarning)
 
     self._root_dir = root_dir
     self._prefix = prefix

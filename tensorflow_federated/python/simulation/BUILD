@@ -26,10 +26,8 @@ py_library(
         ":checkpoint_manager",
         ":csv_manager",
         ":dictionary_manager",
-        ":file_program_state_manager",
         ":iterative_process_compositions",
         ":metrics_manager",
-        ":program_state_manager",
         ":sampling_utils",
         ":server_utils",
         ":tensorboard_manager",
@@ -85,24 +83,6 @@ py_test(
 )
 
 py_library(
-    name = "file_program_state_manager",
-    srcs = ["file_program_state_manager.py"],
-    srcs_version = "PY3",
-    deps = [":program_state_manager"],
-)
-
-py_test(
-    name = "file_program_state_manager_test",
-    srcs = ["file_program_state_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":file_program_state_manager",
-        ":program_state_manager",
-    ],
-)
-
-py_library(
     name = "iterative_process_compositions",
     srcs = ["iterative_process_compositions.py"],
     srcs_version = "PY3",
@@ -133,20 +113,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
     ],
-)
-
-py_library(
-    name = "program_state_manager",
-    srcs = ["program_state_manager.py"],
-    srcs_version = "PY3",
-)
-
-py_test(
-    name = "program_state_manager_test",
-    srcs = ["program_state_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":program_state_manager"],
 )
 
 py_library(
@@ -216,10 +182,10 @@ py_library(
     srcs = ["training_loop.py"],
     srcs_version = "PY3",
     deps = [
-        ":file_program_state_manager",
-        ":program_state_manager",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "//tensorflow_federated/python/program:file_program_state_manager",
+        "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/simulation:checkpoint_manager",
         "//tensorflow_federated/python/simulation:metrics_manager",
     ],

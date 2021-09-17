@@ -24,10 +24,10 @@ from absl import logging
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.program import file_program_state_manager as file_program_state_manager_lib
+from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
 from tensorflow_federated.python.simulation import checkpoint_manager
-from tensorflow_federated.python.simulation import file_program_state_manager as file_program_state_manager_lib
 from tensorflow_federated.python.simulation import metrics_manager as metrics_manager_lib
-from tensorflow_federated.python.simulation import program_state_manager as program_state_manager_lib
 
 MetricsType = MutableMapping[str, Any]
 FileCheckpointManager = checkpoint_manager.FileCheckpointManager
@@ -561,8 +561,8 @@ def run_training_process(
       round.
     rounds_per_evaluation: The number of training rounds to run between each
       invocation of `evaluation_fn`.
-    program_state_manager: An optional `tff.simulation.ProgramStateManager` to
-      use to save program state for fault tolerance.
+    program_state_manager: An optional `tff.program.ProgramStateManager` to use
+      to save program state for fault tolerance.
     rounds_per_saving_program_state: The number of training rounds to run
       between saving program state.
     metrics_managers: An optional list of `tff.simulation.MetricsManager`s to

@@ -11,27 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities for saving and loading intermediate program state."""
+"""Utilities to save and load intermediate program state."""
 
 import abc
 from typing import Any, List, Optional, Tuple
 
 
-class VersionAlreadyExistsError(Exception):
+class ProgramStateManagerVersionAlreadyExistsError(Exception):
   pass
 
 
-class VersionNotFoundError(Exception):
+class ProgramStateManagerVersionNotFoundError(Exception):
   pass
 
 
 class ProgramStateManager(metaclass=abc.ABCMeta):
   """An abstract interface for `ProgramStateManager`s.
 
-  A `ProgramStateManager` is a utility to saving and loading intermediate
-  program state that can be used for fault tolerance. The structure or type of
-  the program state that is saved is unknown at construction time and can change
-  as the program runs.
+  A `ProgramStateManager` is a utility to save and load intermediate program
+  state that can be used for fault tolerance. The structure or type of the
+  program state that is saved is unknown at construction time and can change as
+  the program runs.
   """
 
   @abc.abstractmethod
@@ -51,8 +51,8 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
       version: A integer representing the version of a saved program state.
 
     Raises:
-      VersionNotFoundError: If there is no program state for the given
-        `version`.
+      ProgramStateManagerVersionNotFoundError: If there is no program state for
+        the given `version`.
     """
     raise NotImplementedError
 
@@ -69,7 +69,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     latest_version = max(versions)
     try:
       return self.load(latest_version), latest_version
-    except VersionNotFoundError:
+    except ProgramStateManagerVersionNotFoundError:
       return None, 0
 
   @abc.abstractmethod
@@ -82,7 +82,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
         `program_state`
 
     Raises:
-      VersionAlreadyExistsError: If there already exists program state for the
-        given `version`.
+      ProgramStateManagerVersionAlreadyExistsError: If there already exists
+        program state for the given `version`.
     """
     raise NotImplementedError

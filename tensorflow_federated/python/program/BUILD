@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":program_packages",
@@ -19,4 +19,40 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
+    deps = [
+        ":file_program_state_manager",
+        ":program_state_manager",
+    ],
+)
+
+py_library(
+    name = "file_program_state_manager",
+    srcs = ["file_program_state_manager.py"],
+    srcs_version = "PY3",
+    deps = [":program_state_manager"],
+)
+
+py_test(
+    name = "file_program_state_manager_test",
+    srcs = ["file_program_state_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":file_program_state_manager",
+        ":program_state_manager",
+    ],
+)
+
+py_library(
+    name = "program_state_manager",
+    srcs = ["program_state_manager.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "program_state_manager_test",
+    srcs = ["program_state_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":program_state_manager"],
 )
