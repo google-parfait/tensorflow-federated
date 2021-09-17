@@ -55,6 +55,7 @@ py_test(
     timeout = "eternal",
     srcs = ["federated_averaging_e2e_convergence_test.py"],
     python_version = "PY3",
+    shard_count = 5,
     srcs_version = "PY3",
     tags = [
         "guitar",

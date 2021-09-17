@@ -29,6 +29,24 @@ def _get_keras_optimizer_fn(learning_rate=0.1):
 
 class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
 
+  def _run_process(self, process, client_selection_fn):
+    state = process.initialize()
+    training_metrics = []
+    for round_num in range(200):
+      client_data = client_selection_fn(round_num)
+      state, metrics = process.next(state, client_data)
+      training_metrics.append(metrics['train'])
+
+    loss_last_10_rounds = [a['loss'] for a in training_metrics[-10:]]
+    accuracy_last_10_rounds = [
+        a['sparse_categorical_accuracy'] for a in training_metrics[-10:]
+    ]
+    average_loss_last_10_rounds = np.mean(loss_last_10_rounds)
+    average_accuracy_last_10_rounds = np.mean(accuracy_last_10_rounds)
+
+    self.assertLessEqual(average_loss_last_10_rounds, 0.15)
+    self.assertGreater(average_accuracy_last_10_rounds, 0.95)
+
   @parameterized.named_parameters([
       ('keras_opt', _get_keras_optimizer_fn()),
       ('tff_opt', _get_tff_optimizer()),
@@ -44,30 +62,44 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
 
     def client_selection_fn(round_num):
       random_state = np.random.RandomState(round_num)
-      return random_state.choice(train_client_ids, size=10, replace=False)
+      client_ids = random_state.choice(train_client_ids, size=10, replace=False)
+      return [
+          preprocessed_train_data.create_tf_dataset_for_client(a)
+          for a in client_ids
+      ]
 
     process = tff.learning.build_federated_averaging_process(
         model_fn=task.model_fn, client_optimizer_fn=client_optimizer_fn)
-    state = process.initialize()
-    training_metrics = []
-    for round_num in range(200):
-      selected_clients = client_selection_fn(round_num)
-      client_data = [
+    self._run_process(process, client_selection_fn)
+
+  @parameterized.named_parameters([
+      ('robust_aggregator', tff.learning.robust_aggregator),
+      ('compression_aggregator', tff.learning.compression_aggregator),
+      ('secure_aggregator', tff.learning.secure_aggregator),
+  ])
+  def test_emnist10_cnn_convergence_with_aggregator(self,
+                                                    aggregator_factory_fn):
+    train_client_spec = tff.simulation.baselines.ClientSpec(
+        num_epochs=1, batch_size=32, shuffle_buffer_size=1)
+    task = tff.simulation.baselines.emnist.create_character_recognition_task(
+        train_client_spec, model_id='cnn', only_digits=True)
+    train_client_ids = sorted(task.datasets.train_data.client_ids)
+    preprocessed_train_data = task.datasets.train_data.preprocess(
+        task.datasets.train_preprocess_fn)
+
+    def client_selection_fn(round_num):
+      random_state = np.random.RandomState(round_num)
+      client_ids = random_state.choice(train_client_ids, size=10, replace=False)
+      return [
           preprocessed_train_data.create_tf_dataset_for_client(a)
-          for a in selected_clients
+          for a in client_ids
       ]
-      state, metrics = process.next(state, client_data)
-      training_metrics.append(metrics['train'])
 
-    loss_last_10_rounds = [a['loss'] for a in training_metrics[-10:]]
-    accuracy_last_10_rounds = [
-        a['sparse_categorical_accuracy'] for a in training_metrics[-10:]
-    ]
-    average_loss_last_10_rounds = np.mean(loss_last_10_rounds)
-    average_accuracy_last_10_rounds = np.mean(accuracy_last_10_rounds)
-
-    self.assertLessEqual(average_loss_last_10_rounds, 0.15)
-    self.assertGreater(average_accuracy_last_10_rounds, 0.95)
+    process = tff.learning.build_federated_averaging_process(
+        model_fn=task.model_fn,
+        client_optimizer_fn=_get_keras_optimizer_fn(),
+        model_update_aggregation_factory=aggregator_factory_fn())
+    self._run_process(process, client_selection_fn)
 
 
 if __name__ == '__main__':
