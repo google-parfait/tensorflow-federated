@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities to save and load intermediate program state."""
+"""Utilities to save and load program state."""
 
 import abc
 from typing import Any, List, Optional, Tuple
@@ -79,7 +79,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     Args:
       program_state: The program state to save.
       version: A strictly increasing integer representing the version of a saved
-        `program_state`
+        `program_state`.
 
     Raises:
       ProgramStateManagerVersionAlreadyExistsError: If there already exists

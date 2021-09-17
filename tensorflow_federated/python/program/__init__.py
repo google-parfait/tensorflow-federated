@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for creating Federated programs."""
+"""Libraries for creating federated programs."""
 
 from tensorflow_federated.python.program.file_program_state_manager import *
 from tensorflow_federated.python.program.program_state_manager import *
+from tensorflow_federated.python.program.release_manager import *
