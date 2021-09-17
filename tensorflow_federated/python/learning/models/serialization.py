@@ -181,7 +181,7 @@ def _unflatten_fn(fn, serialized_type_variable, python_container=None):
   return tf.function(structured_output_fn)
 
 
-def save(model: model_lib.Model, path: str) -> None:
+def save(model: model_lib.Model, path: str, input_type=None) -> None:
   """Serializes `model` as a TensorFlow SavedModel to `path`.
 
   The resulting SavedModel will contain the default serving signature, which
@@ -197,6 +197,12 @@ def save(model: model_lib.Model, path: str) -> None:
   Args:
     model: The `tff.learning.Model` to save.
     path: The `str` directory path to serialize the model to.
+    input_type: An optional structure of `tf.TensorSpec`s representing the
+      expected input of `model.predict_on_batch`, to override reading from
+      `model.input_spec`. Typically this will be similar to `model.input_spec`,
+      with any example labels removed. If None, default to
+      `model.input_spec['x']` if the input_spec is a mapping, otherwise default
+      to `model.input_spec[0]`.
   """
   py_typecheck.check_type(model, model_lib.Model)
   py_typecheck.check_type(path, str)
@@ -232,21 +238,24 @@ def save(model: model_lib.Model, path: str) -> None:
   m.forward_pass_inference_type_spec = tf.Variable(
       forward_pass_inference[1].SerializeToString(deterministic=True),
       trainable=False)
+  # Get model prediction input type. If `None`, default to assuming the 'x' key
+  # or first element of the model input spec is the input.
+  if input_type is None:
+    if isinstance(model.input_spec, collections.abc.Mapping):
+      input_type = model.input_spec['x']
+    else:
+      input_type = model.input_spec[0]
   # Serialize predict_on_batch. We must get two concrete versions of the
   # function, as the `training` argument is a Python value that changes the
   # graph computation.
-  if isinstance(model.input_spec, collections.abc.Mapping):
-    x_type = model.input_spec['x']
-  else:
-    x_type = model.input_spec[0]
   predict_on_batch_training = _make_concrete_flat_output_fn(
-      functools.partial(model.predict_on_batch, training=True), x_type)
+      functools.partial(model.predict_on_batch, training=True), input_type)
   m.predict_on_batch_training = predict_on_batch_training[0]
   m.predict_on_batch_training_type_spec = tf.Variable(
       predict_on_batch_training[1].SerializeToString(deterministic=True),
       trainable=False)
   predict_on_batch_inference = _make_concrete_flat_output_fn(
-      functools.partial(model.predict_on_batch, training=False), x_type)
+      functools.partial(model.predict_on_batch, training=False), input_type)
   m.predict_on_batch_inference = predict_on_batch_inference[0]
   m.predict_on_batch_inference_type_spec = tf.Variable(
       predict_on_batch_inference[1].SerializeToString(deterministic=True),

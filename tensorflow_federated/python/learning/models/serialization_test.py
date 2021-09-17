@@ -318,6 +318,27 @@ class SerializationTest(test_case.TestCase, parameterized.TestCase):
                        ]).convert()
     self.assertNotEmpty(tflite_flatbuffer)
 
+  @parameterized.named_parameters(_TEST_MODEL_FNS)
+  def test_saved_model_to_tflite_with_input_type(self, model_fn):
+    model = model_fn()
+    test_dir = os.path.join(self.get_temp_dir(), 'tflite_test')
+    try:
+      # Clear the any previous output.
+      tf.io.gfile.rmtree(test_dir)
+    except tf.errors.OpError:
+      pass
+
+    # Get input type for test models.
+    input_key = 0 if isinstance(model.input_spec, tuple) else 'x'
+    input_type = model.input_spec[input_key]
+
+    serialization.save(model, test_dir, input_type=input_type)
+    tflite_flatbuffer = tf.lite.TFLiteConverter.from_saved_model(
+        test_dir,
+        signature_keys=[tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY
+                       ]).convert()
+    self.assertNotEmpty(tflite_flatbuffer)
+
 
 def initial_weights():
   """Returns lists of trainable variables and non-trainable variables."""
