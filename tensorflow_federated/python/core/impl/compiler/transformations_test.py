@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_to_cc_transforma
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -1321,6 +1322,225 @@ class TestTransformToCallDominantForm(test_case.TestCase):
     self.assertTrue(modified)
     self.assertRegexMatch(call_dominant_rep.compact_representation(), [
         r'\(_([a-z]{3})1 -> \(let _(\1)3=\(_(\1)2 -> _(\1)2\)\(_(\1)1\) in _(\1)3\)\)'
+    ])
+
+
+class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
+
+  def assert_splits_on(self, comp, calls):
+    """Asserts that `force_align_and_split_by_intrinsics` removes intrinsics."""
+    if not isinstance(calls, list):
+      calls = [calls]
+    uris = [call.function.uri for call in calls]
+    before, after = transformations.force_align_and_split_by_intrinsics(
+        comp, calls)
+
+    # Ensure that the resulting computations no longer contain the split
+    # intrinsics.
+    self.assertFalse(tree_analysis.contains_called_intrinsic(before, uris))
+    self.assertFalse(tree_analysis.contains_called_intrinsic(after, uris))
+    # Removal isn't interesting to test for if it wasn't there to begin with.
+    self.assertTrue(tree_analysis.contains_called_intrinsic(comp, uris))
+
+    self.assert_types_equivalent(comp.parameter_type, before.parameter_type)
+    # THere must be one parameter for each intrinsic in `calls`.
+    before.type_signature.result.check_struct()
+    self.assertLen(before.type_signature.result, len(calls))
+
+    # Check that `after`'s parameter is a structure like:
+    # {
+    #   'original_arg': comp.parameter_type,
+    #   'intrinsic_results': [...],
+    # }
+    after.parameter_type.check_struct()
+    self.assertLen(after.parameter_type, 2)
+    self.assert_types_equivalent(comp.parameter_type,
+                                 after.parameter_type.original_arg)
+    # There must be one result for each intrinsic in `calls`.
+    self.assertLen(after.parameter_type.intrinsic_results, len(calls))
+
+    # Check that each pair of (param, result) is a valid type substitution
+    # for the intrinsic in question.
+    for i in range(len(calls)):
+      concrete_signature = computation_types.FunctionType(
+          before.type_signature.result[i],
+          after.parameter_type.intrinsic_results[i])
+      abstract_signature = calls[i].function.intrinsic_def().type_signature
+      type_analysis.check_concrete_instance_of(concrete_signature,
+                                               abstract_signature)
+
+  def test_cannot_split_on_chained_intrinsic(self):
+    int_type = computation_types.TensorType(tf.int32)
+    client_int_type = computation_types.at_clients(int_type)
+    int_ref = lambda name: building_blocks.Reference(name, int_type)
+    client_int_ref = (
+        lambda name: building_blocks.Reference(name, client_int_type))
+    body = building_blocks.Block([
+        ('a',
+         building_block_factory.create_federated_map(
+             building_blocks.Lambda('p1', int_type, int_ref('p1')),
+             client_int_ref('param'))),
+        ('b',
+         building_block_factory.create_federated_map(
+             building_blocks.Lambda('p2', int_type, int_ref('p2')),
+             client_int_ref('a'))),
+    ], client_int_ref('b'))
+    comp = building_blocks.Lambda('param', int_type, body)
+    with self.assertRaises(transformations._NonAlignableAlongIntrinsicError):
+      transformations.force_align_and_split_by_intrinsics(
+          comp, [building_block_factory.create_null_federated_map()])
+
+  def test_splits_on_selected_intrinsic_broadcast(self):
+    federated_broadcast = compiler_test_utils.create_whimsy_called_federated_broadcast(
+    )
+    called_intrinsics = building_blocks.Struct([federated_broadcast])
+    comp = building_blocks.Lambda('a', tf.int32, called_intrinsics)
+    call = building_block_factory.create_null_federated_broadcast()
+    self.assert_splits_on(comp, call)
+
+  def test_splits_on_selected_intrinsic_nested_in_tuple_broadcast(self):
+    first_broadcast = compiler_test_utils.create_whimsy_called_federated_broadcast(
+    )
+    packed_broadcast = building_blocks.Struct([
+        building_blocks.Data('a', computation_types.at_server(tf.int32)),
+        first_broadcast
+    ])
+    sel = building_blocks.Selection(packed_broadcast, index=0)
+    second_broadcast = building_block_factory.create_federated_broadcast(sel)
+    result, _ = transformations.transform_to_call_dominant(second_broadcast)
+    comp = building_blocks.Lambda('a', tf.int32, result)
+    call = building_block_factory.create_null_federated_broadcast()
+    self.assert_splits_on(comp, call)
+
+  def test_splits_on_multiple_of_selected_intrinsic_broadcast(self):
+    federated_broadcast = compiler_test_utils.create_whimsy_called_federated_broadcast(
+    )
+    called_intrinsics = building_blocks.Struct([
+        federated_broadcast,
+        federated_broadcast,
+    ])
+    comp = building_blocks.Lambda('a', tf.int32, called_intrinsics)
+    call = building_block_factory.create_null_federated_broadcast()
+    self.assert_splits_on(comp, call)
+
+  def test_splits_on_selected_intrinsic_aggregate(self):
+    federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    called_intrinsics = building_blocks.Struct([federated_aggregate])
+    comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
+    call = building_block_factory.create_null_federated_aggregate()
+    self.assert_splits_on(comp, call)
+
+  def test_splits_on_multiple_of_selected_intrinsic_aggregate(self):
+    federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    called_intrinsics = building_blocks.Struct([
+        federated_aggregate,
+        federated_aggregate,
+    ])
+    comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
+    call = building_block_factory.create_null_federated_aggregate()
+    self.assert_splits_on(comp, call)
+
+  def test_splits_on_selected_intrinsic_secure_sum_bitwidth(self):
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+    )
+    called_intrinsics = building_blocks.Struct([federated_secure_sum_bitwidth])
+    comp = building_blocks.Lambda('a', tf.int32, called_intrinsics)
+    call = building_block_factory.create_null_federated_secure_sum_bitwidth()
+    self.assert_splits_on(comp, call)
+
+  def test_splits_on_multiple_of_selected_intrinsic_secure_sum_bitwidths(self):
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+    )
+    called_intrinsics = building_blocks.Struct([
+        federated_secure_sum_bitwidth,
+        federated_secure_sum_bitwidth,
+    ])
+    comp = building_blocks.Lambda('a', tf.int32, called_intrinsics)
+    call = building_block_factory.create_null_federated_secure_sum_bitwidth()
+    self.assert_splits_on(comp, call)
+
+  def test_removes_selected_intrinsic_leaving_remaining_intrinsic(self):
+    federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+    )
+    called_intrinsics = building_blocks.Struct([
+        federated_aggregate,
+        federated_secure_sum_bitwidth,
+    ])
+    comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
+    null_aggregate = building_block_factory.create_null_federated_aggregate()
+    secure_sum_bitwidth_uri = federated_secure_sum_bitwidth.function.uri
+    aggregate_uri = null_aggregate.function.uri
+    before, after = transformations.force_align_and_split_by_intrinsics(
+        comp, [null_aggregate])
+    self.assertTrue(
+        tree_analysis.contains_called_intrinsic(comp, secure_sum_bitwidth_uri))
+    self.assertTrue(
+        tree_analysis.contains_called_intrinsic(comp, aggregate_uri))
+    self.assertFalse(
+        tree_analysis.contains_called_intrinsic(before, aggregate_uri))
+    self.assertFalse(
+        tree_analysis.contains_called_intrinsic(after, aggregate_uri))
+    self.assertTrue(
+        tree_analysis.contains_called_intrinsic(before,
+                                                secure_sum_bitwidth_uri) or
+        tree_analysis.contains_called_intrinsic(after, secure_sum_bitwidth_uri))
+
+  def test_splits_on_two_intrinsics(self):
+    federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+    )
+    called_intrinsics = building_blocks.Struct([
+        federated_aggregate,
+        federated_secure_sum_bitwidth,
+    ])
+    comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
+    self.assert_splits_on(comp, [
+        building_block_factory.create_null_federated_aggregate(),
+        building_block_factory.create_null_federated_secure_sum_bitwidth()
+    ])
+
+  def test_splits_on_multiple_instances_of_two_intrinsics(self):
+    federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+    )
+    called_intrinsics = building_blocks.Struct([
+        federated_aggregate,
+        federated_aggregate,
+        federated_secure_sum_bitwidth,
+        federated_secure_sum_bitwidth,
+    ])
+    comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
+    self.assert_splits_on(comp, [
+        building_block_factory.create_null_federated_aggregate(),
+        building_block_factory.create_null_federated_secure_sum_bitwidth()
+    ])
+
+  def test_splits_even_when_selected_intrinsic_is_not_present(self):
+    federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    called_intrinsics = building_blocks.Struct([federated_aggregate])
+    comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
+    transformations.force_align_and_split_by_intrinsics(comp, [
+        building_block_factory.create_null_federated_aggregate(),
+        building_block_factory.create_null_federated_secure_sum_bitwidth(),
     ])
 
 

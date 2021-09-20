@@ -325,7 +325,7 @@ def _split_ast_on_broadcast(bb):
     argument of broadcast, and the second of which maps comp's input and
     broadcast's output to comp's output.
   """
-  before, after = transformations.force_align_and_split_by_intrinsics(
+  before, after = compiler_transformations.force_align_and_split_by_intrinsics(
       bb, [building_block_factory.create_null_federated_broadcast()])
   return _untuple_broadcast_only_before_after(before, after)
 
@@ -344,7 +344,7 @@ def _split_ast_on_aggregate(bb):
     second of which maps comp's input and the output of `federated_aggregate`
     and `federated_secure_sum_bitwidth` to comp's output.
   """
-  return transformations.force_align_and_split_by_intrinsics(
+  return compiler_transformations.force_align_and_split_by_intrinsics(
       bb, [
           building_block_factory.create_null_federated_aggregate(),
           building_block_factory.create_null_federated_secure_sum_bitwidth(),
