@@ -34,6 +34,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":functional",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/learning:model",
     ],
 )

@@ -17,6 +17,7 @@ import collections
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.models import functional
 
@@ -186,10 +187,85 @@ class FunctionalTest(tf.test.TestCase):
     self.assertLess(loss, 0.1)
     self.assertAllClose(
         tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
+    self.assertAllClose(tff_model.report_local_outputs(),
+                        collections.OrderedDict(loss=[1066.19628, 1250.0]))
+
+  def test_tff_model_from_functional_fails_with_repeated_metric_names(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+    metric_constructors = [
+        lambda: tf.keras.metrics.MeanSquaredError(name='same_name'),
+        lambda: tf.keras.metrics.RootMeanSquaredError(name='same_name')
+    ]
+    with self.assertRaisesRegex(ValueError,
+                                'each metric should have a unique name'):
+      functional.model_from_functional(functional_model, metric_constructors)
+
+  def test_tff_model_from_functional_binding_metrics_succeeds(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+    metric_constructors = [
+        tf.keras.metrics.MeanSquaredError, tf.keras.metrics.RootMeanSquaredError
+    ]
+    tff_model = functional.model_from_functional(functional_model,
+                                                 metric_constructors)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
+    loss = None
+    num_epochs = 50
+    for batch in dataset.repeat(num_epochs):
+      with tf.GradientTape() as tape:
+        batch_output = tff_model.forward_pass(batch, training=True)
+      gradients = tape.gradient(batch_output.loss,
+                                tff_model.trainable_variables)
+      optimizer.apply_gradients(zip(gradients, tff_model.trainable_variables))
+      loss = batch_output.loss
+    # Expect some amount of convergence after a few epochs of the dataset.
+    self.assertLess(loss, 0.1)
     self.assertAllClose(
-        tff_model.report_local_outputs(),
-        collections.OrderedDict(loss_sum=1066.19628, num_examples=1250.0))
+        tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
+    local_outputs = tff_model.report_local_outputs()
+    self.assertAllClose(
+        local_outputs,
+        collections.OrderedDict(
+            # The model uses mean squred error as `loss`, so the other two
+            # metrics (`mean_squared_error` and `root_mean_squared_error`)
+            # should have the same state as `loss`.
+            loss=[1066.19628, 1250.0],
+            mean_squared_error=[1066.19628, 1250.0],
+            root_mean_squared_error=[1066.19628, 1250.0]))
+
+  def test_tff_model_from_functional_federated_aggregate_metrics_succeeds(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+    metric_constructors = [
+        lambda: tf.keras.metrics.MeanSquaredError(name='mse'),
+        lambda: tf.keras.metrics.MeanAbsoluteError(name='mae')
+    ]
+    tff_model = functional.model_from_functional(functional_model,
+                                                 metric_constructors)
+    client_1_local_outputs = collections.OrderedDict(
+        loss=[1.0, 2.0], mse=[1.0, 2.0], mae=[1.0, 2.0])
+    client_2_local_outputs = collections.OrderedDict(
+        loss=[2.0, 4.0], mse=[2.0, 2.0], mae=[1.0, 6.0])
+    aggregated_metrics = tff_model.federated_output_computation(
+        [client_1_local_outputs, client_2_local_outputs])
+    self.assertAllClose(
+        aggregated_metrics,
+        # loss = (1.0+2.0)/(2.0+4.0) = 0.5
+        # mse = (1.0+2.0)/(2.0+2.0) = 0.75
+        # mae = (1.0+1.0)/(2.0+6.0) = 0.25
+        collections.OrderedDict(loss=0.5, mse=0.75, mae=0.25))
 
 
 if __name__ == '__main__':
+  execution_contexts.set_local_python_execution_context()
   tf.test.main()

@@ -23,7 +23,7 @@ model with `tff.learning.models.model_from_functional`.
 """
 
 import collections
-from typing import Any, Callable, Mapping, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
@@ -38,6 +38,9 @@ from tensorflow_federated.python.learning import model as model_lib
 Weight = Union[np.ndarray, int, float]
 WeightStruct = Union[Sequence[Weight], Mapping[str, Weight]]
 ModelWeights = Tuple[WeightStruct, WeightStruct]
+# A finalizer is a `tf.function` that takes in the variable values of a single
+# metric, and returns the final result of this metric.
+_SingleMetricFinalizerType = Callable[[Sequence[tf.Tensor]], tf.Tensor]
 
 
 class CallableMustBeTFFunctionError(TypeError):
@@ -168,7 +171,10 @@ class FunctionalModel():
 class _ModelFromFunctional(model_lib.Model):
   """A `tff.learning.Model` wrapping a `tff.learning.model.FunctionalModel`."""
 
-  def __init__(self, functional_model: FunctionalModel):
+  def __init__(self,
+               functional_model: FunctionalModel,
+               metric_constructors: Optional[List[Callable[
+                   [], tf.keras.metrics.Metric]]] = None):
     self._functional_model = functional_model
     # Construct `tf.Variable` to optimize during the learning process.
     trainable, non_trainable = functional_model.initial_weights
@@ -179,6 +185,37 @@ class _ModelFromFunctional(model_lib.Model):
                            self._non_trainable_variables)
     self._num_examples = tf.Variable(0, trainable=False)
     self._loss_sum = tf.Variable(0.0, trainable=False)
+    if metric_constructors is None:
+      self._metric_constructors = []
+      self._metrics = []
+    else:
+      self._metric_constructors = metric_constructors
+      self._metrics = [constructor() for constructor in metric_constructors]
+      # Raise an error if there are duplicate metric names
+      metric_names = [metric.name for metric in self._metrics]
+      duplicates = set(
+          name for name in metric_names if metric_names.count(name) > 1)
+      if duplicates:
+        raise ValueError(
+            f'{duplicates} appeared in the metric names more than once, '
+            'each metric should have a unique name.')
+    # Construct the `federated_output_computation` property.
+    local_outputs_type = tf.nest.map_structure(tf.TensorSpec.from_tensor,
+                                               self.report_local_outputs())
+
+    @computations.federated_computation(
+        computation_types.at_clients(local_outputs_type))
+    def sum_then_finalize(local_outputs):
+      sum_outputs = intrinsics.federated_sum(local_outputs)
+      finalized_values = collections.OrderedDict()
+      for metric_name, finalizer in self.metric_finalizers().items():
+        finalizer_computation = computations.tf_computation(
+            finalizer, local_outputs_type[metric_name])
+        finalized_values[metric_name] = intrinsics.federated_map(
+            finalizer_computation, sum_outputs[metric_name])
+      return intrinsics.federated_zip(finalized_values)
+
+    self._federated_output_computation = sum_then_finalize
 
   @property
   def trainable_variables(self) -> Tuple[tf.Variable, ...]:
@@ -190,7 +227,10 @@ class _ModelFromFunctional(model_lib.Model):
 
   @property
   def local_variables(self) -> Tuple[tf.Variable, ...]:
-    return (self._loss_sum, self._num_examples)
+    metrics_variables = [self._loss_sum, self._num_examples]
+    for metric in self._metrics:
+      metrics_variables.extend(metric.variables)
+    return tuple(metrics_variables)
 
   @property
   def input_spec(self):
@@ -206,6 +246,12 @@ class _ModelFromFunctional(model_lib.Model):
     self._num_examples.assign_add(batch_output.num_examples)
     self._loss_sum.assign_add(batch_output.loss *
                               tf.cast(batch_output.num_examples, tf.float32))
+    if isinstance(batch_input, collections.abc.Mapping):
+      y_true = batch_input.get('y')
+    else:
+      y_true = batch_input[1]
+    for metric in self._metrics:
+      metric.update_state(y_true=y_true, y_pred=batch_output.predictions)
     return batch_output
 
   @tf.function
@@ -218,25 +264,50 @@ class _ModelFromFunctional(model_lib.Model):
 
   @tf.function
   def report_local_outputs(self):
-    return collections.OrderedDict(
-        loss_sum=self._loss_sum,
-        num_examples=tf.cast(self._num_examples, tf.float32))
+    outputs = collections.OrderedDict(
+        loss=[self._loss_sum,
+              tf.cast(self._num_examples, tf.float32)])
+    for metric in self._metrics:
+      outputs[metric.name] = [v.read_value() for v in metric.variables]
+    return outputs
+
+  def metric_finalizers(self) -> Dict[str, _SingleMetricFinalizerType]:
+
+    def create_single_metric_finalizer(metric_constructor):
+
+      @tf.function
+      def finalizer(metric_local_outputs):
+
+        with tf.init_scope():
+          # Reconstructing the keras metric here because this `tf.function` may
+          # be invoked in a different context as the `model_fn`, and we need the
+          # `tf.Variable`s to be created in the current scope in order to use
+          # `metric.result()`.
+          metric = metric_constructor()
+        for v, a in zip(metric.variables, metric_local_outputs):
+          v.assign(a)
+        return metric.result()
+
+      return finalizer
+
+    finalizers = collections.OrderedDict(
+        # `loss` result is computed by `loss_sum` / `num_examples`.
+        loss=tf.function(func=lambda x: x[0] / x[1]))
+    for metric_constructor in self._metric_constructors:
+      metric_name = metric_constructor().name
+      finalizers[metric_name] = create_single_metric_finalizer(
+          metric_constructor)
+    return finalizers
 
   @property
   def federated_output_computation(self) -> computation_base.Computation:
-
-    @computations.federated_computation(
-        computation_types.at_clients(
-            collections.OrderedDict(
-                loss_sum=tf.float32, num_examples=tf.float32)))
-    def aggregate(values):
-      return collections.OrderedDict(
-          loss=intrinsics.federated_mean(
-              values['loss_sum'], weight=values['num_examples']))
-
-    return aggregate
+    return self._federated_output_computation
 
 
-def model_from_functional(functional_model: FunctionalModel) -> model_lib.Model:
+def model_from_functional(
+    functional_model: FunctionalModel,
+    metric_constructors: Optional[List[Callable[
+        [], tf.keras.metrics.Metric]]] = None
+) -> model_lib.Model:
   """Converts a `FunctionalModel` to a `tff.learning.Model`."""
-  return _ModelFromFunctional(functional_model)
+  return _ModelFromFunctional(functional_model, metric_constructors)
