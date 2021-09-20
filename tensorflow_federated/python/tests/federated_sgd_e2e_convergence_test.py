@@ -11,20 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""End-to-end tests for the FedSGD algorithm.
-
-This includes integrations wtih tff.aggregators, tf.keras, and other
-dependencies, as well as the convergence of the algorithm.
-"""
-
-import collections
+"""End-to-end convergence tests for the FedSGD algorithm on realistic data."""
 
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
-
-from tensorflow_federated.python.tests import learning_test_models
 
 
 def _get_tff_optimizer(learning_rate=0.1):
@@ -37,103 +29,76 @@ def _get_keras_optimizer_fn(learning_rate=0.1):
 
 class FederatedSGDE2ETest(tff.test.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters([
-      ('unweighted_keras_opt', tff.learning.ClientWeighting.UNIFORM,
-       _get_keras_optimizer_fn),
-      ('example_weighted_keras_opt', tff.learning.ClientWeighting.NUM_EXAMPLES,
-       _get_keras_optimizer_fn),
-      ('custom_weighted_keras_opt', lambda _: tf.constant(1.5),
-       _get_keras_optimizer_fn),
-      ('unweighted_tff_opt', tff.learning.ClientWeighting.UNIFORM,
-       _get_tff_optimizer),
-      ('example_weighted_tff_opt', tff.learning.ClientWeighting.NUM_EXAMPLES,
-       _get_tff_optimizer),
-      ('custom_weighted_tff_opt', lambda _: tf.constant(1.5),
-       _get_tff_optimizer),
-  ])
-  def test_orchestration_execute(self, client_weighting, server_optimizer):
-    iterative_process = tff.learning.build_federated_sgd_process(
-        model_fn=learning_test_models.LinearRegression,
-        server_optimizer_fn=server_optimizer(),
-        client_weighting=client_weighting)
+  def _run_process(self, process, client_selection_fn):
+    state = process.initialize()
+    training_metrics = []
+    for round_num in range(200):
+      client_data = client_selection_fn(round_num)
+      state, metrics = process.next(state, client_data)
+      training_metrics.append(metrics['train'])
 
-    # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
-    # kernel = [1, 2], bias = [3].
-    ds1 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[[0.0, 0.0], [0.0, 1.0]],
-            y=[[3.0], [5.0]],
-        )).batch(2)
-    ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[[1.0, 2.0], [3.0, 4.0], [1.0, 0.0], [-1.0, -1.0]],
-            y=[[8.0], [14.0], [4.00], [0.0]],
-        )).batch(2)
-    federated_ds = [ds1, ds2]
+    loss_last_10_rounds = [a['loss'] for a in training_metrics[-10:]]
+    accuracy_last_10_rounds = [
+        a['sparse_categorical_accuracy'] for a in training_metrics[-10:]
+    ]
+    average_loss_last_10_rounds = np.mean(loss_last_10_rounds)
+    average_accuracy_last_10_rounds = np.mean(accuracy_last_10_rounds)
 
-    server_state = iterative_process.initialize()
-
-    prev_loss = np.inf
-    num_iterations = 3
-    for _ in range(num_iterations):
-      server_state, metric_outputs = iterative_process.next(
-          server_state, federated_ds)
-      train_metrics = metric_outputs['train']
-      self.assertEqual(train_metrics['num_examples'],
-                       num_iterations * len(federated_ds))
-      loss = train_metrics['loss']
-      self.assertLess(loss, prev_loss)
-      prev_loss = loss
+    self.assertLessEqual(average_loss_last_10_rounds, 0.4)
+    self.assertGreater(average_accuracy_last_10_rounds, 0.85)
 
   @parameterized.named_parameters([
-      ('functional_model_keras_opt',
-       learning_test_models.build_linear_regression_keras_functional_model,
-       _get_keras_optimizer_fn),
-      ('sequential_model_keras_opt',
-       learning_test_models.build_linear_regression_keras_sequential_model,
-       _get_keras_optimizer_fn),
-      ('functional_model_tff_opt',
-       learning_test_models.build_linear_regression_keras_functional_model,
-       _get_tff_optimizer),
-      ('sequential_model_tff_opt',
-       learning_test_models.build_linear_regression_keras_sequential_model,
-       _get_tff_optimizer),
+      ('keras_opt', _get_keras_optimizer_fn()),
+      ('tff_opt', _get_tff_optimizer()),
   ])
-  def test_orchestration_execute_from_keras(self, build_keras_model_fn,
-                                            server_optimizer):
-    # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
-    # kernel = [1, 2], bias = [3].
-    ds1 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[[0.0, 0.0], [0.0, 1.0]],
-            y=[[3.0], [5.0]],
-        )).batch(2)
-    ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[[1.0, 2.0], [3.0, 4.0], [1.0, 0.0], [-1.0, -1.0]],
-            y=[[8.0], [14.0], [4.00], [0.0]],
-        )).batch(2)
-    federated_ds = [ds1, ds2]
+  def test_emnist10_cnn_convergence(self, server_optimizer_fn):
+    train_client_spec = tff.simulation.baselines.ClientSpec(
+        num_epochs=1, batch_size=32, shuffle_buffer_size=1)
+    task = tff.simulation.baselines.emnist.create_character_recognition_task(
+        train_client_spec, model_id='cnn', only_digits=True)
+    train_client_ids = sorted(task.datasets.train_data.client_ids)
+    preprocessed_train_data = task.datasets.train_data.preprocess(
+        task.datasets.train_preprocess_fn)
 
-    def model_fn():
-      # Note: we don't compile with an optimizer here; FedSGD does not use it.
-      keras_model = build_keras_model_fn(feature_dims=2)
-      return tff.learning.from_keras_model(
-          keras_model,
-          input_spec=ds1.element_spec,
-          loss=tf.keras.losses.MeanSquaredError())
+    def client_selection_fn(round_num):
+      random_state = np.random.RandomState(round_num)
+      client_ids = random_state.choice(train_client_ids, size=10, replace=False)
+      return [
+          preprocessed_train_data.create_tf_dataset_for_client(a)
+          for a in client_ids
+      ]
 
-    iterative_process = tff.learning.build_federated_sgd_process(
-        model_fn=model_fn, server_optimizer_fn=server_optimizer())
+    process = tff.learning.build_federated_sgd_process(
+        model_fn=task.model_fn, server_optimizer_fn=server_optimizer_fn)
+    self._run_process(process, client_selection_fn)
 
-    server_state = iterative_process.initialize()
-    prev_loss = np.inf
-    num_iterations = 3
-    for _ in range(num_iterations):
-      server_state, metrics = iterative_process.next(server_state, federated_ds)
-      new_loss = metrics['train']['loss']
-      self.assertLess(new_loss, prev_loss)
-      prev_loss = new_loss
+  @parameterized.named_parameters([
+      ('robust_aggregator', tff.learning.robust_aggregator),
+      ('compression_aggregator', tff.learning.compression_aggregator),
+      ('secure_aggregator', tff.learning.secure_aggregator),
+  ])
+  def test_emnist10_cnn_convergence_with_aggregator(self,
+                                                    aggregator_factory_fn):
+    train_client_spec = tff.simulation.baselines.ClientSpec(
+        num_epochs=1, batch_size=32, shuffle_buffer_size=1)
+    task = tff.simulation.baselines.emnist.create_character_recognition_task(
+        train_client_spec, model_id='cnn', only_digits=True)
+    train_client_ids = sorted(task.datasets.train_data.client_ids)
+    preprocessed_train_data = task.datasets.train_data.preprocess(
+        task.datasets.train_preprocess_fn)
+
+    def client_selection_fn(round_num):
+      random_state = np.random.RandomState(round_num)
+      client_ids = random_state.choice(train_client_ids, size=10, replace=False)
+      return [
+          preprocessed_train_data.create_tf_dataset_for_client(a)
+          for a in client_ids
+      ]
+
+    process = tff.learning.build_federated_sgd_process(
+        model_fn=task.model_fn,
+        model_update_aggregation_factory=aggregator_factory_fn())
+    self._run_process(process, client_selection_fn)
 
 
 if __name__ == '__main__':
