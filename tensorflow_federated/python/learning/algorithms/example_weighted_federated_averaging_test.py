@@ -55,14 +55,15 @@ class ClientFedAvgTest(test_case.TestCase, parameterized.TestCase):
 
   def test_keras_tff_client_work_equal(self):
     dataset = self.create_dataset()
-    client_update_keras = fed_avg.build_client_update_with_keras_optimizer()
-    client_update_tff = fed_avg.build_client_update_with_tff_optimizer()
+    client_update_keras = fed_avg.build_client_update_with_keras_optimizer(
+        model_fn=self.create_model)
+    client_update_tff = fed_avg.build_client_update_with_tff_optimizer(
+        model_fn=self.create_model)
     keras_result = client_update_keras(
-        self.create_model(), tf.keras.optimizers.SGD(learning_rate=0.1),
-        self.initial_weights(), dataset)
-    tff_result = client_update_tff(self.create_model(),
-                                   sgdm.build_sgdm(learning_rate=0.1),
-                                   self.initial_weights(), dataset)
+        tf.keras.optimizers.SGD(learning_rate=0.1), self.initial_weights(),
+        dataset)
+    tff_result = client_update_tff(
+        sgdm.build_sgdm(learning_rate=0.1), self.initial_weights(), dataset)
     self.assertAllClose(keras_result[0].update, tff_result[0].update)
     self.assertEqual(keras_result[0].update_weight, tff_result[0].update_weight)
     self.assertAllClose(keras_result[1], tff_result[1])
@@ -80,12 +81,11 @@ class ClientFedAvgTest(test_case.TestCase, parameterized.TestCase):
   )
   def test_client_tf(self, simulation, optimizer_kwargs, expected_norm):
     client_tf = fed_avg.build_client_update_with_keras_optimizer(
-        use_experimental_simulation_loop=simulation)
-    model = self.create_model()
+        model_fn=self.create_model, use_experimental_simulation_loop=simulation)
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs)
     dataset = self.create_dataset()
     client_result, model_output, stat_output = self.evaluate(
-        client_tf(model, optimizer, self.initial_weights(), dataset))
+        client_tf(optimizer, self.initial_weights(), dataset))
     # Both trainable parameters should have been updated, and we don't return
     # the non-trainable variable.
     self.assertAllGreater(
@@ -102,13 +102,13 @@ class ClientFedAvgTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
-    client_tf = fed_avg.build_client_update_with_keras_optimizer()
-    model = self.create_model()
+    client_tf = fed_avg.build_client_update_with_keras_optimizer(
+        model_fn=self.create_model)
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
     dataset = self.create_dataset()
     init_weights = self.initial_weights()
     init_weights.trainable[1] = bad_value
-    client_outputs = client_tf(model, optimizer, init_weights, dataset)
+    client_outputs = client_tf(optimizer, init_weights, dataset)
     self.assertEqual(self.evaluate(client_outputs[0].update_weight), 0.0)
     self.assertAllClose(
         self.evaluate(client_outputs[0].update), [[[0.0], [0.0]], 0.0])
@@ -121,11 +121,10 @@ class ClientFedAvgTest(test_case.TestCase, parameterized.TestCase):
       wraps=dataset_reduce._dataset_reduce_fn)
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     client_tf = fed_avg.build_client_update_with_keras_optimizer(
-        use_experimental_simulation_loop=simulation)
-    model = self.create_model()
+        model_fn=self.create_model, use_experimental_simulation_loop=simulation)
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
     dataset = self.create_dataset()
-    client_tf(model, optimizer, self.initial_weights(), dataset)
+    client_tf(optimizer, self.initial_weights(), dataset)
     if simulation:
       mock_method.assert_not_called()
     else:
@@ -158,7 +157,7 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
         model_fn=mock_model_fn,
         client_optimizer_fn=optimizer_fn,
         model_update_aggregation_factory=aggregation_factory())
-    self.assertEqual(mock_model_fn.call_count, 2)
+    self.assertEqual(mock_model_fn.call_count, 3)
 
   def test_raises_on_non_callable_model_fn(self):
     with self.assertRaises(TypeError):

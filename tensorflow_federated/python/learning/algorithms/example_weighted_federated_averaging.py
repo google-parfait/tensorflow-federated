@@ -47,7 +47,7 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 def build_client_update_with_tff_optimizer(
-    use_experimental_simulation_loop: bool = False):
+    model_fn, use_experimental_simulation_loop: bool = False):
   """Creates client update logic in FedAvg using a TFF optimizer.
 
   In contrast to using a `tf.keras.optimizers.Optimizer`, we avoid creating
@@ -58,17 +58,19 @@ def build_client_update_with_tff_optimizer(
   modify the model weight in place using `optimizer.apply_gradients`).
 
   Args:
+    model_fn: A no-arg callable returning a `tff.learning.Model`.
     use_experimental_simulation_loop: Controls the reduce loop function for the
       input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A `tf.function`.
   """
+  model = model_fn()
   dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
       use_experimental_simulation_loop)
 
   @tf.function
-  def client_update(model, optimizer, initial_weights, data):
+  def client_update(optimizer, initial_weights, data):
     model_weights = model_utils.ModelWeights.from_model(model)
     tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
                           initial_weights)
@@ -126,7 +128,7 @@ def build_client_update_with_tff_optimizer(
 
 
 def build_client_update_with_keras_optimizer(
-    use_experimental_simulation_loop: bool = False):
+    model_fn, use_experimental_simulation_loop: bool = False):
   """Creates client update logic in FedAvg using a `tf.keras` optimizer.
 
   In contrast to using a `tff.learning.optimizers.Optimizer`, we have to
@@ -135,17 +137,19 @@ def build_client_update_with_keras_optimizer(
   place by using `optimizer.apply_gradients`).
 
   Args:
+    model_fn: A no-arg callable returning a `tff.learning.Model`.
     use_experimental_simulation_loop: Controls the reduce loop function for the
       input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A `tf.function`.
   """
+  model = model_fn()
   dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
       use_experimental_simulation_loop)
 
   @tf.function
-  def client_update(model, optimizer, initial_weights, data):
+  def client_update(optimizer, initial_weights, data):
     model_weights = model_utils.ModelWeights.from_model(model)
     tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
                           initial_weights)
@@ -242,8 +246,8 @@ def build_fed_avg_client_work(
     @computations.tf_computation(weights_type, data_type)
     def client_update_computation(initial_model_weights, dataset):
       client_update = build_client_update_with_tff_optimizer(
-          use_experimental_simulation_loop)
-      return client_update(model, optimizer_fn, initial_model_weights, dataset)
+          model_fn, use_experimental_simulation_loop)
+      return client_update(optimizer_fn, initial_model_weights, dataset)
 
   else:
 
@@ -251,8 +255,8 @@ def build_fed_avg_client_work(
     def client_update_computation(initial_model_weights, dataset):
       optimizer = optimizer_fn()
       client_update = build_client_update_with_keras_optimizer(
-          use_experimental_simulation_loop)
-      return client_update(model, optimizer, initial_model_weights, dataset)
+          model_fn, use_experimental_simulation_loop)
+      return client_update(optimizer, initial_model_weights, dataset)
 
   @computations.federated_computation
   def init_fn():
