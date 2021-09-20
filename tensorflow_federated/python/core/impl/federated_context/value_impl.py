@@ -338,7 +338,7 @@ def to_value(
       TFF value automatically.
     parameter_type_hint: An optional `tff.Type` or value convertible to it by
       `tff.to_type()` which specifies an argument type to use in the case that
-      `arg` is a `function_utils.PolymorphicFunction`.
+      `arg` is a `function_utils.PolymorphicComputation`.
 
   Returns:
     An instance of `tff.Value` as described above.
@@ -358,8 +358,8 @@ def to_value(
   elif isinstance(arg, placements.PlacementLiteral):
     result = Value(building_blocks.Placement(arg))
   elif isinstance(arg, (computation_impl.ConcreteComputation,
-                        function_utils.PolymorphicFunction)):
-    if isinstance(arg, function_utils.PolymorphicFunction):
+                        function_utils.PolymorphicComputation)):
+    if isinstance(arg, function_utils.PolymorphicComputation):
       if parameter_type_hint is None:
         raise TypeError(
             'Polymorphic computations cannot be converted to `tff.Value`s '
