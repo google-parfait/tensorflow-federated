@@ -13,28 +13,31 @@
 # limitations under the License.
 
 from typing import Any, List, Optional
+from unittest import mock
 
 from absl.testing import absltest
 
 from tensorflow_federated.python.program import program_state_manager
 
 
+class _TestProgramStateManager(program_state_manager.ProgramStateManager):
+
+  def versions(self) -> Optional[List[int]]:
+    return None
+
+  def save(self, program_state: Any, version: int):
+    del program_state, version  # Unused.
+
+  def load(self, version: int) -> Any:
+    raise program_state_manager.ProgramStateManagerVersionNotFoundError()
+
+
 class ProgramStateManagerTest(absltest.TestCase):
 
   def test_load_latest_with_saved_program_state(self):
-
-    class _TestProgramStateManager(program_state_manager.ProgramStateManager):
-
-      def versions(self) -> Optional[List[int]]:
-        return [0, 1, 2, 3, 4]
-
-      def save(self, program_state: Any, version: int):
-        del program_state, version  # Unused.
-
-      def load(self, version: int) -> Any:
-        return 'test'
-
     program_state_mngr = _TestProgramStateManager()
+    program_state_mngr.versions = mock.MagicMock(return_value=[0, 1, 2, 3, 4])
+    program_state_mngr.load = mock.MagicMock(return_value='test')
 
     (program_state, version) = program_state_mngr.load_latest()
 
@@ -42,19 +45,6 @@ class ProgramStateManagerTest(absltest.TestCase):
     self.assertEqual(version, 4)
 
   def test_load_latest_with_no_saved_program_state(self):
-
-    class _TestProgramStateManager(program_state_manager.ProgramStateManager):
-
-      def versions(self) -> Optional[List[int]]:
-        return None
-
-      def save(self, program_state: Any, version: int):
-        del program_state, version  # Unused.
-
-      def load(self, version: int) -> Any:
-        del version  # Unused.
-        raise program_state_manager.ProgramStateManagerVersionNotFoundError()
-
     program_state_mngr = _TestProgramStateManager()
 
     (program_state, version) = program_state_mngr.load_latest()
@@ -62,21 +52,9 @@ class ProgramStateManagerTest(absltest.TestCase):
     self.assertIsNone(program_state)
     self.assertEqual(version, 0)
 
-  def test_load_latest_with_load_data_failure(self):
-
-    class _TestProgramStateManager(program_state_manager.ProgramStateManager):
-
-      def versions(self) -> Optional[List[int]]:
-        return [0, 1, 2, 3, 4]
-
-      def save(self, program_state: Any, version: int):
-        del program_state, version  # Unused.
-
-      def load(self, version: int) -> Any:
-        del version  # Unused.
-        raise program_state_manager.ProgramStateManagerVersionNotFoundError()
-
+  def test_load_latest_with_load_failure(self):
     program_state_mngr = _TestProgramStateManager()
+    program_state_mngr.versions = mock.MagicMock(return_value=[0, 1, 2, 3, 4])
 
     (program_state, version) = program_state_mngr.load_latest()
 
