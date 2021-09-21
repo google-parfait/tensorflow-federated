@@ -20,6 +20,9 @@ from typing import Any, Mapping
 class MetricsManager(metaclass=abc.ABCMeta):
   """An abstract base class for metrics managers.
 
+  DEPRECATED: `tff.simulation.MetricsManager` is deprecated, please use
+  `tff.program.ReleaseManager` instead.
+
   A `tff.simulation.MetricsManager` is a utility to save metric data across a
   number of rounds of some simulation.
   """

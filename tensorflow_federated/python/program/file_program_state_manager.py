@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities for saving and loading program state to a file system."""
+"""Utilities to save and load program state to a file system."""
 
 import os.path
 import re
@@ -148,7 +148,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     Args:
       program_state: The program state to save.
       version: A strictly increasing integer representing the version of a saved
-        `program_state`
+        `program_state`.
     """
     path = self._get_path_for_version(version)
     if tf.io.gfile.exists(path):

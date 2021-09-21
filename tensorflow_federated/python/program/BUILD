@@ -22,6 +22,7 @@ py_library(
     deps = [
         ":file_program_state_manager",
         ":program_state_manager",
+        ":release_manager",
     ],
 )
 
@@ -44,6 +45,24 @@ py_test(
 )
 
 py_library(
+    name = "logging_release_manager",
+    srcs = ["logging_release_manager.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":release_manager",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "logging_release_manager_test",
+    srcs = ["logging_release_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":logging_release_manager"],
+)
+
+py_library(
     name = "program_state_manager",
     srcs = ["program_state_manager.py"],
     srcs_version = "PY3",
@@ -55,4 +74,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":program_state_manager"],
+)
+
+py_library(
+    name = "release_manager",
+    srcs = ["release_manager.py"],
+    srcs_version = "PY3",
 )
