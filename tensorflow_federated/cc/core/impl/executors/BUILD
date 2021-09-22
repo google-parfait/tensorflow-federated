@@ -308,6 +308,7 @@ cc_test(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
         "@com_google_googletest//:gtest_main",
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:math_ops",
