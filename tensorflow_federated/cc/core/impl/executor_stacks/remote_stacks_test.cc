@@ -150,7 +150,7 @@ TEST_F(RemoteExecutorStackTest,
       CreateRemoteExecutorStack(channel_args, {{std::string(kClientsUri), 0}},
                                 mock_executor_factory_.AsStdFunction(),
                                 mock_composing_child_factory_.AsStdFunction());
-  EXPECT_OK(status_or_executor);
+  TFF_EXPECT_OK(status_or_executor);
 }
 
 TEST_F(RemoteExecutorStackTest, FailedChannelInterfacesNotAddressed) {
@@ -192,7 +192,7 @@ TEST_F(RemoteExecutorStackTest, FailedChannelInterfacesNotAddressed) {
       CreateRemoteExecutorStack(channel_args, {{std::string(kClientsUri), 5}},
                                 mock_executor_factory_.AsStdFunction(),
                                 mock_composing_child_factory_.AsStdFunction());
-  EXPECT_OK(status_or_executor);
+  TFF_EXPECT_OK(status_or_executor);
 }
 
 TEST_F(RemoteExecutorStackTest, OneClientPassedToOnlyOneChild) {
@@ -235,7 +235,7 @@ TEST_F(RemoteExecutorStackTest, OneClientPassedToOnlyOneChild) {
       CreateRemoteExecutorStack(channel_args, one_client_cards,
                                 mock_executor_factory_.AsStdFunction(),
                                 mock_composing_child_factory_.AsStdFunction());
-  EXPECT_OK(status_or_executor);
+  TFF_EXPECT_OK(status_or_executor);
 }
 
 }  // namespace tensorflow_federated

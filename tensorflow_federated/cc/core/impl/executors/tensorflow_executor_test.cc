@@ -171,7 +171,7 @@ class TensorFlowExecutorTest : public ::testing::Test {
     for (std::future<absl::StatusOr<v0::Value>>& result_future : results) {
       result_future.wait();
       auto result_status = result_future.get();
-      EXPECT_OK(result_status);
+      TFF_EXPECT_OK(result_status);
       if (result_status.ok()) {
         EXPECT_THAT(result_status.value(), EqualsProto(expected));
       }

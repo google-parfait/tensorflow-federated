@@ -175,7 +175,7 @@ TEST_F(RemoteExecutorTest, CreateValueTensor) {
         test_executor_->Materialize(value_ref, &materialized_value);
   }
 
-  EXPECT_OK(materialize_status);
+  TFF_EXPECT_OK(materialize_status);
   EXPECT_THAT(materialized_value, EqualsProto(tensor_two));
   WaitForDone(done, "Final Dispose call.");
 }
@@ -300,7 +300,7 @@ TEST_F(RemoteExecutorTest, CreateCallFnWithArg) {
         .WillOnce(::testing::Return(absl::OkStatus()))
         .WillOnce(NotifyAndReturnOk(done));
   }
-  EXPECT_OK(materialize_status);
+  TFF_EXPECT_OK(materialize_status);
   EXPECT_THAT(materialized_value, EqualsProto(tensor_two));
   WaitForDone(done, "Final Dispose call.");
 }
@@ -351,7 +351,7 @@ TEST_F(RemoteExecutorTest, CreateCallNoArgFn) {
         .WillOnce(::testing::Return(absl::OkStatus()))
         .WillOnce(NotifyAndReturnOk(done));
   }
-  EXPECT_OK(materialize_status);
+  TFF_EXPECT_OK(materialize_status);
   EXPECT_THAT(materialized_value, EqualsProto(tensor_two));
   WaitForDone(done, "Final Dispose call.");
 }
@@ -458,7 +458,7 @@ TEST_F(RemoteExecutorTest, CreateStructWithTwoElements) {
         .WillOnce(::testing::Return(absl::OkStatus()))
         .WillOnce(NotifyAndReturnOk(done));
   }
-  EXPECT_OK(materialize_status);
+  TFF_EXPECT_OK(materialize_status);
   EXPECT_THAT(materialized_value, EqualsProto(tensor_two));
   WaitForDone(done, "Final Dispose call.");
 }
@@ -495,7 +495,7 @@ TEST_F(RemoteExecutorTest, CreateStructWithNoElements) {
                 Dispose(::testing::_, ::testing::_, ::testing::_))
         .WillOnce(NotifyAndReturnOk(done));
   }
-  EXPECT_OK(materialize_status);
+  TFF_EXPECT_OK(materialize_status);
   EXPECT_THAT(materialized_value, EqualsProto(tensor_two));
   WaitForDone(done, "Final Dispose call.");
 }
@@ -570,7 +570,7 @@ TEST_F(RemoteExecutorTest, CreateSelection) {
         .WillOnce(::testing::Return(absl::OkStatus()))
         .WillOnce(NotifyAndReturnOk(done));
   }
-  EXPECT_OK(materialize_status);
+  TFF_EXPECT_OK(materialize_status);
   EXPECT_THAT(materialized_value, EqualsProto(tensor_two));
   WaitForDone(done, "Final Dispose call.");
 }

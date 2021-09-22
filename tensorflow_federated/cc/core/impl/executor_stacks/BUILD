@@ -51,6 +51,7 @@ cc_test(
     deps = [
         ":local_stacks",
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
+        "//tensorflow_federated/cc/core/impl/executors:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

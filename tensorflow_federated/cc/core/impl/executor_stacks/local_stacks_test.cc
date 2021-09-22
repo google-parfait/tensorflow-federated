@@ -18,6 +18,7 @@ limitations under the License
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 using testing::MockFunction;
 using testing::Return;
@@ -36,7 +37,7 @@ class LocalStacksTest : public ::testing::Test {
 TEST_F(LocalStacksTest, CustomLeafExecutorIsCalled) {
   MockFunction<absl::StatusOr<std::shared_ptr<Executor>>()> mock_executor_fn;
   EXPECT_CALL(mock_executor_fn, Call()).WillOnce(Return(test_executor_));
-  EXPECT_OK(CreateLocalExecutor(cards_, mock_executor_fn.AsStdFunction()));
+  TFF_EXPECT_OK(CreateLocalExecutor(cards_, mock_executor_fn.AsStdFunction()));
 }
 
 }  // namespace tensorflow_federated
