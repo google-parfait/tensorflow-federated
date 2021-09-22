@@ -17,6 +17,7 @@ These tests also serve as examples for users who are familiar with Keras.
 """
 
 import collections
+import warnings
 
 from absl.testing import parameterized
 import numpy as np
@@ -490,16 +491,25 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         self.evaluate(orig_model_output.loss),
         self.evaluate(loaded_model_output.loss))
 
-  def test_keras_model_using_batch_norm(self):
+  def test_keras_model_using_batch_norm_gets_warning(self):
     model = model_examples.build_conv_batch_norm_keras_model()
     input_spec = collections.OrderedDict(
         x=tf.TensorSpec(shape=[None, 28 * 28], dtype=tf.float32),
         y=tf.TensorSpec(shape=[None, 1], dtype=tf.int64))
-    tff_model = keras_utils.from_keras_model(
-        keras_model=model,
-        input_spec=input_spec,
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+
+    with warnings.catch_warnings(record=True) as warning:
+      warnings.simplefilter('always')
+      # Build a `tff.learning.Model` from a `tf.keras.Model`
+      tff_model = keras_utils.from_keras_model(
+          keras_model=model,
+          input_spec=input_spec,
+          loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+          metrics=[NumBatchesCounter(),
+                   NumExamplesCounter()])
+      # Ensure we can get warning of Batch Normalization.
+      self.assertLen(warning, 1)
+      self.assertIsSubClass(warning[-1].category, UserWarning)
+      self.assertRegex(str(warning[-1].message), 'Batch Normalization')
 
     batch_size = 2
     batch = collections.OrderedDict(

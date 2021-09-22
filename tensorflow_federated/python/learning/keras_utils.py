@@ -15,6 +15,7 @@
 
 import collections
 from typing import List, Optional, Sequence, Union
+import warnings
 
 import tensorflow as tf
 
@@ -165,6 +166,14 @@ def from_keras_model(
     py_typecheck.check_type(metrics, list)
     for metric in metrics:
       py_typecheck.check_type(metric, tf.keras.metrics.Metric)
+
+  for layer in keras_model.layers:
+    if isinstance(layer, tf.keras.layers.BatchNormalization):
+      warnings.warn(
+          'Batch Normalization contains non-trainable variables that won\'t be '
+          'updated during the training. Consider using Group Normalization '
+          'instead.', UserWarning)
+      break
 
   return _KerasModel(
       keras_model,
