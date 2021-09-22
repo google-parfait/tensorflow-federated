@@ -319,6 +319,45 @@ def extract_nodes_consuming(tree, predicate):
   return dependent_nodes.to_set()
 
 
+def _extract_calls_with_fn_consuming_arg(
+    tree: building_blocks.ComputationBuildingBlock, *,
+    fn_predicate: _BuildingBlockPredicate,
+    arg_predicate: _BuildingBlockPredicate) -> List[building_blocks.Call]:
+  """Extracts calls depending on function and arg predicates.
+
+  This function returns all calls in `tree` whose fns consume nodes matching
+  `fn_predicate` and arguments consume nodes matching `arg_predicate`. This
+  matching can be useful in checking that one type of function does not consume
+  any nodes depending on another type of function in the body of `tree`.
+
+  Args:
+    tree: Instance of `building_blocks.ComputationBuildingBlock` to traverse.
+    fn_predicate: Callable taking a building block and returning a boolean, to
+      define the behavior of this function according to the semantics above.
+    arg_predicate: Callable taking a building block and returning a boolean, to
+      define the behavior of this function according to the semantics above.
+
+  Returns:
+    A list of `building_block.Calls` matching the description above.
+  """
+
+  py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
+
+  nodes_dependent_on_arg_predicate = extract_nodes_consuming(
+      tree, arg_predicate)
+
+  nodes_dependent_on_fn_predicate = extract_nodes_consuming(tree, fn_predicate)
+
+  instances = []
+
+  for node in nodes_dependent_on_arg_predicate:
+    if node.is_call():
+      if (node.argument in nodes_dependent_on_arg_predicate and
+          node.function in nodes_dependent_on_fn_predicate):
+        instances.append(node)
+  return instances
+
+
 def check_broadcast_not_dependent_on_aggregate(tree):
   """Raises if any broadcast in `tree` ingests the result of an aggregate.
 
@@ -342,24 +381,38 @@ def check_broadcast_not_dependent_on_aggregate(tree):
   def broadcast_predicate(x):
     return x.is_intrinsic() and x.intrinsic_def().broadcast_kind
 
-  nodes_dependent_on_aggregate = extract_nodes_consuming(
-      tree, aggregate_predicate)
-
-  nodes_dependent_on_broadcast = extract_nodes_consuming(
-      tree, broadcast_predicate)
-
-  broadcast_dependent = False
-  examples = []
-
-  for node in nodes_dependent_on_aggregate:
-    if node.is_call():
-      if (node.argument in nodes_dependent_on_aggregate and
-          node.function in nodes_dependent_on_broadcast):
-        broadcast_dependent = True
-        examples.append(node)
-  if broadcast_dependent:
+  broadcast_dependent_examples = _extract_calls_with_fn_consuming_arg(
+      tree, fn_predicate=broadcast_predicate, arg_predicate=aggregate_predicate)
+  if broadcast_dependent_examples:
     raise ValueError('Detected broadcast dependent on aggregate. '
-                     'Examples are: {}'.format(examples))
+                     'Examples are: {}'.format(broadcast_dependent_examples))
+
+
+def check_aggregate_not_dependent_on_aggregate(tree):
+  """Raises if any aggregation in `tree` ingests the result of an aggregate.
+
+  We explicitly check for this pattern since if it occurs, `tree` is not
+  reducible to `MergeableCompForm`.
+
+  Args:
+    tree: Instance of `building_blocks.ComputationBuildingBlock` to check for
+      the presence of an aggregation which ingests the result of another
+      aggregate.
+
+  Raises:
+    ValueError: If a broadcast in `tree` consumes the result of an aggregate.
+  """
+
+  py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
+
+  def aggregate_predicate(x):
+    return x.is_intrinsic() and x.intrinsic_def().aggregation_kind
+
+  multiple_agg_dependent_examples = _extract_calls_with_fn_consuming_arg(
+      tree, fn_predicate=aggregate_predicate, arg_predicate=aggregate_predicate)
+  if multiple_agg_dependent_examples:
+    raise ValueError('Detected one aggregate dependent on another. '
+                     'Examples are: {}'.format(multiple_agg_dependent_examples))
 
 
 def count_tensorflow_ops_under(comp):
