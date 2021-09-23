@@ -244,7 +244,7 @@ class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
 
 class FileProgramStateManagerLoadTest(parameterized.TestCase):
 
-  def test_returns_program_state_with_one_save_and_version_1(self):
+  def test_returns_program_state_with_one_save(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
@@ -260,7 +260,7 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
       ('1', 1),
       ('2', 2),
   )
-  def test_returns_program_state_with_three_saves_and_version(self, version):
+  def test_returns_program_state_with_three_saves(self, version):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
@@ -369,7 +369,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase):
 
 class FileProgramStateManagerRemoveTest(parameterized.TestCase):
 
-  def test_removes_saved_program_state_with_one_save_and_version_1(self):
+  def test_removes_saved_program_state_with_one_save(self):
     temp_dir = self.create_tempdir()
     os.mkdir(os.path.join(temp_dir, 'a_1'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
@@ -384,7 +384,7 @@ class FileProgramStateManagerRemoveTest(parameterized.TestCase):
       ('1', 1),
       ('2', 2),
   )
-  def test_removes_program_state_with_three_saves_and_version(self, version):
+  def test_removes_program_state_with_three_saves(self, version):
     temp_dir = self.create_tempdir()
     for version in range(3):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))

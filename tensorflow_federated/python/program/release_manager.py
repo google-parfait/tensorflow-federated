@@ -38,7 +38,7 @@ class ReleaseManager(metaclass=abc.ABCMeta):
     Args:
       value: The value to release, the specific structure of `key` is left up to
         the concrete implementations of `ReleaseManager`.
-      key: An optional value to use as the key for the released `value`, the
+      key: An optional value to use to reference the released `value`, the
          specific structure of `key` and how `key` is used is left up to the
          concrete implementations of`ReleaseManager`.
     """
