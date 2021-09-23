@@ -13,14 +13,22 @@
 # limitations under the License.
 """Utilities to save and load program state to a file system."""
 
+import os
 import os.path
 import re
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 from absl import logging
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.program import program_state_manager
+
+
+# TODO(b/199737690): Update `FileProgramStateManager` to not require a structure
+# to load program state.
+class FileProgramStateManagerStructureError(Exception):
+  pass
 
 
 class FileProgramStateManager(program_state_manager.ProgramStateManager):
@@ -35,7 +43,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
   """
 
   def __init__(self,
-               root_dir: str,
+               root_dir: Union[str, os.PathLike],
                prefix: str = 'program_state_',
                keep_total: int = 5,
                keep_first: bool = True):
@@ -54,6 +62,10 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
         the initial program state, one can avoid re-initializing and obtaining
         different results.
     """
+    py_typecheck.check_type(root_dir, (str, os.PathLike))
+    py_typecheck.check_type(prefix, str)
+    py_typecheck.check_type(keep_total, int)
+    py_typecheck.check_type(keep_first, bool)
     self._root_dir = root_dir
     self._prefix = prefix
     self._keep_total = keep_total
@@ -83,20 +95,21 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     """
     if not tf.io.gfile.exists(self._root_dir):
       return None
+    versions = []
     # Due to tensorflow/issues/19378, we cannot use `tf.io.gfile.glob` here
     # because it returns directory contents recursively on Windows.
     entries = tf.io.gfile.listdir(self._root_dir)
-    if not entries:
-      return None
-    versions = []
     for entry in entries:
       if entry.startswith(self._prefix):
         version = self._get_version_for_path(entry)
         if version is not None:
           versions.append(version)
+    if not versions:
+      return None
     return sorted(versions)
 
-  def _get_version_for_path(self, path: str) -> Optional[int]:
+  def _get_version_for_path(self, path: Union[str,
+                                              os.PathLike]) -> Optional[int]:
     """Returns the version for the given `path` or `None`.
 
     This method does not assert that the given `path` or the returned version
@@ -106,8 +119,16 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     Args:
       path: The path to extract the version from.
     """
-    _, version = path.rsplit(self._prefix, maxsplit=1)
-    return int(version)
+    py_typecheck.check_type(path, str, os.PathLike)
+    basename = os.path.basename(path)
+    if basename.startswith(self._prefix):
+      version = basename[len(self._prefix):]
+    else:
+      version = None
+    try:
+      return int(version)
+    except (TypeError, ValueError):
+      return None
 
   def _get_path_for_version(self, version: int) -> str:
     """Returns the path for the given `version`.
@@ -119,7 +140,8 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     Args:
       version: The version to use to construct the path.
     """
-    basename = '{}{}'.format(self._prefix, version)
+    py_typecheck.check_type(version, int)
+    basename = f'{self._prefix}{version}'
     return os.path.join(self._root_dir, basename)
 
   def load(self, version: int) -> Any:
@@ -131,11 +153,18 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     Raises:
       ProgramStateManagerVersionNotFoundError: If there is no program state for
         the given `version`.
+      FileProgramStateManagerStructureError: If `structure` has not been set.
     """
+    py_typecheck.check_type(version, int)
+    # TODO(b/199737690): Update `FileProgramStateManager` to not require a
+    # structure to load program state.
+    if self._structure is None:
+      raise FileProgramStateManagerStructureError(
+          'A structure is required to load program state.')
     path = self._get_path_for_version(version)
     if not tf.io.gfile.exists(path):
       raise program_state_manager.ProgramStateManagerVersionNotFoundError(
-          'No program state found for version: {}'.format(version))
+          f'No program state found for version: {version}')
     model = tf.saved_model.load(path)
     flat_obj = model.build_obj_fn()
     state = tf.nest.pack_sequence_as(self._structure, flat_obj)
@@ -150,17 +179,18 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       version: A strictly increasing integer representing the version of a saved
         `program_state`.
     """
+    py_typecheck.check_type(version, int)
     path = self._get_path_for_version(version)
     if tf.io.gfile.exists(path):
       raise program_state_manager.ProgramStateManagerVersionAlreadyExistsError(
-          'Program state already exists for version: {}'.format(version))
+          f'Program state already exists for version: {version}')
     flat_obj = tf.nest.flatten(program_state)
     model = tf.Module()
     model.obj = flat_obj
     model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
 
     # First write to a temporary directory.
-    temp_path = '{}_temp'.format(path)
+    temp_path = f'{path}_temp'
     try:
       tf.io.gfile.rmtree(temp_path)
     except tf.errors.NotFoundError:
@@ -176,9 +206,11 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
 
   def _remove(self, version: int):
     """Removed the program state for the given `version`."""
+    py_typecheck.check_type(version, int)
     path = self._get_path_for_version(version)
-    tf.io.gfile.rmtree(path)
-    logging.info('Program state removed: %s', path)
+    if tf.io.gfile.exists(path):
+      tf.io.gfile.rmtree(path)
+      logging.info('Program state removed: %s', path)
 
   def _remove_old_program_state(self):
     """Removes the old program state."""

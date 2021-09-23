@@ -30,7 +30,10 @@ py_library(
     name = "file_program_state_manager",
     srcs = ["file_program_state_manager.py"],
     srcs_version = "PY3",
-    deps = [":program_state_manager"],
+    deps = [
+        ":program_state_manager",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
 )
 
 py_test(
