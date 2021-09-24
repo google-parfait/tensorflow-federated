@@ -125,10 +125,14 @@ def _execute_computation(
   heavy_hitters = output.heavy_hitters
   heavy_hitters_counts = output.heavy_hitters_counts
 
-  heavy_hitters = [word.decode('utf-8') for word in heavy_hitters]
-  iteration_results = dict(zip(heavy_hitters, heavy_hitters_counts))
+  heavy_hitters = [word.decode('utf-8', 'ignore') for word in heavy_hitters]
 
-  return iteration_results
+  iteration_results = collections.defaultdict(int)
+  total_num_heavy_hitters = len(heavy_hitters)
+  for index in range(total_num_heavy_hitters):
+    iteration_results[heavy_hitters[index]] += heavy_hitters_counts[index]
+
+  return dict(iteration_results)
 
 
 class IbltTffConstructionTest(test_case.TestCase):
@@ -355,6 +359,56 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
     ground_truth = dict(collections.Counter(all_strings))
 
     self.assertEqual(results, ground_truth)
+
+  @parameterized.named_parameters(('max_length_6', 20, 6, 3, 0, 1, {
+      'hello': 5,
+      'hey': 2,
+      'hi': 2,
+      '新年': 2,
+      'pumpki': 3,
+      'folks': 1,
+      'I am o': 4,
+      'world': 2,
+      '☺️': 2,
+      'hi how': 2,
+      'you :-': 2,
+      'I will': 2,
+      'there ': 2,
+      'worm': 2,
+      'Seattl': 1,
+      'way': 2,
+      'I': 1,
+      ':-)': 2
+  }), ('max_length_2', 100, 2, 6, 1, 5, {
+      'he': 6,
+      'hi': 3,
+      '': 4,
+      'pu': 3,
+      'fo': 1,
+      'I ': 5,
+      'wo': 4,
+      'yo': 2,
+      'th': 2,
+      'Se': 1,
+      'wa': 2,
+      'I': 1,
+      ':-': 2
+  }))
+  def test_computation_with_max_string_length(self, capacity, max_string_length,
+                                              repetitions, seed, batch_size,
+                                              expected_results):
+    results = _execute_computation(
+        DATA,
+        capacity=capacity,
+        max_string_length=max_string_length,
+        repetitions=repetitions,
+        seed=seed,
+        dtype=tf.int64,
+        max_words_per_user=10,
+        batch_size=batch_size,
+        multi_contribution=False)
+
+    self.assertEqual(results, expected_results)
 
   @parameterized.named_parameters(('batch_size_1', 1), ('batch_size_5', 5))
   def test_computation_with_max_heavy_hitters(self, batch_size):

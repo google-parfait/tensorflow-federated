@@ -153,12 +153,14 @@ def build_iblt_computation(
         # `tff.analytics.data_processing.get_top_elements` returns the top
         # `max_words_per_user` words in client's local histogram. Each element
         # appears at most once in the list.
-        k_words = data_processing.get_top_elements(dataset, max_words_per_user)
+        k_words = data_processing.get_top_elements(
+            dataset, max_words_per_user, max_string_length=max_string_length)
     else:
       if multi_contribution:
         k_words = data_processing.get_all_elements(dataset)
       else:
-        k_words = data_processing.get_unique_elements(dataset)
+        k_words = data_processing.get_unique_elements(
+            dataset, max_string_length=max_string_length)
     return encoder.compute_iblt(k_words)
 
   @computations.tf_computation(dataset_type)
