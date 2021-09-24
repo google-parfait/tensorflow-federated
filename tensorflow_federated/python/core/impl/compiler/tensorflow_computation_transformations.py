@@ -46,22 +46,24 @@ def prune_tensorflow_proto(proto):
     parameter_names = [
         ':'.join(x.split(':')[:-1]) for x in parameter_tensor_names
     ]
+    original_parameter_binding = proto.tensorflow.parameter
   else:
     parameter_names = []
+    original_parameter_binding = None
   return_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
       proto.tensorflow.result)
   return_names = [':'.join(x.split(':')[:-1]) for x in return_tensor_names]
   graph_def = serialization_utils.unpack_graph_def(proto.tensorflow.graph_def)
-  init_op_name = proto.tensorflow.initialize_op
+  original_init_op_name = proto.tensorflow.initialize_op
   names_to_preserve = parameter_names + return_names
-  if init_op_name:
-    names_to_preserve.append(init_op_name)
+  if original_init_op_name:
+    names_to_preserve.append(original_init_op_name)
   subgraph_def = tf.compat.v1.graph_util.extract_sub_graph(
       graph_def, names_to_preserve)
   tf_block = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(subgraph_def),
-      initialize_op=proto.tensorflow.initialize_op,
-      parameter=proto.tensorflow.parameter,
+      initialize_op=original_init_op_name or None,
+      parameter=original_parameter_binding,
       result=proto.tensorflow.result)
   pruned_proto = pb.Computation(type=proto.type, tensorflow=tf_block)
   return pruned_proto
