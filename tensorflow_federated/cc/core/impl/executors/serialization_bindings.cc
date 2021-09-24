@@ -24,16 +24,18 @@ limitations under the License
 
 #include <Python.h>
 
+#include "absl/status/statusor.h"
 #include "pybind11/include/pybind11/detail/common.h"
 #include "pybind11/include/pybind11/pybind11.h"
 #include "pybind11/include/pybind11/pytypes.h"
 #include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/wrapped_proto_caster.h"
-#include "tensorflow/c/c_api.h"
 #include "tensorflow/c/eager/c_api.h"
-#include "tensorflow/core/common_runtime/eager/tensor_handle.h"
+#include "tensorflow/c/tf_status.h"
+#include "tensorflow/c/tf_tensor.h"
 #include "tensorflow/core/framework/tensor.h"
+#include "tensorflow/core/platform/status.h"
 #include "tensorflow/python/eager/pywrap_tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
 #include "tensorflow/python/lib/core/safe_ptr.h"

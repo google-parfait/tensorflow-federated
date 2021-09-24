@@ -15,32 +15,41 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
 #include <optional>
-#include <unordered_map>
+#include <string>
+#include <thread>  // NOLINT
+#include <utility>
 #include <variant>
+#include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
-#include "tensorflow/cc/client/client_session.h"
-#include "tensorflow/cc/framework/scope.h"
-#include "tensorflow/cc/ops/array_ops.h"
-#include "tensorflow/cc/ops/dataset_ops_internal.h"
-#include "tensorflow/cc/ops/experimental_dataset_ops_internal.h"
+#include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
+#include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
+#include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/framework/types.pb.h"
-#include "tensorflow/core/platform/errors.h"
+#include "tensorflow/core/platform/macros.h"
+#include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow/core/protobuf/config.pb.h"
 #include "tensorflow/core/protobuf/rewriter_config.pb.h"
 #include "tensorflow/core/public/session.h"
+#include "tensorflow/core/public/session_options.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"

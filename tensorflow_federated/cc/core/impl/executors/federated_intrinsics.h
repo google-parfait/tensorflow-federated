@@ -17,6 +17,7 @@ limitations under the License
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_FEDERATING_INTRINSICS_H_
 
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 
 namespace tensorflow_federated {
 

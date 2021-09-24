@@ -15,8 +15,14 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
 
+#include <cstdint>
+#include <string>
+#include <vector>
+
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"

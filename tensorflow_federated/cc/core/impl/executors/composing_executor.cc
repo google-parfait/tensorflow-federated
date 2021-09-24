@@ -15,17 +15,30 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 
+#include <cstddef>
+#include <functional>
 #include <future>  // NOLINT
-#include <memory>
+#include <string>
+#include <tuple>
 
 #include "google/protobuf/repeated_field.h"
+#include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
+#include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
+#include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 

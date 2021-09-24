@@ -15,11 +15,17 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
+#include <utility>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/status.h"
+#include "absl/types/span.h"
+#include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"

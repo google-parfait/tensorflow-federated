@@ -16,19 +16,30 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_VALUE_TEST_UTILS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_VALUE_TEST_UTILS_H_
 
+#include <cstdint>
 #include <functional>
-#include <string_view>
+#include <optional>
+#include <string>
+#include <tuple>
 #include <utility>
+#include <vector>
 
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "tensorflow/cc/client/client_session.h"
+#include "tensorflow/cc/framework/ops.h"
 #include "tensorflow/cc/framework/scope.h"
 #include "tensorflow/cc/ops/const_op.h"
 #include "tensorflow/cc/ops/dataset_ops_internal.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
+#include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 namespace testing {

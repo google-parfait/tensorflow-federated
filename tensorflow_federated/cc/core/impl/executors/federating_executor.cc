@@ -15,18 +15,29 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
+#include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 

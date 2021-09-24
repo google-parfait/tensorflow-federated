@@ -15,6 +15,10 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 
+#include <utility>
+
+#include "absl/status/statusor.h"
+
 namespace tensorflow_federated {
 
 absl::StatusOr<uint32_t> NumClientsFromCardinalities(

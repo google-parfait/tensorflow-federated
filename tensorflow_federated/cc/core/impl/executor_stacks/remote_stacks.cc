@@ -16,19 +16,20 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executor_stacks/remote_stacks.h"
 
 #include <chrono>  // NOLINT
-#include <limits>
-#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/time/time.h"
+#include "absl/types/span.h"
 #include "grpcpp/grpcpp.h"
 #include "grpc/include/grpcpp/support/time.h"
-#include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
-#include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 

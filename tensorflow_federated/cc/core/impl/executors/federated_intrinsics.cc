@@ -15,7 +15,12 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 
+#include <string>
+
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 
 namespace tensorflow_federated {
 

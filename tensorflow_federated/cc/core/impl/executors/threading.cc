@@ -15,8 +15,12 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 
+#include <functional>
 #include <thread>  // NOLINT
+#include <utility>
 
+#include "absl/base/thread_annotations.h"
+#include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
 
 namespace tensorflow_federated {

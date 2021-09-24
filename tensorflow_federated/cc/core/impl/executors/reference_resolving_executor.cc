@@ -15,14 +15,24 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 
+#include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
+#include <tuple>
+#include <utility>
 #include <variant>
+#include <vector>
 
+#include "base/logging.h"
 #include "absl/status/status.h"
-#include "tensorflow/core/platform/ctstring_internal.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 

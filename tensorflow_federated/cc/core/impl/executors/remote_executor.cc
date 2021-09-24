@@ -15,14 +15,22 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
 
+#include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
-#include <variant>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
+#include "absl/base/thread_annotations.h"
+#include "absl/meta/type_traits.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
+#include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"

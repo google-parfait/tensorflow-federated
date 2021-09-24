@@ -16,9 +16,11 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/platform/byte_order.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 

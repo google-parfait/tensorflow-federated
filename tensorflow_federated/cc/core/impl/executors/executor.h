@@ -16,13 +16,19 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_EXECUTOR_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_EXECUTOR_H_
 
+#include <cstdint>
 #include <limits>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "absl/base/thread_annotations.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "tensorflow/core/profiler/lib/traceme.h"
@@ -33,6 +39,7 @@ limitations under the License
 namespace tensorflow_federated {
 
 class OwnedValueId;
+
 using ValueId = uint64_t;
 
 // A dynamically-dispatched executor interface.

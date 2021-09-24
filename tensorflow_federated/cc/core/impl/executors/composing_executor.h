@@ -16,8 +16,12 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_COMPOSING_EXECUTOR_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_COMPOSING_EXECUTOR_H_
 
+#include <cstdint>
 #include <memory>
+#include <utility>
+#include <vector>
 
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"

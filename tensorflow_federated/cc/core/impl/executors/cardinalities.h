@@ -16,6 +16,9 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_CARDINALITIES_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_CARDINALITIES_H_
 
+#include <cstdint>
+#include <string>
+
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"

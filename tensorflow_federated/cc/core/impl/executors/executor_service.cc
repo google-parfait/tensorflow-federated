@@ -16,14 +16,20 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/executor_service.h"
 
 #include <memory>
-#include <tuple>
+#include <string>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/match.h"
+#include "absl/strings/numbers.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
+#include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
+#include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {

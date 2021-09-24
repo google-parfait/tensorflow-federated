@@ -18,6 +18,7 @@ limitations under the License
 
 #include <memory>
 
+#include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 

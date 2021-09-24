@@ -16,6 +16,8 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_COMPUTATIONS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_COMPUTATIONS_H_
 
+#include <string>
+
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 
 namespace tensorflow_federated {

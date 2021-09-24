@@ -15,30 +15,37 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 
+#include <cstdint>
 #include <future>  // NOLINT
-#include <limits>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
-#include "tensorflow/cc/client/client_session.h"
+#include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "tensorflow/cc/framework/ops.h"
 #include "tensorflow/cc/framework/scope.h"
 #include "tensorflow/cc/ops/array_ops.h"
 #include "tensorflow/cc/ops/const_op.h"
-#include "tensorflow/cc/ops/dataset_ops_internal.h"
 #include "tensorflow/cc/ops/math_ops.h"
 #include "tensorflow/cc/ops/resource_variable_ops.h"
-#include "tensorflow/cc/ops/state_ops.h"
-#include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
+#include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/graph/graph.h"
+#include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
+#include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
 namespace {

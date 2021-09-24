@@ -16,7 +16,11 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_MOCK_GRPC_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_MOCK_GRPC_H_
 
+#include <memory>
+
+#include "base/logging.h"
 #include "googlemock/include/gmock/gmock.h"
+#include "absl/strings/str_cat.h"
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"

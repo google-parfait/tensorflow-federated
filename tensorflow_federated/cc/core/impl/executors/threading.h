@@ -16,9 +16,18 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_THREADING_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_THREADING_H_
 
+#include <chrono>  // NOLINT
+#include <cstdint>
+#include <functional>
 #include <future>  // NOLINT
 #include <memory>
+#include <thread>  // NOLINT
+#include <type_traits>
+#include <utility>
+#include <vector>
 
+#include "absl/base/thread_annotations.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"

@@ -14,8 +14,14 @@ limitations under the License
 ==============================================================================*/
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
+#include <cstdint>
+#include <ostream>
+#include <string>
+
+#include "googlemock/include/gmock/gmock.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 
 namespace tensorflow_federated::internal_status {
 

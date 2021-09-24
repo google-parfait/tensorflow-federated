@@ -16,11 +16,16 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executor_stacks/remote_stacks.h"
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
+#include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"

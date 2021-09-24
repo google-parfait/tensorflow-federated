@@ -26,20 +26,32 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
+#include "base/logging.h"
+#include "google/protobuf/any.pb.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "tensorflow/cc/framework/ops.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "tensorflow/cc/framework/scope.h"
 #include "tensorflow/cc/ops/array_ops.h"
 #include "tensorflow/cc/ops/math_ops.h"
+#include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/tensor.h"
-#include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/types.pb.h"
+#include "tensorflow/core/graph/graph.h"
+#include "tensorflow/core/platform/byte_order.h"
+#include "tensorflow/core/platform/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"

@@ -16,7 +16,11 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_REMOTE_STACKS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_REMOTE_STACKS_H_
 
-#include "absl/strings/string_view.h"
+#include <functional>
+#include <memory>
+
+#include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"

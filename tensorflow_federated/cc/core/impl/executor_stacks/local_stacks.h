@@ -16,6 +16,9 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_LOCAL_STACKS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_LOCAL_STACKS_H_
 
+#include <functional>
+#include <memory>
+
 #include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"

@@ -21,6 +21,7 @@ pybind_extension(
     tags = ["nokokoro"],
     deps = [
         ":remote_stacks",
+        "//tensorflow_federated/cc/core/impl/executors:cardinalities",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/types:span",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
@@ -38,8 +39,8 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:federating_executor",
         "//tensorflow_federated/cc/core/impl/executors:reference_resolving_executor",
+        "//tensorflow_federated/cc/core/impl/executors:status_macros",
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_executor",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],
 )
@@ -50,8 +51,11 @@ cc_test(
     tags = ["nokokoro"],
     deps = [
         ":local_stacks",
+        "//tensorflow_federated/cc/core/impl/executors:cardinalities",
+        "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
         "//tensorflow_federated/cc/core/impl/executors:status_matchers",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -68,12 +72,14 @@ cc_library(
         "//tensorflow_federated/cc/core/impl/executors:federating_executor",
         "//tensorflow_federated/cc/core/impl/executors:reference_resolving_executor",
         "//tensorflow_federated/cc/core/impl/executors:remote_executor",
+        "//tensorflow_federated/cc/core/impl/executors:status_macros",
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_executor",
         "//tensorflow_federated/cc/core/impl/executors:threading",
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -84,11 +90,14 @@ cc_test(
     deps = [
         ":remote_stacks",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
+        "//tensorflow_federated/cc/core/impl/executors:composing_executor",
         "//tensorflow_federated/cc/core/impl/executors:executor",
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
         "//tensorflow_federated/cc/core/impl/executors:status_matchers",
         "//tensorflow_federated/cc/core/impl/executors:tensorflow_executor",
         "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
     ],
 )

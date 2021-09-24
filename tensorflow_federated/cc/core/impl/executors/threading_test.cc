@@ -16,9 +16,11 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 
 #include <atomic>
+#include <cstdint>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/status/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated {

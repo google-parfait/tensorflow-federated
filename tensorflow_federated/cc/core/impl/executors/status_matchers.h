@@ -18,9 +18,17 @@ limitations under the License
 
 // TODO(b/199461150) remove this file and the associated .cc file.
 
+#include <cstdint>
+#include <optional>
+#include <ostream>
+#include <string>
+#include <type_traits>
+#include <utility>
+
 #include "googlemock/include/gmock/gmock.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "grpcpp/grpcpp.h"
 
 namespace tensorflow_federated {

@@ -15,22 +15,29 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
 
-#include <cstring>
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
+#include "base/logging.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/notification.h"
+#include "absl/time/time.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
+#include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 using ::testing::EqualsProto;
