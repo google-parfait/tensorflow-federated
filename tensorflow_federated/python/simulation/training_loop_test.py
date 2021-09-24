@@ -567,7 +567,6 @@ class RunSimulationWithCallbacksTest(parameterized.TestCase):
         'round_num': 1,
         'mock_train_metric': 1,
         training_loop.ROUND_TIME_KEY: 0,
-        training_loop.ROUNDS_PER_HOUR_KEY: None
     }
     actual_metrics_passed_to_round_end = on_round_end.call_args_list[0][0][-1]
     self.assertDictEqual(actual_metrics_passed_to_round_end,
@@ -588,7 +587,6 @@ class RunStatelessSimulationTest(absltest.TestCase):
         'b': 5,
         'round_num': 0,
         training_loop.ROUND_TIME_KEY: 0,
-        training_loop.ROUNDS_PER_HOUR_KEY: None
     }
     self.assertEqual(list(output.keys()), [0])
     self.assertDictEqual(output[0], expected_round_output)
@@ -607,7 +605,6 @@ class RunStatelessSimulationTest(absltest.TestCase):
           'b': 5,
           'round_num': i,
           training_loop.ROUND_TIME_KEY: 0,
-          training_loop.ROUNDS_PER_HOUR_KEY: None
       }
       self.assertDictEqual(output[i], expected_round_output)
 
@@ -637,7 +634,6 @@ class RunStatelessSimulationTest(absltest.TestCase):
           'b': 5,
           'round_num': 0,
           training_loop.ROUND_TIME_KEY: 0,
-          training_loop.ROUNDS_PER_HOUR_KEY: None
       }
       self.assertDictEqual(expected_metrics, unnamed_args[0])
 
@@ -798,7 +794,6 @@ class RunTrainingProcessTest(parameterized.TestCase):
       metrics = collections.OrderedDict([
           ('metric', 0),
           ('training_time_in_seconds', mock.ANY),
-          ('training_rounds_per_hour', mock.ANY),
           ('round_number', round_num),
       ])
       call = mock.call(metrics, round_num)
@@ -851,7 +846,6 @@ class RunTrainingProcessTest(parameterized.TestCase):
       metrics = collections.OrderedDict([
           ('metric', 0),
           ('training_time_in_seconds', mock.ANY),
-          ('training_rounds_per_hour', mock.ANY),
           ('round_number', round_num),
       ])
       if round_num % rounds_per_evaluation == 0:
@@ -864,29 +858,6 @@ class RunTrainingProcessTest(parameterized.TestCase):
     metrics_manager_1.save_metrics.assert_has_calls(calls)
     metrics_manager_2.save_metrics.assert_has_calls(calls)
     metrics_manager_3.save_metrics.assert_has_calls(calls)
-
-  def test_performance_metrics_with_training_time_0(self):
-    training_process = mock.create_autospec(iterative_process.IterativeProcess)
-    training_process.initialize.return_value = 'initialize'
-    training_process.next.return_value = ('update', {'metric': 0})
-    training_selection_fn = mock.MagicMock()
-    metrics_manager = mock.MagicMock()
-
-    with mock.patch('time.time') as mock_time:
-      mock_time.return_value = 0.0
-      training_loop.run_training_process(
-          training_process=training_process,
-          training_selection_fn=training_selection_fn,
-          total_rounds=1,
-          metrics_managers=[metrics_manager])
-
-    for call in metrics_manager.save_metrics.mock_calls:
-      _, args, _ = call
-      metrics, round_num = args
-      self.assertEqual(metrics[training_loop.ROUND_NUMBER_KEY], 1)
-      self.assertEqual(metrics[training_loop.TRAINING_TIME_KEY], 0)
-      self.assertIsNone(metrics[training_loop.TRAINING_ROUNDS_PER_HOUR_KEY])
-      self.assertEqual(round_num, 1)
 
   def test_performance_metrics_with_training_and_evaluation_time_10(self):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
@@ -916,8 +887,6 @@ class RunTrainingProcessTest(parameterized.TestCase):
       if round_num > 0:
         self.assertEqual(metrics[training_loop.ROUND_NUMBER_KEY], 1)
         self.assertEqual(metrics[training_loop.TRAINING_TIME_KEY], 10.0)
-        self.assertEqual(metrics[training_loop.TRAINING_ROUNDS_PER_HOUR_KEY],
-                         60.0 * 60.0 / 10.0)
       self.assertEqual(
           metrics[training_loop.EVALUATION_METRICS_PREFIX +
                   training_loop.EVALUATION_TIME_KEY], 10.0)

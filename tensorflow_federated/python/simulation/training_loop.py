@@ -35,13 +35,11 @@ MetricsManager = metrics_manager_lib.MetricsManager
 ValidationFnType = Callable[[Any, int], MetricsType]
 
 ROUND_TIME_KEY = 'round_time_in_seconds'
-ROUNDS_PER_HOUR_KEY = 'rounds_per_hour'
 VALIDATION_METRICS_PREFIX = 'validation/'
 VALIDATION_TIME_KEY = 'validation_time_in_seconds'
 
 ROUND_NUMBER_KEY = 'round_number'
 TRAINING_TIME_KEY = 'training_time_in_seconds'
-TRAINING_ROUNDS_PER_HOUR_KEY = 'training_rounds_per_hour'
 EVALUATION_METRICS_PREFIX = 'evaluation/'
 EVALUATION_TIME_KEY = 'evaluation_time_in_seconds'
 
@@ -262,10 +260,8 @@ def run_simulation(
 
   This method also records how long it takes (in seconds) to call
   `client_selection_fn` and `process.next` at each round and add this to the
-  round metrics with key `tff.simulation.ROUND_TIME_KEY`. We also record
-  how many such iterations would occur per hour with the key
-  `tff.simulation.ROUNDS_PER_HOUR_KEY`. Note this does not include validation
-  time.
+  round metrics with key `tff.simulation.ROUND_TIME_KEY`. Note this does not
+  include validation time.
 
   In full generality, after each round, we compute validation metrics via
   `validation_fn` (if not `None`), add these to the metrics created by
@@ -329,9 +325,7 @@ def run_simulation_with_callbacks(
 
   This method also records how long it takes (in seconds) to call
   `client_selection_fn` and `process.next` at each round and add this to the
-  round metrics with key `tff.simulation.ROUND_TIME_KEY`. We also record
-  how many steps would occur per hour, which has key
-  `tff.simulation.ROUNDS_PER_HOUR_KEY`.
+  round metrics with key `tff.simulation.ROUND_TIME_KEY`.
 
   This method uses up to two callbacks. The first, `on_loop_start`, accepts the
   initial state of `process`, and returns a starting `state` and `round_num` for
@@ -391,10 +385,6 @@ def run_simulation_with_callbacks(
     state, metrics = process.next(state, federated_train_data)
     train_time = time.time() - train_start_time
     round_metrics[ROUND_TIME_KEY] = train_time
-    if train_time == 0.0:
-      round_metrics[ROUNDS_PER_HOUR_KEY] = None
-    else:
-      round_metrics[ROUNDS_PER_HOUR_KEY] = 1 / train_time * 60.0 * 60.0
     round_metrics.update(metrics)
 
     if on_round_end is not None:
@@ -421,9 +411,7 @@ def run_stateless_simulation(
 
   This method also records how long it takes (in seconds) to call
   `client_selection_fn` and `computation` at each round and adds this to a
-  dictionary of  round metrics with key `tff.simulation.ROUND_TIME_KEY`. We also
-  record how many such iterations would occur per hour with the key
-  `tff.simulation.ROUNDS_PER_HOUR_KEY`.
+  dictionary of  round metrics with key `tff.simulation.ROUND_TIME_KEY`.
 
   Args:
     computation: A `tff.Computation` to be executed. Must accept a single
@@ -458,10 +446,6 @@ def run_stateless_simulation(
 
     round_metrics.update(output)
     round_metrics[ROUND_TIME_KEY] = computation_time
-    if computation_time == 0.0:
-      round_metrics[ROUNDS_PER_HOUR_KEY] = None
-    else:
-      round_metrics[ROUNDS_PER_HOUR_KEY] = 1 / computation_time * 60.0 * 60.0
 
     if metrics_managers is not None:
       for manager in metrics_managers:
@@ -484,11 +468,6 @@ def _run_training(training_fn: computation_base.Computation,
   training_time = time.time() - training_time_start
   metrics.update(training_metrics)
   metrics[TRAINING_TIME_KEY] = training_time
-  if training_time == 0.0:
-    training_rounds_per_hour = None
-  else:
-    training_rounds_per_hour = 1 / training_time * 60.0 * 60.0
-  metrics[TRAINING_ROUNDS_PER_HOUR_KEY] = training_rounds_per_hour
   metrics[ROUND_NUMBER_KEY] = round_num
   return state, metrics
 
@@ -545,8 +524,6 @@ def run_training_process(
   * tff.simulation.ROUND_NUMBER_KEY: The round number.
   * tff.simulation.TRAINING_TIME_KEY: The amount of time (in seconds) it takes
     to run one round of training.
-  * tff.simulation.TRAINING_ROUNDS_PER_HOUR_KEY: The number of training rounds
-    that would occur per hour
   * tff.simulation.EVALUATION_TIME_KEY: The amount of time (in seconds) it takes
     to run one round of evaluation.
 
