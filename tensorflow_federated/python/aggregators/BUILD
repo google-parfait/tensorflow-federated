@@ -26,6 +26,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        ":concat",
         ":differential_privacy",
         ":encoded",
         ":factory",
@@ -37,6 +38,40 @@ py_library(
         ":sampling",
         ":secure",
         ":sum_factory",
+    ],
+)
+
+py_library(
+    name = "concat",
+    srcs = ["concat.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":factory",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)
+
+py_test(
+    name = "concat_test",
+    srcs = ["concat_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":concat",
+        ":mean",
+        ":sum_factory",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
     ],
 )
 
