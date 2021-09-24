@@ -42,6 +42,7 @@ limitations under the License
 #include "tensorflow/core/framework/tensor.pb.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/tensor_types.h"
+#include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow/core/platform/status.h"
@@ -465,6 +466,14 @@ class Computation {
         output_shape_(std::move(output_shape)),
         output_tensor_names_(std::move(output_tensor_names)) {}
 
+  std::string DebugString() const {
+    return absl::StrCat("(",
+                        parameter_shape_.has_value()
+                            ? parameter_shape_->ShortDebugString()
+                            : "",
+                        " -> ", output_shape_.ShortDebugString(), ")");
+  }
+
  private:
   static absl::Status TensorNamesFromBinding(
       const v0::TensorFlow::Binding& binding,
@@ -666,6 +675,24 @@ class ExecutorValue {
     }
   }
 
+  std::string DebugString() const {
+    if (std::holds_alternative<tensorflow::Tensor>(value_)) {
+      return absl::StrCat(tensorflow::DataTypeString(tensor().dtype()),
+                          tensor().shape().DebugString());
+    } else if (std::holds_alternative<std::shared_ptr<Computation>>(value_)) {
+      return computation()->DebugString();
+    } else if (std::holds_alternative<SequenceTensor>(value_)) {
+      return absl::StrCat(tensorflow::DataTypeString(tensor().dtype()),
+                          tensor().shape().DebugString(), "*");
+    } else {
+      auto element_formatter = [](std::string* out, const ExecutorValue& v) {
+        absl::StrAppend(out, v.DebugString());
+      };
+      return absl::StrCat(
+          "<", absl::StrJoin(elements(), ",", element_formatter), ">");
+    }
+  }
+
  private:
   ExecutorValue() = delete;
 
@@ -702,8 +729,14 @@ absl::StatusOr<ExecutorValue> Computation::Call(
     }
   }
   if (arg.has_value() != parameter_shape_.has_value()) {
-    auto actual = arg.has_value() ? "was" : "wasn't";
-    auto expected = parameter_shape_.has_value() ? "was" : "wasn't";
+    auto actual = arg.has_value()
+                      ? absl::StrCat("of type '", arg->DebugString(), "' was")
+                      : "wasn't";
+    auto expected =
+        parameter_shape_.has_value()
+            ? absl::StrCat("matching binding '",
+                           parameter_shape_->ShortDebugString(), "' was")
+            : "wasn't";
     return absl::InvalidArgumentError(
         absl::StrCat("Argument ", actual,
                      " provided to tensorflow computation, but an argument ",
