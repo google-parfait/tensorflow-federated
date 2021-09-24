@@ -287,7 +287,7 @@ def _untuple_broadcast_only_before_after(before, after):
   """Removes the tuple-ing of the `broadcast` params and results."""
   # Since there is only a single intrinsic here, there's no need for the outer
   # `{intrinsic_name}_param`/`{intrinsic_name}_result` tuples.
-  untupled_before = transformations.select_output_from_lambda(
+  untupled_before = building_block_factory.select_output_from_lambda(
       before, 'federated_broadcast_param')
   after_param_name = next(building_block_factory.unique_name_generator(after))
   after_param_type = computation_types.StructType([
@@ -625,7 +625,7 @@ def _extract_work(before_aggregate, grappler_config):
   secure_sum_bitwidth_input_index = ('federated_secure_sum_bitwidth_param', 0)
   secure_sum_input_index = ('federated_secure_sum_param', 0)
   secure_modular_sum_input_index = ('federated_secure_modular_sum_param', 0)
-  work_unzipped = transformations.select_output_from_lambda(
+  work_unzipped = building_block_factory.select_output_from_lambda(
       work_to_before_aggregate, [
           aggregate_input_index,
           secure_sum_bitwidth_input_index,
@@ -640,19 +640,21 @@ def _extract_work(before_aggregate, grappler_config):
 
 
 def _compile_selected_output_to_no_argument_tensorflow(
-    comp: building_blocks.Lambda, path: transformations.Path,
+    comp: building_blocks.Lambda, path: building_block_factory.Path,
     grappler_config) -> building_blocks.CompiledComputation:
   """Compiles the independent value result of `comp` at `path` to TensorFlow."""
-  extracted = transformations.select_output_from_lambda(comp, path).result
+  extracted = building_block_factory.select_output_from_lambda(comp,
+                                                               path).result
   return transformations.consolidate_and_extract_local_processing(
       building_blocks.Lambda(None, None, extracted), grappler_config)
 
 
 def _compile_selected_output_as_tensorflow_function(
-    comp: building_blocks.Lambda, path: transformations.Path,
+    comp: building_blocks.Lambda, path: building_block_factory.Path,
     grappler_config) -> building_blocks.CompiledComputation:
   """Compiles the functional result of `comp` at `path` to TensorFlow."""
-  extracted = transformations.select_output_from_lambda(comp, path).result
+  extracted = building_block_factory.select_output_from_lambda(comp,
+                                                               path).result
   return transformations.consolidate_and_extract_local_processing(
       extracted, grappler_config)
 
@@ -680,7 +682,7 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
     transformations.MapReduceFormCompilationError: If we extract an ASTs of the
       wrong type.
   """
-  federated_aggregate = transformations.select_output_from_lambda(
+  federated_aggregate = building_block_factory.select_output_from_lambda(
       before_aggregate, 'federated_aggregate_param')
   # Index `0` is the value being aggregated.
   zero = _compile_selected_output_to_no_argument_tensorflow(

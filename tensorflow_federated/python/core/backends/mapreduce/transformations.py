@@ -62,8 +62,6 @@ simpler than the problem of reducing the entire input computation, hence the
 divide-and-conquer.
 """
 
-from typing import List, Tuple, Union
-
 from absl import logging
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -268,55 +266,6 @@ def parse_tff_to_tf(comp, grappler_config_proto):
         tf_parsed, grappler_config_proto)
 
   return tf_parsed
-
-
-Index = Union[str, int]
-Path = Union[Index, Tuple[Index, ...]]
-
-
-def select_output_from_lambda(
-    comp: building_blocks.Lambda,
-    paths: Union[Path, List[Path]]) -> building_blocks.Lambda:
-  """Constructs a new function with result of selecting `paths` from `comp`.
-
-  Args:
-    comp: Lambda computation with result type `tff.StructType` from which we
-      wish to select the sub-results at `paths`.
-    paths: Either a `Path` or list of `Path`s specifying the indices we wish to
-      select from the result of `comp`. Each path must be a `tuple` of `str` or
-      `int` indices from which to select an output. If `paths` is a list, the
-      returned computation will have a `tff.StructType` result holding each of
-      the specified selections.
-
-  Returns:
-    A transformed version of `comp` with result value the selection from the
-    result of `comp` specified by `paths`.
-  """
-  comp.check_lambda()
-  comp.type_signature.result.check_struct()
-
-  def _select_path(result, path: Path):
-    if not isinstance(path, tuple):
-      path = (path,)
-    for index in path:
-      if result.is_struct():
-        result = result[index]
-      elif isinstance(index, str):
-        result = building_blocks.Selection(result, name=index)
-      elif isinstance(index, int):
-        result = building_blocks.Selection(result, index=index)
-      else:
-        raise TypeError('Invalid selection type: expected `str` or `int`, '
-                        f'found value `{index}` of type `{type(index)}`.')
-    return result
-
-  if isinstance(paths, list):
-    elements = [_select_path(comp.result, path) for path in paths]
-    result = building_blocks.Struct(elements)
-  else:
-    result = _select_path(comp.result, paths)
-  return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
-                                result)
 
 
 def concatenate_function_outputs(first_function, second_function):

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 
-class UniqueNameGeneratorTest(absltest.TestCase):
+class UniqueNameGeneratorTest(test_case.TestCase):
 
   def test_does_not_raise_type_error_with_none_comp(self):
     try:
@@ -286,7 +286,7 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
           'Function \'check_federated_type\' raised TypeError unexpectedly.')
 
 
-class CreateComputationAppendingTest(absltest.TestCase):
+class CreateComputationAppendingTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_comp1(self):
     comp2 = building_blocks.Data('y', tf.int32)
@@ -330,7 +330,7 @@ class CreateComputationAppendingTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), '<a=int32,b=int32,c=int32>')
 
 
-class CreateFederatedAggregateTest(absltest.TestCase):
+class CreateFederatedAggregateTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     zero = building_blocks.Data('z', tf.int32)
@@ -425,7 +425,7 @@ class CreateFederatedAggregateTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-class CreateFederatedApplyTest(absltest.TestCase):
+class CreateFederatedApplyTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg = building_blocks.Data('y', tf.int32)
@@ -449,7 +449,7 @@ class CreateFederatedApplyTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-class CreateFederatedBroadcastTest(absltest.TestCase):
+class CreateFederatedBroadcastTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -463,7 +463,7 @@ class CreateFederatedBroadcastTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
 
-class CreateFederatedCollectTest(absltest.TestCase):
+class CreateFederatedCollectTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -485,7 +485,7 @@ class CreateFederatedCollectTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32*@SERVER')
 
 
-class CreateFederatedEvalTest(absltest.TestCase):
+class CreateFederatedEvalTest(test_case.TestCase):
 
   def assert_type_error(self, fn, placement):
     with self.assertRaises(TypeError):
@@ -507,7 +507,7 @@ class CreateFederatedEvalTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
 
-class CreateFederatedMapTest(absltest.TestCase):
+class CreateFederatedMapTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg = building_blocks.Data('y', tf.int32)
@@ -531,7 +531,7 @@ class CreateFederatedMapTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
 
-class CreateFederatedMapAllEqualTest(absltest.TestCase):
+class CreateFederatedMapAllEqualTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg = building_blocks.Data('y', tf.int32)
@@ -556,7 +556,7 @@ class CreateFederatedMapAllEqualTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
 
-class CreateFederatedMapOrApplyTest(absltest.TestCase):
+class CreateFederatedMapOrApplyTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg = building_blocks.Data('y', tf.int32)
@@ -590,7 +590,7 @@ class CreateFederatedMapOrApplyTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
 
-class CreateFederatedMeanTest(absltest.TestCase):
+class CreateFederatedMeanTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -614,7 +614,7 @@ class CreateFederatedMeanTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-class CreateFederatedSecureModularSumTest(absltest.TestCase):
+class CreateFederatedSecureModularSumTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     modulus_type = computation_types.TensorType(tf.int32)
@@ -645,7 +645,7 @@ class CreateFederatedSecureModularSumTest(absltest.TestCase):
                      'int32@SERVER')
 
 
-class CreateFederatedSecureSumTest(absltest.TestCase):
+class CreateFederatedSecureSumTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     max_input_type = computation_types.TensorType(tf.int32)
@@ -675,7 +675,7 @@ class CreateFederatedSecureSumTest(absltest.TestCase):
                      'int32@SERVER')
 
 
-class CreateFederatedSecureSumBitwidthTest(absltest.TestCase):
+class CreateFederatedSecureSumBitwidthTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     bitwidth_type = computation_types.TensorType(tf.int32)
@@ -737,7 +737,7 @@ class CreateFederatedSelectTest(parameterized.TestCase):
                      '{string*}@CLIENTS')
 
 
-class CreateFederatedSumTest(absltest.TestCase):
+class CreateFederatedSumTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -751,7 +751,7 @@ class CreateFederatedSumTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-class CreateFederatedUnzipTest(absltest.TestCase):
+class CreateFederatedUnzipTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -870,7 +870,7 @@ class CreateFederatedUnzipTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), '<int32@SERVER,bool@SERVER>')
 
 
-class CreateFederatedValueTest(absltest.TestCase):
+class CreateFederatedValueTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -1281,7 +1281,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
                         comp.formatted_representation())
 
 
-class CreateGenericConstantTest(absltest.TestCase):
+class CreateGenericConstantTest(test_case.TestCase):
 
   def test_raises_on_none_type(self):
     with self.assertRaises(TypeError):
@@ -1381,7 +1381,7 @@ class CreateGenericConstantTest(absltest.TestCase):
     self.assertTrue(np.array_equal(actual_result, np.zeros([2, 2])))
 
 
-class CreateSequenceMapTest(absltest.TestCase):
+class CreateSequenceMapTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg_type = computation_types.SequenceType(tf.int32)
@@ -1406,7 +1406,7 @@ class CreateSequenceMapTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32*')
 
 
-class CreateSequenceReduceTest(absltest.TestCase):
+class CreateSequenceReduceTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     zero = building_blocks.Data('z', tf.int32)
@@ -1445,7 +1445,7 @@ class CreateSequenceReduceTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32')
 
 
-class CreateSequenceSumTest(absltest.TestCase):
+class CreateSequenceSumTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -1554,7 +1554,7 @@ class CreateNamedFederatedTupleTest(parameterized.TestCase):
         [r'federated_(map|apply)\(<\(x -> <a=x\[0\],b=x\[1\]>\),data>\)'])
 
 
-class CreateNamedTupleTest(absltest.TestCase):
+class CreateNamedTupleTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
@@ -1601,7 +1601,7 @@ class CreateNamedTupleTest(absltest.TestCase):
     self.assertEqual(named_comp.type_signature, expected_type_signature)
 
 
-class CreateZipTest(absltest.TestCase):
+class CreateZipTest(test_case.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -1662,7 +1662,7 @@ class CreateZipTest(absltest.TestCase):
         '<<int32,int32>,<float32,float32>,<bool,bool>>')
 
 
-class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
+class ConstructTensorFlowSelectingOutputsTest(test_case.TestCase):
 
   def test_raises_non_named_tuple_type(self):
     parameter_type = computation_types.TensorType(tf.int32)
@@ -1865,5 +1865,94 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
     self.assertEqual(result[1][0], 1)
 
 
+def identity_for_type(
+    input_type: computation_types.Type) -> building_blocks.Lambda:
+  """Returns an identity computation for the provided `input_type`."""
+  return building_blocks.Lambda('x', input_type,
+                                building_blocks.Reference('x', input_type))
+
+
+class SelectOutputFromLambdaTest(test_case.TestCase):
+
+  def test_raises_on_non_lambda(self):
+    ref = building_blocks.Reference('x', tf.int32)
+    with self.assertRaises(TypeError):
+      building_block_factory.select_output_from_lambda(ref, 0)
+
+  def test_raises_on_non_str_int_index(self):
+    lam = identity_for_type(computation_types.StructType([tf.int32]))
+    with self.assertRaisesRegex(TypeError, 'Invalid selection type'):
+      building_block_factory.select_output_from_lambda(lam, [dict()])
+
+  def test_selects_single_output(self):
+    input_type = computation_types.StructType([tf.int32, tf.float32])
+    lam = identity_for_type(input_type)
+    zero_selected = building_block_factory.select_output_from_lambda(lam, 0)
+    self.assert_types_equivalent(zero_selected.type_signature.parameter,
+                                 lam.type_signature.parameter)
+    self.assert_types_equivalent(zero_selected.type_signature.result,
+                                 lam.type_signature.result[0])
+    self.assertEqual(str(zero_selected), '(x -> x[0])')
+
+  def test_selects_single_output_by_str(self):
+    input_type = computation_types.StructType([('a', tf.int32)])
+    lam = identity_for_type(input_type)
+    selected = building_block_factory.select_output_from_lambda(lam, 'a')
+    self.assert_types_equivalent(
+        selected.type_signature,
+        computation_types.FunctionType(lam.parameter_type,
+                                       lam.type_signature.result['a']))
+
+  def test_selects_from_struct_by_removing_struct_wrapper(self):
+    lam = building_blocks.Lambda(
+        'x', tf.int32,
+        building_blocks.Struct([building_blocks.Reference('x', tf.int32)]))
+    selected = building_block_factory.select_output_from_lambda(lam, 0)
+    self.assert_types_equivalent(selected.type_signature.result,
+                                 computation_types.TensorType(tf.int32))
+    self.assertEqual(str(selected), '(x -> x)')
+
+  def test_selects_struct_of_outputs(self):
+    input_type = computation_types.StructType([tf.int32, tf.int64, tf.float32])
+    lam = identity_for_type(input_type)
+    tuple_selected = building_block_factory.select_output_from_lambda(
+        lam, [0, 1])
+    self.assert_types_equivalent(tuple_selected.type_signature.parameter,
+                                 lam.type_signature.parameter)
+    self.assert_types_equivalent(
+        tuple_selected.type_signature.result,
+        computation_types.StructType(
+            [lam.type_signature.result[0], lam.type_signature.result[1]]))
+    self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
+
+  def test_selects_struct_of_outputs_by_str_name(self):
+    input_type = computation_types.StructType([('a', tf.int32), ('b', tf.int64),
+                                               ('c', tf.float32)])
+    lam = identity_for_type(input_type)
+    selected = building_block_factory.select_output_from_lambda(lam, ['a', 'b'])
+    self.assert_types_equivalent(
+        selected.type_signature,
+        computation_types.FunctionType(
+            lam.parameter_type,
+            computation_types.StructType(
+                [lam.type_signature.result.a, lam.type_signature.result.b])))
+
+  def test_selects_nested_federated_outputs(self):
+    input_type = computation_types.StructType([
+        ('a', computation_types.StructType([('inner', tf.int32)])),
+        ('b', tf.int32)
+    ])
+    lam = identity_for_type(input_type)
+    tuple_selected = building_block_factory.select_output_from_lambda(
+        lam, [('a', 'inner'), 'b'])
+    self.assert_types_equivalent(tuple_selected.type_signature.parameter,
+                                 lam.type_signature.parameter)
+    self.assert_types_equivalent(
+        tuple_selected.type_signature.result,
+        computation_types.StructType(
+            [lam.type_signature.result.a.inner, lam.type_signature.result.b]))
+    self.assertEqual(str(tuple_selected), '(x -> <x.a.inner,x.b>)')
+
+
 if __name__ == '__main__':
-  absltest.main()
+  test_case.main()

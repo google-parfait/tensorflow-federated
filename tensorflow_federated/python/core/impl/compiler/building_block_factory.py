@@ -16,7 +16,7 @@
 import functools
 import random
 import string
-from typing import AbstractSet, Any, Callable, Iterator, List, Sequence, Optional, Tuple, Union
+from typing import AbstractSet, Any, Callable, Iterator, List, Optional, Sequence, Tuple, Union
 
 import tensorflow as tf
 
@@ -34,6 +34,55 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
+
+
+Index = Union[str, int]
+Path = Union[Index, Tuple[Index, ...]]
+
+
+def select_output_from_lambda(
+    comp: building_blocks.Lambda,
+    paths: Union[Path, List[Path]]) -> building_blocks.Lambda:
+  """Constructs a new function with result of selecting `paths` from `comp`.
+
+  Args:
+    comp: Lambda computation with result type `tff.StructType` from which we
+      wish to select the sub-results at `paths`.
+    paths: Either a `Path` or list of `Path`s specifying the indices we wish to
+      select from the result of `comp`. Each path must be a `tuple` of `str` or
+      `int` indices from which to select an output. If `paths` is a list, the
+      returned computation will have a `tff.StructType` result holding each of
+      the specified selections.
+
+  Returns:
+    A version of `comp` with result value the selection from the result of
+    `comp` specified by `paths`.
+  """
+  comp.check_lambda()
+  comp.type_signature.result.check_struct()
+
+  def _select_path(result, path: Path):
+    if not isinstance(path, tuple):
+      path = (path,)
+    for index in path:
+      if result.is_struct():
+        result = result[index]
+      elif isinstance(index, str):
+        result = building_blocks.Selection(result, name=index)
+      elif isinstance(index, int):
+        result = building_blocks.Selection(result, index=index)
+      else:
+        raise TypeError('Invalid selection type: expected `str` or `int`, '
+                        f'found value `{index}` of type `{type(index)}`.')
+    return result
+
+  if isinstance(paths, list):
+    elements = [_select_path(comp.result, path) for path in paths]
+    result = building_blocks.Struct(elements)
+  else:
+    result = _select_path(comp.result, paths)
+  return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                result)
 
 
 def unique_name_generator(comp: building_blocks.ComputationBuildingBlock,
