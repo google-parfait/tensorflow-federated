@@ -154,7 +154,7 @@ class ExecutorServiceTest : public ::testing::Test {
     grpc::ServerContext server_context;
     auto ok_status = executor_service_.SetCardinalities(
         &server_context, &request_pb, &response_pb);
-    ASSERT_OK(ok_status);
+    TFF_ASSERT_OK(ok_status);
   }
 
  protected:
