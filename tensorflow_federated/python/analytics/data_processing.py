@@ -19,7 +19,8 @@ import tensorflow as tf
 
 
 @tf.function
-def get_all_elements(dataset: tf.data.Dataset):
+def get_all_elements(dataset: tf.data.Dataset,
+                     max_string_length: Optional[int] = None):
   """Gets all the elements from the input dataset.
 
   The input `dataset` must yield batched 1-d tensors. This function reads each
@@ -27,9 +28,19 @@ def get_all_elements(dataset: tf.data.Dataset):
 
   Args:
     dataset: A `tf.data.Dataset`.
+    max_string_length: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `max_string_length` will be truncated. Defaults to
+      `None`, which means there is no limit of the string length.
 
   Returns:
     A rank-1 Tensor containing the elements of the input dataset.
+
+  Raises:
+    ValueError:
+      -- If the shape of elements in `dataset` is not rank 1.
+      -- If `max_string_length` is not `None` and is less than 1.
+    TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
+      `tf.string`.
   """
 
   if dataset.element_spec.shape.rank != 1:
@@ -37,10 +48,20 @@ def get_all_elements(dataset: tf.data.Dataset):
                      f' found rank = {dataset.element_spec.shape.rank}'
                      ' instead.')
 
-  element_type = dataset.element_spec.dtype
-  initial_list = tf.constant([], dtype=element_type)
+  if dataset.element_spec.dtype != tf.string:
+    raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
+                    f' element type {dataset.element_spec.dtype}')
+
+  if max_string_length is not None and max_string_length < 1:
+    raise ValueError('`max_string_length` must be at least 1 when it is not'
+                     ' None.')
+
+  initial_list = tf.constant([], dtype=tf.string)
 
   def add_element(element_list, element_batch):
+    if max_string_length is not None:
+      element_batch = tf.strings.substr(
+          element_batch, 0, max_string_length, unit='BYTE')
     element_list = tf.concat([element_list, element_batch], axis=0)
     return element_list
 
@@ -53,7 +74,8 @@ def get_all_elements(dataset: tf.data.Dataset):
 @tf.function
 def get_capped_elements(dataset: tf.data.Dataset,
                         max_user_contribution: int,
-                        batch_size: int = 1):
+                        batch_size: int = 1,
+                        max_string_length: Optional[int] = None):
   """Gets the first max_user_contribution words from the input dataset.
 
   The input `dataset` must yield batched 1-d tensors. This function reads each
@@ -67,11 +89,23 @@ def get_capped_elements(dataset: tf.data.Dataset,
     dataset: A `tf.data.Dataset`.
     max_user_contribution: The maximum number of elements to return.
     batch_size: The number of elements in each batch of `dataset`.
+    max_string_length: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `max_string_length` will be truncated. Defaults to
+      `None`, which means there is no limit of the string length.
 
   Returns:
     A rank-1 Tensor containing the elements of the input dataset after being
     capped. If the total number of words is less than or equal to
     `max_user_contribution`, returns all the words in `dataset`.
+
+  Raises:
+    ValueError:
+      -- If the shape of elements in `dataset` is not rank 1.
+      -- If `max_user_contribution` is less than 1.
+      -- If `batch_size` is less than 1.
+      -- If `max_string_length` is not `None` and is less than 1.
+    TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
+      `tf.string`.
   """
 
   if dataset.element_spec.shape.rank != 1:
@@ -85,9 +119,17 @@ def get_capped_elements(dataset: tf.data.Dataset,
   if batch_size < 1:
     raise ValueError('`batch_size` must be at least 1.')
 
+  if dataset.element_spec.dtype != tf.string:
+    raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
+                    f' element type {dataset.element_spec.dtype}')
+
+  if max_string_length is not None and max_string_length < 1:
+    raise ValueError('`max_string_length` must be at least 1 when it is not'
+                     ' None.')
+
   capped_size = math.floor(max_user_contribution / batch_size)
   capped_dataset = dataset.take(capped_size)
-  return get_all_elements(capped_dataset)
+  return get_all_elements(capped_dataset, max_string_length)
 
 
 @tf.function
@@ -106,6 +148,13 @@ def get_unique_elements(dataset: tf.data.Dataset,
 
   Returns:
     A rank-1 Tensor containing the unique elements of the input dataset.
+
+  Raises:
+    ValueError:
+      -- If the shape of elements in `dataset` is not rank 1.
+      -- If `max_string_length` is not `None` and is less than 1.
+    TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
+      `tf.string`.
   """
 
   if dataset.element_spec.shape.rank != 1:
@@ -162,6 +211,14 @@ def get_top_elements(dataset: tf.data.Dataset,
     A rank-1 Tensor containing the top `max_user_contribution` unique elements
     of the input `dataset`. If the total number of unique words is less than or
     equal to `max_user_contribution`, returns the list of all unique elements.
+
+  Raises:
+    ValueError:
+      -- If the shape of elements in `dataset` is not rank 1.
+      -- If `max_user_contribution` is less than 1.
+      -- If `max_string_length` is not `None` and is less than 1.
+    TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
+      `tf.string`.
   """
   if dataset.element_spec.shape.rank != 1:
     raise ValueError('The shape of elements in `dataset` must be of rank 1, '
@@ -179,10 +236,7 @@ def get_top_elements(dataset: tf.data.Dataset,
     raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
                     f' element type {dataset.element_spec.dtype}')
 
-  all_elements = get_all_elements(dataset)
-  if max_string_length is not None:
-    all_elements = tf.strings.substr(
-        all_elements, 0, max_string_length, unit='BYTE')
+  all_elements = get_all_elements(dataset, max_string_length)
 
   words, indices = tf.unique(all_elements)
 

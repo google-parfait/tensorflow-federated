@@ -269,7 +269,7 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
         max_words_per_user=10,
         max_heavy_hitters=4,
         batch_size=1)
-    self.assertEqual(results, {'hello': 5, 'pumpki': 4, 'hi': 4, 'I am o': 4})
+    self.assertEqual(results, {'hello': 5, 'pumpk': 4, 'hi': 4, 'I am ': 4})
 
   def test_computation_with_max_string_length_multibyte(self):
     client_data = [['七転び八起き', '取らぬ狸の皮算用', '一石二鳥'] for _ in range(10)]
@@ -311,6 +311,41 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
         k_anonymity=3,
         batch_size=batch_size)
     self.assertEqual(results, {'hello': 5, 'I am on my way': 4, 'pumpkin': 4})
+
+  @parameterized.named_parameters(
+      ('k_3_max_string_len_5', 1, 3, 5, {
+          'hello': 5,
+          'I am ': 4,
+          'pumpk': 4
+      }),
+      ('k_3_max_string_len_2', 2, 3, 2, {
+          'he': 7,
+          'hi': 6,
+          'I ': 6,
+          'wo': 4,
+          'pu': 4
+      }),
+      ('k_4_max_string_len_2', 3, 4, 2, {
+          'he': 7,
+          'I ': 6,
+          'wo': 4
+      }),
+      ('k_5_max_string_len_1', 5, 5, 1, {
+          'h': 13,
+          'w': 6,
+          'I': 7
+      }),
+  )
+  def test_computation_with_k_anonymity_and_max_string_length(
+      self, batch_size, k_anonymity, max_string_length, expected_result):
+    results = _execute_computation(
+        DATA,
+        capacity=100,
+        max_string_length=max_string_length,
+        max_words_per_user=10,
+        k_anonymity=k_anonymity,
+        batch_size=batch_size)
+    self.assertEqual(results, expected_result)
 
   @parameterized.named_parameters(('batch_size_1', 1), ('batch_size_5', 5))
   def test_computation_with_secure_sum_bitwidth(self, batch_size):
@@ -433,6 +468,42 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
         batch_size=batch_size,
         multi_contribution=False)
     self.assertEqual(results, {'hello': 5, 'I am on my way': 4, 'pumpkin': 3})
+
+  @parameterized.named_parameters(
+      ('k_3_max_string_len_5', 1, 3, 5, {
+          'hello': 5,
+          'I am ': 4,
+          'pumpk': 3
+      }),
+      ('k_3_max_string_len_2', 3, 3, 2, {
+          'he': 6,
+          'hi': 3,
+          'I ': 5,
+          'pu': 3,
+          'wo': 4
+      }),
+      ('k_4_max_string_len_2', 2, 4, 2, {
+          'he': 6,
+          'I ': 5,
+          'wo': 4
+      }),
+      ('k_5_max_string_len_1', 5, 5, 1, {
+          'h': 7,
+          'w': 5,
+          'I': 5
+      }),
+  )
+  def test_computation_with_k_anonymity_and_max_string_length(
+      self, batch_size, k_anonymity, max_string_length, expected_result):
+    results = _execute_computation(
+        DATA,
+        capacity=100,
+        max_string_length=max_string_length,
+        max_words_per_user=10,
+        k_anonymity=k_anonymity,
+        batch_size=batch_size,
+        multi_contribution=False)
+    self.assertEqual(results, expected_result)
 
   @parameterized.named_parameters(('batch_size_1', 1), ('batch_size_5', 5))
   def test_computation_with_secure_sum_bitwidth(self, batch_size):

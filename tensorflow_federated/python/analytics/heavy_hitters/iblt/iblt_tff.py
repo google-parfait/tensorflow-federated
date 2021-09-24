@@ -148,7 +148,10 @@ def build_iblt_computation(
     if max_words_per_user is not None:
       if multi_contribution:
         k_words = data_processing.get_capped_elements(
-            dataset, max_words_per_user, batch_size=batch_size)
+            dataset,
+            max_words_per_user,
+            batch_size=batch_size,
+            max_string_length=max_string_length)
       else:
         # `tff.analytics.data_processing.get_top_elements` returns the top
         # `max_words_per_user` words in client's local histogram. Each element
@@ -157,7 +160,8 @@ def build_iblt_computation(
             dataset, max_words_per_user, max_string_length=max_string_length)
     else:
       if multi_contribution:
-        k_words = data_processing.get_all_elements(dataset)
+        k_words = data_processing.get_all_elements(
+            dataset, max_string_length=max_string_length)
       else:
         k_words = data_processing.get_unique_elements(
             dataset, max_string_length=max_string_length)
@@ -172,7 +176,8 @@ def build_iblt_computation(
         repetitions=repetitions,
         seed=seed,
         dtype=dtype)
-    k_words = data_processing.get_unique_elements(dataset)
+    k_words = data_processing.get_unique_elements(
+        dataset, max_string_length=max_string_length)
     return encoder.compute_iblt(k_words)
 
   def get_heavy_hitters_mask(heavy_hitters, unique_heavy_hitters):
