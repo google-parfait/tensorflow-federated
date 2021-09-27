@@ -61,7 +61,7 @@ git_repository(
 git_repository(
     name = "pybind11_protobuf",
     remote = "https://github.com/pybind/pybind11_protobuf.git",
-    commit = "a758a3395bf9ed6b459f5557dcf210d9aa83f075",
+    commit = "51d767d11150898eb166280fd7163a380340f053",
 )
 
 git_repository(
