@@ -33,8 +33,9 @@ build --host_copt=-march=native
 build --copt=-O3
 
 # C++ compiler options.
-build --cxxopt=-std=c++17
-build --host_cxxopt=-std=c++17
+build --cxxopt=-std=c++14
+build --host_cxxopt=-std=c++14
+build:linux --copt=-Wno-stringop-truncation
 
 # gRPC on MacOS requires this define, see
 # https://github.com/bazelbuild/bazel/issues/4341#issuecomment-572050759 for
