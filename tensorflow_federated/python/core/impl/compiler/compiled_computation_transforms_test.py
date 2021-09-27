@@ -2119,6 +2119,37 @@ class AddUniqueIDsTest(test_case.TestCase):
         compiled_computation_transforms.AddUniqueIDs().should_transform(
             reference))
 
+  def test_transform_same_compiled_computation_different_type_signature(self):
+    # First create no-arg computation that returns an empty tuple. This will
+    # be compared against a omputation that returns a nested empty tuple, which
+    # should produce a different ID.
+    empty_tuple_computation = building_block_factory.create_tensorflow_unary_operator(
+        lambda x: (), operand_type=computation_types.StructType([]))
+    add_ids = compiled_computation_transforms.AddUniqueIDs()
+    first_transformed_comp, mutated = add_ids.transform(empty_tuple_computation)
+    self.assertTrue(mutated)
+    self.assertIsInstance(first_transformed_comp,
+                          building_blocks.CompiledComputation)
+    self.assertTrue(
+        first_transformed_comp.proto.tensorflow.HasField('cache_key'))
+    self.assertNotEqual(first_transformed_comp.proto.tensorflow.cache_key.id, 0)
+    # Now create the same NoOp tf.Graph, but with a different binding and
+    # type_signature.
+    nested_empty_tuple_computation = building_block_factory.create_tensorflow_unary_operator(
+        lambda x: ((),), operand_type=computation_types.StructType([]))
+    second_transformed_comp, mutated = add_ids.transform(
+        nested_empty_tuple_computation)
+    self.assertTrue(mutated)
+    self.assertIsInstance(second_transformed_comp,
+                          building_blocks.CompiledComputation)
+    self.assertTrue(
+        second_transformed_comp.proto.tensorflow.HasField('cache_key'))
+    self.assertNotEqual(second_transformed_comp.proto.tensorflow.cache_key.id,
+                        0)
+    # Assert the IDs are different based on the type signture.
+    self.assertNotEqual(first_transformed_comp.proto.tensorflow.cache_key.id,
+                        second_transformed_comp.proto.tensorflow.cache_key.id)
+
   def test_transform_compiled_computation_returns_compiled_computation_with_id(
       self):
     tuple_type = computation_types.TensorType(tf.int32)

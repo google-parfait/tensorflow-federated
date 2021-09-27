@@ -1361,7 +1361,13 @@ class AddUniqueIDs(transformation_utils.TransformSpec):
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     new_tf_proto = pb.TensorFlow()
     new_tf_proto.CopyFrom(comp.proto.tensorflow)
-    hash_value = hash(comp.proto.tensorflow.graph_def.value)
+    # Important: we must also serialize the type_signature because TFF might
+    # produce (<> -> <>) or (<> -> <<>>) functions, which both could be
+    # represented as the same graph with a single NoOp node. This can occur
+    # particularly in MapReduceForm compiltion for secure_sum intrinsics over
+    # empty structures.
+    hash_value = hash(
+        (comp.type_signature, comp.proto.tensorflow.graph_def.value))
     new_tf_proto.cache_key.id = ctypes.c_uint64(hash_value).value
     new_comp_proto = pb.Computation(
         type=comp.proto.type, tensorflow=new_tf_proto)
