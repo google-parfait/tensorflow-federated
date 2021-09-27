@@ -51,6 +51,7 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
         "@org_tensorflow//tensorflow/core/platform:macros",
     ],
@@ -221,6 +222,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
         "@org_tensorflow//tensorflow/core/platform:macros",
     ],
 )
@@ -304,6 +306,7 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:variant",
         "@org_tensorflow//tensorflow/core:tensorflow",
     ],
 )
@@ -477,6 +480,7 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@com_google_absl//absl/types:variant",
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
         "@org_tensorflow//tensorflow/core:core_cpu",

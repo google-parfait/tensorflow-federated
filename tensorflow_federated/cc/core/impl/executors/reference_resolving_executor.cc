@@ -21,7 +21,6 @@ limitations under the License
 #include <string>
 #include <tuple>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include "base/logging.h"
@@ -30,6 +29,7 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
+#include "absl/types/variant.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
@@ -134,12 +134,12 @@ class ExecutorValue {
       : value_(std::move(scoped_lambda)) {}
 
   ValueType type() const {
-    if (std::holds_alternative<OwnedValueId>(value_)) {
+    if (absl::holds_alternative<OwnedValueId>(value_)) {
       return EMBEDDED;
-    } else if (std::holds_alternative<
+    } else if (absl::holds_alternative<
                    std::vector<std::shared_ptr<ExecutorValue>>>(value_)) {
       return STRUCTURE;
-    } else if (std::holds_alternative<ScopedLambda>(value_)) {
+    } else if (absl::holds_alternative<ScopedLambda>(value_)) {
       return LAMBDA;
     } else {
       return UNKNOWN;
@@ -147,14 +147,14 @@ class ExecutorValue {
   }
 
   const OwnedValueId& embedded() const {
-    return std::get<OwnedValueId>(value_);
+    return absl::get<OwnedValueId>(value_);
   }
 
   const std::vector<std::shared_ptr<ExecutorValue>>& structure() const {
-    return std::get<std::vector<std::shared_ptr<ExecutorValue>>>(value_);
+    return absl::get<std::vector<std::shared_ptr<ExecutorValue>>>(value_);
   }
 
-  const ScopedLambda& lambda() const { return std::get<ScopedLambda>(value_); }
+  const ScopedLambda& lambda() const { return absl::get<ScopedLambda>(value_); }
 
   // Returns a human readable debugging string for error messages.
   std::string DebugString() const;
@@ -168,8 +168,8 @@ class ExecutorValue {
  private:
   ExecutorValue() = delete;
 
-  std::variant<OwnedValueId, std::vector<std::shared_ptr<ExecutorValue>>,
-               ScopedLambda>
+  absl::variant<OwnedValueId, std::vector<std::shared_ptr<ExecutorValue>>,
+                ScopedLambda>
       value_;
 };
 
@@ -333,9 +333,9 @@ std::string Scope::DebugString() const {
 }
 
 std::string ExecutorValue::DebugString() const {
-  if (std::holds_alternative<OwnedValueId>(value_)) {
+  if (absl::holds_alternative<OwnedValueId>(value_)) {
     return "V";
-  } else if (std::holds_alternative<
+  } else if (absl::holds_alternative<
                  std::vector<std::shared_ptr<ExecutorValue>>>(value_)) {
     return "<V>";
   } else {

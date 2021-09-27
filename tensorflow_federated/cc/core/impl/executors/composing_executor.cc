@@ -30,6 +30,7 @@ limitations under the License
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "absl/types/variant.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
@@ -169,8 +170,8 @@ using Unplaced = std::shared_ptr<UnplacedInner>;
 using Server = std::shared_ptr<OwnedValueId>;
 using Clients = std::shared_ptr<std::vector<std::shared_ptr<OwnedValueId>>>;
 using Structure = std::shared_ptr<std::vector<ExecutorValue>>;
-using ValueVariant =
-    std::variant<Unplaced, Server, Clients, Structure, enum FederatedIntrinsic>;
+using ValueVariant = absl::variant<Unplaced, Server, Clients, Structure,
+                                   enum FederatedIntrinsic>;
 
 inline Clients NewClients(uint32_t num_clients) {
   auto v = std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>();
@@ -187,20 +188,20 @@ class ExecutorValue {
   enum class ValueType { UNPLACED, SERVER, CLIENTS, STRUCTURE, INTRINSIC };
 
   inline const Unplaced& unplaced() const {
-    return std::get<::tensorflow_federated::Unplaced>(value_);
+    return absl::get<::tensorflow_federated::Unplaced>(value_);
   }
   inline static ExecutorValue CreateUnplaced(
       ::tensorflow_federated::Unplaced id) {
     return ExecutorValue(std::move(id), ValueType::UNPLACED);
   }
   inline const Server& server() const {
-    return std::get<::tensorflow_federated::Server>(value_);
+    return absl::get<::tensorflow_federated::Server>(value_);
   }
   inline static ExecutorValue CreateServerPlaced(Server id) {
     return ExecutorValue(std::move(id), ValueType::SERVER);
   }
   inline const Clients& clients() const {
-    return std::get<::tensorflow_federated::Clients>(value_);
+    return absl::get<::tensorflow_federated::Clients>(value_);
   }
   inline static ExecutorValue CreateClientsPlaced(Clients client_values) {
     return ExecutorValue(std::move(client_values), ValueType::CLIENTS);
@@ -213,7 +214,7 @@ class ExecutorValue {
             std::move(client_values)));
   }
   inline const Structure& structure() const {
-    return std::get<::tensorflow_federated::Structure>(value_);
+    return absl::get<::tensorflow_federated::Structure>(value_);
   }
   inline static ExecutorValue CreateStructure(Structure elements) {
     return ExecutorValue(std::move(elements), ValueType::STRUCTURE);
@@ -222,7 +223,7 @@ class ExecutorValue {
     return ExecutorValue(intrinsic, ValueType::INTRINSIC);
   }
   inline enum FederatedIntrinsic intrinsic() const {
-    return std::get<enum FederatedIntrinsic>(value_);
+    return absl::get<enum FederatedIntrinsic>(value_);
   }
 
   absl::Status CheckLenForUseAsArgument(absl::string_view function_name,

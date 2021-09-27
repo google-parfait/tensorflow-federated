@@ -22,7 +22,6 @@ limitations under the License
 #include <string>
 #include <thread>  // NOLINT
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
@@ -35,6 +34,7 @@ limitations under the License
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
+#include "absl/types/variant.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/node_def.pb.h"
@@ -564,11 +564,11 @@ class ExecutorValue {
 
   // Returns whether this value is a structure or a single tensor.
   ValueType type() const {
-    if (std::holds_alternative<tensorflow::Tensor>(value_)) {
+    if (absl::holds_alternative<tensorflow::Tensor>(value_)) {
       return ValueType::TENSOR;
-    } else if (std::holds_alternative<std::shared_ptr<Computation>>(value_)) {
+    } else if (absl::holds_alternative<std::shared_ptr<Computation>>(value_)) {
       return ValueType::COMPUTATION;
-    } else if (std::holds_alternative<SequenceTensor>(value_)) {
+    } else if (absl::holds_alternative<SequenceTensor>(value_)) {
       return ValueType::SEQUENCE;
     } else {
       return ValueType::STRUCT;
@@ -578,21 +578,21 @@ class ExecutorValue {
   // Returns a reference to the inner tensor.
   // Requires that `type()` is `ValueType::TENSOR`.
   const tensorflow::Tensor& tensor() const {
-    return std::get<tensorflow::Tensor>(value_);
+    return absl::get<tensorflow::Tensor>(value_);
   }
 
   // Returns a reference to the inner elements list.
   // Requires that `type()` is `ValueType::STRUCT`.
   absl::Span<const ExecutorValue> elements() const {
-    return *std::get<std::shared_ptr<std::vector<ExecutorValue>>>(value_);
+    return *absl::get<std::shared_ptr<std::vector<ExecutorValue>>>(value_);
   }
 
   const std::shared_ptr<Computation>& computation() const {
-    return std::get<std::shared_ptr<Computation>>(value_);
+    return absl::get<std::shared_ptr<Computation>>(value_);
   }
 
   const tensorflow::Tensor& sequence() const {
-    return std::get<SequenceTensor>(value_).as_tensor();
+    return absl::get<SequenceTensor>(value_).as_tensor();
   }
 
   const absl::Status Bind(
@@ -696,8 +696,9 @@ class ExecutorValue {
  private:
   ExecutorValue() = delete;
 
-  std::variant<tensorflow::Tensor, SequenceTensor, std::shared_ptr<Computation>,
-               std::shared_ptr<std::vector<ExecutorValue>>>
+  absl::variant<tensorflow::Tensor, SequenceTensor,
+                std::shared_ptr<Computation>,
+                std::shared_ptr<std::vector<ExecutorValue>>>
       value_;
 
   static absl::Status BindKindMismatch(const absl::string_view value_kind,
