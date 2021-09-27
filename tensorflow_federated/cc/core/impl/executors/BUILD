@@ -270,7 +270,6 @@ cc_library(
     hdrs = ["mock_grpc.h"],
     tags = ["nokokoro"],
     deps = [
-        "//base:logging",
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_github_grpc_grpc//:grpc++",
@@ -301,7 +300,6 @@ cc_library(
     deps = [
         ":executor",
         ":status_macros",
-        "//base:logging",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
@@ -326,7 +324,6 @@ cc_test(
         ":reference_resolving_executor",
         ":status_matchers",
         ":value_test_utils",
-        "//base:logging",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
@@ -381,7 +378,6 @@ cc_test(
         ":remote_executor",
         ":status_matchers",
         ":value_test_utils",
-        "//base:logging",
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/container:flat_hash_map",

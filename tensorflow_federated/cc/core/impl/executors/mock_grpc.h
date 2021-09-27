@@ -18,7 +18,6 @@ limitations under the License
 
 #include <memory>
 
-#include "base/logging.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "absl/strings/str_cat.h"
 #include "grpcpp/grpcpp.h"

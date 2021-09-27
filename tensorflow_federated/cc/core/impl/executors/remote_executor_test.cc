@@ -23,7 +23,6 @@ limitations under the License
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"

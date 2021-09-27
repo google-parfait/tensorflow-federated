@@ -33,7 +33,6 @@ limitations under the License
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"
 #include "google/protobuf/any.pb.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
