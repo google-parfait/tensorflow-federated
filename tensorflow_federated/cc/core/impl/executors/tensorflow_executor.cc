@@ -676,12 +676,12 @@ class ExecutorValue {
   }
 
   std::string DebugString() const {
-    if (std::holds_alternative<tensorflow::Tensor>(value_)) {
+    if (absl::holds_alternative<tensorflow::Tensor>(value_)) {
       return absl::StrCat(tensorflow::DataTypeString(tensor().dtype()),
                           tensor().shape().DebugString());
-    } else if (std::holds_alternative<std::shared_ptr<Computation>>(value_)) {
+    } else if (absl::holds_alternative<std::shared_ptr<Computation>>(value_)) {
       return computation()->DebugString();
-    } else if (std::holds_alternative<SequenceTensor>(value_)) {
+    } else if (absl::holds_alternative<SequenceTensor>(value_)) {
       return absl::StrCat(tensorflow::DataTypeString(tensor().dtype()),
                           tensor().shape().DebugString(), "*");
     } else {
