@@ -38,7 +38,7 @@ namespace tensorflow_federated {
 // Runs the provided provided no-arg function on
 // another thread, returning a future to the result.
 template <typename Func,
-          typename ReturnValue = typename std::invoke_result<Func>::type>
+          typename ReturnValue = typename std::result_of_t<Func()>>
 std::shared_future<ReturnValue> ThreadRun(Func lambda) {
   std::packaged_task<ReturnValue()> task(lambda);
   auto future_ptr = std::shared_future<ReturnValue>(task.get_future());
