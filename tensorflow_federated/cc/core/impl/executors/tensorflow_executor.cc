@@ -117,7 +117,7 @@ class SessionProvider {
       std::unique_ptr<tensorflow::Session> session(std::move(sessions_.back()));
       sessions_.pop_back();
       lock_.Unlock();
-      return session;
+      return std::move(session);
     }
     maybe_open_cpus_--;
     lock_.Unlock();
@@ -182,7 +182,7 @@ class SessionProvider {
       return absl::InternalError(absl::StrCat(
           "Failed to create graph in session: ", status.error_message()));
     }
-    return session;
+    return std::move(session);
   }
 
   // Move-only.
