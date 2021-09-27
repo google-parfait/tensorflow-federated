@@ -102,9 +102,9 @@ class ProtoMatcherBase {
       typename T,
       std::enable_if_t<
           // Check that the type can be dereferenced to get a Message.
-          std::is_base_of_v<
+          std::is_base_of<
               google::protobuf::Message,
-              std::remove_reference_t<decltype(*std::declval<T>())>> &&
+              std::remove_reference_t<decltype(*std::declval<T>())>>::value &&
               // Check that the type can be compared against null.
               std::is_same_v<decltype(std::declval<T>() == nullptr), bool>,
           int> = 0>
