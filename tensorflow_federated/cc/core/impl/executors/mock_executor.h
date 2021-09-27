@@ -58,7 +58,7 @@ class MockExecutor : public Executor,
   ValueId ReturnsNewValue(EXPECTATION& e,
                           testing::Cardinality repeatedly = ONCE) {
     ValueId id = next_id_++;
-    auto lambda = [this, id]() { return OwnedValueId(weak_from_this(), id); };
+    auto lambda = [this, id]() { return OwnedValueId(shared_from_this(), id); };
     e.Times(repeatedly).WillRepeatedly(std::move(lambda));
     EXPECT_CALL(*this, Dispose(id)).Times(repeatedly);
     return id;
@@ -83,15 +83,13 @@ class MockExecutor : public Executor,
         EXPECT_CALL(*this, CreateSelection(source_id, index)));
   }
 
-  inline ValueId ExpectCreateStruct(const absl::Span<const ValueId> elements,
+  inline ValueId ExpectCreateStruct(absl::Span<const ValueId> elements,
                                     testing::Cardinality repeatedly = ONCE) {
     // Store the data behind the span since the span itself may refer to a
     // temporary which is unavailable at the time the expected call comes in.
-    auto elements_vec = std::make_unique<const std::vector<const ValueId>>(
-        elements.begin(), elements.end());
-    struct_expectations_.push_back(std::move(elements_vec));
-    const absl::Span<const ValueId> elements_again(
-        *struct_expectations_.back());
+    struct_expectations_.push_back(std::make_unique<std::vector<ValueId>>(
+        elements.begin(), elements.end()));
+    absl::Span<const ValueId> elements_again(*struct_expectations_.back());
     return ReturnsNewValue(EXPECT_CALL(*this, CreateStruct(elements_again)),
                            repeatedly);
   }
@@ -113,8 +111,7 @@ class MockExecutor : public Executor,
 
  private:
   ValueId next_id_;
-  std::vector<std::unique_ptr<const std::vector<const ValueId>>>
-      struct_expectations_;
+  std::vector<std::unique_ptr<std::vector<ValueId>>> struct_expectations_;
 };
 
 }  // namespace tensorflow_federated

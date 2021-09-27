@@ -237,7 +237,7 @@ class ExecutorBase : public Executor,
     absl::WriterMutexLock lock(&mutex_);
     ValueId id = next_value_id_++;
     tracked_values_.emplace(id, std::move(value));
-    return absl::StatusOr<OwnedValueId>(absl::in_place_t(), weak_from_this(),
+    return absl::StatusOr<OwnedValueId>(absl::in_place_t(), shared_from_this(),
                                         id);
   }
 
