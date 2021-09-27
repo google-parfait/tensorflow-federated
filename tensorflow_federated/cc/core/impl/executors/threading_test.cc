@@ -57,7 +57,7 @@ TEST_F(ThreadingTest, ParallelTasksOneOkOneErrorIsError) {
 
 TEST_F(ThreadingTest, ParallelTasksWaitsForAll) {
   const uint32_t NUM_TASKS = 5000;
-  std::atomic<uint32_t> counter = 0;
+  std::atomic<uint32_t> counter(0);
   ParallelTasks tasks;
   for (uint32_t i = 0; i < NUM_TASKS; i++) {
     tasks.add_task([&counter]() {
