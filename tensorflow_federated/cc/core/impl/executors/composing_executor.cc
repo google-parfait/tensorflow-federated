@@ -506,10 +506,11 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     v0::Value value;
     v0::Value_Federated* fed_value = value.mutable_federated();
     fed_value->mutable_type()->set_all_equal(true);
-    *fed_value->mutable_type()
-         ->mutable_placement()
-         ->mutable_value()
-         ->mutable_uri() = kClientsUri;
+    fed_value->mutable_type()
+        ->mutable_placement()
+        ->mutable_value()
+        ->mutable_uri()
+        ->assign(kClientsUri.data(), kClientsUri.size());
     return value;
   }
 
@@ -557,9 +558,11 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     auto clients = NewClients();
     for (const auto& child : children_) {
       v0::Value eval_at_clients;
-      *eval_at_clients.mutable_computation()
-           ->mutable_intrinsic()
-           ->mutable_uri() = kFederatedEvalAtClientsUri;
+      eval_at_clients.mutable_computation()
+          ->mutable_intrinsic()
+          ->mutable_uri()
+          ->assign(kFederatedEvalAtClientsUri.data(),
+                   kFederatedEvalAtClientsUri.size());
       auto eval_id = TFF_TRY(child.Executor()->CreateValue(eval_at_clients));
       auto fn_id = TFF_TRY(child.Executor()->CreateValue(*fn_to_eval));
       auto res_id = TFF_TRY(child.Executor()->CreateCall(eval_id, fn_id));
@@ -597,8 +600,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     v0::Value null_report_val;
     *null_report_val.mutable_computation() = IdentityComp();
     v0::Value aggregate;
-    *aggregate.mutable_computation()->mutable_intrinsic()->mutable_uri() =
-        kFederatedAggregateUri;
+    aggregate.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
+        kFederatedAggregateUri.data(), kFederatedAggregateUri.size());
     absl::optional<OwnedValueId> current = absl::nullopt;
     // TODO(b/192457028): parallelize this so that we're materializing more than
     // one value at a time and so that we can begin merging as soon as any
@@ -664,8 +667,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       TFF_TRY(MaterializeValue_(fn, &fn_val, tasks));
       TFF_TRY(tasks.WaitAll());
       v0::Value map_val;
-      *map_val.mutable_computation()->mutable_intrinsic()->mutable_uri() =
-          kFederatedMapAtClientsUri;
+      map_val.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
+          kFederatedMapAtClientsUri.data(), kFederatedMapAtClientsUri.size());
       for (uint32_t i = 0; i < children_.size(); i++) {
         const auto& child = children_[i].Executor();
         auto child_map = TFF_TRY(child->CreateValue(map_val));
@@ -698,9 +701,11 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     }
     if (first.type() == ExecutorValue::ValueType::CLIENTS) {
       v0::Value zip_at_clients;
-      *zip_at_clients.mutable_computation()
-           ->mutable_intrinsic()
-           ->mutable_uri() = kFederatedZipAtClientsUri;
+      zip_at_clients.mutable_computation()
+          ->mutable_intrinsic()
+          ->mutable_uri()
+          ->assign(kFederatedZipAtClientsUri.data(),
+                   kFederatedZipAtClientsUri.size());
       auto pairs = NewClients();
       for (uint32_t i = 0; i < children_.size(); i++) {
         auto child = children_[i].Executor();
@@ -819,8 +824,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         // If the Python type system expects the value to be all-equal, it can
         // simply extract the first element in the list.
         type_pb->set_all_equal(false);
-        *type_pb->mutable_placement()->mutable_value()->mutable_uri() =
-            kClientsUri;
+        type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
+            kClientsUri.data(), kClientsUri.size());
         v0::Value** client_start = values_pb->mutable_data();
         for (uint32_t i = 0; i < children_.size(); i++) {
           absl::Span<v0::Value*> client_value_pointers(
@@ -850,8 +855,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         // Server placement is assumed to be of cardinality one, and so must
         // be all-equal.
         type_pb->set_all_equal(true);
-        *type_pb->mutable_placement()->mutable_value()->mutable_uri() =
-            kServerUri;
+        type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
+            kServerUri.data(), kServerUri.size());
         tasks.add_task([value = std::move(value),
                         ptr = federated_pb->add_value(), server = server_]() {
           return server->Materialize(value.server()->ref(), ptr);

@@ -447,8 +447,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         // If the Python type system expects the value to be all-equal, it can
         // simply extract the first element in the list.
         type_pb->set_all_equal(false);
-        *type_pb->mutable_placement()->mutable_value()->mutable_uri() =
-            kClientsUri;
+        type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
+            kClientsUri.data(), kClientsUri.size());
         for (const auto& client_value : *value.clients()) {
           CreateChildMaterializeTask(client_value->ref(),
                                      federated_pb->add_value(), tasks);
@@ -469,8 +469,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         // Server placement is assumed to be of cardinality one, and so must be
         // all-equal.
         type_pb->set_all_equal(true);
-        *type_pb->mutable_placement()->mutable_value()->mutable_uri() =
-            kServerUri;
+        type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
+            kServerUri.data(), kServerUri.size());
         CreateChildMaterializeTask(value.server()->ref(),
                                    federated_pb->add_value(), tasks);
         return absl::OkStatus();

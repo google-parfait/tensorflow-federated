@@ -203,12 +203,12 @@ constexpr char kPlaceholderOp[] = "Placeholder";
 constexpr char kDatasetToGraphOp[] = "DatasetToGraphV2";
 constexpr char kDatasetFromGraphOp[] = "DatasetFromGraph";
 
-absl::string_view GetNodeName(absl::string_view tensor_name) {
+std::string GetNodeName(absl::string_view tensor_name) {
   absl::string_view::size_type pos = tensor_name.find(':');
   if (pos == absl::string_view::npos) {
-    return tensor_name;
+    return std::string(tensor_name);
   } else {
-    return tensor_name.substr(0, pos);
+    return std::string(tensor_name.substr(0, pos));
   }
 }
 

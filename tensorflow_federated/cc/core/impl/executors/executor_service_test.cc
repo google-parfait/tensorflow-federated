@@ -91,9 +91,9 @@ v0::CreateCallRequest CreateCallRequestForIds(
 v0::CreateStructRequest CreateStructForIds(
     const absl::Span<const absl::string_view> ids_for_struct) {
   v0::CreateStructRequest create_struct_request_pb;
-  for (const std::string_view& id : ids_for_struct) {
+  for (const absl::string_view& id : ids_for_struct) {
     v0::CreateStructRequest::Element elem;
-    elem.mutable_value_ref()->mutable_id()->append(id);
+    elem.mutable_value_ref()->mutable_id()->append(id.data(), id.size());
     create_struct_request_pb.mutable_element()->Add(std::move(elem));
   }
   return create_struct_request_pb;
@@ -105,9 +105,9 @@ v0::CreateStructRequest CreateNamedStructForIds(
   // Assign an integer index as name internally. Names are dropped on the C++
   // side, but a caller may supply them.
   int idx = 0;
-  for (const std::string_view& id : ids_for_struct) {
+  for (const absl::string_view& id : ids_for_struct) {
     v0::CreateStructRequest::Element elem;
-    elem.mutable_value_ref()->mutable_id()->assign(id);
+    elem.mutable_value_ref()->mutable_id()->assign(id.data(), id.size());
     elem.mutable_name()->assign(std::to_string(idx));
     idx++;
     create_struct_request_pb.mutable_element()->Add(std::move(elem));

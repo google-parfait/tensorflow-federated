@@ -179,7 +179,8 @@ inline v0::Computation LambdaComputation(
   v0::Computation computation_pb;
   v0::Lambda* lambda_pb = computation_pb.mutable_lambda();
   if (parameter_name != absl::nullopt) {
-    lambda_pb->set_parameter_name(parameter_name.value());
+    lambda_pb->mutable_parameter_name()->assign(parameter_name.value().data(),
+                                                parameter_name.value().size());
   }
   *lambda_pb->mutable_result() = result_computation_value;
   return computation_pb;
@@ -192,7 +193,7 @@ inline v0::Computation BlockComputation(
   v0::Block* block_pb = computation_pb.mutable_block();
   for (const auto& local : locals) {
     v0::Block::Local* new_local_pb = block_pb->add_local();
-    new_local_pb->set_name(std::get<0>(local));
+    *new_local_pb->mutable_name() = std::get<0>(local);
     *new_local_pb->mutable_value() = std::get<1>(local);
   }
   *block_pb->mutable_result() = result;
@@ -201,25 +202,28 @@ inline v0::Computation BlockComputation(
 
 inline v0::Computation ReferenceComputation(absl::string_view reference_name) {
   v0::Computation computation_pb;
-  computation_pb.mutable_reference()->set_name(reference_name);
+  computation_pb.mutable_reference()->mutable_name()->assign(
+      reference_name.data(), reference_name.size());
   return computation_pb;
 }
 
 inline v0::Computation IntrinsicComputation(absl::string_view uri) {
   v0::Computation computation_pb;
-  computation_pb.mutable_intrinsic()->set_uri(uri);
+  computation_pb.mutable_intrinsic()->mutable_uri()->assign(uri.data(),
+                                                            uri.size());
   return computation_pb;
 }
 
 inline v0::Computation DataComputation(absl::string_view uri) {
   v0::Computation computation_pb;
-  computation_pb.mutable_data()->set_uri(uri);
+  computation_pb.mutable_data()->mutable_uri()->assign(uri.data(), uri.size());
   return computation_pb;
 }
 
 inline v0::Computation PlacementComputation(absl::string_view uri) {
   v0::Computation computation_pb;
-  computation_pb.mutable_placement()->set_uri(uri);
+  computation_pb.mutable_placement()->mutable_uri()->assign(uri.data(),
+                                                            uri.size());
   return computation_pb;
 }
 
