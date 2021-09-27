@@ -341,7 +341,7 @@ inline T VoidOrResult(absl::StatusOr<T>&& res) {
 //
 // The value assignment example would expand into something like:
 //   auto status_or_value = MaybeGetValue(arg);
-//   ASSERT_OK(status_or_value.status());
+//   TFF_ASSERT_OK(status_or_value.status());
 //   value = std::move(status_or_value).ValueOrDie();
 #define TFF_ASSERT_OK_AND_ASSIGN(lhs, rexpr) lhs = TFF_ASSERT_OK(rexpr)
 

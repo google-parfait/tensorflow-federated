@@ -689,8 +689,7 @@ TEST_F(ReferenceResolvingExecutorTest, CreateStruct) {
     v0::Value tensor_value_pb = TensorV(static_cast<float>(i));
     ValueId child_id = mock_executor_->ExpectCreateValue(tensor_value_pb);
     absl::StatusOr<OwnedValueId> element =
-        test_executor_->CreateValue(tensor_value_pb);
-    ASSERT_OK(element);
+        TFF_ASSERT_OK(test_executor_->CreateValue(tensor_value_pb));
     element_ids.push_back(element.value().ref());
     element_child_ids.push_back(child_id);
     elements.emplace_back(std::move(element).value());
