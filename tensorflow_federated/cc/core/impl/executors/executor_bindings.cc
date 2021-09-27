@@ -83,7 +83,7 @@ PYBIND11_MODULE(executor_bindings, m) {
   py::class_<ComposingChild>(m, "ComposingChild")
       .def("__repr__", [](const ComposingChild& self) {
         return absl::StrCat(
-            "<ComposingChild with num clients: ", self.NumClients(), ">");
+            "<ComposingChild with num clients: ", self.num_clients(), ">");
       });
 
   // Provide the `Executor` interface.

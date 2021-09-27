@@ -71,13 +71,13 @@ class ExecutorValue {
  public:
   enum class ValueType { UNPLACED, SERVER, CLIENTS, STRUCTURE, INTRINSIC };
 
-  inline static ExecutorValue Unplaced(UnplacedOrServer id) {
+  inline static ExecutorValue CreateUnplaced(UnplacedOrServer id) {
     return ExecutorValue(std::move(id), ValueType::UNPLACED);
   }
   inline const UnplacedOrServer& unplaced() const {
     return std::get<UnplacedOrServer>(value_);
   }
-  inline static ExecutorValue Server(UnplacedOrServer id) {
+  inline static ExecutorValue CreateServerPlaced(UnplacedOrServer id) {
     return ExecutorValue(std::move(id), ValueType::SERVER);
   }
   inline const UnplacedOrServer& server() const {
@@ -86,22 +86,24 @@ class ExecutorValue {
   inline const Clients& clients() const {
     return std::get<::tensorflow_federated::Clients>(value_);
   }
-  inline static ExecutorValue Clients(Clients client_values) {
+  inline static ExecutorValue CreateClientsPlaced(Clients client_values) {
     return ExecutorValue(std::move(client_values), ValueType::CLIENTS);
   }
   // Convenience constructor from an un-shared_ptr vector.
-  inline static ExecutorValue Clients(
+  inline static ExecutorValue CreateClientsPlaced(
       std::vector<std::shared_ptr<OwnedValueId>>&& client_values) {
-    return Clients(std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>(
-        std::move(client_values)));
+    return CreateClientsPlaced(
+        std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>(
+            std::move(client_values)));
   }
   inline const Structure& structure() const {
     return std::get<::tensorflow_federated::Structure>(value_);
   }
-  inline static ExecutorValue Structure(Structure elements) {
+  inline static ExecutorValue CreateStructure(Structure elements) {
     return ExecutorValue(std::move(elements), ValueType::STRUCTURE);
   }
-  inline static ExecutorValue FederatedIntrinsic(FederatedIntrinsic intrinsic) {
+  inline static ExecutorValue CreateFederatedIntrinsic(
+      FederatedIntrinsic intrinsic) {
     return ExecutorValue(intrinsic, ValueType::INTRINSIC);
   }
   inline enum FederatedIntrinsic intrinsic() const {
@@ -159,7 +161,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     // `num_clients_` non-all-equal references to the same value. This
     // prevents optimization of the uncommon "materialize a broadcasted
     // value" case, but allows for simpler handling of values throughout.
-    return ExecutorValue::Clients(
+    return ExecutorValue::CreateClientsPlaced(
         std::make_shared<std::vector<std::shared_ptr<OwnedValueId>>>(
             num_clients_, value));
   }
@@ -172,7 +174,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       FederatedKind kind, const v0::Value_Federated& federated) {
     switch (kind) {
       case FederatedKind::SERVER: {
-        return ExecutorValue::Server(
+        return ExecutorValue::CreateServerPlaced(
             ShareValueId(TFF_TRY(child_->CreateValue(federated.value(0)))));
       }
       case FederatedKind::CLIENTS: {
@@ -183,7 +185,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
 
                                        )));
         }
-        return ExecutorValue::Clients(std::move(values));
+        return ExecutorValue::CreateClientsPlaced(std::move(values));
       }
       case FederatedKind::CLIENTS_ALL_EQUAL: {
         return ClientsAllEqualValue(
@@ -237,18 +239,18 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
           elements->emplace_back(
               TFF_TRY(CreateExecutorValue(element_pb.value())));
         }
-        return ExecutorValue::Structure(std::move(elements));
+        return ExecutorValue::CreateStructure(std::move(elements));
       }
       case v0::Value::kComputation: {
         if (value_pb.computation().has_intrinsic()) {
-          return ExecutorValue::FederatedIntrinsic(
+          return ExecutorValue::CreateFederatedIntrinsic(
               TFF_TRY(FederatedIntrinsicFromUri(
                   value_pb.computation().intrinsic().uri())));
         }
       }
         TF_FALLTHROUGH_INTENDED;
       default: {
-        return ExecutorValue::Unplaced(
+        return ExecutorValue::CreateUnplaced(
             ShareValueId(TFF_TRY(child_->CreateValue(value_pb))));
       }
     }
@@ -272,7 +274,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
           arg_owner = TFF_TRY(Embed(argument.value()));
           arg_id = arg_owner.value()->ref();
         }
-        return ExecutorValue::Unplaced(
+        return ExecutorValue::CreateUnplaced(
             ShareValueId(TFF_TRY(child_->CreateCall(fn_id, arg_id))));
       }
       case ExecutorValue::ValueType::INTRINSIC: {
@@ -293,11 +295,11 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         return ClientsAllEqualValue(TFF_TRY(Embed(arg)));
       }
       case FederatedIntrinsic::VALUE_AT_SERVER: {
-        return ExecutorValue::Server(TFF_TRY(Embed(arg)));
+        return ExecutorValue::CreateServerPlaced(TFF_TRY(Embed(arg)));
       }
       case FederatedIntrinsic::EVAL_AT_SERVER: {
         auto embedded = TFF_TRY(Embed(arg));
-        return ExecutorValue::Server(ShareValueId(
+        return ExecutorValue::CreateServerPlaced(ShareValueId(
             TFF_TRY(child_->CreateCall(embedded->ref(), absl::nullopt))));
       }
       case FederatedIntrinsic::EVAL_AT_CLIENTS: {
@@ -307,7 +309,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
           client_values->emplace_back(ShareValueId(
               TFF_TRY(child_->CreateCall(embedded->ref(), absl::nullopt))));
         }
-        return ExecutorValue::Clients(std::move(client_values));
+        return ExecutorValue::CreateClientsPlaced(std::move(client_values));
       }
       case FederatedIntrinsic::AGGREGATE: {
         TFF_TRY(CheckLenForUseAsArgument(arg, "federated_aggregate", 5));
@@ -334,7 +336,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         }
         auto result =
             TFF_TRY(child_->CreateCall(report_child_id->ref(), current));
-        return ExecutorValue::Server(ShareValueId(std::move(result)));
+        return ExecutorValue::CreateServerPlaced(
+            ShareValueId(std::move(result)));
       }
       case FederatedIntrinsic::BROADCAST: {
         if (arg.type() != ExecutorValue::ValueType::SERVER) {
@@ -356,11 +359,12 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
             auto result = TFF_TRY(child_->CreateCall(child_fn_ref, client_arg));
             results->emplace_back(ShareValueId(std::move(result)));
           }
-          return ExecutorValue::Clients(std::move(results));
+          return ExecutorValue::CreateClientsPlaced(std::move(results));
         } else if (data.type() == ExecutorValue::ValueType::SERVER) {
           auto res =
               TFF_TRY(child_->CreateCall(child_fn_ref, data.server()->ref()));
-          return ExecutorValue::Server(ShareValueId(std::move(res)));
+          return ExecutorValue::CreateServerPlaced(
+              ShareValueId(std::move(res)));
         } else {
           return absl::InvalidArgumentError(
               "Attempted to map non-federated value.");
@@ -383,12 +387,13 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
             auto pair = TFF_TRY(child_->CreateStruct({first_id, second_id}));
             pairs->emplace_back(ShareValueId(std::move(pair)));
           }
-          return ExecutorValue::Clients(std::move(pairs));
+          return ExecutorValue::CreateClientsPlaced(std::move(pairs));
         } else if (first.type() == ExecutorValue::ValueType::SERVER) {
           ValueId first_id = first.server()->ref();
           ValueId second_id = second.server()->ref();
           auto pair = TFF_TRY(child_->CreateStruct({first_id, second_id}));
-          return ExecutorValue::Server(ShareValueId(std::move(pair)));
+          return ExecutorValue::CreateServerPlaced(
+              ShareValueId(std::move(pair)));
         } else {
           return absl::InvalidArgumentError(
               "Attempted to zip non-federated value.");
@@ -399,7 +404,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
 
   absl::StatusOr<ExecutorValue> CreateStruct(
       std::vector<ExecutorValue> members) final {
-    return ExecutorValue::Structure(
+    return ExecutorValue::CreateStructure(
         std::make_shared<std::vector<ExecutorValue>>(std::move(members)));
   }
 
@@ -412,7 +417,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       }
       case ExecutorValue::ValueType::UNPLACED: {
         ValueId ref = value.unplaced()->ref();
-        return ExecutorValue::Unplaced(
+        return ExecutorValue::CreateUnplaced(
             ShareValueId(TFF_TRY(child_->CreateSelection(ref, index))));
       }
       case ExecutorValue::ValueType::INTRINSIC: {

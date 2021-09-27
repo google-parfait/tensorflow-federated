@@ -38,9 +38,9 @@ class ComposingChild {
     return ComposingChild(std::move(executor), num_clients);
   }
 
-  const std::shared_ptr<Executor>& Executor() const { return executor_; }
+  const std::shared_ptr<Executor>& executor() const { return executor_; }
 
-  uint32_t NumClients() const { return num_clients_; }
+  uint32_t num_clients() const { return num_clients_; }
 
  private:
   std::shared_ptr<::tensorflow_federated::Executor> executor_;
