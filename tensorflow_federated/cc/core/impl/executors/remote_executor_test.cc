@@ -35,12 +35,13 @@ limitations under the License
 #include "absl/time/time.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
+#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
-using ::testing::EqualsProto;
+using testing::EqualsProto;
 using ::testing::proto::IgnoringRepeatedFieldOrdering;
 
 namespace tensorflow_federated {

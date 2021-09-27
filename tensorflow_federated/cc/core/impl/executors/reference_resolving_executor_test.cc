@@ -55,6 +55,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
@@ -74,7 +75,7 @@ using testing::ComputationV;
 using testing::DataComputation;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
-using ::testing::EqualsProto;
+using testing::EqualsProto;
 using ::testing::Exactly;
 using ::testing::HasSubstr;
 using testing::IntrinsicComputation;

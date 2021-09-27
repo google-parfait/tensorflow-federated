@@ -156,6 +156,7 @@ cc_test(
         ":executor",
         ":executor_service",
         ":mock_executor",
+        ":protobuf_matchers",
         ":status_matchers",
         ":value_test_utils",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -267,6 +268,20 @@ cc_library(
 )
 
 cc_library(
+    name = "protobuf_matchers",
+    testonly = True,
+    hdrs = ["protobuf_matchers.h"],
+    tags = ["nokokoro"],
+    deps = [
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_googletest//:gtest",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "reference_resolving_executor",
     srcs = ["reference_resolving_executor.cc"],
     hdrs = ["reference_resolving_executor.h"],
@@ -293,6 +308,7 @@ cc_test(
         ":executor",
         ":executor_test_base",
         ":mock_executor",
+        ":protobuf_matchers",
         ":reference_resolving_executor",
         ":status_matchers",
         ":value_test_utils",
@@ -345,6 +361,7 @@ cc_test(
     deps = [
         ":executor",
         ":mock_grpc",
+        ":protobuf_matchers",
         ":remote_executor",
         ":status_matchers",
         ":value_test_utils",
@@ -464,6 +481,7 @@ cc_cpu_gpu_test(
     tags = ["nokokoro"],
     deps = [
         ":executor",
+        ":protobuf_matchers",
         ":status_macros",
         ":status_matchers",
         ":tensorflow_executor",

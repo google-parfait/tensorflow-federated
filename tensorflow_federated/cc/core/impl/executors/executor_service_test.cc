@@ -31,6 +31,7 @@ limitations under the License
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
@@ -187,7 +188,7 @@ TEST_F(ExecutorServiceTest, CreateValueReturnsZeroRef) {
                                               &response_pb));
   // First element in the id is the id in the mock executor; the second is the
   // executor's generation.
-  EXPECT_THAT(response_pb, ::testing::EqualsProto("value_ref { id: '0-0' }"));
+  EXPECT_THAT(response_pb, testing::EqualsProto("value_ref { id: '0-0' }"));
 }
 
 TEST_F(ExecutorServiceTest, SetCardinalitiesIncrementsExecutorGeneration) {
@@ -216,10 +217,10 @@ TEST_F(ExecutorServiceTest, SetCardinalitiesIncrementsExecutorGeneration) {
 
   TFF_ASSERT_OK(first_response_status);
   EXPECT_THAT(first_response_pb,
-              ::testing::EqualsProto("value_ref { id: '0-0' }"));
+              testing::EqualsProto("value_ref { id: '0-0' }"));
   TFF_ASSERT_OK(second_response_status);
   EXPECT_THAT(second_response_pb,
-              ::testing::EqualsProto("value_ref { id: '0-1' }"));
+              testing::EqualsProto("value_ref { id: '0-1' }"));
 }
 
 TEST_F(ExecutorServiceTest, ComputeWithMalformedRefFails) {
@@ -327,7 +328,7 @@ TEST_F(ExecutorServiceTest, ComputeReturnsMockValue) {
   TFF_ASSERT_OK(executor_service_.Compute(&server_context, &compute_request_pb,
                                           &compute_response_pb));
   EXPECT_THAT(compute_response_pb.value(),
-              ::testing::EqualsProto(expected_value));
+              testing::EqualsProto(expected_value));
 }
 
 TEST_F(ExecutorServiceTest, ComputeTwoValuesReturnsAppropriateValues) {
@@ -384,9 +385,9 @@ TEST_F(ExecutorServiceTest, ComputeTwoValuesReturnsAppropriateValues) {
 
   // We expect materializing the 0th id to retun 3, the 1st to return 4.
   EXPECT_THAT(first_compute_response_pb.value(),
-              ::testing::EqualsProto(expected_three));
+              testing::EqualsProto(expected_three));
   EXPECT_THAT(second_compute_response_pb.value(),
-              ::testing::EqualsProto(expected_four));
+              testing::EqualsProto(expected_four));
 }
 
 TEST_F(ExecutorServiceTest, DisposePassesCallsDown) {
@@ -482,7 +483,7 @@ TEST_F(ExecutorServiceTest, CreateCallNoArgFn) {
                                              &create_call_response_pb));
 
   EXPECT_THAT(create_call_response_pb,
-              ::testing::EqualsProto("value_ref { id: '1-0' }"));
+              testing::EqualsProto("value_ref { id: '1-0' }"));
 }
 
 TEST_F(ExecutorServiceTest, CreateCallFunctionWithArgument) {
@@ -497,7 +498,7 @@ TEST_F(ExecutorServiceTest, CreateCallFunctionWithArgument) {
                                              &create_call_response_pb));
 
   EXPECT_THAT(create_call_response_pb,
-              ::testing::EqualsProto("value_ref { id: '2-0' }"));
+              testing::EqualsProto("value_ref { id: '2-0' }"));
 }
 
 TEST_F(ExecutorServiceTest, CreateSelection) {
@@ -529,9 +530,9 @@ TEST_F(ExecutorServiceTest, CreateSelection) {
   TFF_ASSERT_OK(first_create_selection_response_status);
   TFF_ASSERT_OK(second_create_selection_response_status);
   EXPECT_THAT(first_create_selection_response_pb,
-              ::testing::EqualsProto("value_ref { id: '1-0' }"));
+              testing::EqualsProto("value_ref { id: '1-0' }"));
   EXPECT_THAT(second_create_selection_response_pb,
-              ::testing::EqualsProto("value_ref { id: '3-0' }"));
+              testing::EqualsProto("value_ref { id: '3-0' }"));
 }
 
 TEST_F(ExecutorServiceTest, CreateStructFailsWithBadGeneration) {
@@ -560,7 +561,7 @@ TEST_F(ExecutorServiceTest, CreateEmptyStruct) {
                                                &struct_response_pb));
 
   EXPECT_THAT(struct_response_pb,
-              ::testing::EqualsProto("value_ref { id: '0-0' }"));
+              testing::EqualsProto("value_ref { id: '0-0' }"));
 }
 
 TEST_F(ExecutorServiceTest, CreateNonemptyStruct) {
@@ -576,7 +577,7 @@ TEST_F(ExecutorServiceTest, CreateNonemptyStruct) {
                                                &struct_response_pb));
 
   EXPECT_THAT(struct_response_pb,
-              ::testing::EqualsProto("value_ref { id: '0-0' }"));
+              testing::EqualsProto("value_ref { id: '0-0' }"));
 }
 
 TEST_F(ExecutorServiceTest, CreateNamedNonemptyStruct) {
@@ -593,7 +594,7 @@ TEST_F(ExecutorServiceTest, CreateNamedNonemptyStruct) {
                                                &struct_response_pb));
 
   EXPECT_THAT(struct_response_pb,
-              ::testing::EqualsProto("value_ref { id: '0-0' }"));
+              testing::EqualsProto("value_ref { id: '0-0' }"));
 }
 
 }  // namespace tensorflow_federated

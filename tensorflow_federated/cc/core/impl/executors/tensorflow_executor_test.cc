@@ -41,6 +41,7 @@ limitations under the License
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
@@ -51,7 +52,7 @@ namespace tensorflow_federated {
 namespace {
 
 using testing::CreateSerializedRangeDatasetGraphDef;
-using ::testing::EqualsProto;
+using testing::EqualsProto;
 using testing::StructV;
 using testing::TensorV;
 
@@ -113,7 +114,7 @@ class TensorFlowExecutorTest : public ::testing::Test {
                              test_executor_->CreateValue(input_pb));
     v0::Value output_pb;
     EXPECT_THAT(test_executor_->Materialize(id, &output_pb), IsOk());
-    EXPECT_THAT(output_pb, ::testing::proto::IgnoringRepeatedFieldOrdering(
+    EXPECT_THAT(output_pb, testing::proto::IgnoringRepeatedFieldOrdering(
                                EqualsProto(input_pb)));
   }
 
@@ -300,7 +301,7 @@ TEST_F(TensorFlowExecutorTest, RoundTripSequence) {
   ASSERT_TRUE(materialized_graph_def.ParseFromString(
       output_pb.sequence().serialized_graph_def()));
   EXPECT_THAT(materialized_graph_def,
-              ::testing::proto::IgnoringRepeatedFieldOrdering(
+              testing::proto::IgnoringRepeatedFieldOrdering(
                   EqualsProto(input_graph_def)));
 }
 
