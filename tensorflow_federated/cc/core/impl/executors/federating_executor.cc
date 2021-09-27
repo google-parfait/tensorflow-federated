@@ -18,7 +18,6 @@ limitations under the License
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -28,6 +27,7 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
@@ -255,7 +255,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
   }
 
   absl::StatusOr<ExecutorValue> CreateCall(
-      ExecutorValue function, std::optional<ExecutorValue> argument) final {
+      ExecutorValue function, absl::optional<ExecutorValue> argument) final {
     switch (function.type()) {
       case ExecutorValue::ValueType::CLIENTS:
       case ExecutorValue::ValueType::SERVER: {
@@ -266,8 +266,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       }
       case ExecutorValue::ValueType::UNPLACED: {
         ValueId fn_id = function.unplaced()->ref();
-        std::optional<std::shared_ptr<OwnedValueId>> arg_owner;
-        std::optional<ValueId> arg_id = std::nullopt;
+        absl::optional<std::shared_ptr<OwnedValueId>> arg_owner;
+        absl::optional<ValueId> arg_id = absl::nullopt;
         if (argument.has_value()) {
           arg_owner = TFF_TRY(Embed(argument.value()));
           arg_id = arg_owner.value()->ref();
@@ -298,14 +298,14 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
       case FederatedIntrinsic::EVAL_AT_SERVER: {
         auto embedded = TFF_TRY(Embed(arg));
         return ExecutorValue::Server(ShareValueId(
-            TFF_TRY(child_->CreateCall(embedded->ref(), std::nullopt))));
+            TFF_TRY(child_->CreateCall(embedded->ref(), absl::nullopt))));
       }
       case FederatedIntrinsic::EVAL_AT_CLIENTS: {
         auto embedded = TFF_TRY(Embed(arg));
         Clients client_values = NewClients();
         for (int i = 0; i < num_clients_; i++) {
           client_values->emplace_back(ShareValueId(
-              TFF_TRY(child_->CreateCall(embedded->ref(), std::nullopt))));
+              TFF_TRY(child_->CreateCall(embedded->ref(), absl::nullopt))));
         }
         return ExecutorValue::Clients(std::move(client_values));
       }
@@ -323,7 +323,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
           return absl::InvalidArgumentError(
               "Cannot aggregate a value not placed at clients.");
         }
-        std::optional<OwnedValueId> current_owner = std::nullopt;
+        absl::optional<OwnedValueId> current_owner = absl::nullopt;
         ValueId current = zero_child_id->ref();
         for (const auto& client_val_id : *value.clients()) {
           auto acc_arg =

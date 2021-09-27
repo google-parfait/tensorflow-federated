@@ -20,6 +20,7 @@ limitations under the License
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/executors/computations.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -248,9 +249,9 @@ TEST_F(ComposingExecutorTest, CreateCallEmbeddedNoArg) {
   ValueId fn_server_id = mock_server_->ExpectCreateValue(fn);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   ValueId fn_result_child_id =
-      mock_server_->ExpectCreateCall(fn_server_id, std::nullopt);
+      mock_server_->ExpectCreateCall(fn_server_id, absl::nullopt);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_result_id,
-                           test_executor_->CreateCall(fn_id, std::nullopt));
+                           test_executor_->CreateCall(fn_id, absl::nullopt));
   mock_server_->ExpectMaterialize(fn_result_child_id, result);
   ExpectMaterialize(fn_result_id, result);
 }
@@ -298,7 +299,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedValueFails) {
   TFF_ASSERT_OK_AND_ASSIGN(auto fed_id,
                            test_executor_->CreateValue(ServerV(tensor)));
   TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
-                           test_executor_->CreateCall(fed_id, std::nullopt));
+                           test_executor_->CreateCall(fed_id, absl::nullopt));
   // We don't see the error until materializing due to asynchrony caused by
   // evaluating the call in another thread.
   EXPECT_THAT(test_executor_->Materialize(res_id),
@@ -309,8 +310,8 @@ TEST_F(ComposingExecutorTest, CreateCallStructFails) {
   v0::Value tensor = TensorV(1);
   TFF_ASSERT_OK_AND_ASSIGN(auto struct_id,
                            test_executor_->CreateValue(StructV({tensor})));
-  TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
-                           test_executor_->CreateCall(struct_id, std::nullopt));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto res_id, test_executor_->CreateCall(struct_id, absl::nullopt));
   // We don't see the error until materializing due to asynchrony caused by
   // evaluating the call in another thread.
   EXPECT_THAT(test_executor_->Materialize(res_id),
@@ -526,7 +527,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtServer) {
   ValueId fn_child_id = mock_server_->ExpectCreateValue(fn);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   ValueId result_child_id =
-      mock_server_->ExpectCreateCall(fn_child_id, std::nullopt);
+      mock_server_->ExpectCreateCall(fn_child_id, absl::nullopt);
   TFF_ASSERT_OK_AND_ASSIGN(
       auto fed_eval_id, test_executor_->CreateValue(FederatedEvalAtServerV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,

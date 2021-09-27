@@ -25,6 +25,7 @@ limitations under the License
 #include "googlemock/include/gmock/gmock.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -43,7 +44,7 @@ class MockExecutor : public Executor,
               (const v0::Value& value_pb), (override));
   MOCK_METHOD(absl::StatusOr<OwnedValueId>, CreateCall,
               (const ValueId function,
-               const std::optional<const ValueId> argument),
+               const absl::optional<const ValueId> argument),
               (override));
   MOCK_METHOD(absl::StatusOr<OwnedValueId>, CreateStruct,
               (const absl::Span<const ValueId> members), (override));
@@ -71,7 +72,7 @@ class MockExecutor : public Executor,
   }
 
   inline ValueId ExpectCreateCall(ValueId fn_id,
-                                  std::optional<const ValueId> arg_id,
+                                  absl::optional<const ValueId> arg_id,
                                   testing::Cardinality repeatedly = ONCE) {
     return ReturnsNewValue(EXPECT_CALL(*this, CreateCall(fn_id, arg_id)),
                            repeatedly);

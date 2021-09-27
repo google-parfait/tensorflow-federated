@@ -18,13 +18,13 @@ limitations under the License
 
 #include <cstdint>
 #include <functional>
-#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
 
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow/cc/client/client_session.h"
 #include "tensorflow/cc/framework/ops.h"
@@ -174,11 +174,11 @@ inline v0::Computation StructComputation(
 }
 
 inline v0::Computation LambdaComputation(
-    std::optional<absl::string_view> parameter_name,
+    absl::optional<absl::string_view> parameter_name,
     v0::Computation result_computation_value) {
   v0::Computation computation_pb;
   v0::Lambda* lambda_pb = computation_pb.mutable_lambda();
-  if (parameter_name != std::nullopt) {
+  if (parameter_name != absl::nullopt) {
     lambda_pb->set_parameter_name(parameter_name.value());
   }
   *lambda_pb->mutable_result() = result_computation_value;

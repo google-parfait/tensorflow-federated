@@ -17,13 +17,13 @@ limitations under the License
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor_test_base.h"
@@ -86,7 +86,7 @@ class FederatingExecutorTest : public ExecutorTestBase {
   }
 
   ValueId ExpectCreateCallInChild(ValueId fn_id,
-                                  std::optional<const ValueId> arg_id,
+                                  absl::optional<const ValueId> arg_id,
                                   Cardinality repeatedly = ONCE) {
     return mock_executor_->ExpectCreateCall(fn_id, arg_id, repeatedly);
   }
@@ -266,9 +266,9 @@ TEST_F(FederatingExecutorTest, CreateCallEmbeddedNoArg) {
   ValueId fn_child_id = ExpectCreateInChild(fn);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   ValueId fn_result_child_id =
-      ExpectCreateCallInChild(fn_child_id, std::nullopt);
+      ExpectCreateCallInChild(fn_child_id, absl::nullopt);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_result_id,
-                           test_executor_->CreateCall(fn_id, std::nullopt));
+                           test_executor_->CreateCall(fn_id, absl::nullopt));
   ExpectMaterializeInChild(fn_result_child_id, result);
   ExpectMaterialize(fn_result_id, result);
 }
@@ -315,7 +315,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedValueFails) {
   ExpectCreateInChild(tensor);
   TFF_ASSERT_OK_AND_ASSIGN(auto fed_id,
                            test_executor_->CreateValue(ServerV(tensor)));
-  EXPECT_THAT(test_executor_->CreateCall(fed_id, std::nullopt),
+  EXPECT_THAT(test_executor_->CreateCall(fed_id, absl::nullopt),
               StatusIs(StatusCode::kInvalidArgument));
 }
 
@@ -324,7 +324,7 @@ TEST_F(FederatingExecutorTest, CreateCallStructFails) {
   ExpectCreateInChild(tensor);
   TFF_ASSERT_OK_AND_ASSIGN(auto struct_id,
                            test_executor_->CreateValue(StructV({tensor})));
-  EXPECT_THAT(test_executor_->CreateCall(struct_id, std::nullopt),
+  EXPECT_THAT(test_executor_->CreateCall(struct_id, absl::nullopt),
               StatusIs(StatusCode::kInvalidArgument));
 }
 
@@ -432,7 +432,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedEvalAtClients) {
   ValueId fn_child_id = ExpectCreateInChild(fn);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   ValueId result_child_id =
-      ExpectCreateCallInChild(fn_child_id, std::nullopt, ONCE_PER_CLIENT);
+      ExpectCreateCallInChild(fn_child_id, absl::nullopt, ONCE_PER_CLIENT);
   TFF_ASSERT_OK_AND_ASSIGN(
       auto fed_eval_id, test_executor_->CreateValue(FederatedEvalAtClientsV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
@@ -447,7 +447,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedEvalAtServer) {
   v0::Value fn = TensorV(1);
   ValueId fn_child_id = ExpectCreateInChild(fn);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-  ValueId result_child_id = ExpectCreateCallInChild(fn_child_id, std::nullopt);
+  ValueId result_child_id = ExpectCreateCallInChild(fn_child_id, absl::nullopt);
   TFF_ASSERT_OK_AND_ASSIGN(
       auto fed_eval_id, test_executor_->CreateValue(FederatedEvalAtServerV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,

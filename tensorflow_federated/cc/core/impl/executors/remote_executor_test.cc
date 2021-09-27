@@ -18,7 +18,6 @@ limitations under the License
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -33,6 +32,7 @@ limitations under the License
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/notification.h"
 #include "absl/time/time.h"
+#include "absl/types/optional.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_grpc.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
@@ -344,7 +344,7 @@ TEST_F(RemoteExecutorTest, CreateCallNoArgFn) {
         .WillOnce(ReturnOkWithResponseId<v0::CreateCallResponse>("call_ref"));
 
     OwnedValueId call_result =
-        test_executor_->CreateCall(fn, std::nullopt).ValueOrDie();
+        test_executor_->CreateCall(fn, absl::nullopt).ValueOrDie();
 
     // We need to call Materialize to force synchronization of the calls above.
     EXPECT_CALL(
@@ -390,7 +390,7 @@ TEST_F(RemoteExecutorTest, CreateCallError) {
         .WillOnce(::testing::Return(absl::UnimplementedError("Test")));
 
     OwnedValueId call_result =
-        test_executor_->CreateCall(fn, std::nullopt).ValueOrDie();
+        test_executor_->CreateCall(fn, absl::nullopt).ValueOrDie();
 
     EXPECT_CALL(*mock_executor_service_,
                 Dispose(::testing::_, ::testing::_, ::testing::_))

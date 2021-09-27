@@ -18,7 +18,6 @@ limitations under the License
 #include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -28,6 +27,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/optional.h"
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -57,7 +57,7 @@ class RemoteExecutor : public ExecutorBase<ValueFuture> {
       const v0::Value& value_pb) final;
 
   absl::StatusOr<ValueFuture> CreateCall(
-      ValueFuture function, std::optional<ValueFuture> argument) final;
+      ValueFuture function, absl::optional<ValueFuture> argument) final;
 
   absl::StatusOr<ValueFuture> CreateStruct(
       std::vector<ValueFuture> members) final;
@@ -150,7 +150,7 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateExecutorValue(
 }
 
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateCall(
-    ValueFuture function, std::optional<ValueFuture> argument) {
+    ValueFuture function, absl::optional<ValueFuture> argument) {
   TFF_TRY(EnsureInitialized());
   return ThreadRun(
       [function = std::move(function), argument = std::move(argument),

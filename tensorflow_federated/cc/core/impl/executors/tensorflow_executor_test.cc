@@ -18,7 +18,6 @@ limitations under the License
 #include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -26,6 +25,7 @@ limitations under the License
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow/cc/framework/ops.h"
 #include "tensorflow/cc/framework/scope.h"
@@ -82,10 +82,11 @@ inline v0::TensorFlow::Binding StructB(
   return binding;
 }
 
-inline v0::Value Computation(
-    std::optional<v0::TensorFlow::Binding> in_binding,
-    v0::TensorFlow::Binding out_binding, const tensorflow::Scope& scope,
-    const std::optional<const tensorflow::Operation>& init_op = std::nullopt) {
+inline v0::Value Computation(absl::optional<v0::TensorFlow::Binding> in_binding,
+                             v0::TensorFlow::Binding out_binding,
+                             const tensorflow::Scope& scope,
+                             const absl::optional<const tensorflow::Operation>&
+                                 init_op = absl::nullopt) {
   v0::Value value_pb;
   v0::Computation* comp_pb = value_pb.mutable_computation();
   // NOTE: we do not fill in the `type` field of `comp` because it is not needed
@@ -125,10 +126,10 @@ class TensorFlowExecutorTest : public ::testing::Test {
   }
 
   void CheckCallEqualsProto(const v0::Value& fn,
-                            const std::optional<v0::Value>& arg,
+                            const absl::optional<v0::Value>& arg,
                             const v0::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-    std::optional<OwnedValueId> arg_id;
+    absl::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
       TFF_ASSERT_OK_AND_ASSIGN(arg_id,
                                test_executor_->CreateValue(arg.value()));
@@ -141,10 +142,10 @@ class TensorFlowExecutorTest : public ::testing::Test {
   }
 
   void CheckCallRepeatedlyEqualsProto(const v0::Value& fn,
-                                      const std::optional<v0::Value>& arg,
+                                      const absl::optional<v0::Value>& arg,
                                       const v0::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-    std::optional<OwnedValueId> arg_id;
+    absl::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
       TFF_ASSERT_OK_AND_ASSIGN(arg_id,
                                test_executor_->CreateValue(arg.value()));
@@ -159,10 +160,10 @@ class TensorFlowExecutorTest : public ::testing::Test {
   }
 
   void CheckCallParallelEqualsProto(const v0::Value& fn,
-                                    const std::optional<v0::Value>& arg,
+                                    const absl::optional<v0::Value>& arg,
                                     const v0::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-    std::optional<OwnedValueId> arg_id;
+    absl::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
       TFF_ASSERT_OK_AND_ASSIGN(arg_id,
                                test_executor_->CreateValue(arg.value()));
@@ -389,7 +390,7 @@ TEST_F(TensorFlowExecutorTest, CallNoArgOneOutWithInitialize) {
       root, var, tensorflow::ops::Const(root, {1, 2, 3}, shape));
   tensorflow::ops::ReadVariableOp read_var(root, var, tensorflow::DT_INT32);
   v0::Value fn = Computation(
-      /*in_binding=*/std::nullopt,
+      /*in_binding=*/absl::nullopt,
       /*out_binding=*/TensorB(read_var), root,
       /*init_op=*/var_init);
   tensorflow::Tensor expected(tensorflow::DT_INT32, shape);
@@ -397,10 +398,10 @@ TEST_F(TensorFlowExecutorTest, CallNoArgOneOutWithInitialize) {
   data(0) = 1;
   data(1) = 2;
   data(2) = 3;
-  CheckCallEqualsProto(fn, std::nullopt, TensorV(expected));
+  CheckCallEqualsProto(fn, absl::nullopt, TensorV(expected));
   // Ensure that repeatedly using the same session from the session provider
   // works correctly.
-  CheckCallRepeatedlyEqualsProto(fn, std::nullopt, TensorV(expected));
+  CheckCallRepeatedlyEqualsProto(fn, absl::nullopt, TensorV(expected));
 }
 
 TEST_F(TensorFlowExecutorTest, CallOneInOut) {
@@ -463,11 +464,11 @@ TEST_F(TensorFlowExecutorTest, StatefulCallGetsReinitialized) {
   tensorflow::ops::ReadVariableOp read_var(
       root.WithControlDependencies({var_add_assign}), var,
       tensorflow::DT_INT32);
-  v0::Value fn = Computation(std::nullopt, TensorB(read_var), root, var_init);
+  v0::Value fn = Computation(absl::nullopt, TensorB(read_var), root, var_init);
   v0::Value expected = TensorV(1);
-  CheckCallEqualsProto(fn, std::nullopt, expected);
-  CheckCallRepeatedlyEqualsProto(fn, std::nullopt, expected);
-  CheckCallParallelEqualsProto(fn, std::nullopt, expected);
+  CheckCallEqualsProto(fn, absl::nullopt, expected);
+  CheckCallRepeatedlyEqualsProto(fn, absl::nullopt, expected);
+  CheckCallParallelEqualsProto(fn, absl::nullopt, expected);
 }
 
 TEST_F(TensorFlowExecutorTest, CallWithComputationId) {

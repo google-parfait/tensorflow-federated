@@ -19,7 +19,6 @@ limitations under the License
 #include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
-#include <optional>
 #include <string>
 #include <thread>  // NOLINT
 #include <utility>
@@ -34,6 +33,7 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
@@ -419,9 +419,9 @@ absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
 
 absl::Status AddDatastSerializationToSequenceBindings(
     tensorflow::GraphDef& graphdef_pb,
-    std::optional<v0::TensorFlow::Binding>& parameter_binding,
+    absl::optional<v0::TensorFlow::Binding>& parameter_binding,
     v0::TensorFlow::Binding& result_binding) {
-  if (parameter_binding != std::nullopt) {
+  if (parameter_binding != absl::nullopt) {
     TFF_TRY(AddDeserializationOpsForParameters(graphdef_pb,
                                                parameter_binding.value()));
   }
@@ -439,7 +439,7 @@ class Computation {
     if (!comp_pb.graph_def().UnpackTo(&graphdef_pb)) {
       return absl::InternalError(ERR_LOG("Could not unpack graphdef proto"));
     }
-    std::optional<v0::TensorFlow::Binding> parameter_shape;
+    absl::optional<v0::TensorFlow::Binding> parameter_shape;
     if (comp_pb.has_parameter()) {
       parameter_shape = comp_pb.parameter();
     }
@@ -454,10 +454,10 @@ class Computation {
         std::move(output_tensor_names));
   }
 
-  absl::StatusOr<ExecutorValue> Call(std::optional<ExecutorValue> arg);
+  absl::StatusOr<ExecutorValue> Call(absl::optional<ExecutorValue> arg);
 
   Computation(tensorflow::GraphDef graph, std::string init_op,
-              std::optional<v0::TensorFlow::Binding> parameter_shape,
+              absl::optional<v0::TensorFlow::Binding> parameter_shape,
               v0::TensorFlow::Binding output_shape,
               std::vector<std::string> output_tensor_names)
       : session_provider_(std::move(graph)),
@@ -508,7 +508,7 @@ class Computation {
 
   SessionProvider session_provider_;
   std::string init_op_;
-  std::optional<v0::TensorFlow::Binding> parameter_shape_;
+  absl::optional<v0::TensorFlow::Binding> parameter_shape_;
   v0::TensorFlow::Binding output_shape_;
   std::vector<std::string> output_tensor_names_;
 };
@@ -709,7 +709,7 @@ class ExecutorValue {
 };
 
 absl::StatusOr<ExecutorValue> Computation::Call(
-    std::optional<ExecutorValue> arg) {
+    absl::optional<ExecutorValue> arg) {
   // Skip everything if there are no outputs.
   // If `output_tensor_names` is empty, TF raises an error, so we must bypass it
   // entirely.
@@ -930,12 +930,12 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
     return ReadyFuture(TFF_TRY(CreateValueAny(value_pb)));
   }
   absl::StatusOr<ValueFuture> CreateCall(
-      ValueFuture function, std::optional<ValueFuture> argument) final {
+      ValueFuture function, absl::optional<ValueFuture> argument) final {
     return ThreadRun([function = std::move(function),
                       argument = std::move(
                           argument)]() -> absl::StatusOr<ExecutorValue> {
       ExecutorValue fn = TFF_TRY(Wait(function));
-      std::optional<ExecutorValue> arg = std::nullopt;
+      absl::optional<ExecutorValue> arg = absl::nullopt;
       if (argument.has_value()) {
         arg = TFF_TRY(Wait(argument.value()));
       }

@@ -28,6 +28,7 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
@@ -73,7 +74,7 @@ class UnplacedInner {
 
   // Returns the underlying `Proto` value without attempting to create one via
   // a `Materialize` call.
-  std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> GetProto() {
+  absl::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> GetProto() {
     absl::ReaderMutexLock lock(&mutex_);
     return proto_;
   }
@@ -156,9 +157,9 @@ class UnplacedInner {
   }
 
   absl::Mutex mutex_;
-  std::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> proto_
+  absl::optional<absl::StatusOr<std::shared_ptr<v0::Value>>> proto_
       ABSL_GUARDED_BY(mutex_);
-  std::optional<absl::StatusOr<std::shared_ptr<OwnedValueId>>> embedded_
+  absl::optional<absl::StatusOr<std::shared_ptr<OwnedValueId>>> embedded_
       ABSL_GUARDED_BY(mutex_);
 };
 
@@ -362,13 +363,13 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
-      ValueFuture function, std::optional<ValueFuture> argument) final {
+      ValueFuture function, absl::optional<ValueFuture> argument) final {
     return ThreadRun(
         [function = std::move(function), argument = std::move(argument), this,
          this_keepalive =
              shared_from_this()]() -> absl::StatusOr<ExecutorValue> {
           ExecutorValue fn = TFF_TRY(Wait(function));
-          std::optional<ExecutorValue> arg = std::nullopt;
+          absl::optional<ExecutorValue> arg = absl::nullopt;
           if (argument.has_value()) {
             arg = TFF_TRY(Wait(argument.value()));
           }
@@ -386,8 +387,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
               // We need to materialize functions into the server
               // executor in order to execute them.
               auto fn_id = TFF_TRY(fn.unplaced()->Embedded(*server_));
-              std::optional<std::shared_ptr<OwnedValueId>> arg_owner;
-              std::optional<ValueId> arg_id = std::nullopt;
+              absl::optional<std::shared_ptr<OwnedValueId>> arg_owner;
+              absl::optional<ValueId> arg_id = absl::nullopt;
               if (arg.has_value()) {
                 arg_owner = TFF_TRY(arg.value().Embed(*server_));
                 arg_id = arg_owner.value()->ref();
@@ -546,7 +547,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       ExecutorValue&& arg) const {
     auto embedded = TFF_TRY(arg.Embed(*server_));
     return ExecutorValue::Server(ShareValueId(
-        TFF_TRY(server_->CreateCall(embedded->ref(), std::nullopt))));
+        TFF_TRY(server_->CreateCall(embedded->ref(), absl::nullopt))));
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicEvalAtClients_(
@@ -598,7 +599,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     v0::Value aggregate;
     *aggregate.mutable_computation()->mutable_intrinsic()->mutable_uri() =
         kFederatedAggregateUri;
-    std::optional<OwnedValueId> current = std::nullopt;
+    absl::optional<OwnedValueId> current = absl::nullopt;
     // TODO(b/192457028): parallelize this so that we're materializing more than
     // one value at a time and so that we can begin merging as soon as any
     // result is available.

@@ -15,7 +15,6 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/executor_service.h"
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -26,6 +25,7 @@ limitations under the License
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/optional.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -143,7 +143,7 @@ grpc::Status ExecutorService::CreateCall(grpc::ServerContext* context,
       TFF_TRY(LogIfNotOk(RequireExecutor_("CreateCall")));
   ValueId embedded_fn = TFF_TRY(LogIfNotOk(
       ResolveRemoteValue_(request->function_ref(), used_executor_generation)));
-  std::optional<ValueId> embedded_arg;
+  absl::optional<ValueId> embedded_arg;
   if (request->has_argument_ref()) {
     // Callers should avoid setting the argument ref for invocation of a no-arg
     // fn.

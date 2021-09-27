@@ -17,7 +17,6 @@ limitations under the License
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,6 +26,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
@@ -77,11 +77,11 @@ v0::ComputeRequest ComputeRequestForId(std::string id) {
 absl::Status ReturnOk() { return absl::OkStatus(); }
 
 v0::CreateCallRequest CreateCallRequestForIds(
-    std::string function_id, std::optional<std::string> argument_id) {
+    std::string function_id, absl::optional<std::string> argument_id) {
   v0::CreateCallRequest create_call_request_pb;
   create_call_request_pb.mutable_function_ref()->mutable_id()->assign(
       function_id);
-  if (argument_id != std::nullopt) {
+  if (argument_id != absl::nullopt) {
     create_call_request_pb.mutable_argument_ref()->mutable_id()->assign(
         *argument_id);
   }
@@ -470,13 +470,13 @@ TEST_F(ExecutorServiceTest, CreateCallNoArgFnArgumentSetToEmptyString) {
 
 TEST_F(ExecutorServiceTest, CreateCallNoArgFn) {
   v0::CreateCallRequest call_request =
-      CreateCallRequestForIds("0-0", std::nullopt);
+      CreateCallRequestForIds("0-0", absl::nullopt);
   v0::CreateCallResponse create_call_response_pb;
   grpc::ServerContext server_context;
 
   // We expect the ID returned from this call to be set reflected in the
   // returned value.
-  EXPECT_CALL(*executor_ptr_, CreateCall(0, ::testing::Eq(std::nullopt)))
+  EXPECT_CALL(*executor_ptr_, CreateCall(0, ::testing::Eq(absl::nullopt)))
       .WillOnce([this] { return TestId(1); });
 
   TFF_ASSERT_OK(executor_service_.CreateCall(&server_context, &call_request,
