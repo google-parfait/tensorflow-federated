@@ -159,11 +159,12 @@ TEST_F(ComposingExecutorTest, CreateMaterializeAtClientsAllEqual) {
     auto child = mock_children_[i];
     auto id = child->ExpectCreateValue(all_equal_value);
     child->ExpectMaterialize(
-        id, ClientsV(std::vector(clients_per_child_[i], tensor_pb)));
+        id, ClientsV(std::vector<v0::Value>(clients_per_child_[i], tensor_pb)));
   }
   TFF_ASSERT_OK_AND_ASSIGN(auto id,
                            test_executor_->CreateValue(all_equal_value));
-  ExpectMaterialize(id, ClientsV(std::vector(total_clients_, tensor_pb)));
+  ExpectMaterialize(
+      id, ClientsV(std::vector<v0::Value>(total_clients_, tensor_pb)));
 }
 
 TEST_F(ComposingExecutorTest, CreateFederatedValueInsideStruct) {

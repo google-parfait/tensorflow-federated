@@ -171,7 +171,8 @@ TEST_F(FederatingExecutorTest, CreateMaterializeAtClientsAllEqual) {
       auto id, test_executor_->CreateValue(ClientsV({tensor_in}, true)));
   v0::Value tensor_out = TensorV(2.0);
   ExpectMaterializeInChild(child_id, tensor_out, ONCE_PER_CLIENT);
-  v0::Value clients_out = ClientsV(std::vector(NUM_CLIENTS, tensor_out), false);
+  v0::Value clients_out =
+      ClientsV(std::vector<v0::Value>(NUM_CLIENTS, tensor_out), false);
   ExpectMaterialize(id, clients_out);
 }
 
