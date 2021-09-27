@@ -253,7 +253,7 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
     absl::StatusOr<ValueId> embedded_value =
         ResolveRemoteValue_(disposed_value_ref, used_executor_generation);
     if (embedded_value.ok()) {
-      TFF_TRY(LogIfNotOk(live_executor->Dispose(embedded_value.ValueOrDie())));
+      TFF_TRY(LogIfNotOk(live_executor->Dispose(embedded_value.value())));
     }
   }
   return grpc::Status::OK;
