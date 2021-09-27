@@ -185,6 +185,7 @@ cc_library(
     deps = [
         ":executor",
         ":mock_executor",
+        ":protobuf_matchers",
         ":status_matchers",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_googletest//:gtest",
@@ -253,6 +254,7 @@ cc_library(
     tags = ["nokokoro"],
     deps = [
         ":executor",
+        ":protobuf_matchers",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

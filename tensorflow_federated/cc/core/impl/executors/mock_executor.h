@@ -28,6 +28,7 @@ limitations under the License
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -56,7 +57,7 @@ class MockExecutor : public Executor,
 
   template <typename EXPECTATION>
   ValueId ReturnsNewValue(EXPECTATION& e,
-                          testing::Cardinality repeatedly = ONCE) {
+                          ::testing::Cardinality repeatedly = ONCE) {
     ValueId id = next_id_++;
     auto lambda = [this, id]() { return OwnedValueId(shared_from_this(), id); };
     e.Times(repeatedly).WillRepeatedly(std::move(lambda));
@@ -65,7 +66,7 @@ class MockExecutor : public Executor,
   }
 
   inline ValueId ExpectCreateValue(const v0::Value& expected,
-                                   testing::Cardinality repeatedly = ONCE) {
+                                   ::testing::Cardinality repeatedly = ONCE) {
     return ReturnsNewValue(
         EXPECT_CALL(*this, CreateValue(testing::EqualsProto(expected))),
         repeatedly);
@@ -73,7 +74,7 @@ class MockExecutor : public Executor,
 
   inline ValueId ExpectCreateCall(ValueId fn_id,
                                   absl::optional<const ValueId> arg_id,
-                                  testing::Cardinality repeatedly = ONCE) {
+                                  ::testing::Cardinality repeatedly = ONCE) {
     return ReturnsNewValue(EXPECT_CALL(*this, CreateCall(fn_id, arg_id)),
                            repeatedly);
   }
@@ -84,7 +85,7 @@ class MockExecutor : public Executor,
   }
 
   inline ValueId ExpectCreateStruct(absl::Span<const ValueId> elements,
-                                    testing::Cardinality repeatedly = ONCE) {
+                                    ::testing::Cardinality repeatedly = ONCE) {
     // Store the data behind the span since the span itself may refer to a
     // temporary which is unavailable at the time the expected call comes in.
     struct_expectations_.push_back(std::make_unique<std::vector<ValueId>>(
@@ -95,7 +96,7 @@ class MockExecutor : public Executor,
   }
 
   inline void ExpectMaterialize(ValueId id, v0::Value to_return,
-                                testing::Cardinality repeatedly = ONCE) {
+                                ::testing::Cardinality repeatedly = ONCE) {
     EXPECT_CALL(*this, Materialize(id, ::testing::_))
         .Times(repeatedly)
         .WillRepeatedly(
@@ -103,8 +104,8 @@ class MockExecutor : public Executor,
                              ::testing::Return(absl::OkStatus())));
   }
 
-  inline void ExpectCreateMaterialize(v0::Value value_pb,
-                                      testing::Cardinality repeatedly = ONCE) {
+  inline void ExpectCreateMaterialize(
+      v0::Value value_pb, ::testing::Cardinality repeatedly = ONCE) {
     auto id = ExpectCreateValue(value_pb);
     ExpectMaterialize(id, value_pb);
   }

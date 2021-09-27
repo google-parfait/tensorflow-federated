@@ -22,6 +22,7 @@ limitations under the License
 #include "googletest/include/gtest/gtest.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/mock_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -33,7 +34,7 @@ class ExecutorTestBase : public ::testing::Test {
 
   void ExpectMaterialize(ValueId id, v0::Value value) {
     auto result = TFF_ASSERT_OK(test_executor_->Materialize(id));
-    EXPECT_THAT(result, ::testing::EqualsProto(value));
+    EXPECT_THAT(result, testing::EqualsProto(value));
   }
 
   void ExpectCreateMaterialize(v0::Value value) {
