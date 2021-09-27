@@ -106,7 +106,7 @@ class ProtoMatcherBase {
               google::protobuf::Message,
               std::remove_reference_t<decltype(*std::declval<T>())>>::value &&
               // Check that the type can be compared against null.
-              std::is_same_v<decltype(std::declval<T>() == nullptr), bool>,
+              std::is_same<decltype(std::declval<T>() == nullptr), bool>::value,
           int> = 0>
   bool MatchAndExplain(const T &arg,
                        ::testing::MatchResultListener *listener) const {
