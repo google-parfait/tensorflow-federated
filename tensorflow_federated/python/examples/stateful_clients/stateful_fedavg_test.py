@@ -196,17 +196,8 @@ class MnistModel(tff.learning.Model):
 
 def _create_client_data():
   emnist_batch = collections.OrderedDict(
-      label=[5], pixels=np.random.rand(28, 28))
-
-  output_types = collections.OrderedDict(label=tf.int32, pixels=tf.float32)
-
-  output_shapes = collections.OrderedDict(
-      label=tf.TensorShape([1]),
-      pixels=tf.TensorShape([28, 28]),
-  )
-
-  dataset = tf.data.Dataset.from_generator(lambda: (yield emnist_batch),
-                                           output_types, output_shapes)
+      label=[[5]], pixels=[np.random.rand(28, 28).astype(np.float32)])
+  dataset = tf.data.Dataset.from_tensor_slices(emnist_batch)
 
   def client_data(num_batch=1):
     return tff.simulation.models.mnist.keras_dataset_from_emnist(
