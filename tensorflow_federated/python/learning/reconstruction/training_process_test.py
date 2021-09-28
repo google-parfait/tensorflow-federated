@@ -291,6 +291,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
         str(federated_data_type), '{<x=float32[?,784],y=int32[?,1]>*}@CLIENTS')
 
   def test_fed_recon_with_custom_client_weight_fn(self):
+    self.skipTest('b/201413656')
     client_data = create_emnist_client_data()
     federated_data = [client_data()]
 
@@ -389,6 +390,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
       ('tff_opt', _get_tff_optimizer),
   ])
   def test_keras_local_layer(self, optimizer_fn):
+    self.skipTest('b/201413656')
 
     def loss_fn():
       return tf.keras.losses.SparseCategoricalCrossentropy()
