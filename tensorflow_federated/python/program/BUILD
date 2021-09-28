@@ -21,6 +21,7 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":file_program_state_manager",
+        ":memory_release_manager",
         ":program_state_manager",
         ":release_manager",
     ],
@@ -63,6 +64,18 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":logging_release_manager"],
+)
+
+py_library(
+    name = "memory_release_manager",
+    srcs = ["memory_release_manager.py"],
+    deps = [":release_manager"],
+)
+
+py_test(
+    name = "memory_release_manager_test",
+    srcs = ["memory_release_manager_test.py"],
+    deps = [":memory_release_manager"],
 )
 
 py_library(

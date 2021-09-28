@@ -16,12 +16,16 @@
 import bisect
 import collections
 from typing import Any, Dict, Mapping, Optional
+import warnings
 
 from tensorflow_federated.python.simulation import metrics_manager
 
 
 class DictionaryMetricsManager(metrics_manager.MetricsManager):
   """A manager for keeping metrics in memory using an ordered dictionary.
+
+  DEPRECATED: `tff.simulation.DictionaryMetricsManager` is deprecated, please
+  use `tff.program.MemoryReleaseManager` instead.
 
   Note that this class stores all metrics in memory, and may be prohibitively
   expensive in large-scale simulations, especiall those storing large tensor
@@ -35,6 +39,9 @@ class DictionaryMetricsManager(metrics_manager.MetricsManager):
     keys will be integer round numbers, and the values are the metrics for the
     given round.
     """
+    warnings.warn(
+        '`tff.simulation.DictionaryMetricsManager` is deprecated, please use '
+        '`tff.program.MemoryReleaseManager` instead.', DeprecationWarning)
     self._latest_round_num = None
     self._metrics = collections.OrderedDict()
 
