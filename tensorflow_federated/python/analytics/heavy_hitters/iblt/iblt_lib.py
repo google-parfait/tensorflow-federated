@@ -70,6 +70,8 @@ DEFAULT_FIELD_SIZE = 2**31 - 1
 DEFAULT_REPETITIONS = 3
 # Theoretical IBLT space bounds, Table 1 in https://arxiv.org/pdf/1101.2245.pdf
 _REPETITIONS_TO_SPACE_OVERHEAD = {3: 1.222, 4: 1.295, 5: 1.425, 6: 1.570}
+_HASH_FAMILY_RANDOM = "random"
+_HASH_FAMILY_COUPLED = "coupled"
 
 
 def _internal_parameters(
@@ -104,11 +106,11 @@ def _internal_parameters(
   table_size = int(1.1 * minimum_space / repetitions + 10)
 
   # go/iblt-coupled-hash-analysis for analysis of coupled hash family.
-  suggested_hash_family = "coupled" if capacity >= 100000 else "random"
+  suggested_hash_family = _HASH_FAMILY_COUPLED if capacity >= 100000 else _HASH_FAMILY_RANDOM
   if hash_family is None:
     hash_family = suggested_hash_family
   suggested_hash_family_params = {}
-  if hash_family == "coupled":
+  if hash_family == _HASH_FAMILY_COUPLED:
     suggested_hash_family_params["rescale_factor"] = 0.25 * capacity**0.5
 
   if hash_family_params is None:
@@ -254,11 +256,10 @@ class IbltDecoder:
         capacity=self.table_size * self.repetitions,
         min_after_dequeue=0,
         dtypes=(self._dtype, self._dtype))
-    # TODO(b/198226495): Use constants for hash family types in IBLT.
-    if self.hash_family == "random":
+    if self.hash_family == _HASH_FAMILY_RANDOM:
       self.hyperedge_hasher = hyperedge_hashers.RandomHyperEdgeHasher(
           seed, self.table_size, repetitions, **self.hash_family_params)
-    elif self.hash_family == "coupled":
+    elif self.hash_family == _HASH_FAMILY_COUPLED:
       self.hyperedge_hasher = hyperedge_hashers.CoupledHyperEdgeHasher(
           seed, self.table_size, repetitions, **self.hash_family_params)
     else:
@@ -533,10 +534,10 @@ class IbltEncoder:
         dtype=self.internal_dtype)
     self.num_chunks = self.chunker.get_num_chunks()
     self.iblt_shape = (self.repetitions, self.table_size, self.num_chunks + 2)
-    if hash_family == "random":
+    if hash_family == _HASH_FAMILY_RANDOM:
       self.hyperedge_hasher = hyperedge_hashers.RandomHyperEdgeHasher(
           seed, self.table_size, repetitions, **hash_family_params)
-    elif hash_family == "coupled":
+    elif hash_family == _HASH_FAMILY_COUPLED:
       self.hyperedge_hasher = hyperedge_hashers.CoupledHyperEdgeHasher(
           seed, self.table_size, repetitions, **hash_family_params)
     else:
