@@ -33,8 +33,8 @@
 // The matching is based on what is provided by MessageDifferencer and so if new
 // modifiers are needed they can be added with more decorators in the future.
 
-#ifndef THIRD_PARTY_ECCLESIA_LIB_TESTING_PROTO_H_
-#define THIRD_PARTY_ECCLESIA_LIB_TESTING_PROTO_H_
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_PROTOBUF_MATCHERS_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_PROTOBUF_MATCHERS_H_
 
 #include <memory>
 #include <ostream>
@@ -351,4 +351,4 @@ auto UnorderedElementsAreProtos(Args... args) {
 }  // namespace testing
 }  // namespace tensorflow_federated
 
-#endif  // THIRD_PARTY_ECCLESIA_LIB_TESTING_PROTO_H_
+#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_PROTOBUF_MATCHERS_H_
