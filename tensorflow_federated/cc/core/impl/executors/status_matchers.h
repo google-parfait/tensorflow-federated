@@ -32,7 +32,6 @@ limitations under the License
 #include "grpcpp/grpcpp.h"
 
 namespace tensorflow_federated {
-
 namespace internal_status {
 
 using ::testing::Matcher;

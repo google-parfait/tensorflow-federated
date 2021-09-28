@@ -23,7 +23,8 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 
-namespace tensorflow_federated::internal_status {
+namespace tensorflow_federated {
+namespace internal_status {
 
 void StatusIsMatcherCommonImpl::DescribeTo(std::ostream* os) const {
   *os << ", has a status code that ";
@@ -102,4 +103,5 @@ void AddFatalFailure(absl::string_view expression, const char* file,
       ::testing::TestPartResult::kFatalFailure);
 }
 
-}  // namespace tensorflow_federated::internal_status
+}  // namespace internal_status
+}  // namespace tensorflow_federated
