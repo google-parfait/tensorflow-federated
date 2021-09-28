@@ -91,6 +91,7 @@ const tensorflow::SessionOptions& get_session_options() {
     auto experimental_pb = options_pb->config.mutable_experimental();
     experimental_pb->set_optimize_for_static_graph(true);
     experimental_pb->set_disable_output_partition_graphs(true);
+    experimental_pb->set_disable_functional_ops_lowering(true);
     options_pb->config.set_allow_soft_placement(true);
     return options_pb;
   }();
