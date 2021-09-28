@@ -61,14 +61,13 @@ class MockGrpcExecutorService : public v0::Executor::Service {
 class MockGrpcExecutorServer {
  public:
   explicit MockGrpcExecutorServer()
-      : server_(ABSL_DIE_IF_NULL(
-            grpc::ServerBuilder()
-                .AddListeningPort(
-                    "localhost:0",
-                    grpc::experimental::LocalServerCredentials(LOCAL_TCP),
-                    &port_)
-                .RegisterService(&service_)
-                .BuildAndStart())) {}
+      : server_(grpc::ServerBuilder()
+                    .AddListeningPort(
+                        "localhost:0",
+                        grpc::experimental::LocalServerCredentials(LOCAL_TCP),
+                        &port_)
+                    .RegisterService(&service_)
+                    .BuildAndStart()) {}
 
   ~MockGrpcExecutorServer() {
     server_->Shutdown();
