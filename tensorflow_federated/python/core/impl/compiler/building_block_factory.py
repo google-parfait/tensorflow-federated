@@ -358,7 +358,7 @@ def create_tensorflow_unary_operator(
   Args:
     operator: Callable taking one argument specifying the operation to encode.
       For example, `tf.math.abs`, `tf.math.reduce_sum`, ...
-    operand_type: The type of argument to the constructed binary operator. Must
+    operand_type: The type of argument to the constructed unary operator. Must
       be convertible to `computation_types.Type`.
 
   Returns:
