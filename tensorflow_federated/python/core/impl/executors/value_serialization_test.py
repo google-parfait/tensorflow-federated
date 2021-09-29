@@ -14,12 +14,12 @@
 
 import collections
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.executors import value_serialization
@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-class ExecutorServiceUtilsTest(test_case.TestCase):
+class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
 
   def test_serialize_deserialize_tensor_value(self):
     x = tf.constant(10.0)
@@ -99,12 +99,13 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
       _ = value_serialization.serialize_value(
           5, computation_types.SequenceType(tf.float32))
 
-  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test_utils.skip_test_for_gpu
-  def test_serialize_deserialize_sequence_of_scalars(self):
+  @parameterized.named_parameters(('as_dataset', lambda x: x),
+                                  ('as_list', list))
+  def test_serialize_deserialize_sequence_of_scalars(self, ds_repr_fn):
     ds = tf.data.Dataset.range(5).map(lambda x: x * 2)
+    ds_repr = ds_repr_fn(ds)
     value_proto, value_type = value_serialization.serialize_value(
-        ds, computation_types.SequenceType(tf.int64))
+        ds_repr, computation_types.SequenceType(tf.int64))
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type,
                                 computation_types.SequenceType(tf.int64))
@@ -113,13 +114,14 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
                                 computation_types.SequenceType(tf.int64))
     self.assertAllEqual(list(y), [x * 2 for x in range(5)])
 
-  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test_utils.skip_test_for_gpu
-  def test_serialize_deserialize_sequence_of_tuples(self):
+  @parameterized.named_parameters(('as_dataset', lambda x: x),
+                                  ('as_list', list))
+  def test_serialize_deserialize_sequence_of_tuples(self, ds_repr_fn):
     ds = tf.data.Dataset.range(5).map(
         lambda x: (x * 2, tf.cast(x, tf.int32), tf.cast(x - 1, tf.float32)))
+    ds_repr = ds_repr_fn(ds)
     value_proto, value_type = value_serialization.serialize_value(
-        ds,
+        ds_repr,
         computation_types.SequenceType(
             element=(tf.int64, tf.int32, tf.float32)))
     expected_type = computation_types.SequenceType(
@@ -132,9 +134,9 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     self.assert_types_equivalent(type_spec, expected_type)
     self.assertAllEqual(list(y), [(x * 2, x, x - 1.) for x in range(5)])
 
-  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test_utils.skip_test_for_gpu
-  def test_serialize_deserialize_sequence_of_namedtuples(self):
+  @parameterized.named_parameters(('as_dataset', lambda x: x),
+                                  ('as_list', list))
+  def test_serialize_deserialize_sequence_of_namedtuples(self, ds_repr_fn):
     test_tuple_type = collections.namedtuple('TestTuple', ['a', 'b', 'c'])
 
     def make_test_tuple(x):
@@ -142,11 +144,12 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
           a=x * 2, b=tf.cast(x, tf.int32), c=tf.cast(x - 1, tf.float32))
 
     ds = tf.data.Dataset.range(5).map(make_test_tuple)
+    ds_repr = ds_repr_fn(ds)
     element_type = computation_types.to_type(
         test_tuple_type(tf.int64, tf.int32, tf.float32))
     sequence_type = computation_types.SequenceType(element=element_type)
     value_proto, value_type = value_serialization.serialize_value(
-        ds, sequence_type)
+        ds_repr, sequence_type)
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assertEqual(value_type, sequence_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -158,9 +161,10 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     for actual, expected in zip(actual_values, expected_values):
       self.assertAllClose(actual, expected)
 
-  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test_utils.skip_test_for_gpu
-  def test_serialize_deserialize_sequence_of_nested_structures(self):
+  @parameterized.named_parameters(('as_dataset', lambda x: x),
+                                  ('as_list', list))
+  def test_serialize_deserialize_sequence_of_nested_structures(
+      self, ds_repr_fn):
     test_tuple_type = collections.namedtuple('TestTuple', ['u', 'v'])
 
     def _make_nested_tf_structure(x):
@@ -173,6 +177,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
           ]))
 
     ds = tf.data.Dataset.range(5).map(_make_nested_tf_structure)
+    ds_repr = ds_repr_fn(ds)
     element_type = computation_types.to_type(
         collections.OrderedDict(
             b=tf.int32,
@@ -183,7 +188,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
             ])))
     sequence_type = computation_types.SequenceType(element=element_type)
     value_proto, value_type = value_serialization.serialize_value(
-        ds, sequence_type)
+        ds_repr, sequence_type)
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type, sequence_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)

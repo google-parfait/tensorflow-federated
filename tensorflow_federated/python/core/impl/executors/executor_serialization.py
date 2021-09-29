@@ -136,12 +136,14 @@ def _serialize_dataset(
 
 @tracing.trace
 def _serialize_sequence_value(
-    value: Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES],
+    value: Union[Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES],
+                 List[Any]],
     type_spec: computation_types.SequenceType) -> _SerializeReturnType:
   """Serializes a `tf.data.Dataset` value into `executor_pb2.Value`.
 
   Args:
-    value: A `tf.data.Dataset`, or equivalent.
+    value: A `tf.data.Dataset`, or equivalent list of values convertible to
+      (potentially structures of) tensors.
     type_spec: A `computation_types.Type` specifying the TFF sequence type of
       `value.`
 
@@ -150,6 +152,9 @@ def _serialize_sequence_value(
     of `executor_pb2.Value` with the serialized content of `value`, and
     `type_spec` is the type of the serialized value.
   """
+  if isinstance(value, list):
+    value = tensorflow_utils.make_data_set_from_elements(
+        None, value, type_spec.element)
   if not isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
     raise TypeError(
         'Cannot serialize Python type {!s} as TFF type {!s}.'.format(

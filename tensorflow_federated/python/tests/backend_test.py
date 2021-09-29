@@ -25,15 +25,28 @@ from tensorflow_federated.python.tests import temperature_sensor_example
 from tensorflow_federated.python.tests import test_contexts
 
 
-class ExampleTest(parameterized.TestCase):
+class TemperatureSensorExampleTest(parameterized.TestCase):
 
   @test_contexts.with_contexts
-  def test_temperature_sensor_example(self):
+  def test_temperature_sensor_example_with_clients_datasets(self):
     to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [
         tf.data.Dataset.range(10).map(to_float),
         tf.data.Dataset.range(20).map(to_float),
         tf.data.Dataset.range(30).map(to_float),
+    ]
+    threshold = 10.0
+
+    result = temperature_sensor_example.mean_over_threshold(
+        temperatures, threshold)
+    self.assertEqual(result, 12.5)
+
+  @test_contexts.with_contexts
+  def test_temperature_sensor_example_with_clients_lists(self):
+    temperatures = [
+        [float(x) for x in range(10)],
+        [float(x) for x in range(20)],
+        [float(x) for x in range(30)],
     ]
     threshold = 10.0
 
