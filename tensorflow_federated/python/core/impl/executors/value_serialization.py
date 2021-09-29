@@ -280,7 +280,7 @@ def _deserialize_tensor_value(
     value_proto: An instance of `executor_pb2.Value`.
 
   Returns:
-    A tuple `(value, type_spec)`, where `value` is a Numpy array that represents
+    A tuple `(value, type_spec)`, where `value` is a `tf.Tensor` that represents
     the deserialized value, and `type_spec` is an instance of `tff.TensorType`
     that represents its type.
 
@@ -288,7 +288,8 @@ def _deserialize_tensor_value(
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
-  value = serialization_bindings.deserialize_tensor_value(value_proto)
+  value = tf.convert_to_tensor(
+      serialization_bindings.deserialize_tensor_value(value_proto))
   value_type = computation_types.TensorType(
       dtype=value.dtype, shape=value.shape)
   return value, value_type
