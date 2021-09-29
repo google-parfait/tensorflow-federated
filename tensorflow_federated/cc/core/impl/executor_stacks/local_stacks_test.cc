@@ -40,8 +40,10 @@ class LocalStacksTest : public ::testing::Test {
 };
 
 TEST_F(LocalStacksTest, CustomLeafExecutorIsCalled) {
-  MockFunction<absl::StatusOr<std::shared_ptr<Executor>>()> mock_executor_fn;
-  EXPECT_CALL(mock_executor_fn, Call()).WillOnce(Return(test_executor_));
+  MockFunction<absl::StatusOr<std::shared_ptr<Executor>>(absl::optional<int>)>
+      mock_executor_fn;
+  EXPECT_CALL(mock_executor_fn, Call(::testing::_))
+      .WillOnce(Return(test_executor_));
   TFF_EXPECT_OK(CreateLocalExecutor(cards_, mock_executor_fn.AsStdFunction()));
 }
 

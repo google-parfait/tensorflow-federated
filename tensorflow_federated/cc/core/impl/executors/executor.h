@@ -23,6 +23,7 @@ limitations under the License
 #include <utility>
 #include <vector>
 
+#include "base/logging.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -39,6 +40,7 @@ limitations under the License
 
 namespace tensorflow_federated {
 
+class OwnedValueId;
 class OwnedValueId;
 
 using ValueId = uint64_t;

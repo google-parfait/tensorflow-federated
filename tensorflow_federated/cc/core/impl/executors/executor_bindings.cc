@@ -127,13 +127,14 @@ PYBIND11_MODULE(executor_bindings, m) {
 
   // Executor construction methods.
   m.def("create_tensorflow_executor", &CreateTensorFlowExecutor,
-        "Creates a TensorFlowExecutor");
+        py::arg("max_concurrent_computation_calls") = py::none(),
+        "Creates a TensorFlowExecutor.");
   m.def("create_reference_resolving_executor",
         &CreateReferenceResolvingExecutor,
         "Creates a ReferenceResolvingExecutor", py::arg("inner_executor"));
   m.def("create_federating_executor", &CreateFederatingExecutor,
         py::arg("inner_executor"), py::arg("cardinalities"),
-        "Creates a FederatingExecutor");
+        "Creates a FederatingExecutor.");
   m.def("create_composing_child", &ComposingChild::Make, py::arg("executor"),
         py::arg("cardinalities"), "Creates a ComposingExecutor.");
   m.def("create_composing_executor", &CreateComposingExecutor,

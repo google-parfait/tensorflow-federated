@@ -18,13 +18,15 @@ limitations under the License
 
 #include <memory>
 
+#include "absl/types/optional.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 
 namespace tensorflow_federated {
 
 // Returns an executor that can resolve TensorFlow computations and structures
 // of tensors.
-std::shared_ptr<Executor> CreateTensorFlowExecutor();
+std::shared_ptr<Executor> CreateTensorFlowExecutor(
+    absl::optional<int> max_concurrent_computation_calls = absl::nullopt);
 
 }  // namespace tensorflow_federated
 

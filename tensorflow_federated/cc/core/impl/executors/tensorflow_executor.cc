@@ -52,6 +52,7 @@ limitations under the License
 #include "tensorflow/core/public/session.h"
 #include "tensorflow/core/public/session_options.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
@@ -68,135 +69,6 @@ namespace {
     LOG(ERROR) << m;   \
     return m;          \
   }(msg))
-
-const tensorflow::SessionOptions& get_session_options() {
-  // Creates default SessionOptions on first call, and re-uses them for all
-  // future calls.
-  static tensorflow::SessionOptions* session_options = []() {
-    tensorflow::SessionOptions* options_pb = new tensorflow::SessionOptions();
-    tensorflow::GraphOptions* graph_options_pb =
-        options_pb->config.mutable_graph_options();
-    // Disable JIT/runtime Grappler. TFF typically has short lived sessions,
-    // meaning that the benefit from running grappler is generally not realized
-    // and can be very expensive (anecdotally ~30% of CPU time).
-    graph_options_pb->mutable_rewrite_options()->set_disable_meta_optimizer(
-        true);
-    graph_options_pb->mutable_optimizer_options()->set_opt_level(
-        tensorflow::OptimizerOptions::L0);
-    graph_options_pb->mutable_optimizer_options()->set_global_jit_level(
-        tensorflow::OptimizerOptions::OFF);
-    // Don't eagerly allocate all GPU memory in each session.
-    options_pb->config.mutable_gpu_options()->set_allow_growth(true);
-    // Let the session know the graph will not change.
-    auto experimental_pb = options_pb->config.mutable_experimental();
-    experimental_pb->set_optimize_for_static_graph(true);
-    experimental_pb->set_disable_output_partition_graphs(true);
-    experimental_pb->set_disable_functional_ops_lowering(true);
-    options_pb->config.set_allow_soft_placement(true);
-    return options_pb;
-  }();
-  return *session_options;
-}
-
-// This class acts as a function from graph -> session, caching previously-
-// created sessions for later use.
-//
-// It is intended to limit the number of threads simultaneously calling
-// `NewSession` and `Session->create` to the number of hardware CPUs. This
-// allows other incoming threads the opportunity to wait for an already-created
-// session to finish rather than adding extra total work.
-class SessionProvider {
- public:
-  SessionProvider(tensorflow::GraphDef&& graph) : graph_(graph) {
-    maybe_open_cpus_ = std::thread::hardware_concurrency();
-  }
-
-  absl::StatusOr<std::unique_ptr<tensorflow::Session>> TakeSession() {
-    lock_.LockWhen(
-        absl::Condition(this, &SessionProvider::SessionOrCpuAvailable));
-    if (!sessions_.empty()) {
-      std::unique_ptr<tensorflow::Session> session(std::move(sessions_.back()));
-      sessions_.pop_back();
-      lock_.Unlock();
-      return std::move(session);
-    }
-    maybe_open_cpus_--;
-    lock_.Unlock();
-    auto session = CreateSession();
-    lock_.Lock();
-    maybe_open_cpus_++;
-    lock_.Unlock();
-    return session;
-  }
-
-  void ReturnSession(std::unique_ptr<tensorflow::Session>&& session) {
-    lock_.Lock();
-    sessions_.emplace_back(std::move(session));
-    lock_.Unlock();
-  }
-
-  // An RAII container which returns the session to the provider on destruction.
-  class SessionRental {
-   public:
-    SessionRental(std::unique_ptr<tensorflow::Session>&& session,
-                  SessionProvider& provider)
-        : session_(std::move(session)), provider_(provider) {}
-
-    SessionRental(SessionRental&& other)
-        : session_(std::move(other.session_)), provider_(other.provider_) {}
-
-    void ReturnRental() {
-      if (session_ != nullptr) {
-        provider_.ReturnSession(std::move(session_));
-      }
-    }
-
-    ~SessionRental() { ReturnRental(); }
-
-    tensorflow::Session* operator->() { return &*session_; }
-
-   private:
-    std::unique_ptr<tensorflow::Session> session_;
-    SessionProvider& provider_;
-  };
-
-  absl::StatusOr<SessionRental> BorrowSession() {
-    return SessionRental(TFF_TRY(TakeSession()), *this);
-  }
-
- private:
-  bool SessionOrCpuAvailable() {
-    return !sessions_.empty() || maybe_open_cpus_ > 0;
-  }
-
-  absl::StatusOr<std::unique_ptr<tensorflow::Session>> CreateSession() {
-    // TODO(b/192457299) how expensive is this work, really? is it worth the
-    // extra work to cache it and limit it to num_cpus? If not, we could get rid
-    // of the whole `SessionProvider` class.
-    std::unique_ptr<tensorflow::Session> session(
-        tensorflow::NewSession(get_session_options()));
-    if (session == nullptr) {
-      return absl::InternalError("Failed to create TensorFlow session.");
-    }
-    auto status = session->Create(graph_);
-    if (!status.ok()) {
-      return absl::InternalError(absl::StrCat(
-          "Failed to create graph in session: ", status.error_message()));
-    }
-    return std::move(session);
-  }
-
-  // Move-only.
-  SessionProvider(SessionProvider&& other) = default;
-  SessionProvider& operator=(SessionProvider&& other) = default;
-  SessionProvider(const SessionProvider&) = delete;
-  SessionProvider& operator=(const SessionProvider&) = delete;
-
-  absl::Mutex lock_;
-  std::vector<std::unique_ptr<tensorflow::Session>> sessions_;
-  uint16_t maybe_open_cpus_;
-  tensorflow::GraphDef graph_;
-};
 
 class ExecutorValue;
 
@@ -435,7 +307,7 @@ absl::Status AddDatastSerializationToSequenceBindings(
 class Computation {
  public:
   static absl::StatusOr<std::shared_ptr<Computation>> FromProto(
-      const v0::TensorFlow& comp_pb) {
+      const v0::TensorFlow& comp_pb, absl::optional<int> max_active_sessions) {
     tensorflow::GraphDef graphdef_pb;
     if (!comp_pb.graph_def().UnpackTo(&graphdef_pb)) {
       return absl::InternalError(ERR_LOG("Could not unpack graphdef proto"));
@@ -452,7 +324,7 @@ class Computation {
     return std::make_shared<Computation>(
         std::move(graphdef_pb), comp_pb.initialize_op(),
         std::move(parameter_shape), comp_pb.result(),
-        std::move(output_tensor_names));
+        std::move(output_tensor_names), max_active_sessions);
   }
 
   absl::StatusOr<ExecutorValue> Call(absl::optional<ExecutorValue> arg);
@@ -460,8 +332,9 @@ class Computation {
   Computation(tensorflow::GraphDef graph, std::string init_op,
               absl::optional<v0::TensorFlow::Binding> parameter_shape,
               v0::TensorFlow::Binding output_shape,
-              std::vector<std::string> output_tensor_names)
-      : session_provider_(std::move(graph)),
+              std::vector<std::string> output_tensor_names,
+              absl::optional<int> max_active_sessions = absl::nullopt)
+      : session_provider_(std::move(graph), max_active_sessions),
         init_op_(std::move(init_op)),
         parameter_shape_(std::move(parameter_shape)),
         output_shape_(std::move(output_shape)),
@@ -782,7 +655,9 @@ absl::Status MaterializeSequence(const tensorflow::Tensor& graph_def_tensor,
 
 class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
  public:
-  TensorFlowExecutor() {}
+  explicit TensorFlowExecutor(
+      absl::optional<int> max_concurrent_computation_calls)
+      : max_concurrent_computation_calls_(max_concurrent_computation_calls) {}
 
  private:
   // A hash map of compiler generated TensorFlow function ids to already
@@ -790,6 +665,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   absl::flat_hash_map<uint64_t, std::shared_ptr<Computation>> function_cache_
       ABSL_GUARDED_BY(function_cache_mutex_);
   absl::Mutex function_cache_mutex_;
+  absl::optional<uint16_t> max_concurrent_computation_calls_;
 
   absl::StatusOr<ExecutorValue> CreateValueAny(const v0::Value& value_pb) {
     VLOG(2) << "Creating value: " << value_pb.Utf8DebugString();
@@ -824,8 +700,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
         comp_pb.tensorflow().cache_key().id() == 0) {
       // No ID to use for caching, simply create a computation and skip cache
       // logic.
-      return ExecutorValue(
-          TFF_TRY(Computation::FromProto(comp_pb.tensorflow())));
+      return ExecutorValue(TFF_TRY(Computation::FromProto(
+          comp_pb.tensorflow(), max_concurrent_computation_calls_)));
     }
     const uint64_t function_id = comp_pb.tensorflow().cache_key().id();
     // Try the fast path first, reader locks are much cheaper.
@@ -839,8 +715,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
     }
     // Otherwise build the cached value and insert it into the cache.
     VLOG(2) << "Cache MISS for function id: " << function_id;
-    std::shared_ptr<Computation> computation =
-        TFF_TRY(Computation::FromProto(comp_pb.tensorflow()));
+    std::shared_ptr<Computation> computation = TFF_TRY(Computation::FromProto(
+        comp_pb.tensorflow(), max_concurrent_computation_calls_));
     {
       absl::WriterMutexLock writer_lock(&function_cache_mutex_);
       auto result = function_cache_.try_emplace(function_id, computation);
@@ -989,8 +865,9 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
 }  // namespace
 
-std::shared_ptr<Executor> CreateTensorFlowExecutor() {
-  return std::make_shared<TensorFlowExecutor>();
+std::shared_ptr<Executor> CreateTensorFlowExecutor(
+    absl::optional<int> max_concurrent_computation_calls) {
+  return std::make_shared<TensorFlowExecutor>(max_concurrent_computation_calls);
 }
 
 }  // namespace tensorflow_federated

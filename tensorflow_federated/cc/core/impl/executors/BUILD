@@ -116,6 +116,7 @@ cc_library(
     tags = ["nokokoro"],
     deps = [
         ":status_macros",
+        "//base:logging",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/base:core_headers",
@@ -458,12 +459,50 @@ cc_library(
 )
 
 cc_library(
+    name = "session_provider",
+    hdrs = ["session_provider.h"],
+    tags = ["nokokoro"],
+    deps = [
+        ":status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:optional",
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
+        "@org_tensorflow//tensorflow/core:core_cpu",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core:tensorflow_opensource",
+    ],
+)
+
+cc_test(
+    name = "session_provider_test",
+    srcs = ["session_provider_test.cc"],
+    tags = ["nokokoro"],
+    deps = [
+        ":session_provider",
+        ":status_matchers",
+        "@com_google_googletest//:gtest_main",
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:cc_ops",
+        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
+        "@org_tensorflow//tensorflow/cc:math_ops",
+        "@org_tensorflow//tensorflow/cc:resource_variable_ops",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
+        "@org_tensorflow//tensorflow/core:tensorflow",
+    ],
+)
+
+cc_library(
     name = "tensorflow_executor",
     srcs = ["tensorflow_executor.cc"],
     hdrs = ["tensorflow_executor.h"],
     tags = ["nokokoro"],
     deps = [
         ":executor",
+        ":session_provider",
         ":status_macros",
         ":tensor_serialization",
         ":threading",

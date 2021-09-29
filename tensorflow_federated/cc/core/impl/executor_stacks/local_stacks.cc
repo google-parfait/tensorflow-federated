@@ -25,10 +25,12 @@ namespace tensorflow_federated {
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateLocalExecutor(
     const CardinalityMap& cardinalities,
-    std::function<absl::StatusOr<std::shared_ptr<Executor>>()>
+    std::function<
+        absl::StatusOr<std::shared_ptr<Executor>>(absl::optional<int>)>
         leaf_executor_fn) {
-  return CreateReferenceResolvingExecutor(TFF_TRY(CreateFederatingExecutor(
-      CreateReferenceResolvingExecutor(TFF_TRY(leaf_executor_fn())),
-      cardinalities)));
+  return CreateReferenceResolvingExecutor(
+      TFF_TRY(CreateFederatingExecutor(CreateReferenceResolvingExecutor(TFF_TRY(
+                                           leaf_executor_fn(absl::nullopt))),
+                                       cardinalities)));
 }
 }  // namespace tensorflow_federated
