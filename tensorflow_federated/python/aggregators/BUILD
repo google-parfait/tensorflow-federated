@@ -333,6 +333,41 @@ py_test(
 )
 
 py_library(
+    name = "rotation",
+    srcs = ["rotation.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":factory",
+        ":sum_factory",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)
+
+py_test(
+    name = "rotation_test",
+    srcs = ["rotation_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":mean",
+        ":rotation",
+        ":sum_factory",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)
+
+py_library(
     name = "sampling",
     srcs = ["sampling.py"],
     srcs_version = "PY3",
