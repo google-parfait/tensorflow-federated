@@ -43,4 +43,7 @@ class PerfRegressionTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
+  # TODO(b/200298814): explicitly set the python executor while the C++ executor
+  # doesn't have suport for `tff.federated_collect`.
+  tff.backends.native.set_local_python_execution_context()
   absltest.main()
