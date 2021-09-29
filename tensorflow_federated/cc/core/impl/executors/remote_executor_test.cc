@@ -40,10 +40,10 @@ limitations under the License
 #include "tensorflow_federated/proto/v0/executor.grpc.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
-using testing::EqualsProto;
-using ::testing::proto::IgnoringRepeatedFieldOrdering;
-
 namespace tensorflow_federated {
+
+using testing::EqualsProto;
+using testing::proto::IgnoringRepeatedFieldOrdering;
 
 template <typename ResponseType>
 auto CreateResponseForId(absl::string_view id) {
