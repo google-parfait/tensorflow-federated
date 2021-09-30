@@ -25,7 +25,6 @@ py_library(
     deps = [
         ":checkpoint_manager",
         ":csv_manager",
-        ":dictionary_manager",
         ":iterative_process_compositions",
         ":metrics_manager",
         ":sampling_utils",
@@ -65,21 +64,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":csv_manager"],
-)
-
-py_library(
-    name = "dictionary_manager",
-    srcs = ["dictionary_manager.py"],
-    srcs_version = "PY3",
-    deps = [":metrics_manager"],
-)
-
-py_test(
-    name = "dictionary_manager_test",
-    srcs = ["dictionary_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":dictionary_manager"],
 )
 
 py_library(
