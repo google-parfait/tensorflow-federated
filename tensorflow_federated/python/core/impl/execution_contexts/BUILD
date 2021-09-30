@@ -111,6 +111,7 @@ py_library(
 py_test(
     name = "mergeable_comp_execution_context_test",
     size = "small",
+    timeout = "moderate",
     srcs = ["mergeable_comp_execution_context_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
