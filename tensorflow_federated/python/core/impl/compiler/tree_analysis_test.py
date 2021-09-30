@@ -203,6 +203,43 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
           broadcasted_aggregate)
 
 
+class AggregateDependentOnAggregateTest(absltest.TestCase):
+
+  def test_raises_on_none_comp(self):
+    with self.assertRaises(TypeError):
+      tree_analysis.check_aggregate_not_dependent_on_aggregate(None)
+
+  def test_does_not_find_aggregate_dependent_on_broadcast(self):
+    broadcast = test_utils.create_whimsy_called_federated_broadcast()
+    value_type = broadcast.type_signature
+    zero = building_blocks.Data('zero', value_type.member)
+    accumulate_result = building_blocks.Data('accumulate_result',
+                                             value_type.member)
+    accumulate = building_blocks.Lambda('accumulate_parameter',
+                                        [value_type.member, value_type.member],
+                                        accumulate_result)
+    merge_result = building_blocks.Data('merge_result', value_type.member)
+    merge = building_blocks.Lambda('merge_parameter',
+                                   [value_type.member, value_type.member],
+                                   merge_result)
+    report_result = building_blocks.Data('report_result', value_type.member)
+    report = building_blocks.Lambda('report_parameter', value_type.member,
+                                    report_result)
+    aggregate_dependent_on_broadcast = building_block_factory.create_federated_aggregate(
+        broadcast, zero, accumulate, merge, report)
+    tree_analysis.check_aggregate_not_dependent_on_aggregate(
+        aggregate_dependent_on_broadcast)
+
+  def test_finds_aggregate_dependent_on_aggregate(self):
+    aggregate = test_utils.create_whimsy_called_federated_aggregate()
+    broadcasted_aggregate = building_block_factory.create_federated_broadcast(
+        aggregate)
+    second_aggregate = building_block_factory.create_federated_sum(
+        broadcasted_aggregate)
+    with self.assertRaises(ValueError):
+      tree_analysis.check_aggregate_not_dependent_on_aggregate(second_aggregate)
+
+
 class CountTensorFlowOpsTest(absltest.TestCase):
 
   def test_raises_on_none(self):
