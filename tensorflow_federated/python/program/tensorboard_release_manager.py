@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities to release values from a federated program to TensorBoard."""
+"""Utilities for releasing values from a federated program to TensorBoard."""
 
 import os
 from typing import Any, Union
@@ -25,9 +25,14 @@ from tensorflow_federated.python.program import structure_utils
 
 
 class TensorboardReleaseManager(release_manager.ReleaseManager):
-  """A `tff.program.ReleaseManager` that releases values using `tf.summary`.
+  """A `tff.program.ReleaseManager` that releases values to TensorBoard.
 
-  Summary data can only contain booleans, integers, unsigned integers, and
+  A `tff.program.TensorboardReleaseManager` is a utility for releasing values
+  from a federated program to TensorBoard and is used to release values from
+  platform storage to customer storage in a federated program.
+
+  Note: This manager releases values as summary data using `tf.summary` and
+  summary data can only contain booleans, integers, unsigned integers, and
   floats, releasing any other values will be silently ignored.
 
   See https://www.tensorflow.org/api_docs/python/tf/summary for more information
@@ -54,7 +59,7 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
   def release(self, value: Any, key: int):
-    """Releases a value from a federated program.
+    """Releases the `value` from a federated program.
 
     Args:
       value: The value to release.

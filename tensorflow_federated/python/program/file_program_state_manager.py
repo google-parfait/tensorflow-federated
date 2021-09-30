@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities to save and load program state to a file system."""
+"""Utilities for saving and loading program state to a file system."""
 
 import os
 import os.path
@@ -31,14 +31,15 @@ class FileProgramStateManagerStructureError(Exception):
 
 
 class FileProgramStateManager(program_state_manager.ProgramStateManager):
-  """A `ProgramStateManager` backed by a file system.
+  """A `tff.program.ProgramStateManager` that is backed by a file system.
 
-  The `FileProgramStateManager` is a utility that can be used to save and load
-  program state to a file system. This implemenation is compatible with any
-  nested structure supported by `tf.convert_to_tensor` and is intended to
-  support fault tolerance in programs. In particular, it is intended to only
-  restart the same simulation, run with the same version of TensorFlow
-  Federated.
+  A `tff.program.FileProgramStateManager` is a utility for saving and loading
+  program state to a file system in a federated program and is used to implement
+  fault tolerance. In particular, it is intended to only restart the same
+  simulation and run with the same version of TensorFlow Federated.
+
+  Note: This manager can store program state that is compatible with any nested
+  structure supported by `tf.convert_to_tensor`
   """
 
   def __init__(self,

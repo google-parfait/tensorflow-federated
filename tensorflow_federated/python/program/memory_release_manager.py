@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities to release values from a federated program to memory."""
+"""Utilities for releasing values from a federated program to memory."""
 
 import collections
 from typing import Any, Dict, Hashable
@@ -20,14 +20,14 @@ from tensorflow_federated.python.program import release_manager
 
 
 class MemoryReleaseManager(release_manager.ReleaseManager):
-  """A `ReleaseManager` that stores values in memory."""
+  """A `tff.program.ReleaseManager` that releases values to memory."""
 
   def __init__(self):
-    """Returns an initialized `MemoryReleaseManager`."""
+    """Returns an initialized `tff.program.MemoryReleaseManager`."""
     self._values = collections.OrderedDict()
 
   def release(self, value: Any, key: Hashable):
-    """Releases a value from a federated program.
+    """Releases the `value` from a federated program.
 
     Args:
       value: The value to release.

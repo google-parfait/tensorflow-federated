@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities to save and load program state."""
+"""Utilities for saving and loading program state in a federated program."""
 
 import abc
 from typing import Any, List, Optional, Tuple
@@ -26,12 +26,11 @@ class ProgramStateManagerVersionNotFoundError(Exception):
 
 
 class ProgramStateManager(metaclass=abc.ABCMeta):
-  """An abstract interface for `ProgramStateManager`s.
+  """An interface for saving and loading program state in a federated program.
 
-  A `ProgramStateManager` is a utility to save and load intermediate program
-  state that can be used for fault tolerance. The structure or type of the
-  program state that is saved is unknown at construction time and can change as
-  the program runs.
+  A `tff.program.ProgramStateManager` is used to implement fault tolerance in a
+  federated program. The structure or type of the program state that is saved is
+  unknown at construction time and can change as the program runs.
   """
 
   @abc.abstractmethod

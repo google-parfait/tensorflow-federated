@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities to release values from a federated program to logging."""
+"""Utilities for releasing values from a federated program to logs."""
 
 from typing import Any
 
@@ -21,10 +21,10 @@ from tensorflow_federated.python.program import release_manager
 
 
 class LoggingReleaseManager(release_manager.ReleaseManager):
-  """A `ReleaseManager` that logs values."""
+  """A `tff.program.ReleaseManager` that releases values to logs."""
 
   def release(self, value: Any, key: Any = None):
-    """Releases a value from a federated program.
+    """Releases the `value` from a federated program.
 
     Args:
       value: The value to release.
