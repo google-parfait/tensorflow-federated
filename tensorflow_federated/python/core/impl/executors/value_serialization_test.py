@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
@@ -30,16 +31,35 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 
 class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
 
-  def test_serialize_deserialize_tensor_value(self):
-    x = tf.constant(10.0)
-    type_spec = computation_types.TensorType(tf.as_dtype(x.dtype), x.shape)
+  @parameterized.named_parameters(('scalar', np.float32(25.0)),
+                                  ('1d_tensor', np.asarray([1.0, 2.0])))
+  def test_serialize_deserialize_tensor_value_without_hint(self, x):
+    tf_type = tf.as_dtype(x.dtype)
+    type_spec = computation_types.TensorType(tf_type, x.shape)
     value_proto, value_type = value_serialization.serialize_value(x, type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type,
-                                computation_types.TensorType(tf.float32))
+                                computation_types.TensorType(tf_type, x.shape))
     y, type_spec = value_serialization.deserialize_value(value_proto)
     self.assert_types_identical(type_spec,
-                                computation_types.TensorType(tf.float32))
+                                computation_types.TensorType(tf_type, x.shape))
+    self.assertIsInstance(y, type(x))
+    self.assertAllEqual(x, y)
+
+  @parameterized.named_parameters(('scalar', np.float32(25.0)),
+                                  ('1d_tensor', np.asarray([1.0, 2.0])))
+  def test_serialize_deserialize_tensor_value_with_hint(self, x):
+    tf_type = tf.as_dtype(x.dtype)
+    type_spec = computation_types.TensorType(tf_type, x.shape)
+    value_proto, value_type = value_serialization.serialize_value(x, type_spec)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
+    self.assert_types_identical(value_type,
+                                computation_types.TensorType(tf_type, x.shape))
+    y, type_spec = value_serialization.deserialize_value(
+        value_proto, type_hint=type_spec)
+    self.assert_types_identical(type_spec,
+                                computation_types.TensorType(tf_type, x.shape))
+    self.assertIsInstance(y, type(x))
     self.assertAllEqual(x, y)
 
   def test_serialize_deserialize_variable_as_tensor_value(self):
