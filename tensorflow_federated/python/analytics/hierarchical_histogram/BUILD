@@ -21,7 +21,6 @@ py_test(
     name = "hierarchical_histogram_factory_test",
     srcs = ["hierarchical_histogram_factory_test.py"],
     python_version = "PY3",
-    shard_count = 4,
     srcs_version = "PY3",
     deps = [
         ":build_tree_from_leaf",
