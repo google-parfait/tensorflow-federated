@@ -58,6 +58,7 @@ py_test(
     size = "medium",
     srcs = ["iblt_lib_test.py"],
     python_version = "PY3",
+    shard_count = 4,
     srcs_version = "PY3",
     deps = [":iblt_lib"],
 )
