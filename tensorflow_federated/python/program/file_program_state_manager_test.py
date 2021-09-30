@@ -26,6 +26,15 @@ from tensorflow_federated.python.program import program_state_manager
 
 class FileProgramStateManagerInitTest(parameterized.TestCase):
 
+  def test_creates_root_dir(self):
+    temp_dir = self.create_tempdir()
+    root_dir = os.path.join(temp_dir, 'test')
+    self.assertFalse(os.path.exists(root_dir))
+
+    file_program_state_manager.FileProgramStateManager(root_dir=root_dir)
+
+    self.assertTrue(os.path.exists(root_dir))
+
   def test_does_not_raise_type_error_with_root_dir_str(self):
     try:
       file_program_state_manager.FileProgramStateManager(
@@ -51,6 +60,10 @@ class FileProgramStateManagerInitTest(parameterized.TestCase):
   def test_raises_type_error_with_root_dir(self, root_dir):
     with self.assertRaises(TypeError):
       file_program_state_manager.FileProgramStateManager(root_dir=root_dir)
+
+  def test_raises_value_error_with_root_dir_empty(self):
+    with self.assertRaises(ValueError):
+      file_program_state_manager.FileProgramStateManager(root_dir='')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -215,8 +228,7 @@ class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('normal', '/tmp', 'a_', 123, '/tmp/a_123'),
-      ('root_dir_with_trailing_slash', '/tmp/', 'a_', 123, '/tmp/a_123'),
-      ('no_root_dir', '', 'a_', 123, 'a_123'),
+      ('trailing_slash', '/tmp/', 'a_', 123, '/tmp/a_123'),
       ('no_prefix', '/tmp', '', 123, '/tmp/123'),
   )
   def test_returns_version_with_root_dir_and_prefix(self, root_dir, prefix,

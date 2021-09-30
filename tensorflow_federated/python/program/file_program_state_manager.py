@@ -15,7 +15,6 @@
 
 import os
 import os.path
-import re
 from typing import Any, List, Optional, Union
 
 from absl import logging
@@ -50,7 +49,8 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     """Returns an initialized `ProgramStateManager`.
 
     Args:
-      root_dir: A path on the filesystem to save program state.
+      root_dir: A path on the file system to save program state. If this path
+        does not exist it will be created.
       prefix: A string to use as the prefix for filenames.
       keep_total: An integer representing the total number of program states to
         keep. If the value is zero or smaller, all program states will be kept.
@@ -61,17 +61,22 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
         weights or optimizer states are initialized randomly. By loading from
         the initial program state, one can avoid re-initializing and obtaining
         different results.
+
+    Raises:
+      ValueError: If `root_dir` is an empty string.
     """
     py_typecheck.check_type(root_dir, (str, os.PathLike))
+    if not root_dir:
+      raise ValueError('Expected `root_dir` to not be an empty string.')
     py_typecheck.check_type(prefix, str)
     py_typecheck.check_type(keep_total, int)
     py_typecheck.check_type(keep_first, bool)
+    if not tf.io.gfile.exists(root_dir):
+      tf.io.gfile.makedirs(root_dir)
     self._root_dir = root_dir
     self._prefix = prefix
     self._keep_total = keep_total
     self._keep_first = keep_first
-    path = re.escape(os.path.join(root_dir, prefix))
-    self._version_expression = re.compile(r'{}([0-9]+)$'.format(path))
     self._structure = None
 
   # TODO(b/199737690): Update `FileProgramStateManager` to not require a
