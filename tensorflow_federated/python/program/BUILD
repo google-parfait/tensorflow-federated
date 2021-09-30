@@ -52,10 +52,7 @@ py_library(
     name = "logging_release_manager",
     srcs = ["logging_release_manager.py"],
     srcs_version = "PY3",
-    deps = [
-        ":release_manager",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-    ],
+    deps = [":release_manager"],
 )
 
 py_test(

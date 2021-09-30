@@ -13,36 +13,24 @@
 # limitations under the License.
 """Utilities to release values from a federated program to logging."""
 
-from typing import Any, Optional
+from typing import Any
 
 from absl import logging
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.program import release_manager
 
 
 class LoggingReleaseManager(release_manager.ReleaseManager):
   """A `ReleaseManager` that logs values."""
 
-  def release(self, value: Any, key: Optional[int] = None):
+  def release(self, value: Any, key: Any = None):
     """Releases a value from a federated program.
 
     Args:
       value: The value to release.
-      key: An optional nonnegative integer to use to reference the released
-        `value`, if specified, this value represents a round number in a
-        federated program.
-
-    Raises:
-      ValueError: If `key` is a negative integer.
+      key: An optional value to use to reference the released `value`.
     """
     if key is not None:
-      py_typecheck.check_type(key, int)
-      if key < 0:
-        raise ValueError(
-            f'Expected `key` to be a nonnegative integer, found {key}; this '
-            'value represents a round number in a federated program and round '
-            'numbers are required to be nonnegative integers.')
-      logging.info('Releasing value at round %d: %s', key, value)
+      logging.info('Releasing value for key %d: %s', key, value)
     else:
       logging.info('Releasing value: %s', value)

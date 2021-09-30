@@ -24,53 +24,21 @@ class LoggingReleaseManagerTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('none_none', None, None),
-      ('none_0', None, 0),
-      ('none_1', None, 1),
+      ('none_int', None, 1),
+      ('none_list', None, [1, 2, 3]),
       ('int_none', 1, None),
-      ('int_0', 1, 0),
-      ('int_1', 1, 1),
+      ('int_int', 1, 1),
+      ('int_list', 1, [1, 2, 3]),
       ('list_none', [1, 2, 3], None),
-      ('list_0', [1, 2, 3], 0),
-      ('list_1', [1, 2, 3], 1),
+      ('list_int', [1, 2, 3], 1),
+      ('list_list', [1, 2, 3], [1, 2, 3]),
   )
   def test_release_logs_value_and_key(self, value, key):
     logging_release_mngr = logging_release_manager.LoggingReleaseManager()
 
-    with mock.patch('absl.logging.info') as mock_logging_info:
+    with mock.patch('absl.logging.info') as mock_info:
       logging_release_mngr.release(value, key)
-      mock_logging_info.assert_called_once()
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('0', 0),
-      ('1', 1),
-  )
-  def test_release_does_not_raise_with_key(self, key):
-    logging_release_mngr = logging_release_manager.LoggingReleaseManager()
-
-    try:
-      logging_release_mngr.release(1, key)
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
-    except ValueError:
-      self.fail('Raised ValueError unexpectedly.')
-
-  @parameterized.named_parameters(
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_release_raises_type_error_with_key(self, key):
-    logging_release_mngr = logging_release_manager.LoggingReleaseManager()
-
-    with self.assertRaises(TypeError):
-      logging_release_mngr.release(1, key)
-
-  def test_release_raises_value_error_with_key_negative_int(self):
-    logging_release_mngr = logging_release_manager.LoggingReleaseManager()
-
-    with self.assertRaises(ValueError):
-      logging_release_mngr.release(1, -1)
-
+      mock_info.assert_called_once()
 
 if __name__ == '__main__':
   absltest.main()
