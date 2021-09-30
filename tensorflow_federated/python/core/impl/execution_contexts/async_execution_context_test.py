@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from absl.testing import absltest
+import numpy as np
+import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.executors import executors_errors
 
 
-class RetryableErrorTest(absltest.TestCase):
+class RetryableErrorTest(tf.test.TestCase):
 
   def test_is_retryable_error(self):
     retryable_error = executors_errors.RetryableError()
@@ -30,5 +31,22 @@ class RetryableErrorTest(absltest.TestCase):
     self.assertFalse(async_execution_context._is_retryable_error(None))
 
 
+class UnwrapValueTest(tf.test.TestCase):
+
+  def test_tensor(self):
+    result = async_execution_context._unwrap(tf.constant(1))
+    self.assertIsInstance(result, np.int32)
+    result = async_execution_context._unwrap(tf.constant([1, 2]))
+    self.assertIsInstance(result, np.ndarray)
+    self.assertAllEqual(result, [1, 2])
+
+  def test_structure_of_tensors(self):
+    result = async_execution_context._unwrap([tf.constant(x) for x in range(5)])
+    self.assertIsInstance(result, list)
+    for x in range(5):
+      self.assertIsInstance(result[x], np.int32)
+      self.assertEqual(result[x], x)
+
+
 if __name__ == '__main__':
-  absltest.main()
+  tf.test.main()

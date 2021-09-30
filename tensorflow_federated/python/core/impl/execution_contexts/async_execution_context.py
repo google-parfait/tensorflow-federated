@@ -45,6 +45,8 @@ def _unwrap(value):
   elif isinstance(value, structure.Struct):
     return structure.Struct(
         (k, _unwrap(v)) for k, v in structure.iter_elements(value))
+  elif isinstance(value, list):
+    return [_unwrap(v) for v in value]
   else:
     return value
 
