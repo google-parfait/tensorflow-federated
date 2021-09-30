@@ -24,6 +24,7 @@ py_library(
         ":memory_release_manager",
         ":program_state_manager",
         ":release_manager",
+        ":tensorboard_release_manager",
     ],
 )
 
@@ -93,4 +94,34 @@ py_library(
     name = "release_manager",
     srcs = ["release_manager.py"],
     srcs_version = "PY3",
+)
+
+py_library(
+    name = "structure_utils",
+    srcs = ["structure_utils.py"],
+)
+
+py_test(
+    name = "structure_utils_test",
+    srcs = ["structure_utils_test.py"],
+    deps = [":structure_utils"],
+)
+
+py_library(
+    name = "tensorboard_release_manager",
+    srcs = ["tensorboard_release_manager.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":release_manager",
+        ":structure_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "tensorboard_release_manager_test",
+    srcs = ["tensorboard_release_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":tensorboard_release_manager"],
 )
