@@ -798,9 +798,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
       ])
       call = mock.call(metrics, round_num)
       calls.append(call)
-    metrics_manager_1.save_metrics.assert_has_calls(calls)
-    metrics_manager_2.save_metrics.assert_has_calls(calls)
-    metrics_manager_3.save_metrics.assert_has_calls(calls)
+    metrics_manager_1.release.assert_has_calls(calls)
+    metrics_manager_2.release.assert_has_calls(calls)
+    metrics_manager_3.release.assert_has_calls(calls)
 
   @parameterized.named_parameters(
       ('0_1', 0, 1),
@@ -855,9 +855,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
         ])
       call = mock.call(metrics, round_num)
       calls.append(call)
-    metrics_manager_1.save_metrics.assert_has_calls(calls)
-    metrics_manager_2.save_metrics.assert_has_calls(calls)
-    metrics_manager_3.save_metrics.assert_has_calls(calls)
+    metrics_manager_1.release.assert_has_calls(calls)
+    metrics_manager_2.release.assert_has_calls(calls)
+    metrics_manager_3.release.assert_has_calls(calls)
 
   def test_performance_metrics_with_training_and_evaluation_time_10(self):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
@@ -881,7 +881,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
             evaluation_selection_fn=evaluation_selection_fn,
             metrics_managers=[metrics_manager])
 
-    for index, call in enumerate(metrics_manager.save_metrics.mock_calls):
+    for index, call in enumerate(metrics_manager.release.mock_calls):
       _, args, _ = call
       metrics, round_num = args
       if round_num > 0:

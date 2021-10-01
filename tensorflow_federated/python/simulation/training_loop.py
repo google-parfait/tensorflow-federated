@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.program import file_program_state_manager as file_program_state_manager_lib
 from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
+from tensorflow_federated.python.program import release_manager as release_manager_lib
 from tensorflow_federated.python.simulation import checkpoint_manager
 from tensorflow_federated.python.simulation import metrics_manager as metrics_manager_lib
 
@@ -498,7 +499,7 @@ def run_training_process(
         program_state_manager_lib.ProgramStateManager] = None,
     rounds_per_saving_program_state: int = 1,
     metrics_managers: Optional[Iterable[
-        metrics_manager_lib.MetricsManager]] = None):
+        release_manager_lib.ReleaseManager]] = None):
   """Runs a federated `training_process`.
 
   The following `tff.Computation` types signaures are required:
@@ -542,8 +543,8 @@ def run_training_process(
       to save program state for fault tolerance.
     rounds_per_saving_program_state: The number of training rounds to run
       between saving program state.
-    metrics_managers: An optional list of `tff.simulation.MetricsManager`s to
-      use to save metrics.
+    metrics_managers: An optional list of `tff.program.ReleaseManagers`s to use
+      to save metrics.
 
   Returns:
     The `state` of the training process after training.
@@ -580,7 +581,7 @@ def run_training_process(
 
       if metrics_managers is not None:
         for metrics_manager in metrics_managers:
-          metrics_manager.save_metrics(evaluation_metrics, 0)
+          metrics_manager.release(evaluation_metrics, 0)
 
     if program_state_manager is not None:
       program_state_manager.save(state, 0)
@@ -602,7 +603,7 @@ def run_training_process(
 
     if metrics_managers is not None:
       for metrics_manager in metrics_managers:
-        metrics_manager.save_metrics(round_metrics, round_num)
+        metrics_manager.release(round_metrics, round_num)
 
     if program_state_manager is not None:
       if round_num % rounds_per_saving_program_state == 0:
