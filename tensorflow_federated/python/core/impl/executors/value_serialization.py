@@ -293,11 +293,11 @@ def _deserialize_tensor_value(
     ValueError: If the value is malformed.
   """
   value = serialization_bindings.deserialize_tensor_value(value_proto)
+  value_type = computation_types.TensorType(
+      dtype=value.dtype, shape=value.shape)
   if not value.shape:
     # Unwrap the scalar array as just a primitive numeric.
     value = value.dtype.type(value)
-  value_type = computation_types.TensorType(
-      dtype=value.dtype, shape=value.shape)
   return value, value_type
 
 
