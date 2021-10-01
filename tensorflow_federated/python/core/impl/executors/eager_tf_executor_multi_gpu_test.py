@@ -40,13 +40,6 @@ class MultiGPUTest(tf.test.TestCase):
       eager_tf_executor._check_dataset_reduce_for_multi_gpu(
           graph.as_graph_def())
 
-  def test_check_dataset_reduce_for_multi_gpu_tf_device_no_raise(self):
-    logical_gpus = tf.config.list_logical_devices('GPU')
-    with tf.Graph().as_default() as graph:
-      with tf.device(logical_gpus[0].name):
-        tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
-    eager_tf_executor._check_dataset_reduce_for_multi_gpu(graph.as_graph_def())
-
   def test_get_no_arg_wrapped_function_multi_gpu_no_reduce(self):
 
     @computations.tf_computation

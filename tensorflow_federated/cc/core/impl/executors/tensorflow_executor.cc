@@ -187,6 +187,8 @@ absl::Status AddDeserializationOpsForParameters(
       graph_from_dataset_node->set_op(kDatasetFromGraphOp);
       graph_from_dataset_node->add_input()->assign(
           dataset_placeholder_node_name);
+      graph_from_dataset_node->set_device(
+          absl::StrCat("/device:", tensorflow::DEVICE_CPU, ":0"));
       // Update the binding to inform the new format, but continue to use the
       // placeholder node that was originally created.
       binding.mutable_sequence()->set_graph_def_tensor_name(
@@ -263,6 +265,8 @@ absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
       graph_from_dataset_node->set_name(graph_names.graph_def_node_name);
       graph_from_dataset_node->set_op(kDatasetToGraphOp);
       graph_from_dataset_node->add_input()->assign(variant_tensor_name);
+      graph_from_dataset_node->set_device(
+          absl::StrCat("/device:", tensorflow::DEVICE_CPU, ":0"));
       // Set the default ATTRS.
       // external_state_policy == 0 warns when state will be lost. We expect
       // the state (shuffle buffers, etc) to be lost, but it's nice to continue
@@ -706,7 +710,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
         comp_pb.tensorflow().cache_key().id() == 0) {
       // No ID to use for caching, simply create a computation and skip cache
       // logic.
-      LOG(WARNING) << "Skipped caching computation, no cache_key";
+      LOG_FIRST_N(WARNING, 10) << "Skipped caching computation, no cache_key:\n"
+                               << comp_pb.type().Utf8DebugString();
       return ExecutorValue(TFF_TRY(Computation::FromProto(
           comp_pb.tensorflow(), max_concurrent_computation_calls_)));
     }

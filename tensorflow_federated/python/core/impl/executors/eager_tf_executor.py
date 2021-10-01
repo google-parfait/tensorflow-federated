@@ -52,14 +52,8 @@ def _all_graph_def_nodes(
 def _check_dataset_reduce_for_multi_gpu(
     graph_def: tf.compat.v1.GraphDef) -> None:
   """Detect if ReduceDataset Op is used in a multi-GPU simulation."""
-  has_dataset_reduce_node = False
-  for node in _all_graph_def_nodes(graph_def):
-    # If `tf.device` is explicitly used in the graph_def, the graph_def was
-    # defined by advanced users who we trust know what they are doing.
-    if node.device:
-      return
-    if node.op == 'ReduceDataset':
-      has_dataset_reduce_node = True
+  has_dataset_reduce_node = any(
+      node.op == 'ReduceDataset' for node in _all_graph_def_nodes(graph_def))
   if has_dataset_reduce_node:
     raise ValueError(
         'Detected dataset reduce op in multi-GPU TFF simulation: '
