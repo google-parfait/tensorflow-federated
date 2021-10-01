@@ -105,8 +105,8 @@ struct type_caster<tensorflow::Tensor> {
     VLOG(2) << "Tensor Handle at: " << tensor_handle;
     tensorflow::Safe_TF_StatusPtr tf_status =
         tensorflow::make_safe(TF_NewStatus());
-    TF_Tensor* tf_tensor =
-        TFE_TensorHandleResolve(tensor_handle, tf_status.get());
+    tensorflow::Safe_TF_TensorPtr tf_tensor = tensorflow::make_safe(
+        TFE_TensorHandleResolve(tensor_handle, tf_status.get()));
     auto status_code = TF_GetCode(tf_status.get());
     VLOG(2) << "Status: " << status_code;
     if (status_code != TF_OK) {
@@ -117,7 +117,7 @@ struct type_caster<tensorflow::Tensor> {
     VLOG(2) << "Resolved handle to: " << tf_tensor;
     tensorflow::Tensor tensor;
     tensorflow::Status status =
-        tensorflow::TF_TensorToTensor(tf_tensor, &tensor);
+        tensorflow::TF_TensorToTensor(tf_tensor.get(), &tensor);
     if (!status.ok()) {
       LOG(ERROR) << "Failed to convert TF_Tensor to Tensor";
       return false;
