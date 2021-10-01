@@ -13,12 +13,13 @@
 # limitations under the License.
 """Utilities for working with structured data."""
 
-from typing import Any, List, Tuple
+import collections
+from typing import Any, Dict
 
 import tree
 
 
-def flatten(structure: Any) -> List[Tuple[str, Any]]:
+def flatten(structure: Any) -> Dict[str, Any]:
   """Creates a list representing a flattened version of the given `structure`.
 
   Args:
@@ -35,4 +36,5 @@ def flatten(structure: Any) -> List[Tuple[str, Any]]:
   def name(path):
     return '/'.join(map(str, path))
 
-  return sorted([(name(path), item) for path, item in flat])
+  named = [(name(path), item) for path, item in flat]
+  return collections.OrderedDict(sorted(named))

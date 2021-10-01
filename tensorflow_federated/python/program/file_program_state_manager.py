@@ -15,6 +15,7 @@
 
 import os
 import os.path
+import random
 from typing import Any, List, Optional, Union
 
 from absl import logging
@@ -47,7 +48,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
                prefix: str = 'program_state_',
                keep_total: int = 5,
                keep_first: bool = True):
-    """Returns an initialized `ProgramStateManager`.
+    """Returns an initialized `tff.program.ProgramStateManager`.
 
     Args:
       root_dir: A path on the file system to save program state. If this path
@@ -195,16 +196,16 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     model.obj = flat_obj
     model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
 
-    # First write to a temporary directory.
-    temp_path = f'{path}_temp'
-    try:
+    # Create a temporary directory.
+    temp_path = f'{path}_temp{random.randint(1000, 9999)}'
+    if tf.io.gfile.exists(temp_path):
       tf.io.gfile.rmtree(temp_path)
-    except tf.errors.NotFoundError:
-      pass
     tf.io.gfile.makedirs(temp_path)
+
+    # Write to the temporary directory.
     tf.saved_model.save(model, temp_path, signatures={})
 
-    # Rename the temp directory to the final location atomically.
+    # Rename the temporary directory to the final location atomically.
     tf.io.gfile.rename(temp_path, path)
     logging.info('Program state saved: %s', path)
 
