@@ -110,9 +110,10 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
                 struct=pb.TensorFlow.StructBinding(element=element_bindings)))
   elif parameter_type.is_sequence():
     with graph.as_default():
-      variant_tensor = tf.compat.v1.placeholder(tf.variant, shape=[])
-      ds = make_dataset_from_variant_tensor(variant_tensor,
-                                            parameter_type.element)
+      with tf.device('/device:cpu:0'):
+        variant_tensor = tf.compat.v1.placeholder(tf.variant, shape=[])
+        ds = make_dataset_from_variant_tensor(variant_tensor,
+                                              parameter_type.element)
     return (ds,
             pb.TensorFlow.Binding(
                 sequence=pb.TensorFlow.SequenceBinding(
@@ -145,10 +146,11 @@ def make_dataset_from_variant_tensor(variant_tensor, type_spec):
     raise TypeError(
         'Expected `variant_tensor` to be of a variant type, found {}.'.format(
             variant_tensor.dtype))
-  return tf.data.experimental.from_variant(
-      variant_tensor,
-      structure=(type_conversions.type_to_tf_structure(
-          computation_types.to_type(type_spec))))
+  with tf.device('/device:cpu:0'):
+    return tf.data.experimental.from_variant(
+        variant_tensor,
+        structure=(type_conversions.type_to_tf_structure(
+            computation_types.to_type(type_spec))))
 
 
 class InvalidGraphResultError(TypeError):
