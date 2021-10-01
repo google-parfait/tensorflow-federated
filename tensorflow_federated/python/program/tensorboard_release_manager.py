@@ -43,8 +43,8 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
     """Returns an initialized `tff.program.TensorboardReleaseManager`.
 
     Args:
-      summary_dir: A path on the file system to write summary data, if this path
-        does not exist it will be created.
+      summary_dir: A path on the file system to save release values. If this
+        path does not exist it will be created.
 
     Raises:
       ValueError: If `summary_dir` is an empty string.
@@ -59,7 +59,7 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
   def release(self, value: Any, key: int):
-    """Releases the `value` from a federated program.
+    """Releases `value` from a federated program.
 
     Args:
       value: The value to release.
@@ -71,7 +71,7 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
     flattened_value = structure_utils.flatten(value)
 
     with self._summary_writer.as_default():
-      for name, value in flattened_value:
+      for name, value in flattened_value.items():
         value_array = np.array(value)
         # Summary data can only contain booleans, integers, unsigned integers,
         # and floats, releasing any other values will be silently ignored.

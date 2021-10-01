@@ -27,7 +27,7 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
     self._values = collections.OrderedDict()
 
   def release(self, value: Any, key: Hashable):
-    """Releases the `value` from a federated program.
+    """Releases `value` from a federated program.
 
     Args:
       value: The value to release.
@@ -36,5 +36,5 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
     self._values[key] = value
 
   def values(self) -> Dict[Hashable, Any]:
-    """Returns all values keyed by the reference used to release the value."""
+    """Returns a dict of all keys and released values."""
     return self._values.copy()

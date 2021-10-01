@@ -15,6 +15,7 @@
 
 import os
 import os.path
+import random
 from typing import Any, List, Optional, Union
 
 from absl import logging
@@ -47,7 +48,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
                prefix: str = 'program_state_',
                keep_total: int = 5,
                keep_first: bool = True):
-    """Returns an initialized `ProgramStateManager`.
+    """Returns an initialized `tff.program.ProgramStateManager`.
 
     Args:
       root_dir: A path on the file system to save program state. If this path
@@ -177,41 +178,30 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     logging.info('Program state loaded: %s', path)
     return state
 
-  def save(self, program_state: Any, version: int):
-    """Saves `program_state` for the given `version`.
-
-    Args:
-      program_state: The program state to save.
-      version: A strictly increasing integer representing the version of a saved
-        `program_state`.
-    """
+  def _write(self, obj: tf.Module, version: int):
+    """Writes program state for the given `version`."""
+    py_typecheck.check_type(obj, tf.Module)
     py_typecheck.check_type(version, int)
     path = self._get_path_for_version(version)
     if tf.io.gfile.exists(path):
       raise program_state_manager.ProgramStateManagerVersionAlreadyExistsError(
           f'Program state already exists for version: {version}')
-    flat_obj = tf.nest.flatten(program_state)
-    model = tf.Module()
-    model.obj = flat_obj
-    model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
 
-    # First write to a temporary directory.
-    temp_path = f'{path}_temp'
-    try:
+    # Create a temporary directory.
+    temp_path = f'{path}_temp{random.randint(1000, 9999)}'
+    if tf.io.gfile.exists(temp_path):
       tf.io.gfile.rmtree(temp_path)
-    except tf.errors.NotFoundError:
-      pass
     tf.io.gfile.makedirs(temp_path)
-    tf.saved_model.save(model, temp_path, signatures={})
 
-    # Rename the temp directory to the final location atomically.
+    # Write to the temporary directory.
+    tf.saved_model.save(obj, temp_path, signatures={})
+
+    # Rename the temporary directory to the final location atomically.
     tf.io.gfile.rename(temp_path, path)
     logging.info('Program state saved: %s', path)
 
-    self._remove_old_program_state()
-
   def _remove(self, version: int):
-    """Removed the program state for the given `version`."""
+    """Removes program state for the given `version`."""
     py_typecheck.check_type(version, int)
     path = self._get_path_for_version(version)
     if tf.io.gfile.exists(path):
@@ -219,7 +209,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       logging.info('Program state removed: %s', path)
 
   def _remove_old_program_state(self):
-    """Removes the old program state."""
+    """Removes old program state."""
     if self._keep_total <= 0:
       return
     versions = self.versions()
@@ -229,3 +219,19 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
         stop = start - self._keep_total
         for version in versions[start:stop]:
           self._remove(version)
+
+  def save(self, program_state: Any, version: int):
+    """Saves `program_state` for the given `version`.
+
+    Args:
+      program_state: The program state to save.
+      version: A strictly increasing integer representing the version of a saved
+        `program_state`.
+    """
+    py_typecheck.check_type(version, int)
+    flat_obj = tf.nest.flatten(program_state)
+    model = tf.Module()
+    model.obj = flat_obj
+    model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
+    self._write(model, version)
+    self._remove_old_program_state()

@@ -13,26 +13,28 @@
 # limitations under the License.
 """Utilities for working with structured data."""
 
-from typing import Any, List, Tuple
+import collections
+from typing import Any, Dict
 
 import tree
 
 
-def flatten(structure: Any) -> List[Tuple[str, Any]]:
-  """Creates a list representing a flattened version of the given `structure`.
+def flatten(structure: Any) -> Dict[str, Any]:
+  """Creates a flattened representation of the given `structure`.
 
   Args:
     structure: A possibly nested structure.
 
   Returns:
-    A list of `(path, value)` tuples representing the flattened version of the
-    given `structure`, where `path` is a string uniquely identifying the
-    position of `value` in the structure of the given `structure`. The returned
-    list is sorted by `path`.
+    A `collections.OrderedDict` representing the flattened version of the given
+    `structure`, where the keys are string uniquely identifying the position of
+    the values in the structure of the given `structure`. The returned
+    `collections.OrderedDict` is sorted by key.
   """
   flat = tree.flatten_with_path(structure)
 
   def name(path):
     return '/'.join(map(str, path))
 
-  return sorted([(name(path), item) for path, item in flat])
+  named = [(name(path), item) for path, item in flat]
+  return collections.OrderedDict(sorted(named))

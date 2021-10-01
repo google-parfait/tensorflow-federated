@@ -14,11 +14,13 @@
 
 import os
 import os.path
+import shutil
 import tempfile
 from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import tensorflow as tf
 
 from tensorflow_federated.python.program import file_program_state_manager
 from tensorflow_federated.python.program import program_state_manager
@@ -28,12 +30,12 @@ class FileProgramStateManagerInitTest(parameterized.TestCase):
 
   def test_creates_root_dir(self):
     temp_dir = self.create_tempdir()
-    root_dir = os.path.join(temp_dir, 'test')
-    self.assertFalse(os.path.exists(root_dir))
+    shutil.rmtree(temp_dir)
+    self.assertFalse(os.path.exists(temp_dir))
 
-    file_program_state_manager.FileProgramStateManager(root_dir=root_dir)
+    file_program_state_manager.FileProgramStateManager(root_dir=temp_dir)
 
-    self.assertTrue(os.path.exists(root_dir))
+    self.assertTrue(os.path.exists(temp_dir))
 
   def test_does_not_raise_type_error_with_root_dir_str(self):
     try:
@@ -151,7 +153,7 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
 
   def test_returns_none_if_root_dir_does_not_exist(self):
     temp_dir = self.create_tempdir()
-    os.rmdir(temp_dir)
+    shutil.rmtree(temp_dir)
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
@@ -183,7 +185,7 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
 class FileProgramStateManagerGetVersionForPathTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('normal', '/tmp/a_123'),
+      ('typical', '/tmp/a_123'),
       ('no_root_dir', 'a_123'),
       ('top_level', '/a_123'),
   )
@@ -227,7 +229,7 @@ class FileProgramStateManagerGetVersionForPathTest(parameterized.TestCase):
 class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('normal', '/tmp', 'a_', 123, '/tmp/a_123'),
+      ('typical', '/tmp', 'a_', 123, '/tmp/a_123'),
       ('trailing_slash', '/tmp/', 'a_', 123, '/tmp/a_123'),
       ('no_prefix', '/tmp', '', 123, '/tmp/123'),
   )
@@ -331,24 +333,20 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
       program_state_mngr.load(version)
 
 
-class FileProgramStateManagerSaveTest(parameterized.TestCase):
+class FileProgramStateManagerWriteTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('1', 1),
       ('2', 2),
       ('10', 10),
   )
-  def test_saves_program_state(self, count):
+  def test_writes_program_state(self, count):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
-    with mock.patch.object(
-        program_state_mngr,
-        '_remove_old_program_state') as mock_remove_old_program_state:
-      for i in range(count):
-        program_state_mngr.save(f'state_{i}', i)
-      self.assertEqual(mock_remove_old_program_state.call_count, count)
+    for i in range(count):
+      program_state_mngr._write(tf.Module(), i)
 
     actual_dirs = os.listdir(temp_dir)
     expected_dirs = [f'a_{i}' for i in range(count)]
@@ -359,11 +357,26 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase):
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
-    program_state_mngr.save('state_1', 1)
+    program_state_mngr._write(tf.Module(), 1)
 
     with self.assertRaises(
         program_state_manager.ProgramStateManagerVersionAlreadyExistsError):
-      program_state_mngr.save('state_1', 1)
+      program_state_mngr._write(tf.Module(), 1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('int', 1),
+      ('bool', True),
+      ('str', 'a'),
+      ('list', []),
+  )
+  def test_raises_type_error_with_obj(self, obj):
+    temp_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=temp_dir, prefix='a_')
+
+    with self.assertRaises(TypeError):
+      program_state_mngr._write(obj, 1)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -376,7 +389,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase):
         root_dir=temp_dir, prefix='a_')
 
     with self.assertRaises(TypeError):
-      program_state_mngr.save('state', version)
+      program_state_mngr._write(tf.Module(), version)
 
 
 class FileProgramStateManagerRemoveTest(parameterized.TestCase):
@@ -469,6 +482,43 @@ class FileProgramStateManagerRemoveOldProgramStateTest(absltest.TestCase):
     program_state_mngr._remove_old_program_state()
 
     self.assertCountEqual(os.listdir(temp_dir), ['a_7', 'a_8', 'a_9'])
+
+
+class FileProgramStateManagerSaveTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('1', 1),
+      ('2', 2),
+      ('10', 10),
+  )
+  def test_saves_program_state(self, count):
+    temp_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=temp_dir, prefix='a_')
+
+    with mock.patch.object(program_state_mngr, '_write') as mock_write:
+      with mock.patch.object(
+          program_state_mngr,
+          '_remove_old_program_state') as mock_remove_old_program_state:
+        for i in range(count):
+          program_state_mngr.save(f'state_{i}', i)
+        calls = [mock.call(mock.ANY, i) for i in range(count)]
+        mock_write.assert_has_calls(calls)
+        self.assertEqual(mock_remove_old_program_state.call_count, count)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('str', 'a'),
+      ('list', []),
+  )
+  def test_raises_type_error_with_version(self, version):
+    temp_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=temp_dir, prefix='a_')
+
+    with self.assertRaises(TypeError):
+      program_state_mngr.save('state', version)
+
 
 if __name__ == '__main__':
   absltest.main()

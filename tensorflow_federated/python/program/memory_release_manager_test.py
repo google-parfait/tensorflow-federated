@@ -70,7 +70,7 @@ class MemoryReleaseManagerTest(parameterized.TestCase):
       ('1', 1),
       ('10', 10),
   )
-  def test_get_values_with_saved_values(self, count):
+  def test_values_with_saved_values(self, count):
     memory_release_mngr = memory_release_manager.MemoryReleaseManager()
     for i in range(count):
       memory_release_mngr._values[i] = i * 10
@@ -79,7 +79,7 @@ class MemoryReleaseManagerTest(parameterized.TestCase):
 
     self.assertEqual(values, {i: i * 10 for i in range(count)})
 
-  def test_get_values_returns_copy(self):
+  def test_values_returns_copy(self):
     memory_release_mngr = memory_release_manager.MemoryReleaseManager()
 
     values = memory_release_mngr.values()
