@@ -56,6 +56,7 @@ py_library(
 py_test(
     name = "iblt_lib_test",
     size = "medium",
+    timeout = "long",
     srcs = ["iblt_lib_test.py"],
     python_version = "PY3",
     shard_count = 4,

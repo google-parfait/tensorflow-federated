@@ -19,6 +19,7 @@ py_library(
 
 py_test(
     name = "hierarchical_histogram_factory_test",
+    timeout = "long",
     srcs = ["hierarchical_histogram_factory_test.py"],
     python_version = "PY3",
     shard_count = 4,
