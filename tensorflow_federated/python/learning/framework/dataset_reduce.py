@@ -46,7 +46,8 @@ def _for_iter_dataset_fn(
 
 def build_dataset_reduce_fn(
     simulation_flag: bool = True
-) -> Callable[[_ReduceFnCallable, Union[tf.data.Dataset, Iterable]], tf.Tensor]:  # pylint: disable=g-bare-generic
+) -> Callable[[_ReduceFnCallable, Union[tf.data.Dataset, Iterable[Any]], Any],
+              tf.Tensor]:
   # TODO(b/162683412): remove `Iterable` after pytype fix.
   """Retruns a reduce loop function on input dataset."""
   if simulation_flag:

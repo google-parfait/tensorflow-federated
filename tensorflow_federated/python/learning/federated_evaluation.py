@@ -33,6 +33,70 @@ from tensorflow_federated.python.learning.framework import optimizer_utils
 SequenceType = computation_types.SequenceType
 
 
+def build_local_evaluation(
+    model_fn: Callable[[], model_lib.Model],
+    model_weights_type: computation_types.StructType,
+    batch_type: computation_types.Type,
+    use_experimental_simulation_loop: bool = False
+) -> computation_base.Computation:
+  """Builds the local TFF computation for evaluation of the given model.
+
+  This produces an unplaced function that evaluates a `tff.learning.Model`
+  on a `tf.data.Dataset`. This function can be mapped to placed data, i.e.
+  is mapped to client placed data in `build_federated_evaluation`.
+
+  The TFF type notation for the returned computation is:
+
+  ```
+  (<M, D*> → <local_outputs=N, num_examples=tf.int64>)
+  ```
+
+  Where `M` is the model weights type structure, `D` is the type structure of a
+  single data point, and `N` is the type structure of the local metrics.
+
+  Args:
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    model_weights_type: The `tff.Type` of the model parameters that will be used
+      to initialize the model during evaluation.
+    batch_type: The type of one entry in the dataset.
+    use_experimental_simulation_loop: Controls the reduce loop function for
+      input dataset. An experimental reduce loop is used for simulation.
+
+  Returns:
+    A federated computation (an instance of `tff.Computation`) that accepts
+    model parameters and sequential data, and returns the evaluation metrics.
+  """
+
+  @computations.tf_computation(model_weights_type, SequenceType(batch_type))
+  @tf.function
+  def client_eval(incoming_model_weights, dataset):
+    """Returns local outputs after evaluting `model_weights` on `dataset`."""
+    with tf.init_scope():
+      model = model_fn()
+    model_weights = model_utils.ModelWeights.from_model(model)
+    tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
+                          incoming_model_weights)
+
+    def reduce_fn(num_examples, batch):
+      model_output = model.forward_pass(batch, training=False)
+      if model_output.num_examples is None:
+        # Compute shape from the size of the predictions if model didn't use the
+        # batch size.
+        return num_examples + tf.shape(
+            model_output.predictions, out_type=tf.int64)[0]
+      else:
+        return num_examples + tf.cast(model_output.num_examples, tf.int64)
+
+    dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
+        use_experimental_simulation_loop)
+    num_examples = dataset_reduce_fn(reduce_fn, dataset,
+                                     lambda: tf.zeros([], dtype=tf.int64))
+    return collections.OrderedDict(
+        local_outputs=model.report_local_outputs(), num_examples=num_examples)
+
+  return client_eval
+
+
 def build_federated_evaluation(
     model_fn: Callable[[], model_lib.Model],
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
@@ -76,39 +140,13 @@ def build_federated_evaluation(
     model_weights_type = model_utils.weights_type_from_model(model)
     batch_type = computation_types.to_type(model.input_spec)
 
-  @computations.tf_computation(model_weights_type, SequenceType(batch_type))
-  @tf.function
-  def client_eval(incoming_model_weights, dataset):
-    """Returns local outputs after evaluting `model_weights` on `dataset`."""
-    with tf.init_scope():
-      model = model_fn()
-    model_weights = model_utils.ModelWeights.from_model(model)
-    tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
-                          incoming_model_weights)
-
-    def reduce_fn(num_examples, batch):
-      model_output = model.forward_pass(batch, training=False)
-      if model_output.num_examples is None:
-        # Compute shape from the size of the predictions if model didn't use the
-        # batch size.
-        return num_examples + tf.shape(
-            model_output.predictions, out_type=tf.int64)[0]
-      else:
-        return num_examples + tf.cast(model_output.num_examples, tf.int64)
-
-    dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-        use_experimental_simulation_loop)
-    num_examples = dataset_reduce_fn(
-        reduce_fn=reduce_fn,
-        dataset=dataset,
-        initial_state_fn=lambda: tf.zeros([], dtype=tf.int64))
-    return collections.OrderedDict(
-        local_outputs=model.report_local_outputs(), num_examples=num_examples)
-
   @computations.federated_computation(
       computation_types.at_server(model_weights_type),
       computation_types.at_clients(SequenceType(batch_type)))
   def server_eval(server_model_weights, federated_dataset):
+    client_eval = build_local_evaluation(model_fn, model_weights_type,
+                                         batch_type,
+                                         use_experimental_simulation_loop)
     if broadcast_process is not None:
       # TODO(b/179091838): Zip the measurements from the broadcast_process with
       # the result of `model.federated_output_computation` below to avoid

@@ -234,6 +234,40 @@ def _build_expected_test_quant_model_eval_signature():
 class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
 
   @test_utils.skip_test_for_multi_gpu
+  def test_local_evaluation(self):
+    model_weights_type = model_utils.weights_type_from_model(TestModel)
+    batch_type = computation_types.to_type(TestModel().input_spec)
+    client_evaluate = federated_evaluation.build_local_evaluation(
+        TestModel, model_weights_type, batch_type)
+    self.assert_types_equivalent(
+        client_evaluate.type_signature,
+        FunctionType(
+            parameter=StructType([
+                ('incoming_model_weights', model_weights_type),
+                ('dataset',
+                 SequenceType(
+                     StructType([('temp',
+                                  TensorType(dtype=tf.float32,
+                                             shape=[None]))]))),
+            ]),
+            result=collections.OrderedDict(
+                local_outputs=collections.OrderedDict(num_over=tf.float32),
+                num_examples=tf.int64)))
+
+    def _temp_dict(temps):
+      return {'temp': np.array(temps, dtype=np.float32)}
+
+    client_result = client_evaluate(
+        collections.OrderedDict(trainable=[5.0], non_trainable=[]),
+        [_temp_dict([1.0, 10.0, 2.0, 8.0]),
+         _temp_dict([6.0, 11.0])])
+    self.assertEqual(
+        client_result,
+        collections.OrderedDict(
+            local_outputs=collections.OrderedDict(num_over=4.0),
+            num_examples=6))
+
+  @test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation(self):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
     model_weights_type = model_utils.weights_type_from_model(TestModel)
