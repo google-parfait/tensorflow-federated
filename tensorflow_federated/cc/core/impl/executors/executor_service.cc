@@ -34,32 +34,28 @@ limitations under the License
 
 namespace tensorflow_federated {
 
-inline absl::Status LogIfNotOk(absl::Status s) {
-  if (!s.ok()) {
-    LOG(ERROR) << s;
+#define TFF_TRYLOG_GRPC(status)               \
+  ({                                          \
+    grpc::Status __status = status;           \
+    if (!__status.ok()) {                     \
+      LOG(ERROR) << __status.error_message(); \
+      return __status;                        \
+    }                                         \
+  })
+
+grpc::Status ParseRef(const v0::ValueRef& value_ref_pb, ValueId* value_id_out) {
+  if (absl::SimpleAtoi(value_ref_pb.id(), value_id_out)) {
+    return grpc::Status::OK;
   }
-  return s;
+  return grpc::Status(
+      grpc::StatusCode::INVALID_ARGUMENT,
+      absl::StrCat("Could not parse ValueRef from string. Incoming id:",
+                   value_ref_pb.id()));
 }
 
-template <typename T>
-inline absl::StatusOr<T> LogIfNotOk(absl::StatusOr<T> s) {
-  if (!s.ok()) {
-    LOG(ERROR) << s.status();
-  }
-  return s;
-}
-
-absl::StatusOr<ValueId> ParseRef(const v0::ValueRef& value_ref_pb) {
-  ValueId value_id;
-  if (absl::SimpleAtoi(value_ref_pb.id(), &value_id)) {
-    return value_id;
-  }
-  return absl::InvalidArgumentError(absl::StrCat(
-      "Could not parse ValueRef from string. Incoming id:", value_ref_pb.id()));
-}
-
-absl::StatusOr<std::pair<std::shared_ptr<Executor>, int>>
-ExecutorService::RequireExecutor_(std::string method_name) {
+grpc::Status ExecutorService::RequireExecutor_(
+    std::string method_name, std::shared_ptr<Executor>* executor_out,
+    int* generation_out) {
   absl::ReaderMutexLock reader_lock(&executor_mutex_);
   if (executor_and_generation_.first == nullptr) {
     return grpc::Status(
@@ -67,7 +63,9 @@ ExecutorService::RequireExecutor_(std::string method_name) {
         absl::StrCat("Attempted to call ExecutorService::", method_name,
                      " before setting cardinalities."));
   }
-  return executor_and_generation_;
+  *executor_out = executor_and_generation_.first;
+  *generation_out = executor_and_generation_.second;
+  return grpc::Status::OK;
 }
 
 ExecutorService::RemoteValueId ExecutorService::CreateRemoteValue_(
@@ -75,27 +73,30 @@ ExecutorService::RemoteValueId ExecutorService::CreateRemoteValue_(
   return absl::StrCat(embedded_value_id, "-", executor_generation);
 }
 
-absl::Status MalformattedValueStatus(absl::string_view bad_id) {
-  return absl::InvalidArgumentError(
+grpc::Status MalformattedValueStatus(absl::string_view bad_id) {
+  return grpc::Status(
+      grpc::StatusCode::INVALID_ARGUMENT,
       absl::StrCat("Remote value ID ", bad_id,
                    " malformed: expected to be of the form a-b, where a and "
                    "b are both ints."));
 }
 
-absl::Status ExecutorService::EnsureGeneration_(int reference_generation,
+grpc::Status ExecutorService::EnsureGeneration_(int reference_generation,
                                                 int expected_generation) {
   if (reference_generation != expected_generation) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Remote value refers to a non-live executor generation. "
-        "Current generation is: ",
-        expected_generation,
-        "remote valuerefers to generation: ", reference_generation));
+    return grpc::Status(
+        grpc::StatusCode::INVALID_ARGUMENT,
+        absl::StrCat("Remote value refers to a non-live executor generation. "
+                     "Current generation is: ",
+                     expected_generation, "remote valuerefers to generation: ",
+                     reference_generation));
   }
-  return absl::OkStatus();
+  return grpc::Status::OK;
 }
 
-absl::StatusOr<ValueId> ExecutorService::ResolveRemoteValue_(
-    const v0::ValueRef& remote_value_ref, int expected_generation) {
+grpc::Status ExecutorService::ResolveRemoteValue_(
+    const v0::ValueRef& remote_value_ref, int expected_generation,
+    ValueId* value_id_out) {
   // Incoming ref should have ID of the form a-b, where a is a
   // uint64_t and b s an int. a represents the ValueId in the
   // service's executor, b represents the generation of this executor.
@@ -108,103 +109,122 @@ absl::StatusOr<ValueId> ExecutorService::ResolveRemoteValue_(
   if (!absl::SimpleAtoi(id_and_generation[1], &reference_generation)) {
     return MalformattedValueStatus(remote_value_ref.id());
   }
-  TFF_TRY(
-      LogIfNotOk(EnsureGeneration_(reference_generation, expected_generation)));
-
-  ValueId embedded_value_id;
-  if (!absl::SimpleAtoi(id_and_generation[0], &embedded_value_id)) {
+  TFF_TRYLOG_GRPC(EnsureGeneration_(reference_generation, expected_generation));
+  if (!absl::SimpleAtoi(id_and_generation[0], value_id_out)) {
     return MalformattedValueStatus(remote_value_ref.id());
   }
-  return embedded_value_id;
+  return grpc::Status::OK;
 }
 
 grpc::Status ExecutorService::CreateValue(grpc::ServerContext* context,
                                           const v0::CreateValueRequest* request,
                                           v0::CreateValueResponse* response) {
-  std::pair<std::shared_ptr<Executor>, int> executor_and_generation;
-  auto [live_executor, used_executor_generation] =
-      TFF_TRY(LogIfNotOk(RequireExecutor_("CreateValue")));
-  OwnedValueId owned_value_id =
-      TFF_TRY(LogIfNotOk(live_executor->CreateValue(request->value())));
+  std::shared_ptr<Executor> executor;
+  int generation;
+  TFF_TRYLOG_GRPC(RequireExecutor_("CreateValue", &executor, &generation));
+  absl::StatusOr<OwnedValueId> id = executor->CreateValue(request->value());
+  if (!id.ok()) {
+    LOG(ERROR) << id.status().message();
+    return absl_to_grpc(id.status());
+  }
   response->mutable_value_ref()->mutable_id()->assign(
-      CreateRemoteValue_(owned_value_id.ref(), used_executor_generation));
+      CreateRemoteValue_(id.value().ref(), generation));
   // We must call forget on the embedded id to prevent the destructor from
   // running when the variable goes out of scope. Similar considerations apply
   // to the reset of the Create methods below.
-  owned_value_id.forget();
+  id.value().forget();
   return grpc::Status::OK;
 }
 
 grpc::Status ExecutorService::CreateCall(grpc::ServerContext* context,
                                          const v0::CreateCallRequest* request,
                                          v0::CreateCallResponse* response) {
-  std::pair<std::shared_ptr<Executor>, int> executor_and_generation;
-  auto [live_executor, used_executor_generation] =
-      TFF_TRY(LogIfNotOk(RequireExecutor_("CreateCall")));
-  ValueId embedded_fn = TFF_TRY(LogIfNotOk(
-      ResolveRemoteValue_(request->function_ref(), used_executor_generation)));
+  std::shared_ptr<Executor> executor;
+  int generation;
+  TFF_TRYLOG_GRPC(RequireExecutor_("CreateCall", &executor, &generation));
+  ValueId embedded_fn;
+  TFF_TRYLOG_GRPC(
+      ResolveRemoteValue_(request->function_ref(), generation, &embedded_fn));
   absl::optional<ValueId> embedded_arg;
   if (request->has_argument_ref()) {
     // Callers should avoid setting the argument ref for invocation of a no-arg
     // fn.
-    embedded_arg = TFF_TRY(LogIfNotOk(ResolveRemoteValue_(
-        request->argument_ref(), used_executor_generation)));
+    TFF_TRYLOG_GRPC(ResolveRemoteValue_(request->argument_ref(), generation,
+                                        &embedded_arg.emplace()));
   }
-  OwnedValueId called_fn =
-      TFF_TRY(LogIfNotOk(live_executor->CreateCall(embedded_fn, embedded_arg)));
+  absl::StatusOr<OwnedValueId> called_fn =
+      executor->CreateCall(embedded_fn, embedded_arg);
+  if (!called_fn.ok()) {
+    LOG(ERROR) << called_fn.status().message();
+    return absl_to_grpc(called_fn.status());
+  }
   response->mutable_value_ref()->mutable_id()->assign(
-      CreateRemoteValue_(called_fn.ref(), used_executor_generation));
+      CreateRemoteValue_(called_fn.value().ref(), generation));
   // We must prevent this destructor from running similarly to CreateValue.
-  called_fn.forget();
+  called_fn.value().forget();
   return grpc::Status::OK;
 }
 
 grpc::Status ExecutorService::CreateStruct(
     grpc::ServerContext* context, const v0::CreateStructRequest* request,
     v0::CreateStructResponse* response) {
-  auto [live_executor, used_executor_generation] =
-      TFF_TRY(LogIfNotOk(RequireExecutor_("CreateStruct")));
+  std::shared_ptr<Executor> executor;
+  int generation;
+  TFF_TRYLOG_GRPC(RequireExecutor_("CreateStruct", &executor, &generation));
   std::vector<ValueId> requested_ids;
   requested_ids.reserve(request->element().size());
   for (const v0::CreateStructRequest::Element& elem : request->element()) {
-    requested_ids.emplace_back(TFF_TRY(LogIfNotOk(
-        ResolveRemoteValue_(elem.value_ref(), used_executor_generation))));
+    ValueId id;
+    TFF_TRYLOG_GRPC(ResolveRemoteValue_(elem.value_ref(), generation, &id));
+    requested_ids.push_back(id);
   }
-  OwnedValueId created_struct =
-      TFF_TRY(LogIfNotOk(live_executor->CreateStruct(requested_ids)));
+  absl::StatusOr<OwnedValueId> created_struct =
+      executor->CreateStruct(requested_ids);
+  if (!created_struct.ok()) {
+    LOG(ERROR) << created_struct.status().message();
+    return absl_to_grpc(created_struct.status());
+  }
   response->mutable_value_ref()->mutable_id()->assign(
-      CreateRemoteValue_(created_struct.ref(), used_executor_generation));
+      CreateRemoteValue_(created_struct.value().ref(), generation));
   // We must prevent this destructor from running similarly to CreateValue.
-  created_struct.forget();
+  created_struct.value().forget();
   return grpc::Status::OK;
 }
 
 grpc::Status ExecutorService::CreateSelection(
     grpc::ServerContext* context, const v0::CreateSelectionRequest* request,
     v0::CreateSelectionResponse* response) {
-  auto [live_executor, used_executor_generation] =
-      TFF_TRY(LogIfNotOk(RequireExecutor_("CreateSelection")));
-  ValueId selection_source = TFF_TRY(LogIfNotOk(
-      ResolveRemoteValue_(request->source_ref(), used_executor_generation)));
-  OwnedValueId selected_element = TFF_TRY(LogIfNotOk(
-      live_executor->CreateSelection(selection_source, request->index())));
+  std::shared_ptr<Executor> executor;
+  int generation;
+  TFF_TRYLOG_GRPC(RequireExecutor_("CreateSelection", &executor, &generation));
+  ValueId selection_source;
+  TFF_TRYLOG_GRPC(ResolveRemoteValue_(request->source_ref(), generation,
+                                      &selection_source));
+  absl::StatusOr<OwnedValueId> selected_element =
+      executor->CreateSelection(selection_source, request->index());
+  if (!selected_element.ok()) {
+    LOG(ERROR) << selected_element.status().message();
+    return absl_to_grpc(selected_element.status());
+  }
   response->mutable_value_ref()->mutable_id()->assign(
-      CreateRemoteValue_(selected_element.ref(), used_executor_generation));
+      CreateRemoteValue_(selected_element.value().ref(), generation));
   // We must prevent this destructor from running similarly to CreateValue.
-  selected_element.forget();
+  selected_element.value().forget();
   return grpc::Status::OK;
 }
 
 grpc::Status ExecutorService::Compute(grpc::ServerContext* context,
                                       const v0::ComputeRequest* request,
                                       v0::ComputeResponse* response) {
-  auto [live_executor, used_executor_generation] =
-      TFF_TRY(LogIfNotOk(RequireExecutor_("Compute")));
-  ValueId requested_value = TFF_TRY(LogIfNotOk(
-      ResolveRemoteValue_(request->value_ref(), used_executor_generation)));
-  TFF_TRY(LogIfNotOk(
-      live_executor->Materialize(requested_value, response->mutable_value())));
-  return grpc::Status::OK;
+  std::shared_ptr<Executor> executor;
+  int generation;
+  TFF_TRYLOG_GRPC(RequireExecutor_("Compute", &executor, &generation));
+  ValueId requested_value;
+  TFF_TRYLOG_GRPC(
+      ResolveRemoteValue_(request->value_ref(), generation, &requested_value));
+  absl::Status status =
+      executor->Materialize(requested_value, response->mutable_value());
+  return absl_to_grpc(status);
 }
 
 grpc::Status ExecutorService::SetCardinalities(
@@ -217,10 +237,15 @@ grpc::Status ExecutorService::SetCardinalities(
   }
   {
     absl::WriterMutexLock writer_lock(&executor_mutex_);
-    auto new_executor = TFF_TRY(LogIfNotOk(executor_factory_(cardinality_map)));
+    absl::StatusOr<std::shared_ptr<Executor>> new_executor =
+        executor_factory_(cardinality_map);
+    if (!new_executor.ok()) {
+      LOG(ERROR) << new_executor.status().message();
+      return absl_to_grpc(new_executor.status());
+    }
     int new_generation = executor_and_generation_.second + 1;
     executor_and_generation_ =
-        std::make_pair(std::move(new_executor), new_generation);
+        std::make_pair(std::move(new_executor.value()), new_generation);
   }
   return grpc::Status::OK;
 }
@@ -241,8 +266,9 @@ grpc::Status ExecutorService::ClearExecutor(
 grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
                                       const v0::DisposeRequest* request,
                                       v0::DisposeResponse* response) {
-  auto [live_executor, used_executor_generation] =
-      TFF_TRY(LogIfNotOk(RequireExecutor_("Dispose")));
+  std::shared_ptr<Executor> executor;
+  int generation;
+  TFF_TRYLOG_GRPC(RequireExecutor_("Dispose", &executor, &generation));
   std::vector<ValueId> embedded_ids_to_dispose;
   embedded_ids_to_dispose.reserve(request->value_ref().size());
   // Filter the requested IDs to those corresponding to the currently live
@@ -250,10 +276,15 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
   // let them be called by a GC mechanism, so we do not force the client to only
   // dispose of values in the live executor.
   for (const v0::ValueRef& disposed_value_ref : request->value_ref()) {
-    absl::StatusOr<ValueId> embedded_value =
-        ResolveRemoteValue_(disposed_value_ref, used_executor_generation);
-    if (embedded_value.ok()) {
-      TFF_TRY(LogIfNotOk(live_executor->Dispose(embedded_value.value())));
+    ValueId embedded_value;
+    grpc::Status status =
+        ResolveRemoteValue_(disposed_value_ref, generation, &embedded_value);
+    if (status.ok()) {
+      absl::Status absl_status = executor->Dispose(embedded_value);
+      if (!absl_status.ok()) {
+        LOG(ERROR) << absl_status.message();
+        return absl_to_grpc(absl_status);
+      }
     }
   }
   return grpc::Status::OK;

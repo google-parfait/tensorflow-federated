@@ -46,17 +46,18 @@ using testing::EqualsProto;
 using testing::proto::IgnoringRepeatedFieldOrdering;
 
 template <typename ResponseType>
-auto CreateResponseForId(absl::string_view id) {
+auto CreateResponseForId(std::string id) {
   ResponseType response;
-  response.mutable_value_ref()->mutable_id()->assign(id);
+  response.mutable_value_ref()->mutable_id()->assign(std::move(id));
   return response;
 }
 
 template <typename ResponseType>
-auto ReturnOkWithResponseId(absl::string_view response_id) {
-  return ::testing::DoAll(::testing::SetArgPointee<2>(
-                              CreateResponseForId<ResponseType>(response_id)),
-                          ::testing::Return(absl::OkStatus()));
+auto ReturnOkWithResponseId(std::string response_id) {
+  return ::testing::DoAll(
+      ::testing::SetArgPointee<2>(
+          CreateResponseForId<ResponseType>(std::move(response_id))),
+      ::testing::Return(grpc::Status::OK));
 }
 
 v0::ComputeResponse ComputeResponseForValue(const v0::Value& value_proto) {
@@ -68,7 +69,7 @@ v0::ComputeResponse ComputeResponseForValue(const v0::Value& value_proto) {
 auto ReturnOkWithComputeResponse(const v0::Value& value_proto) {
   return ::testing::DoAll(
       ::testing::SetArgPointee<2>(ComputeResponseForValue(value_proto)),
-      ::testing::Return(absl::OkStatus()));
+      ::testing::Return(grpc::Status::OK));
 }
 
 v0::CreateValueRequest CreateValueRequestForValue(
@@ -78,17 +79,17 @@ v0::CreateValueRequest CreateValueRequestForValue(
   return request;
 }
 
-v0::ComputeRequest ComputeRequestForId(absl::string_view ref) {
+v0::ComputeRequest ComputeRequestForId(std::string ref) {
   v0::ComputeRequest request;
-  request.mutable_value_ref()->mutable_id()->assign(ref);
+  request.mutable_value_ref()->mutable_id()->assign(std::move(ref));
   return request;
 }
 
-std::function<absl::Status()> NotifyAndReturnOk(
+std::function<grpc::Status()> NotifyAndReturnOk(
     absl::Notification& done_notification) {
   return [&done_notification] {
     done_notification.Notify();
-    return absl::OkStatus();
+    return grpc::Status::OK;
   };
 }
 
@@ -109,6 +110,14 @@ constexpr char kExpectedSetCardinalitiesRequest[] = R"pb(
     cardinality: 1
   }
 )pb";
+
+grpc::Status UnimplementedPlaceholder() {
+  return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "Test");
+}
+
+::testing::Matcher<grpc::Status> IsUnimplementedPlaceholder() {
+  return GrpcStatusIs(grpc::StatusCode::UNIMPLEMENTED, "Test");
+}
 
 class RemoteExecutorTest : public ::testing::Test {
  protected:
@@ -143,7 +152,7 @@ TEST_F(RemoteExecutorTest, SetCardinalitiesErrorSurfaces) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::UnimplementedError("Test")));
+      .WillOnce(::testing::Return(UnimplementedPlaceholder()));
   v0::Value tensor_two = testing::TensorV(2.0f);
 
   absl::StatusOr<OwnedValueId> value_ref =
@@ -158,10 +167,10 @@ TEST_F(RemoteExecutorTest, CreateValueTensor) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   v0::Value tensor_two = testing::TensorV(2.0f);
   v0::Value materialized_value;
-  grpc::Status materialize_status;
+  absl::Status materialize_status;
   absl::Notification done;
   {
     EXPECT_CALL(*mock_executor_service_,
@@ -171,7 +180,7 @@ TEST_F(RemoteExecutorTest, CreateValueTensor) {
         .WillOnce(ReturnOkWithResponseId<v0::CreateValueResponse>("value_ref"));
 
     OwnedValueId value_ref =
-        test_executor_->CreateValue(tensor_two).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
     EXPECT_CALL(*mock_executor_service_,
                 Dispose(::testing::_, ::testing::_, ::testing::_))
         .WillOnce(NotifyAndReturnOk(done));
@@ -194,18 +203,19 @@ TEST_F(RemoteExecutorTest, CreateValueWithError) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   v0::Value tensor_two = testing::TensorV(2.0f);
 
   EXPECT_CALL(*mock_executor_service_,
               CreateValue(::testing::_, ::testing::_, ::testing::_))
-      .WillOnce(::testing::Return(absl::UnimplementedError("Test")));
+      .WillOnce(::testing::Return(UnimplementedPlaceholder()));
 
-  OwnedValueId value_ref = test_executor_->CreateValue(tensor_two).ValueOrDie();
+  OwnedValueId value_ref =
+      TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
   v0::Value materialized_value;
   // If the CreateValue fails we dont expect a Compute call on the other side.
   // Nor do we expect a dispose, because no value has been created.
-  grpc::Status materialize_status =
+  absl::Status materialize_status =
       test_executor_->Materialize(value_ref, &materialized_value);
   EXPECT_THAT(materialize_status,
               StatusIs(absl::StatusCode::kUnimplemented, "Test"));
@@ -217,11 +227,11 @@ TEST_F(RemoteExecutorTest, MaterializeWithError) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   v0::Value tensor_two = testing::TensorV(2.0f);
 
   v0::Value materialized_value;
-  grpc::Status materialize_status;
+  absl::Status materialize_status;
   absl::Notification done;
 
   {
@@ -231,11 +241,11 @@ TEST_F(RemoteExecutorTest, MaterializeWithError) {
                             ::testing::_))
         .WillOnce(ReturnOkWithResponseId<v0::CreateValueResponse>("value_ref"));
     OwnedValueId value_ref =
-        test_executor_->CreateValue(tensor_two).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
 
     EXPECT_CALL(*mock_executor_service_,
                 Compute(::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Return(absl::UnimplementedError("Test")));
+        .WillOnce(::testing::Return(UnimplementedPlaceholder()));
     materialize_status =
         test_executor_->Materialize(value_ref, &materialized_value);
     EXPECT_THAT(materialize_status,
@@ -254,12 +264,12 @@ TEST_F(RemoteExecutorTest, CreateCallFnWithArg) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   v0::Value tensor_two = testing::TensorV(2.0f);
   v0::Value tensor_three = testing::TensorV(3.0f);
 
   v0::Value materialized_value;
-  grpc::Status materialize_status;
+  absl::Status materialize_status;
   absl::Notification done;
 
   {
@@ -279,8 +289,8 @@ TEST_F(RemoteExecutorTest, CreateCallFnWithArg) {
 
     // The literal argument itself is thrown away, but is used to identify which
     // CreateValue represents the function and which the argument.
-    OwnedValueId fn = test_executor_->CreateValue(tensor_two).ValueOrDie();
-    OwnedValueId arg = test_executor_->CreateValue(tensor_three).ValueOrDie();
+    OwnedValueId fn = TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
+    OwnedValueId arg = TFF_ASSERT_OK(test_executor_->CreateValue(tensor_three));
 
     constexpr char kExpectedRequest[] = R"pb(
       function_ref { id: "function_ref" }
@@ -292,7 +302,8 @@ TEST_F(RemoteExecutorTest, CreateCallFnWithArg) {
         CreateCall(::testing::_, EqualsProto(kExpectedRequest), ::testing::_))
         .WillOnce(ReturnOkWithResponseId<v0::CreateCallResponse>("call_ref"));
 
-    OwnedValueId call_result = test_executor_->CreateCall(fn, arg).ValueOrDie();
+    OwnedValueId call_result =
+        TFF_ASSERT_OK(test_executor_->CreateCall(fn, arg));
 
     // We need to call Materialize to force synchronization of the calls above.
     EXPECT_CALL(
@@ -304,8 +315,8 @@ TEST_F(RemoteExecutorTest, CreateCallFnWithArg) {
         test_executor_->Materialize(call_result, &materialized_value);
     EXPECT_CALL(*mock_executor_service_,
                 Dispose(::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Return(absl::OkStatus()))
-        .WillOnce(::testing::Return(absl::OkStatus()))
+        .WillOnce(::testing::Return(grpc::Status::OK))
+        .WillOnce(::testing::Return(grpc::Status::OK))
         .WillOnce(NotifyAndReturnOk(done));
   }
   TFF_EXPECT_OK(materialize_status);
@@ -319,7 +330,7 @@ TEST_F(RemoteExecutorTest, CreateCallNoArgFn) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   EXPECT_CALL(*mock_executor_service_,
               CreateValue(::testing::_, ::testing::_, ::testing::_))
       .WillOnce(
@@ -328,10 +339,10 @@ TEST_F(RemoteExecutorTest, CreateCallNoArgFn) {
   // The literal argument itself is unused.
   v0::Value tensor_two = testing::TensorV(2.0f);
   v0::Value materialized_value;
-  grpc::Status materialize_status;
+  absl::Status materialize_status;
   absl::Notification done;
   {
-    OwnedValueId fn = test_executor_->CreateValue(tensor_two).ValueOrDie();
+    OwnedValueId fn = TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
 
     constexpr char kExpectedRequest[] = R"pb(
       function_ref { id: "function_ref" }
@@ -343,7 +354,7 @@ TEST_F(RemoteExecutorTest, CreateCallNoArgFn) {
         .WillOnce(ReturnOkWithResponseId<v0::CreateCallResponse>("call_ref"));
 
     OwnedValueId call_result =
-        test_executor_->CreateCall(fn, absl::nullopt).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateCall(fn, absl::nullopt));
 
     // We need to call Materialize to force synchronization of the calls above.
     EXPECT_CALL(
@@ -356,7 +367,7 @@ TEST_F(RemoteExecutorTest, CreateCallNoArgFn) {
 
     EXPECT_CALL(*mock_executor_service_,
                 Dispose(::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Return(absl::OkStatus()))
+        .WillOnce(::testing::Return(grpc::Status::OK))
         .WillOnce(NotifyAndReturnOk(done));
   }
   TFF_EXPECT_OK(materialize_status);
@@ -370,7 +381,7 @@ TEST_F(RemoteExecutorTest, CreateCallError) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   EXPECT_CALL(*mock_executor_service_,
               CreateValue(::testing::_, ::testing::_, ::testing::_))
       .WillOnce(
@@ -378,18 +389,18 @@ TEST_F(RemoteExecutorTest, CreateCallError) {
 
   v0::Value tensor_two = testing::TensorV(2.0f);
   v0::Value materialized_value;
-  grpc::Status materialize_status;
+  absl::Status materialize_status;
   absl::Notification done;
   {
     // The literal value itself is unused.
-    OwnedValueId fn = test_executor_->CreateValue(tensor_two).ValueOrDie();
+    OwnedValueId fn = TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
 
     EXPECT_CALL(*mock_executor_service_,
                 CreateCall(::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Return(absl::UnimplementedError("Test")));
+        .WillOnce(::testing::Return(UnimplementedPlaceholder()));
 
     OwnedValueId call_result =
-        test_executor_->CreateCall(fn, absl::nullopt).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateCall(fn, absl::nullopt));
 
     EXPECT_CALL(*mock_executor_service_,
                 Dispose(::testing::_, ::testing::_, ::testing::_))
@@ -411,11 +422,11 @@ TEST_F(RemoteExecutorTest, CreateStructWithTwoElements) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   v0::Value tensor_two = testing::TensorV(2.0f);
   v0::Value tensor_three = testing::TensorV(3.0f);
   v0::Value materialized_value;
-  grpc::Status materialize_status;
+  absl::Status materialize_status;
   absl::Notification done;
   {
     EXPECT_CALL(*mock_executor_service_,
@@ -432,9 +443,9 @@ TEST_F(RemoteExecutorTest, CreateStructWithTwoElements) {
         .WillOnce(
             ReturnOkWithResponseId<v0::CreateValueResponse>("struct_elem2"));
     OwnedValueId first_struct_element =
-        test_executor_->CreateValue(tensor_two).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
     OwnedValueId second_struct_element =
-        test_executor_->CreateValue(tensor_three).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateValue(tensor_three));
 
     constexpr char kExpectedRequest[] = R"pb(
       element { value_ref { id: "struct_elem1" } }
@@ -450,7 +461,7 @@ TEST_F(RemoteExecutorTest, CreateStructWithTwoElements) {
     std::vector<ValueId> struct_to_create = {std::move(first_struct_element),
                                              std::move(second_struct_element)};
     OwnedValueId struct_result =
-        test_executor_->CreateStruct(struct_to_create).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateStruct(struct_to_create));
 
     // We need to call Materialize to force synchronization of the calls above.
     EXPECT_CALL(
@@ -462,8 +473,8 @@ TEST_F(RemoteExecutorTest, CreateStructWithTwoElements) {
         test_executor_->Materialize(struct_result, &materialized_value);
     EXPECT_CALL(*mock_executor_service_,
                 Dispose(::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Return(absl::OkStatus()))
-        .WillOnce(::testing::Return(absl::OkStatus()))
+        .WillOnce(::testing::Return(grpc::Status::OK))
+        .WillOnce(::testing::Return(grpc::Status::OK))
         .WillOnce(NotifyAndReturnOk(done));
   }
   TFF_EXPECT_OK(materialize_status);
@@ -477,10 +488,10 @@ TEST_F(RemoteExecutorTest, CreateStructWithNoElements) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   v0::Value tensor_two = testing::TensorV(2.0f);
   v0::Value materialized_value;
-  grpc::Status materialize_status;
+  absl::Status materialize_status;
   absl::Notification done;
   {
     EXPECT_CALL(*mock_executor_service_,
@@ -489,7 +500,7 @@ TEST_F(RemoteExecutorTest, CreateStructWithNoElements) {
             ReturnOkWithResponseId<v0::CreateStructResponse>("struct_ref"));
     std::vector<ValueId> struct_to_create = {};
     OwnedValueId struct_result =
-        test_executor_->CreateStruct(struct_to_create).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateStruct(struct_to_create));
 
     // We need to call Materialize to force synchronization of the calls above.
     EXPECT_CALL(
@@ -514,18 +525,18 @@ TEST_F(RemoteExecutorTest, CreateStructWithError) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   EXPECT_CALL(*mock_executor_service_,
               CreateStruct(::testing::_, EqualsProto(""), ::testing::_))
-      .WillOnce(::testing::Return(absl::UnimplementedError("Test")));
+      .WillOnce(::testing::Return(UnimplementedPlaceholder()));
 
   std::vector<ValueId> struct_to_create = {};
   OwnedValueId struct_result =
-      test_executor_->CreateStruct(struct_to_create).ValueOrDie();
+      TFF_ASSERT_OK(test_executor_->CreateStruct(struct_to_create));
 
   // If the CreateStruct fails we dont expect a Compute call on the other side
   v0::Value materialized_value;
-  grpc::Status materialize_status =
+  absl::Status materialize_status =
       test_executor_->Materialize(struct_result, &materialized_value);
   EXPECT_THAT(materialize_status,
               StatusIs(absl::StatusCode::kUnimplemented, "Test"));
@@ -537,10 +548,10 @@ TEST_F(RemoteExecutorTest, CreateSelection) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   v0::Value tensor_two = testing::TensorV(2.0f);
   v0::Value materialized_value;
-  grpc::Status materialize_status;
+  absl::Status materialize_status;
   absl::Notification done;
   {
     EXPECT_CALL(*mock_executor_service_,
@@ -550,7 +561,7 @@ TEST_F(RemoteExecutorTest, CreateSelection) {
         .WillOnce(
             ReturnOkWithResponseId<v0::CreateValueResponse>("source_ref"));
     OwnedValueId source_value =
-        test_executor_->CreateValue(tensor_two).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
 
     constexpr char kExpectedRequest[] = R"pb(
       source_ref { id: "source_ref" }
@@ -564,7 +575,7 @@ TEST_F(RemoteExecutorTest, CreateSelection) {
             "selection_ref"));
 
     OwnedValueId selection_result =
-        test_executor_->CreateSelection(source_value, 2).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateSelection(source_value, 2));
 
     EXPECT_CALL(
         *mock_executor_service_,
@@ -575,7 +586,7 @@ TEST_F(RemoteExecutorTest, CreateSelection) {
         test_executor_->Materialize(selection_result, &materialized_value);
     EXPECT_CALL(*mock_executor_service_,
                 Dispose(::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Return(absl::OkStatus()))
+        .WillOnce(::testing::Return(grpc::Status::OK))
         .WillOnce(NotifyAndReturnOk(done));
   }
   TFF_EXPECT_OK(materialize_status);
@@ -589,10 +600,10 @@ TEST_F(RemoteExecutorTest, CreateSelectionWithError) {
                                IgnoringRepeatedFieldOrdering(EqualsProto(
                                    kExpectedSetCardinalitiesRequest)),
                                ::testing::_))
-      .WillOnce(::testing::Return(absl::OkStatus()));
+      .WillOnce(::testing::Return(grpc::Status::OK));
   v0::Value tensor_two = testing::TensorV(2.0f);
   v0::Value materialized_value;
-  grpc::Status materialize_status;
+  absl::Status materialize_status;
   absl::Notification done;
   {
     EXPECT_CALL(*mock_executor_service_,
@@ -610,11 +621,11 @@ TEST_F(RemoteExecutorTest, CreateSelectionWithError) {
     EXPECT_CALL(*mock_executor_service_,
                 CreateSelection(::testing::_, EqualsProto(kExpectedRequest),
                                 ::testing::_))
-        .WillOnce(::testing::Return(absl::UnimplementedError("Test")));
+        .WillOnce(::testing::Return(UnimplementedPlaceholder()));
     OwnedValueId source_value =
-        test_executor_->CreateValue(tensor_two).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateValue(tensor_two));
     OwnedValueId selection_result =
-        test_executor_->CreateSelection(source_value, 1).ValueOrDie();
+        TFF_ASSERT_OK(test_executor_->CreateSelection(source_value, 1));
     EXPECT_CALL(*mock_executor_service_,
                 Dispose(::testing::_, ::testing::_, ::testing::_))
         .WillOnce(NotifyAndReturnOk(done));
