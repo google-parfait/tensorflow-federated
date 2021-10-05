@@ -28,7 +28,6 @@ limitations under the License
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
 #include "include/pybind11/pytypes.h"
-#include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/wrapped_proto_caster.h"
 #include "tensorflow/c/eager/c_api.h"
@@ -114,7 +113,7 @@ struct type_caster<tensorflow::Tensor> {
                  << TF_Message(tf_status.get());
       return false;
     }
-    VLOG(2) << "Resolved handle to: " << tf_tensor;
+    VLOG(2) << "Resolved handle to address: " << tf_tensor.get();
     tensorflow::Tensor tensor;
     tensorflow::Status status =
         tensorflow::TF_TensorToTensor(tf_tensor.get(), &tensor);
@@ -122,8 +121,7 @@ struct type_caster<tensorflow::Tensor> {
       LOG(ERROR) << "Failed to convert TF_Tensor to Tensor";
       return false;
     }
-    value.CopyFrom(tensor, tensor.shape());
-    return !PyErr_Occurred();
+    return !PyErr_Occurred() && value.CopyFrom(tensor, tensor.shape());
   }
 
   // Convert tensorflow::Tensor (C++) back to a tf.EagerTensor (Python).

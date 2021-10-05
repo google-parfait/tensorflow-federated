@@ -23,7 +23,6 @@ pybind_extension(
         ":remote_stacks",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
         "@com_github_grpc_grpc//:grpc++",
-        "@com_google_absl//absl/types:span",
         "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
     ],
@@ -79,7 +78,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
     ],
 )
 

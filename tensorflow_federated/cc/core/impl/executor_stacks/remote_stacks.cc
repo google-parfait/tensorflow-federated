@@ -23,7 +23,6 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/span.h"
 #include "grpcpp/grpcpp.h"
 #include "include/grpcpp/support/time.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
@@ -39,11 +38,10 @@ namespace tensorflow_federated {
 // which are ready or idle. This function blocks up to
 // `wait_connected_duration_millis` milliseconds, awaiting all channels in
 // `channels` to be ready.
-std::vector<const std::shared_ptr<grpc::ChannelInterface>>
-FilterToLiveChannels_(
-    absl::Span<const std::shared_ptr<grpc::ChannelInterface>> channels,
+std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels_(
+    const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
     int wait_connected_duration_millis = 1000) {
-  std::vector<const std::shared_ptr<grpc::ChannelInterface>> live_channels;
+  std::vector<std::shared_ptr<grpc::ChannelInterface>> live_channels;
   auto wait_connected =
       [&wait_connected_duration_millis](
           std::shared_ptr<grpc::ChannelInterface> channel) -> absl::Status {
@@ -80,7 +78,7 @@ FilterToLiveChannels_(
 }
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
-    absl::Span<const std::shared_ptr<grpc::ChannelInterface>> channels,
+    const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
     const CardinalityMap& cardinalities) {
   auto rre_tf_leaf_executor = []() {
     return CreateReferenceResolvingExecutor(CreateTensorFlowExecutor());
@@ -98,7 +96,7 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
 }
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
-    absl::Span<const std::shared_ptr<grpc::ChannelInterface>> channels,
+    const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
     const CardinalityMap& cardinalities, ExecutorFn leaf_executor_fn,
     ComposingChildFn composing_child_fn) {
   int num_clients = 0;
@@ -123,7 +121,8 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
         remaining_clients, " num_clients."));
   }
 
-  auto live_channels = FilterToLiveChannels_(channels);
+  const std::vector<std::shared_ptr<grpc::ChannelInterface>> live_channels =
+      FilterToLiveChannels_(channels);
   int remaining_num_executors = live_channels.size();
   if (live_channels.empty()) {
     return absl::UnavailableError(

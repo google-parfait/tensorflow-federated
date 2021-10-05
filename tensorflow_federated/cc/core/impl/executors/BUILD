@@ -411,7 +411,6 @@ pybind_extension(
         "@org_tensorflow//tensorflow/python/eager:pywrap_tfe_lib",
         "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor_headers",
         "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
-        "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
         "@pybind11_protobuf//pybind11_protobuf:wrapped_proto_caster",
     ],

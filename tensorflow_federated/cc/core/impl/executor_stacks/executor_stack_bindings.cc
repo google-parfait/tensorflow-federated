@@ -15,7 +15,6 @@ limitations under the License
 
 #include <memory>
 
-#include "absl/types/span.h"
 #include "grpcpp/grpcpp.h"
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
@@ -34,7 +33,7 @@ namespace {
 PYBIND11_MODULE(executor_stack_bindings, m) {
   m.def("create_remote_executor_stack",
         py::overload_cast<
-            absl::Span<const std::shared_ptr<grpc::ChannelInterface>>,
+            const std::vector<std::shared_ptr<grpc::ChannelInterface>>&,
             const CardinalityMap&>(&CreateRemoteExecutorStack),
         "Creates a C++ remote execution stack.");
 }

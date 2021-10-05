@@ -18,9 +18,9 @@ limitations under the License
 
 #include <functional>
 #include <memory>
+#include <vector>
 
 #include "absl/status/statusor.h"
-#include "absl/types/span.h"
 #include "grpcpp/grpcpp.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
@@ -51,7 +51,7 @@ using ComposingChildFn = std::function<absl::StatusOr<ComposingChild>(
 // This method may block on an RPC call to each channel in order to verify that
 // it is healthy.
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
-    absl::Span<const std::shared_ptr<grpc::ChannelInterface>> channels,
+    const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
     const CardinalityMap& cardinalities);
 
 // Creates an executor stack which proxies for a group of remote workers.
@@ -59,7 +59,7 @@ absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
 // This function is an overload for the above, intended to be used for testing.
 // See the documentation above for details.
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
-    absl::Span<const std::shared_ptr<grpc::ChannelInterface>> channels,
+    const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
     const CardinalityMap& cardinalities, ExecutorFn leaf_executor_fn,
     ComposingChildFn composing_child_fn);
 
