@@ -107,9 +107,9 @@ def federated_aggregate(value, zero, accumulate, merge,
       merge,
       None,
       parameter_type_hint=computation_types.StructType(
-          [zero.type_signature, zero.type_signature]))
+          [accumulate.type_signature.result] * 2))
   report = value_impl.to_value(
-      report, None, parameter_type_hint=zero.type_signature)
+      report, None, parameter_type_hint=merge.type_signature.result)
   for op in [accumulate, merge, report]:
     py_typecheck.check_type(op, value_impl.Value)
     py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
