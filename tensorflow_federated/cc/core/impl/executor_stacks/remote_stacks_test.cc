@@ -183,8 +183,8 @@ TEST_F(RemoteExecutorStackTest, FailedChannelInterfacesNotAddressed) {
       .WillOnce(Return(get_mock_executor()));
   CardinalityMap two_client_cards = {{std::string(kClientsUri), 2}};
   CardinalityMap one_client_cards = {{std::string(kClientsUri), 1}};
-  ComposingChild child =
-      ComposingChild::Make(get_mock_executor(), one_client_cards).ValueOrDie();
+  ComposingChild child = TFF_ASSERT_OK(
+      ComposingChild::Make(get_mock_executor(), one_client_cards));
   EXPECT_CALL(mock_composing_child_factory_,
               Call(AnyOfArray(channel_args), two_client_cards))
       .Times(2)
@@ -217,8 +217,8 @@ TEST_F(RemoteExecutorStackTest, OneClientPassedToOnlyOneChild) {
 
   CardinalityMap one_client_cards = {{std::string(kClientsUri), 1}};
   CardinalityMap zero_client_cards = {{std::string(kClientsUri), 0}};
-  ComposingChild child =
-      ComposingChild::Make(get_mock_executor(), one_client_cards).ValueOrDie();
+  ComposingChild child = TFF_ASSERT_OK(
+      ComposingChild::Make(get_mock_executor(), one_client_cards));
 
   // One call to the mock executor factory for creation of the server.
   EXPECT_CALL(mock_executor_factory_, Call())
