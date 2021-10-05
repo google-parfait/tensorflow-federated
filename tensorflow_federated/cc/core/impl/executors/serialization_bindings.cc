@@ -62,6 +62,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 PYBIND11_MODULE(serialization_bindings, m) {
   py::google::ImportStatusModule();
+  pybind11_protobuf::ImportWrappedProtoCasters();
 
   m.doc() = "Bindings for the C++ value serialization";
 
