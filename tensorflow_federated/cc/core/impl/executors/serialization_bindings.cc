@@ -25,9 +25,9 @@ limitations under the License
 #include <Python.h>
 
 #include "absl/status/statusor.h"
-#include "pybind11/include/pybind11/detail/common.h"
-#include "pybind11/include/pybind11/pybind11.h"
-#include "pybind11/include/pybind11/pytypes.h"
+#include "include/pybind11/detail/common.h"
+#include "include/pybind11/pybind11.h"
+#include "include/pybind11/pytypes.h"
 #include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/wrapped_proto_caster.h"

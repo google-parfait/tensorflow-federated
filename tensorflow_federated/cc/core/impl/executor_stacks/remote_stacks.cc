@@ -25,7 +25,7 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "grpcpp/grpcpp.h"
-#include "grpc/include/grpcpp/support/time.h"
+#include "include/grpcpp/support/time.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
