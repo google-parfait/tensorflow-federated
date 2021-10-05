@@ -732,6 +732,27 @@ class FederatedAggregateTest(IntrinsicTestBase):
                                          accumulate, merge, report)
     self.assert_value(val, '<samples=int32[?]>@SERVER')
 
+  def test_infers_accumulate_return_as_merge_arg_merge_return_as_report_arg(
+      self):
+    x = _mock_data_of_type(computation_types.at_clients(tf.int64))
+
+    @computations.tf_computation
+    def nil_stack():
+      return tf.constant([], dtype=tf.int64, shape=[0])
+
+    @computations.tf_computation(
+        computation_types.TensorType(tf.int64, [None]), tf.int64)
+    def append(stack, num):
+      return tf.concat([stack, [num]], 0)
+
+    @computations.tf_computation
+    def merge(stack_a, stack_b):
+      return tf.concat([stack_a, stack_b], 0)
+
+    report = computations.tf_computation(lambda a: a)
+    val = intrinsics.federated_aggregate(x, nil_stack(), append, merge, report)
+    self.assert_value(val, 'int64[?]@SERVER')
+
 
 class FederatedValueTest(IntrinsicTestBase):
 
