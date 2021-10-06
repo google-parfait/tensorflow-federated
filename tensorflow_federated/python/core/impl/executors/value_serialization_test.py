@@ -356,6 +356,24 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       value_serialization.deserialize_value(federated_value_proto)
 
+  def test_deserialize_federated_all_equal_value_takes_first_element(self):
+    tensor_value_pb, _ = value_serialization.serialize_value(
+        10, computation_types.TensorType(tf.int32))
+    num_clients = 5
+    value_pb = executor_pb2.Value(
+        federated=executor_pb2.Value.Federated(
+            value=[tensor_value_pb] * num_clients,
+            type=computation_pb2.FederatedType(
+                placement=computation_pb2.PlacementSpec(
+                    value=computation_pb2.Placement(
+                        uri=placements.CLIENTS.uri)))))
+    all_equal_clients_type_hint = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    deserialized_value, deserialized_type = value_serialization.deserialize_value(
+        value_pb, all_equal_clients_type_hint)
+    self.assert_types_identical(deserialized_type, all_equal_clients_type_hint)
+    self.assertAllEqual(deserialized_value, 10)
+
   def test_deserialize_federated_value_promotes_types(self):
     x = [10]
     smaller_type = computation_types.StructType([
