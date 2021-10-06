@@ -30,11 +30,8 @@ def main(argv):
     raise app.UsageError('Too many command-line arguments.')
 
   channel = grpc.insecure_channel('{}:{}'.format(FLAGS.host, FLAGS.port))
-  ex = tff.framework.RemoteExecutor(channel)
-  ex = tff.framework.CachingExecutor(ex)
-  ex = tff.framework.ReferenceResolvingExecutor(ex)
-  factory = tff.framework.ResourceManagingExecutorFactory(lambda _: ex)
-  context = tff.framework.ExecutionContext(factory)
+  context = tff.backends.native.create_remote_execution_context(
+      channels=[channel])
   tff.framework.set_default_context(context)
 
   print(tff.federated_computation(lambda: 'Hello World')())
