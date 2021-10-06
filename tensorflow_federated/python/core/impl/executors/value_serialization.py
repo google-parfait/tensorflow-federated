@@ -514,33 +514,40 @@ def _deserialize_federated_value(
     type_hint: Optional[computation_types.Type] = None
 ) -> _DeserializeReturnType:
   """Deserializes a value of federated type."""
-  all_equal = value_proto.federated.type.all_equal
-  placement_uri = value_proto.federated.type.placement.value.uri
   if not value_proto.federated.value:
     raise ValueError('Attempting to deserialize federated value with no data.')
-  value = []
+  # The C++ runtime doesn't use the `all_equal` boolean (and doesn't report it
+  # in returned values), however the type_hint on the computation may contain
+  # it.
+  if type_hint is not None:
+    all_equal = type_hint.all_equal
+  else:
+    all_equal = value_proto.federated.type.all_equal
+  placement_uri = value_proto.federated.type.placement.value.uri
   # item_type will represent a supertype of all deserialized member types in the
-  # federated value.
+  # federated value. This will be the hint used for deserialize member values.
   if type_hint is not None:
     item_type_hint = type_hint.member
   else:
     item_type_hint = None
   item_type = None
-  for item in value_proto.federated.value:
+  if all_equal:
+    # As an optimization, we only deserialize the first value of an
+    # `all_equal=True` federated value.
+    items = [value_proto.federated.value[0]]
+  else:
+    items = value_proto.federated.value
+  value = []
+  for item in items:
     item_value, next_item_type = deserialize_value(item, item_type_hint)
     item_type = _ensure_deserialized_types_compatible(item_type, next_item_type)
     value.append(item_value)
-  if all_equal:
-    if len(value) == 1:
-      value = value[0]
-    else:
-      raise ValueError(
-          'Encountered an all_equal value with {} member constituents. '
-          'Expected exactly 1.'.format(len(value)))
   type_spec = computation_types.FederatedType(
       item_type,
       placement=placements.uri_to_placement_literal(placement_uri),
       all_equal=all_equal)
+  if all_equal:
+    value = value[0]
   return value, type_spec
 
 
