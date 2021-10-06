@@ -24,6 +24,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning/metrics:finalizer",
     ],
 )
 

@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import model as model_lib
+from tensorflow_federated.python.learning.metrics import finalizer
 
 Weight = Union[np.ndarray, int, float]
 WeightStruct = Union[Sequence[Weight], Mapping[str, Weight]]
@@ -208,9 +209,9 @@ class _ModelFromFunctional(model_lib.Model):
     def sum_then_finalize(local_outputs):
       sum_outputs = intrinsics.federated_sum(local_outputs)
       finalized_values = collections.OrderedDict()
-      for metric_name, finalizer in self.metric_finalizers().items():
+      for metric_name, metric_finalizer in self.metric_finalizers().items():
         finalizer_computation = computations.tf_computation(
-            finalizer, local_outputs_type[metric_name])
+            metric_finalizer, local_outputs_type[metric_name])
         finalized_values[metric_name] = intrinsics.federated_map(
             finalizer_computation, sum_outputs[metric_name])
       return intrinsics.federated_zip(finalized_values)
@@ -271,31 +272,14 @@ class _ModelFromFunctional(model_lib.Model):
       outputs[metric.name] = [v.read_value() for v in metric.variables]
     return outputs
 
-  def metric_finalizers(self) -> Dict[str, _SingleMetricFinalizerType]:
-
-    def create_single_metric_finalizer(metric_constructor):
-
-      @tf.function
-      def finalizer(metric_local_outputs):
-
-        with tf.init_scope():
-          # Reconstructing the keras metric here because this `tf.function` may
-          # be invoked in a different context as the `model_fn`, and we need the
-          # `tf.Variable`s to be created in the current scope in order to use
-          # `metric.result()`.
-          metric = metric_constructor()
-        for v, a in zip(metric.variables, metric_local_outputs):
-          v.assign(a)
-        return metric.result()
-
-      return finalizer
+  def metric_finalizers(self) -> Dict[str, finalizer.KerasMetricFinalizer]:
 
     finalizers = collections.OrderedDict(
         # `loss` result is computed by `loss_sum` / `num_examples`.
         loss=tf.function(func=lambda x: x[0] / x[1]))
     for metric_constructor in self._metric_constructors:
       metric_name = metric_constructor().name
-      finalizers[metric_name] = create_single_metric_finalizer(
+      finalizers[metric_name] = finalizer.create_keras_metric_finalizer(
           metric_constructor)
     return finalizers
 
