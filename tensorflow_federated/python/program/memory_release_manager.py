@@ -26,6 +26,7 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
     """Returns an initialized `tff.program.MemoryReleaseManager`."""
     self._values = collections.OrderedDict()
 
+  # TODO(b/202418342): Add support for `ValueReference`.
   def release(self, value: Any, key: Hashable):
     """Releases `value` from a federated program.
 

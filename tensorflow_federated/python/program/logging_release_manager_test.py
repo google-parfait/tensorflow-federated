@@ -34,10 +34,10 @@ class LoggingReleaseManagerTest(parameterized.TestCase):
       ('list_list', [1, 2, 3], [1, 2, 3]),
   )
   def test_release_logs_value_and_key(self, value, key):
-    logging_release_mngr = logging_release_manager.LoggingReleaseManager()
+    release_mngr = logging_release_manager.LoggingReleaseManager()
 
     with mock.patch('absl.logging.info') as mock_info:
-      logging_release_mngr.release(value, key)
+      release_mngr.release(value, key)
       mock_info.assert_called_once()
 
 if __name__ == '__main__':
