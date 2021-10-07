@@ -26,7 +26,7 @@ MapReduce backends involves a three-stage process:
 2. Top-down transformation phase specific to MapReduce backends. Our knowledge
    of the specific structure of the kind of processing these backends can
    support, captured in the definition of the "MapReduce form" and encoded in
-   the definition of the `MapReduceForm` class in `map_reduce_form.py`, allows
+   the definition of the `MapReduceForm` class in `forms.py`, allows
    us to organize transformations in a manner that specifically supports the
    goal of converting a computation AST into the `MapReduceForm` eight-tuple
    of TensorFlow computations. This phase is top-down, in the sense that the
