@@ -58,13 +58,14 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
       summary_dir = os.fspath(summary_dir)
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
+  # TODO(b/202418342): Add support for `ValueReference`.
   def release(self, value: Any, key: int):
     """Releases `value` from a federated program.
 
     Args:
       value: The value to release.
       key: A integer to use to reference the released `value`, `key` represents
-        a step in TensorBoard.
+        a step in a federated program.
     """
     py_typecheck.check_type(key, int)
     flattened_value = structure_utils.flatten(value)

@@ -22,6 +22,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from tensorflow_federated.python.program import file_program_state_manager
+from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
 
 
@@ -293,7 +294,7 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
     program_state_mngr.set_structure('state')
 
     with self.assertRaises(
-        program_state_manager.ProgramStateManagerVersionNotFoundError):
+        program_state_manager.ProgramStateManagerStateNotFoundError):
       _ = program_state_mngr.load(0)
 
   def test_raises_version_not_found_error_with_unknown_version(self):
@@ -304,7 +305,7 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
     program_state_mngr.save('state_1', 1)
 
     with self.assertRaises(
-        program_state_manager.ProgramStateManagerVersionNotFoundError):
+        program_state_manager.ProgramStateManagerStateNotFoundError):
       program_state_mngr.load(10)
 
   def test_raises_structure_error_with_structure_none(self):
@@ -330,54 +331,6 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
 
     with self.assertRaises(TypeError):
       program_state_mngr.load(version)
-
-
-class FileProgramStateManagerSaveTest(parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ('1', 1),
-      ('2', 2),
-      ('10', 10),
-  )
-  def test_saves_program_state(self, count):
-    temp_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir=temp_dir, prefix='a_')
-
-    with mock.patch.object(
-        program_state_mngr,
-        '_remove_old_program_state') as mock_remove_old_program_state:
-      for i in range(count):
-        program_state_mngr.save(f'state_{i}', i)
-      self.assertEqual(mock_remove_old_program_state.call_count, count)
-
-    actual_dirs = os.listdir(temp_dir)
-    expected_dirs = [f'a_{i}' for i in range(count)]
-    self.assertCountEqual(actual_dirs, expected_dirs)
-
-  def test_raises_version_already_exists_error_with_existing_version(self):
-    temp_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir=temp_dir, prefix='a_')
-
-    program_state_mngr.save('state_1', 1)
-
-    with self.assertRaises(
-        program_state_manager.ProgramStateManagerVersionAlreadyExistsError):
-      program_state_mngr.save('state_1', 1)
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_raises_type_error_with_version(self, version):
-    temp_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir=temp_dir, prefix='a_')
-
-    with self.assertRaises(TypeError):
-      program_state_mngr.save('state', version)
 
 
 class FileProgramStateManagerRemoveTest(parameterized.TestCase):
@@ -470,6 +423,56 @@ class FileProgramStateManagerRemoveOldProgramStateTest(absltest.TestCase):
     program_state_mngr._remove_old_program_state()
 
     self.assertCountEqual(os.listdir(temp_dir), ['a_7', 'a_8', 'a_9'])
+
+
+class FileProgramStateManagerSaveTest(parameterized.TestCase):
+
+  def test_writes_program_state(self):
+    temp_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=temp_dir, prefix='a_', keep_total=0)
+
+    with mock.patch.object(file_utils,
+                           'write_saved_model') as mock_write_saved_model:
+      program_state_mngr.save('state_1', 1)
+      expected_path = program_state_mngr._get_path_for_version(1)
+      mock_write_saved_model.assert_called_once_with(mock.ANY, expected_path)
+
+  def test_removes_old_program_state(self):
+    temp_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=temp_dir, prefix='a_')
+
+    with mock.patch.object(
+        program_state_mngr,
+        '_remove_old_program_state') as mock_remove_old_program_state:
+      program_state_mngr.save('state_1', 1)
+      mock_remove_old_program_state.assert_called_once()
+
+  def test_raises_version_already_exists_error_with_existing_version(self):
+    temp_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=temp_dir, prefix='a_')
+
+    program_state_mngr.save('state_1', 1)
+
+    with self.assertRaises(
+        program_state_manager.ProgramStateManagerStateAlreadyExistsError):
+      program_state_mngr.save('state_1', 1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('str', 'a'),
+      ('list', []),
+  )
+  def test_raises_type_error_with_version(self, version):
+    temp_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=temp_dir, prefix='a_')
+
+    with self.assertRaises(TypeError):
+      program_state_mngr.save('state', version)
+
 
 if __name__ == '__main__':
   absltest.main()

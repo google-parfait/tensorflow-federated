@@ -21,6 +21,7 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":file_program_state_manager",
+        ":file_release_manager",
         ":memory_release_manager",
         ":program_state_manager",
         ":release_manager",
@@ -33,6 +34,7 @@ py_library(
     srcs = ["file_program_state_manager.py"],
     srcs_version = "PY3",
     deps = [
+        ":file_utils",
         ":program_state_manager",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -45,8 +47,40 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":file_program_state_manager",
+        ":file_utils",
         ":program_state_manager",
     ],
+)
+
+py_library(
+    name = "file_release_manager",
+    srcs = ["file_release_manager.py"],
+    deps = [
+        ":file_utils",
+        ":release_manager",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "file_release_manager_test",
+    srcs = ["file_release_manager_test.py"],
+    deps = [
+        ":file_release_manager",
+        ":file_utils",
+    ],
+)
+
+py_library(
+    name = "file_utils",
+    srcs = ["file_utils.py"],
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+)
+
+py_test(
+    name = "file_utils_test",
+    srcs = ["file_utils_test.py"],
+    deps = [":file_utils"],
 )
 
 py_library(

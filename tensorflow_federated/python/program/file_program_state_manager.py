@@ -21,6 +21,7 @@ from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
 
 
@@ -119,8 +120,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     """Returns the version for the given `path` or `None`.
 
     This method does not assert that the given `path` or the returned version
-    represent saved program state, only that for a given `path` maps to the
-    returned version.
+    represent saved program state.
 
     Args:
       path: The path to extract the version from.
@@ -140,8 +140,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     """Returns the path for the given `version`.
 
     This method does not assert that the given `version` or the returned path
-    represent saved program state, only that for a given `version` maps to the
-    returned path.
+    represent saved program state.
 
     Args:
       version: The version to use to construct the path.
@@ -157,7 +156,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       version: A integer representing the version of a saved program state.
 
     Raises:
-      ProgramStateManagerVersionNotFoundError: If there is no program state for
+      ProgramStateManagerStateNotFoundError: If there is no program state for
         the given `version`.
       FileProgramStateManagerStructureError: If `structure` has not been set.
     """
@@ -169,7 +168,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
           'A structure is required to load program state.')
     path = self._get_path_for_version(version)
     if not tf.io.gfile.exists(path):
-      raise program_state_manager.ProgramStateManagerVersionNotFoundError(
+      raise program_state_manager.ProgramStateManagerStateNotFoundError(
           f'No program state found for version: {version}')
     model = tf.saved_model.load(path)
     flat_obj = model.build_obj_fn()
@@ -177,41 +176,8 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     logging.info('Program state loaded: %s', path)
     return state
 
-  def save(self, program_state: Any, version: int):
-    """Saves `program_state` for the given `version`.
-
-    Args:
-      program_state: The program state to save.
-      version: A strictly increasing integer representing the version of a saved
-        `program_state`.
-    """
-    py_typecheck.check_type(version, int)
-    path = self._get_path_for_version(version)
-    if tf.io.gfile.exists(path):
-      raise program_state_manager.ProgramStateManagerVersionAlreadyExistsError(
-          f'Program state already exists for version: {version}')
-    flat_obj = tf.nest.flatten(program_state)
-    model = tf.Module()
-    model.obj = flat_obj
-    model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
-
-    # First write to a temporary directory.
-    temp_path = f'{path}_temp'
-    try:
-      tf.io.gfile.rmtree(temp_path)
-    except tf.errors.NotFoundError:
-      pass
-    tf.io.gfile.makedirs(temp_path)
-    tf.saved_model.save(model, temp_path, signatures={})
-
-    # Rename the temp directory to the final location atomically.
-    tf.io.gfile.rename(temp_path, path)
-    logging.info('Program state saved: %s', path)
-
-    self._remove_old_program_state()
-
   def _remove(self, version: int):
-    """Removed the program state for the given `version`."""
+    """Removes program state for the given `version`."""
     py_typecheck.check_type(version, int)
     path = self._get_path_for_version(version)
     if tf.io.gfile.exists(path):
@@ -219,7 +185,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       logging.info('Program state removed: %s', path)
 
   def _remove_old_program_state(self):
-    """Removes the old program state."""
+    """Removes old program state."""
     if self._keep_total <= 0:
       return
     versions = self.versions()
@@ -229,3 +195,28 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
         stop = start - self._keep_total
         for version in versions[start:stop]:
           self._remove(version)
+
+  # TODO(b/202418342): Add support for `ValueReference`.
+  def save(self, program_state: Any, version: int):
+    """Saves `program_state` for the given `version`.
+
+    Args:
+      program_state: The program state to save.
+      version: A strictly increasing integer representing the version of a saved
+        `program_state`.
+
+    Raises:
+      ProgramStateManagerStateAlreadyExistsError: If there is already program
+        state for the given `version`.
+    """
+    py_typecheck.check_type(version, int)
+    path = self._get_path_for_version(version)
+    if tf.io.gfile.exists(path):
+      raise program_state_manager.ProgramStateManagerStateAlreadyExistsError(
+          f'Program state already exists for version: {version}')
+    flat_obj = tf.nest.flatten(program_state)
+    model = tf.Module()
+    model.obj = flat_obj
+    model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
+    file_utils.write_saved_model(model, path)
+    self._remove_old_program_state()

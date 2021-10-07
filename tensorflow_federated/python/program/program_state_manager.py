@@ -17,11 +17,11 @@ import abc
 from typing import Any, List, Optional, Tuple
 
 
-class ProgramStateManagerVersionAlreadyExistsError(Exception):
+class ProgramStateManagerStateAlreadyExistsError(Exception):
   pass
 
 
-class ProgramStateManagerVersionNotFoundError(Exception):
+class ProgramStateManagerStateNotFoundError(Exception):
   pass
 
 
@@ -50,7 +50,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
       version: A integer representing the version of a saved program state.
 
     Raises:
-      ProgramStateManagerVersionNotFoundError: If there is no program state for
+      ProgramStateManagerStateNotFoundError: If there is no program state for
         the given `version`.
     """
     raise NotImplementedError
@@ -68,9 +68,10 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     latest_version = max(versions)
     try:
       return self.load(latest_version), latest_version
-    except ProgramStateManagerVersionNotFoundError:
+    except ProgramStateManagerStateNotFoundError:
       return None, 0
 
+  # TODO(b/202418342): Add support for `ValueReference`.
   @abc.abstractmethod
   def save(self, program_state: Any, version: int):
     """Saves `program_state` for the given `version`.
@@ -81,7 +82,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
         `program_state`.
 
     Raises:
-      ProgramStateManagerVersionAlreadyExistsError: If there already exists
-        program state for the given `version`.
+      ProgramStateManagerStateAlreadyExistsError: If there is already program
+        state for the given `version`.
     """
     raise NotImplementedError

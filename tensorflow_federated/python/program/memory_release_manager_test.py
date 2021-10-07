@@ -31,13 +31,13 @@ class MemoryReleaseManagerTest(parameterized.TestCase):
       ('list_1', [1, 2, 3], 1),
   )
   def test_release_saves_value_and_key(self, value, key):
-    memory_release_mngr = memory_release_manager.MemoryReleaseManager()
+    release_mngr = memory_release_manager.MemoryReleaseManager()
 
-    memory_release_mngr.release(value, key)
+    release_mngr.release(value, key)
 
-    self.assertLen(memory_release_mngr._values, 1)
-    self.assertIn(key, memory_release_mngr._values)
-    self.assertEqual(memory_release_mngr._values[key], value)
+    self.assertLen(release_mngr._values, 1)
+    self.assertIn(key, release_mngr._values)
+    self.assertEqual(release_mngr._values[key], value)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -47,10 +47,10 @@ class MemoryReleaseManagerTest(parameterized.TestCase):
       ('tuple', ()),
   )
   def test_release_does_not_raise_with_key(self, key):
-    memory_release_mngr = memory_release_manager.MemoryReleaseManager()
+    release_mngr = memory_release_manager.MemoryReleaseManager()
 
     try:
-      memory_release_mngr.release(1, key)
+      release_mngr.release(1, key)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -60,10 +60,10 @@ class MemoryReleaseManagerTest(parameterized.TestCase):
       ('orderd_dict', collections.OrderedDict()),
   )
   def test_release_raises_type_error_with_key(self, key):
-    memory_release_mngr = memory_release_manager.MemoryReleaseManager()
+    release_mngr = memory_release_manager.MemoryReleaseManager()
 
     with self.assertRaises(TypeError):
-      memory_release_mngr.release(1, key)
+      release_mngr.release(1, key)
 
   @parameterized.named_parameters(
       ('0', 0),
@@ -71,23 +71,23 @@ class MemoryReleaseManagerTest(parameterized.TestCase):
       ('10', 10),
   )
   def test_values_with_saved_values(self, count):
-    memory_release_mngr = memory_release_manager.MemoryReleaseManager()
+    release_mngr = memory_release_manager.MemoryReleaseManager()
     for i in range(count):
-      memory_release_mngr._values[i] = i * 10
+      release_mngr._values[i] = i * 10
 
-    values = memory_release_mngr.values()
+    values = release_mngr.values()
 
     self.assertEqual(values, {i: i * 10 for i in range(count)})
 
   def test_values_returns_copy(self):
-    memory_release_mngr = memory_release_manager.MemoryReleaseManager()
+    release_mngr = memory_release_manager.MemoryReleaseManager()
 
-    values = memory_release_mngr.values()
+    values = release_mngr.values()
     self.assertEmpty(values)
 
     values[1] = 1
 
-    values = memory_release_mngr.values()
+    values = release_mngr.values()
     self.assertEmpty(values)
 
 

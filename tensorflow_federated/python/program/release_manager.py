@@ -24,6 +24,7 @@ class ReleaseManager(metaclass=abc.ABCMeta):
   to customer storage in a federated program.
   """
 
+  # TODO(b/202418342): Document support for `ValueReference`.
   @abc.abstractmethod
   def release(self, value: Any, key: Any = None):
     """Releases `value` from a federated program.
