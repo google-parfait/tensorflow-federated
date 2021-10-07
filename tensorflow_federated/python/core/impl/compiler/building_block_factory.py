@@ -765,34 +765,6 @@ def create_federated_broadcast(
   return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_collect(
-    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
-  r"""Creates a called federated collect.
-
-            Call
-           /    \
-  Intrinsic      Comp
-
-  Args:
-    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
-
-  Returns:
-    A `building_blocks.Call`.
-
-  Raises:
-    TypeError: If any of the types do not match.
-  """
-  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  type_signature = computation_types.SequenceType(value.type_signature.member)
-  result_type = computation_types.FederatedType(type_signature,
-                                                placements.SERVER)
-  intrinsic_type = computation_types.FunctionType(
-      type_conversions.type_to_non_all_equal(value.type_signature), result_type)
-  intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_COLLECT.uri,
-                                        intrinsic_type)
-  return building_blocks.Call(intrinsic, value)
-
-
 def create_federated_eval(
     fn: building_blocks.ComputationBuildingBlock,
     placement: placements.PlacementLiteral,

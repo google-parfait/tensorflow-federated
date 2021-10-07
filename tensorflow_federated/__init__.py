@@ -37,7 +37,6 @@ from tensorflow_federated.python.core.api.computations import tf_computation
 from tensorflow_federated.python.core.impl.federated_context.data import data
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_aggregate
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_broadcast
-from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_collect
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_eval
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_map
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_mean

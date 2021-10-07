@@ -408,13 +408,6 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     return FederatedComposingStrategyValue(result_vals, result_type)
 
   @tracing.trace
-  async def compute_federated_collect(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
-    raise NotImplementedError(
-        'The federated collect intrinsic is not implemented.')
-
-  @tracing.trace
   async def compute_federated_eval_at_clients(
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:

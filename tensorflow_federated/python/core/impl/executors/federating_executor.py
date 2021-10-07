@@ -162,13 +162,6 @@ class FederatingStrategy(abc.ABC):
     raise NotImplementedError()
 
   @abc.abstractmethod
-  async def compute_federated_collect(
-      self, arg: executor_value_base.ExecutorValue
-  ) -> executor_value_base.ExecutorValue:
-    """Returns an embedded call for a federated collect."""
-    raise NotImplementedError()
-
-  @abc.abstractmethod
   async def compute_federated_eval_at_clients(
       self, arg: executor_value_base.ExecutorValue
   ) -> executor_value_base.ExecutorValue:

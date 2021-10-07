@@ -317,14 +317,6 @@ def create_whimsy_intrinsic_def_federated_broadcast():
   return value, type_signature
 
 
-def create_whimsy_intrinsic_def_federated_collect():
-  value = intrinsic_defs.FEDERATED_COLLECT
-  type_signature = computation_types.FunctionType(
-      computation_types.at_clients(tf.float32),
-      computation_types.at_server(computation_types.SequenceType(tf.float32)))
-  return value, type_signature
-
-
 def create_whimsy_intrinsic_def_federated_eval_at_clients():
   value = intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS
   type_signature = computation_types.FunctionType(

@@ -463,28 +463,6 @@ class CreateFederatedBroadcastTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
 
-class CreateFederatedCollectTest(test_case.TestCase):
-
-  def test_raises_type_error_with_none_value(self):
-    with self.assertRaises(TypeError):
-      building_block_factory.create_federated_collect(None)
-
-  def test_returns_federated_collect(self):
-    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    value = building_blocks.Data('v', value_type)
-    comp = building_block_factory.create_federated_collect(value)
-    self.assertEqual(comp.compact_representation(), 'federated_collect(v)')
-    self.assertEqual(str(comp.type_signature), 'int32*@SERVER')
-
-  def test_constructs_federated_collect_with_all_equal_argument(self):
-    value_type = computation_types.FederatedType(
-        tf.int32, placements.CLIENTS, all_equal=True)
-    value = building_blocks.Data('v', value_type)
-    comp = building_block_factory.create_federated_collect(value)
-    self.assertEqual(comp.compact_representation(), 'federated_collect(v)')
-    self.assertEqual(str(comp.type_signature), 'int32*@SERVER')
-
-
 class CreateFederatedEvalTest(test_case.TestCase):
 
   def assert_type_error(self, fn, placement):

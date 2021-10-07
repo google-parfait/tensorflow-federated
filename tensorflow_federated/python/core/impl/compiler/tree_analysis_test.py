@@ -748,7 +748,6 @@ non_aggregation_intrinsics = building_blocks.Struct([
 unit = computation_types.StructType([])
 trivial_aggregate = test_utils.create_whimsy_called_federated_aggregate(
     value_type=unit)
-trivial_collect = test_utils.create_whimsy_called_federated_collect(unit)
 trivial_mean = test_utils.create_whimsy_called_federated_mean(unit)
 trivial_sum = test_utils.create_whimsy_called_federated_sum(unit)
 # TODO(b/120439632) Enable once federated_mean accepts structured weights.
@@ -762,7 +761,6 @@ class ContainsAggregationShared(parameterized.TestCase):
   @parameterized.named_parameters([
       ('non_aggregation_intrinsics', non_aggregation_intrinsics),
       ('trivial_aggregate', trivial_aggregate),
-      ('trivial_collect', trivial_collect),
       ('trivial_mean', trivial_mean),
       ('trivial_sum', trivial_sum),
       # TODO(b/120439632) Enable once federated_mean accepts structured weight.
@@ -800,7 +798,6 @@ class ContainsAggregationShared(parameterized.TestCase):
 
 
 simple_aggregate = test_utils.create_whimsy_called_federated_aggregate()
-simple_collect = test_utils.create_whimsy_called_federated_collect()
 simple_mean = test_utils.create_whimsy_called_federated_mean()
 simple_sum = test_utils.create_whimsy_called_federated_sum()
 simple_weighted_mean = test_utils.create_whimsy_called_federated_mean(
@@ -813,7 +810,6 @@ class ContainsSecureAggregation(parameterized.TestCase):
 
   @parameterized.named_parameters([
       ('simple_aggregate', simple_aggregate),
-      ('simple_collect', simple_collect),
       ('simple_mean', simple_mean),
       ('simple_sum', simple_sum),
       ('simple_weighted_mean', simple_weighted_mean),
@@ -841,7 +837,6 @@ class ContainsUnsecureAggregation(parameterized.TestCase):
 
   @parameterized.named_parameters([
       ('simple_aggregate', simple_aggregate),
-      ('simple_collect', simple_collect),
       ('simple_mean', simple_mean),
       ('simple_sum', simple_sum),
       ('simple_weighted_mean', simple_weighted_mean),

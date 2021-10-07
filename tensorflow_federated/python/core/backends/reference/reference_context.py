@@ -665,8 +665,6 @@ class ReferenceContext(context_base.Context):
             self._federated_mean,
         intrinsic_defs.FEDERATED_BROADCAST.uri:
             self._federated_broadcast,
-        intrinsic_defs.FEDERATED_COLLECT.uri:
-            self._federated_collect,
         intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri:
             self._federated_eval_at_clients,
         intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri:
@@ -948,16 +946,6 @@ class ReferenceContext(context_base.Context):
               [arg.type_signature.element, arg.type_signature.element]))
     return total
 
-  def _federated_collect(self, arg, context):
-    del context  # Unused (left as arg b.c. functions must have same shape).
-    type_analysis.check_federated_type(arg.type_signature, None,
-                                       placements.CLIENTS, False)
-    return ComputedValue(
-        arg.value,
-        computation_types.FederatedType(
-            computation_types.SequenceType(arg.type_signature.member),
-            placements.SERVER, True))
-
   def _federated_eval_shared(
       self,
       arg: ComputedValue,
@@ -1059,15 +1047,16 @@ class ReferenceContext(context_base.Context):
   def _federated_sum(self, arg, context):
     type_analysis.check_federated_type(arg.type_signature, None,
                                        placements.CLIENTS, False)
-    collected_val = self._federated_collect(arg, context)
     federated_apply_arg = structure.from_container(
-        (lambda arg: self._sequence_sum(arg, context), collected_val.value))
-    apply_fn_type = computation_types.FunctionType(
-        computation_types.SequenceType(arg.type_signature.member),
-        arg.type_signature.member)
+        (lambda arg: self._sequence_sum(arg, context), arg.value))
+    sequence_type = computation_types.SequenceType(arg.type_signature.member)
+    apply_fn_type = computation_types.FunctionType(sequence_type,
+                                                   arg.type_signature.member)
     return self._federated_apply(
-        ComputedValue(federated_apply_arg,
-                      [apply_fn_type, collected_val.type_signature]), context)
+        ComputedValue(
+            federated_apply_arg,
+            [apply_fn_type,
+             computation_types.at_server(sequence_type)]), context)
 
   def _federated_value_at_clients(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)

@@ -588,19 +588,6 @@ class FederatedZipTest(parameterized.TestCase, IntrinsicTestBase):
     self.assert_types_identical(val.type_signature, final_fed_type)
 
 
-class FederatedCollectTest(IntrinsicTestBase):
-
-  def test_federated_collect_with_client_int(self):
-    x = _mock_data_of_type(computation_types.at_clients(tf.int32))
-    val = intrinsics.federated_collect(x)
-    self.assert_value(val, 'int32*@SERVER')
-
-  def test_federated_collect_with_server_int_fails(self):
-    x = _mock_data_of_type(computation_types.at_server(tf.int32))
-    with self.assertRaises(TypeError):
-      intrinsics.federated_collect(x)
-
-
 class FederatedMeanTest(IntrinsicTestBase):
 
   def test_federated_mean_with_client_float32_without_weight(self):

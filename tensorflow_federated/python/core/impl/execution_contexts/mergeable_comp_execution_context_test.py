@@ -202,29 +202,6 @@ class MergeableCompFormTest(absltest.TestCase):
           merge=merge,
           after_merge=after_merge_with_sum)
 
-  def test_raises_with_federated_collect_in_after_agg(self):
-    up_to_merge = build_sum_client_arg_computation(
-        computation_types.at_server(tf.int32),
-        computation_types.at_clients(tf.int32))
-
-    merge = build_whimsy_merge_computation(tf.int32)
-
-    @computations.federated_computation(up_to_merge.type_signature.parameter,
-                                        computation_types.at_server(
-                                            merge.type_signature.result))
-    def after_merge_with_collect(original_arg, merged_arg):
-      del merged_arg  # Unused
-      # Second element in original arg is the clients-placed value.
-      return intrinsics.federated_collect(original_arg[1])
-
-    with self.assertRaisesRegex(
-        mergeable_comp_execution_context.AfterMergeStructureError,
-        'federated_collect'):
-      mergeable_comp_execution_context.MergeableCompForm(
-          up_to_merge=up_to_merge,
-          merge=merge,
-          after_merge=after_merge_with_collect)
-
   def test_passes_with_correct_signatures(self):
     up_to_merge = build_sum_client_arg_computation(
         computation_types.at_server(tf.int32),

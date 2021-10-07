@@ -171,12 +171,6 @@ def create_whimsy_called_federated_broadcast(value_type=tf.int32):
   return building_block_factory.create_federated_broadcast(value)
 
 
-def create_whimsy_called_federated_collect(value_type=tf.int32):
-  federated_type = computation_types.at_clients(value_type)
-  value = building_blocks.Data('data', federated_type)
-  return building_block_factory.create_federated_collect(value)
-
-
 def create_whimsy_called_federated_map(parameter_name, parameter_type=tf.int32):
   r"""Returns a whimsy called federated map.
 

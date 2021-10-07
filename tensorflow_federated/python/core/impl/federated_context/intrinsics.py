@@ -170,29 +170,6 @@ def federated_broadcast(value):
   return value_impl.Value(comp)
 
 
-def federated_collect(value):
-  """Returns a federated value from `tff.CLIENTS` as a `tff.SERVER` sequence.
-
-  Args:
-    value: A value of a TFF federated type placed at the `tff.CLIENTS`.
-
-  Returns:
-    A stream of the same type as the member constituents of `value` placed at
-    the `tff.SERVER`.
-
-  Raises:
-    TypeError: If the argument is not a federated TFF value placed at
-      `tff.CLIENTS`.
-  """
-  value = value_impl.to_value(value, None)
-  value = value_utils.ensure_federated_value(value, placements.CLIENTS,
-                                             'value to be collected')
-
-  comp = building_block_factory.create_federated_collect(value.comp)
-  comp = _bind_comp_as_reference(comp)
-  return value_impl.Value(comp)
-
-
 def federated_eval(fn, placement):
   """Evaluates a federated computation at `placement`, returning the result.
 

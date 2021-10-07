@@ -59,7 +59,6 @@ from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 class FederatedResolvingStrategyValue(executor_value_base.ExecutorValue):
@@ -424,27 +423,6 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
           'found {}.'.format(len(arg.internal_representation)))
     return await executor_utils.compute_intrinsic_federated_broadcast(
         self._executor, arg)
-
-  @tracing.trace
-  async def compute_federated_collect(
-      self,
-      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
-    py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
-    type_analysis.check_federated_type(
-        arg.type_signature, placement=placements.CLIENTS)
-    val = arg.internal_representation
-    py_typecheck.check_type(val, list)
-    member_type = arg.type_signature.member
-    child = self._target_executors[placements.SERVER][0]
-    collected_items = await child.create_value(
-        await asyncio.gather(*[v.compute() for v in val]),
-        computation_types.SequenceType(member_type))
-    return FederatedResolvingStrategyValue(
-        [collected_items],
-        computation_types.FederatedType(
-            computation_types.SequenceType(member_type),
-            placements.SERVER,
-            all_equal=True))
 
   @tracing.trace
   async def compute_federated_eval_at_clients(

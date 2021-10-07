@@ -256,20 +256,6 @@ FEDERATED_BROADCAST = IntrinsicDef(
             computation_types.AbstractType('T'), all_equal=True)),
     broadcast_kind=BroadcastKind.DEFAULT)
 
-# Materializes client items as a sequence on the server.
-#
-# Type signature: {T}@CLIENTS -> T*@SERVER
-FEDERATED_COLLECT = IntrinsicDef(
-    'FEDERATED_COLLECT',
-    'federated_collect',
-    computation_types.FunctionType(
-        parameter=computation_types.at_clients(
-            computation_types.AbstractType('T')),
-        result=computation_types.at_server(
-            computation_types.SequenceType(
-                computation_types.AbstractType('T')))),
-    aggregation_kind=AggregationKind.DEFAULT)
-
 # Evaluates a function at the clients.
 #
 # Type signature: (() -> T) -> {T}@CLIENTS

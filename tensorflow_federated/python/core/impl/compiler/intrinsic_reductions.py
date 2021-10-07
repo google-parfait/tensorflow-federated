@@ -96,8 +96,6 @@ def get_intrinsic_reductions(
   #
   # - FEDERATED_BROADCAST(x) := GENERIC_BROADCAST(x, CLIENTS)
   #
-  # - FEDERATED_COLLECT(x) := GENERIC_COLLECT(x, SERVER)
-  #
   # - FEDERATED_MAP(f, x) := GENERIC_MAP(f, x)
   #
   # - FEDERATED_VALUE_AT_CLIENTS(x) := GENERIC_PLACE(x, CLIENTS)

@@ -835,17 +835,6 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
         str(foo.type_signature), '(<int32,int32>* -> <int32,int32>)')
     self.assertEqual(str(foo([[1, 2], [3, 4], [5, 6]])), '[9, 12]')
 
-  def test_federated_collect_with_list_of_integers(self):
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    def foo(x):
-      return intrinsics.federated_collect(x)
-
-    self.assertEqual(
-        str(foo.type_signature), '({int32}@CLIENTS -> int32*@SERVER)')
-    self.assertEqual(foo([1, 2, 3]), [1, 2, 3])
-
   def test_federated_map_with_list_of_integers(self):
 
     @computations.tf_computation(tf.int32)
