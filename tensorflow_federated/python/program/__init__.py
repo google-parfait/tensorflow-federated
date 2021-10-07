@@ -14,6 +14,7 @@
 """Libraries for creating federated programs."""
 
 from tensorflow_federated.python.program.file_program_state_manager import *
+from tensorflow_federated.python.program.file_release_manager import *
 from tensorflow_federated.python.program.memory_release_manager import *
 from tensorflow_federated.python.program.program_state_manager import *
 from tensorflow_federated.python.program.release_manager import *

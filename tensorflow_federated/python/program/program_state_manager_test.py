@@ -29,7 +29,7 @@ class _TestProgramStateManager(program_state_manager.ProgramStateManager):
     del program_state, version  # Unused.
 
   def load(self, version: int) -> Any:
-    raise program_state_manager.ProgramStateManagerVersionNotFoundError()
+    raise program_state_manager.ProgramStateManagerStateNotFoundError()
 
 
 class ProgramStateManagerTest(absltest.TestCase):
