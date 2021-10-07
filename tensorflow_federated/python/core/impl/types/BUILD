@@ -125,6 +125,7 @@ py_library(
         ":typed_object",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
+        "//third_party/py/absl/logging",
     ],
 )
 

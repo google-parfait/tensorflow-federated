@@ -84,6 +84,15 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
   (e.g. `y = my_value_impl.y`).
   """
 
+  def __new__(cls, comp: building_blocks.ComputationBuildingBlock):
+    # TODO(b/202410994): extend to supporting federated structures once
+    # semantics are better-understood.
+    if comp.type_signature.is_struct():
+      # pylint: disable=too-many-function-args
+      return ValueStruct.__new__(ValueStruct, comp)
+      # pylint: enable=too-many-function-args
+    return super().__new__(Value)
+
   def __init__(
       self,
       comp: building_blocks.ComputationBuildingBlock,
@@ -227,6 +236,43 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
         to_value([self, other], None).comp)
     ref = _bind_computation_to_reference(call, 'adding a tff.Value')
     return Value(ref)
+
+
+class ValueStruct(Value, structure.Struct):
+  """Mixin class implementing structure.Struct for compatibility."""
+
+  def __new__(cls, comp):
+    # Hijack object construction to avoid infinite recursion.
+    del comp  # Unused
+    return object.__new__(cls)
+
+  def __init__(self, comp: building_blocks.ComputationBuildingBlock):
+    element_list = []
+    if comp.type_signature.is_struct():
+      for idx, type_elem in enumerate(
+          structure.to_elements(comp.type_signature)):
+        selection = Value(building_blocks.Selection(source=comp, index=idx))
+        name = type_elem[0]
+        element_list.append((name, selection))
+    else:
+      for idx, type_elem in enumerate(
+          structure.to_elements(comp.type_signature.member)):
+        selection = Value(
+            building_block_factory.create_federated_getitem_call(
+                arg=comp, idx=idx))
+        name = type_elem[0]
+        element_list.append((name, selection))
+    Value.__init__(self, comp)
+    structure.Struct.__init__(self, element_list)
+
+  def __getitem__(self, key: Union[int, str, slice]):
+    return Value.__getitem__(self, key)
+
+  def __getattr__(self, name: str):
+    return Value.__getattr__(self, name)
+
+  def __dir__(self):
+    return structure.Struct.__dir__(self)
 
 
 def _wrap_computation_as_value(proto: pb.Computation) -> Value:

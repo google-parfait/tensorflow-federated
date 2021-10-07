@@ -93,6 +93,7 @@ class ValueTest(parameterized.TestCase):
     y_comp = building_blocks.Reference('bar', tf.bool)
     z = value_impl.Value(building_blocks.Struct([x_comp, ('y', y_comp)]))
     self.assertIsInstance(z, value_impl.Value)
+    self.assertIsInstance(z, structure.Struct)
     self.assertEqual(str(z.type_signature), '<int32,y=bool>')
     self.assertEqual(str(z), '<foo,y=bar>')
     self.assertContainsSubset(['y'], dir(z))

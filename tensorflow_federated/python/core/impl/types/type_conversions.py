@@ -368,6 +368,15 @@ def type_to_py_container(value, type_spec):
     ValueError: If the conversion is not possible due to a mix of named
       and unnamed values.
   """
+  if isinstance(value, typed_object.TypedObject):
+    # We leave tff.Values and anything a higher level of TFF constructed as
+    # monolithic structures, rather than automatically
+    # destructured structures-of-values. Note that pushing this check down to
+    # the is_federated() case would enable preservation of user-defined python
+    # types inside federated computation bodies, at the cost of the invariant
+    # that 'all values in the bodies of federated computations are instances of
+    # tff.Value`; Python structures of such values would be possible.
+    return value
   if type_spec.is_federated():
     if type_spec.all_equal:
       structure_type_spec = type_spec.member

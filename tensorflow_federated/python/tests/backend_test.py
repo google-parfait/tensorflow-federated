@@ -25,6 +25,85 @@ from tensorflow_federated.python.tests import temperature_sensor_example
 from tensorflow_federated.python.tests import test_contexts
 
 
+class MapStructureTest(parameterized.TestCase):
+
+  @test_contexts.with_contexts
+  def test_map_structure_in_federated_computation_server(self):
+    self.skipTest('b/202410994')
+
+    @tff.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @tff.federated_computation
+    def add_one_federated(x):
+      return tff.federated_map(add_one, x)
+
+    @tff.federated_computation(tff.type_at_server([tf.int32, tf.int32]))
+    def map_add_one(arg):
+      return tff.structure.map_structure(add_one_federated, arg)
+
+    args = [0, 1]
+    expected_result = tff.structure.Struct.unnamed(1, 2)
+    one_added = map_add_one(args)
+    self.assertLen(one_added, 2)
+    for expected, observed in zip(expected_result, one_added):
+      self.assertEqual(expected, observed)
+
+  @test_contexts.with_contexts
+  def test_map_structure_in_federated_computation_clients(self):
+    self.skipTest('b/202410994')
+
+    @tff.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @tff.federated_computation(tff.type_at_clients(tf.int32))
+    def add_one_federated(x):
+      return tff.federated_map(add_one, x)
+
+    @tff.federated_computation(tff.type_at_clients([tf.int32, tf.int32]))
+    def map_add_one(arg):
+      return tff.structure.map_structure(add_one_federated, arg)
+
+    args = [
+        tff.structure.Struct.unnamed(0, 1),
+        tff.structure.Struct.unnamed(2, 3)
+    ]
+    expected_result = tff.structure.Struct.unnamed([1, 3], [2, 4])
+    one_added = map_add_one(args)
+    self.assertLen(one_added, 2)
+    for expected, observed in zip(expected_result, one_added):
+      self.assertLen(expected, len(observed))
+      for expected_elem, observed_elem in zip(expected, observed):
+        self.assertEqual(expected_elem, observed_elem)
+
+  @test_contexts.with_contexts
+  def test_map_structure_in_federated_computation_struct_of_client_values(self):
+
+    @tff.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @tff.federated_computation(tff.type_at_clients(tf.int32))
+    def add_one_federated(x):
+      return tff.federated_map(add_one, x)
+
+    @tff.federated_computation(
+        [tff.type_at_clients(tf.int32),
+         tff.type_at_clients(tf.int32)])
+    def map_add_one(arg):
+      return tff.structure.map_structure(add_one_federated, arg)
+
+    args = [
+        [0, 1],
+        [2, 3],
+    ]
+    expected_result = tff.structure.Struct.unnamed([1, 2], [3, 4])
+    one_added = map_add_one(args)
+    self.assertEqual(expected_result, one_added)
+
+
 class TemperatureSensorExampleTest(parameterized.TestCase):
 
   @test_contexts.with_contexts
