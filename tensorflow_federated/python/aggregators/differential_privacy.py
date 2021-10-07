@@ -313,12 +313,12 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         self._query.initial_global_state)
 
     query_state_type = query_initial_state_fn.type_signature.result
-    derive_sample_params = computations.tf_computation(
-        self._query.derive_sample_params, query_state_type)
+    start_new_sample = computations.tf_computation(self._query.start_new_sample,
+                                                   query_state_type)
 
     get_query_record = computations.tf_computation(
-        self._query.preprocess_record,
-        derive_sample_params.type_signature.result, value_type)
+        self._query.preprocess_record, start_new_sample.type_signature.result,
+        value_type)
 
     query_record_type = get_query_record.type_signature.result
     record_agg_process = self._record_aggregation_factory.create(
@@ -342,8 +342,8 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     def next_fn(state, value):
       query_state, agg_state = state
 
-      params = intrinsics.federated_broadcast(
-          intrinsics.federated_map(derive_sample_params, query_state))
+      params, query_state = intrinsics.federated_broadcast(
+          intrinsics.federated_map(start_new_sample, query_state))
       record = intrinsics.federated_map(get_query_record, (params, value))
 
       (new_agg_state, agg_result,

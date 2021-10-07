@@ -111,11 +111,11 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
     initial_state_fn = computations.tf_computation(
         quantile_estimator_query.initial_global_state)
     quantile_state_type = initial_state_fn.type_signature.result
-    derive_sample_params = computations.tf_computation(
-        quantile_estimator_query.derive_sample_params, quantile_state_type)
+    start_new_sample = computations.tf_computation(
+        quantile_estimator_query.start_new_sample, quantile_state_type)
     get_quantile_record = computations.tf_computation(
         quantile_estimator_query.preprocess_record,
-        derive_sample_params.type_signature.result, tf.float32)
+        start_new_sample.type_signature.result, tf.float32)
     quantile_record_type = get_quantile_record.type_signature.result
     get_noised_result = computations.tf_computation(
         quantile_estimator_query.get_noised_result, quantile_record_type,
@@ -136,8 +136,8 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
     def next_fn(state, value):
       quantile_query_state, agg_state = state
 
-      params = intrinsics.federated_broadcast(
-          intrinsics.federated_map(derive_sample_params, quantile_query_state))
+      params, quantile_query_state = intrinsics.federated_broadcast(
+          intrinsics.federated_map(start_new_sample, quantile_query_state))
       quantile_record = intrinsics.federated_map(get_quantile_record,
                                                  (params, value))
 
