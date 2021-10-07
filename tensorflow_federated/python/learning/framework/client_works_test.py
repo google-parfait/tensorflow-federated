@@ -330,7 +330,7 @@ class ClientWorkTest(test_case.TestCase):
     with self.assertRaises(client_works.ClientResultTypeError):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
-  def test_trainable_weights_not_asignable_from_update_raises(self):
+  def test_trainable_weights_not_assignable_from_update_raises(self):
     bad_cast_fn = computations.tf_computation(lambda x: tf.cast(x, tf.float64))
 
     @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
