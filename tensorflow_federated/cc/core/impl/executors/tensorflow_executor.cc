@@ -508,6 +508,9 @@ class ExecutorValue {
                                sequence());
         return absl::OkStatus();
       }
+      default:
+        return absl::InvalidArgumentError(
+            absl::StrCat("Unable to bind unknown value type: ", type()));
     }
   }
 
