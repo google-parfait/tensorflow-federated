@@ -198,6 +198,44 @@ class FederatedComputationTest(parameterized.TestCase):
 class TensorFlowComputationTest(parameterized.TestCase):
 
   @test_contexts.with_contexts
+  def test_create_call_take_two_from_stateful_dataset(self):
+
+    vocab = ['a', 'b', 'c', 'd', 'e', 'f']
+
+    @tff.tf_computation(tff.SequenceType(tf.string))
+    def take_two(ds):
+      table = tf.lookup.StaticVocabularyTable(
+          tf.lookup.KeyValueTensorInitializer(
+              vocab, tf.range(len(vocab), dtype=tf.int64)),
+          num_oov_buckets=1)
+      ds = ds.map(table.lookup)
+      return ds.take(2)
+
+    ds = tf.data.Dataset.from_tensor_slices(vocab)
+    result = take_two(ds)
+    self.assertCountEqual([x.numpy() for x in result], [0, 1])
+
+  @test_contexts.with_contexts
+  def test_usage_of_dynamics_lookup_table(self):
+
+    self.skipTest('Currently fails in CPP; see b/202448649')
+
+    @tff.tf_computation(
+        tff.TensorType(shape=[None], dtype=tf.string),
+        tff.TensorType(shape=[], dtype=tf.string))
+    def comp(table_args, to_lookup):
+      values = tf.range(tf.shape(table_args)[0])
+      initializer = tf.lookup.KeyValueTensorInitializer(table_args, values)
+      table = tf.lookup.StaticHashTable(initializer, 100)
+      return table.lookup(to_lookup)
+
+    expected_zero = comp(tf.constant(['a', 'b', 'c']), tf.constant('a'))
+    expected_three = comp(tf.constant(['a', 'b', 'c', 'd']), tf.constant('d'))
+
+    self.assertEqual(expected_zero, 0)
+    self.assertEqual(expected_three, 3)
+
+  @test_contexts.with_contexts
   def test_returns_constant(self):
 
     @tff.tf_computation
