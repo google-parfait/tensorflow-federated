@@ -39,9 +39,6 @@ from tensorflow_federated.python.learning.metrics import finalizer
 Weight = Union[np.ndarray, int, float]
 WeightStruct = Union[Sequence[Weight], Mapping[str, Weight]]
 ModelWeights = Tuple[WeightStruct, WeightStruct]
-# A finalizer is a `tf.function` that takes in the variable values of a single
-# metric, and returns the final result of this metric.
-_SingleMetricFinalizerType = Callable[[Sequence[tf.Tensor]], tf.Tensor]
 
 
 class CallableMustBeTFFunctionError(TypeError):

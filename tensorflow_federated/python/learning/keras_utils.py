@@ -14,7 +14,7 @@
 """Utility methods for working with Keras in TensorFlow Federated."""
 
 import collections
-from typing import List, Optional, Sequence, Union
+from typing import List, Optional, OrderedDict, Sequence, Union
 import warnings
 
 import tensorflow as tf
@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
+from tensorflow_federated.python.learning.metrics import finalizer
 
 Loss = Union[tf.keras.losses.Loss, List[tf.keras.losses.Loss]]
 
@@ -416,3 +417,41 @@ class _KerasModel(model_lib.Model):
   @property
   def federated_output_computation(self):
     return self._federated_output_computation
+
+  @tf.function
+  def report_local_unfinalized_metrics(
+      self) -> OrderedDict[str, List[tf.Tensor]]:
+    """Creates an `OrderedDict` of metric names to unfinalized values.
+
+    Returns:
+      An `OrderedDict` of metric names to lists of unfinalized metric values.
+      For a Keras metric, its unfinalized values are the tensor values of its
+      variables tracked during local training. The returned `OrderedDict` has
+      the same keys (metric names) as the `OrderedDict` returned by the method
+      `metric_finalizers()`, and can be used as input to the finalizers to get
+      the finalized metric values. This method and the `metric_finalizers()`
+      method can be used to construct a cross-client metrics aggregator when
+      defining the federated training processes or evaluation computations.
+    """
+    outputs = collections.OrderedDict()
+    for metric in self.get_metrics():
+      outputs[metric.name] = [v.read_value() for v in metric.variables]
+    return outputs
+
+  def metric_finalizers(
+      self) -> OrderedDict[str, finalizer.KerasMetricFinalizer]:
+    """Creates an `OrderedDict` of metric names to finalizers.
+
+    Returns:
+      An `OrderedDict` of metric names to finalizers. A finalizer of a Keras
+      metric is a `tf.function` decorated callable that takes in this metric's
+      unfinalized values (created by `report_local_unfinalized_metrics`), and
+      returns the metric value computed by `tf.keras.metrics.Metric.result()`.
+      This method and the `report_local_unfinalized_metrics` method can be used
+      to construct a cross-client metrics aggregator when defining the federated
+      training processes or evaluation computations.
+    """
+    finalizers = collections.OrderedDict()
+    for metric in self.get_metrics():
+      finalizers[metric.name] = finalizer.create_keras_metric_finalizer(metric)
+    return finalizers
