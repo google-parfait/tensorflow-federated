@@ -339,6 +339,7 @@ py_library(
     deps = [
         ":factory",
         ":sum_factory",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -357,6 +358,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":mean",
+        ":measurements",
         ":rotation",
         ":sum_factory",
         "//tensorflow_federated/python/core/api:test_case",

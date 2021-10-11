@@ -20,6 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
+from tensorflow_federated.python.aggregators import measurements
 from tensorflow_federated.python.aggregators import rotation
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import test_case
@@ -44,12 +45,24 @@ def _make_test_struct_value_nested(value):
       b=tf.ones((1, 1, 2)) * value)
 
 
+def _measured_test_sum_factory():
+  # SumFactory which also returns the sum as measurements. This is useful for
+  # monitoring what values are passed through an inner aggregator.
+  return measurements.add_measurements(
+      sum_factory.SumFactory(),
+      server_measurement_fn=lambda x: collections.OrderedDict(sum=x))
+
+
 def _hadamard_mean():
   return rotation.HadamardTransformFactory(mean.UnweightedMeanFactory())
 
 
 def _hadamard_sum():
   return rotation.HadamardTransformFactory(sum_factory.SumFactory())
+
+
+def _measured_hadamard_sum():
+  return rotation.HadamardTransformFactory(_measured_test_sum_factory())
 
 
 def _dft_mean():
@@ -60,45 +73,39 @@ def _dft_sum():
   return rotation.DiscreteFourierTransformFactory(sum_factory.SumFactory())
 
 
-def _named_test_cases_product(*args):
+def _measured_dft_sum():
+  return rotation.DiscreteFourierTransformFactory(_measured_test_sum_factory())
+
+
+def _named_test_cases_product(dict1, dict2):
   """Utility for creating parameterized named test cases."""
   named_cases = []
-  if len(args) == 2:
-    dict1, dict2 = args
-    for k1, v1 in dict1.items():
-      for k2, v2 in dict2.items():
-        named_cases.append(('_'.join([k1, k2]), v1, v2))
-  elif len(args) == 3:
-    dict1, dict2, dict3 = args
-    for k1, v1 in dict1.items():
-      for k2, v2 in dict2.items():
-        for k3, v3 in dict3.items():
-          named_cases.append(('_'.join([k1, k2, k3]), v1, v2, v3))
+  for k1, v1 in dict1.items():
+    for k2, v2 in dict2.items():
+      named_cases.append(('_'.join([k1, k2]), v1, v2))
   return named_cases
 
 
-class FlatteningFactoryComputationTest(test_case.TestCase,
-                                       parameterized.TestCase):
+class RotationsComputationTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       _named_test_cases_product({
-          'hd': _hadamard_sum,
-          'dft': _dft_sum,
+          'hd': 'hd',
+          'dft': 'dft',
       }, {
           'float': tf.float32,
           'ints': [tf.int32, tf.int32, tf.int32],
           'struct': _test_struct_type_float_mixed,
           'nested_struct': _test_struct_type_nested,
       }))
-  def test_type_properties(self, factory_fn, value_type):
-    factory = factory_fn()
+  def test_type_properties(self, name, value_type):
+    factory = _hadamard_sum() if name == 'hd' else _dft_sum()
     value_type = computation_types.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     server_state_type = computation_types.at_server(
-        collections.OrderedDict(
-            round_seed=(rotation.SEED_TF_TYPE, (2,)), inner_agg_process=()))
+        ((), rotation.SEED_TFF_TYPE))
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type)
@@ -106,7 +113,7 @@ class FlatteningFactoryComputationTest(test_case.TestCase,
                                  expected_initialize_type)
 
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(rotation=()))
+        collections.OrderedDict([(name, ())]))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -131,7 +138,7 @@ class FlatteningFactoryComputationTest(test_case.TestCase,
       self, factory_fn, value_type):
     factory = factory_fn()
     value_type = computation_types.to_type(value_type)
-    with self.assertRaisesRegex(TypeError, 'must all be integers or floats'):
+    with self.assertRaisesRegex(TypeError, 'all integers or all floats'):
       factory.create(value_type)
 
   @parameterized.named_parameters(
@@ -153,13 +160,7 @@ class FlatteningFactoryComputationTest(test_case.TestCase,
       factory.create(value_type)
 
 
-class FlatteningFactoryExecutionTest(test_case.TestCase,
-                                     parameterized.TestCase):
-  """Shared tests for the parent class FlatteningFactory."""
-
-  def setUp(self):
-    super().setUp()
-    self.seed_pair = tf.cast(SEED_PAIR, rotation.SEED_TF_TYPE)
+class RotationsExecutionTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_hd', tf.int32, [1, 2, 3], 6, _hadamard_sum),
@@ -189,12 +190,6 @@ class FlatteningFactoryExecutionTest(test_case.TestCase,
 
     for _ in range(3):
       output = process.next(state, client_data)
-      self.assertEqual(output.state['round_seed'].dtype,
-                       rotation.SEED_TF_TYPE.as_numpy_dtype)
-      self.assertEqual(output.state['round_seed'].shape, (2,))
-      self.assertEqual(output.state['inner_agg_process'], ())
-      self.assertEqual(output.measurements,
-                       collections.OrderedDict(rotation=()))
       self.assertAllClose(output.result, expected_sum, atol=0)
       state = output.state
 
@@ -222,331 +217,168 @@ class FlatteningFactoryExecutionTest(test_case.TestCase,
     """Integration test for the factory with mean."""
     factory = factory_fn()
     process = factory.create(computation_types.to_type(value_type))
-    expected_measurements = collections.OrderedDict(
-        rotation=collections.OrderedDict(mean_value=()))
     state = process.initialize()
 
     for _ in range(3):
       output = process.next(state, client_data)
-      self.assertEqual(output.state['round_seed'].dtype,
-                       rotation.SEED_TF_TYPE.as_numpy_dtype)
-      self.assertEqual(output.state['round_seed'].shape, (2,))
-      self.assertEqual(output.state['inner_agg_process'], ())
-      self.assertEqual(output.measurements, expected_measurements)
       self.assertAllClose(output.result, expected_mean)
       state = output.state
 
   @parameterized.named_parameters(
-      _named_test_cases_product(
-          {
-              'shape-1': [1],
-              'shape-2': [2],
-              'shape-3': [3],
-              'shape-2x2': [2, 2],
-              'shape-3x3x1': [3, 3, 1],
-              'shape-5x3x4': [5, 3, 4],
-          }, {
-              'hd': _hadamard_sum,
-              'dft': _dft_sum,
-          }))
-  def test_postprocess_tensor_restores_shape(self, shape, factory_fn):
-    """Checks that postprocessing restores the tensor (with padding)."""
-    factory = factory_fn()
-    input_dim = tf.TensorShape(shape).num_elements()
-    x = tf.reshape(tf.range(input_dim), shape)
-    original_spec = tf.TensorSpec(x.shape, x.dtype)
-    prep_x = factory._preprocess_tensor(x)
-    post_x = factory._postprocess_tensor(prep_x, original_spec)
-    self.assertAllEqual(x, post_x)
-
-  @parameterized.named_parameters(
-      _named_test_cases_product(
-          {
-              'int32': tf.int32,
-              'float32': tf.float32,
-              'float64': tf.float64,
-          }, {
-              'hd': _hadamard_sum,
-              'dft': _dft_sum,
-          }))
-  def test_postprocess_tensor_restores_dtype(self, dtype, factory_fn):
-    """Checks that postprocessing restores the original dtype."""
-    factory = factory_fn()
-    x = tf.range(8, dtype=dtype)
-    prep_x = factory._preprocess_tensor(x)
-    post_x = factory._postprocess_tensor(prep_x, tf.TensorSpec([8], dtype))
-    self.assertEqual(dtype, post_x.dtype)
-
-  @parameterized.named_parameters(
-      _named_test_cases_product(
-          {
-              'dim-2': 2,
-              'dim-8': 8,
-              'dim-32': 32,
-              'dim-128': 128,
-          },
-          {
-              'repeat-1': 1,
-              'repeat-2': 3,
-          },
-          {
-              'hd': _hadamard_sum,
-              'dft': _dft_sum,
-          },
-      ))
-  def test_forward_transform_vector_same_l2_norm(self, dim, repeat, factory_fn):
-    """Checks that the L2 norm doesn't change much after rotation."""
-    factory = factory_fn()
-    x = tf.random.uniform((dim,))
-    rotated_x = factory._forward_transform_vector(x, self.seed_pair, repeat)
-    self.assertAllClose(np.linalg.norm(x), np.linalg.norm(rotated_x), atol=1e-5)
-
-  @parameterized.named_parameters(
-      _named_test_cases_product(
-          {
-              'dim-4': 4,
-              'dim-16': 16,
-              'dim-64': 64,
-              'dim-256': 256,
-          }, {
-              'hd': _hadamard_sum,
-              'dft': _dft_sum,
-          }))
-  def test_forward_transform_vector_has_rotation(self, dim, factory_fn):
-    """Checks the vector difference norm after rotation is reasonably big."""
-    factory = factory_fn()
-    x = tf.random.uniform((dim,), minval=0, maxval=10)
-    rotated_x = factory._forward_transform_vector(
-        x, self.seed_pair, num_repeats=1)
-    self.assertGreater(np.linalg.norm(rotated_x - x), 5)
-
-  @parameterized.named_parameters(
-      ('hd_dim-16', 16, 3, _hadamard_sum),
-      ('hd_dim-64', 64, 6, _hadamard_sum),
-      ('dft_dim-16', 16, 3, _dft_sum),
-      ('dft_dim-64', 64, 3, _dft_sum),
+      ('hd-5', 'hd', [5], [8]),
+      ('hd-8', 'hd', [8], [8]),
+      ('hd-2x3x4', 'hd', [2, 3, 4], [32]),
+      ('dft-5', 'dft', [5], [6]),
+      ('dft-8', 'dft', [8], [8]),
+      ('dft-3x5x3', 'dft', [3, 5, 3], [46]),
   )
-  def test_forward_transform_vector_use_different_repeat_seeds(
-      self, dim, diff_norm, factory_fn):
-    """Checks that forward transform repeats with different seed."""
-    factory = factory_fn()
-    x = tf.random.uniform((dim,))
-    # Repeat transformations by making a single call.
-    repeat_rotated_x = factory._forward_transform_vector(
-        x, self.seed_pair, num_repeats=2)
-    # Repeat by making separate calls.
-    separate_rotated_x = factory._forward_transform_vector(
-        x, self.seed_pair, num_repeats=1)
-    separate_rotated_x = factory._forward_transform_vector(
-        separate_rotated_x, self.seed_pair, num_repeats=1)
+  def test_inner_aggregation_acts_on_padded_space(self, name, input_shape,
+                                                  expected_inner_shape):
+    factory = _measured_hadamard_sum() if name == 'hd' else _measured_dft_sum()
+    process = factory.create(
+        computation_types.to_type((tf.float32, input_shape)))
 
-    difference = separate_rotated_x - repeat_rotated_x
-    self.assertGreater(np.linalg.norm(difference), diff_norm)
+    client_input = tf.ones(input_shape)
+    output = process.next(process.initialize(), [client_input])
+    inner_shape = output.measurements[name]['sum'].shape
+    self.assertAllEqual(expected_inner_shape, inner_shape)
 
-  @parameterized.named_parameters(
-      _named_test_cases_product(
-          {
-              'repeat-1': 1,
-              'repeat-2': 2,
-          },
-          {
-              'dim-2': 2,
-              'dim-4': 4,
-              'dim-128': 128,
-          },
-          {
-              'hd': _hadamard_sum,
-              'dft': _dft_sum,
-          },
-      ))
-  def test_backward_transform_vector(self, repeat, dim, factory_fn):
-    """Verifies that the inverse transform reverses the ops with same seeds."""
-    factory = factory_fn()
-    seed_pair = tf.constant((11, 22), dtype=rotation.SEED_TF_TYPE)
-    x = tf.random.uniform((dim,))
-    forward_x = factory._forward_transform_vector(
-        x, seed_pair, num_repeats=repeat)
-    reverted_x = factory._backward_transform_vector(
-        forward_x, seed_pair, num_repeats=repeat)
-    self.assertAllClose(x, reverted_x, atol=1e-5)
+  @parameterized.named_parameters(('hd', 'hd'), ('dft', 'dft'))
+  def test_inner_aggregation_acts_on_rotated_space(self, name):
+    factory = _measured_hadamard_sum() if name == 'hd' else _measured_dft_sum()
+    process = factory.create(computation_types.TensorType(tf.float32, [8]))
 
-  @parameterized.named_parameters(
-      _named_test_cases_product({
-          'repeat-1': 1,
-          'repeat-2': 2,
-      }, {
-          'hd': _hadamard_sum,
-          'dft': _dft_sum,
-      }))
-  def test_transform_structure_integration(self, repeat, factory_fn):
-    """Integration test for TF structure transforms."""
-    factory = factory_fn()
-    rand = tf.random.uniform
-    input_struct = [
-        rand([1]),
-        rand([3, 3]),
-        rand([4, 4, 4]), [rand([3]), rand([1, 1, 3])],
-        collections.OrderedDict(a=rand([2]), b=rand([10]))
-    ]
-    seed_pair = tf.constant((11, 22), dtype=rotation.SEED_TF_TYPE)
-    input_struct_type = tf.nest.map_structure(
-        lambda x: tf.TensorSpec(x.shape, x.dtype), input_struct)
-    forward_struct = factory._forward_transform_struct(
-        input_struct, seed_pair, num_repeats=repeat)
-    backward_struct = factory._backward_transform_struct(
-        forward_struct, input_struct_type, seed_pair, num_repeats=repeat)
-    self.assertAllClose(input_struct, backward_struct, atol=1e-5)
+    client_input = np.array([1.0, -1.0, 2.5, -1.5, -0.5, 1.9, 2.2, -2.0])
+    state = process.initialize()
+    output = process.next(state, [client_input])
+    inner_aggregand_1 = output.measurements[name]['sum']
+    # The value passed to the inner aggregation after projection should be
+    # different than the input to the outer aggregation.
+    self.assertNotAllClose(np.zeros([8]), inner_aggregand_1 - client_input)
+    # Rotation preserves L2 norm.
+    self.assertAllClose(
+        np.linalg.norm(inner_aggregand_1), np.linalg.norm(client_input))
 
+    output = process.next(output.state, [client_input])
+    inner_aggregand_2 = output.measurements[name]['sum']
+    # The projections are randomized, independent in each round.
+    self.assertNotAllClose(np.zeros([8]), inner_aggregand_2 - client_input)
+    self.assertNotAllClose(np.zeros([8]), inner_aggregand_2 - inner_aggregand_1)
+    self.assertAllClose(
+        np.linalg.norm(inner_aggregand_1), np.linalg.norm(inner_aggregand_2))
 
-class HadamardTransformFactoryExecutionTest(test_case.TestCase,
-                                            parameterized.TestCase):
+  def test_hd_spreads_information(self):
+    factory = _measured_hadamard_sum()
+    process = factory.create(computation_types.TensorType(tf.float32, [256]))
 
-  @parameterized.named_parameters(
-      ('shape-1', [1]),
-      ('shape-2', [2]),
-      ('shape-4', [4]),
-      ('shape-2x2', [2, 2]),
-      ('shape-16x16', [16]),
-      ('shape-64x64', [64]),
-      ('shape-4x4x4', [4, 4, 4]),
-  )
-  def test_preprocess_tensor_no_padding(self, shape):
-    """Checks the same input is returned if no padding is requried."""
-    factory = _hadamard_sum()
-    dim = tf.TensorShape(shape).num_elements()
-    x = tf.reshape(tf.range(dim), shape)
-    prep_x = factory._preprocess_tensor(x)
-    self.assertAllEqual(tf.reshape(x, [-1]), prep_x)
+    client_input = 256 * tf.one_hot(indices=17, depth=256, dtype=tf.float32)
+    output = process.next(process.initialize(), [client_input])
+    inner_aggregand = output.measurements['hd']['sum']
 
-  @parameterized.named_parameters(
-      ('shape-3', [3], 4),
-      ('shape-9', [9], 16),
-      ('shape-31', [31], 32),
-      ('shape-65', [65], 128),
-      ('shape-3x3', [3, 3], 16),
-      ('shape-5x3x17', [5, 3, 17], 256),
-      ('shape-1x1x1x3', [1, 1, 1, 3], 4),
-  )
-  def test_preprocess_tensor_padding(self, input_shape, padded_dim):
-    """Checks size, dtype, and content of the padded vector."""
-    factory = _hadamard_sum()
-    input_dim = tf.TensorShape(input_shape).num_elements()
-    num_zeros = padded_dim - input_dim
-    flat_x = tf.range(input_dim)
-    x = tf.reshape(flat_x, input_shape)
+    # For Hadamard we expect values equal to +/- sqrt(256) = 16.
+    self.assertAllEqual(
+        np.logical_or(
+            np.isclose(inner_aggregand, 16), np.isclose(inner_aggregand, -16)),
+        [True] * 256)
+    self.assertBetween(np.var(inner_aggregand), 255, 257)
 
-    prep_x = factory._preprocess_tensor(x)
-    self.assertEqual(prep_x.shape, (padded_dim,))
-    self.assertAllEqual(prep_x[:input_dim], flat_x)
-    self.assertAllEqual(prep_x[input_dim:], np.zeros((num_zeros,)))
+  def test_dft_spreads_information(self):
+    factory = _measured_dft_sum()
+    process = factory.create(computation_types.TensorType(tf.float32, [256]))
 
-  @parameterized.named_parameters(
-      ('int32', tf.int32),
-      ('int64', tf.int64),
-      ('float64', tf.float64),
-  )
-  def test_preprocess_tensor_dtype(self, dtype):
-    """Checks the tensor type gets casted during preprocessing."""
-    factory = _hadamard_sum()
-    x = tf.range(8, dtype=dtype)
-    prep_x = factory._preprocess_tensor(x)
-    expected_dtype = tf.float32
-    self.assertEqual(prep_x.dtype, expected_dtype)
-
-  def test_flattening(self):
-    """A basic test for the flattening behaviour of this transform."""
-    dim = 128
-    factory = _hadamard_sum()
-    scaled_onehot_x = dim * tf.one_hot(indices=17, depth=dim)
-
-    seed_pair = tf.constant([1234, 5678], dtype=tf.int64)
-    flat_x = factory._forward_transform_vector(
-        scaled_onehot_x, seed_pair, num_repeats=1)
-
-    # For Hadamard we expect +/- sqrt(dim) values.
-    flat_val = np.sqrt(dim)
-    is_flat = np.logical_or(
-        np.isclose(flat_val, flat_x), np.isclose(-flat_val, flat_x))
-    self.assertAllEqual(is_flat, [True] * dim)
-    # Variance should be ~ norm^2 / dim = dim.
-    self.assertBetween(np.var(flat_x), dim - 1, dim + 1)
-
-
-class DiscreteFourierTransformFactoryExecutionTest(test_case.TestCase,
-                                                   parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ('shape-2', [2]),
-      ('shape-4', [4]),
-      ('shape-2x3', [2, 3]),
-      ('shape-14', [14]),
-      ('shape-60', [60]),
-      ('shape-6x2x4', [6, 2, 4]),
-  )
-  def test_preprocess_tensor_no_padding(self, shape):
-    """Checks the same input is returned if no padding is requried."""
-    factory = _dft_sum()
-    dim = tf.TensorShape(shape).num_elements()
-    x = tf.reshape(tf.range(dim), shape)
-    prep_x = factory._preprocess_tensor(x)
-    self.assertAllEqual(tf.reshape(x, [-1]), prep_x)
-
-  @parameterized.named_parameters(
-      ('shape-1', [1], 2),
-      ('shape-9', [9], 10),
-      ('shape-31', [31], 32),
-      ('shape-65', [65], 66),
-      ('shape-3x3', [3, 3], 10),
-      ('shape-3x17x1', [3, 17, 1], 52),
-      ('shape-1x1x1x3', [1, 1, 1, 5], 6),
-  )
-  def test_preprocess_tensor_padding(self, input_shape, padded_dim):
-    """Checks size, dtype, and content of the padded vector."""
-    factory = _dft_sum()
-    input_dim = tf.TensorShape(input_shape).num_elements()
-    num_zeros = padded_dim - input_dim
-    flat_x = tf.range(input_dim)
-    x = tf.reshape(flat_x, input_shape)
-
-    prep_x = factory._preprocess_tensor(x)
-    self.assertEqual(prep_x.shape, (padded_dim,))
-    self.assertAllEqual(prep_x[:input_dim], flat_x)
-    self.assertAllEqual(prep_x[input_dim:], np.zeros((num_zeros,)))
-
-  @parameterized.named_parameters(
-      ('int32', tf.int32),
-      ('int64', tf.int64),
-      ('float64', tf.float64),
-  )
-  def test_preprocess_tensor_dtype(self, dtype):
-    """Checks the tensor type gets casted during preprocessing."""
-    factory = _dft_sum()
-    x = tf.range(8, dtype=dtype)
-    prep_x = factory._preprocess_tensor(x)
-    expected_dtype = tf.float32
-    self.assertEqual(prep_x.dtype, expected_dtype)
-
-  def test_flattening(self):
-    """A basic test for the flattening behaviour of this transform."""
-    dim = 128
-    factory = _dft_sum()
-    scaled_onehot_x = dim * tf.one_hot(indices=17, depth=dim)
-
-    seed_pair = tf.constant([1234, 5678], dtype=tf.int64)
-    flat_x = factory._forward_transform_vector(
-        scaled_onehot_x, seed_pair, num_repeats=1)
-    flat_x = self.evaluate(flat_x)
+    client_input = 256 * tf.one_hot(indices=17, depth=256, dtype=tf.float32)
+    output = process.next(process.initialize(), [client_input])
+    inner_aggregand = output.measurements['dft']['sum']
 
     # Columns of DFT matrix have roots of unity, so a prime index column should
-    # give around `dim` unique real/imag components that are negatives of each
+    # give around 256 unique real/imag components that are negatives of each
     # other. We can simply test that we have at least half as much unique
     # components to account for precision issues, zero components, etc.
-    num_uniq = len(np.unique(np.around(flat_x, 2)))
-    num_abs_uniq = len(np.unique(np.abs(np.around(flat_x, 2))))
-    self.assertGreaterEqual(num_uniq, dim // 2)
-    self.assertGreaterEqual(num_abs_uniq, dim // 4)
-    # Variance should be ~ norm^2 / dim = dim.
-    self.assertBetween(np.var(flat_x), dim - 1, dim + 1)
+    num_uniq = len(np.unique(np.around(inner_aggregand, 4)))
+    num_abs_uniq = len(np.unique(np.abs(np.around(inner_aggregand, 4))))
+    self.assertGreaterEqual(num_uniq, 256 // 2)
+    self.assertGreaterEqual(num_abs_uniq, 256 // 4)
+    self.assertBetween(np.var(inner_aggregand), 255, 257)
+
+
+class SeedUtilsTest(test_case.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(('stride-1', 1), ('stride-3', 3))
+  def test_init_and_next(self, stride):
+    # First element of the seed of shape [2] is used as a timestamp kept fixed
+    # across rounds, the second as a counter starting at 0, making sure fresh
+    # seeds are always used.
+    seed = rotation._init_global_seed()
+    self.assertEqual((2,), seed.shape)
+    self.assertEqual(0, seed[1])
+
+    next_seed_fn = rotation._build_next_global_seed_fn(stride=stride)
+    for _ in range(3):
+      new_seed = next_seed_fn(seed)
+      self.assertEqual(seed[0], new_seed[0])
+      self.assertEqual(seed[1] + stride, new_seed[1])
+      seed = new_seed
+
+  def test_unique_seeds_for_struct(self):
+    value = (tf.constant(1.0), (tf.constant(2.0), tf.constant([3.0, 4.0])))
+    seed = (1, 101)
+    unique_seeds = rotation._unique_seeds_for_struct(value, seed, stride=1)
+    tf.nest.map_structure(self.assertAllEqual,
+                          (np.array([1, 101]),
+                           (np.array([1, 102]), np.array([1, 103]))),
+                          unique_seeds)
+
+    unique_seeds = rotation._unique_seeds_for_struct(value, seed, stride=3)
+    tf.nest.map_structure(self.assertAllEqual,
+                          (np.array([1, 101]),
+                           (np.array([1, 104]), np.array([1, 107]))),
+                          unique_seeds)
+
+
+class PaddingUtilsTest(test_case.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('1', [1], [1]),
+      ('2', [1, 1], [1, 1]),
+      ('3', [1, 1, 1], [1, 1, 1, 0]),
+      ('5', [1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 0, 0, 0]),
+  )
+  def test_pad_pow2(self, value, expected_padded):
+    padded = rotation._pad_zeros_pow2(tf.convert_to_tensor(value))
+    self.assertAllEqual(expected_padded, padded)
+
+  @parameterized.named_parameters(
+      ('1', [1], [1, 0]),
+      ('2', [1, 1], [1, 1]),
+      ('3', [1, 1, 1], [1, 1, 1, 0]),
+      ('5', [1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 0]),
+  )
+  def test_pad_even(self, value, expected_padded):
+    padded = rotation._pad_zeros_even(tf.convert_to_tensor(value))
+    self.assertAllEqual(expected_padded, padded)
+
+  def test_pad_pow_2_struct(self):
+    struct = (tf.ones([3]), tf.ones([2, 3]), tf.ones([1, 2, 2]))
+    flat_padded_struct = rotation._flatten_and_pad_zeros_pow2(struct)
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        (tf.constant([1, 1, 1, 0]), tf.constant([1, 1, 1, 1, 1, 1, 0, 0]),
+         tf.constant([1, 1, 1, 1])), flat_padded_struct)
+
+  def test_pad_even_struct(self):
+    struct = (tf.ones([3]), tf.ones([2, 2]), tf.ones([1, 3, 3]))
+    flat_padded_struct = rotation._flatten_and_pad_zeros_even(struct)
+    tf.nest.map_structure(self.assertAllEqual,
+                          (tf.constant([1, 1, 1, 0]), tf.constant([1, 1, 1, 1]),
+                           tf.constant([1, 1, 1, 1, 1, 1, 1, 1, 1, 0])),
+                          flat_padded_struct)
+
+  def test_revert_padding(self):
+    value = tf.range(8)
+    spec = tf.TensorSpec([1, 2, 3], tf.float32)
+    self.assertAllEqual([[[0.0, 1.0, 2.0], [3.0, 4.0, 5.0]]],
+                        rotation._slice_and_reshape_to_template_spec(
+                            value, spec))
 
 
 class SampleRademacherTest(test_case.TestCase, parameterized.TestCase):
@@ -602,8 +434,8 @@ class SampleRademacherTest(test_case.TestCase, parameterized.TestCase):
 
   def test_different_sampels_with_different_seeds(self):
     shape = (100,)
-    signs_1 = rotation.sample_rademacher(shape, tf.int32, seed_pair=(42, 42))
-    signs_2 = rotation.sample_rademacher(shape, tf.int32, seed_pair=(420, 420))
+    signs_1 = rotation.sample_rademacher(shape, tf.int32, seed=(42, 42))
+    signs_2 = rotation.sample_rademacher(shape, tf.int32, seed=(420, 420))
     signs_1, signs_2 = self.evaluate([signs_1, signs_2])
     self.assertFalse(np.array_equal(signs_1, signs_2))
 
@@ -658,8 +490,8 @@ class SampleCisTest(test_case.TestCase, parameterized.TestCase):
 
   def test_different_samples_with_different_seeds(self):
     shape = (100,)
-    angles_1 = rotation.sample_cis(shape, seed_pair=(42, 42))
-    angles_2 = rotation.sample_cis(shape, seed_pair=(4200, 4200))
+    angles_1 = rotation.sample_cis(shape, seed=(42, 42))
+    angles_2 = rotation.sample_cis(shape, seed=(4200, 4200))
     angles_1, angles_2 = self.evaluate([angles_1, angles_2])
     self.assertFalse(np.array_equal(angles_1, angles_2))
 
