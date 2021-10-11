@@ -23,6 +23,7 @@ from tensorflow_federated.python.program import release_manager
 class LoggingReleaseManager(release_manager.ReleaseManager):
   """A `tff.program.ReleaseManager` that releases values to logs."""
 
+  # TODO(b/202418342): Add support for `ValueReference`.
   def release(self, value: Any, key: Any = None):
     """Releases `value` from a federated program.
 

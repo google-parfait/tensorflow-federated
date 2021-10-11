@@ -69,20 +69,20 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
 
   def test_writes_scalar_int(self):
     temp_dir = self.create_tempdir()
-    tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      tensorboard_release_mngr.release(1, 1)
+      release_mngr.release(1, 1)
       mock_scalar.assert_called_once_with('', 1, step=1)
 
   def test_writes_scalar_list(self):
     temp_dir = self.create_tempdir()
-    tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      tensorboard_release_mngr.release([1, 2, 3], 1)
+      release_mngr.release([1, 2, 3], 1)
       mock_scalar.assert_has_calls([
           mock.call('0', 1, step=1),
           mock.call('1', 2, step=1),
@@ -91,11 +91,11 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
 
   def test_writes_scalar_dict(self):
     temp_dir = self.create_tempdir()
-    tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      tensorboard_release_mngr.release({'a': 1, 'b': 2, 'c': 3}, 1)
+      release_mngr.release({'a': 1, 'b': 2, 'c': 3}, 1)
       mock_scalar.assert_has_calls([
           mock.call('a', 1, step=1),
           mock.call('b', 2, step=1),
@@ -104,11 +104,11 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
 
   def test_writes_scalar_nested(self):
     temp_dir = self.create_tempdir()
-    tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      tensorboard_release_mngr.release([1, [2, 2], {'a': 3}], 1)
+      release_mngr.release([1, [2, 2], {'a': 3}], 1)
       mock_scalar.assert_has_calls([
           mock.call('0', 1, step=1),
           mock.call('1/0', 2, step=1),
@@ -118,22 +118,22 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
 
   def test_writes_histogram_tensor(self):
     temp_dir = self.create_tempdir()
-    tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
-      tensorboard_release_mngr.release(tf.ones([1]), 1)
+      release_mngr.release(tf.ones([1]), 1)
       mock_histogram.assert_has_calls([
           mock.call('', tf.ones([1]), step=1),
       ])
 
   def test_writes_histogram_nested(self):
     temp_dir = self.create_tempdir()
-    tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
-      tensorboard_release_mngr.release([tf.ones([1]), [tf.ones([1])]], 1)
+      release_mngr.release([tf.ones([1]), [tf.ones([1])]], 1)
       mock_histogram.assert_has_calls([
           mock.call('0', tf.ones([1]), step=1),
           mock.call('1/0', tf.ones([1]), step=1),
@@ -141,13 +141,13 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
 
   def test_writes_scalar_int_and_histogram_tensor(self):
     temp_dir = self.create_tempdir()
-    tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     patch_scalar = mock.patch.object(tf.summary, 'scalar')
     patch_histogram = mock.patch.object(tf.summary, 'histogram')
     with patch_scalar as mock_scalar, patch_histogram as mock_histogram:
-      tensorboard_release_mngr.release([1, tf.ones([1])], 1)
+      release_mngr.release([1, tf.ones([1])], 1)
       mock_scalar.assert_called_once_with('0', 1, step=1)
       mock_histogram.assert_called_once_with('1', tf.ones([1]), step=1)
 
@@ -158,11 +158,11 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
   )
   def test_does_not_write_value(self, value):
     temp_dir = self.create_tempdir()
-    tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      tensorboard_release_mngr.release(value, 1)
+      release_mngr.release(value, 1)
       mock_scalar.assert_not_called()
 
   @parameterized.named_parameters(
@@ -172,11 +172,11 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
   )
   def test_does_not_raise_with_key(self, key):
     temp_dir = self.create_tempdir()
-    tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     try:
-      tensorboard_release_mngr.release(1, key)
+      release_mngr.release(1, key)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -187,11 +187,11 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
   )
   def test_raises_type_error_with_key(self, key):
     temp_dir = self.create_tempdir()
-    tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     with self.assertRaises(TypeError):
-      tensorboard_release_mngr.release(1, key)
+      release_mngr.release(1, key)
 
 
 if __name__ == '__main__':
