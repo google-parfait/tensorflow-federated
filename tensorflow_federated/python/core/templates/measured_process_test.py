@@ -18,6 +18,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -172,5 +173,115 @@ class MeasuredProcessTest(test_case.TestCase):
       measured_process.MeasuredProcess(initialize_fn, next_fn)
 
 
+def test_measured_process_double(state_type, state_init, values_type):
+
+  @computations.tf_computation
+  def double(x):
+    return x * 2
+
+  @computations.federated_computation(
+      computation_types.at_server(state_type),
+      computation_types.at_clients(values_type))
+  def map_double(state, values):
+    return MeasuredProcessOutput(
+        state=intrinsics.federated_map(double, state),
+        result=intrinsics.federated_map(double, values),
+        measurements=intrinsics.federated_value({'a': 1}, placements.SERVER))
+
+  return measured_process.MeasuredProcess(
+      initialize_fn=computations.federated_computation(
+          lambda: intrinsics.federated_value(state_init, placements.SERVER)),
+      next_fn=map_double)
+
+
+def test_measured_process_sum(state_type, state_init, values_type):
+
+  @computations.tf_computation
+  def add_one(x):
+    return x + 1
+
+  @computations.federated_computation(
+      computation_types.at_server(state_type),
+      computation_types.at_clients(values_type))
+  def map_sum(state, values):
+    return MeasuredProcessOutput(
+        state=intrinsics.federated_map(add_one, state),
+        result=intrinsics.federated_sum(values),
+        measurements=intrinsics.federated_value({'b': 2}, placements.SERVER))
+
+  return measured_process.MeasuredProcess(
+      initialize_fn=computations.federated_computation(
+          lambda: intrinsics.federated_value(state_init, placements.SERVER)),
+      next_fn=map_sum)
+
+
+class MeasuredProcessCompositionComputationTest(test_case.TestCase):
+
+  def test_composite_process_type_properties(self):
+    state_type = tf.float32
+    values_type = tf.int32
+    composite_process = measured_process.chain_measured_processes(
+        collections.OrderedDict(
+            double=test_measured_process_double(state_type, 1.0, values_type),
+            sum=test_measured_process_sum(state_type, 0.0, values_type)))
+    self.assertIsInstance(composite_process, measured_process.MeasuredProcess)
+
+    expected_state_type = computation_types.at_server(
+        collections.OrderedDict(double=state_type, sum=state_type))
+    expected_initialize_type = computation_types.FunctionType(
+        parameter=None, result=expected_state_type)
+    self.assertTrue(
+        composite_process.initialize.type_signature.is_equivalent_to(
+            expected_initialize_type))
+
+    param_value_type = computation_types.at_clients(values_type)
+    result_value_type = computation_types.at_server(values_type)
+    expected_measurements_type = computation_types.at_server(
+        collections.OrderedDict(
+            double=collections.OrderedDict(a=tf.int32),
+            sum=collections.OrderedDict(b=tf.int32)))
+    expected_next_type = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            state=expected_state_type, values=param_value_type),
+        result=measured_process.MeasuredProcessOutput(
+            expected_state_type, result_value_type, expected_measurements_type))
+    self.assertTrue(
+        composite_process.next.type_signature.is_equivalent_to(
+            expected_next_type))
+
+  def test_values_type_mismatching_raises(self):
+    measured_processes = collections.OrderedDict(
+        double=test_measured_process_double(tf.int32, 1, tf.int32),
+        sum=test_measured_process_sum(tf.int32, 0, tf.float32))
+
+    first_process_result_type = measured_processes[
+        'double'].next.type_signature.result.result
+    second_process_values_type = measured_processes[
+        'sum'].next.type_signature.parameter.values
+    self.assertFalse(
+        second_process_values_type.is_equivalent_to(first_process_result_type))
+
+    with self.assertRaisesRegex(TypeError, 'Cannot call function'):
+      measured_process.chain_measured_processes(measured_processes)
+
+
+class MeasuredProcessCompositionExecutionTest(test_case.TestCase):
+
+  def test_composite_process_gets_expected_output(self):
+
+    measured_processes = collections.OrderedDict(
+        double=test_measured_process_double(tf.int32, 1, tf.int32),
+        sum=test_measured_process_sum(tf.int32, 0, tf.int32))
+    composite_process = measured_process.chain_measured_processes(
+        measured_processes)
+    output = composite_process.next(composite_process.initialize(),
+                                    [1, 2, 3, 4])
+    self.assertEqual(output.state, collections.OrderedDict(double=2, sum=1))
+    self.assertEqual(output.result, 20)
+    self.assertEqual(output.measurements,
+                     collections.OrderedDict(double={'a': 1}, sum={'b': 2}))
+
+
 if __name__ == '__main__':
+  execution_contexts.set_local_python_execution_context()
   test_case.main()

@@ -13,11 +13,14 @@
 # limitations under the License.
 """Define a template for a stateful process that produces metrics."""
 
+import collections
 from typing import Optional
 
 import attr
 
 from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
@@ -59,24 +62,9 @@ class MeasuredProcess(iterative_process.IterativeProcess):
   `next` computation returns a `tff.templates.MeasuredProcessOutput`.
 
   Unlike `tff.templates.IterativeProcess`, the more generic but less-defined
-  template, arbitrary `tff.templates.MeasuredProcess`es can be composed together
-  as follows:
-
-  *Guidance for Composition*
-  Two `MeasuredProcess`es _F(x)_ and _G(y)_ can be composed into a new
-  `MeasuredProcess` called _C_ with the following properties:
-    - `C.state` is the concatenation `<F.state, G.state>`.
-    - `C.next(C.state, x).result ==
-       G.next(G.state, F.next(F.state, x).result).result`
-    - `C.measurements` is the concatenation `<F.measurements, G.measurements>`.
-
-  The resulting composition _C_ would have the following type signatures:
-    initialize: `( -> <F.initialize, G.initialize>)`
-    next: `(<<F.state, G.state>, F.input> -> <state=<F.state, G.State>,
-      result=G.result, measurements=<F.measurements, G.measurements>)`
-
-  Note that the guidance for composition is not strict and details are allowed
-  to differ.
+  template, arbitrary `tff.templates.MeasuredProcess`es can be composed
+  together. See `tff.templates.chain_measured_processes` docstring for the
+  guidance of composition.
   """
 
   def __init__(self,
@@ -90,8 +78,8 @@ class MeasuredProcess(iterative_process.IterativeProcess):
         of the measured process. Let the type of this state be called `S`.
       next_fn: A `tff.Computation` that represents the iterated function. The
         first or only argument must match the state type `S`. The return value
-        must be a `MeasuredProcessOutput` whose `state` member matches the
-        state type `S`.
+        must be a `MeasuredProcessOutput` whose `state` member matches the state
+        type `S`.
       next_is_multi_arg: An optional boolean indicating that `next_fn` will
         receive more than just the state argument (if `True`) or only the state
         argument (if `False`). This parameter is primarily used to provide
@@ -142,3 +130,85 @@ class MeasuredProcess(iterative_process.IterativeProcess):
       A `tff.Computation`.
     """
     return super().next
+
+
+def chain_measured_processes(measured_processes: collections.OrderedDict):
+  """Creates a composition of multiple `tff.templates.MeasuredProcess`es.
+
+  Composing `MeasuredProcess`es is a chaining process in which the output of the
+  first `MeasuredProcess` feeds the input of the following `MeasuredProcess`.
+  For example, given `y = f(x)` and `z = g(y)`, this produces a new `z = h(x)`
+  such that `h(x) = g(f(x))`.
+
+  *Guidance for Composition*
+  Two `MeasuredProcess`es _F(x)_ and _G(y)_ can be composed into a new
+  `MeasuredProcess` called _C_ with the following properties:
+    - `C.state` is the concatenation `<F.state, G.state>`.
+    - `C.next(C.state, x).result ==
+       G.next(G.state, F.next(F.state, x).result).result`
+    - `C.measurements` is the concatenation `<F.measurements, G.measurements>`.
+
+  The resulting composition _C_ would have the following type signatures:
+    initialize: `( -> <F.initialize, G.initialize>)`
+    next: `(<<F.state, G.state>, F.input> -> <state=<F.state, G.State>,
+      result=G.result, measurements=<F.measurements, G.measurements>)`
+
+  Note that the guidance for composition is not strict and details are allowed
+  to differ.
+
+  Args:
+    measured_processes: An OrderedDict of `MeasuredProcess`es with keys as the
+      process name and values as the corresponding `MeasuredProcess`.
+
+  Returns:
+    A `MeasuredProcessOutput` of the composite `MeasuredProcess` with follow
+    properties:
+      - `state` is the concatenation of the state of each `MeasuredProcess`.
+      - `result` is the result of the composite process given the current input
+         and state.
+      - `measurements` is the concatenation of the measurements of each
+        `MeasuredProcess`.
+
+  Raises:
+    TypeError: If the function argment type doesn't match with the input type of
+    the composite function.
+  """
+  # Concatenate all the initialization computations.
+  @computations.federated_computation
+  def composition_initialize():
+    return intrinsics.federated_zip(
+        collections.OrderedDict(
+            (name, process.initialize())
+            for name, process in measured_processes.items()))
+
+  first_process = next(iter(measured_processes.values()))
+  first_process_value_type_spec = first_process.next.type_signature.parameter[1]
+  concatenated_state_type_spec = computation_types.at_server(
+      computation_types.StructType([
+          (name, process.next.type_signature.parameter[0].member)
+          for name, process in measured_processes.items()
+      ]))
+
+  @computations.federated_computation(concatenated_state_type_spec,
+                                      first_process_value_type_spec)
+  def composition_next(state, values):
+    new_states = collections.OrderedDict()
+    measurements = collections.OrderedDict()
+    for name, process in measured_processes.items():
+      values_type = values.type_signature
+      if values_type is not None:
+        if not values_type.is_assignable_from(
+            process.next.type_signature.parameter[1]):
+          raise TypeError(f'Cannot call function {name} of type '
+                          f'{process.next.type_signature} with value of type '
+                          f'{values.type_signature}.')
+      output = process.next(state[name], values)
+      new_states[name] = output.state
+      measurements[name] = output.measurements
+      values = output.result
+    return MeasuredProcessOutput(
+        state=intrinsics.federated_zip(new_states),
+        result=values,
+        measurements=intrinsics.federated_zip(measurements))
+
+  return MeasuredProcess(composition_initialize, composition_next)

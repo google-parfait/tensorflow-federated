@@ -13,6 +13,7 @@ package_group(
 package_group(
     name = "core_visibility",
     includes = [
+        ":core_packages",
         "//tensorflow_federated/python/aggregators:aggregators_packages",
         "//tensorflow_federated/python/analytics:analytics_packages",
         "//tensorflow_federated/python/learning:learning_packages",
