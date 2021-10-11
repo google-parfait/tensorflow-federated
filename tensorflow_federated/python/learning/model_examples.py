@@ -15,7 +15,7 @@
 
 import collections
 import functools
-from typing import List
+from typing import Callable, List, OrderedDict, Union
 
 import tensorflow as tf
 
@@ -117,6 +117,42 @@ class LinearRegression(model.Model):
           num_examples=intrinsics.federated_sum(local_outputs.num_examples))
 
     return fed_output
+
+  @tf.function
+  def report_local_unfinalized_metrics(
+      self) -> OrderedDict[str, Union[tf.Tensor, List[tf.Tensor]]]:
+    """Creates an `OrderedDict` of metric names to unfinalized values.
+
+    Returns:
+      An `OrderedDict` of metric names to unfinalized values. The `OrderedDict`
+      has the same keys (metric names) as the `OrderedDict` returned by the
+      method `metric_finalizers()`, and can be used as input to the finalizers
+      to get the finalized metric values. This method and `metric_finalizers()`
+      method can be used together to build a cross-client metrics aggregator
+      when defining the federated training processes or evaluation computations.
+    """
+    return collections.OrderedDict(
+        num_examples=self._num_examples,
+        loss=[self._loss_sum,
+              tf.cast(self._num_examples, tf.float32)])
+
+  def metric_finalizers(
+      self
+  ) -> OrderedDict[str, Callable[[Union[tf.Tensor, List[tf.Tensor]]],
+                                 tf.Tensor]]:
+    """Creates an `OrderedDict` of metric names to finalizers.
+
+    Returns:
+      An `OrderedDict` of metric names to finalizers. A finalizer is a
+      `tf.function` decorated callable that takes in a metric's unfinalized
+      values (returned by `report_local_unfinalized_metrics()`), and returns the
+      finalized values. This method and the `report_local_unfinalized_metrics()`
+      method can be used together to construct a cross-client metrics aggregator
+      when defining the federated training processes or evaluation computations.
+    """
+    return collections.OrderedDict(
+        num_examples=tf.function(func=lambda x: x),
+        loss=tf.function(func=lambda x: x[0] / x[1]))
 
 
 def _dense_all_zeros_layer(input_dims=None, output_dim=1):

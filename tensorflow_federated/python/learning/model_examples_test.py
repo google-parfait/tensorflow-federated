@@ -38,13 +38,18 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllEqual(output.predictions, [[0.0], [0.0]])
     # The residuals are (0., 1.), so average loss is 0.5 * 0.5 * 1.
     self.assertEqual(output.loss, 0.25)
-    self.assertDictEqual(
-        metrics, {
-            'num_examples': 2,
-            'num_examples_float': 2.0,
-            'num_batches': 1,
-            'loss': 0.25
-        })
+    self.assertEqual(
+        metrics,
+        collections.OrderedDict(
+            num_examples=2, num_examples_float=2.0, num_batches=1, loss=0.25))
+    unfinalized_metrics = model.report_local_unfinalized_metrics()
+    self.assertEqual(unfinalized_metrics,
+                     collections.OrderedDict(num_examples=2, loss=[0.5, 2.0]))
+    finalized_metrics = collections.OrderedDict(
+        (metric_name, finalizer(unfinalized_metrics[metric_name]))
+        for metric_name, finalizer in model.metric_finalizers().items())
+    self.assertEqual(finalized_metrics,
+                     collections.OrderedDict(num_examples=2, loss=0.25))
 
   def test_tff(self):
     feature_dim = 2
@@ -57,23 +62,29 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
       def _train(batch):
         batch_output = model.forward_pass(batch)
         local_output = model.report_local_outputs()
-        return batch_output, local_output
+        unfinalized_metrics = model.report_local_unfinalized_metrics()
+        return batch_output, local_output, unfinalized_metrics
 
       return _train(
           batch=collections.OrderedDict(
               x=tf.constant([[0.0, 0.0], [1.0, 1.0]]),
               y=tf.constant([[0.0], [1.0]])))
 
-    batch_output, local_output = forward_pass_and_output()
+    batch_output, local_output, unfinalized_metrics = forward_pass_and_output()
     self.assertAllEqual(batch_output.predictions, [[0.0], [0.0]])
     self.assertEqual(batch_output.loss, 0.25)
-    self.assertDictEqual(
-        local_output, {
-            'num_examples': 2,
-            'num_batches': 1,
-            'loss': 0.25,
-            'num_examples_float': 2.0,
-        })
+    self.assertEqual(
+        local_output,
+        collections.OrderedDict(
+            num_examples=2, num_examples_float=2.0, num_batches=1, loss=0.25))
+    self.assertEqual(unfinalized_metrics,
+                     collections.OrderedDict(num_examples=2, loss=[0.5, 2.0]))
+    model = model_examples.LinearRegression(feature_dim)
+    finalized_metrics = collections.OrderedDict(
+        (metric_name, finalizer(unfinalized_metrics[metric_name]))
+        for metric_name, finalizer in model.metric_finalizers().items())
+    self.assertEqual(finalized_metrics,
+                     collections.OrderedDict(num_examples=2, loss=0.25))
 
     # TODO(b/122114585): Add tests for model.federated_output_computation.
 
