@@ -26,7 +26,7 @@ class ReleaseManager(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def release(self, value: Any, key: Any = None):
-    """Releases the `value` from a federated program.
+    """Releases `value` from a federated program.
 
     An implementation of this interface should be specific about the types of
     `value` and `key` for this method and should document how the `key` will be
@@ -40,7 +40,7 @@ class ReleaseManager(metaclass=abc.ABCMeta):
       value: The value to release, the specific structure of `key` is left up to
         the implementation of `tff.program.ReleaseManager`.
       key: An optional value to use to reference the released `value`, the
-         specific structure of `key` and how `key` is used is left up to the
-         implementation of `tff.program.ReleaseManager`.
+        specific structure of `key` and how `key` is used is left up to the
+        implementation of `tff.program.ReleaseManager`.
     """
     raise NotImplementedError

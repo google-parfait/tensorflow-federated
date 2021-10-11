@@ -47,7 +47,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
                prefix: str = 'program_state_',
                keep_total: int = 5,
                keep_first: bool = True):
-    """Returns an initialized `ProgramStateManager`.
+    """Returns an initialized `tff.program.ProgramStateManager`.
 
     Args:
       root_dir: A path on the file system to save program state. If this path

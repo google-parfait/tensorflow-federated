@@ -23,17 +23,17 @@ class FlattenTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('none', None, [('', None)]),
-      ('int', 1, [('', 1)]),
-      ('list', [1, 2, 3], [('0', 1), ('1', 2), ('2', 3)]),
-      ('dict', {'a': 1, 'b': 2, 'c': 3}, [('a', 1), ('b', 2), ('c', 3)]),
+      ('none', None, {'': None}),
+      ('int', 1, {'': 1}),
+      ('list', [1, 2, 3], {'0': 1, '1': 2, '2': 3}),
+      ('dict', {'a': 1, 'b': 2, 'c': 3}, {'a': 1, 'b': 2, 'c': 3}),
       ('nested_int',
        [1, [2, 2], {'a': 3}],
-       [('0', 1), ('1/0', 2), ('1/1', 2), ('2/a', 3)]),
-      ('tensor', tf.ones([1]), [('', tf.ones([1]))]),
+       {'0': 1, '1/0': 2, '1/1': 2, '2/a': 3}),
+      ('tensor', tf.ones([1]), {'': tf.ones([1])}),
       ('nested_tensor',
        [tf.ones([1]), [tf.ones([1]), tf.ones([1])]],
-       [('0', tf.ones([1])), ('1/0', tf.ones([1])), ('1/1', tf.ones([1]))]),
+       {'0': tf.ones([1]), '1/0': tf.ones([1]), '1/1': tf.ones([1])}),
   )
   # pyformat: enable
   def test_returns_result(self, structure, expected_result):

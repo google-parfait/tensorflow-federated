@@ -24,7 +24,7 @@ class LoggingReleaseManager(release_manager.ReleaseManager):
   """A `tff.program.ReleaseManager` that releases values to logs."""
 
   def release(self, value: Any, key: Any = None):
-    """Releases the `value` from a federated program.
+    """Releases `value` from a federated program.
 
     Args:
       value: The value to release.

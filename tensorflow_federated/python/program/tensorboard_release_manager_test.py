@@ -22,7 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.program import tensorboard_release_manager
 
 
-class TensorBoardManagerInitTest(parameterized.TestCase):
+class TensorboardReleaseManagerInitTest(parameterized.TestCase):
 
   def test_creates_root_dir(self):
     temp_dir = self.create_tempdir()
@@ -65,9 +65,9 @@ class TensorBoardManagerInitTest(parameterized.TestCase):
       tensorboard_release_manager.TensorboardReleaseManager(summary_dir='')
 
 
-class TensorBoardManagerReleaseTest(parameterized.TestCase):
+class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
 
-  def test_release_writes_scalar_int(self):
+  def test_writes_scalar_int(self):
     temp_dir = self.create_tempdir()
     tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -76,7 +76,7 @@ class TensorBoardManagerReleaseTest(parameterized.TestCase):
       tensorboard_release_mngr.release(1, 1)
       mock_scalar.assert_called_once_with('', 1, step=1)
 
-  def test_release_writes_scalar_list(self):
+  def test_writes_scalar_list(self):
     temp_dir = self.create_tempdir()
     tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -89,7 +89,7 @@ class TensorBoardManagerReleaseTest(parameterized.TestCase):
           mock.call('2', 3, step=1),
       ])
 
-  def test_release_writes_scalar_dict(self):
+  def test_writes_scalar_dict(self):
     temp_dir = self.create_tempdir()
     tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -102,7 +102,7 @@ class TensorBoardManagerReleaseTest(parameterized.TestCase):
           mock.call('c', 3, step=1),
       ])
 
-  def test_release_writes_scalar_nested(self):
+  def test_writes_scalar_nested(self):
     temp_dir = self.create_tempdir()
     tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -116,7 +116,7 @@ class TensorBoardManagerReleaseTest(parameterized.TestCase):
           mock.call('2/a', 3, step=1),
       ])
 
-  def test_release_writes_histogram_tensor(self):
+  def test_writes_histogram_tensor(self):
     temp_dir = self.create_tempdir()
     tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -127,7 +127,7 @@ class TensorBoardManagerReleaseTest(parameterized.TestCase):
           mock.call('', tf.ones([1]), step=1),
       ])
 
-  def test_release_writes_histogram_nested(self):
+  def test_writes_histogram_nested(self):
     temp_dir = self.create_tempdir()
     tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -139,7 +139,7 @@ class TensorBoardManagerReleaseTest(parameterized.TestCase):
           mock.call('1/0', tf.ones([1]), step=1),
       ])
 
-  def test_release_writes_scalar_int_and_histogram_tensor(self):
+  def test_writes_scalar_int_and_histogram_tensor(self):
     temp_dir = self.create_tempdir()
     tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -156,7 +156,7 @@ class TensorBoardManagerReleaseTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  def test_release_does_not_write_value(self, value):
+  def test_does_not_write_value(self, value):
     temp_dir = self.create_tempdir()
     tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -170,7 +170,7 @@ class TensorBoardManagerReleaseTest(parameterized.TestCase):
       ('0', 0),
       ('1', 1),
   )
-  def test_release_does_not_raise_with_key(self, key):
+  def test_does_not_raise_with_key(self, key):
     temp_dir = self.create_tempdir()
     tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -185,7 +185,7 @@ class TensorBoardManagerReleaseTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  def test_release_raises_type_error_with_key(self, key):
+  def test_raises_type_error_with_key(self, key):
     temp_dir = self.create_tempdir()
     tensorboard_release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
