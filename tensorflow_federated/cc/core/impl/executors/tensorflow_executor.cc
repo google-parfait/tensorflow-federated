@@ -595,17 +595,6 @@ absl::StatusOr<ExecutorValue> Computation::Call(
     return ExecutorValue::FromTensorsAndBindingStructure(output_shape_, {});
   }
   auto session = TFF_TRY(this->session_provider_.BorrowSession());
-  if (!init_op_.empty()) {
-    tensorflow::Status status = session->Run(
-        /*inputs=*/{},
-        /*output_tensor_names=*/{},
-        /*target_tensor_names=*/{init_op_},
-        /*outputs=*/nullptr);
-    if (!status.ok()) {
-      return absl::InternalError(ERR_LOG(absl::StrCat(
-          "Failed to initialize the computation: ", status.error_message())));
-    }
-  }
   if (arg.has_value() != parameter_shape_.has_value()) {
     auto actual = arg.has_value()
                       ? absl::StrCat("of type '", arg->DebugString(), "' was")
@@ -623,6 +612,16 @@ absl::StatusOr<ExecutorValue> Computation::Call(
   std::vector<std::pair<std::string, tensorflow::Tensor>> inputs;
   if (arg.has_value()) {
     TFF_TRY(arg.value().Bind(parameter_shape_.value(), &inputs));
+  }
+  if (!init_op_.empty()) {
+    tensorflow::Status status = session->Run(inputs,
+                                             /*output_tensor_names=*/{},
+                                             /*target_tensor_names=*/{init_op_},
+                                             /*outputs=*/nullptr);
+    if (!status.ok()) {
+      return absl::InternalError(ERR_LOG(absl::StrCat(
+          "Failed to initialize the computation: ", status.error_message())));
+    }
   }
   std::vector<tensorflow::Tensor> outputs;
   tensorflow::Status status =

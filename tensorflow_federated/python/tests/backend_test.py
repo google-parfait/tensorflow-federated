@@ -195,7 +195,7 @@ class FederatedComputationTest(parameterized.TestCase):
     self.assertEqual(result, [1])
 
 
-class TensorFlowComputationTest(parameterized.TestCase):
+class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @test_contexts.with_contexts
   def test_create_call_take_two_from_stateful_dataset(self):
@@ -216,8 +216,22 @@ class TensorFlowComputationTest(parameterized.TestCase):
     self.assertCountEqual([x.numpy() for x in result], [0, 1])
 
   @test_contexts.with_contexts
-  def test_usage_of_dynamics_lookup_table(self):
+  def test_dynamic_lookup_table(self):
 
+    @tff.tf_computation(
+        tff.TensorType(shape=[None], dtype=tf.string),
+        tff.TensorType(shape=[None], dtype=tf.string))
+    def comp(table_args, to_lookup):
+      values = tf.range(tf.shape(table_args)[0])
+      initializer = tf.lookup.KeyValueTensorInitializer(table_args, values)
+      table = tf.lookup.StaticHashTable(initializer, default_value=101)
+      return table.lookup(to_lookup)
+
+    result = comp(tf.constant(['a', 'b', 'c']), tf.constant(['a', 'z', 'c']))
+    self.assertAllEqual(result, [0, 101, 2])
+
+  @test_contexts.with_contexts
+  def test_reinitialize_dynamic_lookup_table(self):
     self.skipTest('Currently fails in CPP; see b/202448649')
 
     @tff.tf_computation(
@@ -226,7 +240,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     def comp(table_args, to_lookup):
       values = tf.range(tf.shape(table_args)[0])
       initializer = tf.lookup.KeyValueTensorInitializer(table_args, values)
-      table = tf.lookup.StaticHashTable(initializer, 100)
+      table = tf.lookup.StaticHashTable(initializer, default_value=101)
       return table.lookup(to_lookup)
 
     expected_zero = comp(tf.constant(['a', 'b', 'c']), tf.constant('a'))
