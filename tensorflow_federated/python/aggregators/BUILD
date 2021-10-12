@@ -158,6 +158,20 @@ py_library(
 )
 
 py_library(
+    name = "hadamard",
+    srcs = ["hadamard.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "hadamard_test",
+    srcs = ["hadamard_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":hadamard"],
+)
+
+py_library(
     name = "mean",
     srcs = ["mean.py"],
     srcs_version = "PY3",
@@ -338,6 +352,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":factory",
+        ":hadamard",
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",

@@ -20,6 +20,7 @@ from typing import Optional
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import hadamard
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
@@ -30,7 +31,6 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 SEED_TF_DTYPE = tf.int64
 SEED_TFF_TYPE = computation_types.TensorType(SEED_TF_DTYPE, [2])
@@ -99,7 +99,7 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
         for _ in range(self._num_repeats):
           tensor *= sample_rademacher(tf.shape(tensor), tensor.dtype, seed)
           tensor = tf.expand_dims(tensor, axis=0)
-          tensor = te.utils.fast_walsh_hadamard_transform(tensor)
+          tensor = hadamard.fast_walsh_hadamard_transform(tensor)
           tensor = tf.squeeze(tensor, axis=0)
           seed += 1
         return tensor
@@ -121,7 +121,7 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
         seed += self._num_repeats - 1
         for _ in range(self._num_repeats):
           tensor = tf.expand_dims(tensor, axis=0)
-          tensor = te.utils.fast_walsh_hadamard_transform(tensor)
+          tensor = hadamard.fast_walsh_hadamard_transform(tensor)
           tensor = tf.squeeze(tensor, axis=0)
           tensor *= sample_rademacher(tf.shape(tensor), tensor.dtype, seed)
           seed -= 1
