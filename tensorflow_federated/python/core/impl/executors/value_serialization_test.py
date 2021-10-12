@@ -48,6 +48,23 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('scalar', np.float32(25.0)),
                                   ('1d_tensor', np.asarray([1.0, 2.0])))
+  def test_serialize_deserialize_tensor_value_without_hint_graph_mode(self, x):
+    tf_type = tf.as_dtype(x.dtype)
+    type_spec = computation_types.TensorType(tf_type, x.shape)
+    with tf.Graph().as_default():
+      value_proto, value_type = value_serialization.serialize_value(
+          x, type_spec)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
+    self.assert_types_identical(value_type,
+                                computation_types.TensorType(tf_type, x.shape))
+    y, type_spec = value_serialization.deserialize_value(value_proto)
+    self.assert_types_identical(type_spec,
+                                computation_types.TensorType(tf_type, x.shape))
+    self.assertIsInstance(y, type(x))
+    self.assertAllEqual(x, y)
+
+  @parameterized.named_parameters(('scalar', np.float32(25.0)),
+                                  ('1d_tensor', np.asarray([1.0, 2.0])))
   def test_serialize_deserialize_tensor_value_with_hint(self, x):
     tf_type = tf.as_dtype(x.dtype)
     type_spec = computation_types.TensorType(tf_type, x.shape)
@@ -141,6 +158,19 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     ds_repr = ds_repr_fn(ds)
     value_proto, value_type = value_serialization.serialize_value(
         ds_repr, computation_types.SequenceType(tf.int64))
+    self.assertIsInstance(value_proto, executor_pb2.Value)
+    self.assert_types_identical(value_type,
+                                computation_types.SequenceType(tf.int64))
+    y, type_spec = value_serialization.deserialize_value(value_proto)
+    self.assert_types_identical(type_spec,
+                                computation_types.SequenceType(tf.int64))
+    self.assertAllEqual(list(y), [x * 2 for x in range(5)])
+
+  def test_serialize_deserialize_sequence_of_scalars_graph_mode(self):
+    with tf.Graph().as_default():
+      ds = tf.data.Dataset.range(5).map(lambda x: x * 2)
+      value_proto, value_type = value_serialization.serialize_value(
+          ds, computation_types.SequenceType(tf.int64))
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assert_types_identical(value_type,
                                 computation_types.SequenceType(tf.int64))

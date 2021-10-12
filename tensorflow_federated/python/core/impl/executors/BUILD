@@ -896,6 +896,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@com_google_protobuf//:protobuf_python",
     ],
 )
 

@@ -23,6 +23,7 @@ import zipfile
 
 import tensorflow as tf
 
+from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -66,8 +67,8 @@ def _serialize_computation(
 
 @tracing.trace
 def _serialize_tensor_value(
-    value: Any,
-    type_spec: computation_types.TensorType) -> computation_types.TensorType:
+    value: Any, type_spec: computation_types.TensorType
+) -> Tuple[executor_pb2.Value, computation_types.TensorType]:
   """Serializes a tensor value into `executor_pb2.Value`.
 
   Args:
@@ -86,6 +87,15 @@ def _serialize_tensor_value(
     ValueError: If the value is malformed.
   """
   if not tf.is_tensor(value):
+    if not tf.executing_eagerly():
+      # In this case, we pull the bytes representing `value` into a
+      # tensor proto and package this tensor proto into an executor_pb2.Value.
+      # This path is expected to be less common and less performant than the
+      # EagerTensor path, where we simply hand-off the handle.
+      tensor_proto = tf.make_tensor_proto(value)
+      any_pb = any_pb2.Any()
+      any_pb.Pack(tensor_proto)
+      return executor_pb2.Value(tensor=any_pb), type_spec
     value = tf.convert_to_tensor(value, dtype=type_spec.dtype)
   elif isinstance(value, tf.Variable):
     value = value.read_value()
@@ -118,8 +128,12 @@ def _serialize_dataset(
   """
   py_typecheck.check_type(dataset,
                           type_conversions.TF_DATASET_REPRESENTATION_TYPES)
-  dataset_graph_def_bytes = tf.raw_ops.DatasetToGraphV2(
-      input_dataset=tf.data.experimental.to_variant(dataset)).numpy()
+  dataset_graph = tf.raw_ops.DatasetToGraphV2(
+      input_dataset=tf.data.experimental.to_variant(dataset))
+  if tf.executing_eagerly():
+    dataset_graph_def_bytes = dataset_graph.numpy()
+  else:
+    dataset_graph_def_bytes = tf.compat.v1.Session().run(dataset_graph)
   if len(dataset_graph_def_bytes) > max_serialized_size_bytes:
     raise ValueError('Serialized size of Dataset ({:d} bytes) exceeds maximum '
                      'allowed ({:d} bytes)'.format(
