@@ -159,3 +159,9 @@ py_test(
     srcs_version = "PY3",
     deps = [":tensorboard_release_manager"],
 )
+
+py_library(
+    name = "value_reference",
+    srcs = ["value_reference.py"],
+    deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
+)
