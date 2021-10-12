@@ -64,6 +64,8 @@ PYBIND11_MODULE(executor_bindings, m) {
   py::google::ImportStatusModule();
   pybind11_protobuf::ImportWrappedProtoCasters();
 
+  using pybind11_protobuf::WithWrappedProtos;
+
   m.doc() = "Bindings for the C++ ";
 
   // Provide an `OwnedValueId` class to handle return values from the
@@ -98,33 +100,28 @@ PYBIND11_MODULE(executor_bindings, m) {
   py::class_<Executor,
              // PyExecutor trampoline goes here when ready
              std::shared_ptr<Executor>>(m, "Executor")
-      .def("create_value",
-           pybind11::google::WithWrappedProtos(&Executor::CreateValue),
+      .def("create_value", WithWrappedProtos(&Executor::CreateValue),
            py::arg("value_pb"), py::return_value_policy::move)
-      .def("create_struct",
-           pybind11::google::WithWrappedProtos(&Executor::CreateStruct),
+      .def("create_struct", WithWrappedProtos(&Executor::CreateStruct),
            py::return_value_policy::move)
-      .def("create_selection",
-           pybind11::google::WithWrappedProtos(&Executor::CreateSelection),
+      .def("create_selection", WithWrappedProtos(&Executor::CreateSelection),
            py::return_value_policy::move)
-      .def("create_call",
-           pybind11::google::WithWrappedProtos(&Executor::CreateCall),
+      .def("create_call", WithWrappedProtos(&Executor::CreateCall),
            py::arg("function"),
            // Allow `argument` to be `None`.
            py::arg("argument").none(true), py::return_value_policy::move)
       .def("materialize",
-           pybind11::google::WithWrappedProtos(
-               [](Executor& e,
-                  const ValueId& value_id) -> absl::StatusOr<v0::Value> {
-                 // Construct a new `v0::Value` to write to and return it to
-                 // Python.
-                 v0::Value value_pb;
-                 auto result = e.Materialize(value_id, &value_pb);
-                 if (!result.ok()) {
-                   return result;
-                 }
-                 return value_pb;
-               }));
+           WithWrappedProtos([](Executor& e, const ValueId& value_id)
+                                 -> absl::StatusOr<v0::Value> {
+             // Construct a new `v0::Value` to write to and return it to
+             // Python.
+             v0::Value value_pb;
+             auto result = e.Materialize(value_id, &value_pb);
+             if (!result.ok()) {
+               return result;
+             }
+             return value_pb;
+           }));
 
   // Executor construction methods.
   m.def("create_tensorflow_executor", &CreateTensorFlowExecutor,
