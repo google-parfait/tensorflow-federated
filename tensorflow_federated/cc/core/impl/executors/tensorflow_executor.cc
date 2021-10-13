@@ -144,12 +144,14 @@ absl::Status AddDeserializationOpsForParameters(
     absl::string_view prefix = "root") {
   switch (binding.binding_case()) {
     case v0::TensorFlow::Binding::kSequence: {
-      // Get the name of the placeholder we're operating on and create a name
-      // for the new deserialization op.
-      const std::string variant_tensor_name =
+      // Get a copy of the name of the placeholder we're operating on. We're
+      // going to clear/reset the binding and  then rebuild the it but re-use
+      // the placholder op.
+      const std::string dataset_placeholder_node_name =
           binding.sequence().variant_tensor_name();
+      binding.mutable_sequence()->Clear();
       auto graph_names = GetVariantTensorNodeNameAndReplacement(
-          variant_tensor_name, kDatasetFromGraphOp, prefix);
+          dataset_placeholder_node_name, kDatasetFromGraphOp, prefix);
       for (tensorflow::NodeDef& node_pb : *graphdef_pb.mutable_node()) {
         // Change the placeholder op from variant to string, this will now
         // be a placeholder for a serialized graphdef bytes.
@@ -169,9 +171,9 @@ absl::Status AddDeserializationOpsForParameters(
         std::transform(
             node_pb.mutable_input()->begin(), node_pb.mutable_input()->end(),
             node_pb.mutable_input()->begin(),
-            [&variant_tensor_name,
+            [&dataset_placeholder_node_name,
              &graph_names](const std::string& input_name) -> std::string {
-              if (input_name == variant_tensor_name) {
+              if (input_name == dataset_placeholder_node_name) {
                 return graph_names.graph_def_tensor_name;
               } else if (input_name == graph_names.variant_node_name) {
                 return graph_names.graph_def_node_name;
@@ -183,12 +185,12 @@ absl::Status AddDeserializationOpsForParameters(
       tensorflow::NodeDef* graph_from_dataset_node = graphdef_pb.add_node();
       graph_from_dataset_node->set_name(graph_names.graph_def_node_name);
       graph_from_dataset_node->set_op(kDatasetFromGraphOp);
-      graph_from_dataset_node->add_input()->assign(variant_tensor_name);
-      // Update the binding to inform the new format, but continue to use
-      // the placeholder node that was originally created.
-      binding.mutable_sequence()->Clear();
+      graph_from_dataset_node->add_input()->assign(
+          dataset_placeholder_node_name);
+      // Update the binding to inform the new format, but continue to use the
+      // placeholder node that was originally created.
       binding.mutable_sequence()->set_graph_def_tensor_name(
-          variant_tensor_name);
+          dataset_placeholder_node_name);
       return absl::OkStatus();
     }
     case v0::TensorFlow::Binding::kStruct: {
@@ -248,8 +250,11 @@ absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
       }
       // Otherwise we need to wrap this binding with one that first calls the
       // DatasetToGraphV2 op on the variant tensor coming out of the graph.
-      const std::string& variant_tensor_name =
+      // First make a copy of the placeholder name because we are going to reset
+      // the binding and rebuild it using the same node nade.
+      const std::string variant_tensor_name =
           binding.sequence().variant_tensor_name();
+      binding.mutable_sequence()->Clear();
       auto graph_names = GetVariantTensorNodeNameAndReplacement(
           variant_tensor_name, kDatasetToGraphOp, prefix);
       // We only need to add a new node to the graph and update the binding,
@@ -269,7 +274,6 @@ absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
       (*graph_from_dataset_node->mutable_attr())["strip_device_assignment"]
           .set_b(true);
       // Update the binding to inform the new format.
-      binding.mutable_sequence()->Clear();
       binding.mutable_sequence()->set_graph_def_tensor_name(
           graph_names.graph_def_tensor_name);
       return absl::OkStatus();
