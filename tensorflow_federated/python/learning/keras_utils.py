@@ -58,6 +58,11 @@ def from_keras_model(
   guaranteed to exist through the functional or Sequential API but are
   not necessarily present for subclassed models.
 
+  Note: This function raises a UserWarning if the `tf.keras.Model` contains a
+  BatchNormalization layer, as the batch mean and variance will be treated as
+  non-trainable variables and won't be updated during the training (see
+  b/186845846 for more information). Consider using Group Normalization instead.
+
   Args:
     keras_model: A `tf.keras.Model` object that is not compiled.
     loss: A single `tf.keras.losses.Loss` or a list of losses-per-output. If a
