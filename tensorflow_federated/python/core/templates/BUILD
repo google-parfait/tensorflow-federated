@@ -143,7 +143,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":aggregation_process",
         ":errors",
+        ":iterative_process",
         ":measured_process",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
