@@ -146,7 +146,7 @@ absl::Status AddDeserializationOpsForParameters(
     case v0::TensorFlow::Binding::kSequence: {
       // Get the name of the placeholder we're operating on and create a name
       // for the new deserialization op.
-      const std::string& variant_tensor_name =
+      const std::string variant_tensor_name =
           binding.sequence().variant_tensor_name();
       auto graph_names = GetVariantTensorNodeNameAndReplacement(
           variant_tensor_name, kDatasetFromGraphOp, prefix);
