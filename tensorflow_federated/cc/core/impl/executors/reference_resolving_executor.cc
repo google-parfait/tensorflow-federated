@@ -26,6 +26,7 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/variant.h"
@@ -548,12 +549,17 @@ absl::StatusOr<std::shared_ptr<ExecutorValue>>
 ReferenceResolvingExecutor::EvaluateBlock(
     const v0::Block& block_pb, const std::shared_ptr<Scope>& scope) const {
   std::shared_ptr<Scope> current_scope = scope;
+  auto local_pb_formatter = [](std::string* out,
+                               const v0::Block::Local& local_pb) {
+    out->append(local_pb.name());
+  };
   for (int i = 0; i < block_pb.local_size(); ++i) {
     const v0::Block::Local& local_pb = block_pb.local(i);
-    std::shared_ptr<ExecutorValue> value =
-        TFF_TRY(Evaluate(local_pb.value(), current_scope),
-                absl::StrCat("while evaluating local [", local_pb.name(),
-                             "] in block [", block_pb.Utf8DebugString(), "]"));
+    std::shared_ptr<ExecutorValue> value = TFF_TRY(
+        Evaluate(local_pb.value(), current_scope),
+        absl::StrCat(
+            "while evaluating local [", local_pb.name(), "] in block locals [",
+            absl::StrJoin(block_pb.local(), ",", local_pb_formatter), "]"));
     current_scope = std::make_shared<Scope>(
         std::make_tuple(local_pb.name(), std::move(value)),
         std::move(current_scope));
