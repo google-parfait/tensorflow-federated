@@ -110,7 +110,12 @@ class MapReduceFormTest(tff.test.TestCase):
       self.skipTest(
           'b/137602785: bring GPU test back after the fix for `wrap_function`')
     ip_1 = construct_example_training_comp()
-    cf = tff.backends.mapreduce.get_map_reduce_form_for_iterative_process(ip_1)
+    # We disable Grappler to prevent a single TF function from being pulled into
+    # the eager TF runtime with multiple definitions.
+    grappler_config = tf.compat.v1.ConfigProto()
+    grappler_config.graph_options.rewrite_options.disable_meta_optimizer = True
+    cf = tff.backends.mapreduce.get_map_reduce_form_for_iterative_process(
+        ip_1, grappler_config=grappler_config)
     ip_2 = tff.backends.mapreduce.get_iterative_process_for_map_reduce_form(cf)
 
     ip_1.initialize.type_signature.check_equivalent_to(
@@ -152,5 +157,5 @@ class MapReduceFormTest(tff.test.TestCase):
 
 
 if __name__ == '__main__':
-  tff.backends.reference.set_reference_context()
+  tff.backends.test.set_test_execution_context()
   tff.test.main()
