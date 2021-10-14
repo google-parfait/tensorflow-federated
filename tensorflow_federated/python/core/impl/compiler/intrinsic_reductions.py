@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 
@@ -357,6 +358,27 @@ def _get_secure_intrinsic_reductions(
     return federated_secure_sum(
         building_blocks.Struct([summand_arg, max_value]))
 
+  def federated_secure_modular_sum(arg):
+    py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
+    arg.type_signature.check_struct()
+    if arg.type_signature.is_struct_with_python():
+      container_type = arg.type_signature.python_container
+    else:
+      container_type = None
+    summand_arg = building_blocks.Selection(arg, index=0)
+    raw_summed_values = building_block_factory.create_federated_sum(summand_arg)
+
+    unplaced_modulus = building_blocks.Selection(arg, index=1)
+    placed_modulus = building_block_factory.create_federated_value(
+        unplaced_modulus, placements.SERVER)
+    modulus_arg = building_block_factory.create_federated_zip(
+        building_blocks.Struct([raw_summed_values, placed_modulus],
+                               container_type=container_type))
+    modulus_computed = building_block_factory.apply_binary_operator_with_upcast(
+        modulus_arg, tf.math.mod)
+
+    return modulus_computed
+
   def federated_secure_select(arg):
     py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
     client_keys_arg = building_blocks.Selection(arg, index=0)
@@ -373,6 +395,8 @@ def _get_secure_intrinsic_reductions(
   secure_intrinsic_bodies_by_uri = collections.OrderedDict([
       (intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
        federated_secure_sum_bitwidth),
+      (intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri,
+       federated_secure_modular_sum),
       (intrinsic_defs.FEDERATED_SECURE_SUM.uri, federated_secure_sum),
       (intrinsic_defs.FEDERATED_SECURE_SELECT.uri, federated_secure_select),
   ])

@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":test_packages",
@@ -30,5 +30,18 @@ py_library(
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
+    ],
+)
+
+py_test(
+    name = "execution_contexts_test",
+    srcs = ["execution_contexts_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":execution_contexts",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
