@@ -215,6 +215,39 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
     self.assertGreater(
         _count_intrinsics(reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri), 0)
 
+  @parameterized.named_parameters(
+      ('int32', tf.int32, tf.int32),
+      ('int32_struct', [tf.int32, tf.int32], tf.int32),
+      ('int64', tf.int32, tf.int32),
+      ('mixed_struct', [tf.int32, [tf.int32]], tf.int32),
+      ('per_leaf_modulus', [tf.int32, [tf.int32]], [tf.int32, [tf.int32]]),
+  )
+  def test_federated_secure_modular_sum(self, value_dtype, modulus_type):
+    uri = intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri
+    comp = building_blocks.Intrinsic(
+        uri,
+        computation_types.FunctionType(
+            parameter=[
+                computation_types.at_clients(value_dtype),
+                computation_types.to_type(modulus_type)
+            ],
+            result=computation_types.at_server(value_dtype)))
+    # First without secure intrinsics shouldn't modify anything.
+    reduced, modified = intrinsic_reductions.replace_intrinsics_with_bodies(
+        comp)
+    self.assertFalse(modified)
+    self.assertGreater(_count_intrinsics(comp, uri), 0)
+    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    # Now replace bodies including secure intrinsics.
+    reduced, modified = intrinsic_reductions.replace_secure_intrinsics_with_insecure_bodies(
+        comp)
+    self.assertTrue(modified)
+    # Inserting tensorflow, as we do here, does not preserve python containers
+    # currently.
+    self.assert_types_equivalent(comp.type_signature, reduced.type_signature)
+    self.assertGreater(
+        _count_intrinsics(reduced, intrinsic_defs.FEDERATED_SUM.uri), 0)
+
   def test_federated_secure_select(self):
     uri = intrinsic_defs.FEDERATED_SECURE_SELECT.uri
     comp = building_blocks.Intrinsic(
