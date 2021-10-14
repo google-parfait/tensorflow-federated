@@ -60,8 +60,7 @@ git_repository(
 
 git_repository(
     name = "pybind11_protobuf",
-    # commit = "781a8ea7dcbb15c40fd7f57a1444ded8faf31535",
-    branch = "main",
+    commit = "f003bf2f5b44eae08fbab14861e3721a4db9d3d4",
     remote = "https://github.com/pybind/pybind11_protobuf.git",
 )
 
@@ -83,6 +82,10 @@ new_git_repository(
     tag = "v2.7.1",
 )
 
+# Required by pybind11_bazel
+# load("@pybind11_bazel//:python_configure.bzl", "python_configure")
+# python_configure(name = "local_config_python")
+
 # Required by absl_py
 http_archive(
     name = "six",
@@ -94,9 +97,6 @@ http_archive(
         "https://pypi.python.org/packages/source/s/six/six-1.15.0.tar.gz",
     ],
 )
-
-# load("@pybind11_bazel//:python_configure.bzl", "python_configure")
-# python_configure(name = "local_config_python")
 
 #
 # Transitive dependencies, grouped by direct dependency.
