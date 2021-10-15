@@ -23,17 +23,13 @@ namespace tensorflow_federated {
 
 namespace {
 
-class SessionProviderTest : public ::testing::Test {
- public:
-};
-
-TEST_F(SessionProviderTest, TestStandaloneTakeSession) {
+TEST(SessionProviderTest, TestStandaloneTakeSession) {
   tensorflow::GraphDef graphdef_pb;
   SessionProvider session_provider(std::move(graphdef_pb), absl::nullopt);
   TFF_ASSERT_OK(session_provider.TakeSession());
 }
 
-TEST_F(SessionProviderTest, TestSessionNotAvailableConcurrencyLimited) {
+TEST(SessionProviderTest, TestSessionNotAvailableConcurrencyLimited) {
   tensorflow::GraphDef graphdef_pb;
   SessionProvider session_provider(std::move(graphdef_pb),
                                    /*max_active_sessions=*/1);
@@ -41,17 +37,17 @@ TEST_F(SessionProviderTest, TestSessionNotAvailableConcurrencyLimited) {
   EXPECT_EQ(session_provider.SessionOrCpuAvailable(), false);
 }
 
-TEST_F(SessionProviderTest, TestSessionAvailableConcurrencyUnlimited) {
+TEST(SessionProviderTest, TestSessionAvailableConcurrencyUnlimited) {
   tensorflow::GraphDef graphdef_pb;
   SessionProvider session_provider(std::move(graphdef_pb), absl::nullopt);
   TFF_ASSERT_OK(session_provider.TakeSession());
   EXPECT_EQ(session_provider.SessionOrCpuAvailable(), true);
 }
 
-TEST_F(SessionProviderTest, TestReturningSessionFreesUpAvailability) {
+TEST(SessionProviderTest, TestReturningSessionFreesUpAvailability) {
   tensorflow::GraphDef graphdef_pb;
   SessionProvider session_provider(std::move(graphdef_pb), 1);
-  absl::StatusOr<std::unique_ptr<tensorflow::Session>> taken_session =
+  absl::StatusOr<SessionProvider::SessionWithResourceContainer> taken_session =
       session_provider.TakeSession();
   TFF_ASSERT_OK(taken_session.status());
   EXPECT_EQ(session_provider.SessionOrCpuAvailable(), false);

@@ -706,6 +706,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
         comp_pb.tensorflow().cache_key().id() == 0) {
       // No ID to use for caching, simply create a computation and skip cache
       // logic.
+      LOG(WARNING) << "Skipped caching computation, no cache_key";
       return ExecutorValue(TFF_TRY(Computation::FromProto(
           comp_pb.tensorflow(), max_concurrent_computation_calls_)));
     }

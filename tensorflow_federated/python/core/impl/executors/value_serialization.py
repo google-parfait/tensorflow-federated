@@ -95,6 +95,12 @@ def _serialize_tensor_value(
       # Attempt to extract the value using the current graph context.
       with tf.compat.v1.Session() as sess:
         value = sess.run(value)
+  # If we got a string or bytes scalar, wrap it in numpy so it has a dtype and
+  # shape.
+  if isinstance(value, bytes):
+    value = np.bytes_(value)
+  elif isinstance(value, str):
+    value = np.str_(value)
   else:
     value = np.asarray(value)
   if not tf.TensorShape(value.shape).is_compatible_with(type_spec.shape):

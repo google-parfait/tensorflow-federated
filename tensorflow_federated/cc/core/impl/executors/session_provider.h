@@ -16,6 +16,7 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_SESSION_PROVIDER_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_SESSION_PROVIDER_H_
 
+#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -23,40 +24,13 @@ limitations under the License
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/optional.h"
+#include "tensorflow/core/common_runtime/device_mgr.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/protobuf/rewriter_config.pb.h"
 #include "tensorflow/core/public/session.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 
 namespace tensorflow_federated {
-
-inline const tensorflow::SessionOptions& get_session_options() {
-  // Creates default SessionOptions on first call, and re-uses them for all
-  // future calls.
-  static tensorflow::SessionOptions* session_options = []() {
-    tensorflow::SessionOptions* options_pb = new tensorflow::SessionOptions();
-    tensorflow::GraphOptions* graph_options_pb =
-        options_pb->config.mutable_graph_options();
-    // Disable JIT/runtime Grappler. TFF typically has short lived sessions,
-    // meaning that the benefit from running grappler is generally not realized
-    // and can be very expensive (anecdotally ~30% of CPU time).
-    graph_options_pb->mutable_rewrite_options()->set_disable_meta_optimizer(
-        true);
-    graph_options_pb->mutable_optimizer_options()->set_opt_level(
-        tensorflow::OptimizerOptions::L0);
-    graph_options_pb->mutable_optimizer_options()->set_global_jit_level(
-        tensorflow::OptimizerOptions::OFF);
-    // Don't eagerly allocate all GPU memory in each session.
-    options_pb->config.mutable_gpu_options()->set_allow_growth(true);
-    // Let the session know the graph will not change.
-    auto experimental_pb = options_pb->config.mutable_experimental();
-    experimental_pb->set_optimize_for_static_graph(true);
-    experimental_pb->set_disable_output_partition_graphs(true);
-    options_pb->config.set_allow_soft_placement(true);
-    return options_pb;
-  }();
-  return *session_options;
-}
 
 // This class acts as a function from graph -> session, caching previously-
 // created sessions for later use.
@@ -68,48 +42,31 @@ inline const tensorflow::SessionOptions& get_session_options() {
 // location to inject a maximum on the amount of concurrency applied at a
 // per-computation level.
 //
+// Additionally, it rewrites the graphs of each of the session created so that
+// ops that create resources create them in isolated containers. When a session
+// is returned to the SessionProvider, the container for that session is
+// cleared, freeing resources. This is necessary in TFF, which expects stateless
+// functions and would run into issues (e.g. re-initialize lookup tables)
+// otherwise.
+//
 // This class is intended only to serve as a dependency of the
 // TensorFlowExecutor.
 class SessionProvider {
  public:
   SessionProvider(tensorflow::GraphDef&& graph,
-                  absl::optional<uint16_t> max_active_sessions)
-      : max_active_sessions_(max_active_sessions),
-        active_sessions_(0),
-        graph_(graph) {
-    maybe_open_cpus_ = std::thread::hardware_concurrency();
-  }
+                  absl::optional<uint16_t> max_active_sessions);
 
-  absl::StatusOr<std::unique_ptr<tensorflow::Session>> TakeSession() {
-    lock_.LockWhen(
-        absl::Condition(this, &SessionProvider::SessionOrCpuAvailable));
-    active_sessions_++;
-    if (!sessions_.empty()) {
-      std::unique_ptr<tensorflow::Session> session(std::move(sessions_.back()));
-      sessions_.pop_back();
-      lock_.Unlock();
-      return std::move(session);
-    }
-    maybe_open_cpus_--;
-    lock_.Unlock();
-    auto session = CreateSession();
-    lock_.Lock();
-    maybe_open_cpus_++;
-    lock_.Unlock();
-    return session;
-  }
-
-  void ReturnSession(std::unique_ptr<tensorflow::Session>&& session) {
-    lock_.Lock();
-    active_sessions_--;
-    sessions_.emplace_back(std::move(session));
-    lock_.Unlock();
-  }
+  struct SessionWithResourceContainer {
+    SessionWithResourceContainer(SessionWithResourceContainer&& other) =
+        default;
+    std::unique_ptr<tensorflow::Session> session;
+    std::string container_name;
+  };
 
   // An RAII container which returns the session to the provider on destruction.
   class SessionRental {
    public:
-    SessionRental(std::unique_ptr<tensorflow::Session>&& session,
+    SessionRental(SessionWithResourceContainer&& session,
                   SessionProvider& provider)
         : session_(std::move(session)), provider_(provider) {}
 
@@ -117,17 +74,17 @@ class SessionProvider {
         : session_(std::move(other.session_)), provider_(other.provider_) {}
 
     void ReturnRental() {
-      if (session_ != nullptr) {
+      if (session_.session != nullptr) {
         provider_.ReturnSession(std::move(session_));
       }
     }
 
     ~SessionRental() { ReturnRental(); }
 
-    tensorflow::Session* operator->() { return &*session_; }
+    tensorflow::Session* operator->() { return session_.session.get(); }
 
    private:
-    std::unique_ptr<tensorflow::Session> session_;
+    SessionWithResourceContainer session_;
     SessionProvider& provider_;
   };
 
@@ -143,20 +100,12 @@ class SessionProvider {
            (!sessions_.empty() || maybe_open_cpus_ > 0);
   }
 
+  absl::StatusOr<SessionWithResourceContainer> TakeSession();
+  void ReturnSession(SessionWithResourceContainer&& session);
+
  private:
-  absl::StatusOr<std::unique_ptr<tensorflow::Session>> CreateSession() {
-    std::unique_ptr<tensorflow::Session> session(
-        tensorflow::NewSession(get_session_options()));
-    if (session == nullptr) {
-      return absl::InternalError("Failed to create TensorFlow session.");
-    }
-    auto status = session->Create(graph_);
-    if (!status.ok()) {
-      return absl::InternalError(absl::StrCat(
-          "Failed to create graph in session: ", status.error_message()));
-    }
-    return std::move(session);
-  }
+  absl::StatusOr<std::unique_ptr<tensorflow::Session>> CreateSession(
+      const std::string& container);
 
   // Move-only.
   SessionProvider(SessionProvider&& other) = default;
@@ -165,11 +114,15 @@ class SessionProvider {
   SessionProvider& operator=(const SessionProvider&) = delete;
 
   absl::Mutex lock_;
-  std::vector<std::unique_ptr<tensorflow::Session>> sessions_;
+  std::vector<SessionWithResourceContainer> sessions_;
   uint16_t maybe_open_cpus_;
   absl::optional<uint16_t> max_active_sessions_;
   uint16_t active_sessions_;
-  tensorflow::GraphDef graph_;
+  const tensorflow::GraphDef graph_;
+  // A prefix for all containers used by sessions created by this provider.
+  const uint32_t function_id_;
+  // A running count of the number of sessions created by this provider.
+  uint16_t session_creation_counter_ ABSL_GUARDED_BY(lock_);
 };
 
 }  // namespace tensorflow_federated

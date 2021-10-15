@@ -232,7 +232,6 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @test_contexts.with_contexts
   def test_reinitialize_dynamic_lookup_table(self):
-    self.skipTest('Currently fails in CPP; see b/202448649')
 
     @tff.tf_computation(
         tff.TensorType(shape=[None], dtype=tf.string),

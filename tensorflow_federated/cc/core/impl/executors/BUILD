@@ -470,10 +470,12 @@ cc_library(
 
 cc_library(
     name = "session_provider",
+    srcs = ["session_provider.cc"],
     hdrs = ["session_provider.h"],
     tags = ["nokokoro"],
     deps = [
         ":status_macros",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -482,6 +484,7 @@ cc_library(
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
         "@org_tensorflow//tensorflow/core:core_cpu",
+        "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core:tensorflow_opensource",
     ],

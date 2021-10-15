@@ -84,8 +84,11 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
     self.assertAllEqual(x, y)
 
-  def test_serialize_deserialize_string_value(self):
-    x = np.str_('abc')
+  @parameterized.named_parameters(
+      ('numpy', np.str_('abc')),
+      ('tensorflow', tf.constant('abc')),
+  )
+  def test_serialize_deserialize_string_value(self, x):
     tf_type = tf.as_dtype(x.dtype)
     type_spec = TensorType(tf_type, x.shape)
     value_proto, value_type = value_serialization.serialize_value(x, type_spec)
