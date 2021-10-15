@@ -26,6 +26,7 @@ py_library(
         ":program_state_manager",
         ":release_manager",
         ":tensorboard_release_manager",
+        ":value_reference",
     ],
 )
 
@@ -158,4 +159,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":tensorboard_release_manager"],
+)
+
+py_library(
+    name = "value_reference",
+    srcs = ["value_reference.py"],
+    deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
 )
