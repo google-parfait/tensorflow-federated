@@ -29,105 +29,107 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
+# Convenience aliases.
+TensorType = computation_types.TensorType
+
+TENSOR_SERIALIZATION_TEST_PARAMS = [
+    ('numpy_scalar', np.float32(25.0), TensorType(tf.float32)),
+    ('numpy_1d_tensor', np.asarray([1.0, 2.0]), TensorType(tf.float32, [2])),
+    ('python_scalar', 25.0, TensorType(tf.float32)),
+    ('python_1d_list', [1.0, 2.0], TensorType(tf.float32, [2])),
+    ('python_2d_list', [[1.0], [2.0]], TensorType(tf.float32, [2, 1])),
+]
+
+
 class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(('scalar', np.float32(25.0)),
-                                  ('1d_tensor', np.asarray([1.0, 2.0])))
-  def test_serialize_deserialize_tensor_value_without_hint(self, x):
-    tf_type = tf.as_dtype(x.dtype)
-    type_spec = computation_types.TensorType(tf_type, x.shape)
-    value_proto, value_type = value_serialization.serialize_value(x, type_spec)
+  @parameterized.named_parameters(TENSOR_SERIALIZATION_TEST_PARAMS)
+  def test_serialize_deserialize_tensor_value_without_hint(
+      self, x, serialize_type_spec):
+    value_proto, value_type = value_serialization.serialize_value(
+        x, serialize_type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.TensorType(tf_type, x.shape))
+    self.assert_types_identical(value_type, serialize_type_spec)
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec,
-                                computation_types.TensorType(tf_type, x.shape))
-    self.assertIsInstance(y, type(x))
+    self.assert_types_identical(type_spec, serialize_type_spec)
+    self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
     self.assertAllEqual(x, y)
 
-  @parameterized.named_parameters(('scalar', np.float32(25.0)),
-                                  ('1d_tensor', np.asarray([1.0, 2.0])))
-  def test_serialize_deserialize_tensor_value_without_hint_graph_mode(self, x):
-    tf_type = tf.as_dtype(x.dtype)
-    type_spec = computation_types.TensorType(tf_type, x.shape)
+  @parameterized.named_parameters(TENSOR_SERIALIZATION_TEST_PARAMS)
+  def test_serialize_deserialize_tensor_value_without_hint_graph_mode(
+      self, x, serialize_type_spec):
+    # Test serializing non-eager tensors.
     with tf.Graph().as_default():
+      tensor_x = tf.convert_to_tensor(x)
       value_proto, value_type = value_serialization.serialize_value(
-          x, type_spec)
+          tensor_x, serialize_type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.TensorType(tf_type, x.shape))
-    y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec,
-                                computation_types.TensorType(tf_type, x.shape))
-    self.assertIsInstance(y, type(x))
+    self.assert_types_identical(value_type, serialize_type_spec)
+    y, deserialize_type_spec = value_serialization.deserialize_value(
+        value_proto)
+    self.assert_types_identical(deserialize_type_spec, serialize_type_spec)
+    self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
     self.assertAllEqual(x, y)
 
-  @parameterized.named_parameters(('scalar', np.float32(25.0)),
-                                  ('1d_tensor', np.asarray([1.0, 2.0])))
-  def test_serialize_deserialize_tensor_value_with_hint(self, x):
-    tf_type = tf.as_dtype(x.dtype)
-    type_spec = computation_types.TensorType(tf_type, x.shape)
-    value_proto, value_type = value_serialization.serialize_value(x, type_spec)
+  @parameterized.named_parameters(TENSOR_SERIALIZATION_TEST_PARAMS)
+  def test_serialize_deserialize_tensor_value_with_hint(self, x,
+                                                        serialize_type_spec):
+    value_proto, value_type = value_serialization.serialize_value(
+        x, serialize_type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.TensorType(tf_type, x.shape))
-    y, type_spec = value_serialization.deserialize_value(
-        value_proto, type_hint=type_spec)
-    self.assert_types_identical(type_spec,
-                                computation_types.TensorType(tf_type, x.shape))
-    self.assertIsInstance(y, type(x))
+    self.assert_types_identical(value_type, serialize_type_spec)
+    y, deserialize_type_spec = value_serialization.deserialize_value(
+        value_proto, type_hint=serialize_type_spec)
+    self.assert_types_identical(deserialize_type_spec, serialize_type_spec)
+    self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
     self.assertAllEqual(x, y)
 
   def test_serialize_deserialize_string_value(self):
     x = np.str_('abc')
     tf_type = tf.as_dtype(x.dtype)
-    type_spec = computation_types.TensorType(tf_type, x.shape)
+    type_spec = TensorType(tf_type, x.shape)
     value_proto, value_type = value_serialization.serialize_value(x, type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.TensorType(tf_type, x.shape))
+    self.assert_types_identical(value_type, TensorType(tf_type, x.shape))
     y, type_spec = value_serialization.deserialize_value(
         value_proto, type_hint=type_spec)
-    self.assert_types_identical(type_spec,
-                                computation_types.TensorType(tf_type, x.shape))
+    self.assert_types_identical(type_spec, TensorType(tf_type, x.shape))
     self.assertIsInstance(y, bytes)
     self.assertAllEqual(x, y)
 
   def test_serialize_deserialize_variable_as_tensor_value(self):
     x = tf.Variable(10.0)
-    type_spec = computation_types.TensorType(tf.as_dtype(x.dtype), x.shape)
+    type_spec = TensorType(tf.as_dtype(x.dtype), x.shape)
     value_proto, value_type = value_serialization.serialize_value(x, type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.TensorType(tf.float32))
+    self.assert_types_identical(value_type, TensorType(tf.float32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec,
-                                computation_types.TensorType(tf.float32))
+    self.assert_types_identical(type_spec, TensorType(tf.float32))
     self.assertAllEqual(x, y)
 
   def test_serialize_deserialize_tensor_value_with_different_dtype(self):
-    x = tf.constant(10.0)
-    value_proto, value_type = value_serialization.serialize_value(
-        x, computation_types.TensorType(tf.int32))
-    self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.TensorType(tf.int32))
-    y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec,
-                                computation_types.TensorType(tf.int32))
-    self.assertEqual(y, 10)
+    with self.subTest('float2int'):
+      x = tf.constant(10.0)
+      with self.assertRaisesRegex(TypeError, 'Cannot cast scalar'):
+        value_serialization.serialize_value(x, TensorType(tf.int32))
+    with self.subTest('int2float'):
+      x = tf.constant(10)
+      value_proto, value_type = value_serialization.serialize_value(
+          x, TensorType(tf.float32))
+      self.assertIsInstance(value_proto, executor_pb2.Value)
+      self.assert_types_identical(value_type, TensorType(tf.float32))
+      y, type_spec = value_serialization.deserialize_value(value_proto)
+      self.assert_types_identical(type_spec, TensorType(tf.float32))
+      self.assertEqual(y, 10.0)
 
   def test_serialize_deserialize_tensor_value_with_nontrivial_shape(self):
     x = tf.constant([10, 20, 30])
     value_proto, value_type = value_serialization.serialize_value(
-        x, computation_types.TensorType(tf.int32, [3]))
+        x, TensorType(tf.int32, [3]))
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.TensorType(tf.int32, [3]))
+    self.assert_types_identical(value_type, TensorType(tf.int32, [3]))
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec,
-                                computation_types.TensorType(tf.int32, [3]))
+    self.assert_types_identical(type_spec, TensorType(tf.int32, [3]))
     self.assertAllEqual(x, y)
 
   def test_serialize_struct_with_type_element_mismatch(self):
@@ -388,7 +390,7 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
 
   def test_deserialize_federated_all_equal_value_takes_first_element(self):
     tensor_value_pb, _ = value_serialization.serialize_value(
-        10, computation_types.TensorType(tf.int32))
+        10, TensorType(tf.int32))
     num_clients = 5
     value_pb = executor_pb2.Value(
         federated=executor_pb2.Value.Federated(

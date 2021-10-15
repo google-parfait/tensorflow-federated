@@ -21,9 +21,9 @@ from typing import Any, Collection, List, Mapping, Optional, Tuple, Union
 import warnings
 import zipfile
 
+import numpy as np
 import tensorflow as tf
 
-from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -86,24 +86,22 @@ def _serialize_tensor_value(
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
-  if not tf.is_tensor(value):
-    if not tf.executing_eagerly():
-      # In this case, we pull the bytes representing `value` into a
-      # tensor proto and package this tensor proto into an executor_pb2.Value.
-      # This path is expected to be less common and less performant than the
-      # EagerTensor path, where we simply hand-off the handle.
-      tensor_proto = tf.make_tensor_proto(value)
-      any_pb = any_pb2.Any()
-      any_pb.Pack(tensor_proto)
-      return executor_pb2.Value(tensor=any_pb), type_spec
-    value = tf.convert_to_tensor(value, dtype=type_spec.dtype)
-  elif isinstance(value, tf.Variable):
-    value = value.read_value()
-  if not value.shape.is_compatible_with(type_spec.shape):
+  if tf.is_tensor(value):
+    if isinstance(value, tf.Variable):
+      value = value.read_value()
+    if tf.executing_eagerly():
+      value = value.numpy()
+    else:
+      # Attempt to extract the value using the current graph context.
+      with tf.compat.v1.Session() as sess:
+        value = sess.run(value)
+  else:
+    value = np.asarray(value)
+  if not tf.TensorShape(value.shape).is_compatible_with(type_spec.shape):
     raise TypeError(f'Cannot serialize tensor with shape {value.shape} to '
                     f'shape {type_spec.shape}.')
-  if value.dtype != type_spec.dtype:
-    value = tf.cast(value, type_spec.dtype)
+  if value.dtype != type_spec.dtype.as_numpy_dtype:
+    value = value.astype(type_spec.dtype.as_numpy_dtype, casting='same_kind')
   return serialization_bindings.serialize_tensor_value(value), type_spec
 
 

@@ -30,12 +30,10 @@ limitations under the License
 #include "include/pybind11/pytypes.h"
 #include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/wrapped_proto_caster.h"
-#include "tensorflow/c/eager/c_api.h"
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_tensor.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/status.h"
-#include "tensorflow/python/eager/pywrap_tensor.h"
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
 #include "tensorflow/python/lib/core/safe_ptr.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -83,10 +81,6 @@ PYBIND11_MODULE(serialization_bindings, m) {
 namespace pybind11 {
 namespace detail {
 
-struct TFStatusDeleter {
-  void operator()(TF_Status* s) const { TF_DeleteStatus(s); }
-};
-
 template <>
 struct type_caster<tensorflow::Tensor> {
  public:
@@ -94,38 +88,25 @@ struct type_caster<tensorflow::Tensor> {
   // result of the conversion.
   PYBIND11_TYPE_CASTER(tensorflow::Tensor, _("Tensor"));
 
-  // Pybind11 caster for tf.EagerTensor (Python) -> tensorflow::Tensor (C++).
+  // Pybind11 caster for PyArray (Python) -> tensorflow::Tensor (C++).
   bool load(handle src, bool) {
-    PyObject* object = src.ptr();
-    if (!EagerTensor_CheckExact(object)) {
-      LOG(ERROR) << "Object not an EagerTensor";
-      return false;
-    }
-    TFE_TensorHandle* tensor_handle = EagerTensor_Handle(object);
-    VLOG(2) << "Tensor Handle at: " << tensor_handle;
-    tensorflow::Safe_TF_StatusPtr tf_status =
-        tensorflow::make_safe(TF_NewStatus());
-    tensorflow::Safe_TF_TensorPtr tf_tensor = tensorflow::make_safe(
-        TFE_TensorHandleResolve(tensor_handle, tf_status.get()));
-    auto status_code = TF_GetCode(tf_status.get());
-    VLOG(2) << "Status: " << status_code;
-    if (status_code != TF_OK) {
-      LOG(ERROR) << "Failed to resolve TensorHandle: "
-                 << TF_Message(tf_status.get());
-      return false;
-    }
-    VLOG(2) << "Resolved handle to address: " << tf_tensor.get();
-    tensorflow::Tensor tensor;
+    tensorflow::Safe_TF_TensorPtr tf_tensor_ptr;
     tensorflow::Status status =
-        tensorflow::TF_TensorToTensor(tf_tensor.get(), &tensor);
+        tensorflow::NdarrayToTensor(/*ctx=*/nullptr, src.ptr(), &tf_tensor_ptr);
     if (!status.ok()) {
-      LOG(ERROR) << "Failed to convert TF_Tensor to Tensor";
+      LOG(ERROR) << status;
+      return false;
+    }
+    tensorflow::Tensor tensor;
+    status = TF_TensorToTensor(tf_tensor_ptr.get(), &tensor);
+    if (!status.ok()) {
+      LOG(ERROR) << status;
       return false;
     }
     return !PyErr_Occurred() && value.CopyFrom(tensor, tensor.shape());
   }
 
-  // Convert tensorflow::Tensor (C++) back to a tf.EagerTensor (Python).
+  // Convert tensorflow::Tensor (C++) back to a PyArray (Python).
   static handle cast(const tensorflow::Tensor tensor, return_value_policy,
                      handle) {
     PyObject* result = nullptr;
