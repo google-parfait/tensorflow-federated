@@ -21,7 +21,6 @@ cc_library(
     name = "cardinalities",
     srcs = ["cardinalities.cc"],
     hdrs = ["cardinalities.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:statusor",
@@ -33,7 +32,6 @@ cc_library(
     name = "composing_executor",
     srcs = ["composing_executor.cc"],
     hdrs = ["composing_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":computations",
@@ -60,7 +58,6 @@ cc_library(
 cc_test(
     name = "composing_executor_test",
     srcs = ["composing_executor_test.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":composing_executor",
         ":computations",
@@ -82,14 +79,12 @@ cc_test(
 cc_library(
     name = "computations",
     hdrs = ["computations.h"],
-    tags = ["nokokoro"],
     deps = ["//tensorflow_federated/proto/v0:computation_cc_proto"],
 )
 
 pybind_extension(
     name = "executor_bindings",
     srcs = ["executor_bindings.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":composing_executor",
@@ -113,7 +108,6 @@ cc_library(
     name = "executor",
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":status_macros",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -134,7 +128,6 @@ cc_library(
     name = "executor_service",
     srcs = ["executor_service.cc"],
     hdrs = ["executor_service.h"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":executor",
@@ -157,7 +150,6 @@ cc_library(
 cc_test(
     name = "executor_service_test",
     srcs = ["executor_service_test.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":executor_service",
@@ -183,7 +175,6 @@ cc_library(
     testonly = True,
     srcs = [],
     hdrs = ["executor_test_base.h"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":mock_executor",
@@ -198,7 +189,6 @@ cc_library(
     name = "federated_intrinsics",
     srcs = ["federated_intrinsics.cc"],
     hdrs = ["federated_intrinsics.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -210,7 +200,6 @@ cc_library(
     name = "federating_executor",
     srcs = ["federating_executor.cc"],
     hdrs = ["federating_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":executor",
@@ -233,7 +222,6 @@ cc_library(
 cc_test(
     name = "federating_executor_test",
     srcs = ["federating_executor_test.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":executor_test_base",
@@ -253,7 +241,6 @@ cc_library(
     name = "mock_executor",
     testonly = True,
     hdrs = ["mock_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":protobuf_matchers",
@@ -270,7 +257,6 @@ cc_library(
     name = "mock_grpc",
     testonly = True,
     hdrs = ["mock_grpc.h"],
-    tags = ["nokokoro"],
     deps = [
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -284,7 +270,6 @@ cc_library(
     name = "protobuf_matchers",
     testonly = True,
     hdrs = ["protobuf_matchers.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
@@ -298,7 +283,6 @@ cc_library(
     name = "reference_resolving_executor",
     srcs = ["reference_resolving_executor.cc"],
     hdrs = ["reference_resolving_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":status_macros",
@@ -317,7 +301,6 @@ cc_test(
     name = "reference_resolving_executor_test",
     timeout = "short",
     srcs = ["reference_resolving_executor_test.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":executor_test_base",
@@ -349,7 +332,6 @@ cc_library(
     name = "remote_executor",
     srcs = ["remote_executor.cc"],
     hdrs = ["remote_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":executor",
@@ -373,7 +355,6 @@ cc_test(
     name = "remote_executor_test",
     timeout = "short",
     srcs = ["remote_executor_test.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":mock_grpc",
@@ -399,7 +380,6 @@ cc_test(
 pybind_extension(
     name = "serialization_bindings",
     srcs = ["serialization_bindings.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":status_macros",
         ":tensor_serialization",
@@ -418,7 +398,6 @@ cc_library(
     name = "status_conversion",
     srcs = ["status_conversion.cc"],
     hdrs = ["status_conversion.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
@@ -428,7 +407,6 @@ cc_library(
 cc_library(
     name = "status_macros",
     hdrs = ["status_macros.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -441,7 +419,6 @@ cc_library(
     testonly = True,
     srcs = ["status_matchers.cc"],
     hdrs = ["status_matchers.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
@@ -456,7 +433,6 @@ cc_library(
     name = "tensor_serialization",
     srcs = ["tensor_serialization.cc"],
     hdrs = ["tensor_serialization.h"],
-    tags = ["nokokoro"],
     deps = [
         ":status_macros",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -471,7 +447,6 @@ cc_library(
 cc_library(
     name = "session_provider",
     hdrs = ["session_provider.h"],
-    tags = ["nokokoro"],
     deps = [
         ":status_macros",
         "@com_google_absl//absl/status",
@@ -490,7 +465,6 @@ cc_library(
 cc_test(
     name = "session_provider_test",
     srcs = ["session_provider_test.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":session_provider",
         ":status_matchers",
@@ -509,7 +483,6 @@ cc_library(
     name = "tensorflow_executor",
     srcs = ["tensorflow_executor.cc"],
     hdrs = ["tensorflow_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":session_provider",
@@ -543,7 +516,6 @@ cc_library(
 cc_cpu_gpu_test(
     name = "tensorflow_executor_test",
     srcs = ["tensorflow_executor_test.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":protobuf_matchers",
@@ -578,7 +550,6 @@ cc_library(
     name = "threading",
     srcs = ["threading.cc"],
     hdrs = ["threading.h"],
-    tags = ["nokokoro"],
     deps = [
         ":status_macros",
         "@com_google_absl//absl/base:core_headers",
@@ -593,7 +564,6 @@ cc_test(
     name = "threading_test",
     timeout = "short",
     srcs = ["threading_test.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":status_matchers",
         ":threading",
@@ -606,7 +576,6 @@ cc_library(
     name = "value_test_utils",
     testonly = True,
     hdrs = ["value_test_utils.h"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -629,7 +598,6 @@ cc_library(
     name = "value_validation",
     srcs = ["value_validation.cc"],
     hdrs = ["value_validation.h"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":federated_intrinsics",
@@ -645,7 +613,6 @@ cc_test(
     name = "value_validation_test",
     timeout = "short",
     srcs = ["value_validation_test.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":status_matchers",
         ":value_test_utils",
