@@ -19,6 +19,12 @@ git_repository(
     tag = "1.0.3",
 )
 
+# git_repository(
+#     name = "bazel_toolchains",
+#     remote = "https://github.com/bazelbuild/bazel-toolchains.git",
+#     tag = "v5.1.0",
+# )
+
 git_repository(
     name = "com_google_absl",
     remote = "https://github.com/abseil/abseil-cpp.git",
@@ -101,6 +107,10 @@ http_archive(
 #
 # Transitive dependencies, grouped by direct dependency.
 #
+
+# load("@bazel_toolchains//repositories:repositories.bzl", bazel_toolchains_deps = "repositories")
+
+# bazel_toolchains_deps()
 
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
 
