@@ -53,6 +53,7 @@ cc_library(
         "@com_google_protobuf//:protobuf",
         "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
+        "@org_tensorflow//tensorflow/core/platform:macros",
     ],
 )
 
@@ -228,6 +229,7 @@ cc_library(
         "@com_google_absl//absl/types:variant",
         "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
+        "@org_tensorflow//tensorflow/core/platform:macros",
     ],
 )
 
@@ -311,6 +313,7 @@ cc_library(
         "@com_google_absl//absl/types:variant",
         "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
+        "@org_tensorflow//tensorflow/core:tensorflow",
     ],
 )
 
@@ -338,6 +341,14 @@ cc_test(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:math_ops",
+        "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/platform:byte_order",
+        "@org_tensorflow//tensorflow/core/platform:status",
     ],
 )
 
@@ -389,6 +400,8 @@ cc_test(
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
         "@com_google_googletest//:gtest_main",
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:math_ops",
     ],
 )
 
@@ -402,6 +415,8 @@ pybind_extension(
         "@com_google_absl//absl/status:statusor",
         "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core/platform:status",
         "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor_headers",
         "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
         "@pybind11_abseil//pybind11_abseil:status_casters",
@@ -455,6 +470,9 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/platform:byte_order",
     ],
 )
 
@@ -472,6 +490,12 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
+        "@org_tensorflow//tensorflow/core:core_cpu",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core:tensorflow_opensource",
     ],
 )
 
@@ -486,6 +510,13 @@ cc_test(
         ":session_provider",
         ":status_matchers",
         "@com_google_googletest//:gtest_main",
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:cc_ops",
+        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
+        "@org_tensorflow//tensorflow/cc:math_ops",
+        "@org_tensorflow//tensorflow/cc:resource_variable_ops",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
+        "@org_tensorflow//tensorflow/core:tensorflow",
     ],
 )
 
@@ -513,6 +544,15 @@ cc_library(
         "@com_google_absl//absl/types:variant",
         "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
+        "@org_tensorflow//tensorflow/core:core_cpu",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core:tensorflow_opensource",
+        "@org_tensorflow//tensorflow/core/platform:macros",
+        "@org_tensorflow//tensorflow/core/platform:status",
+        "@org_tensorflow//tensorflow/core/platform:tstring",
     ],
 )
 
@@ -537,6 +577,19 @@ cc_cpu_gpu_test(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:cc_ops",
+        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
+        "@org_tensorflow//tensorflow/cc:math_ops",
+        "@org_tensorflow//tensorflow/cc:ops",
+        "@org_tensorflow//tensorflow/cc:resource_variable_ops",
+        "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@org_tensorflow//tensorflow/core/platform:status",
+        "@org_tensorflow//tensorflow/core/platform:tstring",
     ],
 )
 
@@ -583,6 +636,14 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
+        "@org_tensorflow//tensorflow/cc:client_session",
+        "@org_tensorflow//tensorflow/cc:const_op",
+        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
+        "@org_tensorflow//tensorflow/cc:ops",
+        "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/platform:tstring",
     ],
 )
 

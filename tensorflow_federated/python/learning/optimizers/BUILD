@@ -24,7 +24,10 @@ py_library(
     name = "adagrad",
     srcs = ["adagrad.py"],
     srcs_version = "PY3",
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -36,6 +39,8 @@ py_test(
         ":adagrad",
         ":optimizer",
         ":optimizer_test_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -54,7 +59,10 @@ py_library(
     name = "keras_optimizer",
     srcs = ["keras_optimizer.py"],
     srcs_version = "PY3",
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -70,6 +78,8 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -77,7 +87,10 @@ py_library(
     name = "optimizer",
     srcs = ["optimizer.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -88,6 +101,8 @@ py_test(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/core/api:test_case",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -99,6 +114,7 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/core/api:test_case",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -110,6 +126,7 @@ py_test(
     deps = [
         ":optimizer_test_utils",
         "//tensorflow_federated/python/core/api:test_case",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -117,7 +134,10 @@ py_library(
     name = "sgdm",
     srcs = ["sgdm.py"],
     srcs_version = "PY3",
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -129,5 +149,7 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":sgdm",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

@@ -42,5 +42,6 @@ py_test(
         ":computation_wrapper_instances",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:absltest",
     ],
 )
