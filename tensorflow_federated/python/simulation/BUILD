@@ -41,6 +41,10 @@ py_library(
     name = "checkpoint_manager",
     srcs = ["checkpoint_manager.py"],
     srcs_version = "PY3",
+    deps = [
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -48,14 +52,22 @@ py_test(
     srcs = ["checkpoint_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":checkpoint_manager"],
+    deps = [
+        ":checkpoint_manager",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
     name = "csv_manager",
     srcs = ["csv_manager.py"],
     srcs_version = "PY3",
-    deps = [":metrics_manager"],
+    deps = [
+        ":metrics_manager",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -63,7 +75,11 @@ py_test(
     srcs = ["csv_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":csv_manager"],
+    deps = [
+        ":csv_manager",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -96,6 +112,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -117,7 +135,11 @@ py_test(
     srcs = ["sampling_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":sampling_utils"],
+    deps = [
+        ":sampling_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -129,6 +151,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_service",
+        "@absl_py//absl/logging",
     ],
 )
 
@@ -150,7 +173,11 @@ py_library(
     name = "tensorboard_manager",
     srcs = ["tensorboard_manager.py"],
     srcs_version = "PY3",
-    deps = [":metrics_manager"],
+    deps = [
+        ":metrics_manager",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -158,7 +185,11 @@ py_test(
     srcs = ["tensorboard_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tensorboard_manager"],
+    deps = [
+        ":tensorboard_manager",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -173,6 +204,7 @@ py_library(
         "//tensorflow_federated/python/program:release_manager",
         "//tensorflow_federated/python/simulation:checkpoint_manager",
         "//tensorflow_federated/python/simulation:metrics_manager",
+        "@absl_py//absl/logging",
     ],
 )
 
@@ -188,5 +220,7 @@ py_test(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/simulation:checkpoint_manager",
         "//tensorflow_federated/python/simulation:metrics_manager",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
