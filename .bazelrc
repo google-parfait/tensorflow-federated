@@ -60,5 +60,20 @@ build:remote --project_id=tensorflow-federated
 # Required to build Tensorflow.
 #
 
+# For projects which use TensorFlow as part of a Bazel build process, putting
+# nothing in a bazelrc will default to a monolithic build. The following line
+# opts in to modular op registration support by default.
+build --define framework_shared_object=true
+
+# Modular TF build options
+build:dynamic_kernels --define=dynamic_loaded_kernels=true
+build:dynamic_kernels --copt=-DAUTOLOAD_DYNAMIC_KERNELS
+
+# On linux, we dynamically link small amount of kernels
+build:linux --config=dynamic_kernels
+
 # Enable remote execution capabilities.
 common --experimental_repo_remote_exec
+
+--cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0
+--noincompatible_do_not_split_linking_cmdline
