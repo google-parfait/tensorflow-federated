@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+from absl.testing import parameterized
 
 import tensorflow as tf
 
@@ -22,7 +23,9 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import errors
+from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
@@ -215,19 +218,74 @@ def test_measured_process_sum(state_type, state_init, values_type):
       next_fn=map_sum)
 
 
-class MeasuredProcessCompositionComputationTest(test_case.TestCase):
+def test_measured_process_state_at_clients():
 
-  def test_composite_process_type_properties(self):
+  @computations.federated_computation(
+      computation_types.at_clients(tf.int32),
+      computation_types.at_clients(tf.int32))
+  def next_fn(state, values):
+    return measured_process.MeasuredProcessOutput(
+        state, intrinsics.federated_sum(values),
+        intrinsics.federated_value(1, placements.SERVER))
+
+  return measured_process.MeasuredProcess(
+      initialize_fn=computations.federated_computation(
+          lambda: intrinsics.federated_value(0, placements.CLIENTS)),
+      next_fn=next_fn)
+
+
+def test_measured_process_state_missing_placement():
+  return measured_process.MeasuredProcess(
+      initialize_fn=test_initialize_fn, next_fn=test_next_fn)
+
+
+def test_aggregation_process(state_type, state_init, values_type):
+
+  @computations.federated_computation(
+      computation_types.at_server(state_type),
+      computation_types.at_clients(values_type))
+  def next_fn(state, values):
+    return measured_process.MeasuredProcessOutput(
+        state, intrinsics.federated_sum(values),
+        intrinsics.federated_value(1, placements.SERVER))
+
+  return aggregation_process.AggregationProcess(
+      initialize_fn=computations.federated_computation(
+          lambda: intrinsics.federated_value(state_init, placements.SERVER)),
+      next_fn=next_fn)
+
+
+def test_iterative_process(state_type, state_init):
+
+  @computations.tf_computation(state_type)
+  def next_fn(state):
+    return state
+
+  return iterative_process.IterativeProcess(
+      initialize_fn=computations.tf_computation(
+          lambda: tf.constant(state_init)),
+      next_fn=next_fn)
+
+
+class MeasuredProcessCompositionComputationTest(test_case.TestCase,
+                                                parameterized.TestCase):
+
+  @parameterized.named_parameters([
+      ('all_measured_processes', test_measured_process_sum),
+      ('with_aggregation_process', test_aggregation_process),
+  ])
+  def test_composition_type_properties(self, last_process):
     state_type = tf.float32
     values_type = tf.int32
+    last_process = last_process(state_type, 0.0, values_type)
     composite_process = measured_process.chain_measured_processes(
         collections.OrderedDict(
             double=test_measured_process_double(state_type, 1.0, values_type),
-            sum=test_measured_process_sum(state_type, 0.0, values_type)))
+            last_process=last_process))
     self.assertIsInstance(composite_process, measured_process.MeasuredProcess)
 
     expected_state_type = computation_types.at_server(
-        collections.OrderedDict(double=state_type, sum=state_type))
+        collections.OrderedDict(double=state_type, last_process=state_type))
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type)
     self.assertTrue(
@@ -239,7 +297,8 @@ class MeasuredProcessCompositionComputationTest(test_case.TestCase):
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             double=collections.OrderedDict(a=tf.int32),
-            sum=collections.OrderedDict(b=tf.int32)))
+            last_process=last_process.next.type_signature.result.measurements
+            .member))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type, values=param_value_type),
@@ -264,10 +323,39 @@ class MeasuredProcessCompositionComputationTest(test_case.TestCase):
     with self.assertRaisesRegex(TypeError, 'Cannot call function'):
       measured_process.chain_measured_processes(measured_processes)
 
+  def test_composition_with_iterative_process_raises(self):
+    processes = collections.OrderedDict(
+        double=test_measured_process_double(tf.int32, 1, tf.int32),
+        iterative=test_iterative_process(tf.int32, 0))
+
+    with self.assertRaisesRegex(
+        TypeError, 'Cannot concatenate the initialization functions'):
+      measured_process.chain_measured_processes(processes)
+
+  @parameterized.named_parameters([
+      ('state_at_server_and_clients',
+       test_measured_process_double(tf.int32, 1, tf.int32),
+       test_measured_process_state_at_clients()),
+      ('state_at_server_and_missing_placement',
+       test_measured_process_double(tf.int32, 1, tf.int32),
+       test_measured_process_state_missing_placement()),
+      ('state_at_clients_and_missing_placement',
+       test_measured_process_state_at_clients(),
+       test_measured_process_state_missing_placement()),
+  ])
+  def test_composition_with_mixed_state_placement_raises(
+      self, first_process, second_process):
+    measured_processes = collections.OrderedDict(
+        first_process=first_process, second_process=second_process)
+
+    with self.assertRaisesRegex(
+        TypeError, 'Cannot concatenate the initialization functions'):
+      measured_process.chain_measured_processes(measured_processes)
+
 
 class MeasuredProcessCompositionExecutionTest(test_case.TestCase):
 
-  def test_composite_process_gets_expected_output(self):
+  def test_composition_gets_expected_output(self):
 
     measured_processes = collections.OrderedDict(
         double=test_measured_process_double(tf.int32, 1, tf.int32),
@@ -280,6 +368,133 @@ class MeasuredProcessCompositionExecutionTest(test_case.TestCase):
     self.assertEqual(output.result, 20)
     self.assertEqual(output.measurements,
                      collections.OrderedDict(double={'a': 1}, sum={'b': 2}))
+
+  def test_composition_with_aggregation_process(self):
+
+    measured_processes = collections.OrderedDict(
+        double=test_measured_process_double(tf.int32, 1, tf.int32),
+        aggregate=test_aggregation_process(tf.int32, 0, tf.int32))
+    composite_process = measured_process.chain_measured_processes(
+        measured_processes)
+    output = composite_process.next(composite_process.initialize(),
+                                    [1, 2, 3, 4])
+    self.assertEqual(output.state,
+                     collections.OrderedDict(double=2, aggregate=0))
+    self.assertEqual(output.result, 20)
+    self.assertEqual(output.measurements,
+                     collections.OrderedDict(double={'a': 1}, aggregate=1))
+
+
+class MeasuredProcessConcatenationComputationTest(test_case.TestCase,
+                                                  parameterized.TestCase):
+
+  @parameterized.named_parameters([
+      ('all_measured_processes', test_measured_process_sum),
+      ('with_aggregation_process', test_aggregation_process),
+  ])
+  def test_concatenation_type_properties(self, last_process):
+    state_type = tf.int32
+    values_type = tf.int32
+    last_process = last_process(state_type, 0, values_type)
+    concatenated_process = measured_process.concatenate_measured_processes(
+        collections.OrderedDict(
+            double=test_measured_process_double(state_type, 1, values_type),
+            last_process=last_process))
+    self.assertIsInstance(concatenated_process,
+                          measured_process.MeasuredProcess)
+
+    expected_state_type = computation_types.at_server(
+        collections.OrderedDict(double=state_type, last_process=state_type))
+    expected_initialize_type = computation_types.FunctionType(
+        parameter=None, result=expected_state_type)
+    self.assertTrue(
+        concatenated_process.initialize.type_signature.is_equivalent_to(
+            expected_initialize_type))
+
+    param_value_type = collections.OrderedDict(
+        double=computation_types.at_clients(values_type),
+        last_process=computation_types.at_clients(values_type))
+    result_value_type = collections.OrderedDict(
+        double=computation_types.at_clients(values_type),
+        last_process=computation_types.at_server(values_type))
+    expected_measurements_type = computation_types.at_server(
+        collections.OrderedDict(
+            double=collections.OrderedDict(a=tf.int32),
+            last_process=last_process.next.type_signature.result.measurements
+            .member))
+    expected_next_type = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            state=expected_state_type, values=param_value_type),
+        result=measured_process.MeasuredProcessOutput(
+            expected_state_type, result_value_type, expected_measurements_type))
+    self.assertTrue(
+        concatenated_process.next.type_signature.is_equivalent_to(
+            expected_next_type))
+
+  def test_concatenation_with_iterative_process_raises(self):
+    processes = collections.OrderedDict(
+        double=test_measured_process_double(tf.int32, 1, tf.int32),
+        iterative=test_iterative_process(tf.int32, 0))
+
+    with self.assertRaisesRegex(
+        TypeError, 'Cannot concatenate the initialization functions'):
+      measured_process.concatenate_measured_processes(processes)
+
+  @parameterized.named_parameters([
+      ('state_at_server_and_clients',
+       test_measured_process_double(tf.int32, 1, tf.int32),
+       test_measured_process_state_at_clients()),
+      ('state_at_server_and_missing_placement',
+       test_measured_process_double(tf.int32, 1, tf.int32),
+       test_measured_process_state_missing_placement()),
+      ('state_at_clients_and_missing_placement',
+       test_measured_process_state_at_clients(),
+       test_measured_process_state_missing_placement()),
+  ])
+  def test_concatenation_with_mixed_state_placement_raises(
+      self, first_process, second_process):
+    measured_processes = collections.OrderedDict(
+        first_process=first_process, second_process=second_process)
+
+    with self.assertRaisesRegex(
+        TypeError, 'Cannot concatenate the initialization functions'):
+      measured_process.concatenate_measured_processes(measured_processes)
+
+
+class MeasuredProcessConcatenationExecutionTest(test_case.TestCase):
+
+  def test_concatenation_gets_expected_output(self):
+
+    measured_processes = collections.OrderedDict(
+        double=test_measured_process_double(tf.int32, 1, tf.int32),
+        sum=test_measured_process_sum(tf.int32, 0, tf.int32))
+    concatenated_process = measured_process.concatenate_measured_processes(
+        measured_processes)
+    values = collections.OrderedDict(double=[1, 2, 3], sum=[4, 5, 6])
+    output = concatenated_process.next(concatenated_process.initialize(),
+                                       values)
+    self.assertEqual(output.state, collections.OrderedDict(double=2, sum=1))
+    self.assertEqual(output.result,
+                     collections.OrderedDict(double=[2, 4, 6], sum=15))
+    self.assertEqual(output.measurements,
+                     collections.OrderedDict(double={'a': 1}, sum={'b': 2}))
+
+  def test_concatenation_with_aggregation_process(self):
+
+    measured_processes = collections.OrderedDict(
+        double=test_measured_process_double(tf.int32, 1, tf.int32),
+        aggregate=test_aggregation_process(tf.int32, 0, tf.int32))
+    concatenated_process = measured_process.concatenate_measured_processes(
+        measured_processes)
+    values = collections.OrderedDict(double=[1, 2, 3], aggregate=[4, 5, 6])
+    output = concatenated_process.next(concatenated_process.initialize(),
+                                       values)
+    self.assertEqual(output.state,
+                     collections.OrderedDict(double=2, aggregate=0))
+    self.assertEqual(output.result,
+                     collections.OrderedDict(double=[2, 4, 6], aggregate=15))
+    self.assertEqual(output.measurements,
+                     collections.OrderedDict(double={'a': 1}, aggregate=1))
 
 
 if __name__ == '__main__':
