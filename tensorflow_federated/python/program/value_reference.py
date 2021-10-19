@@ -11,21 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defines the abstract interface for classes that reference values."""
+"""Defines abstract interfaces representing references to values.
+
+These abstract interfaces provide the capability to handle values without
+requiring them to be materialized as Python objects. Instances of these
+abstract interfaces represent values of type `tff.TensorType` and can be placed
+on the server, elements of structures that are placed on the server, or
+unplaced.
+"""
 
 import abc
-from typing import Any
+from typing import Union
+
+import numpy as np
 
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
-class ValueReference(typed_object.TypedObject, metaclass=abc.ABCMeta):
-  """An abstract interface for classes that reference values.
-
-  This interfaces provides the capability to maniplutate values without
-  requiring them to be materialized as Python objects.
-  """
+class ServerArrayReference(typed_object.TypedObject, metaclass=abc.ABCMeta):
+  """An abstract interface representing references to server placed values."""
 
   @abc.abstractmethod
-  def get_value(self) -> Any:
-    pass
+  def get_value(self) -> Union[np.generic, np.ndarray]:
+    """Returns the referenced value as a numpy scalar or array."""
+    raise NotImplementedError
