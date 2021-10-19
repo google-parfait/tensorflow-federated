@@ -15,7 +15,6 @@
 
 import collections
 from typing import Any, Dict, Mapping
-import warnings
 
 from absl import logging
 import numpy as np
@@ -56,9 +55,6 @@ def _flatten_nested_dict(struct: Mapping[str, Any]) -> Dict[str, Any]:
 class TensorBoardManager(metrics_manager.MetricsManager):
   """Utility class for saving metrics using `tf.summary`.
 
-  DEPRECATED: `tff.simulation.TensorBoardManager` is deprecated, please use
-  `tff.program.TensorboardReleaseManager` instead.
-
   This class is intended to log metrics so that they can be used with
   TensorBoard. Note that this supports both scalar and series data, which are
   logged via `tf.summary.scalar` and `tf.summary.histogram`, respectively.
@@ -78,9 +74,6 @@ class TensorBoardManager(metrics_manager.MetricsManager):
       ValueError: If `root_metrics_dir` is an empty string.
       ValueError: If `summary_dir` is an empty string.
     """
-    warnings.warn(
-        '`tff.simulation.TensorBoardManager` is deprecated, please use '
-        '`tff.program.TensorboardReleaseManager` instead.', DeprecationWarning)
     super().__init__()
     if not summary_dir:
       raise ValueError('Empty string passed for summary_dir argument.')
