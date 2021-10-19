@@ -16,10 +16,17 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/strings/str_join.h"
+#include "absl/strings/str_split.h"
 #include "absl/synchronization/mutex.h"
+#include "tensorflow/core/common_runtime/device_mgr.h"
 #include "tensorflow/core/framework/attr_value.pb.h"
+#include "tensorflow/core/framework/device_factory.h"
 #include "tensorflow/core/framework/function.pb.h"
 #include "tensorflow/core/framework/op.h"
+#include "tensorflow/core/framework/op_kernel.h"
+#include "tensorflow/core/framework/types.h"
+#include "tensorflow/core/graph/default_device.h"
 
 namespace tensorflow_federated {
 
@@ -62,6 +69,60 @@ const tensorflow::SessionOptions& get_session_options() {
     return options_pb;
   }();
   return *session_options;
+}
+
+struct AcceleratorDevices {
+  const int16_t num_gpus = 0;
+};
+
+const AcceleratorDevices& GetAcceleratorDevices() {
+  static const AcceleratorDevices* accelerator_devices =
+      []() -> AcceleratorDevices* {
+    int16_t num_gpus = 0;
+    std::vector<std::string> devices;
+    tensorflow::Status s =
+        tensorflow::DeviceFactory::ListAllPhysicalDevices(&devices);
+    if (!s.ok()) {
+      LOG(ERROR) << "Error detecting physical devices, defaulting to CPU only: "
+                 << s;
+      return new AcceleratorDevices{0};
+    }
+    LOG_FIRST_N(INFO, 1) << "Found devices: [" << absl::StrJoin(devices, ",")
+                         << "]";
+    for (absl::string_view device : devices) {
+      std::vector<absl::string_view> device_parts = absl::StrSplit(device, ':');
+      if (device_parts.size() != 3) {
+        LOG(ERROR) << "Unknown device name format: [" << device << "]";
+        continue;
+      }
+      auto device_type = device_parts[1];
+      if (device_type == tensorflow::DEVICE_GPU) {
+        LOG_FIRST_N(INFO, 1) << "Found GPU device: [" << device << "]";
+        ++num_gpus;
+      } else {
+        LOG_FIRST_N(INFO, 1) << "Skipping device: [" << device << "]";
+      }
+    }
+    return new AcceleratorDevices{num_gpus};
+  }();
+  return *accelerator_devices;
+}
+
+void SetDevice(absl::string_view device, tensorflow::GraphDef* graph_def) {
+  for (tensorflow::NodeDef& node_pb : *graph_def->mutable_node()) {
+    if (!node_pb.device().empty()) {
+      VLOG(5) << "Skipping already placed node [" << node_pb.name() << "] ("
+              << node_pb.op() << ") on " << node_pb.device();
+      continue;
+    } else if (tensorflow::KernelDefAvailable(tensorflow::DEVICE_GPU,
+                                              node_pb)) {
+      VLOG(5) << "Placing node [" << node_pb.name() << "] (" << node_pb.op()
+              << ") on device [" << device << "]";
+      node_pb.set_device(device.data(), device.size());
+    } else {
+      VLOG(5) << "Leaving node [" << node_pb.name() << "] alone.";
+    }
+  }
 }
 
 const absl::flat_hash_set<std::string>& GetOpsWithContainerAttr() {
@@ -127,14 +188,32 @@ SessionProvider::SessionProvider(tensorflow::GraphDef&& graph,
 }
 
 absl::StatusOr<std::unique_ptr<tensorflow::Session>>
-SessionProvider::CreateSession(const std::string& container) {
+SessionProvider::CreateSession(const uint16_t session_id) {
+  const std::string container = absl::StrCat(function_id_, "/", session_id);
   std::unique_ptr<tensorflow::Session> session(
       tensorflow::NewSession(get_session_options()));
   if (session == nullptr) {
     return absl::InternalError("Failed to create TensorFlow session.");
   }
-  auto status = session->Create(ReplaceContainers(graph_, container));
+  tensorflow::GraphDef graph_def = ReplaceContainers(graph_, container);
+  const AcceleratorDevices& devices = GetAcceleratorDevices();
+  if (devices.num_gpus > 0) {
+    // If we have GPUs, round robin the session by explicitly setting the
+    // `device` attr of the GPU-capable kernels.
+    const uint16_t device_id = session_id % devices.num_gpus;
+    const std::string& device =
+        absl::StrCat("/device:", tensorflow::DEVICE_GPU, ":", device_id);
+    VLOG(2) << "Pinning function [" << function_id_ << "] session ["
+            << session_id << "] to device [" << device << "]";
+    SetDevice(device, &graph_def);
+  }
+  auto status = session->Create(graph_def);
   if (!status.ok()) {
+    LOG(ERROR) << status;
+    for (absl::string_view line :
+         absl::StrSplit(graph_def.Utf8DebugString(), '\n')) {
+      LOG(ERROR) << line;
+    }
     return absl::InternalError(absl::StrCat(
         "Failed to create graph in session: ", status.error_message()));
   }
@@ -154,18 +233,17 @@ SessionProvider::TakeSession() {
     return std::move(session);
   }
   maybe_open_cpus_--;
-  // Build a container name based on the number of sessions created so that
-  // each session gets its own container.
-  std::string container =
-      absl::StrCat(function_id_, "/", session_creation_counter_++);
+  // Build a container name based on the number of sessions created so that each
+  // session gets its own container.
+  const uint16_t session_id = session_creation_counter_++;
   lock_.Unlock();
-  auto session = CreateSession(container);
+  auto session = CreateSession(session_id);
   lock_.Lock();
   maybe_open_cpus_++;
   lock_.Unlock();
   if (session.ok()) {
     return SessionProvider::SessionWithResourceContainer{
-        TFF_TRY(std::move(session)), container};
+        TFF_TRY(std::move(session)), function_id_, session_id};
   } else {
     return session.status();
   }
@@ -173,15 +251,7 @@ SessionProvider::TakeSession() {
 
 void SessionProvider::ReturnSession(
     SessionProvider::SessionWithResourceContainer&& session) {
-  // Clear any previous resources we had in a container for this session
-  // before we loan it out for execution again in the future.
-  const tensorflow::DeviceMgr* device_mgr;
-  tensorflow::Status status = session.session->LocalDeviceManager(&device_mgr);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to get local device manager for session:" << status;
-  } else {
-    device_mgr->ClearContainers({session.container_name});
-  }
+  session.ClearResourceContainers();
   lock_.Lock();
   active_sessions_--;
   sessions_.emplace_back(std::move(session));
