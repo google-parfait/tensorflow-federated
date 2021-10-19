@@ -14,7 +14,7 @@
 
 from absl.testing import absltest
 import jax
-from jax.lib.xla_bridge import xla_client
+from jax.lib import xla_client
 import numpy as np
 
 from tensorflow_federated.python.common_libs import structure

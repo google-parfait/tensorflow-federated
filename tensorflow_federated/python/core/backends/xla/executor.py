@@ -14,7 +14,7 @@
 """An executor that delegates to the XLA compiler."""
 
 import jax
-from jax.lib.xla_bridge import xla_client
+from jax.lib import xla_client
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck

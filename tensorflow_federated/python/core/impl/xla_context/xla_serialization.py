@@ -15,7 +15,7 @@
 
 from typing import List, Optional
 
-from jax.lib.xla_bridge import xla_client
+from jax.lib import xla_client
 import numpy as np
 
 from google.protobuf import any_pb2

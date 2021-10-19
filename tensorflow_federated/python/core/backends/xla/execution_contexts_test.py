@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-from jax.lib.xla_bridge import xla_client
+from jax.lib import xla_client
 import numpy as np
 
 from tensorflow_federated.python.core.api import computations

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Runtime components for use by the XLA executor."""
 
-from jax.lib.xla_bridge import xla_client
+from jax.lib import xla_client
 import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb

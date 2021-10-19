@@ -13,7 +13,7 @@
 # limitations under the License.
 """A library of helper functions for constructing XLA computations."""
 
-from jax.lib.xla_bridge import xla_client
+from jax.lib import xla_client
 import numpy as np
 
 from tensorflow_federated.python.common_libs import py_typecheck
