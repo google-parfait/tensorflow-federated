@@ -33,7 +33,10 @@ py_test(
     srcs = ["group_norm_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":group_norm"],
+    deps = [
+        ":group_norm",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )
 
 py_library(

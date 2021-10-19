@@ -70,6 +70,8 @@ py_test(
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -85,7 +87,10 @@ py_test(
     srcs = ["placements_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":placements"],
+    deps = [
+        ":placements",
+        "@absl_py//absl/testing:absltest",
+    ],
 )
 
 py_library(
@@ -113,6 +118,8 @@ py_test(
         ":placements",
         ":type_analysis",
         "//tensorflow_federated/python/common_libs:structure",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -141,6 +148,7 @@ py_test(
         ":typed_object",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:test_case",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -160,6 +168,7 @@ py_test(
     deps = [
         ":computation_types",
         ":type_factory",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -187,6 +196,7 @@ py_test(
         ":type_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/api:test_case",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -211,6 +221,8 @@ py_test(
         ":computation_types",
         ":placements",
         ":type_transformations",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 

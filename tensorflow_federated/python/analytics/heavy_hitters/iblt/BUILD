@@ -61,7 +61,10 @@ py_test(
     python_version = "PY3",
     shard_count = 4,
     srcs_version = "PY3",
-    deps = [":iblt_lib"],
+    deps = [
+        ":iblt_lib",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )
 
 py_test(
@@ -69,7 +72,10 @@ py_test(
     srcs = ["chunkers_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":chunkers"],
+    deps = [
+        ":chunkers",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )
 
 py_test(
@@ -78,7 +84,10 @@ py_test(
     srcs = ["hyperedge_hashers_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":hyperedge_hashers"],
+    deps = [
+        ":hyperedge_hashers",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )
 
 py_library(
@@ -111,5 +120,6 @@ py_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:parameterized",
     ],
 )

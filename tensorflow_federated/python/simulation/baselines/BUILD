@@ -89,5 +89,6 @@ py_test(
     deps = [
         ":task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
+        "@absl_py//absl/testing:parameterized",
     ],
 )

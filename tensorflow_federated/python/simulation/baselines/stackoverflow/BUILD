@@ -50,6 +50,7 @@ py_test(
         ":tag_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -80,6 +81,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -94,7 +96,10 @@ py_test(
     srcs = ["word_prediction_models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":word_prediction_models"],
+    deps = [
+        ":word_prediction_models",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )
 
 py_library(
@@ -117,6 +122,7 @@ py_test(
         ":word_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -149,5 +155,6 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@absl_py//absl/testing:parameterized",
     ],
 )

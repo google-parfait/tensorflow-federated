@@ -27,6 +27,7 @@ py_library(
     testonly = True,
     srcs = ["golden.py"],
     srcs_version = "PY3",
+    deps = ["@absl_py//absl/flags"],
 )
 
 py_test(
@@ -51,7 +52,11 @@ py_test(
     ],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":golden"],
+    deps = [
+        ":golden",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:flagsaver",
+    ],
 )
 
 py_library(
@@ -69,6 +74,7 @@ py_test(
     deps = [
         ":py_typecheck",
         ":structure",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -87,7 +93,10 @@ py_test(
     srcs = ["retrying_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":retrying"],
+    deps = [
+        ":retrying",
+        "@absl_py//absl/testing:absltest",
+    ],
 )
 
 py_library(
@@ -108,6 +117,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":serialization_utils",
+        "@absl_py//absl/testing:absltest",
         "@com_google_protobuf//:protobuf_python",
     ],
 )
@@ -139,7 +149,10 @@ py_library(
     name = "tracing",
     srcs = ["tracing.py"],
     srcs_version = "PY3",
-    deps = [":py_typecheck"],
+    deps = [
+        ":py_typecheck",
+        "@absl_py//absl/logging",
+    ],
 )
 
 py_test(
@@ -148,5 +161,9 @@ py_test(
     srcs = ["tracing_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tracing"],
+    deps = [
+        ":tracing",
+        "@absl_py//absl/logging",
+        "@absl_py//absl/testing:absltest",
+    ],
 )

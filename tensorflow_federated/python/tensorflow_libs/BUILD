@@ -55,7 +55,10 @@ py_library(
     name = "graph_optimizations",
     srcs = ["graph_optimizations.py"],
     srcs_version = "PY3",
-    deps = [":graph_spec"],
+    deps = [
+        ":graph_spec",
+        "@absl_py//absl/logging",
+    ],
 )
 
 py_test(

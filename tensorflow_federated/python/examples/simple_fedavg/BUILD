@@ -13,6 +13,8 @@ py_binary(
     deps = [
         ":simple_fedavg_tff",
         "//tensorflow_federated",
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
     ],
 )
 
@@ -43,5 +45,6 @@ py_cpu_gpu_test(
         ":simple_fedavg_tf",
         ":simple_fedavg_tff",
         "//tensorflow_federated",
+        "@absl_py//absl/testing:parameterized",
     ],
 )

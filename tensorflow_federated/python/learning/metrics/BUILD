@@ -25,6 +25,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
