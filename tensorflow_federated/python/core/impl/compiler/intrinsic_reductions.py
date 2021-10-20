@@ -241,7 +241,18 @@ def replace_intrinsics_with_bodies(comp):
   for uri, body in bodies.items():
     comp, uri_found = _reduce_intrinsic(comp, uri, body)
     transformed = transformed or uri_found
+
   return comp, transformed
+
+
+def _ensure_structure(int_or_structure, int_or_structure_type,
+                      possible_struct_type):
+  if int_or_structure_type.is_struct() or not possible_struct_type.is_struct():
+    return int_or_structure
+  else:
+    # Broadcast int_or_structure to the same structure as the struct type
+    return structure.map_structure(lambda *args: int_or_structure,
+                                   possible_struct_type)
 
 
 def _get_secure_intrinsic_reductions(
@@ -284,12 +295,8 @@ def _get_secure_intrinsic_reductions(
 
     def assert_less_equal_max_and_add(summation_and_max_input, summand):
       summation, original_max_input = summation_and_max_input
-      if max_input_type.is_struct():
-        max_input = original_max_input
-      else:
-        # Broadcast max_input to the same structure as the summand.
-        max_input = structure.map_structure(lambda *args: original_max_input,
-                                            summand)
+      max_input = _ensure_structure(original_max_input, max_input_type,
+                                    summand_type)
       # Assert that all coordinates in all tensors are less than the secure sum
       # allowed max input value.
       def assert_all_coordinates_less_equal(x, m):
@@ -374,8 +381,18 @@ def _get_secure_intrinsic_reductions(
     modulus_arg = building_block_factory.create_federated_zip(
         building_blocks.Struct([raw_summed_values, placed_modulus],
                                container_type=container_type))
-    modulus_computed = building_block_factory.apply_binary_operator_with_upcast(
-        modulus_arg, tf.math.mod)
+
+    def map_structure_mod(summed_values, modulus):
+      modulus = _ensure_structure(modulus, unplaced_modulus.type_signature,
+                                  raw_summed_values.type_signature.member)
+      return structure.map_structure(tf.math.mod, summed_values, modulus)
+
+    modulus_fn = building_block_factory.create_tensorflow_binary_operator(
+        map_structure_mod,
+        operand_type=raw_summed_values.type_signature.member,
+        second_operand_type=placed_modulus.type_signature.member)
+    modulus_computed = building_block_factory.create_federated_apply(
+        modulus_fn, modulus_arg)
 
     return modulus_computed
 

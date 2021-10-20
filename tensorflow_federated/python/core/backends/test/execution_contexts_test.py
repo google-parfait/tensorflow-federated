@@ -14,6 +14,7 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
@@ -22,65 +23,59 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
-class SecureModularSumTest(parameterized.TestCase):
+_CLIENTS_INT = computation_types.at_clients(tf.int32)
+_CLIENTS_INT_LIST = computation_types.at_clients([tf.int32, tf.int32])
+
+
+class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
     execution_contexts.set_test_execution_context()
 
   @parameterized.named_parameters(
-      ('one_client_not_divisible', [1], 1),
-      ('two_clients_none_divisible', [1, 2], 3),
-      ('three_clients_one_divisible', [1, 2, 10], 3),
-      ('all_clients_divisible_by_modulus', [x * 5 for x in range(5)], 0),
+      ('one_client_not_divisible', [1], 1, _CLIENTS_INT),
+      ('two_clients_none_divisible', [1, 2], 3, _CLIENTS_INT),
+      ('three_clients_one_divisible', [1, 2, 10], 3, _CLIENTS_INT),
+      ('all_clients_divisible_by_modulus', [x * 5 for x in range(5)
+                                           ], 0, _CLIENTS_INT),
+      ('nonscalar_struct_arg', [([1, 2], 3), ([4, 5], 6)],
+       (np.array([0, 2], dtype=np.int32), 4),
+       computation_types.at_clients(((tf.int32, [2]), tf.int32))),
   )
   def test_executes_computation_with_modular_secure_sum_integer_modulus(
-      self, arg, expected_result):
+      self, arg, expected_result, tff_type):
 
     modulus = 5
 
-    @computations.federated_computation(computation_types.at_clients(tf.int32))
+    @computations.federated_computation(tff_type)
     def modular_sum_by_five(arg):
       return intrinsics.federated_secure_modular_sum(arg, modulus)
 
-    self.assertEqual(expected_result, modular_sum_by_five(arg))
+    # assertAllEqual doesnt handle nested structures well, so we use
+    # assertAllClose with no tolerance here.
+    self.assertAllClose(
+        expected_result, modular_sum_by_five(arg), atol=0.0, rtol=0.0)
 
   @parameterized.named_parameters(
-      ('one_client_not_divisible', [[1, 2]], [1, 2]),
-      ('two_clients_none_divisible', [[1, 2], [3, 4]], [4, 6]),
-      ('three_clients_one_divisible', [[1, 2], [3, 4], [10, 14]], [4, 6]),
+      ('one_client_not_divisible', [[1, 2]], [1, 2], _CLIENTS_INT_LIST),
+      ('two_clients_none_divisible', [[1, 2], [3, 4]], [4, 6
+                                                       ], _CLIENTS_INT_LIST),
+      ('three_clients_one_divisible', [[1, 2], [3, 4], [10, 14]
+                                      ], [4, 6], _CLIENTS_INT_LIST),
       ('two_clients_one_partially_divisible', [[1, 2], [3, 4], [10, 15]
-                                              ], [4, 0]),
+                                              ], [4, 0], _CLIENTS_INT_LIST),
   )
   def test_executes_computation_with_modular_secure_sum_struct_modulus(
-      self, arg, expected_result):
+      self, arg, expected_result, tff_type):
 
     modulus = [5, 7]
 
-    @computations.federated_computation(
-        computation_types.at_clients([tf.int32, tf.int32]))
+    @computations.federated_computation(tff_type)
     def modular_sum_by_five(arg):
       return intrinsics.federated_secure_modular_sum(arg, modulus)
 
     self.assertEqual(expected_result, modular_sum_by_five(arg))
-
-  def test_executes_computation_with_modular_secure_sum_nonscalar_struct_arg_integer_modulus(
-      self):
-
-    modulus = 5
-
-    dtype = computation_types.to_type(((tf.int32, [2]), tf.int32))
-
-    @computations.federated_computation(computation_types.at_clients(dtype))
-    def fn(x):
-      return intrinsics.federated_secure_modular_sum(x, modulus)
-
-    with self.assertRaises(TypeError):
-      # Currently fails due to mismatch between expectations of serialization
-      # code, inserting a scalar tensor into a structure, and expectations of
-      # TF-generating code: that once we do this promotion, types must match.
-      # b/203424058
-      fn([([1, 2], 3), ([4, 5], 6)])
 
 
 class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
