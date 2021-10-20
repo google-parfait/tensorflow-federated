@@ -140,6 +140,35 @@ class FederatedAveragingIntegrationTest(tff.test.TestCase,
       ('keras_opt', _get_keras_optimizer_fn),
       ('tff_opt', _get_tff_optimizer),
   ])
+  def test_keras_model_with_ragged_tensor_converge(self, client_optimizer):
+    dataset = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=tf.ragged.constant([[1, 2, 3], [4], [5, 6], [7, 8, 9, 10]]),
+            y=tf.constant([True, False, True, False]),
+        )).batch(2)
+
+    def model_fn():
+      keras_model = learning_test_models.build_ragged_tensor_input_keras_model()
+      return tff.learning.from_keras_model(
+          keras_model,
+          loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+          input_spec=dataset.element_spec,
+          metrics=[NumExamplesCounter()])
+
+    iterative_process = tff.learning.build_federated_averaging_process(
+        model_fn=model_fn,
+        client_optimizer_fn=client_optimizer(learning_rate=0.01))
+
+    num_clients = 3
+    self._run_test(
+        iterative_process,
+        datasets=[dataset] * num_clients,
+        expected_num_examples=4 * num_clients)
+
+  @parameterized.named_parameters([
+      ('keras_opt', _get_keras_optimizer_fn),
+      ('tff_opt', _get_tff_optimizer),
+  ])
   def test_keras_model_with_lookup_table_converges(self, client_optimizer):
     ds = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
@@ -249,6 +278,7 @@ class FederatedAveragingIntegrationTest(tff.test.TestCase,
     state = process.initialize()
     state, metrics = process.next(state, [ds] * num_clients)
     self.assertNotEmpty(metrics['aggregation'])
+
 
 if __name__ == '__main__':
   # We must use the test execution context for the secure intrinsics introduced

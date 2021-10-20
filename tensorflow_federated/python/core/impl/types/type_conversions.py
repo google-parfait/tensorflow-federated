@@ -294,13 +294,13 @@ def type_to_tf_structure(type_spec: computation_types.Type):
       elif container_type is tf.RaggedTensor:
         flat_values = type_spec.flat_values
         nested_row_splits = type_spec.nested_row_splits
+        ragged_rank = len(nested_row_splits)
         return tf.RaggedTensorSpec(
-            shape=None,
+            shape=tf.TensorShape([None] * (ragged_rank + 1)),
             dtype=flat_values.dtype,
-            ragged_rank=len(nested_row_splits),
+            ragged_rank=ragged_rank,
             row_splits_dtype=nested_row_splits[0].dtype,
-            flat_values_spec=tf.TensorSpec(flat_values.shape,
-                                           flat_values.dtype))
+            flat_values_spec=None)
       elif container_type is tf.SparseTensor:
         # We can't generally infer the shape from the type of the tensors, but
         # we *can* infer the rank based on the shapes of `indices` or

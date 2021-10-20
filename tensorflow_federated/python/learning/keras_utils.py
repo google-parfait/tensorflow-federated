@@ -150,9 +150,10 @@ def from_keras_model(
         lambda tensor_type: tf.TensorSpec(tensor_type.shape, tensor_type.dtype),
         input_spec)
   else:
+    tensor_spec = (tf.TensorSpec, tf.RaggedTensorSpec)
     tf.nest.map_structure(
-        lambda s: py_typecheck.check_type(s, tf.TensorSpec, 'input spec member'
-                                         ), input_spec)
+        lambda s: py_typecheck.check_type(s, tensor_spec, 'input spec member'),
+        input_spec)
   if isinstance(input_spec, collections.abc.Mapping):
     if model_lib.MODEL_ARG_NAME not in input_spec:
       raise ValueError(
@@ -397,10 +398,14 @@ class _KerasModel(model_lib.Model):
     # case that we have a model supporting masking.
     for metric in self.get_metrics():
       metric.update_state(y_true=y_true, y_pred=predictions)
+
+    def nrows(t):
+      return t.nrows() if isinstance(t, tf.RaggedTensor) else tf.shape(t)[0]
+
     return model_lib.BatchOutput(
         loss=batch_loss,
         predictions=predictions,
-        num_examples=tf.shape(tf.nest.flatten(inputs)[0])[0])
+        num_examples=nrows(tf.nest.flatten(inputs)[0]))
 
   @tf.function
   def forward_pass(self, batch_input, training=True):

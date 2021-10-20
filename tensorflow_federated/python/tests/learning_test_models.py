@@ -430,3 +430,15 @@ def build_preprocessing_lookup_keras_model():
   a = l.Input(shape=(1,), dtype=tf.string)
   encoded = l.experimental.preprocessing.StringLookup(vocabulary=['A', 'B'])(a)
   return tf.keras.Model(inputs=[a], outputs=[encoded])
+
+
+def build_ragged_tensor_input_keras_model():
+  """Builds a test model with ragged tensors as input."""
+  return tf.keras.Sequential([
+      tf.keras.layers.Input(shape=[None], dtype=tf.int64, ragged=True),
+      tf.keras.layers.Embedding(1000, 16),
+      tf.keras.layers.LSTM(32, use_bias=False),
+      tf.keras.layers.Dense(32),
+      tf.keras.layers.Activation(tf.nn.relu),
+      tf.keras.layers.Dense(1)
+  ])

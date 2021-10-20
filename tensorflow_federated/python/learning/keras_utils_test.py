@@ -152,6 +152,25 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     structure.map_structure(lambda x: self.assertIsInstance(x, tf.TensorSpec),
                             tff_model.input_spec)
 
+  def test_input_spec_ragged_tensor(self):
+    keras_model = model_examples.build_ragged_tensor_input_keras_model()
+    input_spec = collections.OrderedDict(
+        x=tf.RaggedTensorSpec(shape=[3, None], dtype=tf.int32),
+        y=tf.TensorSpec(shape=[1], dtype=tf.bool))
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=input_spec,
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=True))
+    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(tff_model.input_spec['x'], tf.RaggedTensorSpec)
+
+    batch = collections.OrderedDict(
+        x=tf.ragged.constant([[1, 2, 3], [4], [5, 6]]),
+        y=tf.constant([True, False, False]),
+    )
+    output = tff_model.forward_pass(batch)
+    self.assertEqual(output.num_examples, 3)
+
   @parameterized.named_parameters(
       ('more_than_two_elements', [
           tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
