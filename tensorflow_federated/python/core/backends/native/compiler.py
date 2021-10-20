@@ -80,14 +80,19 @@ def transform_to_native_form(
         'transform_to_native_form',
         'transform_tf_call_ops_disable_grappler',
         span=True):
-      disabled_grapler_form, _ = tree_transformations.transform_tf_call_ops_to_disable_grappler(
+      disabled_grappler_form, _ = tree_transformations.transform_tf_call_ops_to_disable_grappler(
           call_dominant_form)
+    with tracing.span(
+        'transform_to_native_form', 'building_block_to_computation', span=True):
+      building_block_computation_form = computation_wrapper_instances.building_block_to_computation(
+          disabled_grappler_form)
+    # NOTE: transform_td_add_is must occur last to ensure _all_ TensorFlow
+    # blocks have proper cache keys.
     with tracing.span(
         'transform_to_native_form', 'transform_tf_add_ids', span=True):
       form_with_ids, _ = tree_transformations.transform_tf_add_ids(
-          disabled_grapler_form)
-    return computation_wrapper_instances.building_block_to_computation(
-        form_with_ids)
+          building_block_computation_form)
+    return form_with_ids
   except ValueError as e:
     logging.debug('Compilation for native runtime failed with error %s', e)
     logging.debug('computation: %s',
