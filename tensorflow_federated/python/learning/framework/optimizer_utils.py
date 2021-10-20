@@ -131,9 +131,9 @@ def state_with_new_model_weights(
   Args:
     server_state: A server state object returned by an iterative training
       process like `tff.learning.build_federated_averaging_process`.
-    trainable_weights: A list of `numpy` arrays in the order of the original
+    trainable_weights: A list of `numpy` values in the order of the original
       model's `trainable_variables`.
-    non_trainable_weights: A list of `numpy` arrays in the order of the original
+    non_trainable_weights: A list of `numpy` values in the order of the original
       model's `non_trainable_variables`.
 
   Returns:
@@ -141,7 +141,7 @@ def state_with_new_model_weights(
     of the iterative process.
   """
   py_typecheck.check_type(server_state, ServerState)
-  leaf_types = (int, float, np.ndarray, tf.Tensor)
+  leaf_types = (int, float, np.ndarray, tf.Tensor, np.number)
 
   def assert_weight_lists_match(old_value, new_value):
     """Assert two flat lists of ndarrays or tensors match."""

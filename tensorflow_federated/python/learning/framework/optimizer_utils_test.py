@@ -134,7 +134,7 @@ class TestMeasuredMeanFactory(factory.WeightedAggregationFactory):
 class UtilsTest(test_case.TestCase):
 
   def test_state_with_new_model_weights(self):
-    trainable = [np.array([1.0, 2.0]), np.array([[1.0]])]
+    trainable = [np.array([1.0, 2.0]), np.array([[1.0]]), np.int64(3)]
     non_trainable = [np.array(1)]
     state = optimizer_utils.ServerState(
         model=model_utils.ModelWeights(
@@ -145,26 +145,36 @@ class UtilsTest(test_case.TestCase):
 
     new_state = optimizer_utils.state_with_new_model_weights(
         state,
-        trainable_weights=[np.array([3.0, 3.0]),
-                           np.array([[3.0]])],
+        trainable_weights=[
+            np.array([3.0, 3.0]),
+            np.array([[3.0]]),
+            np.int64(4)
+        ],
         non_trainable_weights=[np.array(3)])
-    self.assertAllClose(
-        new_state.model.trainable,
-        [np.array([3.0, 3.0]), np.array([[3.0]])])
+    self.assertAllClose(new_state.model.trainable,
+                        [np.array([3.0, 3.0]),
+                         np.array([[3.0]]),
+                         np.int64(4)])
     self.assertAllClose(new_state.model.non_trainable, [3])
 
     with self.assertRaisesRegex(TypeError, 'tensor type'):
       optimizer_utils.state_with_new_model_weights(
           state,
-          trainable_weights=[np.array([3.0, 3.0]),
-                             np.array([[3]])],
+          trainable_weights=[
+              np.array([3.0, 3.0]),
+              np.array([[3]]),
+              np.int64(4)
+          ],
           non_trainable_weights=[np.array(3.0)])
 
     with self.assertRaisesRegex(TypeError, 'tensor type'):
       optimizer_utils.state_with_new_model_weights(
           state,
-          trainable_weights=[np.array([3.0, 3.0]),
-                             np.array([3.0])],
+          trainable_weights=[
+              np.array([3.0, 3.0]),
+              np.array([3.0]),
+              np.int64(4)
+          ],
           non_trainable_weights=[np.array(3)])
 
     with self.assertRaisesRegex(TypeError, 'different lengths'):
