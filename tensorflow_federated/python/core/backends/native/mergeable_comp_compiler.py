@@ -165,22 +165,44 @@ def compile_to_mergeable_comp_form(
   after_agg_callable = computation_wrapper_instances.building_block_to_computation(
       after_agg)
 
-  @computations.federated_computation(before_agg.type_signature.parameter)
-  def up_to_merge_computation(arg):
-    federated_aggregate_args = before_agg_callable(
-        arg)['federated_aggregate_param']
-    value_to_aggregate = federated_aggregate_args[0]
-    zero = zero_comp()
-    return intrinsics.federated_aggregate(value_to_aggregate, zero,
-                                          accumulate_comp, merge_comp,
-                                          identity_report)
+  if before_agg.type_signature.parameter is not None:
+    # TODO(b/147499373): If None-arguments were uniformly represented as empty
+    # tuples, we would be able to avoid this (and related) ugly casing.
 
-  @computations.federated_computation(
-      before_agg.type_signature.parameter,
-      computation_types.at_server(identity_report.type_signature.result))
-  def after_merge_computation(top_level_arg, merge_result):
-    reported_result = intrinsics.federated_map(report_comp, merge_result)
-    return after_agg_callable(top_level_arg, [reported_result])
+    @computations.federated_computation(before_agg.type_signature.parameter)
+    def up_to_merge_computation(arg):
+      federated_aggregate_args = before_agg_callable(
+          arg)['federated_aggregate_param']
+      value_to_aggregate = federated_aggregate_args[0]
+      zero = zero_comp()
+      return intrinsics.federated_aggregate(value_to_aggregate, zero,
+                                            accumulate_comp, merge_comp,
+                                            identity_report)
+
+    @computations.federated_computation(
+        before_agg.type_signature.parameter,
+        computation_types.at_server(identity_report.type_signature.result))
+    def after_merge_computation(top_level_arg, merge_result):
+      reported_result = intrinsics.federated_map(report_comp, merge_result)
+      return after_agg_callable(top_level_arg, [reported_result])
+
+  else:
+
+    @computations.federated_computation()
+    def up_to_merge_computation():
+      federated_aggregate_args = before_agg_callable(
+      )['federated_aggregate_param']
+      value_to_aggregate = federated_aggregate_args[0]
+      zero = zero_comp()
+      return intrinsics.federated_aggregate(value_to_aggregate, zero,
+                                            accumulate_comp, merge_comp,
+                                            identity_report)
+
+    @computations.federated_computation(
+        computation_types.at_server(identity_report.type_signature.result))
+    def after_merge_computation(merge_result):
+      reported_result = intrinsics.federated_map(report_comp, merge_result)
+      return after_agg_callable([[reported_result]])
 
   return mergeable_comp_execution_context.MergeableCompForm(
       up_to_merge=up_to_merge_computation,

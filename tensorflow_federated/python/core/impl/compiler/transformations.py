@@ -1312,9 +1312,10 @@ def force_align_and_split_by_intrinsics(
      whose member is the merged result of any merged calls, i.e.:
        `f(merged_arg).member = (f1(f1_arg).member, f2(f2_arg).member)`
 
-  Under these conditions, this function will return two
-  `building_blocks.Lambda`s `before` and `after` such that `comp` is
-  semantically equivalent to the following expression*:
+  Under these conditions, (and assuming `comp` is a computation with non-`None`
+  argument), this function will return two `building_blocks.Lambda`s `before`
+  and `after` such that `comp` is semantically equivalent to the following
+  expression*:
 
   ```
   (arg -> (let
@@ -1323,6 +1324,17 @@ def force_align_and_split_by_intrinsics(
     z=intrinsic2(x[1]),
     ...
    in after(<arg, <y,z,...>>)))
+  ```
+
+  If `comp` is a no-arg computation, the returned computations will be
+  equivalent (in the same sense as above) to:
+  ```
+  ( -> (let
+    x=before(),
+    y=intrinsic1(x[0]),
+    z=intrinsic2(x[1]),
+    ...
+   in after(<y,z,...>)))
   ```
 
   *Note that these expressions may not be entirely equivalent under
@@ -1413,15 +1425,33 @@ def force_align_and_split_by_intrinsics(
                                   for merged in merged_intrinsics])))
 
   after_param_name = next(name_generator)
-  after_param_type = computation_types.StructType([
-      ('original_arg', comp.parameter_type),
-      ('intrinsic_results',
-       computation_types.StructType([(f'{merged.uri}_result',
-                                      merged.return_type)
-                                     for merged in merged_intrinsics])),
-  ])
+  if comp.parameter_type is not None:
+    # TODO(b/147499373): If None-arguments were uniformly represented as empty
+    # tuples, we would be able to avoid this (and related) ugly casing.
+    after_param_type = computation_types.StructType([
+        ('original_arg', comp.parameter_type),
+        ('intrinsic_results',
+         computation_types.StructType([(f'{merged.uri}_result',
+                                        merged.return_type)
+                                       for merged in merged_intrinsics])),
+    ])
+  else:
+    after_param_type = computation_types.StructType([
+        ('intrinsic_results',
+         computation_types.StructType([(f'{merged.uri}_result',
+                                        merged.return_type)
+                                       for merged in merged_intrinsics])),
+    ])
   after_param_ref = building_blocks.Reference(after_param_name,
                                               after_param_type)
+  if comp.parameter_type is not None:
+    original_arg_bindings = [
+        (comp.parameter_name,
+         building_blocks.Selection(after_param_ref, name='original_arg'))
+    ]
+  else:
+    original_arg_bindings = []
+
   unzip_bindings = []
   for merged in merged_intrinsics:
     if merged.unpack_to_locals:
@@ -1443,8 +1473,7 @@ def force_align_and_split_by_intrinsics(
       after_param_name,
       after_param_type,
       building_blocks.Block(
-          [(comp.parameter_name,
-            building_blocks.Selection(after_param_ref, name='original_arg'))] +
+          original_arg_bindings +
           # Note that we must duplicate `locals_not_dependent_on_intrinsics`
           # across both the `before` and `after` computations since both can
           # rely on them, and there's no way to plumb results from `before`

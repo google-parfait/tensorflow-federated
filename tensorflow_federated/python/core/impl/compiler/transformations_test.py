@@ -1342,20 +1342,26 @@ class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
     # Removal isn't interesting to test for if it wasn't there to begin with.
     self.assertTrue(tree_analysis.contains_called_intrinsic(comp, uris))
 
-    self.assert_types_equivalent(comp.parameter_type, before.parameter_type)
+    if comp.parameter_type is not None:
+      self.assert_types_equivalent(comp.parameter_type, before.parameter_type)
+    else:
+      self.assertIsNone(before.parameter_type)
     # THere must be one parameter for each intrinsic in `calls`.
     before.type_signature.result.check_struct()
     self.assertLen(before.type_signature.result, len(calls))
 
     # Check that `after`'s parameter is a structure like:
     # {
-    #   'original_arg': comp.parameter_type,
+    #   'original_arg': comp.parameter_type, (if present)
     #   'intrinsic_results': [...],
     # }
     after.parameter_type.check_struct()
-    self.assertLen(after.parameter_type, 2)
-    self.assert_types_equivalent(comp.parameter_type,
-                                 after.parameter_type.original_arg)
+    if comp.parameter_type is not None:
+      self.assertLen(after.parameter_type, 2)
+      self.assert_types_equivalent(comp.parameter_type,
+                                   after.parameter_type.original_arg)
+    else:
+      self.assertLen(after.parameter_type, 1)
     # There must be one result for each intrinsic in `calls`.
     self.assertLen(after.parameter_type.intrinsic_results, len(calls))
 
