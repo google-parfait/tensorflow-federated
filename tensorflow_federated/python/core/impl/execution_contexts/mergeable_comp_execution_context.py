@@ -16,7 +16,7 @@
 import asyncio
 import functools
 import math
-from typing import Any, List, Sequence
+from typing import Any, List, Optional, Sequence
 
 import attr
 
@@ -55,12 +55,13 @@ class MergeableCompForm:
   and `merge`, and `after_merge`. A computation in `MergeableCompForm` is
   defined to be equivalent to invoking `up_to_merge` on subsets of
   `CLIENTS`-placed arguments in sequence, invoking `merge` on the stream of
-  these results, and passing the resulting value to
+  these results, and passing the resulting value (placed at `tff.SERVER`) to
   `after_merge`, in addition to the original argument to `up_to_merge`.
-  `up_to_merge` should return a single `tff.SERVER`-placed value. We
-  require that the original argument is passed as the first positional argument
-  to `after_merge`, and the merged result as the second.
-  Further, we require that computations in `MergeableCompForm` contain *no* AST
+  In the case of a no-arg `up_to_merge` computation, `after_merge` should accept
+  only the result of `merge`. `up_to_merge` should return a single
+  `tff.SERVER`-placed value.
+
+  We require that computations in `MergeableCompForm` contain *no* AST
   nodes with signatures taking arguments at `tff.CLIENTS` and producing results
   at `tff.SERVER`.
 
@@ -105,6 +106,7 @@ class MergeableCompForm:
   `tff.CLIENTS`-placed result can only depend on its own local state and the
   result of the aggregation, while a `tff.SERVER`-placed result can only depend
   on the result of the single aggregation or a `tff.SERVER`-placed value.
+
   """
 
   def __init__(self, *, up_to_merge: computation_base.Computation,
@@ -142,10 +144,17 @@ class MergeableCompForm:
           f'of type: \n{merge.type_signature.parameter}\nAnd result of type: \n'
           f'{merge.type_signature.result}')
 
-    expected_after_merge_arg_type = computation_types.StructType([
-        (None, up_to_merge.type_signature.parameter),
-        (None, computation_types.at_server(merge.type_signature.result)),
-    ])
+    if up_to_merge.type_signature.parameter is not None:
+      # TODO(b/147499373): If None arguments were uniformly represented as empty
+      # tuples, we could avoid this and related ugly if/else casing.
+      expected_after_merge_arg_type = computation_types.StructType([
+          (None, up_to_merge.type_signature.parameter),
+          (None, computation_types.at_server(merge.type_signature.result)),
+      ])
+    else:
+      expected_after_merge_arg_type = computation_types.at_server(
+          merge.type_signature.result)
+
     after_merge.type_signature.parameter.check_assignable_from(
         expected_after_merge_arg_type)
 
@@ -361,11 +370,17 @@ class MergeableCompExecutionContextValue(typed_object.TypedObject):
     return self._partitioned_value
 
 
+async def _ingest_arg_or_none(arg, context, type_signature):
+  if arg is not None:
+    return await context.ingest(arg, type_signature)
+  return None
+
+
 async def _invoke_up_to_merge_and_return_context(
     comp: MergeableCompForm, arg,
     context: async_execution_context.AsyncExecutionContext):
-  ingested_arg = await context.ingest(arg,
-                                      comp.up_to_merge.type_signature.parameter)
+  ingested_arg = await _ingest_arg_or_none(
+      arg, context, comp.up_to_merge.type_signature.parameter)
   return await context.invoke(comp.up_to_merge, ingested_arg), context
 
 
@@ -380,18 +395,25 @@ async def _merge_results(
 async def _compute_after_merged(
     comp: MergeableCompForm, original_arg, merge_result,
     context: async_execution_context.AsyncExecutionContext):
-  ingested_arg = await context.ingest((original_arg, merge_result),
-                                      comp.after_merge.type_signature.parameter)
+  if original_arg is not None:
+    ingested_arg = await context.ingest(
+        (original_arg, merge_result), comp.after_merge.type_signature.parameter)
+  else:
+    ingested_arg = await context.ingest(
+        merge_result, comp.after_merge.type_signature.parameter)
   return await context.invoke(comp.after_merge, ingested_arg)
 
 
 async def _invoke_mergeable_comp_form(
-    comp: MergeableCompForm, arg: MergeableCompExecutionContextValue,
+    comp: MergeableCompForm, arg: Optional[MergeableCompExecutionContextValue],
     execution_contexts: Sequence[
         async_execution_context.AsyncExecutionContext]):
   """Invokes `comp` on `arg`, repackaging the results to a single value."""
 
-  arg_list = arg.value()
+  if arg is not None:
+    arg_list = arg.value()
+  else:
+    arg_list = [None for _ in range(len(execution_contexts))]
 
   up_to_merge_futures = asyncio.as_completed([
       _invoke_up_to_merge_and_return_context(comp, x, context)
@@ -453,9 +475,10 @@ class MergeableCompExecutionContext(context_base.Context):
         val, type_spec, len(self._async_execution_contexts))
 
   def invoke(self, comp: MergeableCompForm,
-             arg: MergeableCompExecutionContextValue):
+             arg: Optional[MergeableCompExecutionContextValue]):
     py_typecheck.check_type(comp, MergeableCompForm)
-    py_typecheck.check_type(arg, MergeableCompExecutionContextValue)
+    if arg is not None:
+      py_typecheck.check_type(arg, MergeableCompExecutionContextValue)
     return type_conversions.type_to_py_container(
         self._event_loop.run_until_complete(
             _invoke_mergeable_comp_form(comp, arg,
