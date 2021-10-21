@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.impl.execution_contexts import mergeable_c
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def build_whimsy_computation_with_aggregation_and_after(server_arg_type,
@@ -75,7 +76,7 @@ def server_placed_mult(arg):
 class MergeableCompCompilerTest(test_case.TestCase):
 
   def setUp(self):
-    ex_factory = executor_stacks.local_executor_factory(default_num_clients=0)
+    ex_factory = executor_stacks.local_executor_factory(default_num_clients=1)
     self._mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
         [ex_factory])
     super().setUp()
@@ -84,7 +85,10 @@ class MergeableCompCompilerTest(test_case.TestCase):
       self, mergeable_form: mergeable_comp_execution_context.MergeableCompForm,
       arg):
     arg_type = mergeable_form.up_to_merge.type_signature.parameter
-    ingested_val = self._mergeable_comp_context.ingest(arg, arg_type)
+    if arg is not None:
+      ingested_val = self._mergeable_comp_context.ingest(arg, arg_type)
+    else:
+      ingested_val = arg
     return self._mergeable_comp_context.invoke(mergeable_form, ingested_val)
 
   def test_raises_two_dependent_aggregates(self):
@@ -108,7 +112,6 @@ class MergeableCompCompilerTest(test_case.TestCase):
                           mergeable_comp_execution_context.MergeableCompForm)
 
   def test_compilation_preserves_semantics_standalone_tf(self):
-    self.skipTest('b/200970992')
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         tf_multiply_int)
 
@@ -119,6 +122,32 @@ class MergeableCompCompilerTest(test_case.TestCase):
     self.assertEqual(expected_zero, 0)
     self.assertEqual(expected_two, 2)
     self.assertEqual(expected_six, 6)
+
+  def test_compiles_simple_noarg_computation(self):
+    self.skipTest('b/203780753')
+
+    @computations.federated_computation()
+    def return_server_value():
+      return intrinsics.federated_value(0, placements.SERVER)
+
+    mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
+        return_server_value)
+
+    self.assertIsInstance(mergeable_form,
+                          mergeable_comp_execution_context.MergeableCompForm)
+
+  def test_preserves_semantics_of_noarg_computation(self):
+    self.skipTest('b/203780753')
+
+    @computations.federated_computation()
+    def return_server_value():
+      return intrinsics.federated_value(0, placements.SERVER)
+
+    mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
+        return_server_value)
+
+    result = self._invoke_mergeable_form_on_arg(mergeable_form, None)
+    self.assertEqual(result, 0)
 
   def test_compiles_server_placed_computation(self):
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(

@@ -1390,6 +1390,15 @@ class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
       transformations.force_align_and_split_by_intrinsics(
           comp, [building_block_factory.create_null_federated_map()])
 
+  def test_splits_on_intrinsic_noarg_function(self):
+    self.skipTest('b/203780753')
+    federated_broadcast = compiler_test_utils.create_whimsy_called_federated_broadcast(
+    )
+    called_intrinsics = building_blocks.Struct([federated_broadcast])
+    comp = building_blocks.Lambda(None, None, called_intrinsics)
+    call = building_block_factory.create_null_federated_broadcast()
+    self.assert_splits_on(comp, call)
+
   def test_splits_on_selected_intrinsic_broadcast(self):
     federated_broadcast = compiler_test_utils.create_whimsy_called_federated_broadcast(
     )
