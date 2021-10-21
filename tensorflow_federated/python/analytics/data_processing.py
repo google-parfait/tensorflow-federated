@@ -14,7 +14,7 @@
 """A set of utility functions for data processing."""
 
 import math
-from typing import Optional
+from typing import Optional, Tuple
 import tensorflow as tf
 
 
@@ -189,10 +189,17 @@ def get_unique_elements(dataset: tf.data.Dataset,
 # TODO(b/192336690): Improve the efficiency of `get_top_elememnts`.
 # The current implementation iterates `dataset` twice, which is not optimal.
 @tf.function
-def get_top_elements(dataset: tf.data.Dataset,
-                     max_user_contribution: int,
-                     max_string_length: Optional[int] = None):
-  """Gets the top `max_user_contribution` unique words from the input `dataset`.
+def _get_top_elements_and_counts(
+    dataset: tf.data.Dataset,
+    max_user_contribution: int,
+    max_string_length: Optional[int] = None) -> Tuple[tf.Tensor, tf.Tensor]:
+  """Helper method for getting top `max_user_contribution` unique words from the input `dataset`.
+
+  This method returns a tuple of words and counts, where words are the most
+  common unique words in the dataset, and counts is the number of times each one
+  appears. We use this method to implement `get_top_elements`, which returns the
+  top unique words, and `get_top_multi_elements` which returns every instance of
+  the top words (not just one per unique top word).
 
   The input `dataset` must yield batched 1-d tensors. This function reads each
   coordinate of the tensor as an individual element and caps the total number of
@@ -201,17 +208,19 @@ def get_top_elements(dataset: tf.data.Dataset,
 
   Args:
     dataset: A `tf.data.Dataset` to extract top elements from. Element type must
-     be `tf.string`.
+      be `tf.string`.
     max_user_contribution: The maximum number of elements to keep.
     max_string_length: The maximum lenghth (in bytes) of strings in the dataset.
       Strings longer than `max_string_length` will be truncated. Defaults to
       `None`, which means there is no limit of the string length.
 
   Returns:
-    A rank-1 Tensor containing the top `max_user_contribution` unique elements
-    of the input `dataset`. If the total number of unique words is less than or
-    equal to `max_user_contribution`, returns the list of all unique elements.
-
+    words: A rank-1 Tensor containing the top `max_user_contribution` unique
+      elements of the input `dataset`. If the total number of unique words is
+      less than or equal to `max_user_contribution`, returns the list of all
+      unique elements.
+    counts: A rank-1 Tensor containing the counts for each of the elements in
+      words.
   Raises:
     ValueError:
       -- If the shape of elements in `dataset` is not rank 1.
@@ -253,5 +262,96 @@ def get_top_elements(dataset: tf.data.Dataset,
     top_indices = tf.argsort(
         counts, axis=-1, direction='DESCENDING')[:max_user_contribution]
     top_words = tf.gather(words, top_indices)
-    return top_words
-  return words
+    counts = tf.gather(counts, top_indices)
+    return top_words, counts
+  return words, counts
+
+
+@tf.function
+def get_top_elements(dataset: tf.data.Dataset,
+                     max_user_contribution: int,
+                     max_string_length: Optional[int] = None):
+  """Gets the top `max_user_contribution` unique word set from the input `dataset`.
+
+  This method returns the set of `max_user_contribution` words that appear most
+  frequently in the dataset. Each word will only appear at most once in the
+  output.
+
+  This differs from `get_top_multi_elements` in that it returns a set rather
+  than a multiset.
+
+  The input `dataset` must yield batched 1-d tensors. This function reads each
+  coordinate of the tensor as an individual element and caps the total number of
+  elements to return. Note that the returned set of top words will not
+  necessarily be sorted.
+
+  Args:
+    dataset: A `tf.data.Dataset` to extract top elements from. Element type must
+      be `tf.string`.
+    max_user_contribution: The maximum number of elements to keep.
+    max_string_length: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `max_string_length` will be truncated. Defaults to
+      `None`, which means there is no limit of the string length.
+
+  Returns:
+    A rank-1 Tensor containing the top `max_user_contribution` unique elements
+    of the input `dataset`. If the total number of unique words is less than or
+    equal to `max_user_contribution`, returns the list of all unique elements.
+
+  Raises:
+    ValueError:
+      -- If the shape of elements in `dataset` is not rank 1.
+      -- If `max_user_contribution` is less than 1.
+      -- If `max_string_length` is not `None` and is less than 1.
+    TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
+      `tf.string`.
+  """
+  top_words, _ = _get_top_elements_and_counts(dataset, max_user_contribution,
+                                              max_string_length)
+  return top_words
+
+
+@tf.function
+def get_top_multi_elements(dataset: tf.data.Dataset,
+                           max_user_contribution: int,
+                           max_string_length: Optional[int] = None):
+  """Gets the top `max_user_contribution` unique word multiset from the input `dataset`.
+
+  This method returns the `max_user_contribution` most common unique words from
+  the dataset, but returns a multiset. That is, a word will appear in the output
+  as many times as it did in the dataset, but each unique word only counts one
+  toward the `max_user_contribution` limit.
+
+  This differs from `get_top_elements` in that it returns a multiset rather than
+  a set.
+
+  The input `dataset` must yield batched 1-d tensors. This function reads each
+  coordinate of the tensor as an individual element and caps the total number of
+  elements to return. Note that the returned set of top words will not
+  necessarily be sorted.
+
+  Args:
+    dataset: A `tf.data.Dataset` to extract top elements from. Element type must
+      be `tf.string`.
+    max_user_contribution: The maximum number of elements to keep.
+    max_string_length: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `max_string_length` will be truncated. Defaults to
+      `None`, which means there is no limit of the string length.
+
+  Returns:
+    A rank-1 Tensor containing the top `max_user_contribution` unique elements
+    of the input `dataset`. If the total number of unique words is less than or
+    equal to `max_user_contribution`, returns the list of all unique elements.
+
+  Raises:
+    ValueError:
+      -- If the shape of elements in `dataset` is not rank 1.
+      -- If `max_user_contribution` is less than 1.
+      -- If `max_string_length` is not `None` and is less than 1.
+    TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
+      `tf.string`.
+  """
+  top_words, counts = _get_top_elements_and_counts(dataset,
+                                                   max_user_contribution,
+                                                   max_string_length)
+  return tf.repeat(top_words, counts)

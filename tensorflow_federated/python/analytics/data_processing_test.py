@@ -95,8 +95,7 @@ class DataProcessingTest(tf.test.TestCase, parameterized.TestCase):
       ('batch_size_1', ['a', 'b', 'a', 'c', 'b', 'c', 'c'
                        ], 1, 4, [b'a', b'b', b'a', b'c']),
       ('batch_size_3', ['a', 'b', 'a', 'c', 'b', 'c', 'c'
-                       ], 3, 4, [b'a', b'b', b'a']),
-  )
+                       ], 3, 4, [b'a', b'b', b'a']))
   def test_capped_elements_returns_expected_values(self, input_data, batch_size,
                                                    max_user_contribution,
                                                    expected_result):
@@ -339,6 +338,96 @@ class DataProcessingTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(
         TypeError, '`dataset.element_spec.dtype` must be `tf.string`.'):
       data_processing.get_top_elements(ds, max_user_contribution=10)
+
+  @parameterized.named_parameters(
+      ('empty_dataset', tf.constant([], dtype=tf.string), 3, 1, []),
+      ('string_batch_size_1_max_contrib_2', ['a', 'b', 'a', 'c', 'b', 'c', 'c'],
+       1, 2, [b'a', b'a', b'c', b'c', b'c']),
+      ('string_batch_size_3_max_contrib_2', ['a', 'b', 'a', 'c', 'b', 'c', 'c'],
+       3, 2, [b'a', b'a', b'c', b'c', b'c']),
+      ('string_batch_size_1_max_contrib_3', ['a', 'b', 'a', 'c', 'b', 'c', 'c'],
+       1, 3, [b'a', b'a', b'b', b'b', b'c', b'c', b'c']),
+      ('string_batch_size_2_max_contrib_4', ['a', 'b', 'c', 'd', 'e', 'a'], 2,
+       4, [b'a', b'a', b'b', b'c', b'd']),
+  )
+  def test_get_top_multi_elements_returns_expected_values(
+      self, input_data, batch_size, max_user_contribution, expected_result):
+    ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
+    top_elements = data_processing.get_top_multi_elements(
+        ds, max_user_contribution)
+    self.assertSetEqual(set(top_elements.numpy()), set(expected_result))
+
+  @parameterized.named_parameters(
+      ('empty_dataset', tf.constant([], dtype=tf.string), 3, 1, 3, []),
+      ('max_contrib_max_string_len', [
+          'abc', 'abcd', 'def', 'ghijk', 'ghijk', 'ghijk', 'abc', 'abc', 'def'
+      ], 3, 2, 3, ['abc', 'abc', 'abc', 'ghi', 'ghi']),
+      ('max_string_len', ['abcd', 'abcde', 'bcd', 'bcdef'
+                         ], 1, 10, 3, ['abc', 'bcd']),
+      ('max_contrib', ['abcd', 'abcde', 'bcd', 'bcdef', 'bcd', 'bcdef'
+                      ], 3, 2, 10, ['bcd', 'bcd', 'bcdef', 'bcdef']),
+      ('unicode', ['新年快乐', '新年', '☺️😇', '☺️😇', '안녕하세요', '☺️', '안녕하세요'
+                  ], 1, 2, 6, ['新年', '☺️']),
+  )
+  def test_get_top_multi_elements_with_max_len_returns_expected_values(
+      self, input_data, batch_size, max_user_contribution, max_string_length,
+      expected_result):
+    ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
+    top_elements = data_processing.get_top_multi_elements(
+        ds, max_user_contribution, max_string_length=max_string_length)
+    top_elements = [
+        elem.decode('utf-8', 'ignore') for elem in top_elements.numpy()
+    ]
+    self.assertSetEqual(set(top_elements), set(expected_result))
+
+  @parameterized.named_parameters(
+      ('rank_0', None),
+      ('rank_2', 2),
+      ('rank_3', 3),
+  )
+  def test_get_top_multi_elements_raise_rank_value_error(self, dataset_rank):
+    ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b', 'c'])
+    batch_size = 1
+    max_user_contribution = 1
+    while dataset_rank:
+      ds = ds.batch(batch_size=batch_size)
+      dataset_rank -= 1
+
+    with self.assertRaisesRegex(
+        ValueError, 'The shape of elements in `dataset` must be of rank 1.*'):
+      data_processing.get_top_multi_elements(ds, max_user_contribution)
+
+  @parameterized.named_parameters(
+      ('max_user_contribution_0', 0, 1,
+       '`max_user_contribution` must be at least 1.'),
+      ('max_user_contribution_neg', -10, 10,
+       '`max_user_contribution` must be at least 1.'),
+      ('max_string_length_0', 10, 0, '`max_string_length` must be at least 1.'),
+      ('max_string_length_neg', 20, -1,
+       '`max_string_length` must be at least 1.'),
+  )
+  def test_get_top_multi_elements_raise_params_value_error(
+      self, max_user_contribution, max_string_length, raises_regex):
+    ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b',
+                                             'c']).batch(batch_size=1)
+
+    with self.assertRaisesRegex(ValueError, raises_regex):
+      data_processing.get_top_multi_elements(
+          ds,
+          max_user_contribution=max_user_contribution,
+          max_string_length=max_string_length)
+
+  @parameterized.named_parameters(
+      ('int_dataset', [1, 3, 2, 2, 4, 6, 3]),
+      ('float_dataset', [1.0, 4.0, 4.0, 6.0]),
+      ('bool_dataset', [True, True, False]),
+  )
+  def test_get_top_multi_elements_raise_type_error(self, input_data):
+    ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size=1)
+
+    with self.assertRaisesRegex(
+        TypeError, '`dataset.element_spec.dtype` must be `tf.string`.'):
+      data_processing.get_top_multi_elements(ds, max_user_contribution=10)
 
 
 if __name__ == '__main__':
