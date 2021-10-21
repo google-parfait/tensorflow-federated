@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl.execution_contexts import mergeable_c
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
@@ -38,6 +39,16 @@ def build_sum_client_arg_computation(
   def up_to_merge(server_arg, client_arg):
     del server_arg  # Unused
     return intrinsics.federated_sum(client_arg)
+
+  return up_to_merge
+
+
+def build_noarg_count_clients_computation() -> computation_base.Computation:
+
+  @computations.federated_computation()
+  def up_to_merge():
+    return intrinsics.federated_sum(
+        intrinsics.federated_value(1, placements.CLIENTS))
 
   return up_to_merge
 
@@ -67,11 +78,20 @@ def build_whimsy_after_merge_computation(
     original_arg_type: computation_types.Type,
     merge_result_type: computation_types.Type) -> computation_base.Computation:
 
-  @computations.federated_computation(
-      original_arg_type, computation_types.at_server(merge_result_type))
-  def after_merge(original_arg, merge_result):
-    del merge_result  # Unused
-    return original_arg
+  if original_arg_type is not None:
+
+    @computations.federated_computation(
+        original_arg_type, computation_types.at_server(merge_result_type))
+    def after_merge(original_arg, merge_result):
+      del merge_result  # Unused
+      return original_arg
+
+  else:
+
+    @computations.federated_computation(
+        computation_types.at_server(merge_result_type))
+    def after_merge(merge_result):
+      return merge_result
 
   return after_merge
 
@@ -84,6 +104,17 @@ def build_return_merge_result_computation(
       original_arg_type, computation_types.at_server(merge_result_type))
   def after_merge(original_arg, merge_result):
     del original_arg  # Unused
+    return merge_result
+
+  return after_merge
+
+
+def build_return_merge_result_with_no_first_arg_computation(
+    merge_result_type: computation_types.Type) -> computation_base.Computation:
+
+  @computations.federated_computation(
+      computation_types.at_server(merge_result_type))
+  def after_merge(merge_result):
     return merge_result
 
   return after_merge
@@ -212,6 +243,17 @@ class MergeableCompFormTest(absltest.TestCase):
     mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
         up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
 
+    self.assertIsInstance(mergeable_comp_form,
+                          mergeable_comp_execution_context.MergeableCompForm)
+
+  def test_passes_with_noarg_top_level_computation(self):
+    self.skipTest('b/203780753')
+    up_to_merge = build_noarg_count_clients_computation()
+    merge = build_whimsy_merge_computation(tf.int32)
+    after_merge = build_whimsy_after_merge_computation(
+        up_to_merge.type_signature.parameter, merge.type_signature.result)
+    mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
+        up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
     self.assertIsInstance(mergeable_comp_form,
                           mergeable_comp_execution_context.MergeableCompForm)
 
@@ -419,6 +461,29 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
         arg, up_to_merge.type_signature.parameter)
     result = mergeable_comp_context.invoke(mergeable_comp_form, ingested_val)
     self.assertEqual(expected_result, result)
+
+  def test_counts_clients_with_noarg_computation(self):
+    self.skipTest('b/203780753')
+    num_clients = 100
+    num_executors = 5
+    up_to_merge = build_noarg_count_clients_computation()
+    merge = build_sum_merge_computation(tf.int32)
+    after_merge = build_return_merge_result_with_no_first_arg_computation(
+        merge.type_signature.result)
+
+    mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
+        up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
+    ex_factories = [
+        executor_stacks.local_executor_factory(
+            default_num_clients=int(num_clients / num_executors))
+        for _ in range(num_executors)
+    ]
+    mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
+        ex_factories)
+
+    expected_result = num_clients
+    result = mergeable_comp_context.invoke(mergeable_comp_form, None)
+    self.assertEqual(result, expected_result)
 
 
 if __name__ == '__main__':
