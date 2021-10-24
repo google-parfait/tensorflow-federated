@@ -261,7 +261,7 @@ class _ModelFromFunctional(model_lib.Model):
         training=training)
 
   @tf.function
-  def report_local_outputs(self):
+  def report_local_unfinalized_metrics(self):
     outputs = collections.OrderedDict(
         loss=[self._loss_sum,
               tf.cast(self._num_examples, tf.float32)])
@@ -279,6 +279,10 @@ class _ModelFromFunctional(model_lib.Model):
       finalizers[metric_name] = finalizer.create_keras_metric_finalizer(
           metric_constructor)
     return finalizers
+
+  @tf.function
+  def report_local_outputs(self):
+    return self.report_local_unfinalized_metrics()
 
   @property
   def federated_output_computation(self) -> computation_base.Computation:
