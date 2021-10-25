@@ -210,14 +210,14 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
   """`AggregationProcess` factory for securely summing values.
 
   The created `tff.templates.AggregationProcess` uses the
-  `tff.federated_secure_sum_bitwidth` operator for movement of all values from
+  `tff.federated_secure_sum` operator for movement of all values from
   `tff.CLIENTS` to `tff.SERVER`.
 
   In order for values to be securely summed, their range needs to be known in
   advance and communicated to clients, so that clients can prepare the values in
-  a form compatible with the `tff.federated_secure_sum_bitwidth` operator (that
-  is, integers in range `[0, 2**b-1]` for some `b`), and for inverse mapping to
-  be applied on the server. This will be done as specified by the
+  a form compatible with the `tff.federated_secure_sum` operator (that is,
+  integers in range `[0, 2**b-1]` for some `b`), and for inverse mapping to be
+  applied on the server. This will be done as specified by the
   `upper_bound_threshold` and `lower_bound_threshold` constructor arguments,
   with the following options:
 
@@ -359,14 +359,14 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         computations.tf_computation(
             lambda bound, value: tf.cast(bound < value, COUNT_TF_TYPE)),
         (intrinsics.federated_broadcast(upper_bound), value_max))
-    max_clipped_count = intrinsics.federated_secure_sum_bitwidth(
-        is_max_clipped, bitwidth=1)
+    max_clipped_count = intrinsics.federated_secure_sum(
+        is_max_clipped, max_input=1)
     is_min_clipped = intrinsics.federated_map(
         computations.tf_computation(
             lambda bound, value: tf.cast(bound > value, COUNT_TF_TYPE)),
         (intrinsics.federated_broadcast(lower_bound), value_min))
-    min_clipped_count = intrinsics.federated_secure_sum_bitwidth(
-        is_min_clipped, bitwidth=1)
+    min_clipped_count = intrinsics.federated_secure_sum(
+        is_min_clipped, max_input=1)
     measurements = collections.OrderedDict(
         secure_upper_clipped_count=max_clipped_count,
         secure_lower_clipped_count=min_clipped_count,
@@ -380,8 +380,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       value = intrinsics.federated_map(
           _client_shift, (value, intrinsics.federated_broadcast(upper_bound),
                           intrinsics.federated_broadcast(lower_bound)))
-      value = intrinsics.federated_secure_sum_bitwidth(value,
-                                                       self._secagg_bitwidth)
+      value = intrinsics.federated_secure_sum(
+          value, max_input=2**self._secagg_bitwidth - 1)
       num_summands = intrinsics.federated_sum(_client_one())
       value = intrinsics.federated_map(_server_shift,
                                        (value, lower_bound, num_summands))
