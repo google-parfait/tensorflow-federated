@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Factory for secure summation."""
+"""Factories for secure summation."""
 
 import collections
 import enum
@@ -44,6 +44,126 @@ ThresholdEstType = Union[int, float, np.ndarray,
 class _Config(enum.Enum):
   INT = 1
   FLOAT = 2
+
+
+class SecureModularSumFactory(factory.UnweightedAggregationFactory):
+  """`AggregationProcess` factory for securely summing values under a modulus.
+
+  The created `tff.templates.AggregationProcess` uses the
+  `tff.federated_secure_modular_sum` operator for movement of values from
+  `tff.CLIENTS` to `tff.SERVER`.
+
+  The aggregator requires integer types, and values in range `[0, modulus-1]`
+  (if `symmetric_range` is `False`) or in range `[-(modulus-1), +(modulus-1)]`
+  (if `symmetric_range` is `True`). In the latter case, additional computation
+  is needed for correct reduction to the `tff.federated_secure_modular_sum` with
+  `2*modulus-1` as the modulus for actual secure summation.
+
+  The aggregator always returns a value in those ranges, implemented as a
+  modular summation, regardless of input values. That is, if an input value at
+  runtime is outside of the specified range an error will not be raised, rather
+  the value will "wrap around", according to modular arithmetic.
+
+  For example, if `symmetric_range` is `False`, given client values `[1, 3, 6]`
+  and modulus `4`, the sum will be
+  `((1 % 4) + (3 % 4) + (6 % 4)) % 4 = (1 + 3 + 2) % 4 = 6 % 4 = 2`.
+
+  If `symmetric_range` is `True`, given client values `[1, 3, 6]` and modulus
+  `4`, the sum will be
+  `((1 %s 4) + (3 %s 4) + (6 %s 4)) %s 4 = (1 + 3 + (-3)) %s 4 = 1`.
+  The `* %s x` operator symbolizes modular "wrap around" to range `[-x, x]`.
+
+  The implementation of the case of `symmetric_range` is `True` is by delegation
+  to `federated_secure_modular_sum` with modulus `2*modulus-1` is, which is
+  equivalent to modular clip to range `[-(modulus-1), +(modulus-1)]`, and then
+  representing `x` in that range as `(x + 2*modulus-1) % 2*modulus-1`, which is
+  congruent with `x` under the desired modulus, thus compatible with secure
+  aggreagtion. This is reverted after summation by modular clip to the initial
+  range `[-(modulus-1), +(modulus-1)]`.
+
+  NOTE: Unlike `tff.federated_secure_modular_sum`, the `modulus` cannot be a
+  structure of integers. If different moduli are needed for different tensors,
+  recommended way of to achieve it is using the compositon of aggregators.
+  """
+
+  def __init__(self,
+               modulus: Union[int, np.ndarray],
+               symmetric_range: bool = False):
+    """Initializes `SecureModularSumFactory`.
+
+    Args:
+      modulus: An integer modulus for the summation.
+      symmetric_range: A bool indicating whether the summation is on symmetric
+        range around `0` or not.
+
+    Raises:
+      TypeError: If `modulus` is not an `int` or Numpy scalar, or
+        `symmetric_range` is not a `bool`.
+      ValueError: If `modulus` is not positive.
+    """
+    py_typecheck.check_type(modulus, (int, np.integer))
+    if modulus <= 0:
+      raise ValueError(
+          f'Provided modulus must be positive, but found: {modulus}')
+    py_typecheck.check_type(symmetric_range, bool)
+
+    self._modulus = modulus
+    self._symmetric_range = symmetric_range
+
+  def create(self, value_type):
+    py_typecheck.check_type(value_type, factory.ValueType.__args__)
+    if not type_analysis.is_structure_of_integers(value_type):
+      raise TypeError('Provided value_type must either be an integer type or'
+                      f'a structure of integer types, but found: {value_type}')
+
+    @computations.federated_computation
+    def init_fn():
+      return intrinsics.federated_value((), placements.SERVER)
+
+    @computations.federated_computation(init_fn.type_signature.result,
+                                        computation_types.at_clients(value_type)
+                                       )
+    def next_fn(state, value):
+      if self._symmetric_range:
+        # Sum in [-M+1, M-1].
+        # Delegation to `federated_secure_modular_sum` with modulus 2*M-1 is
+        # equivalent to modular clip to range [-M+1, M-1]. Then, represent `x`
+        # in that range as `(x + 2*M-1) % 2*M-1` which is congruent with `x`
+        # under the desired modulus, thus compatible with secure aggreagtion.
+        # This is reverted after summation by modular clip to the initial range.
+        summed_value = intrinsics.federated_secure_modular_sum(
+            value, 2 * self._modulus - 1)
+        summed_value = intrinsics.federated_map(
+            computations.tf_computation(
+                self._mod_clip_after_symmetric_range_sum), summed_value)
+      else:
+        summed_value = intrinsics.federated_secure_modular_sum(
+            value, self._modulus)
+      empty_measurements = intrinsics.federated_value((), placements.SERVER)
+      return measured_process.MeasuredProcessOutput(state, summed_value,
+                                                    empty_measurements)
+
+    return aggregation_process.AggregationProcess(init_fn, next_fn)
+
+  def _mod_clip_after_symmetric_range_sum(self, value):
+    """Modular clip by value after summation with symmetric_range.
+
+    Since we know the sum will be in range [0, 2*(modulus-1)], the modular
+    clip to range [-(modulus-1), +(modulus-1)] is equivalent to shifting values
+    larger or equal to the modulus.
+
+    Args:
+      value: The summed value to be clipped.
+
+    Returns:
+      The clipped value.
+    """
+
+    def shift_negative_values(v):
+      where = tf.cast(tf.math.greater_equal(v, self._modulus), v.dtype)
+      return v - (2 * self._modulus - 1) * where
+
+    return tf.nest.map_structure(shift_negative_values, value)
 
 
 def _check_bound_process(bound_process: estimation_process.EstimationProcess,

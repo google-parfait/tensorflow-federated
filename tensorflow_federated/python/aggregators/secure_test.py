@@ -71,6 +71,130 @@ def _measurements_type(bound_type):
           secure_lower_threshold=bound_type))
 
 
+class SecureModularSumFactoryComputationTest(test_case.TestCase,
+                                             parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('scalar_non_symmetric_int32', 8, tf.int32, False),
+      ('scalar_non_symmetric_int64', 8, tf.int64, False),
+      ('struct_non_symmetric', 8, _test_struct_type(tf.int32), False),
+      ('scalar_symmetric_int32', 8, tf.int32, True),
+      ('scalar_symmetric_int64', 8, tf.int64, True),
+      ('struct_symmetric', 8, _test_struct_type(tf.int32), True),
+      ('numpy_modulus_non_symmetric', np.int32(8), tf.int32, False),
+      ('numpy_modulus_symmetric', np.int32(8), tf.int32, True),
+  )
+  def test_type_properties(self, modulus, value_type, symmetric_range):
+    factory_ = secure.SecureModularSumFactory(
+        modulus=8, symmetric_range=symmetric_range)
+    self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
+    value_type = computation_types.to_type(value_type)
+    process = factory_.create(value_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+
+    expected_state_type = computation_types.at_server(
+        computation_types.to_type(()))
+    expected_measurements_type = expected_state_type
+
+    expected_initialize_type = computation_types.FunctionType(
+        parameter=None, result=expected_state_type)
+    self.assertTrue(
+        process.initialize.type_signature.is_equivalent_to(
+            expected_initialize_type))
+
+    expected_next_type = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            state=expected_state_type,
+            value=computation_types.at_clients(value_type)),
+        result=measured_process.MeasuredProcessOutput(
+            state=expected_state_type,
+            result=computation_types.at_server(value_type),
+            measurements=expected_measurements_type))
+    self.assertTrue(
+        process.next.type_signature.is_equivalent_to(expected_next_type))
+
+  def test_float_modulus_raises(self):
+    with self.assertRaises(TypeError):
+      secure.SecureModularSumFactory(modulus=8.0)
+    with self.assertRaises(TypeError):
+      secure.SecureModularSumFactory(modulus=np.float32(8.0))
+
+  def test_modulus_not_positive_raises(self):
+    with self.assertRaises(ValueError):
+      secure.SecureModularSumFactory(modulus=0)
+    with self.assertRaises(ValueError):
+      secure.SecureModularSumFactory(modulus=-1)
+
+  def test_symmetric_range_not_bool_raises(self):
+    with self.assertRaises(TypeError):
+      secure.SecureModularSumFactory(modulus=8, symmetric_range='True')
+
+  @parameterized.named_parameters(
+      ('float_type', computation_types.TensorType(tf.float32)),
+      ('mixed_type', computation_types.to_type([tf.float32, tf.int32])),
+      ('federated_type',
+       computation_types.FederatedType(tf.int32, placements.SERVER)),
+      ('function_type', computation_types.FunctionType(None, ())),
+      ('sequence_type', computation_types.SequenceType(tf.float32)))
+  def test_incorrect_value_type_raises(self, bad_value_type):
+    with self.assertRaises(TypeError):
+      secure.SecureModularSumFactory(8).create(bad_value_type)
+
+
+class SecureModularSumFactoryExecutionTest(test_case.TestCase,
+                                           parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('a', 2, [0, 1], 1),
+      ('b', 2, [0, 1, 1], 0),
+      ('c', 2, [0, 1, 1, 1], 1),
+      ('d', 8, [1, 2, 3], 6),
+      ('e', 8, [1, 2, 3, 4], 2),
+      ('f', 22, [22], 0),
+      ('g', 22, [220], 0),
+      ('h', 22, [-1, 7], 6),
+  )
+  def test_non_symmetric(self, modulus, client_data, expected_sum):
+    factory_ = secure.SecureModularSumFactory(modulus, symmetric_range=False)
+    process = factory_.create(computation_types.to_type(tf.int32))
+    state = process.initialize()
+    output = process.next(state, client_data)
+    self.assertEqual(expected_sum, output.result)
+
+  @parameterized.named_parameters(
+      ('a', 2, [0, 1], 1),
+      ('b', 2, [0, 1, 1], -1),
+      ('c', 2, [0, 1, 1, 1], 0),
+      ('d', 2, [0, -1], -1),
+      ('e', 2, [0, -1, -1], 1),
+      ('f', 2, [0, -1, -1, -1], 0),
+      ('g', 8, [1, 2, 3], 6),
+      ('h', 8, [1, 2, 3, 4], -5),
+      ('i', 8, [-1, -2, -3, -4], 5),
+      ('j', 22, [22], -21),
+      ('k', 22, [-22], 21),
+      ('l', 22, [43 * 5], 0),
+      ('m', 22, [112, 123], 20),
+  )
+  def test_symmetric(self, modulus, client_data, expected_sum):
+    factory_ = secure.SecureModularSumFactory(modulus, symmetric_range=True)
+    process = factory_.create(computation_types.to_type(tf.int32))
+    state = process.initialize()
+    output = process.next(state, client_data)
+    self.assertEqual(expected_sum, output.result)
+
+  def test_struct_type(self):
+    factory_ = secure.SecureModularSumFactory(8)
+    process = factory_.create(
+        computation_types.to_type(_test_struct_type(tf.int32)))
+    state = process.initialize()
+    client_data = [(tf.constant([1, 2]), tf.constant(3)),
+                   (tf.constant([4, 5]), tf.constant(6))]
+    output = process.next(state, client_data)
+    self.assertAllEqual([5, 7], output.result[0])
+    self.assertEqual(1, output.result[1])
+
+
 class SecureSumFactoryComputationTest(test_case.TestCase,
                                       parameterized.TestCase):
 
