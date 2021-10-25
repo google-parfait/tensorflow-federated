@@ -247,7 +247,6 @@ class MergeableCompFormTest(absltest.TestCase):
                           mergeable_comp_execution_context.MergeableCompForm)
 
   def test_passes_with_noarg_top_level_computation(self):
-    self.skipTest('b/203780753')
     up_to_merge = build_noarg_count_clients_computation()
     merge = build_whimsy_merge_computation(tf.int32)
     after_merge = build_whimsy_after_merge_computation(
@@ -463,7 +462,6 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     self.assertEqual(expected_result, result)
 
   def test_counts_clients_with_noarg_computation(self):
-    self.skipTest('b/203780753')
     num_clients = 100
     num_executors = 5
     up_to_merge = build_noarg_count_clients_computation()
