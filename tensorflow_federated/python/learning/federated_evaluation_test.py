@@ -99,6 +99,13 @@ class TestModel(model.Model):
 
     return computations.federated_computation(aggregate_metrics)
 
+  @tf.function
+  def report_local_unfinalized_metrics(self):
+    return collections.OrderedDict(num_over=self._variables.num_over)
+
+  def metric_finalizers(self):
+    return collections.OrderedDict(num_over=tf.function(func=lambda x: x))
+
 
 class TestModelQuant(model.Model):
   """This model stores how much client data matches the input (num_same)."""
@@ -158,6 +165,13 @@ class TestModelQuant(model.Model):
           num_same=intrinsics.federated_sum(client_metrics.num_same))
 
     return computations.federated_computation(aggregate_metrics)
+
+  @tf.function
+  def report_local_unfinalized_metrics(self):
+    return collections.OrderedDict(num_same=self._variables.num_same)
+
+  def metric_finalizers(self):
+    return collections.OrderedDict(num_same=tf.function(func=lambda x: x))
 
 
 def _model_fn_from_keras():

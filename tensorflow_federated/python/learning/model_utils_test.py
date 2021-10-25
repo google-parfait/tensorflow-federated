@@ -67,6 +67,13 @@ class TestModel(model_lib.Model):
   def federated_output_computation(self):
     return computations.federated_computation(lambda x: x)
 
+  @tf.function
+  def report_local_unfinalized_metrics(self):
+    return collections.OrderedDict(num_examples=self.num_examples.read_value())
+
+  def metric_finalizers(self):
+    return collections.OrderedDict(num_examples=tf.function(func=lambda x: x))
+
 
 class WeightsTypeFromModelTest(test_case.TestCase):
 

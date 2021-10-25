@@ -23,7 +23,7 @@ model with `tff.learning.models.model_from_functional`.
 """
 
 import collections
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union, OrderedDict
 
 import numpy as np
 import tensorflow as tf
@@ -262,6 +262,11 @@ class _ModelFromFunctional(model_lib.Model):
 
   @tf.function
   def report_local_outputs(self):
+    return self.report_local_unfinalized_metrics()
+
+  @tf.function
+  def report_local_unfinalized_metrics(
+      self) -> OrderedDict[str, List[tf.Tensor]]:
     outputs = collections.OrderedDict(
         loss=[self._loss_sum,
               tf.cast(self._num_examples, tf.float32)])

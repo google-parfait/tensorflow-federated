@@ -189,6 +189,8 @@ class FunctionalTest(tf.test.TestCase):
         tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
     self.assertAllClose(tff_model.report_local_outputs(),
                         collections.OrderedDict(loss=[1066.19628, 1250.0]))
+    self.assertAllClose(tff_model.report_local_unfinalized_metrics(),
+                        collections.OrderedDict(loss=[1066.19628, 1250.0]))
 
   def test_tff_model_from_functional_fails_with_repeated_metric_names(self):
     dataset = create_test_dataset()
@@ -232,6 +234,15 @@ class FunctionalTest(tf.test.TestCase):
     local_outputs = tff_model.report_local_outputs()
     self.assertAllClose(
         local_outputs,
+        collections.OrderedDict(
+            # The model uses mean squred error as `loss`, so the other two
+            # metrics (`mean_squared_error` and `root_mean_squared_error`)
+            # should have the same state as `loss`.
+            loss=[1066.19628, 1250.0],
+            mean_squared_error=[1066.19628, 1250.0],
+            root_mean_squared_error=[1066.19628, 1250.0]))
+    self.assertAllClose(
+        tff_model.report_local_unfinalized_metrics(),
         collections.OrderedDict(
             # The model uses mean squred error as `loss`, so the other two
             # metrics (`mean_squared_error` and `root_mean_squared_error`)
