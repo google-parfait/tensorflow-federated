@@ -67,6 +67,11 @@ def tf_multiply_int(x, y):
   return x * y
 
 
+@computations.federated_computation(tf.int32, tf.int32)
+def return_list(x, y):
+  return [x, y]
+
+
 @computations.federated_computation(
     computation_types.at_server([tf.int32, tf.int32]))
 def server_placed_mult(arg):
@@ -103,6 +108,16 @@ class MergeableCompCompilerTest(test_case.TestCase):
     with self.assertRaisesRegex(ValueError,
                                 'one aggregate dependent on another'):
       mergeable_comp_compiler.compile_to_mergeable_comp_form(dependent_agg_comp)
+
+  def test_preserves_python_containers_in_after_merge(self):
+    mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
+        return_list)
+
+    self.assertIsInstance(mergeable_form,
+                          mergeable_comp_execution_context.MergeableCompForm)
+    self.assert_types_identical(
+        mergeable_form.after_merge.type_signature.result,
+        return_list.type_signature.result)
 
   def test_compiles_standalone_tensorflow_computation(self):
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(

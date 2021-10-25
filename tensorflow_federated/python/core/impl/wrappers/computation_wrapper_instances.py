@@ -103,8 +103,10 @@ def building_block_to_computation(building_block):
   """Converts a computation building block to a computation impl."""
   py_typecheck.check_type(building_block,
                           building_blocks.ComputationBuildingBlock)
-  return computation_impl.ConcreteComputation(building_block.proto,
-                                              context_stack_impl.context_stack)
+  return computation_impl.ConcreteComputation(
+      building_block.proto,
+      context_stack_impl.context_stack,
+      annotated_type=building_block.type_signature)
 
 
 def _check_returns_type_helper(fn, expected_return_type):

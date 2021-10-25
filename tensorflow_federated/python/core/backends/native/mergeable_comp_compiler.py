@@ -133,6 +133,7 @@ def compile_to_mergeable_comp_form(
     ValueError: If `comp` cannot be represented as a computation with at most
     one aggregation in its body.
   """
+  original_return_type = comp.type_signature.result
   building_block = comp.to_building_block()
   lam = _ensure_lambda(building_block)
   lowered_bb, _ = intrinsic_reductions.replace_intrinsics_with_bodies(lam)
@@ -203,6 +204,11 @@ def compile_to_mergeable_comp_form(
     def after_merge_computation(merge_result):
       reported_result = intrinsics.federated_map(report_comp, merge_result)
       return after_agg_callable([[reported_result]])
+
+  annotated_type_signature = computation_types.FunctionType(
+      after_merge_computation.type_signature.parameter, original_return_type)
+  after_merge_computation = computation_impl.ConcreteComputation.with_type(
+      after_merge_computation, annotated_type_signature)
 
   return mergeable_comp_execution_context.MergeableCompForm(
       up_to_merge=up_to_merge_computation,
