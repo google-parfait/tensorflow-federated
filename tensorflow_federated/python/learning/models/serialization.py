@@ -21,6 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -60,6 +61,9 @@ class _LoadedSavedModel(model_lib.Model):
             loaded_module.serialized_federated_output_computation.read_value(
             ).numpy()))
 
+    self._report_local_unfinalized_metrics = loaded_module.report_local_unfinalized_metrics
+    self._serialized_metric_finalizers = loaded_module.serialized_metric_finalizers
+
   @property
   def input_spec(self):
     return self._input_spec
@@ -93,6 +97,21 @@ class _LoadedSavedModel(model_lib.Model):
   @tf.function
   def report_local_outputs(self):
     return self._report_local_outputs()
+
+  @tf.function
+  def report_local_unfinalized_metrics(self):
+    return self._report_local_unfinalized_metrics()
+
+  def metric_finalizers(self):
+
+    def deserialize_metric_finalizer(finalizer):
+      return computation_serialization.deserialize_computation(
+          computation_pb2.Computation.FromString(
+              finalizer.read_value().numpy()))
+
+    return collections.OrderedDict(
+        (metric_name, deserialize_metric_finalizer(finalizer)) for metric_name,
+        finalizer in self._serialized_metric_finalizers.items())
 
   @property
   def federated_output_computation(self):
@@ -192,7 +211,9 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
   Python type as the saved model. If the model serialized using this method is
   a subclass of `tff.learning.Model`, that subclass is _not_ returned. All
   method behavior is retained, but the Python type does not cross serialization
-  boundaries.
+  boundaries. The return type of `metric_finalizers` will be an OrderedDict of
+  str to `tff.tf_computation` (annotated TFF computations) which could be
+  different from that of the model before serialization.
 
   Args:
     model: The `tff.learning.Model` to save.
@@ -261,7 +282,28 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
       predict_on_batch_inference[1].SerializeToString(deterministic=True),
       trainable=False)
   # Serialize the report_local_outputs tf.function.
-  m.report_local_outputs = model.report_local_outputs
+  m.report_local_outputs = model.report_local_outputs.get_concrete_function()
+
+  # Serialize the report_local_unfinalized_metrics tf.function.
+  m.report_local_unfinalized_metrics = (
+      model.report_local_unfinalized_metrics.get_concrete_function())
+
+  # Serialize the metric_finalizers as `tf.Variable`s.
+  m.serialized_metric_finalizers = collections.OrderedDict()
+
+  def serialize_metric_finalizer(finalizer, metric_type):
+    finalizer_computation = computations.tf_computation(finalizer, metric_type)
+    return tf.Variable(
+        computation_serialization.serialize_computation(
+            finalizer_computation).SerializeToString(deterministic=True),
+        trainable=False)
+
+  for metric_name, finalizer in model.metric_finalizers().items():
+    metric_type = type_conversions.type_from_tensors(
+        model.report_local_unfinalized_metrics()[metric_name])
+    m.serialized_metric_finalizers[metric_name] = serialize_metric_finalizer(
+        finalizer, metric_type)
+
   # Serialize the TFF values as string variables that contain the serialized
   # protos from the computation or the type.
   m.serialized_input_spec = tf.Variable(

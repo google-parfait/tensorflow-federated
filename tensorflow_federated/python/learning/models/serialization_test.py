@@ -213,6 +213,13 @@ class _TestModel(model_lib.Model):
   def report_local_outputs(self):
     return collections.OrderedDict()
 
+  @tf.function
+  def report_local_unfinalized_metrics(self):
+    return collections.OrderedDict()
+
+  def metric_finalizers(self):
+    return collections.OrderedDict()
+
   @property
   def federated_output_computation(self):
 
@@ -301,6 +308,32 @@ class SerializationTest(test_case.TestCase, parameterized.TestCase):
       loaded_model_result = loaded_model.forward_pass(test_batch, training)
       self.assertAllClose(
           attr.asdict(model_result), attr.asdict(loaded_model_result))
+
+    # Assert that the models produce the same finalized metrics.
+    # Creating a TFF computation is needed because the `tf.function`-decorated
+    # `metric_finalizers` will create `tf.Variable`s on the non-first call (and
+    # hence, will throw an error if it is directly invoked).
+    @computations.tf_computation(
+        type_conversions.type_from_tensors(
+            model.report_local_unfinalized_metrics()))
+    def finalizer_computation(unfinalized_metrics):
+      finalized_metrics = collections.OrderedDict()
+      for metric_name, finalizer in model.metric_finalizers().items():
+        finalized_metrics[metric_name] = finalizer(
+            unfinalized_metrics[metric_name])
+      return finalized_metrics
+
+    unfinalized_metrics = model.report_local_unfinalized_metrics()
+    finalized_metrics = finalizer_computation(unfinalized_metrics)
+
+    loaded_model_unfinalized_metrics = (
+        loaded_model.report_local_unfinalized_metrics())
+    loaded_model_finalized_metrics = collections.OrderedDict()
+    for metric_name, finalizer in loaded_model.metric_finalizers().items():
+      loaded_model_finalized_metrics[metric_name] = finalizer(
+          loaded_model_unfinalized_metrics[metric_name])
+    self.assertEqual(unfinalized_metrics, loaded_model_unfinalized_metrics)
+    self.assertEqual(finalized_metrics, loaded_model_finalized_metrics)
 
   @parameterized.named_parameters(_TEST_MODEL_FNS)
   def test_saved_model_to_tflite(self, model_fn):
