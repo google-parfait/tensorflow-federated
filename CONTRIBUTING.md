@@ -89,7 +89,7 @@ Include a license at the top of new files.
 ### TensorFlow Guidelines.
 
 *   TensorFlow code should follow the
-    [TensorFlow Style Guide](https://www.tensorflow.org/community/style_guide).
+    [TensorFlow Style Guide](https://www.tensorflow.org/community/contribute/code_style).
 
 *   TensorFlow code used with TFF should support both "graph mode" and "eager
     mode" execution. Good eager-mode design principles should be followed,
