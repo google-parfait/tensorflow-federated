@@ -22,6 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
+from tensorflow_federated.python.program import value_reference
 
 
 class TensorboardReleaseManager(release_manager.ReleaseManager):
@@ -58,17 +59,18 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
       summary_dir = os.fspath(summary_dir)
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
-  # TODO(b/202418342): Add support for `ValueReference`.
   def release(self, value: Any, key: int):
     """Releases `value` from a federated program.
 
     Args:
-      value: The value to release.
+      value: A materialized value, a value reference, or structure materialized
+        values and value references representing the value to release.
       key: A integer to use to reference the released `value`, `key` represents
         a step in a federated program.
     """
     py_typecheck.check_type(key, int)
-    flattened_value = structure_utils.flatten(value)
+    materialized_value = value_reference.materialize_value(value)
+    flattened_value = structure_utils.flatten(materialized_value)
 
     with self._summary_writer.as_default():
       for name, value in flattened_value.items():

@@ -21,11 +21,31 @@ unplaced.
 """
 
 import abc
-from typing import Union
+import typing
+from typing import Any, Union
 
 import numpy as np
+import tree
 
 from tensorflow_federated.python.core.impl.types import typed_object
+
+
+def materialize_value(value: Any) -> Any:
+  """Returns a structure of materialized values.
+
+  Args:
+    value: A materialized value, a value reference, or structure materialized
+      values and value references to materialize.
+  """
+
+  def _materialize(value):
+    if isinstance(value, ServerArrayReference):
+      value = typing.cast(ServerArrayReference, value)
+      return value.get_value()
+    else:
+      return value
+
+  return tree.map_structure(_materialize, value)
 
 
 class ServerArrayReference(typed_object.TypedObject, metaclass=abc.ABCMeta):

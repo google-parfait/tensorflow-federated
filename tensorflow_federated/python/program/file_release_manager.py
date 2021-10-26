@@ -21,6 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import release_manager
+from tensorflow_federated.python.program import value_reference
 
 
 class SavedModelFileReleaseManager(release_manager.ReleaseManager):
@@ -70,19 +71,20 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     basename = f'{self._prefix}{key}'
     return os.path.join(self._root_dir, basename)
 
-  # TODO(b/202418342): Add support for `ValueReference`.
   def release(self, value: Any, key: int):
     """Releases `value` from a federated program.
 
     Args:
-      value: The value to release.
-      key: A integer to use to reference the released `value`, `key` represents
+      value: A materialized value, a value reference, or structure materialized
+        values and value references representing the value to release.
+      key: An integer to use to reference the released `value`, `key` represents
         a step in a federated program.
     """
     py_typecheck.check_type(key, int)
     path = self._get_path_for_key(key)
-    flat_obj = tf.nest.flatten(value)
+    materialized_value = value_reference.materialize_value(value)
+    flattened_value = tf.nest.flatten(materialized_value)
     model = tf.Module()
-    model.obj = flat_obj
+    model.obj = flattened_value
     model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
     file_utils.write_saved_model(model, path, overwrite=True)

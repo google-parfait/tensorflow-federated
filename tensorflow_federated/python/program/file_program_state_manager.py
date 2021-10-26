@@ -23,6 +23,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
+from tensorflow_federated.python.program import value_reference
 
 
 # TODO(b/199737690): Update `FileProgramStateManager` to not require a structure
@@ -196,12 +197,13 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
         for version in versions[start:stop]:
           self._remove(version)
 
-  # TODO(b/202418342): Add support for `ValueReference`.
   def save(self, program_state: Any, version: int):
     """Saves `program_state` for the given `version`.
 
     Args:
-      program_state: The program state to save.
+      program_state: A materialized value, a value reference, or structure
+        materialized values and value references representing the program state
+        to save.
       version: A strictly increasing integer representing the version of a saved
         `program_state`.
 
@@ -214,9 +216,10 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     if tf.io.gfile.exists(path):
       raise program_state_manager.ProgramStateManagerStateAlreadyExistsError(
           f'Program state already exists for version: {version}')
-    flat_obj = tf.nest.flatten(program_state)
+    materialized_value = value_reference.materialize_value(program_state)
+    flattened_value = tf.nest.flatten(materialized_value)
     model = tf.Module()
-    model.obj = flat_obj
+    model.obj = flattened_value
     model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
     file_utils.write_saved_model(model, path)
     self._remove_old_program_state()

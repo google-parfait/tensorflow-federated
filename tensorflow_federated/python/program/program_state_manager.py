@@ -71,13 +71,14 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     except ProgramStateManagerStateNotFoundError:
       return None, 0
 
-  # TODO(b/202418342): Add support for `ValueReference`.
   @abc.abstractmethod
   def save(self, program_state: Any, version: int):
     """Saves `program_state` for the given `version`.
 
     Args:
-      program_state: The program state to save.
+      program_state: A materialized value, a value reference, or structure
+        materialized values and value references representing the program state
+        to save.
       version: A strictly increasing integer representing the version of a saved
         `program_state`.
 

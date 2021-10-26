@@ -24,24 +24,25 @@ class ReleaseManager(metaclass=abc.ABCMeta):
   to customer storage in a federated program.
   """
 
-  # TODO(b/202418342): Document support for `ValueReference`.
   @abc.abstractmethod
   def release(self, value: Any, key: Any = None):
     """Releases `value` from a federated program.
 
     An implementation of this interface should be specific about the types of
     `value` and `key` for this method and should document how the `key` will be
-    used. This allows a federated program to understand how to create at `key`
+    used. This allows a federated program to understand how to create a `key`
     for the `value` before it is released. For example, a
     `tff.program.ReleaseManager` that releases metrics keyed by a strictly
     increasing integer might specify a `value` type of `Mapping[str, Any]` and
     a `key` type of `int`.
 
     Args:
-      value: The value to release, the specific structure of `key` is left up to
-        the implementation of `tff.program.ReleaseManager`.
-      key: An optional value to use to reference the released `value`, the
-        specific structure of `key` and how `key` is used is left up to the
+      value: A materialized value, a value reference, or structure materialized
+        values and value references representing the value to release. The exact
+        structure of `value` is left up to the implementation of
+        `tff.program.ReleaseManager`.
+      key: An optional value to use to reference the released `value`, the exact
+        type and structure of `key` and how `key` is used is left up to the
         implementation of `tff.program.ReleaseManager`.
     """
     raise NotImplementedError

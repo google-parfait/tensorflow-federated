@@ -17,6 +17,7 @@ import collections
 from typing import Any, Dict, Hashable
 
 from tensorflow_federated.python.program import release_manager
+from tensorflow_federated.python.program import value_reference
 
 
 class MemoryReleaseManager(release_manager.ReleaseManager):
@@ -26,15 +27,16 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
     """Returns an initialized `tff.program.MemoryReleaseManager`."""
     self._values = collections.OrderedDict()
 
-  # TODO(b/202418342): Add support for `ValueReference`.
   def release(self, value: Any, key: Hashable):
     """Releases `value` from a federated program.
 
     Args:
-      value: The value to release.
+      value: A materialized value, a value reference, or structure materialized
+        values and value references representing the value to release.
       key: A hashable value to use to reference the released `value`.
     """
-    self._values[key] = value
+    materialized_value = value_reference.materialize_value(value)
+    self._values[key] = materialized_value
 
   def values(self) -> Dict[Hashable, Any]:
     """Returns a dict of all keys and released values."""

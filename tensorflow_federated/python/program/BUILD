@@ -37,6 +37,7 @@ py_library(
     deps = [
         ":file_utils",
         ":program_state_manager",
+        ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
@@ -59,6 +60,7 @@ py_library(
     deps = [
         ":file_utils",
         ":release_manager",
+        ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
@@ -88,7 +90,10 @@ py_library(
     name = "logging_release_manager",
     srcs = ["logging_release_manager.py"],
     srcs_version = "PY3",
-    deps = [":release_manager"],
+    deps = [
+        ":release_manager",
+        ":value_reference",
+    ],
 )
 
 py_test(
@@ -102,7 +107,10 @@ py_test(
 py_library(
     name = "memory_release_manager",
     srcs = ["memory_release_manager.py"],
-    deps = [":release_manager"],
+    deps = [
+        ":release_manager",
+        ":value_reference",
+    ],
 )
 
 py_test(
@@ -149,6 +157,7 @@ py_library(
     deps = [
         ":release_manager",
         ":structure_utils",
+        ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
@@ -165,4 +174,10 @@ py_library(
     name = "value_reference",
     srcs = ["value_reference.py"],
     deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
+)
+
+py_test(
+    name = "value_reference_test",
+    srcs = ["value_reference_test.py"],
+    deps = [":value_reference"],
 )

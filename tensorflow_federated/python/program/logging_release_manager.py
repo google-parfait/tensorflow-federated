@@ -18,20 +18,22 @@ from typing import Any
 from absl import logging
 
 from tensorflow_federated.python.program import release_manager
+from tensorflow_federated.python.program import value_reference
 
 
 class LoggingReleaseManager(release_manager.ReleaseManager):
   """A `tff.program.ReleaseManager` that releases values to logs."""
 
-  # TODO(b/202418342): Add support for `ValueReference`.
   def release(self, value: Any, key: Any = None):
     """Releases `value` from a federated program.
 
     Args:
-      value: The value to release.
+      value: A materialized value, a value reference, or structure materialized
+        values and value references representing the value to release.
       key: An optional value to use to reference the released `value`.
     """
+    materialized_value = value_reference.materialize_value(value)
     if key is not None:
-      logging.info('Releasing value for key %d: %s', key, value)
+      logging.info('Releasing value for key %d: %s', key, materialized_value)
     else:
-      logging.info('Releasing value: %s', value)
+      logging.info('Releasing value: %s', materialized_value)
