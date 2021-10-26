@@ -336,18 +336,23 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
           child_result, zero_type)
       return result_at_server
 
-    val_futures = asyncio.as_completed(
-        [_child_fn(c, v) for c, v in zip(self._target_executors, val)])
     parent_merge, parent_report = await asyncio.gather(
         self._server_executor.create_value(merge, merge_type),
         self._server_executor.create_value(report, report_type))
-    merge_result = await next(val_futures)
-    for next_val_future in val_futures:
-      next_val = await next_val_future
-      merge_arg = await self._server_executor.create_struct(
-          [merge_result, next_val])
-      merge_result = await self._server_executor.create_call(
-          parent_merge, merge_arg)
+
+    if self._target_executors:
+      val_futures = asyncio.as_completed(
+          [_child_fn(c, v) for c, v in zip(self._target_executors, val)])
+      merge_result = await next(val_futures)
+      for next_val_future in val_futures:
+        next_val = await next_val_future
+        merge_arg = await self._server_executor.create_struct(
+            [merge_result, next_val])
+        merge_result = await self._server_executor.create_call(
+            parent_merge, merge_arg)
+    else:
+      merge_result = await self._server_executor.create_value(zero, zero_type)
+
     report_result = await self._server_executor.create_call(
         parent_report, merge_result)
     return FederatedComposingStrategyValue(

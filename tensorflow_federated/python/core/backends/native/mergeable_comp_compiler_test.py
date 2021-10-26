@@ -81,7 +81,7 @@ def server_placed_mult(arg):
 class MergeableCompCompilerTest(test_case.TestCase):
 
   def setUp(self):
-    ex_factory = executor_stacks.local_executor_factory(default_num_clients=1)
+    ex_factory = executor_stacks.local_executor_factory(default_num_clients=0)
     self._mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
         [ex_factory])
     super().setUp()
@@ -139,7 +139,6 @@ class MergeableCompCompilerTest(test_case.TestCase):
     self.assertEqual(expected_six, 6)
 
   def test_compiles_simple_noarg_computation(self):
-    self.skipTest('b/203780753')
 
     @computations.federated_computation()
     def return_server_value():
@@ -152,7 +151,6 @@ class MergeableCompCompilerTest(test_case.TestCase):
                           mergeable_comp_execution_context.MergeableCompForm)
 
   def test_preserves_semantics_of_noarg_computation(self):
-    self.skipTest('b/203780753')
 
     @computations.federated_computation()
     def return_server_value():
@@ -172,7 +170,6 @@ class MergeableCompCompilerTest(test_case.TestCase):
                           mergeable_comp_execution_context.MergeableCompForm)
 
   def test_compilation_preserves_semantics_server_placed_computation(self):
-    self.skipTest('b/200970992')
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
         server_placed_mult)
 

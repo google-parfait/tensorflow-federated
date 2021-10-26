@@ -25,6 +25,56 @@ from tensorflow_federated.python.tests import temperature_sensor_example
 from tensorflow_federated.python.tests import test_contexts
 
 
+class NoClientAggregationsTest(parameterized.TestCase):
+
+  @test_contexts.with_contexts
+  def test_executes_null_aggregate(self):
+
+    unit_type = tff.StructType([])
+
+    @tff.tf_computation(unit_type, unit_type)
+    def accumulate(a, b):
+      del b  # Unused
+      return a
+
+    @tff.tf_computation(unit_type)
+    def report(a):
+      return a
+
+    @tff.federated_computation()
+    def empty_agg():
+      val_at_clients = tff.federated_value([], tff.CLIENTS)
+      return tff.federated_aggregate(val_at_clients, [], accumulate, accumulate,
+                                     report)
+
+    result = empty_agg()
+    self.assertIsInstance(result, tff.structure.Struct)
+    self.assertEmpty(result)
+
+  @test_contexts.with_contexts
+  def test_executes_empty_sum(self):
+
+    @tff.federated_computation(tff.type_at_clients(tf.int32))
+    def fed_sum(x):
+      return tff.federated_sum(x)
+
+    result = fed_sum([])
+    self.assertEqual(result, 0)
+
+  @test_contexts.with_contexts
+  def test_empty_mean_returns_nan(self):
+    self.skipTest('b/200970992')
+    # TODO(b/200970992): Standardize handling of this case. We currently have a
+    # ZeroDivisionError, a RuntimeError, and a context that returns nan.
+
+    @tff.federated_computation(tff.type_at_clients(tf.float32))
+    def fed_mean(x):
+      return tff.federated_mean(x)
+
+    with self.assertRaises(RuntimeError):
+      fed_mean([])
+
+
 class TemperatureSensorExampleTest(parameterized.TestCase):
 
   @test_contexts.with_contexts

@@ -92,18 +92,6 @@ def get_named_parameters_for_supported_intrinsics() -> List[Tuple[str, Any]]:
   # pyformat: enable
 
 
-class FederatingExecutorInitTest(executor_test_utils.AsyncTestCase):
-
-  def test_raises_type_error_with_no_target_executor_unplaced(self):
-    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placements.SERVER: eager_tf_executor.EagerTFExecutor(),
-        placements.CLIENTS: eager_tf_executor.EagerTFExecutor(),
-    })
-
-    with self.assertRaises(TypeError):
-      federating_executor.FederatingExecutor(factory, None)
-
-
 class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
                                         parameterized.TestCase):
 
@@ -276,35 +264,6 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     value = pb.Computation(
         type=type_serialization.serialize_type(type_signature),
         selection=pb.Selection(source=source))
-
-    with self.assertRaises(ValueError):
-      self.run_sync(executor.create_value(value, type_signature))
-
-  # pyformat: disable
-  @parameterized.named_parameters([
-      ('intrinsic_def_federated_broadcast',
-       *executor_test_utils.create_whimsy_intrinsic_def_federated_broadcast()),
-      ('intrinsic_def_federated_eval_at_clients',
-       *executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_clients()),
-      ('intrinsic_def_federated_map',
-       *executor_test_utils.create_whimsy_intrinsic_def_federated_map()),
-      ('intrinsic_def_federated_map_all_equal',
-       *executor_test_utils.create_whimsy_intrinsic_def_federated_map_all_equal()),
-      ('intrinsic_def_federated_value_at_clients',
-       *executor_test_utils.create_whimsy_intrinsic_def_federated_value_at_clients()),
-      ('federated_type_at_clients_all_equal',
-       *executor_test_utils.create_whimsy_value_at_clients_all_equal()),
-      ('federated_type_at_clients',
-       *executor_test_utils.create_whimsy_value_at_clients())
-  ])
-  # pyformat: enable
-  def test_raises_value_error_with_no_target_executor_clients(
-      self, value, type_signature):
-    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placements.SERVER: eager_tf_executor.EagerTFExecutor(),
-    })
-    executor = federating_executor.FederatingExecutor(
-        factory, eager_tf_executor.EagerTFExecutor())
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))

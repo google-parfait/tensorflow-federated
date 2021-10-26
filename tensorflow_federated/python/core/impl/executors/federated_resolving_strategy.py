@@ -227,17 +227,10 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       ValueError: If `value` is not compatible.
     """
     children = self._target_executors.get(placement)
-    if not children:
-      # TODO(b/154328996): This executor does not have the context to know that
-      # the suggested solution is reasonable; the suggestion is here because it
-      # is probably the correct soltuion. We should establish a pattern for
-      # raising errors to a level in the stack where the appropriate context
-      # exists.
+    if (not children and placement != placements.CLIENTS):
       raise ValueError(
           'Expected at least one participant for the \'{}\' placement, found '
-          'none. It is possible that the inferred number of clients is 0, you '
-          'can explicitly pass `num_clients` when constructing the execution '
-          'stack'.format(placement))
+          'none.'.format(placement))
 
   def _check_value_compatible_with_placement(self, value, placement, all_equal):
     """Tests that `value` is compatible with the given `placement`.
