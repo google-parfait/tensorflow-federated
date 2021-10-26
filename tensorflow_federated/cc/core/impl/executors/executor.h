@@ -288,7 +288,7 @@ class ExecutorBase : public Executor,
       ExecutorValue value, const uint32_t index) = 0;
   virtual absl::Status Materialize(ExecutorValue value,
                                    v0::Value* value_pb) = 0;
-  virtual ~ExecutorBase() {}
+  ~ExecutorBase() override {}
 
  public:
   absl::StatusOr<OwnedValueId> CreateValue(const v0::Value& value_pb) final {

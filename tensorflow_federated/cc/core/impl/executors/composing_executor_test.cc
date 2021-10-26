@@ -58,6 +58,7 @@ class ComposingExecutorTest : public ExecutorTestBase {
     // Extra method required in order to use `TFF_ASSERT_OK_AND_ASSIGN`.
     Initialize();
   }
+  ~ComposingExecutorTest() override {}
 
   void Initialize() {
     // Test with a few different sizes of client to ensure they're all handled

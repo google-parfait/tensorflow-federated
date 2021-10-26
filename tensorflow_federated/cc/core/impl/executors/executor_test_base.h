@@ -29,6 +29,9 @@ limitations under the License
 namespace tensorflow_federated {
 
 class ExecutorTestBase : public ::testing::Test {
+ public:
+  ~ExecutorTestBase() override {}
+
  protected:
   std::shared_ptr<Executor> test_executor_;
 
