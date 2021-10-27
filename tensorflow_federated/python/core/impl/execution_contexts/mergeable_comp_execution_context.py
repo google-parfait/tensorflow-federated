@@ -16,7 +16,7 @@
 import asyncio
 import functools
 import math
-from typing import Any, List, Optional, Sequence
+from typing import Any, Callable, List, Optional, Sequence, Union
 
 import attr
 
@@ -24,6 +24,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import compiler_pipeline
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -461,24 +462,45 @@ class MergeableCompExecutionContext(context_base.Context):
   """
 
   def __init__(self,
-               executor_factories: Sequence[executor_factory.ExecutorFactory]):
+               executor_factories: Sequence[executor_factory.ExecutorFactory],
+               compiler_fn: Optional[Callable[[computation_base.Computation],
+                                              MergeableCompForm]] = None):
     self._async_execution_contexts = [
         async_execution_context.AsyncExecutionContext(ex_factory)
         for ex_factory in executor_factories
     ]
     self._event_loop = asyncio.new_event_loop()
+    if compiler_fn is not None:
+      self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
+    else:
+      self._compiler_pipeline = None
 
-  def ingest(
-      self, val: Any,
-      type_spec: computation_types.Type) -> MergeableCompExecutionContextValue:
-    return MergeableCompExecutionContextValue(
-        val, type_spec, len(self._async_execution_contexts))
+  def ingest(self, val: Any, type_spec: computation_types.Type) -> Any:
+    # Delay wrapping as MergeableCompExecutionContextValue to ensure we split
+    # values only once.
+    return val
 
-  def invoke(self, comp: MergeableCompForm,
-             arg: Optional[MergeableCompExecutionContextValue]):
-    py_typecheck.check_type(comp, MergeableCompForm)
+  def invoke(self,
+             comp: Union[MergeableCompForm, computation_base.Computation],
+             arg: Optional[Any] = None):
+    py_typecheck.check_type(comp,
+                            (MergeableCompForm, computation_base.Computation))
+    if isinstance(comp, computation_base.Computation):
+      if self._compiler_pipeline is None:
+        raise ValueError('Without a compiler, mergeable comp execution context '
+                         'can only invoke instances of MergeableCompForm. '
+                         'Encountered a `tff.Computation`.')
+      comp = self._compiler_pipeline.compile(comp)
+      if not isinstance(comp, MergeableCompForm):
+        raise ValueError('Expected compilation in mergeable comp execution '
+                         'context to produce an instance of MergeableCompForm; '
+                         f'found instead {comp} of Python type {type(comp)}.')
+
     if arg is not None:
-      py_typecheck.check_type(arg, MergeableCompExecutionContextValue)
+      arg = MergeableCompExecutionContextValue(
+          arg, comp.up_to_merge.type_signature.parameter,
+          len(self._async_execution_contexts))
+
     return type_conversions.type_to_py_container(
         self._event_loop.run_until_complete(
             _invoke_mergeable_comp_form(comp, arg,

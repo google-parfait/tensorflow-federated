@@ -383,6 +383,32 @@ class RepackageResultsTest(absltest.TestCase):
 
 class MergeableCompExecutionContextTest(parameterized.TestCase):
 
+  def test_invoke_raises_computation_no_compiler(self):
+
+    @computations.tf_computation()
+    def return_one():
+      return 1
+
+    ex_factories = [executor_stacks.local_executor_factory() for _ in range(1)]
+    no_compiler_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
+        ex_factories)
+
+    with self.assertRaises(ValueError):
+      no_compiler_context.invoke(return_one)
+
+  def test_invoke_raises_computation_not_compiled_to_mergeable_comp_form(self):
+
+    @computations.tf_computation()
+    def return_one():
+      return 1
+
+    ex_factories = [executor_stacks.local_executor_factory() for _ in range(1)]
+    context = mergeable_comp_execution_context.MergeableCompExecutionContext(
+        ex_factories, compiler_fn=lambda x: x)
+
+    with self.assertRaises(ValueError):
+      context.invoke(return_one)
+
   @parameterized.named_parameters(('100_clients', (0, list(range(100)))),
                                   ('fewer_clients_than_subrounds', (0, [0])))
   def test_runs_computation_with_clients_placed_return_values(self, arg):

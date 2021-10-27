@@ -13,9 +13,14 @@
 # limitations under the License.
 """Execution contexts for the native backend."""
 
+from typing import Sequence
+
 from tensorflow_federated.python.core.backends.native import compiler
+from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
@@ -126,4 +131,21 @@ def set_remote_python_execution_context(channels,
       dispose_batch_size=dispose_batch_size,
       max_fanout=max_fanout,
       default_num_clients=default_num_clients)
+  context_stack_impl.context_stack.set_default_context(context)
+
+
+def create_mergeable_comp_execution_context(
+    executor_factories: Sequence[executor_factory.ExecutorFactory]):
+  """Creates context which compiles to and executes mergeable comp form."""
+  return mergeable_comp_execution_context.MergeableCompExecutionContext(
+      executor_factories=executor_factories,
+      # TODO(b/204258376): Enable this py-typecheck when possible.
+      compiler_fn=mergeable_comp_compiler.compile_to_mergeable_comp_form)  # pytype: disable=wrong-arg-types
+
+
+def set_mergeable_comp_execution_context(
+    executor_factories: Sequence[executor_factory.ExecutorFactory]):
+  """Sets context which compiles to and executes mergeable comp form."""
+  context = create_mergeable_comp_execution_context(
+      executor_factories=executor_factories)
   context_stack_impl.context_stack.set_default_context(context)

@@ -38,11 +38,17 @@ def create_native_local_caching_context():
           _wrap_local_executor_with_caching))
 
 
+def _create_local_mergeable_comp_context():
+  factory = tff.framework.local_executor_factory()
+  return tff.backends.native.create_mergeable_comp_execution_context([factory])
+
+
 def _get_all_contexts():
   # pyformat: disable
   return [
       ('native_local', tff.backends.native.create_local_python_execution_context()),
       ('native_local_caching', create_native_local_caching_context()),
+      ('native_mergeable', _create_local_mergeable_comp_context()),
       ('native_remote',
        remote_runtime_test_utils.create_localhost_remote_context(WORKER_PORTS),
        remote_runtime_test_utils.create_inprocess_worker_contexts(WORKER_PORTS)),
