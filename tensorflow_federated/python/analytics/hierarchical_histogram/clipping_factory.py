@@ -187,8 +187,8 @@ def _distinct_clip(histogram, sample_num):
   """
 
   def distinct():
-    indices = tf.cast(
-        tf.squeeze(tf.where(tf.not_equal(histogram, 0))), tf.int32)
+    indices = tf.squeeze(
+        tf.cast(tf.where(tf.not_equal(histogram, 0)), tf.int32))
     seed = tf.cast(
         tf.stack([tf.timestamp() * 1e6,
                   tf.timestamp() * 1e6]), dtype=tf.int64)
@@ -203,7 +203,7 @@ def _distinct_clip(histogram, sample_num):
       tf.greater(l0_norm, sample_num), distinct,
       lambda: tf.minimum(histogram, 1))
   # Ensure shape as TF shape inference may fail due to custom sampling.
-  return tf.reshape(result, histogram.shape)
+  return tf.reshape(result, tf.cast(histogram.shape, tf.int32))
 
 
 def _check_is_integer_struct(value_type, label):

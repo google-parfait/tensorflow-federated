@@ -27,6 +27,7 @@ sh_binary(
         "//tensorflow_federated/proto",
         "//tensorflow_federated/proto/v0",
         "//tensorflow_federated/python",
+        "//tensorflow_federated/python/analytics/hierarchical_histogram",
         "//tensorflow_federated/python/common_libs",
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/core/api",
