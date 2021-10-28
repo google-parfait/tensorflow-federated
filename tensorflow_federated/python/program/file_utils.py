@@ -26,12 +26,24 @@ class FileAlreadyExistsError(Exception):
   pass
 
 
-def write_saved_model(obj: tf.Module,
+class ValueModule(tf.Module):
+  """A simple `tf.Module` wrapping a single value."""
+
+  def __init__(self, value):
+    super().__init__()
+    self._value = value
+
+  @tf.function(input_signature=())
+  def __call__(self):
+    return self._value
+
+
+def write_saved_model(module: tf.Module,
                       path: Union[str, os.PathLike],
                       overwrite: bool = False):
   """Writes a `tf.Module` using the SavedModel format."""
+  py_typecheck.check_type(module, tf.Module)
   py_typecheck.check_type(path, (str, os.PathLike))
-  py_typecheck.check_type(obj, tf.Module)
   py_typecheck.check_type(overwrite, bool)
 
   # Create a temporary directory.
@@ -43,7 +55,7 @@ def write_saved_model(obj: tf.Module,
   tf.io.gfile.makedirs(temp_path)
 
   # Write to the temporary directory.
-  tf.saved_model.save(obj, temp_path, signatures={})
+  tf.saved_model.save(module, temp_path, signatures={})
 
   # Rename the temporary directory to the final location atomically.
   if tf.io.gfile.exists(path):

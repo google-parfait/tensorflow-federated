@@ -49,8 +49,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":file_program_state_manager",
-        ":file_utils",
         ":program_state_manager",
+        ":test_utils",
     ],
 )
 
@@ -70,7 +70,7 @@ py_test(
     srcs = ["file_release_manager_test.py"],
     deps = [
         ":file_release_manager",
-        ":file_utils",
+        ":test_utils",
     ],
 )
 
@@ -171,6 +171,16 @@ py_test(
 )
 
 py_library(
+    name = "test_utils",
+    testonly = True,
+    srcs = ["test_utils.py"],
+    deps = [
+        ":value_reference",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
     name = "value_reference",
     srcs = ["value_reference.py"],
     deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
@@ -179,5 +189,8 @@ py_library(
 py_test(
     name = "value_reference_test",
     srcs = ["value_reference_test.py"],
-    deps = [":value_reference"],
+    deps = [
+        ":test_utils",
+        ":value_reference",
+    ],
 )

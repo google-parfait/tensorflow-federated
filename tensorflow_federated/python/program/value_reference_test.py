@@ -12,34 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
-
 from absl.testing import absltest
 from absl.testing import parameterized
-import attr
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.program import test_utils
 from tensorflow_federated.python.program import value_reference
-
-
-@attr.s
-class _TestAttrObject():
-  a = attr.ib()
-  b = attr.ib()
-
-
-class _TestServerArrayReference(value_reference.ServerArrayReference):
-
-  def __init__(self, value: Union[np.generic, np.ndarray]):
-    self._value = value
-
-  @property
-  def type_signature(self):
-    return None
-
-  def get_value(self) -> Union[np.generic, np.ndarray]:
-    return self._value
 
 
 class MaterializeValueTest(parameterized.TestCase, tf.test.TestCase):
@@ -52,39 +31,46 @@ class MaterializeValueTest(parameterized.TestCase, tf.test.TestCase):
       ('str', 'a', 'a'),
       ('list', [True, 1, 'a'], [True, 1, 'a']),
       ('list_empty', [], []),
-      ('list_nested', [[True, 1, 'a'], [False]], [[True, 1, 'a'], [False]]),
+      ('list_nested', [[True, 1], ['a']], [[True, 1], ['a']]),
       ('dict', {'a': True, 'b': 1, 'c': 'a'}, {'a': True, 'b': 1, 'c': 'a'}),
       ('dict_empty', {}, {}),
       ('dict_nested',
-       {'x': {'a': True, 'b': 1, 'c': 'a'}, 'y': {'a': False}},
-       {'x': {'a': True, 'b': 1, 'c': 'a'}, 'y': {'a': False}}),
+       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
+       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}}),
+      ('attr',
+       test_utils.TestAttrObject1(True, 1),
+       test_utils.TestAttrObject1(True, 1)),
+      ('attr_nested',
+       {'a': [test_utils.TestAttrObject1(True, 1)],
+        'b': test_utils.TestAttrObject2('a')},
+       {'a': [test_utils.TestAttrObject1(True, 1)],
+        'b': test_utils.TestAttrObject2('a')}),
       ('tensor_int', tf.constant(1), tf.constant(1)),
       ('tensor_str', tf.constant('a'), tf.constant('a')),
       ('tensor_2d', tf.ones((2, 3)), tf.ones((2, 3))),
       ('tensor_nested',
-       {'a': [tf.constant(1)], 'b': tf.constant(2)},
-       {'a': [tf.constant(1)], 'b': tf.constant(2)}),
+       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]},
+       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]}),
       ('numpy_int', np.int32(1), np.int32(1)),
       ('numpy_2d', np.ones((2, 3)), np.ones((2, 3))),
       ('numpy_nested',
-       {'a': [np.int32(1)], 'b': np.int32(2)},
-       {'a': [np.int32(1)], 'b': np.int32(2)}),
-      ('attr', _TestAttrObject(1, 2), _TestAttrObject(1, 2)),
-      ('attr_nested',
-       {'a': [_TestAttrObject(1, 2)], 'b': _TestAttrObject(3, 4)},
-       {'a': [_TestAttrObject(1, 2)], 'b': _TestAttrObject(3, 4)}),
-      ('server_array_reference', _TestServerArrayReference(1), 1),
+       {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
+       {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]}),
+      ('server_array_reference', test_utils.TestServerArrayReference(1), 1),
       ('server_array_reference_nested',
-       {'a': [_TestServerArrayReference(1)], 'b': _TestServerArrayReference(2)},
-       {'a': [1], 'b': 2}),
+       {'a': [test_utils.TestServerArrayReference(True),
+              test_utils.TestServerArrayReference(1)],
+        'b': test_utils.TestServerArrayReference('a')},
+       {'a': [True, 1], 'b': 'a'}),
       ('materialized_values_and_value_references',
-       [1, _TestServerArrayReference(2)],
+       [1, test_utils.TestServerArrayReference(2)],
        [1, 2]),
   )
   # pyformat: enable
   def test_returns_value(self, value, expected_value):
     actual_value = value_reference.materialize_value(value)
 
+    self.assertEqual(type(actual_value), type(expected_value))
     if ((isinstance(actual_value, tf.Tensor) and
          isinstance(expected_value, tf.Tensor)) or
         (isinstance(actual_value, np.ndarray) and

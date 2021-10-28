@@ -20,10 +20,12 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
+import tensorflow as tf
 
 from tensorflow_federated.python.program import file_program_state_manager
-from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
+from tensorflow_federated.python.program import test_utils
 
 
 class FileProgramStateManagerInitTest(parameterized.TestCase):
@@ -125,7 +127,7 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
     expected_versions = list(range(count))
     self.assertEqual(actual_versions, expected_versions)
 
-  def test_returns_versions_with_saved_program_state_and_files(self):
+  def test_returns_versions_with_saved_program_state_and_other_files(self):
     temp_dir = self.create_tempdir()
     for version in range(10):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
@@ -233,8 +235,8 @@ class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
       ('trailing_slash', '/tmp/', 'a_', 123, '/tmp/a_123'),
       ('no_prefix', '/tmp', '', 123, '/tmp/123'),
   )
-  def test_returns_version_with_root_dir_and_prefix(self, root_dir, prefix,
-                                                    version, expected_path):
+  def test_returns_path_with_root_dir_and_prefix(self, root_dir, prefix,
+                                                 version, expected_path):
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix=prefix)
 
@@ -256,25 +258,80 @@ class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
       program_state_mngr._get_path_for_version(version)
 
 
-class FileProgramStateManagerLoadTest(parameterized.TestCase):
+class FileProgramStateManagerLoadTest(parameterized.TestCase, tf.test.TestCase):
 
-  def test_returns_program_state_with_one_save(self):
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('none', None, None),
+      ('bool', True, tf.constant(True)),
+      ('int', 1, tf.constant(1)),
+      ('str', 'a', tf.constant('a')),
+      ('list',
+       [True, 1, 'a'],
+       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('list_empty', [], []),
+      ('list_nested',
+       [[True, 1], ['a']],
+       [[tf.constant(True), tf.constant(1)], [tf.constant('a')]]),
+      ('dict',
+       {'a': True, 'b': 1, 'c': 'a'},
+       {'a': tf.constant(True), 'b': tf.constant(1), 'c': tf.constant('a')}),
+      ('dict_empty', {}, {}),
+      ('dict_nested',
+       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
+       {'x': {'a': tf.constant(True), 'b': tf.constant(1)},
+        'y': {'c': tf.constant('a')}}),
+      ('attr',
+       test_utils.TestAttrObject1(True, 1),
+       test_utils.TestAttrObject1(tf.constant(True), tf.constant(1))),
+      ('attr_nested',
+       {'a': [test_utils.TestAttrObject1(True, 1)],
+        'b': test_utils.TestAttrObject2('a')},
+       {'a': [test_utils.TestAttrObject1(tf.constant(True), tf.constant(1))],
+        'b': test_utils.TestAttrObject2(tf.constant('a'))}),
+      ('tensor_int', tf.constant(1), tf.constant(1)),
+      ('tensor_str', tf.constant('a'), tf.constant('a')),
+      ('tensor_2d', tf.ones((2, 3)), tf.ones((2, 3))),
+      ('tensor_nested',
+       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]},
+       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]}),
+      ('numpy_int', np.int32(1), tf.constant(1)),
+      ('numpy_2d', np.ones((2, 3)), tf.ones((2, 3))),
+      ('numpy_nested',
+       {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
+       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]}),
+      ('server_array_reference',
+       test_utils.TestServerArrayReference(1),
+       tf.constant(1)),
+      ('server_array_reference_nested',
+       {'a': [test_utils.TestServerArrayReference(True),
+              test_utils.TestServerArrayReference(1)],
+        'b': test_utils.TestServerArrayReference('a')},
+       {'a': [tf.constant(True), tf.constant(1)], 'b': tf.constant('a')}),
+      ('materialized_values_and_value_references',
+       [1, test_utils.TestServerArrayReference(2)],
+       [tf.constant(1), tf.constant(2)]),
+  )
+  # pyformat: enable
+  def test_returns_saved_program_state(self, program_state,
+                                       expected_program_state):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
-    program_state_mngr.set_structure('state')
-    program_state_mngr.save('state_1', 1)
+    program_state_mngr.set_structure(program_state)
+    program_state_mngr.save(program_state, 1)
 
     actual_program_state = program_state_mngr.load(1)
 
-    self.assertEqual(actual_program_state, 'state_1')
+    self.assertEqual(type(actual_program_state), type(expected_program_state))
+    self.assertAllEqual(actual_program_state, expected_program_state)
 
   @parameterized.named_parameters(
       ('0', 0),
       ('1', 1),
       ('2', 2),
   )
-  def test_returns_program_state_with_three_saves(self, version):
+  def test_returns_saved_program_state_with_version(self, version):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
@@ -308,11 +365,11 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
         program_state_manager.ProgramStateManagerStateNotFoundError):
       program_state_mngr.load(10)
 
-  def test_raises_structure_error_with_structure_none(self):
+  def test_raises_structure_error(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
-    program_state_mngr.set_structure(None)
+    program_state_mngr.set_structure([])
     program_state_mngr.save('state_1', 1)
 
     with self.assertRaises(
@@ -335,22 +392,12 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase):
 
 class FileProgramStateManagerRemoveTest(parameterized.TestCase):
 
-  def test_removes_saved_program_state_with_one_save(self):
-    temp_dir = self.create_tempdir()
-    os.mkdir(os.path.join(temp_dir, 'a_1'))
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir=temp_dir, prefix='a_')
-
-    program_state_mngr._remove(1)
-
-    self.assertCountEqual(os.listdir(temp_dir), [])
-
   @parameterized.named_parameters(
       ('0', 0),
       ('1', 1),
       ('2', 2),
   )
-  def test_removes_program_state_with_three_saves(self, version):
+  def test_removes_saved_program_state_with_version(self, version):
     temp_dir = self.create_tempdir()
     for version in range(3):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
@@ -362,6 +409,16 @@ class FileProgramStateManagerRemoveTest(parameterized.TestCase):
     expected_dirs = ['a_0', 'a_1', 'a_2']
     expected_dirs.remove(f'a_{version}')
     self.assertCountEqual(os.listdir(temp_dir), expected_dirs)
+
+  def test_removes_saved_program_state_last(self):
+    temp_dir = self.create_tempdir()
+    os.mkdir(os.path.join(temp_dir, 'a_1'))
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=temp_dir, prefix='a_')
+
+    program_state_mngr._remove(1)
+
+    self.assertCountEqual(os.listdir(temp_dir), [])
 
   def test_noops_with_unknown_version(self):
     temp_dir = self.create_tempdir()
@@ -398,11 +455,9 @@ class FileProgramStateManagerRemoveOldProgramStateTest(absltest.TestCase):
 
     program_state_mngr._remove_old_program_state()
 
-    actual_dirs = os.listdir(temp_dir)
-    expected_dirs = [f'a_{i}' for i in range(10)]
-    self.assertCountEqual(actual_dirs, expected_dirs)
+    self.assertCountEqual(os.listdir(temp_dir), [f'a_{i}' for i in range(10)])
 
-  def test_removes_oldest_with_keep_first_true(self):
+  def test_removes_saved_program_state_with_keep_first_true(self):
     temp_dir = self.create_tempdir()
     for version in range(10):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
@@ -413,7 +468,7 @@ class FileProgramStateManagerRemoveOldProgramStateTest(absltest.TestCase):
 
     self.assertCountEqual(os.listdir(temp_dir), ['a_0', 'a_8', 'a_9'])
 
-  def test_removes_oldest_with_keep_first_false(self):
+  def test_removes_saved_program_state_with_keep_first_false(self):
     temp_dir = self.create_tempdir()
     for version in range(10):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
@@ -425,20 +480,73 @@ class FileProgramStateManagerRemoveOldProgramStateTest(absltest.TestCase):
     self.assertCountEqual(os.listdir(temp_dir), ['a_7', 'a_8', 'a_9'])
 
 
-class FileProgramStateManagerSaveTest(parameterized.TestCase):
+class FileProgramStateManagerSaveTest(parameterized.TestCase, tf.test.TestCase):
 
-  def test_writes_program_state(self):
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('none', None, [None]),
+      ('bool', True, [tf.constant(True)]),
+      ('int', 1, [tf.constant(1)]),
+      ('str', 'a', [tf.constant('a')]),
+      ('list',
+       [True, 1, 'a'],
+       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('list_empty', [], []),
+      ('list_nested',
+       [[True, 1], ['a']],
+       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('dict',
+       {'a': True, 'b': 1, 'c': 'a'},
+       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('dict_empty', {}, []),
+      ('dict_nested',
+       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
+       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('attr',
+       test_utils.TestAttrObject1(True, 1),
+       [tf.constant(True), tf.constant(1)]),
+      ('attr_nested',
+       {'a': [test_utils.TestAttrObject1(True, 1)],
+        'b': test_utils.TestAttrObject2('a')},
+       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('tensor_int', tf.constant(1), [tf.constant(1)]),
+      ('tensor_str', tf.constant('a'), [tf.constant('a')]),
+      ('tensor_2d', tf.ones((2, 3)), [tf.ones((2, 3))]),
+      ('tensor_nested',
+       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]},
+       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('numpy_int', np.int32(1), [tf.constant(1)]),
+      ('numpy_2d', np.ones((2, 3)), [tf.ones((2, 3))]),
+      ('numpy_nested',
+       {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
+       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('server_array_reference', test_utils.TestServerArrayReference(1), [1]),
+      ('server_array_reference_nested',
+       {'a': [test_utils.TestServerArrayReference(True),
+              test_utils.TestServerArrayReference(1)],
+        'b': test_utils.TestServerArrayReference('a')},
+       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('materialized_values_and_value_references',
+       [1, test_utils.TestServerArrayReference(2)],
+       [tf.constant(1), tf.constant(2)]),
+  )
+  # pyformat: enable
+  def test_writes_program_state(self, program_state, expected_value):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_', keep_total=0)
+    path = program_state_mngr._get_path_for_version(1)
+    self.assertFalse(os.path.exists(path))
 
-    with mock.patch.object(file_utils,
-                           'write_saved_model') as mock_write_saved_model:
-      program_state_mngr.save('state_1', 1)
-      expected_path = program_state_mngr._get_path_for_version(1)
-      mock_write_saved_model.assert_called_once_with(mock.ANY, expected_path)
+    program_state_mngr.save(program_state, 1)
 
-  def test_removes_old_program_state(self):
+    self.assertTrue(os.path.exists(path))
+    module = tf.saved_model.load(path)
+    actual_value = module()
+    self.assertEqual(type(actual_value), type(expected_value))
+    self.assertAllEqual(actual_value, expected_value)
+
+  def test_removes_saved_program_state(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
@@ -447,6 +555,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase):
         program_state_mngr,
         '_remove_old_program_state') as mock_remove_old_program_state:
       program_state_mngr.save('state_1', 1)
+
       mock_remove_old_program_state.assert_called_once()
 
   def test_raises_version_already_exists_error_with_existing_version(self):

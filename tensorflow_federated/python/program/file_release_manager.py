@@ -65,7 +65,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     represent released values.
 
     Args:
-      key: The version to use to construct the path.
+      key: The key to use to construct the path.
     """
     py_typecheck.check_type(key, int)
     basename = f'{self._prefix}{key}'
@@ -84,7 +84,5 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     path = self._get_path_for_key(key)
     materialized_value = value_reference.materialize_value(value)
     flattened_value = tf.nest.flatten(materialized_value)
-    model = tf.Module()
-    model.obj = flattened_value
-    model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
-    file_utils.write_saved_model(model, path, overwrite=True)
+    module = file_utils.ValueModule(flattened_value)
+    file_utils.write_saved_model(module, path, overwrite=True)

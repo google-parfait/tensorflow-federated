@@ -162,20 +162,22 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       FileProgramStateManagerStructureError: If `structure` has not been set.
     """
     py_typecheck.check_type(version, int)
-    # TODO(b/199737690): Update `FileProgramStateManager` to not require a
-    # structure to load program state.
-    if self._structure is None:
-      raise FileProgramStateManagerStructureError(
-          'A structure is required to load program state.')
     path = self._get_path_for_version(version)
     if not tf.io.gfile.exists(path):
       raise program_state_manager.ProgramStateManagerStateNotFoundError(
           f'No program state found for version: {version}')
-    model = tf.saved_model.load(path)
-    flat_obj = model.build_obj_fn()
-    state = tf.nest.pack_sequence_as(self._structure, flat_obj)
+    module = tf.saved_model.load(path)
+    flattened_value = module()
+    try:
+      program_state = tf.nest.pack_sequence_as(self._structure, flattened_value)
+    except ValueError as e:
+      raise FileProgramStateManagerStructureError(
+          f'The structure of type {type(self._structure)}:\n'
+          f'{self._structure}\n'
+          f'does not match the value of type {type(flattened_value)}:\n'
+          f'{flattened_value}\n') from e
     logging.info('Program state loaded: %s', path)
-    return state
+    return program_state
 
   def _remove(self, version: int):
     """Removes program state for the given `version`."""
@@ -218,8 +220,6 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
           f'Program state already exists for version: {version}')
     materialized_value = value_reference.materialize_value(program_state)
     flattened_value = tf.nest.flatten(materialized_value)
-    model = tf.Module()
-    model.obj = flattened_value
-    model.build_obj_fn = tf.function(lambda: model.obj, input_signature=())
-    file_utils.write_saved_model(model, path)
+    module = file_utils.ValueModule(flattened_value)
+    file_utils.write_saved_model(module, path)
     self._remove_old_program_state()
