@@ -30,9 +30,15 @@ from tensorflow_federated.python.aggregators.factory import WeightedAggregationF
 from tensorflow_federated.python.aggregators.mean import MeanFactory
 from tensorflow_federated.python.aggregators.mean import UnweightedMeanFactory
 from tensorflow_federated.python.aggregators.measurements import add_measurements
+from tensorflow_federated.python.aggregators.primitives import _construct_correlation_intermediates
+from tensorflow_federated.python.aggregators.primitives import _construct_variance_intermediates
+from tensorflow_federated.python.aggregators.primitives import _reconstruct_correlation
+from tensorflow_federated.python.aggregators.primitives import _reconstruct_variance
+from tensorflow_federated.python.aggregators.primitives import federated_correlation
 from tensorflow_federated.python.aggregators.primitives import federated_max
 from tensorflow_federated.python.aggregators.primitives import federated_min
 from tensorflow_federated.python.aggregators.primitives import federated_sample
+from tensorflow_federated.python.aggregators.primitives import federated_variance
 from tensorflow_federated.python.aggregators.primitives import secure_quantized_sum
 from tensorflow_federated.python.aggregators.quantile_estimation import PrivateQuantileEstimationProcess
 from tensorflow_federated.python.aggregators.robust import clipping_factory

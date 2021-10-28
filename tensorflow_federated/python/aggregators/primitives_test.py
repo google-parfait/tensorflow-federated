@@ -32,6 +32,11 @@ _MIN_MAX_TEST_DTYPES = [('int16', tf.int16), ('int32', tf.int32),
                         ('float32', tf.float32), ('float64', tf.float64),
                         ('bfloat16', tf.bfloat16)]
 
+_VARIANCE_CORR_TEST_DTYPES = [('int32', tf.int32), ('int64', tf.int64),
+                              ('float16', tf.float16), ('float32', tf.float32),
+                              ('float64', tf.float64),
+                              ('bfloat16', tf.bfloat16)]
+
 
 class FederatedMinTest(test_case.TestCase, parameterized.TestCase):
 
@@ -1282,6 +1287,83 @@ def _build_test_sum_fn_tff_bounds(value_type, lower_bound_type,
 def _np_val_fn(value, tf_dtype):
   """Converts `value` to numpy array of dtype corresponding to `tf_dtype`."""
   return np.array(value, tf_dtype.as_numpy_dtype)
+
+
+class FederatedVarianceTest(test_case.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(_VARIANCE_CORR_TEST_DTYPES)
+  def test_federated_variance_scalar(self, dtype):
+
+    @computations.federated_computation(computation_types.at_clients(dtype))
+    def call_federated_variance(value):
+      return primitives.federated_variance(value)
+
+    self.assertEqual(
+        computation_types.at_server(tf.float32),
+        call_federated_variance.type_signature.result)
+
+    value = call_federated_variance([
+        tf.cast(1, dtype),
+        tf.cast(5, dtype),
+    ])
+    self.assertAllClose(value, np.var([1, 5]))
+
+  @parameterized.named_parameters(_VARIANCE_CORR_TEST_DTYPES)
+  def test_federated_variance_array(self, dtype):
+
+    @computations.federated_computation(
+        computation_types.at_clients(computation_types.to_type((dtype, [2]))))
+    def call_federated_variance(value):
+      return primitives.federated_variance(value)
+
+    self.assertEqual(
+        computation_types.at_server(tf.float32),
+        call_federated_variance.type_signature.result)
+
+    value = call_federated_variance(
+        [tf.cast([3, 5], dtype), tf.cast([7, 9], dtype)])
+    self.assertAllClose(value, np.var([3, 5, 7, 9]))
+
+
+class FederatedCorrelationTest(test_case.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(_VARIANCE_CORR_TEST_DTYPES)
+  def test_federated_correlation_scalar(self, dtype):
+
+    @computations.federated_computation(
+        computation_types.at_clients(dtype),
+        computation_types.at_clients(dtype))
+    def call_federated_correlation(x, y):
+      return primitives.federated_correlation(x, y)
+
+    self.assertEqual(
+        computation_types.at_server(tf.float32),
+        call_federated_correlation.type_signature.result)
+
+    value = call_federated_correlation(
+        [tf.cast(1, dtype), tf.cast(5, dtype)],
+        [tf.cast(-1, dtype), tf.cast(-5, dtype)])
+    self.assertAllClose(value, -1)
+
+  @parameterized.named_parameters(_VARIANCE_CORR_TEST_DTYPES)
+  def test_federated_correlation_array(self, dtype):
+    val_type = computation_types.at_clients(
+        computation_types.to_type((dtype, [2])))
+
+    @computations.federated_computation(val_type, val_type)
+    def call_federated_correlation(x, y):
+      return primitives.federated_correlation(x, y)
+
+    self.assertEqual(
+        computation_types.at_server(tf.float32),
+        call_federated_correlation.type_signature.result)
+
+    value = call_federated_correlation(
+        [tf.cast([1, 2], dtype), tf.cast([5, 6], dtype)],
+        [tf.cast([-1, -3], dtype),
+         tf.cast([-5, -6], dtype)])
+    self.assertAllClose(value,
+                        np.corrcoef(x=[1, 2, 5, 6], y=[-1, -3, -5, -6])[0, 1])
 
 
 if __name__ == '__main__':
