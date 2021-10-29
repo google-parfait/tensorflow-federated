@@ -39,7 +39,7 @@ def uniquify_shared_names(graph_def):
 
 
 def uniquify_shared_names_with_suffix(graph_def: tf.compat.v1.GraphDef,
-                                      suffix: bytes) -> tf.compat.v1.GraphDef:
+                                      suffix: str) -> tf.compat.v1.GraphDef:
   """Appends unique identifier to any shared names present in `graph`."""
   # TODO(b/117428091): Upgrade our TF serialization mechanisms in order to
   # unblock using more modern TF compositional constructs, and avoid direct
