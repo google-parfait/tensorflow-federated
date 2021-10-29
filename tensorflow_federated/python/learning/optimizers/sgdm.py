@@ -13,10 +13,16 @@
 # limitations under the License.
 """Gradient descent optimizer."""
 
+import collections
 from typing import Optional
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.optimizers import optimizer
+
+
+LEARNING_RATE_KEY = 'lr'
+MOMENTUM_KEY = 'momentum'
+ACCUMULATOR_KEY = 'accumulator'
 
 
 class _SGD(optimizer.Optimizer):
@@ -31,40 +37,50 @@ class _SGD(optimizer.Optimizer):
     self._momentum = momentum
 
   def initialize(self, specs):
-    if self._momentum is None or self._momentum == 0:
-      return ()
-    else:
-      return tf.nest.map_structure(lambda s: tf.zeros(s.shape, s.dtype), specs)
+    state = collections.OrderedDict([(LEARNING_RATE_KEY, self._lr)])
+    if self._momentum is not None and self._momentum > 0:
+      state[MOMENTUM_KEY] = self._momentum
+      state[ACCUMULATOR_KEY] = tf.nest.map_structure(
+          lambda s: tf.zeros(s.shape, s.dtype), specs)
+    return state
 
-  @tf.function
   def next(self, state, weights, gradients):
     optimizer.check_weights_gradients_match(weights, gradients)
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
-    if self._momentum is None or self._momentum == 0:
-      updated_state = state
-      updated_weights = tf.nest.map_structure(lambda w, g: w - self._lr * g,
-                                              weights, gradients)
+    lr = state[LEARNING_RATE_KEY]
+
+    if MOMENTUM_KEY not in state:
+      updated_weights = tf.nest.map_structure(lambda w, g: w - lr * g, weights,
+                                              gradients)
+      updated_state = collections.OrderedDict([(LEARNING_RATE_KEY, lr)])
     else:
-      _check_momentum_matches_weights(state, weights)
-      updated_state = tf.nest.map_structure(lambda m, g: self._momentum * m + g,
-                                            state, gradients)
-      updated_weights = tf.nest.map_structure(lambda w, m: w - self._lr * m,
-                                              weights, updated_state)
+      momentum = state[MOMENTUM_KEY]
+      accumulator = state[ACCUMULATOR_KEY]
+      _check_accumulator_matches_weights(accumulator, weights)
+      updated_accumulator = tf.nest.map_structure(lambda a, g: momentum * a + g,
+                                                  accumulator, gradients)
+      updated_weights = tf.nest.map_structure(lambda w, m: w - lr * m, weights,
+                                              updated_accumulator)
+      updated_state = collections.OrderedDict([
+          (LEARNING_RATE_KEY, lr),
+          (MOMENTUM_KEY, momentum),
+          (ACCUMULATOR_KEY, updated_accumulator),
+      ])
     return updated_state, updated_weights
 
 
-def _check_momentum_matches_weights(state, weights):
+def _check_accumulator_matches_weights(accumulator, weights):
   try:
-    tf.nest.assert_same_structure(state, weights)
+    tf.nest.assert_same_structure(accumulator, weights)
   except (TypeError, ValueError):
     # Raises a more informative error message.
     raise ValueError(
-        'Provided state and weigths do not match. The momentum term in state '
-        'the and weights must be collections of tensors of the same structure '
-        'and the tensors must have the same shapes and dtypes. A possible '
-        'reason is that the `initialize` method was invoked with `spect` not '
-        f'matching the weights being optimized.\n'
-        f'Provided state: {state}\n'
+        'Provided accumulator and weigths do not match. The momentum term in '
+        'the state and weights must be collections of tensors of the same '
+        'structure and the tensors must have the same shapes and dtypes. A '
+        'possible reason is that the `initialize` method was invoked with '
+        '`specs` not matching the weights being optimized.\n'
+        f'Provided state: {accumulator}\n'
         f'Provided weights: {weights}')
 
 

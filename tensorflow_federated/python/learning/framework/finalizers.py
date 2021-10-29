@@ -161,7 +161,6 @@ def _build_tff_optimizer_initialize_and_next(
   @computations.tf_computation(optimizer_state_type,
                                model_weights_type.trainable,
                                model_weights_type.trainable)
-  @tf.function
   def next_fn(optimizer_state, trainable_weights, update):
     return optimizer.next(optimizer_state, trainable_weights, update)
 

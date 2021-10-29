@@ -318,7 +318,8 @@ class ApplyOptimizerFinalizerComputationTest(test_case.TestCase,
     expected_param_weights_type = computation_types.at_server(mw_type)
     expected_param_update_type = computation_types.at_server(mw_type.trainable)
     expected_result_type = computation_types.at_server(mw_type)
-    expected_state_type = computation_types.at_server(())
+    expected_state_type = computation_types.at_server(
+        computation_types.to_type(collections.OrderedDict(lr=tf.float32)))
     expected_measurements_type = computation_types.at_server(())
 
     expected_initialize_type = computation_types.FunctionType(
@@ -371,7 +372,7 @@ class ApplyOptimizerFinalizerExecutionTest(test_case.TestCase):
       output = finalizer.next(optimizer_state, weights, update)
       optimizer_state = output.state
       weights = output.result
-      self.assertEqual((), optimizer_state)
+      self.assertEqual(1.0, optimizer_state['lr'])
       self.assertAllClose(1.0 - 0.1 * (i + 1), weights.trainable)
       self.assertEqual((), output.measurements)
 
@@ -407,11 +408,11 @@ class ApplyOptimizerFinalizerExecutionTest(test_case.TestCase):
       output = finalizer.next(optimizer_state, weights, update)
       optimizer_state = output.state
       expected_velocity = expected_velocity * momentum + update
-      self.assertNear(expected_velocity, optimizer_state, 1e-6)
+      self.assertNear(expected_velocity, optimizer_state['accumulator'], 1e-6)
       self.assertAllClose(weights.trainable - expected_velocity,
                           output.result.trainable)
       self.assertEqual((), output.measurements)
-      weights = output.result
+    weights = output.result
 
   def test_execution_with_stateful_keras_optimizer(self):
     momentum = 0.5

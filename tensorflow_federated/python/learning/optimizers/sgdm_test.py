@@ -29,14 +29,27 @@ _NESTED_SPEC = [
 
 class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
 
+  def test_state_structure(self):
+    optimizer = sgdm.build_sgdm(0.01)
+    state = optimizer.initialize(_SCALAR_SPEC)
+    self.assertLen(state, 1)
+    self.assertIn(sgdm.LEARNING_RATE_KEY, state)
+
+  def test_state_structure_momentum(self):
+    optimizer = sgdm.build_sgdm(0.01, momentum=0.9)
+    state = optimizer.initialize(_SCALAR_SPEC)
+    self.assertLen(state, 3)
+    self.assertIn(sgdm.LEARNING_RATE_KEY, state)
+    self.assertIn(sgdm.MOMENTUM_KEY, state)
+    self.assertIn(sgdm.ACCUMULATOR_KEY, state)
+
   def test_math_no_momentum(self):
     weights = tf.constant([1.0], tf.float32)
     gradients = tf.constant([2.0], tf.float32)
-    optimizer = sgdm._SGD(0.01)
+    optimizer = sgdm.build_sgdm(0.01)
     history = [weights]
 
     state = optimizer.initialize(_SCALAR_SPEC)
-    self.assertTupleEqual((), state)
 
     for _ in range(4):
       state, weights = optimizer.next(state, weights, gradients)
@@ -46,7 +59,7 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
   def test_math_momentum_0_5(self):
     weights = tf.constant([1.0], tf.float32)
     gradients = tf.constant([2.0], tf.float32)
-    optimizer = sgdm._SGD(0.01, momentum=0.5)
+    optimizer = sgdm.build_sgdm(0.01, momentum=0.5)
     history = [weights]
 
     state = optimizer.initialize(_SCALAR_SPEC)
@@ -67,7 +80,7 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
   def test_executes_with(self, spec, momentum):
     weights = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
     gradients = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
-    optimizer = sgdm._SGD(0.01, momentum=momentum)
+    optimizer = sgdm.build_sgdm(0.01, momentum=momentum)
 
     state = optimizer.initialize(spec)
     for _ in range(10):
@@ -84,7 +97,7 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
         values=tf.constant([[1.0, 1.0], [1.0, 1.0]]),
         indices=tf.constant([0, 2]),
         dense_shape=tf.constant([4, 2]))
-    optimizer = sgdm._SGD(0.5)
+    optimizer = sgdm.build_sgdm(0.5)
 
     state = optimizer.initialize(tf.TensorSpec([4, 2]))
     _, weights = optimizer.next(state, weights, gradients)
@@ -97,7 +110,7 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     weights = init_w()
     self.assertGreater(fn(weights), 5.0)
 
-    optimizer = sgdm._SGD(0.1, momentum=momentum)
+    optimizer = sgdm.build_sgdm(0.1, momentum=momentum)
     state = optimizer.initialize(tf.TensorSpec(weights.shape, weights.dtype))
 
     for _ in range(100):
@@ -131,7 +144,7 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     intial_weight = random_vector()
     model_variables_fn = lambda: [tf.Variable(v) for v in intial_weight]
     gradients = [random_vector() for _ in range(steps)]
-    tff_optimizer_fn = lambda: sgdm._SGD(learning_rate, momentum)
+    tff_optimizer_fn = lambda: sgdm.build_sgdm(learning_rate, momentum)
 
     def keras_optimizer_fn():
       return tf.keras.optimizers.SGD(learning_rate, momentum)

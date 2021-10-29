@@ -462,8 +462,8 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     self.assertLen(next_type.parameter[0].member.optimizer_state, 5)
     self.assertLen(next_type.result[0].member.optimizer_state, 5)
 
-  @parameterized.named_parameters([('no_momentum', None, 0),
-                                   ('momentum', 0.9, 2)])
+  @parameterized.named_parameters([('no_momentum', None, 1),
+                                   ('momentum', 0.9, 3)])
   def test_construction_with_tff_sgdm_optimizer(self, momentum, state_len):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
@@ -572,8 +572,9 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
       # Keras SGD keeps track of a single scalar for the number of iterations.
       self.assertAllEqual(state.optimizer_state, [0])
     else:
-      # TFF SGD has an empty state.
-      self.assertEmpty(state.optimizer_state)
+      # TFF SGD stores learning rate in state.
+      self.assertAllClose(state.optimizer_state,
+                          collections.OrderedDict(lr=learning_rate))
     self.assertAllClose(list(state.model.trainable), [np.zeros((2, 1)), 0.0])
     self.assertAllClose(list(state.model.non_trainable), [0.0])
     self.assertEqual(state.delta_aggregate_state, 0)
