@@ -232,6 +232,10 @@ def _build_server_update_fn(
   return server_update
 
 
+def _flat_tuple(struct):
+  return tuple(tf.nest.flatten(struct))
+
+
 def _build_client_update_fn(
     model_fn: ModelFn,
     *,  # Callers should use keyword args for below.
@@ -331,14 +335,17 @@ def _build_client_update_fn(
 
       gradients = tape.gradient(batch_loss, local_model_weights.trainable)
       optimizer_state, updated_weights = reconstruction_optimizer.next(
-          optimizer_state, local_model_weights.trainable, gradients)
+          optimizer_state, _flat_tuple(local_model_weights.trainable),
+          _flat_tuple(gradients))
+      updated_weights = tf.nest.pack_sequence_as(local_model_weights.trainable,
+                                                 updated_weights)
       if not isinstance(reconstruction_optimizer,
                         keras_optimizer.KerasOptimizer):
         # Keras optimizer mutates model variables within the `next` step.
         tf.nest.map_structure(lambda a, b: a.assign(b),
                               local_model_weights.trainable, updated_weights)
 
-      return num_examples_sum + output.num_examples
+      return num_examples_sum + output.num_examples, optimizer_state
 
     @tf.function
     def train_reduce_fn(state, batch):
@@ -351,7 +358,10 @@ def _build_client_update_fn(
 
       gradients = tape.gradient(batch_loss, global_model_weights.trainable)
       optimizer_state, updated_weights = client_optimizer.next(
-          optimizer_state, global_model_weights.trainable, gradients)
+          optimizer_state, _flat_tuple(global_model_weights.trainable),
+          _flat_tuple(gradients))
+      updated_weights = tf.nest.pack_sequence_as(global_model_weights.trainable,
+                                                 updated_weights)
       if not isinstance(client_optimizer, keras_optimizer.KerasOptimizer):
         # Keras optimizer mutates model variables within the `next` step.
         tf.nest.map_structure(lambda a, b: a.assign(b),
@@ -361,7 +371,7 @@ def _build_client_update_fn(
       for metric in metrics:
         metric.update_state(y_true=output.labels, y_pred=output.predictions)
 
-      return num_examples_sum + output.num_examples
+      return num_examples_sum + output.num_examples, optimizer_state
 
     recon_dataset, post_recon_dataset = dataset_split_fn(dataset)
 
@@ -374,8 +384,11 @@ def _build_client_update_fn(
         trainable_tensor_specs = tf.nest.map_structure(
             lambda v: tf.TensorSpec(v.shape, v.dtype),
             local_model_weights.trainable)
+        # TODO(b/161529310): We flatten and convert the trainable specs to
+        # tuple, as the data iteration pattern would try to stack the tensors
+        # in a list.
         return tf.constant(0), reconstruction_optimizer.initialize(
-            trainable_tensor_specs)
+            _flat_tuple(trainable_tensor_specs))
 
       recon_dataset.reduce(
           initial_state=initial_state_reconstruction_reduce(),
@@ -386,7 +399,11 @@ def _build_client_update_fn(
       trainable_tensor_specs = tf.nest.map_structure(
           lambda v: tf.TensorSpec(v.shape, v.dtype),
           global_model_weights.trainable)
-      return tf.constant(0), client_optimizer.initialize(trainable_tensor_specs)
+      # TODO(b/161529310): We flatten and convert the trainable specs to
+      # tuple, as the data iteration pattern would try to stack the tensors
+      # in a list.
+      return tf.constant(0), client_optimizer.initialize(
+          _flat_tuple(trainable_tensor_specs))
 
     num_examples_sum, _ = post_recon_dataset.reduce(
         initial_state=initial_state_train_reduce(), reduce_func=train_reduce_fn)

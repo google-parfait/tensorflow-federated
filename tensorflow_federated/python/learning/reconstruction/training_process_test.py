@@ -245,7 +245,7 @@ class _DPMean(factory.UnweightedAggregationFactory):
 
 
 def _get_tff_optimizer(learning_rate=0.1):
-  return sgdm.build_sgdm(learning_rate=learning_rate)
+  return sgdm.build_sgdm(learning_rate=learning_rate, momentum=0.5)
 
 
 def _get_keras_optimizer_fn(learning_rate=0.1):
