@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defines abstract interfaces representing references to values.
+"""Defines abstract interfaces for representing references to values.
 
 These abstract interfaces provide the capability to handle values without
 requiring them to be materialized as Python objects. Instances of these

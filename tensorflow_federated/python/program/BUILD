@@ -20,6 +20,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        ":data_source",
         ":file_program_state_manager",
         ":file_release_manager",
         ":memory_release_manager",
@@ -28,6 +29,13 @@ py_library(
         ":tensorboard_release_manager",
         ":value_reference",
     ],
+)
+
+py_library(
+    name = "data_source",
+    srcs = ["data_source.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
 )
 
 py_library(
