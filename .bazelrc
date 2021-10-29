@@ -24,6 +24,7 @@ build --compilation_mode=opt
 
 # Enable fast C++ protocol buffers, 10x speedup over pure Python.
 build --define=use_fast_cpp_protos=true
+build --define=allow_oversize_protos=true
 
 # Processor native optimizations (depends on build host capabilities).
 build --copt=-march=native
@@ -39,6 +40,7 @@ build --copt=-Wno-ignored-attributes
 build --copt=-Wno-missing-field-initializers
 build --copt=-Wno-unknown-pragmas
 build:linux --copt=-Wno-stringop-truncation
+build:linux --copt=-Wno-ignored-attributes
 
 # gRPC on MacOS requires this define, see
 # https://github.com/bazelbuild/bazel/issues/4341#issuecomment-572050759 for
@@ -62,6 +64,49 @@ build:remote --project_id=tensorflow-federated
 #
 # Required to build Tensorflow.
 #
+build --define framework_shared_object=true
+# Modular TF build options
+build:dynamic_kernels --define=dynamic_loaded_kernels=true
+build:dynamic_kernels --copt=-DAUTOLOAD_DYNAMIC_KERNELS
+
+
+# On linux, don't cross compile by default
+build:linux --config=dynamic_kernels
+build:linux --distinct_host_configuration=false
+build:linux --experimental_guard_against_concurrent_changes
+build:linux --define=PREFIX=/usr
+build:linux --define=LIBDIR=$(PREFIX)/lib
+build:linux --define=INCLUDEDIR=$(PREFIX)/include
+build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
+
+build:avx_linux --copt=-mavx
+build:avx_linux --host_copt=-mavx
+build:native_arch_linux --copt=-march=native
+build:v1 --define=tf_api_version=1 --action_env=TF2_BEHAVIOR=0
+build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
+
+# See https://github.com/bazelbuild/bazel/issues/7362 for information on what
+# --incompatible_remove_legacy_whole_archive flag does.
+# This flag is set to true in Bazel 1.0 and newer versions. We tried to migrate
+# Tensorflow to the default, however test coverage wasn't enough to catch the
+# errors.
+# There is ongoing work on Bazel team's side to provide support for transitive
+# shared libraries. As part of migrating to transitive shared libraries, we
+# hope to provide a better mechanism for control over symbol exporting, and
+# then tackle this issue again.
+#
+# Remove this line once TF doesn't depend on Bazel wrapping all library
+# archives in -whole_archive -no_whole_archive.
+build --noincompatible_remove_legacy_whole_archive
+build --noincompatible_do_not_split_linking_cmdline
+build --enable_platform_specific_config
+
+build --define=grpc_no_ares=true
+build --define=no_aws_support=true
+build --define=no_hdfs_support=true
+
+build --define=with_xla_support=true
+build --config=v2
 
 # Enable remote execution capabilities.
 common --experimental_repo_remote_exec

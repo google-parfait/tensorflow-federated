@@ -21,7 +21,6 @@ cc_library(
     name = "cardinalities",
     srcs = ["cardinalities.cc"],
     hdrs = ["cardinalities.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:statusor",
@@ -33,7 +32,6 @@ cc_library(
     name = "composing_executor",
     srcs = ["composing_executor.cc"],
     hdrs = ["composing_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":computations",
@@ -53,14 +51,18 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
-        "@org_tensorflow//tensorflow/core/platform:macros",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
 cc_test(
     name = "composing_executor_test",
-    srcs = ["composing_executor_test.cc"],
-    tags = ["nokokoro"],
+    srcs = [
+        "composing_executor_test.cc",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    ],
     deps = [
         ":composing_executor",
         ":computations",
@@ -82,14 +84,12 @@ cc_test(
 cc_library(
     name = "computations",
     hdrs = ["computations.h"],
-    tags = ["nokokoro"],
     deps = ["//tensorflow_federated/proto/v0:computation_cc_proto"],
 )
 
 pybind_extension(
     name = "executor_bindings",
     srcs = ["executor_bindings.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":composing_executor",
@@ -113,7 +113,6 @@ cc_library(
     name = "executor",
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":status_macros",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -126,6 +125,8 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
         "@org_tensorflow//tensorflow/core/profiler/lib:traceme",
     ],
 )
@@ -134,7 +135,6 @@ cc_library(
     name = "executor_service",
     srcs = ["executor_service.cc"],
     hdrs = ["executor_service.h"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":executor",
@@ -156,8 +156,11 @@ cc_library(
 
 cc_test(
     name = "executor_service_test",
-    srcs = ["executor_service_test.cc"],
-    tags = ["nokokoro"],
+    srcs = [
+        "executor_service_test.cc",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    ],
     deps = [
         ":executor",
         ":executor_service",
@@ -183,7 +186,6 @@ cc_library(
     testonly = True,
     srcs = [],
     hdrs = ["executor_test_base.h"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":mock_executor",
@@ -198,7 +200,6 @@ cc_library(
     name = "federated_intrinsics",
     srcs = ["federated_intrinsics.cc"],
     hdrs = ["federated_intrinsics.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -210,7 +211,6 @@ cc_library(
     name = "federating_executor",
     srcs = ["federating_executor.cc"],
     hdrs = ["federating_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":executor",
@@ -226,14 +226,18 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow/core/platform:macros",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
 cc_test(
     name = "federating_executor_test",
-    srcs = ["federating_executor_test.cc"],
-    tags = ["nokokoro"],
+    srcs = [
+        "federating_executor_test.cc",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    ],
     deps = [
         ":executor",
         ":executor_test_base",
@@ -253,7 +257,6 @@ cc_library(
     name = "mock_executor",
     testonly = True,
     hdrs = ["mock_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":protobuf_matchers",
@@ -270,7 +273,6 @@ cc_library(
     name = "mock_grpc",
     testonly = True,
     hdrs = ["mock_grpc.h"],
-    tags = ["nokokoro"],
     deps = [
         "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -284,7 +286,6 @@ cc_library(
     name = "protobuf_matchers",
     testonly = True,
     hdrs = ["protobuf_matchers.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
@@ -298,7 +299,6 @@ cc_library(
     name = "reference_resolving_executor",
     srcs = ["reference_resolving_executor.cc"],
     hdrs = ["reference_resolving_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":status_macros",
@@ -309,15 +309,19 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
 cc_test(
     name = "reference_resolving_executor_test",
     timeout = "short",
-    srcs = ["reference_resolving_executor_test.cc"],
-    tags = ["nokokoro"],
+    srcs = [
+        "reference_resolving_executor_test.cc",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    ],
     deps = [
         ":executor",
         ":executor_test_base",
@@ -334,14 +338,6 @@ cc_test(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:math_ops",
-        "@org_tensorflow//tensorflow/cc:scope",
-        "@org_tensorflow//tensorflow/core:core_cpu_base",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/platform:byte_order",
-        "@org_tensorflow//tensorflow/core/platform:status",
     ],
 )
 
@@ -349,7 +345,6 @@ cc_library(
     name = "remote_executor",
     srcs = ["remote_executor.cc"],
     hdrs = ["remote_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":executor",
@@ -372,8 +367,11 @@ cc_library(
 cc_test(
     name = "remote_executor_test",
     timeout = "short",
-    srcs = ["remote_executor_test.cc"],
-    tags = ["nokokoro"],
+    srcs = [
+        "remote_executor_test.cc",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    ],
     deps = [
         ":executor",
         ":mock_grpc",
@@ -391,22 +389,19 @@ cc_test(
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
         "@com_google_googletest//:gtest_main",
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:math_ops",
     ],
 )
 
 pybind_extension(
     name = "serialization_bindings",
     srcs = ["serialization_bindings.cc"],
-    tags = ["nokokoro"],
     deps = [
         ":status_macros",
         ":tensor_serialization",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status:statusor",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core/platform:status",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
         "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor_headers",
         "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
         "@pybind11_abseil//pybind11_abseil:status_casters",
@@ -418,7 +413,6 @@ cc_library(
     name = "status_conversion",
     srcs = ["status_conversion.cc"],
     hdrs = ["status_conversion.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
@@ -428,7 +422,6 @@ cc_library(
 cc_library(
     name = "status_macros",
     hdrs = ["status_macros.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -441,7 +434,6 @@ cc_library(
     testonly = True,
     srcs = ["status_matchers.cc"],
     hdrs = ["status_matchers.h"],
-    tags = ["nokokoro"],
     deps = [
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
@@ -456,15 +448,13 @@ cc_library(
     name = "tensor_serialization",
     srcs = ["tensor_serialization.cc"],
     hdrs = ["tensor_serialization.h"],
-    tags = ["nokokoro"],
     deps = [
         ":status_macros",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/platform:byte_order",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
@@ -472,7 +462,6 @@ cc_library(
     name = "session_provider",
     srcs = ["session_provider.cc"],
     hdrs = ["session_provider.h"],
-    tags = ["nokokoro"],
     deps = [
         ":status_macros",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -481,30 +470,22 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
-        "@org_tensorflow//tensorflow/core:core_cpu",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core:tensorflow_opensource",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
 cc_test(
     name = "session_provider_test",
-    srcs = ["session_provider_test.cc"],
-    tags = ["nokokoro"],
+    srcs = [
+        "session_provider_test.cc",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    ],
     deps = [
         ":session_provider",
         ":status_matchers",
         "@com_google_googletest//:gtest_main",
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:cc_ops",
-        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
-        "@org_tensorflow//tensorflow/cc:math_ops",
-        "@org_tensorflow//tensorflow/cc:resource_variable_ops",
-        "@org_tensorflow//tensorflow/core:core_cpu_base",
-        "@org_tensorflow//tensorflow/core:tensorflow",
     ],
 )
 
@@ -512,7 +493,6 @@ cc_library(
     name = "tensorflow_executor",
     srcs = ["tensorflow_executor.cc"],
     hdrs = ["tensorflow_executor.h"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         ":session_provider",
@@ -531,22 +511,18 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
-        "@org_tensorflow//tensorflow/core:core_cpu",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core:tensorflow_opensource",
-        "@org_tensorflow//tensorflow/core/platform:macros",
-        "@org_tensorflow//tensorflow/core/platform:status",
-        "@org_tensorflow//tensorflow/core/platform:tstring",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
 cc_cpu_gpu_test(
     name = "tensorflow_executor_test",
-    srcs = ["tensorflow_executor_test.cc"],
-    tags = ["nokokoro"],
+    srcs = [
+        "tensorflow_executor_test.cc",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    ],
     deps = [
         ":executor",
         ":protobuf_matchers",
@@ -561,19 +537,6 @@ cc_cpu_gpu_test(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:cc_ops",
-        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
-        "@org_tensorflow//tensorflow/cc:math_ops",
-        "@org_tensorflow//tensorflow/cc:ops",
-        "@org_tensorflow//tensorflow/cc:resource_variable_ops",
-        "@org_tensorflow//tensorflow/cc:scope",
-        "@org_tensorflow//tensorflow/core:core_cpu_base",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core:tensorflow",
-        "@org_tensorflow//tensorflow/core/platform:status",
-        "@org_tensorflow//tensorflow/core/platform:tstring",
     ],
 )
 
@@ -581,7 +544,6 @@ cc_library(
     name = "threading",
     srcs = ["threading.cc"],
     hdrs = ["threading.h"],
-    tags = ["nokokoro"],
     deps = [
         ":status_macros",
         "@com_google_absl//absl/base:core_headers",
@@ -595,8 +557,11 @@ cc_library(
 cc_test(
     name = "threading_test",
     timeout = "short",
-    srcs = ["threading_test.cc"],
-    tags = ["nokokoro"],
+    srcs = [
+        "threading_test.cc",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    ],
     deps = [
         ":status_matchers",
         ":threading",
@@ -609,7 +574,6 @@ cc_library(
     name = "value_test_utils",
     testonly = True,
     hdrs = ["value_test_utils.h"],
-    tags = ["nokokoro"],
     deps = [
         ":executor",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -617,14 +581,8 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow/cc:client_session",
-        "@org_tensorflow//tensorflow/cc:const_op",
-        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
-        "@org_tensorflow//tensorflow/cc:ops",
-        "@org_tensorflow//tensorflow/cc:scope",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/platform:tstring",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
@@ -632,7 +590,6 @@ cc_library(
     name = "value_validation",
     srcs = ["value_validation.cc"],
     hdrs = ["value_validation.h"],
-    tags = ["nokokoro"],
     deps = [
         ":cardinalities",
         ":federated_intrinsics",
@@ -647,8 +604,11 @@ cc_library(
 cc_test(
     name = "value_validation_test",
     timeout = "short",
-    srcs = ["value_validation_test.cc"],
-    tags = ["nokokoro"],
+    srcs = [
+        "value_validation_test.cc",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    ],
     deps = [
         ":status_matchers",
         ":value_test_utils",
