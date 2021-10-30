@@ -1,5 +1,4 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_test_with_tf_deps")
-load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_test_with_tf_deps", "tff_pybind_extension_with_tf_deps")
 
 package(default_visibility = [
     ":executor_stacks_packages",
@@ -16,9 +15,10 @@ package_group(
 
 licenses(["notice"])
 
-pybind_extension(
+tff_pybind_extension_with_tf_deps(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.cc"],
+    tf_python_dependency = True,
     deps = [
         ":remote_stacks",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",

@@ -22,9 +22,26 @@ build --spawn_strategy=local
 # Enable build optimizations.
 build --compilation_mode=opt
 
+# TODO(b/220196048): there is a problem with pybind11_protobuf, libprotobuf,
+# and tensorflow when linking dynamicly (e.g. for a pip package). We must turn
+# off fast_cpp_protos because it seems like we end up with multiple descriptor
+# pools with different reflection objects for the same descriptor.
+#
 # Enable fast C++ protocol buffers, 10x speedup over pure Python.
-build --define=use_fast_cpp_protos=true
+# build --define=use_fast_cpp_protos=true
 build --define=allow_oversize_protos=true
+# Compile time define to switch to use Runtime proto reflection. This appears
+# to be required for protos that are shared across the Python/C++ and TFF/TF
+# boundaries due to shared libraries having their own libproto and descriptors
+# pools. This should be paired with the `define framework_shared_object=true`
+# argument below in the TensorFlow section.
+build --copt=-DSHARED_TF_FRAMEWORK_OBJECT
+
+# pybind_abseil does not include a __init__.py, which breaks dependencies when
+# bazel produces an empty __init__.py and hides the symbols from the `.so`
+# python extension. We must ask bazel not to generate these and rely on
+# explicit __init__.py files.
+build --incompatible_default_to_explicit_init_py
 
 # Processor native optimizations (depends on build host capabilities).
 build --copt=-march=native

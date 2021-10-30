@@ -229,21 +229,22 @@ py_library(
 py_library(
     name = "executor_bindings",
     srcs = ["executor_bindings.py"],
+    data = ["//tensorflow_federated/cc/core/impl/executors:executor_bindings.so"],
     srcs_version = "PY3",
-    tags = ["nokokoro"],
     deps = [
         ":data_conversions",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
 py_test(
     name = "executor_bindings_test",
+    timeout = "moderate",
     srcs = ["executor_bindings_test.py"],
     data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],
     deps = [
         ":executor_bindings",
         ":value_serialization",
@@ -923,7 +924,6 @@ py_library(
     name = "value_serialization",
     srcs = ["value_serialization.py"],
     srcs_version = "PY3",
-    tags = ["nokokoro"],
     deps = [
         ":executor_bindings",
         ":executor_utils",
@@ -950,7 +950,6 @@ py_test(
     srcs = ["value_serialization_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],
     deps = [
         ":value_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
