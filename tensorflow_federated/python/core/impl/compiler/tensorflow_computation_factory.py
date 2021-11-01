@@ -479,7 +479,29 @@ def create_replicate_input(type_signature: computation_types.Type,
   type_analysis.check_tensorflow_compatible_type(type_signature)
   py_typecheck.check_type(count, int)
   parameter_type = type_signature
-  return create_computation_for_py_fn(lambda v: [v] * count, parameter_type)
+  identity_comp, _ = create_identity(parameter_type)
+  # This manual proto manipulation is significantly faster than using TFF's
+  # GraphDef serialization for large `count` arguments.
+  tensorflow_comp = identity_comp.tensorflow
+  single_result_binding = tensorflow_comp.result
+  if tensorflow_comp.parameter:
+    new_tf_pb = pb.TensorFlow(
+        graph_def=tensorflow_comp.graph_def,
+        parameter=tensorflow_comp.parameter,
+        result=pb.TensorFlow.Binding(
+            struct=pb.TensorFlow.StructBinding(
+                element=(single_result_binding for _ in range(count)))))
+  else:
+    new_tf_pb = pb.TensorFlow(
+        graph_def=tensorflow_comp.graph_def,
+        result=pb.TensorFlow.Binding(
+            struct=pb.TensorFlow.StructBinding(
+                element=(single_result_binding for _ in range(count)))))
+  fn_type = computation_types.FunctionType(
+      parameter_type,
+      computation_types.StructType([(None, parameter_type) for _ in range(count)
+                                   ]))
+  return _tensorflow_comp(new_tf_pb, fn_type)
 
 
 def create_computation_for_py_fn(
