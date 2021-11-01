@@ -21,6 +21,25 @@ package_group(
 licenses(["notice"])
 
 py_library(
+    name = "adagrad",
+    srcs = ["adagrad.py"],
+    srcs_version = "PY3",
+    deps = [":optimizer"],
+)
+
+py_test(
+    name = "adagrad_test",
+    srcs = ["adagrad_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":adagrad",
+        ":optimizer",
+        ":optimizer_test_utils",
+    ],
+)
+
+py_library(
     name = "optimizers",
     srcs = ["__init__.py"],
     srcs_version = "PY3",

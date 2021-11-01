@@ -26,9 +26,9 @@ class OptimizerChecksTest(test_case.TestCase, parameterized.TestCase):
       ('none', None),
       ('not_float', '0.1'),
   )
-  def test_check_learning_rate_raises(self, lr):
+  def check_non_negative_float_raises(self, value):
     with self.assertRaises((ValueError, TypeError)):
-      optimizer.check_learning_rate(lr)
+      optimizer.check_non_negative_float(value)
 
   @parameterized.named_parameters(
       ('negative', -1.0),

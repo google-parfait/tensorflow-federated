@@ -71,10 +71,10 @@ class Optimizer(abc.ABC):
     pass
 
 
-def check_learning_rate(lr):
-  py_typecheck.check_type(lr, float)
-  if lr < 0.0:
-    raise ValueError('Learning rate must be non-negative.')
+def check_non_negative_float(value, name):
+  py_typecheck.check_type(value, float)
+  if value < 0.0:
+    raise ValueError(f'Provided {name} must be non-negative.')
 
 
 def check_momentum(momentum):
@@ -93,6 +93,21 @@ def check_weights_gradients_match(weights, gradients):
         'same structure and the tensors must have the same shapes and dtypes.\n'
         f'Provided weights: {weights}\n'
         f'Provided gradients: {gradients}')
+
+
+def check_weights_state_match(weights, state, name):
+  try:
+    tf.nest.assert_same_structure(state, weights, check_types=True)
+  except (TypeError, ValueError):
+    # Raises a more informative error message.
+    raise ValueError(
+        f'Provided {name} and weigths do not match. The {name} term in '
+        f'the state and weights must be collections of tensors of the same '
+        f'structure and the tensors must have the same shapes and dtypes. A '
+        f'possible reason is that the `initialize` method was invoked with '
+        f'`specs` not matching the weights being optimized.\n'
+        f'Provided {name}: {state}\n'
+        f'Provided weights: {weights}')
 
 
 def handle_indexed_slices_gradients(gradients):

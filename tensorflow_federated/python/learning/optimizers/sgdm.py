@@ -30,7 +30,7 @@ class _SGD(optimizer.Optimizer):
 
   def __init__(self, learning_rate: float, momentum: Optional[float] = None):
     """Initializes SGD optimizer."""
-    optimizer.check_learning_rate(learning_rate)
+    optimizer.check_non_negative_float(learning_rate, 'learning rate')
     if momentum is not None:
       optimizer.check_momentum(momentum)
     self._lr = learning_rate
@@ -56,7 +56,7 @@ class _SGD(optimizer.Optimizer):
     else:
       momentum = state[MOMENTUM_KEY]
       accumulator = state[ACCUMULATOR_KEY]
-      _check_accumulator_matches_weights(accumulator, weights)
+      optimizer.check_weights_state_match(weights, accumulator, 'accumulator')
       updated_accumulator = tf.nest.map_structure(lambda a, g: momentum * a + g,
                                                   accumulator, gradients)
       updated_weights = tf.nest.map_structure(lambda w, m: w - lr * m, weights,
@@ -67,21 +67,6 @@ class _SGD(optimizer.Optimizer):
           (ACCUMULATOR_KEY, updated_accumulator),
       ])
     return updated_state, updated_weights
-
-
-def _check_accumulator_matches_weights(accumulator, weights):
-  try:
-    tf.nest.assert_same_structure(accumulator, weights)
-  except (TypeError, ValueError):
-    # Raises a more informative error message.
-    raise ValueError(
-        'Provided accumulator and weigths do not match. The momentum term in '
-        'the state and weights must be collections of tensors of the same '
-        'structure and the tensors must have the same shapes and dtypes. A '
-        'possible reason is that the `initialize` method was invoked with '
-        '`specs` not matching the weights being optimized.\n'
-        f'Provided state: {accumulator}\n'
-        f'Provided weights: {weights}')
 
 
 def build_sgdm(learning_rate: float = 0.01,
