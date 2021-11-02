@@ -19,11 +19,14 @@ limitations under the License
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 
-namespace tensorflow_federated::status_macros {
+namespace tensorflow_federated {
+namespace status_macros {
 
 // Internal-only helper for TFF_TRY
 // Handles the no-`suffix` case.
-inline absl::Status __get_status(absl::Status&& status) { return status; }
+inline absl::Status __get_status(absl::Status&& status) {
+  return std::move(status);
+}
 
 // Internal-only helper for TFF_TRY
 // Appends `suffix` to the message of the original status.
@@ -68,6 +71,7 @@ inline T __void_or_result(absl::StatusOr<T>&& res) {
         std::move(__tff_expr_res));                               \
   })
 
-}  // namespace tensorflow_federated::status_macros
+}  // namespace status_macros
+}  // namespace tensorflow_federated
 
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_STATUS_MACROS_H_
