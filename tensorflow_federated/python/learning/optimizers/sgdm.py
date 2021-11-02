@@ -20,7 +20,7 @@ import tensorflow as tf
 from tensorflow_federated.python.learning.optimizers import optimizer
 
 
-LEARNING_RATE_KEY = 'lr'
+LEARNING_RATE_KEY = 'learning_rate'
 MOMENTUM_KEY = 'momentum'
 ACCUMULATOR_KEY = 'accumulator'
 

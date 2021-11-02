@@ -18,7 +18,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.learning.optimizers import optimizer
 
-LEARNING_RATE_KEY = 'lr'
+LEARNING_RATE_KEY = 'learning_rate'
 PRECONDITIONER_KEY = 'preconditioner'
 EPSILON_KEY = 'epsilon'
 
