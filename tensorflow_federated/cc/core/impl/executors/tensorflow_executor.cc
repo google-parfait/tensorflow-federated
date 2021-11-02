@@ -410,8 +410,6 @@ class SequenceTensor {
 class ExecutorValue {
  public:
   // Whether a given `ExecutorValue` is a structure or a single tensor.
-  // TODO(b/192457495): add more cases here as necessary (for computations,
-  // sequences, and more...).
   enum class ValueType { TENSOR, STRUCT, COMPUTATION, SEQUENCE };
 
   // Constructs an `ExecutorValue` from a `tensorflow::Tensor`.
