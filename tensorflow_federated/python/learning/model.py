@@ -14,13 +14,12 @@
 """Abstractions for models used in federated learning."""
 
 import abc
-from typing import Sequence
+from typing import Any, Callable, OrderedDict, Sequence
 
 import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
-
 
 MODEL_ARG_NAME = 'x'
 MODEL_LABEL_NAME = 'y'
@@ -33,10 +32,10 @@ class BatchOutput():
   Note: All fields are optional (may be None).
 
   Attributes:
-    loss: The scalar mean loss on the examples in the batch. If the model
-      has multiple losses, it is the sum of all the individual losses.
-    predictions: Tensor of predictions on the examples. The first dimension
-      must be the same size (the size of the batch).
+    loss: The scalar mean loss on the examples in the batch. If the model has
+      multiple losses, it is the sum of all the individual losses.
+    predictions: Tensor of predictions on the examples. The first dimension must
+      be the same size (the size of the batch).
     num_examples: Number of examples seen in the batch.
   """
   loss = attr.ib()
@@ -145,8 +144,8 @@ class Model(object, metaclass=abc.ABCMeta):
         `tf.TensorSpec` in `Model.input_spec`.
       training: If `True`, run the training forward pass, otherwise, run in
         evaluation mode. The semantics are generally the same as the `training`
-        argument to `keras.Model.call`; this might e.g. influence how
-        dropout or batch normalization is handled.
+        argument to `keras.Model.call`; this might e.g. influence how dropout or
+        batch normalization is handled.
 
     Returns:
       A `BatchOutput` object. The object must include the `loss` tensor if the
@@ -246,5 +245,72 @@ class Model(object, metaclass=abc.ABCMeta):
       the overall computation consuming the model. Using an `OrderedDict`
       allows the value returned by TFF executor to be converted back to an
       `OrderedDict` via the `._asdict(recursive=True)` member function.
+    """
+    pass
+
+  @abc.abstractmethod
+  def report_local_unfinalized_metrics(self) -> OrderedDict[str, Any]:
+    """Creates an `OrderedDict` of metric names to unfinalized values.
+
+    For a metric, its unfinalized values are given as a structure (typically a
+    list) of tensors representing values from aggregating over *all* previous
+    `forward_pass` calls. For a Keras metric, its unfinalized values are
+    typically the tensor values of its state variables. In general, the tensors
+    can be an arbitrary function of all the `tf.Variable`s of this model.
+
+    The metric names returned by this method should be the same as those
+    expected by the `metric_finalizers()`; one should be able to use the
+    unfinalized values as input to the finalizers to get the finalized values.
+    Taking `tf.keras.metrics.CategoricalAccuracy` as an example, its unfinalized
+    values can be a list of two tensors (from its state variables): `total` and
+    `count`, and the finalizer function performs a `tf.math.divide_no_nan`.
+
+    In federated learning, this method returns the local results from clients,
+    which will typically be further aggregated across clients and made available
+    on the server. This method and the `metric_finalizers()` method will be used
+    together to build a cross-client metrics aggregator. For example, a simple
+    "sum_then_finalize" aggregator will first sum the unfinalized metric values
+    from clients, and then call the finalizer functions at the server.
+
+    Because both of this method and the `metric_finalizers()` method are defined
+    in a per-metric manner, users have the flexiblity to call finalizer at the
+    clients or at the server for different metrics. Users also have the freedom
+    to defined a cross-client metrics aggregator that aggregates a single metric
+    in multiple ways.
+
+    Returns:
+      An `OrderedDict` of metric names to unfinalized values. The metric names
+      must be the same as those expected by the `metric_finalizers()` method.
+      One should be able to use the unfinalized metric values (returned by this
+      method) as the input to the finalizers (returned by `metric_finalizers()`)
+      to get the finalized metrics. This method and the `metric_finalizers()`
+      method will be used together to build a cross-client metrics aggregator
+      when defining the federated training processes or evaluation computations.
+    """
+    pass
+
+  @abc.abstractmethod
+  def metric_finalizers(self) -> OrderedDict[str, Callable[[Any], Any]]:
+    """Creates an `OrderedDict` of metric names to finalizers.
+
+    This method and the `report_local_unfinalized_metrics()` method should have
+    the same keys (i.e., metric names). A finalizer returned by this method is a
+    function (typically a `tf.function` decorated callable or a
+    `tff.tf_computation` decoreated TFF Computation) that takes in a metric's
+    unfinalized values (returned by `report_local_unfinalized_metrics()`), and
+    returns the finalized metric values.
+
+    This method and the `report_local_unfinalized_metrics()` method will be used
+    together to build a cross-client metrics aggregator. See the documentaion of
+    `report_local_unfinalized_metrics()` for more information.
+
+    Returns:
+      An `OrderedDict` of metric names to finalizers. The metric names must be
+      the same as those from the `report_local_unfinalized_metrics()` method. A
+      finalizer is a `tf.function` (or `tff.tf_computation`) decorated callable
+      that takes in a metric's unfinalized values, and returns the finalized
+      values. This method and the `report_local_unfinalized_metrics()` method
+      will be used together to build a cross-client metrics aggregator in
+      federated training processes or evaluation computations.
     """
     pass
