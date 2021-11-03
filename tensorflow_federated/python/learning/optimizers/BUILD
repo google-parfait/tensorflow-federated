@@ -45,6 +45,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
+        ":adagrad",
         ":optimizer",
         ":sgdm",
     ],

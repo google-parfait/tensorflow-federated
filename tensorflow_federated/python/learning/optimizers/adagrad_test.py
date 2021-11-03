@@ -40,7 +40,7 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
   def test_math_no_momentum(self):
     weights = tf.constant([1.0], tf.float32)
     gradients = tf.constant([2.0], tf.float32)
-    optimizer = adagrad._Adagrad(
+    optimizer = adagrad.build_adagrad(
         learning_rate=0.01, initial_preconditioner_value=0.0, epsilon=0.0)
     history = [weights]
 

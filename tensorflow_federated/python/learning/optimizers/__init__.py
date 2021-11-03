@@ -13,5 +13,6 @@
 # limitations under the License.
 """Libraries for optimization algorithms."""
 
+from tensorflow_federated.python.learning.optimizers.adagrad import build_adagrad
 from tensorflow_federated.python.learning.optimizers.optimizer import Optimizer
 from tensorflow_federated.python.learning.optimizers.sgdm import build_sgdm
