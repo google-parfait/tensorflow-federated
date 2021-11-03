@@ -83,7 +83,7 @@ def main(argv):
       model_fn,
       client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02))
 
-  context = tff.backends.native.create_remote_execution_context(channels=[
+  context = tff.backends.native.create_remote_execution_context(channels=[  # pytype: disable=module-attr  # gen-stub-imports
       grpc.insecure_channel(f'{FLAGS.host}:{FLAGS.port}', options=GRPC_OPTIONS)
   ])
   tff.framework.set_default_context(context)

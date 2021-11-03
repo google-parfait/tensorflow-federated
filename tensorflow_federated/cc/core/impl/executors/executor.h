@@ -20,6 +20,7 @@ limitations under the License
 #include <limits>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -226,6 +227,13 @@ class OwnedValueId {
 template <class ExecutorValue>
 class ExecutorBase : public Executor,
                      public std::enable_shared_from_this<Executor> {
+  static_assert(std::is_copy_constructible<ExecutorValue>::value,
+                "`ExecutorValue`s (the type parameter passed to `ExecutorBase`)"
+                " must be copy-constructible. Consider wrapping with "
+                "`std::shared_ptr`, `std::shared_future`, or other similar "
+                "container like: `class MyExecutor: public "
+                "ExecutorBase<std::shared_ptr<MyExecutorValue>>`");
+
  private:
   absl::Mutex mutex_;
   ValueId next_value_id_ ABSL_GUARDED_BY(mutex_) = 0;

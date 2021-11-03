@@ -608,10 +608,10 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     v0::Value aggregate;
     aggregate.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
         kFederatedAggregateUri.data(), kFederatedAggregateUri.size());
-    absl::optional<OwnedValueId> current = absl::nullopt;
-    // TODO(b/192457028): parallelize this so that we're materializing more than
-    // one value at a time and so that we can begin merging as soon as any
-    // result is available.
+
+    // Initiate the aggregation in each child.
+    std::vector<OwnedValueId> child_result_ids;
+    child_result_ids.reserve(children_.size());
     for (uint32_t i = 0; i < children_.size(); i++) {
       const auto& child = children_[i].executor();
       ValueId child_val = value.clients()->at(i)->ref();
@@ -628,7 +628,17 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       auto child_aggregate_id = TFF_TRY(child->CreateValue(aggregate));
       auto child_result_id =
           TFF_TRY(child->CreateCall(child_aggregate_id, child_arg_id));
-      v0::Value child_result = TFF_TRY(child->Materialize(child_result_id));
+      child_result_ids.push_back(std::move(child_result_id));
+    }
+
+    // Materialize and merge the results from each child executor.
+    // TODO(b/192457028): parallelize this so that we're materializing more than
+    // one value at a time and so that we can begin merging as soon as any
+    // result is available.
+    absl::optional<OwnedValueId> current = absl::nullopt;
+    for (uint32_t i = 0; i < children_.size(); i++) {
+      const auto& child = children_[i].executor();
+      v0::Value child_result = TFF_TRY(child->Materialize(child_result_ids[i]));
       if (!child_result.has_federated() ||
           child_result.federated().type().placement().value().uri() !=
               kServerUri) {

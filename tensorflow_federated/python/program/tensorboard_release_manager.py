@@ -32,9 +32,15 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
   from a federated program to TensorBoard and is used to release values from
   platform storage to customer storage in a federated program.
 
-  Note: This manager releases values as summary data using `tf.summary` and this
-  summary data can only contain booleans, integers, unsigned integers, and
-  floats, releasing any other values will be silently ignored.
+  Values are released as summary data using `tf.summary`. When the value is
+  released, if the value is a value reference or a structure containing value
+  references, each value reference is materialized. The value is then flattened
+  and released as summary data. The structure of the value is used as the name
+  of the summary data. Scalar values are released using `tf.summary.scalar` and
+  non-scalar values are released using `tf.summary.histogram`.
+
+  Warning: The summary data can only contain booleans, integers, unsigned
+  integers, and floats, releasing any other values will be silently ignored.
 
   See https://www.tensorflow.org/api_docs/python/tf/summary for more information
   about summary data and how to visualize summary data using TensorBoard.
@@ -63,10 +69,11 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
     """Releases `value` from a federated program.
 
     Args:
-      value: A materialized value, a value reference, or structure materialized
-        values and value references representing the value to release.
-      key: A integer to use to reference the released `value`, `key` represents
-        a step in a federated program.
+      value: A materialized value, a value reference, or a structure of
+        materialized values and value references representing the value to
+        release.
+      key: A integer used to reference the released `value`, `key` represents a
+        step in a federated program.
     """
     py_typecheck.check_type(key, int)
     materialized_value = value_reference.materialize_value(value)

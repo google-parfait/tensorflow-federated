@@ -45,8 +45,8 @@ class _SGD(optimizer.Optimizer):
     return state
 
   def next(self, state, weights, gradients):
-    optimizer.check_weights_gradients_match(weights, gradients)
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
+    optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[LEARNING_RATE_KEY]
 
     if MOMENTUM_KEY not in state:

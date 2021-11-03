@@ -37,11 +37,11 @@ class ReleaseManager(metaclass=abc.ABCMeta):
     a `key` type of `int`.
 
     Args:
-      value: A materialized value, a value reference, or structure materialized
-        values and value references representing the value to release. The exact
-        structure of `value` is left up to the implementation of
-        `tff.program.ReleaseManager`.
-      key: An optional value to use to reference the released `value`, the exact
+      value: A materialized value, a value reference, or a structure of
+        materialized values and value references representing the value to
+        release. The exact structure of `value` is left up to the implementation
+        of `tff.program.ReleaseManager`.
+      key: An optional value used to reference the released `value`, the exact
         type and structure of `key` and how `key` is used is left up to the
         implementation of `tff.program.ReleaseManager`.
     """

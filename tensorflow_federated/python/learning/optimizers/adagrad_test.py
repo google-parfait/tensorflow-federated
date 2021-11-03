@@ -131,6 +131,27 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
                                              tff_optimizer_fn,
                                              keras_optimizer_fn)
 
+  @parameterized.named_parameters(
+      ('negative_lr', -1.0, 0.1, 1e-7, 'learning rate'),
+      ('negative_preconditioner', 1.0, -0.1, 1e-7, 'preconditioner'),
+      ('negative_epsilon', 1.0, 0.1, -1e-7, 'epsilon'),
+  )
+  def test_invalid_args_raises(self, lr, preconditioner, epsilon, regex):
+    with self.assertRaisesRegex(ValueError, regex):
+      adagrad.build_adagrad(lr, preconditioner, epsilon)
+
+  def test_weights_gradients_mismatch_raises(self):
+    optimizer = adagrad.build_adagrad(0.1)
+    state = optimizer.initialize(_SCALAR_SPEC)
+    with self.assertRaises(ValueError):
+      optimizer.next(state, tf.zeros([1]), tf.zeros([2]))
+
+  def test_initialize_next_weights_mismatch_raises(self):
+    optimizer = adagrad.build_adagrad(0.1)
+    state = optimizer.initialize(_SCALAR_SPEC)
+    with self.assertRaises(ValueError):
+      optimizer.next(state, tf.zeros([2]), tf.zeros([2]))
+
 
 if __name__ == '__main__':
   tf.test.main()

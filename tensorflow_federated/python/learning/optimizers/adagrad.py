@@ -50,8 +50,8 @@ class _Adagrad(optimizer.Optimizer):
     return state
 
   def next(self, state, weights, gradients):
-    optimizer.check_weights_gradients_match(weights, gradients)
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
+    optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[LEARNING_RATE_KEY]
     epsilon = state[EPSILON_KEY]
     preconditioner = state[PRECONDITIONER_KEY]

@@ -68,6 +68,7 @@ py_library(
     deps = [
         ":file_utils",
         ":release_manager",
+        ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
