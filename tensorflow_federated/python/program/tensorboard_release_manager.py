@@ -32,7 +32,7 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
   from a federated program to TensorBoard and is used to release values from
   platform storage to customer storage in a federated program.
 
-  Note: This manager releases values as summary data using `tf.summary` and
+  Note: This manager releases values as summary data using `tf.summary` and this
   summary data can only contain booleans, integers, unsigned integers, and
   floats, releasing any other values will be silently ignored.
 

@@ -16,43 +16,81 @@ import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
+import tensorflow as tf
 
 from tensorflow_federated.python.program import memory_release_manager
+from tensorflow_federated.python.program import test_utils
 
 
-class MemoryReleaseManagerTest(parameterized.TestCase):
+class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
 
+  # pyformat: disable
   @parameterized.named_parameters(
-      ('none_0', None, 0),
-      ('none_1', None, 1),
-      ('int_0', 1, 0),
-      ('int_1', 1, 1),
-      ('list_0', [1, 2, 3], 0),
-      ('list_1', [1, 2, 3], 1),
+      ('none', None, None),
+      ('bool', True, True),
+      ('int', 1, 1),
+      ('str', 'a', 'a'),
+      ('list', [True, 1, 'a'], [True, 1, 'a']),
+      ('list_empty', [], []),
+      ('list_nested', [[True, 1], ['a']], [[True, 1], ['a']]),
+      ('dict', {'a': True, 'b': 1, 'c': 'a'}, {'a': True, 'b': 1, 'c': 'a'}),
+      ('dict_empty', {}, {}),
+      ('dict_nested',
+       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
+       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}}),
+      ('attr',
+       test_utils.TestAttrObject1(True, 1),
+       test_utils.TestAttrObject1(True, 1)),
+      ('attr_nested',
+       {'a': [test_utils.TestAttrObject1(True, 1)],
+        'b': test_utils.TestAttrObject2('a')},
+       {'a': [test_utils.TestAttrObject1(True, 1)],
+        'b': test_utils.TestAttrObject2('a')}),
+      ('tensor_int', tf.constant(1), tf.constant(1)),
+      ('tensor_str', tf.constant('a'), tf.constant('a')),
+      ('tensor_2d', tf.ones((2, 3)), tf.ones((2, 3))),
+      ('tensor_nested',
+       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]},
+       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]}),
+      ('numpy_int', np.int32(1), np.int32(1)),
+      ('numpy_2d', np.ones((2, 3)), np.ones((2, 3))),
+      ('numpy_nested',
+       {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
+       {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]}),
+      ('server_array_reference', test_utils.TestServerArrayReference(1), 1),
+      ('server_array_reference_nested',
+       {'a': [test_utils.TestServerArrayReference(True),
+              test_utils.TestServerArrayReference(1)],
+        'b': test_utils.TestServerArrayReference('a')},
+       {'a': [True, 1], 'b': 'a'}),
+      ('materialized_values_and_value_references',
+       [1, test_utils.TestServerArrayReference(2)],
+       [1, 2]),
   )
-  def test_release_saves_value_and_key(self, value, key):
+  # pyformat: enable
+  def test_release_saves_value(self, value, expected_value):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
-    release_mngr.release(value, key)
+    release_mngr.release(value, 1)
 
     self.assertLen(release_mngr._values, 1)
-    self.assertIn(key, release_mngr._values)
-    self.assertEqual(release_mngr._values[key], value)
+    actual_value = release_mngr._values[1]
+    self.assertAllEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
       ('none', None),
-      ('int', 1),
       ('bool', True),
+      ('int', 1),
       ('str', 'a'),
-      ('tuple', ()),
   )
-  def test_release_does_not_raise_with_key(self, key):
+  def test_release_saves_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
-    try:
-      release_mngr.release(1, key)
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+    release_mngr.release(1, key)
+
+    self.assertLen(release_mngr._values, 1)
+    self.assertIn(key, release_mngr._values)
 
   @parameterized.named_parameters(
       ('list', []),
@@ -70,7 +108,7 @@ class MemoryReleaseManagerTest(parameterized.TestCase):
       ('1', 1),
       ('10', 10),
   )
-  def test_values_with_saved_values(self, count):
+  def test_values_returns_values(self, count):
     release_mngr = memory_release_manager.MemoryReleaseManager()
     for i in range(count):
       release_mngr._values[i] = i * 10

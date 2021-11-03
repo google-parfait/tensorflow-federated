@@ -17,9 +17,11 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.program import tensorboard_release_manager
+from tensorflow_federated.python.program import test_utils
 
 
 class TensorboardReleaseManagerInitTest(parameterized.TestCase):
@@ -67,79 +69,78 @@ class TensorboardReleaseManagerInitTest(parameterized.TestCase):
 
 class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
 
-  def test_writes_scalar_int(self):
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('bool', True, [('', True)]),
+      ('int', 1, [('', 1)]),
+      ('list', [True, 1, 'a'], [('0', True), ('1', 1)]),
+      ('list_nested', [[True, 1], ['a']], [('0/0', True), ('0/1', 1)]),
+      ('dict',
+       {'a': True, 'b': 1, 'c': 'a'},
+       [('a', True), ('b', 1)]),
+      ('dict_nested',
+       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
+       [('x/a', True), ('x/b', 1)]),
+      ('attr',
+       test_utils.TestAttrObject1(True, 1),
+       [('a', True), ('b', 1)]),
+      ('attr_nested',
+       {'a': [test_utils.TestAttrObject1(True, 1)],
+        'b': test_utils.TestAttrObject2('a')},
+       [('a/0/a', True), ('a/0/b', 1)]),
+      ('tensor_int', tf.constant(1), [('', tf.constant(1))]),
+      ('tensor_nested',
+       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]},
+       [('a/0', True), ('a/1', 1)]),
+      ('numpy_int', np.int32(1), [('', np.int32(1))]),
+      ('numpy_nested',
+       {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
+       [('a/0', True), ('a/1', 1)]),
+      ('server_array_reference',
+       test_utils.TestServerArrayReference(1),
+       [('', 1)]),
+      ('server_array_reference_nested',
+       {'a': [test_utils.TestServerArrayReference(True),
+              test_utils.TestServerArrayReference(1)],
+        'b': test_utils.TestServerArrayReference('a')},
+       [('a/0', True), ('a/1', 1)]),
+      ('materialized_values_and_value_references',
+       [1, test_utils.TestServerArrayReference(2)],
+       [('0', 1), ('1', 2)]),
+  )
+  # pyformat: enable
+  def test_writes_value_scalar(self, value, expected_named_values):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      release_mngr.release(1, 1)
-      mock_scalar.assert_called_once_with('', 1, step=1)
+      release_mngr.release(value, 1)
 
-  def test_writes_scalar_list(self):
-    temp_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
-        summary_dir=temp_dir)
+      calls = []
+      for name, value in expected_named_values:
+        call = mock.call(name, value, step=1)
+        calls.append(call)
+      mock_scalar.assert_has_calls(calls)
 
-    with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      release_mngr.release([1, 2, 3], 1)
-      mock_scalar.assert_has_calls([
-          mock.call('0', 1, step=1),
-          mock.call('1', 2, step=1),
-          mock.call('2', 3, step=1),
-      ])
-
-  def test_writes_scalar_dict(self):
-    temp_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
-        summary_dir=temp_dir)
-
-    with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      release_mngr.release({'a': 1, 'b': 2, 'c': 3}, 1)
-      mock_scalar.assert_has_calls([
-          mock.call('a', 1, step=1),
-          mock.call('b', 2, step=1),
-          mock.call('c', 3, step=1),
-      ])
-
-  def test_writes_scalar_nested(self):
-    temp_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
-        summary_dir=temp_dir)
-
-    with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      release_mngr.release([1, [2, 2], {'a': 3}], 1)
-      mock_scalar.assert_has_calls([
-          mock.call('0', 1, step=1),
-          mock.call('1/0', 2, step=1),
-          mock.call('1/1', 2, step=1),
-          mock.call('2/a', 3, step=1),
-      ])
-
-  def test_writes_histogram_tensor(self):
+  @parameterized.named_parameters(
+      ('tensor_2d', tf.ones((2, 3)), [('', tf.ones((2, 3)))]),
+      ('numpy_2d', np.ones((2, 3)), [('', np.ones((2, 3)))]),
+  )
+  def test_writes_value_histogram(self, value, expected_named_values):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
-      release_mngr.release(tf.ones([1]), 1)
-      mock_histogram.assert_has_calls([
-          mock.call('', tf.ones([1]), step=1),
-      ])
+      release_mngr.release(value, 1)
 
-  def test_writes_histogram_nested(self):
-    temp_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
-        summary_dir=temp_dir)
+      calls = []
+      for name, value in expected_named_values:
+        mock.call(name, value, step=1)
+      mock_histogram.assert_has_calls(calls)
 
-    with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
-      release_mngr.release([tf.ones([1]), [tf.ones([1])]], 1)
-      mock_histogram.assert_has_calls([
-          mock.call('0', tf.ones([1]), step=1),
-          mock.call('1/0', tf.ones([1]), step=1),
-      ])
-
-  def test_writes_scalar_int_and_histogram_tensor(self):
+  def test_writes_value_scalar_and_histogram(self):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -154,16 +155,21 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('none', None),
       ('str', 'a'),
-      ('list', []),
+      ('list_empty', []),
+      ('dict_empty', {}),
+      ('tensor_str', tf.constant('a')),
   )
   def test_does_not_write_value(self, value):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
 
-    with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
+    patch_scalar = mock.patch.object(tf.summary, 'scalar')
+    patch_histogram = mock.patch.object(tf.summary, 'histogram')
+    with patch_scalar as mock_scalar, patch_histogram as mock_histogram:
       release_mngr.release(value, 1)
       mock_scalar.assert_not_called()
+      mock_histogram.assert_not_called()
 
   @parameterized.named_parameters(
       ('negative_1', -1),

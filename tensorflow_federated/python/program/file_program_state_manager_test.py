@@ -535,12 +535,10 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase, tf.test.TestCase):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_', keep_total=0)
-    path = program_state_mngr._get_path_for_version(1)
-    self.assertFalse(os.path.exists(path))
 
     program_state_mngr.save(program_state, 1)
 
-    self.assertTrue(os.path.exists(path))
+    path = program_state_mngr._get_path_for_version(1)
     module = tf.saved_model.load(path)
     actual_value = module()
     self.assertEqual(type(actual_value), type(expected_value))

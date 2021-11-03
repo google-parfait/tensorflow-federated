@@ -109,7 +109,10 @@ py_test(
     srcs = ["logging_release_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":logging_release_manager"],
+    deps = [
+        ":logging_release_manager",
+        ":test_utils",
+    ],
 )
 
 py_library(
@@ -124,7 +127,10 @@ py_library(
 py_test(
     name = "memory_release_manager_test",
     srcs = ["memory_release_manager_test.py"],
-    deps = [":memory_release_manager"],
+    deps = [
+        ":memory_release_manager",
+        ":test_utils",
+    ],
 )
 
 py_library(
@@ -175,7 +181,10 @@ py_test(
     srcs = ["tensorboard_release_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tensorboard_release_manager"],
+    deps = [
+        ":tensorboard_release_manager",
+        ":test_utils",
+    ],
 )
 
 py_library(

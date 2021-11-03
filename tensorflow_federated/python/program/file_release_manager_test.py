@@ -165,12 +165,10 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
     temp_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
         root_dir=temp_dir, prefix='a_')
-    path = release_mngr._get_path_for_key(1)
-    self.assertFalse(os.path.exists(path))
 
     release_mngr.release(value, 1)
 
-    self.assertTrue(os.path.exists(path))
+    path = release_mngr._get_path_for_key(1)
     module = tf.saved_model.load(path)
     actual_value = module()
     self.assertEqual(type(actual_value), type(expected_value))
