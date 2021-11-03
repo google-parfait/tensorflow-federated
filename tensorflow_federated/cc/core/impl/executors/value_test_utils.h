@@ -101,15 +101,18 @@ inline v0::Value StructV(const absl::Span<const v0::Value> elements) {
   return value_proto;
 }
 
-inline tensorflow::tstring CreateSerializedRangeDatasetGraphDef(
-    int64_t stop, tensorflow::DataType dtype) {
+// Returns the string representation of a TensorFlow GraphDef representing a
+// dataset of `int64_t`s from `start` to `stop`, stepping by `step`.
+inline tensorflow::tstring CreateSerializedRangeDatasetGraphDef(int64_t start,
+                                                                int64_t stop,
+                                                                int64_t step) {
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::internal::RangeDataset dataset(
-      root, /*start=*/tensorflow::ops::Const(root, 0LL),
+      root, /*start=*/tensorflow::ops::Const(root, start),
       /*stop=*/tensorflow::ops::Const(root, stop),
-      /*step=*/tensorflow::ops::Const(root, 1LL),
-      /*output_types=*/{dtype},
-      /*output_shapes=*/{tensorflow::TensorShape({1})});
+      /*step=*/tensorflow::ops::Const(root, step),
+      /*output_types=*/{tensorflow::DT_INT64},
+      /*output_shapes=*/{tensorflow::TensorShape({})});
   tensorflow::ops::internal::DatasetToGraphV2 graph_def_tensor(root, dataset);
   tensorflow::ClientSession session(root);
   std::vector<tensorflow::Tensor> outputs;
@@ -118,9 +121,11 @@ inline tensorflow::tstring CreateSerializedRangeDatasetGraphDef(
   return graph_def;
 }
 
-inline v0::Value SequenceV(int64_t stop, tensorflow::DataType dtype) {
+// Returns a value representing a sequence of `int64_t`s from `start` to `stop`,
+// stepping by `step`.
+inline v0::Value SequenceV(int64_t start, int64_t stop, int64_t step) {
   tensorflow::tstring sequence_graph =
-      CreateSerializedRangeDatasetGraphDef(stop, dtype);
+      CreateSerializedRangeDatasetGraphDef(start, stop, step);
   v0::Value value_proto;
   v0::Value::Sequence* sequence_pb = value_proto.mutable_sequence();
   *sequence_pb->mutable_serialized_graph_def() =

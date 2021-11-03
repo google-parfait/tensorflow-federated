@@ -26,7 +26,7 @@ class OptimizerChecksTest(test_case.TestCase, parameterized.TestCase):
       ('none', None),
       ('not_float', '0.1'),
   )
-  def check_non_negative_float_raises(self, value):
+  def test_check_non_negative_float_raises(self, value):
     with self.assertRaises((ValueError, TypeError)):
       optimizer.check_non_negative_float(value)
 
@@ -47,9 +47,19 @@ class OptimizerChecksTest(test_case.TestCase, parameterized.TestCase):
       ('bad_structure', [tf.zeros([2]), tf.zeros([3])
                         ], [tf.zeros([2]), [tf.zeros([3])]]),
   )
-  def check_weights_gradients_match(self, weights, gradients):
+  def test_check_weights_gradients_match(self, weights, gradients):
     with self.assertRaises(ValueError):
       optimizer.check_weights_gradients_match(weights, gradients)
+
+  @parameterized.named_parameters(
+      ('bad_shape', tf.zeros([2], tf.float32), tf.zeros([3], tf.float32)),
+      ('bad_dtype', tf.zeros([2], tf.float32), tf.zeros([2], tf.float64)),
+      ('bad_structure', [tf.zeros([2]), tf.zeros([3])
+                        ], [tf.zeros([2]), [tf.zeros([3])]]),
+  )
+  def test_check_weights_state_match(self, weights, state):
+    with self.assertRaisesRegex(ValueError, 'foo'):
+      optimizer.check_weights_state_match(weights, state, name='foo')
 
   def test_handle_indexed_slices_single_value(self):
     gradients = tf.IndexedSlices(
