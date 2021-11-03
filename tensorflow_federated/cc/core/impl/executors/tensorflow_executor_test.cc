@@ -15,6 +15,8 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 
+#include <fcntl.h>
+
 #include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
@@ -23,6 +25,7 @@ limitations under the License
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "absl/flags/flag.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
@@ -48,11 +51,15 @@ limitations under the License
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
+ABSL_FLAG(std::string, reduce_graph_path, "",
+          "Path to a serialized GraphDef containing a dataset reduce.");
+
 namespace tensorflow_federated {
 namespace {
 
 using testing::CreateSerializedRangeDatasetGraphDef;
 using testing::EqualsProto;
+using testing::SequenceV;
 using testing::StructV;
 using testing::TensorV;
 
@@ -82,11 +89,11 @@ inline v0::TensorFlow::Binding StructB(
   return binding;
 }
 
-inline v0::Value Computation(absl::optional<v0::TensorFlow::Binding> in_binding,
-                             v0::TensorFlow::Binding out_binding,
-                             const tensorflow::Scope& scope,
-                             const absl::optional<const tensorflow::Operation>&
-                                 init_op = absl::nullopt) {
+inline v0::Value ComputationV(
+    absl::optional<v0::TensorFlow::Binding> in_binding,
+    v0::TensorFlow::Binding out_binding, const tensorflow::Scope& scope,
+    const absl::optional<const tensorflow::Operation>& init_op =
+        absl::nullopt) {
   v0::Value value_pb;
   v0::Computation* comp_pb = value_pb.mutable_computation();
   // NOTE: we do not fill in the `type` field of `comp` because it is not needed
@@ -200,62 +207,52 @@ TEST_F(TensorFlowExecutorTest, CreateValueSimpleTensor) {
   EXPECT_THAT(test_executor_->CreateValue(input_pb), IsOk());
 }
 
-// TODO(b/192457188): this test won't work yet because we don't have a
-// `reduce_lambda` function in the GraphDef.library. This is going to be hard to
-// simulate only from C++, we should probably look at building the graphs in
-// Python.
-// TEST_F(TensorFlowExecutorTest, CallReduceOnSequence) {
-//   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
-//   tensorflow::ops::internal::RangeDataset dataset(
-//       root, /*start=*/tensorflow::ops::Const(root, 0LL),
-//       /*stop=*/tensorflow::ops::Const(root, 10LL),
-//       /*step=*/tensorflow::ops::Const(root, 1LL),
-//       /*output_types=*/{tensorflow::DT_INT64},
-//       /*output_shapes=*/{tensorflow::TensorShape({1})});
-//   EXPECT_TRUE(root.ok()) << root.status();
-//   tensorflow::ops::internal::DatasetToGraphV2 graph_def_tensor(root,
-//   dataset); tensorflow::ClientSession session(root);
-//   std::vector<tensorflow::Tensor> outputs;
-//   auto status = session.Run(/*fetch_outputs=*/{graph_def_tensor}, &outputs);
-//   tensorflow::tstring graph_def = outputs[0].flat<tensorflow::tstring>()(0);
-//   EXPECT_TRUE(status.ok()) << status;
-//   v0::Value value_pb;
-//   v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
-//   *sequence_pb->mutable_serialized_graph_def() =
-//       std::string(graph_def.data(), graph_def.size());
-//   v0::TensorType* element_type_pb =
-//       sequence_pb->mutable_element_type()->mutable_tensor();
-//   element_type_pb->set_dtype(v0::TensorType::DT_INT64);
-//   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId value_id,
-//                        test_executor_->CreateValue(value_pb));
-//
-//   tensorflow::Scope function_scope = tensorflow::Scope::NewRootScope();
-//   tensorflow::ops::Placeholder input_dataset(function_scope,
-//                                              tensorflow::DT_VARIANT);
-//   tensorflow::NameAttrList name_attr_list_pb;
-//   name_attr_list_pb.set_name("reduce_lambda");
-//
-//   tensorflow::ops::internal::ReduceDataset reduce_dataset(
-//       function_scope, input_dataset,
-//       /*initial_state=*/
-//       {tensorflow::ops::Const(function_scope, 0LL)},
-//       /*other_arguments=*/std::initializer_list<tensorflow::Input>({}),
-//       /*f=*/name_attr_list_pb,
-//       /* output_types=*/{tensorflow::DT_INT64},
-//       /* output_shapes=*/{tensorflow::TensorShape({})});
-//   // LOG(INFO) << input_dataset.operation.output(0).name();
-//   v0::Value reduce_computation =
-//       Computation(SequenceB(input_dataset.operation.output(0)),
-//                   TensorB(reduce_dataset.operation.output(0)),
-//                   function_scope);
-//   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId computation_id,
-//                        test_executor_->CreateValue(reduce_computation));
-//   TFF_ASSERT_OK_AND_ASSIGN(
-//       OwnedValueId result_id,
-//       test_executor_->CreateCall(computation_id.ref(), value_id.ref()));
-//   TFF_ASSERT_OK_AND_ASSIGN(auto output,
-//                        test_executor_->Materialize(result_id.ref()));
-// }
+// Returns a `GraphDef` whose serialized form is stored in a file at `path`.
+tensorflow::GraphDef LoadGraph(const char* path) {
+  int fd = open(path, O_RDONLY);
+  CHECK(fd != -1) << "Failed to open graph at path " << path;
+  google::protobuf::io::FileInputStream fs(fd);
+  fs.SetCloseOnDelete(true);
+
+  tensorflow::GraphDef graph;
+  bool parsed = google::protobuf::TextFormat::Parse(&fs, &graph);
+  CHECK(parsed) << "Input graph at path \"" << path
+                << "\" is invalid text-format GraphDef";
+  return graph;
+}
+
+// Constants necessary for using the dataset-reducing graph created by
+// `make_reduce_lambda_test_graph.py`.
+char const* const kReduceDatasetInputName = "input_dataset_placeholder";
+char const* const kReduceResultOutputTensorName = "result_tensor";
+
+// Returns a value containing a computation which will perform a reduce on an
+// input dataset of `int64_t`s and return the sum of the elements.
+v0::Value CreateDatasetReduceComputationV() {
+  v0::Value value_pb;
+  v0::Computation* comp_pb = value_pb.mutable_computation();
+  // NOTE: we do not fill in the `type` field of `comp` because it is not needed
+  // by the C++ TensorFlow executor.
+  v0::TensorFlow* tensorflow_pb = comp_pb->mutable_tensorflow();
+  std::string reduce_graph_path = absl::GetFlag(FLAGS_reduce_graph_path);
+  tensorflow::GraphDef graphdef_pb = LoadGraph(reduce_graph_path.c_str());
+  tensorflow_pb->mutable_graph_def()->PackFrom(graphdef_pb);
+  *tensorflow_pb->mutable_parameter()
+       ->mutable_sequence()
+       ->mutable_variant_tensor_name() = kReduceDatasetInputName;
+  *tensorflow_pb->mutable_result()->mutable_tensor()->mutable_tensor_name() =
+      kReduceResultOutputTensorName;
+  return value_pb;
+}
+
+TEST_F(TensorFlowExecutorTest, CallReduceOnSequence) {
+  int64_t start = 0;
+  int64_t stop = 10;
+  int64_t step = 2;
+  int64_t expected_sum = 0 + 2 + 4 + 6 + 8;
+  CheckCallEqualsProto(CreateDatasetReduceComputationV(),
+                       SequenceV(start, stop, step), TensorV(expected_sum));
+}
 
 TEST_F(TensorFlowExecutorTest, RoundTripEmptyStruct) {
   v0::Value input_pb;
@@ -283,8 +280,8 @@ TEST_F(TensorFlowExecutorTest, RoundTripStructOfNestedTensors) {
 }
 
 TEST_F(TensorFlowExecutorTest, RoundTripSequence) {
-  tensorflow::tstring graph_def =
-      CreateSerializedRangeDatasetGraphDef(10LL, tensorflow::DT_INT64);
+  tensorflow::tstring graph_def = CreateSerializedRangeDatasetGraphDef(
+      /*start=*/0, /*stop=*/10, /*step=*/1);
   v0::Value value_pb;
   v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
   *sequence_pb->mutable_serialized_graph_def() =
@@ -375,7 +372,7 @@ TEST_F(TensorFlowExecutorTest, CallNoOutputTensors) {
   // so long as it has no tensors.
   auto out_binding = StructB({StructB({}), StructB({StructB({})})});
 
-  v0::Value fn = Computation(in_binding, out_binding, root);
+  v0::Value fn = ComputationV(in_binding, out_binding, root);
   v0::Value arg = StructV({TensorV(1.0), TensorV(2.0)});
   v0::Value expected = StructV({StructV({}), StructV({StructV({})})});
   CheckCallEqualsProto(fn, arg, expected);
@@ -389,7 +386,7 @@ TEST_F(TensorFlowExecutorTest, CallNoArgOneOutWithInitialize) {
   auto var_init = tensorflow::ops::AssignVariableOp(
       root, var, tensorflow::ops::Const(root, {1, 2, 3}, shape));
   tensorflow::ops::ReadVariableOp read_var(root, var, tensorflow::DT_INT32);
-  v0::Value fn = Computation(
+  v0::Value fn = ComputationV(
       /*in_binding=*/absl::nullopt,
       /*out_binding=*/TensorB(read_var), root,
       /*init_op=*/var_init);
@@ -408,7 +405,7 @@ TEST_F(TensorFlowExecutorTest, CallOneInOut) {
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder in(root, tensorflow::DT_DOUBLE);
   tensorflow::ops::Identity out(root, in);
-  v0::Value fn = Computation(TensorB(in), TensorB(out), root);
+  v0::Value fn = ComputationV(TensorB(in), TensorB(out), root);
   v0::Value arg = TensorV(5.0);
   v0::Value expected = TensorV(5.0);
   CheckCallEqualsProto(fn, arg, expected);
@@ -420,8 +417,8 @@ TEST_F(TensorFlowExecutorTest, CallStructSwapInOut) {
   tensorflow::ops::Placeholder yin(root, tensorflow::DT_INT32);
   tensorflow::ops::Identity xout(root, xin);
   tensorflow::ops::Identity yout(root, yin);
-  v0::Value fn = Computation(StructB({TensorB(xin), TensorB(yin)}),
-                             StructB({TensorB(yout), TensorB(xout)}), root);
+  v0::Value fn = ComputationV(StructB({TensorB(xin), TensorB(yin)}),
+                              StructB({TensorB(yout), TensorB(xout)}), root);
   v0::Value arg = StructV({TensorV(5.0), TensorV(1)});
   v0::Value expected = StructV({TensorV(1), TensorV(5.0)});
   CheckCallEqualsProto(fn, arg, expected);
@@ -434,8 +431,8 @@ TEST_F(TensorFlowExecutorTest, CallNestedStructSwapInOut) {
   tensorflow::ops::Identity xout(root, xin);
   tensorflow::ops::Identity yout(root, yin);
   v0::Value fn =
-      Computation(StructB({StructB({TensorB(xin)}), TensorB(yin)}),
-                  StructB({TensorB(yout), StructB({TensorB(xout)})}), root);
+      ComputationV(StructB({StructB({TensorB(xin)}), TensorB(yin)}),
+                   StructB({TensorB(yout), StructB({TensorB(xout)})}), root);
   v0::Value arg = StructV({StructV({TensorV(2.0)}), TensorV(4)});
   v0::Value expected = StructV({TensorV(4), StructV({TensorV(2.0)})});
   CheckCallEqualsProto(fn, arg, expected);
@@ -447,7 +444,7 @@ TEST_F(TensorFlowExecutorTest, CallAdd) {
   tensorflow::ops::Placeholder y(root, tensorflow::DT_INT32);
   tensorflow::ops::AddV2 out(root, x, y);
   v0::Value fn =
-      Computation(StructB({TensorB(x), TensorB(y)}), TensorB(out), root);
+      ComputationV(StructB({TensorB(x), TensorB(y)}), TensorB(out), root);
   v0::Value arg = StructV({TensorV(1), TensorV(2)});
   v0::Value expected = TensorV(3);
   CheckCallEqualsProto(fn, arg, expected);
@@ -464,7 +461,7 @@ TEST_F(TensorFlowExecutorTest, StatefulCallGetsReinitialized) {
   tensorflow::ops::ReadVariableOp read_var(
       root.WithControlDependencies({var_add_assign}), var,
       tensorflow::DT_INT32);
-  v0::Value fn = Computation(absl::nullopt, TensorB(read_var), root, var_init);
+  v0::Value fn = ComputationV(absl::nullopt, TensorB(read_var), root, var_init);
   v0::Value expected = TensorV(1);
   CheckCallEqualsProto(fn, absl::nullopt, expected);
   CheckCallRepeatedlyEqualsProto(fn, absl::nullopt, expected);
@@ -477,7 +474,7 @@ TEST_F(TensorFlowExecutorTest, CallWithComputationId) {
   tensorflow::ops::Placeholder y(root, tensorflow::DT_INT32);
   tensorflow::ops::AddV2 out(root, x, y);
   v0::Value fn =
-      Computation(StructB({TensorB(x), TensorB(y)}), TensorB(out), root);
+      ComputationV(StructB({TensorB(x), TensorB(y)}), TensorB(out), root);
   // Add an ID to the value.
   fn.mutable_computation()->mutable_tensorflow()->mutable_cache_key()->set_id(
       1);

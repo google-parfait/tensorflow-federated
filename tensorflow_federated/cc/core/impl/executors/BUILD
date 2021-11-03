@@ -1,5 +1,6 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "cc_cpu_gpu_test")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("@rules_python//python:defs.bzl", "py_binary")
 
 package(default_visibility = [
     ":executors_packages",
@@ -516,6 +517,24 @@ cc_library(
     ],
 )
 
+# Python target which generates an example GraphDef for testing `reduce`
+# in `tensorflow_executor_test`.
+py_binary(
+    name = "make_reduce_lambda_test_graph",
+    testonly = True,
+    srcs = ["make_reduce_lambda_test_graph.py"],
+    python_version = "PY3",
+)
+
+genrule(
+    name = "reduce_lambda_test_graph",
+    testonly = True,
+    srcs = [],
+    outs = ["reduce_lambda_test.pbtxt"],
+    cmd = "$(location :make_reduce_lambda_test_graph) --output \"$@\"",
+    exec_tools = [":make_reduce_lambda_test_graph"],
+)
+
 cc_cpu_gpu_test(
     name = "tensorflow_executor_test",
     srcs = [
@@ -523,15 +542,24 @@ cc_cpu_gpu_test(
         "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
     ],
+    args = [
+        "--reduce_graph_path",
+        "$(location reduce_lambda_test.pbtxt)",
+    ],
+    data = [
+        "reduce_lambda_test.pbtxt",
+    ],
     deps = [
         ":executor",
         ":protobuf_matchers",
+        ":reduce_lambda_test_graph",
         ":status_macros",
         ":status_matchers",
         ":tensorflow_executor",
         ":value_test_utils",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
