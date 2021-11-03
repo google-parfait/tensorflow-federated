@@ -62,13 +62,17 @@ build:remote --remote_instance_name=projects/tensorflow-federated/instances/defa
 build:remote --project_id=tensorflow-federated
 
 #
-# Required to build Tensorflow.
+# Required to build TensorFlow.
 #
 build --define framework_shared_object=true
 # Modular TF build options
 build:dynamic_kernels --define=dynamic_loaded_kernels=true
 build:dynamic_kernels --copt=-DAUTOLOAD_DYNAMIC_KERNELS
 
+# GCC >= 5 requires specify this to be ABI compatible with how the TensorFlow
+# pip package is built. More details at
+# https://www.tensorflow.org/guide/create_op#build_the_op_library.
+build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0
 
 # On linux, don't cross compile by default
 build:linux --config=dynamic_kernels
