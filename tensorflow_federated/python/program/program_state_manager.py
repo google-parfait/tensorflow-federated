@@ -55,7 +55,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     """
     raise NotImplementedError
 
-  def load_latest(self) -> Optional[Tuple[Any, int]]:
+  def load_latest(self) -> Tuple[Any, int]:
     """Returns the latest saved program state and version or (`None`, 0).
 
     Returns:

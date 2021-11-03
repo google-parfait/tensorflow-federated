@@ -197,7 +197,10 @@ def _create_federated_gld_dataset(
       image_dir=image_dir,
       mapping_file=test_mapping_file)
   return vision_datasets_utils.load_data_from_cache(
-      os.path.join(cache_dir, FED_GLD_CACHE), LOGGER)
+      cache_dir=os.path.join(cache_dir, FED_GLD_CACHE),
+      train_sub_dir=TRAIN_SUB_DIR,
+      test_file_name=TEST_FILE_NAME,
+      logger_tag=LOGGER)
 
 
 def _create_mini_gld_dataset(
@@ -232,7 +235,10 @@ def _create_mini_gld_dataset(
       image_dir=image_dir,
       mapping_file=test_path)
   return vision_datasets_utils.load_data_from_cache(
-      os.path.join(cache_dir, MINI_GLD_CACHE), LOGGER)
+      cache_dir=os.path.join(cache_dir, MINI_GLD_CACHE),
+      train_sub_dir=TRAIN_SUB_DIR,
+      test_file_name=TEST_FILE_NAME,
+      logger_tag=LOGGER)
 
 
 def _filter_images(shard: int, all_images: Set[str], image_dir: str,
