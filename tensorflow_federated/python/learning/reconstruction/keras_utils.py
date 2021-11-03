@@ -40,6 +40,11 @@ def from_keras_model(
   on the server. All variables must be partitioned between global and local
   layers, without overlap.
 
+  Note: This function does not currently accept subclassed `tf.keras.Models`,
+  as it makes assumptions about presence of certain attributes which are
+  guaranteed to exist through the functional or Sequential API but are
+  not necessarily present for subclassed models.
+
   Args:
     keras_model: A `tf.keras.Model` object that is not compiled.
     global_layers: Iterable of global layers to be aggregated across users. All
