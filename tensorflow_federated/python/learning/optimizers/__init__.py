@@ -15,4 +15,5 @@
 
 from tensorflow_federated.python.learning.optimizers.adagrad import build_adagrad
 from tensorflow_federated.python.learning.optimizers.optimizer import Optimizer
+from tensorflow_federated.python.learning.optimizers.rmsprop import build_rmsprop
 from tensorflow_federated.python.learning.optimizers.sgdm import build_sgdm
