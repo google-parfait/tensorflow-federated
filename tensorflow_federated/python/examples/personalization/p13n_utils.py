@@ -14,7 +14,7 @@
 """An example of personalization strategy."""
 
 import collections
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional, OrderedDict
 
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -23,7 +23,7 @@ import tensorflow_federated as tff
 _OPTIMIZER_FN_TYPE = Callable[[], tf.keras.optimizers.Optimizer]
 _PERSONALIZE_FN_TYPE = Callable[
     [tff.learning.Model, tf.data.Dataset, tf.data.Dataset, Any],
-    Dict[str, tf.Tensor]]
+    OrderedDict[str, tf.Tensor]]
 _EVAL_BATCH_SIZE = 1  # Batch size used when evaluating a dataset.
 _SHUFFLE_BUFFER_SIZE = 1000  # Buffer size used when shuffling a dataset.
 # pylint: enable=invalid-name
@@ -72,7 +72,7 @@ def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
   def personalize_fn(model: tff.learning.Model,
                      train_data: tf.data.Dataset,
                      test_data: tf.data.Dataset,
-                     context: Optional[Any] = None) -> Dict[str, tf.Tensor]:
+                     context: Optional[Any] = None) -> OrderedDict[str, Any]:
     """A personalization strategy that trains a model and returns the metrics.
 
     Args:
@@ -82,8 +82,8 @@ def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
       context: An optional object (e.g., extra dataset) used in personalization.
 
     Returns:
-      An `OrderedDict` that maps a metric name to `tf.Tensor`s containing the
-      evaluation metrics.
+      An `OrderedDict` that maps metric names to `tf.Tensor`s or structures of
+      `tf.Tensor`s containing the training and evaluation metrics.
     """
     del context  # This example does not use extra context.
 
@@ -121,7 +121,7 @@ def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
 
 @tf.function
 def evaluate_fn(model: tff.learning.Model,
-                dataset: tf.data.Dataset) -> Dict[str, tf.Tensor]:
+                dataset: tf.data.Dataset) -> OrderedDict[str, tf.Tensor]:
   """Evaluates a model on the given dataset.
 
   The returned metrics include those given by `model.report_local_outputs`.
