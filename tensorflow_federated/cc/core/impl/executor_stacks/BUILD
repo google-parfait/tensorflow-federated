@@ -46,8 +46,8 @@ cc_test(
     name = "local_stacks_test",
     srcs = [
         "local_stacks_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.dylib.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.dylib.2",
     ],
     deps = [
         ":local_stacks",
@@ -85,8 +85,8 @@ cc_test(
     name = "remote_stacks_test",
     srcs = [
         "remote_stacks_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.dylib.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.dylib.2",
     ],
     deps = [
         ":remote_stacks",
