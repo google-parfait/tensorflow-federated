@@ -39,6 +39,7 @@ namespace {
 using ::absl::StatusCode;
 using ::testing::Cardinality;
 using testing::ClientsV;
+using ::testing::HasSubstr;
 using testing::IntrinsicV;
 using testing::ServerV;
 using testing::StructV;
@@ -124,6 +125,12 @@ TEST_F(FederatingExecutorTest, CreateValueIntrinsic) {
 TEST_F(FederatingExecutorTest, CreateValueBadIntrinsic) {
   EXPECT_THAT(test_executor_->CreateValue(IntrinsicV("blech")),
               StatusIs(StatusCode::kUnimplemented));
+}
+
+TEST_F(FederatingExecutorTest, CreateValueFederatedSelectSuggestsPython) {
+  EXPECT_THAT(test_executor_->CreateValue(IntrinsicV("federated_select")),
+              StatusIs(StatusCode::kUnimplemented,
+                       HasSubstr("consider opting into the Python runtime")));
 }
 
 TEST_F(FederatingExecutorTest, MaterializeIntrinsicFails) {
