@@ -88,6 +88,37 @@ cc_library(
     deps = ["//tensorflow_federated/proto/v0:computation_cc_proto"],
 )
 
+cc_library(
+    name = "dataset_conversions",
+    srcs = ["dataset_conversions.cc"],
+    hdrs = ["dataset_conversions.h"],
+    deps = [
+        ":status_macros",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/status",
+        "@org_tensorflow//tensorflow/core/data:standalone",
+    ],
+)
+
+cc_test(
+    name = "dataset_conversions_test",
+    srcs = [
+        "dataset_conversions_test.cc",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    ],
+    deps = [
+        ":dataset_conversions",
+        ":executor",
+        ":mock_executor",
+        ":status_matchers",
+        ":value_test_utils",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+)
+
 pybind_extension(
     name = "executor_bindings",
     srcs = ["executor_bindings.cc"],
@@ -619,6 +650,7 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
+        "@org_tensorflow//tensorflow/core:tensorflow",
     ],
 )
 
