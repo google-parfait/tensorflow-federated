@@ -102,7 +102,6 @@ build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
 # Remove this line once TF doesn't depend on Bazel wrapping all library
 # archives in -whole_archive -no_whole_archive.
 build --noincompatible_remove_legacy_whole_archive
-build --noincompatible_do_not_split_linking_cmdline
 build --enable_platform_specific_config
 
 build --define=grpc_no_ares=true
