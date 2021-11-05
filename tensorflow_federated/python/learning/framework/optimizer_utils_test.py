@@ -575,7 +575,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
       # TFF SGD stores learning rate in state.
       self.assertAllClose(
           state.optimizer_state,
-          collections.OrderedDict([(sgdm.LEARNING_RATE_KEY, learning_rate)]))
+          collections.OrderedDict([(sgdm._LEARNING_RATE_KEY, learning_rate)]))
     self.assertAllClose(list(state.model.trainable), [np.zeros((2, 1)), 0.0])
     self.assertAllClose(list(state.model.non_trainable), [0.0])
     self.assertEqual(state.delta_aggregate_state, 0)

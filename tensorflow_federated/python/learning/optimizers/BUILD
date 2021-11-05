@@ -24,7 +24,10 @@ py_library(
     name = "adagrad",
     srcs = ["adagrad.py"],
     srcs_version = "PY3",
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
 )
 
 py_test(
@@ -102,7 +105,6 @@ py_library(
     name = "optimizer",
     srcs = ["optimizer.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
 py_test(
@@ -164,7 +166,10 @@ py_library(
     name = "sgdm",
     srcs = ["sgdm.py"],
     srcs_version = "PY3",
-    deps = [":optimizer"],
+    deps = [
+        ":optimizer",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
 )
 
 py_test(

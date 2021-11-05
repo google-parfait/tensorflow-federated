@@ -198,3 +198,21 @@ def check_len(target, length):
     raise ValueError(
         'Expected an argument of length {}, got one of length {} ({}).'.format(
             length, len(target), target))
+
+
+def check_non_negative_float(target, label=None):
+  """Checks that `target` is non-negative float.
+
+  Args:
+    target: An object to check.
+    label: An optional label associated with the target, used to create a more
+      human-readable error message.
+
+  Raises:
+    TypeError: When the target is not `float`.
+    ValueError: When the target is a `float` with negative value.
+  """
+  check_type(target, float)
+  if target < 0.0:
+    raise ValueError(f'Provided {label if label else "target"} must be '
+                     f'non-negative, found {target}')

@@ -15,13 +15,14 @@
 import collections
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import attr
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 
 
-class PyTypeCheckTest(absltest.TestCase):
+class PyTypeCheckTest(parameterized.TestCase):
 
   def test_check_type(self):
     try:
@@ -34,7 +35,7 @@ class PyTypeCheckTest(absltest.TestCase):
       self.fail('Function {} raised TypeError unexpectedly.'.format(
           py_typecheck.check_type.__name__))
     self.assertRaisesRegex(TypeError, 'Expected .*TestCase, found int.',
-                           py_typecheck.check_type, 10, absltest.TestCase)
+                           py_typecheck.check_type, 10, parameterized.TestCase)
     self.assertRaisesRegex(
         TypeError,
         'Expected foo to be of type int, found __main__.PyTypeCheckTest.',
@@ -63,8 +64,8 @@ class PyTypeCheckTest(absltest.TestCase):
       py_typecheck.check_not_none(None, 'foo')
 
   def test_check_subclass(self):
-    py_typecheck.check_subclass(PyTypeCheckTest, absltest.TestCase)
-    py_typecheck.check_subclass(PyTypeCheckTest, (absltest.TestCase, int))
+    py_typecheck.check_subclass(PyTypeCheckTest, parameterized.TestCase)
+    py_typecheck.check_subclass(PyTypeCheckTest, (parameterized.TestCase, int))
     py_typecheck.check_subclass(int, (int, float))
     py_typecheck.check_subclass(float, float)
     with self.assertRaisesRegex(TypeError, 'Expected .* to subclass '):
@@ -168,6 +169,26 @@ class PyTypeCheckTest(absltest.TestCase):
         py_typecheck.is_name_value_pair(('a', 'b', 'c'), value_type=int))
     self.assertFalse(py_typecheck.is_name_value_pair((None, 1), value_type=int))
     self.assertFalse(py_typecheck.is_name_value_pair((1, 1), value_type=int))
+
+  @parameterized.named_parameters(('0_0', 0.0), ('1_0', 1.0))
+  def test_check_non_negative_float_success(self, value):
+    try:
+      py_typecheck.check_non_negative_float(value)
+    except ValueError:
+      self.fail(f'Function {py_typecheck.check_non_negative_float.__name__} '
+                'raised TypeError unexpectedly.')
+
+  def test_check_non_negative_float_raises_integer(self):
+    with self.assertRaises(TypeError):
+      py_typecheck.check_non_negative_float(1)
+
+  def test_check_non_negative_float_raises_negative_float(self):
+    with self.assertRaises(ValueError):
+      py_typecheck.check_non_negative_float(-1.0)
+
+  def test_check_non_negative_float_raises_label_in_message(self):
+    with self.assertRaisesRegex(ValueError, 'foo'):
+      py_typecheck.check_non_negative_float(-1.0, 'foo')
 
 
 if __name__ == '__main__':

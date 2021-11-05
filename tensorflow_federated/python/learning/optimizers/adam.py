@@ -19,13 +19,13 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning.optimizers import optimizer
 
-LEARNING_RATE_KEY = 'learning_rate'
-BETA_1_KEY = 'beta_1'
-BETA_2_KEY = 'beta_2'
-EPSILON_KEY = 'epsilon'
-STEP_KEY = 'step'
-ACCUMULATOR_KEY = 'accumulator'
-PRECONDITIONER_KEY = 'preconditioner'
+_LEARNING_RATE_KEY = 'learning_rate'
+_BETA_1_KEY = 'beta_1'
+_BETA_2_KEY = 'beta_2'
+_EPSILON_KEY = 'epsilon'
+_STEP_KEY = 'step'
+_ACCUMULATOR_KEY = 'accumulator'
+_PRECONDITIONER_KEY = 'preconditioner'
 
 
 class _Adam(optimizer.Optimizer):
@@ -37,10 +37,10 @@ class _Adam(optimizer.Optimizer):
                beta_2: float = 0.999,
                epsilon: float = 1e-7):
     """Initializes Adam optimizer."""
-    optimizer.check_non_negative_float(learning_rate, 'learning rate')
+    py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
     _check_beta(beta_1)
     _check_beta(beta_2)
-    optimizer.check_non_negative_float(epsilon, 'epsilon')
+    py_typecheck.check_non_negative_float(epsilon, 'epsilon')
     self._lr = learning_rate
     self._beta_1 = beta_1
     self._beta_2 = beta_2
@@ -52,26 +52,26 @@ class _Adam(optimizer.Optimizer):
     initial_preconditioner = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype), specs)
     state = collections.OrderedDict([
-        (LEARNING_RATE_KEY, self._lr),
-        (BETA_1_KEY, self._beta_1),
-        (BETA_2_KEY, self._beta_2),
-        (EPSILON_KEY, self._epsilon),
-        (STEP_KEY, 0),
-        (ACCUMULATOR_KEY, initial_accumulator),
-        (PRECONDITIONER_KEY, initial_preconditioner),
+        (_LEARNING_RATE_KEY, self._lr),
+        (_BETA_1_KEY, self._beta_1),
+        (_BETA_2_KEY, self._beta_2),
+        (_EPSILON_KEY, self._epsilon),
+        (_STEP_KEY, 0),
+        (_ACCUMULATOR_KEY, initial_accumulator),
+        (_PRECONDITIONER_KEY, initial_preconditioner),
     ])
     return state
 
   def next(self, state, weights, gradients):
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
-    lr = state[LEARNING_RATE_KEY]
-    beta_1 = state[BETA_1_KEY]
-    beta_2 = state[BETA_2_KEY]
-    epsilon = state[EPSILON_KEY]
-    step = state[STEP_KEY] + 1
-    accumulator = state[ACCUMULATOR_KEY]
-    preconditioner = state[PRECONDITIONER_KEY]
+    lr = state[_LEARNING_RATE_KEY]
+    beta_1 = state[_BETA_1_KEY]
+    beta_2 = state[_BETA_2_KEY]
+    epsilon = state[_EPSILON_KEY]
+    step = state[_STEP_KEY] + 1
+    accumulator = state[_ACCUMULATOR_KEY]
+    preconditioner = state[_PRECONDITIONER_KEY]
     optimizer.check_weights_state_match(weights, accumulator, 'accumulator')
     optimizer.check_weights_state_match(weights, preconditioner,
                                         'preconditioner')
@@ -88,13 +88,13 @@ class _Adam(optimizer.Optimizer):
         weights, gradients, updated_accumulator, updated_preconditioner)
 
     updated_state = collections.OrderedDict([
-        (LEARNING_RATE_KEY, lr),
-        (BETA_1_KEY, beta_1),
-        (BETA_2_KEY, beta_2),
-        (EPSILON_KEY, epsilon),
-        (STEP_KEY, step),
-        (ACCUMULATOR_KEY, updated_accumulator),
-        (PRECONDITIONER_KEY, updated_preconditioner),
+        (_LEARNING_RATE_KEY, lr),
+        (_BETA_1_KEY, beta_1),
+        (_BETA_2_KEY, beta_2),
+        (_EPSILON_KEY, epsilon),
+        (_STEP_KEY, step),
+        (_ACCUMULATOR_KEY, updated_accumulator),
+        (_PRECONDITIONER_KEY, updated_preconditioner),
     ])
     return updated_state, updated_weights
 
@@ -108,7 +108,7 @@ def _check_beta(beta):
 def build_adam(learning_rate: float,
                beta_1: float = 0.9,
                beta_2: float = 0.999,
-               epsilon: float = 1e-7) -> _Adam:
+               epsilon: float = 1e-7) -> optimizer.Optimizer:
   """Returns a `tff.learning.optimizers.Optimizer` for Adam.
 
   The Adam optimizer is based on [Adam: A Method for Stochastic Optimization](

@@ -33,15 +33,15 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     optimizer = sgdm.build_sgdm(0.01)
     state = optimizer.initialize(_SCALAR_SPEC)
     self.assertLen(state, 1)
-    self.assertIn(sgdm.LEARNING_RATE_KEY, state)
+    self.assertIn(sgdm._LEARNING_RATE_KEY, state)
 
   def test_state_structure_momentum(self):
     optimizer = sgdm.build_sgdm(0.01, momentum=0.9)
     state = optimizer.initialize(_SCALAR_SPEC)
     self.assertLen(state, 3)
-    self.assertIn(sgdm.LEARNING_RATE_KEY, state)
-    self.assertIn(sgdm.MOMENTUM_KEY, state)
-    self.assertIn(sgdm.ACCUMULATOR_KEY, state)
+    self.assertIn(sgdm._LEARNING_RATE_KEY, state)
+    self.assertIn(sgdm._MOMENTUM_KEY, state)
+    self.assertIn(sgdm._ACCUMULATOR_KEY, state)
 
   def test_math_no_momentum(self):
     weights = tf.constant([1.0], tf.float32)
