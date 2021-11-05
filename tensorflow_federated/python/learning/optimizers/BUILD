@@ -40,12 +40,35 @@ py_test(
 )
 
 py_library(
+    name = "adam",
+    srcs = ["adam.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":optimizer",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "adam_test",
+    srcs = ["adam_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":adam",
+        ":optimizer",
+        ":optimizer_test_utils",
+    ],
+)
+
+py_library(
     name = "optimizers",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
         ":adagrad",
+        ":adam",
         ":optimizer",
         ":rmsprop",
         ":sgdm",

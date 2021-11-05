@@ -133,6 +133,28 @@ class RmsPropTest(optimizer_test_utils.TestCase, parameterized.TestCase):
                                              tff_optimizer_fn,
                                              keras_optimizer_fn)
 
+  @parameterized.named_parameters(
+      ('negative_lr', -1.0, 0.9, 1e-7, 'learning rate'),
+      ('negative_decay', 1.0, -0.9, 1e-7, 'Decay'),
+      ('decay_one', 1.0, 1.0, 1e-7, 'Decay'),
+      ('negative_epsilon', 1.0, 0.1, -1e-7, 'epsilon'),
+  )
+  def test_invalid_args_raises(self, lr, decay, epsilon, regex):
+    with self.assertRaisesRegex(ValueError, regex):
+      rmsprop.build_rmsprop(lr, decay, epsilon)
+
+  def test_weights_gradients_mismatch_raises(self):
+    optimizer = rmsprop.build_rmsprop(0.1)
+    state = optimizer.initialize(_SCALAR_SPEC)
+    with self.assertRaises(ValueError):
+      optimizer.next(state, tf.zeros([1]), tf.zeros([2]))
+
+  def test_initialize_next_weights_mismatch_raises(self):
+    optimizer = rmsprop.build_rmsprop(0.1)
+    state = optimizer.initialize(_SCALAR_SPEC)
+    with self.assertRaises(ValueError):
+      optimizer.next(state, tf.zeros([2]), tf.zeros([2]))
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -14,6 +14,7 @@
 """Libraries for optimization algorithms."""
 
 from tensorflow_federated.python.learning.optimizers.adagrad import build_adagrad
+from tensorflow_federated.python.learning.optimizers.adam import build_adam
 from tensorflow_federated.python.learning.optimizers.optimizer import Optimizer
 from tensorflow_federated.python.learning.optimizers.rmsprop import build_rmsprop
 from tensorflow_federated.python.learning.optimizers.sgdm import build_sgdm

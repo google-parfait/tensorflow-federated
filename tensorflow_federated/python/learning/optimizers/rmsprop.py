@@ -52,8 +52,8 @@ class _RmsProp(optimizer.Optimizer):
     return state
 
   def next(self, state, weights, gradients):
-    optimizer.check_weights_gradients_match(weights, gradients)
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
+    optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[_LEARNING_RATE_KEY]
     decay = state[_DECAY_KEY]
     epsilon = state[_EPSILON_KEY]
