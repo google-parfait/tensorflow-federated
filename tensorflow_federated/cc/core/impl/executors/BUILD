@@ -393,6 +393,16 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "sequence_intrinsics",
+    srcs = ["sequence_intrinsics.cc"],
+    hdrs = ["sequence_intrinsics.h"],
+    deps = [
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
 pybind_extension(
     name = "serialization_bindings",
     srcs = ["serialization_bindings.cc"],
