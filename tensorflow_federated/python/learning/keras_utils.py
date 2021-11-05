@@ -14,6 +14,7 @@
 """Utility methods for working with Keras in TensorFlow Federated."""
 
 import collections
+import inspect
 from typing import List, Optional, OrderedDict, Sequence, Union
 import warnings
 
@@ -245,6 +246,31 @@ def federated_aggregate_keras_metric(
       # TODO(b/197746608): finds a safer way of reconstructing the metric,
       # default argument values in Metric constructors can cause problems here.
       keras_metric = None
+
+      def is_custom_keras_metric(metric):
+        return type(metric).mro()[1] is tf.keras.metrics.Metric and not hasattr(
+            tf.keras.metrics,
+            type(metric).__name__)
+
+      def has_extra_init_args(metric):
+        init_args = inspect.getfullargspec(metric.__init__).args
+        expected_args = metric.get_config().keys()
+        extra_args = [arg for arg in init_args if arg not in expected_args]
+        return len(extra_args) > 1
+
+      def is_get_config_overridden(metric):
+        config_method = getattr(type(metric), 'get_config')
+        if config_method is None:
+          return False
+        return config_method is not tf.keras.metrics.Metric.get_config
+
+      # Check if the metric is can be reconstructed correctly from the instance.
+      if is_custom_keras_metric(metric) and has_extra_init_args(
+          metric) and not is_get_config_overridden(metric):
+        raise NotImplementedError(
+            'Custom Keras metric {m} has extra arguments in `__init__` and '
+            'therefore must override `get_config()`.'.format(m=type(metric)))
+
       try:
         # This is some trickery to reconstruct a metric object in the current
         # scope, so that the `tf.Variable`s get created when we desire.
