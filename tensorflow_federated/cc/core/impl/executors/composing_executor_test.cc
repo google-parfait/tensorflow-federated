@@ -507,7 +507,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtClients) {
     const auto& child = mock_children_[i];
     std::vector<v0::Value> child_results;
     for (uint32_t j = 0; j < clients_per_child_[i]; j++) {
-      v0::Value result = TensorV(client_results.size());
+      v0::Value result = TensorV(static_cast<int32_t>(client_results.size()));
       child_results.push_back(result);
       client_results.push_back(result);
     }
