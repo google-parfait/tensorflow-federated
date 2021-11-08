@@ -102,7 +102,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
       ('server_array_reference_nested',
        {'a': [test_utils.TestServerArrayReference(True),
               test_utils.TestServerArrayReference(1)],
-        'b': test_utils.TestServerArrayReference('a')},
+        'b': [test_utils.TestServerArrayReference('a')]},
        [('a/0', True), ('a/1', 1)]),
       ('materialized_values_and_value_references',
        [1, test_utils.TestServerArrayReference(2)],

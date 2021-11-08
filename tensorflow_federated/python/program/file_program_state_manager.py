@@ -11,7 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities for saving and loading program state to a file system."""
+"""Utilities for saving and loading program state to a file system.
+
+Note: This library uses `tf.io.gfile` to perform file system operations, this
+means that this library:
+
+  * supports all the file systems supported by `tf.io.gfile`
+  * encodes files in the same way as `tf.io.gfile`
+"""
 
 import os
 import os.path
