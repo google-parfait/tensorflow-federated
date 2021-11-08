@@ -144,7 +144,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
         '☺️😇'
     ]
     input_strings = tf.constant(input_strings_list, dtype=tf.string)
-    chunks, _ = iblt_encoder.compute_chunks(input_strings)
+    chunks, _ = iblt_encoder.chunker.encode_tensorflow(input_strings)
     iblt_table = np.zeros(
         [repetitions, iblt_encoder.table_size, iblt_encoder.num_chunks + 2])
     iblt_decoder = iblt_lib.IbltDecoder(
