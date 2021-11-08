@@ -62,9 +62,13 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
   from a federated program to a CSV file and is used to release values from
   platform storage to customer storage in a federated program.
 
-  The released values are written to a CSV file and are quoted as strings. For
-  example, `1` will be written as `'1'` and `tf.ones([2, 2])` will be written as
-  `'[[1.0, 1.0], [1.0, 1.0]'`.
+  Values are released to the file system as a CSV file and are quoted as
+  strings. When the value is released, if the value is a value reference or a
+  structure containing value references, each value reference is materialized.
+  The value is then flattened, converted to a `numpy.ndarray`, and then
+  converted to a nested list of Python scalars, and released as a CSV file.
+  For example, `1` will be written as `'1'` and `tf.ones([2, 2])` will be
+  written as `'[[1.0, 1.0], [1.0, 1.0]'`.
 
   This manager can be configured to release values using a `save_mode` of either
   `CSVSaveMode.APPEND` or `CSVSaveMode.WRITE`.
@@ -204,9 +208,11 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     writing `value`.
 
     Args:
-      value: The value to release.
-      key: A integer to use to reference the released `value`, `key` represents
-        a step in a federated program.
+      value: A materialized value, a value reference, or a structure of
+        materialized values and value references representing the value to
+        release.
+      key: An integer used to reference the released `value`, `key` represents a
+        step in a federated program.
     """
     py_typecheck.check_type(key, int)
     if self._latest_key is not None and key <= self._latest_key:
@@ -233,12 +239,21 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
   """A `tff.program.ReleaseManager` that releases values to a file system.
 
   A `tff.program.SavedModelFileReleaseManager` is a utility for releasing values
-  from a federated program to a file system using the SavedModel format and is
-  used to release values from platform storage to customer storage in a
-  federated program.
+  from a federated program to a file system and is used to release values from
+  platform storage to customer storage in a federated program.
+
+  Values are released to the file system using the SavedModel (see
+  `tf.saved_model`) format. When the value is released, if the value is a value
+  reference or a structure containing value references, each value reference is
+  materialized. The value is then flattened and released using the SavedModel
+  format. The structure of the value is discarded.
+
+  Note: The SavedModel format can only contain values that can be converted to a
+  `tf.Tensor` (see `tf.convert_to_tensor`), releasing any other values will
+  result in an error.
 
   See https://www.tensorflow.org/guide/saved_model for more infromation about
-  using the SavedModel format.
+  the SavedModel format.
   """
 
   def __init__(self,
@@ -270,7 +285,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     represent released values.
 
     Args:
-      key: The key to use to construct the path.
+      key: The key used to construct the path.
     """
     py_typecheck.check_type(key, int)
     basename = f'{self._prefix}{key}'
@@ -280,10 +295,11 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     """Releases `value` from a federated program.
 
     Args:
-      value: A materialized value, a value reference, or structure materialized
-        values and value references representing the value to release.
-      key: An integer to use to reference the released `value`, `key` represents
-        a step in a federated program.
+      value: A materialized value, a value reference, or a structure of
+        materialized values and value references representing the value to
+        release.
+      key: An integer used to reference the released `value`, `key` represents a
+        step in a federated program.
     """
     py_typecheck.check_type(key, int)
     path = self._get_path_for_key(key)

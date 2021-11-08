@@ -22,15 +22,25 @@ from tensorflow_federated.python.program import value_reference
 
 
 class LoggingReleaseManager(release_manager.ReleaseManager):
-  """A `tff.program.ReleaseManager` that releases values to logs."""
+  """A `tff.program.ReleaseManager` that releases values to logs.
+
+  A `tff.program.LoggingReleaseManager` is a utility for releasing values from a
+  federated program to logs and is used to release values from platform storage
+  to customer storage in a federated program.
+
+  Values are released to logs as string representations of Python objects. When
+  the value is released, if the value is a value reference or a structure
+  containing value references, each value reference is materialized.
+  """
 
   def release(self, value: Any, key: Any = None):
     """Releases `value` from a federated program.
 
     Args:
-      value: A materialized value, a value reference, or structure materialized
-        values and value references representing the value to release.
-      key: An optional value to use to reference the released `value`.
+      value: A materialized value, a value reference, or a structure of
+        materialized values and value references representing the value to
+        release.
+      key: An optional value used to reference the released `value`.
     """
     materialized_value = value_reference.materialize_value(value)
     if key is not None:

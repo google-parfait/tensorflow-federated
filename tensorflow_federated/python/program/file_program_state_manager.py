@@ -47,8 +47,19 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
   fault tolerance. In particular, it is intended to only restart the same
   simulation and run with the same version of TensorFlow Federated.
 
-  Note: This manager can store program state that is compatible with any nested
-  structure supported by `tf.convert_to_tensor`
+  Program state is saved to the file system using the SavedModel (see
+  `tf.saved_model`) format. When the program state is saved, if the program
+  state is a value reference or a structure containing value references, each
+  value reference is materialized. The program state is then flattened and saved
+  using the SavedModel format. The structure of the program state is discarded,
+  but is required to load the program state.
+
+  Note: The SavedModel format can only contain values that can be converted to a
+  `tf.Tensor` (see `tf.convert_to_tensor`), releasing any other values will
+  result in an error.
+
+  See https://www.tensorflow.org/guide/saved_model for more infromation about
+  the SavedModel format.
   """
 
   def __init__(self,
@@ -151,7 +162,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     represent saved program state.
 
     Args:
-      version: The version to use to construct the path.
+      version: The version used to construct the path.
     """
     py_typecheck.check_type(version, int)
     basename = f'{self._prefix}{version}'
@@ -210,7 +221,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     """Saves `program_state` for the given `version`.
 
     Args:
-      program_state: A materialized value, a value reference, or structure
+      program_state: A materialized value, a value reference, or a structure of
         materialized values and value references representing the program state
         to save.
       version: A strictly increasing integer representing the version of a saved
