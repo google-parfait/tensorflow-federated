@@ -40,7 +40,7 @@ build --copt=-Wno-ignored-attributes
 build --copt=-Wno-missing-field-initializers
 build --copt=-Wno-unknown-pragmas
 build:linux --copt=-Wno-stringop-truncation
-build:linux --copt=-Wno-ignored-attributes
+build:linux --copt=-Wno-maybe-uninitialized
 
 # gRPC on MacOS requires this define, see
 # https://github.com/bazelbuild/bazel/issues/4341#issuecomment-572050759 for

@@ -413,7 +413,7 @@ pybind_extension(
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status:statusor",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
-        "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor_headers",
+        "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor",
         "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
         "@pybind11_abseil//pybind11_abseil:status_casters",
         "@pybind11_protobuf//pybind11_protobuf:wrapped_proto_caster",
