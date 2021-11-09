@@ -52,7 +52,6 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
@@ -79,6 +78,7 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -126,7 +126,6 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
         "@org_tensorflow//tensorflow/core/profiler/lib:traceme",
     ],
@@ -179,6 +178,7 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -227,7 +227,6 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
@@ -251,6 +250,7 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -310,7 +310,6 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
@@ -339,6 +338,7 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -390,6 +390,7 @@ cc_test(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -411,7 +412,6 @@ pybind_extension(
         ":tensor_serialization",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status:statusor",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
         "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor_headers",
         "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
@@ -464,7 +464,6 @@ cc_library(
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
@@ -481,7 +480,6 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
@@ -497,6 +495,7 @@ cc_test(
         ":session_provider",
         ":status_matchers",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -522,7 +521,6 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
@@ -574,6 +572,7 @@ cc_cpu_gpu_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -604,6 +603,7 @@ cc_test(
         ":threading",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "@com_google_absl//absl/status",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -618,7 +618,6 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
         "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
@@ -655,5 +654,6 @@ cc_test(
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )

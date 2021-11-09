@@ -57,6 +57,7 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
         "//tensorflow_federated/cc/core/impl/executors:status_matchers",
         "@com_google_absl//absl/strings",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -100,5 +101,6 @@ cc_test(
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
