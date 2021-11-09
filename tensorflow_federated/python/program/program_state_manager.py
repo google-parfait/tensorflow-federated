@@ -76,7 +76,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     """Saves `program_state` for the given `version`.
 
     Args:
-      program_state: A materialized value, a value reference, or structure
+      program_state: A materialized value, a value reference, or a structure of
         materialized values and value references representing the program state
         to save.
       version: A strictly increasing integer representing the version of a saved

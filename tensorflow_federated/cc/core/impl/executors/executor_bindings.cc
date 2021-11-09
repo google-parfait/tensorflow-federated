@@ -103,22 +103,20 @@ PYBIND11_MODULE(executor_bindings, m) {
       .def("create_value", WithWrappedProtos(&Executor::CreateValue),
            py::arg("value_pb"), py::return_value_policy::move,
            py::call_guard<py::gil_scoped_release>())
-      .def("create_struct", WithWrappedProtos(&Executor::CreateStruct),
+      .def("create_struct", &Executor::CreateStruct,
            py::return_value_policy::move,
            py::call_guard<py::gil_scoped_release>())
-      .def("create_selection", WithWrappedProtos(&Executor::CreateSelection),
+      .def("create_selection", &Executor::CreateSelection,
            py::return_value_policy::move,
            py::call_guard<py::gil_scoped_release>())
-      .def("create_call", WithWrappedProtos(&Executor::CreateCall),
-           py::arg("function"),
+      .def("create_call", &Executor::CreateCall, py::arg("function"),
            // Allow `argument` to be `None`.
            py::arg("argument").none(true), py::return_value_policy::move,
            py::call_guard<py::gil_scoped_release>())
       .def("materialize",
            WithWrappedProtos([](Executor& e, const ValueId& value_id)
                                  -> absl::StatusOr<v0::Value> {
-             // Construct a new `v0::Value` to write to and return it to
-             // Python.
+             // Construct a new `v0::Value` to write to and return it to Python.
              v0::Value value_pb;
              absl::Status result = e.Materialize(value_id, &value_pb);
              if (!result.ok()) {

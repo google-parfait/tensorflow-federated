@@ -83,9 +83,29 @@ def check_momentum(momentum):
     raise ValueError('Momentum must be between 0.0 and 1.0.')
 
 
+def _check_shape_dtype_match(x, y):
+  if not x.shape.is_compatible_with(y.shape) or x.dtype != y.dtype:
+    raise TypeError('Provided tensors do not have the same shapes and dtypes.')
+
+
 def check_weights_gradients_match(weights, gradients):
+  """Checks that weights and gradients match.
+
+  This check is meant to be used in the `next` method of implemented
+  `tff.learning.optimizers.Optimizer` to check whether the provided weights and
+  gradients match, and provide easy and more informative error message.
+
+  Args:
+    weights: A structure of tensors.
+    gradients: A structure of tensors.
+
+  Raises:
+    ValueError: If `weights` and `graidnets` do not have the same structure, or
+      if the tensors in the structures do not have the same shapes and dtypes.
+  """
   try:
     tf.nest.assert_same_structure(weights, gradients, check_types=True)
+    tf.nest.map_structure(_check_shape_dtype_match, weights, gradients)
   except (TypeError, ValueError):
     # Raises a more informative error message specific for optimizers.
     raise ValueError(
@@ -98,6 +118,7 @@ def check_weights_gradients_match(weights, gradients):
 def check_weights_state_match(weights, state, name):
   try:
     tf.nest.assert_same_structure(state, weights, check_types=True)
+    tf.nest.map_structure(_check_shape_dtype_match, weights, state)
   except (TypeError, ValueError):
     # Raises a more informative error message.
     raise ValueError(

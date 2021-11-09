@@ -89,7 +89,7 @@ def build_federated_averaging_process(
   client_state_type = tff.framework.type_from_tensors(client_state_fn())
 
   @tff.tf_computation(server_state_type, model_weights_type.trainable,
-                      client_state_type.iters_count)
+                      client_state_type.iters_count)  # pytype: disable=attribute-error  # gen-stub-imports
   def server_update_fn(server_state, model_delta, total_iters_count):
     model = model_fn()
     server_optimizer = server_optimizer_fn()
