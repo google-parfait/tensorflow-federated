@@ -26,6 +26,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/sequence_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
 
 namespace tensorflow_federated {
 
@@ -37,6 +38,7 @@ using ::tensorflow_federated::testing::CreateSerializedRangeDatasetGraphDef;
 using ::tensorflow_federated::testing::IntrinsicV;
 using ::tensorflow_federated::testing::LambdaComputation;
 using ::tensorflow_federated::testing::ReferenceComputation;
+using ::tensorflow_federated::testing::SequenceV;
 using ::tensorflow_federated::testing::StructV;
 using ::tensorflow_federated::testing::TensorV;
 
@@ -171,6 +173,127 @@ TEST_F(SequenceExecutorTest, TestCreateSelectionFromStructureOutOfBounds) {
   // happen eagerly.
   EXPECT_THAT(test_executor_->CreateSelection(struct_id, 2),
               StatusIs(StatusCode::kInvalidArgument));
+}
+
+TEST_F(SequenceExecutorTest, CallSequenceReduceNoargFails) {
+  int dataset_len = 10;
+  v0::Value sequence_value_pb = SequenceV(1, dataset_len, 1);
+
+  auto sequence_reduce_id = TFF_ASSERT_OK(
+      test_executor_->CreateValue(IntrinsicV(std::string(kSequenceReduceUri))));
+  auto reduce_call_id = TFF_ASSERT_OK(
+      test_executor_->CreateCall(sequence_reduce_id, absl::nullopt));
+  EXPECT_THAT(test_executor_->Materialize(reduce_call_id),
+              StatusIs(StatusCode::kInvalidArgument));
+}
+
+TEST_F(SequenceExecutorTest, CreateCreateCallTensorSequenceReduce) {
+  int dataset_len = 10;
+  v0::Value expected_sum_result = TensorV(45l);
+  v0::Value sequence_value_pb = SequenceV(1, 10, 1);
+  v0::Value zero = TensorV(static_cast<int64_t>(0));
+  v0::Value reduce_fn = IntrinsicV("some_passthru_intrinsic");
+
+  // Since we pull elements out of the sequence in the sequence
+  // executor, we never create the sequence in the target.
+  auto embedded_accumulator_id = mock_executor_->ExpectCreateValue(zero);
+  auto embedded_reduce_fn_id = mock_executor_->ExpectCreateValue(reduce_fn);
+
+  for (int i = 1; i < dataset_len; i++) {
+    auto embedded_dataset_element =
+        mock_executor_->ExpectCreateValue(TensorV(static_cast<int64_t>(i)));
+    auto embedded_arg_struct = mock_executor_->ExpectCreateStruct(
+        {embedded_accumulator_id, embedded_dataset_element});
+    embedded_accumulator_id = mock_executor_->ExpectCreateCall(
+        embedded_reduce_fn_id, embedded_arg_struct);
+  }
+  mock_executor_->ExpectMaterialize(embedded_accumulator_id,
+                                    expected_sum_result);
+
+  auto sequence_reduce_id = TFF_ASSERT_OK(
+      test_executor_->CreateValue(IntrinsicV(std::string(kSequenceReduceUri))));
+  auto sequence_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(sequence_value_pb));
+  auto fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(reduce_fn));
+  auto zero_id = TFF_ASSERT_OK(test_executor_->CreateValue(zero));
+  auto struct_id = TFF_ASSERT_OK(
+      test_executor_->CreateStruct({sequence_id, zero_id, fn_id}));
+  auto call_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(sequence_reduce_id, struct_id));
+  ExpectMaterialize(call_id, expected_sum_result);
+}
+
+TEST_F(SequenceExecutorTest, EmbedMappedSequenceFails) {
+  int dataset_len = 10;
+  v0::Value sequence_value_pb = SequenceV(1, dataset_len, 1);
+  v0::Value mapping_fn = IntrinsicV("some_passthru_mapping_fn");
+
+  mock_executor_->ExpectCreateValue(mapping_fn);
+
+  auto sequence_map_id = TFF_ASSERT_OK(
+      test_executor_->CreateValue(IntrinsicV(std::string(kSequenceMapUri))));
+  auto sequence_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(sequence_value_pb));
+  auto mapping_fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(mapping_fn));
+  auto map_struct_id =
+      TFF_ASSERT_OK(test_executor_->CreateStruct({mapping_fn_id, sequence_id}));
+  auto map_call_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(sequence_map_id, map_struct_id));
+  EXPECT_THAT(test_executor_->Materialize(map_call_id),
+              StatusIs(StatusCode::kInvalidArgument));
+}
+
+TEST_F(SequenceExecutorTest, CreateCreateCallTensorSequenceMapThenReduce) {
+  int dataset_len = 10;
+  v0::Value sequence_value_pb = SequenceV(1, dataset_len, 1);
+  v0::Value mapping_fn = IntrinsicV("some_passthru_mapping_fn");
+
+  // Only the mapping function may be embedded while we create the sequence map,
+  // the rest will happen lazily upon iteration.
+  auto embedded_mapping_fn_id = mock_executor_->ExpectCreateValue(mapping_fn);
+
+  auto sequence_map_id = TFF_ASSERT_OK(
+      test_executor_->CreateValue(IntrinsicV(std::string(kSequenceMapUri))));
+  auto sequence_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(sequence_value_pb));
+  auto mapping_fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(mapping_fn));
+  auto map_struct_id =
+      TFF_ASSERT_OK(test_executor_->CreateStruct({mapping_fn_id, sequence_id}));
+  auto map_call_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(sequence_map_id, map_struct_id));
+
+  // We reduce so that we can materialize the result
+  v0::Value expected_sum_result = TensorV(45l);
+  v0::Value zero = TensorV(static_cast<int64_t>(0));
+  v0::Value reduce_fn = IntrinsicV("some_passthru_reduce_fn");
+
+  auto embedded_accumulator_id = mock_executor_->ExpectCreateValue(zero);
+  auto embedded_reduce_fn_id = mock_executor_->ExpectCreateValue(reduce_fn);
+
+  for (int i = 1; i < dataset_len; i++) {
+    auto embedded_dataset_element =
+        mock_executor_->ExpectCreateValue(TensorV(static_cast<int64_t>(i)));
+    auto embedded_mapped_fn = mock_executor_->ExpectCreateCall(
+        embedded_mapping_fn_id, embedded_dataset_element);
+    auto embedded_reduce_arg_struct = mock_executor_->ExpectCreateStruct(
+        {embedded_accumulator_id, embedded_mapped_fn});
+    embedded_accumulator_id = mock_executor_->ExpectCreateCall(
+        embedded_reduce_fn_id, embedded_reduce_arg_struct);
+  }
+
+  mock_executor_->ExpectMaterialize(embedded_accumulator_id,
+                                    expected_sum_result);
+
+  auto sequence_reduce_id = TFF_ASSERT_OK(
+      test_executor_->CreateValue(IntrinsicV(std::string(kSequenceReduceUri))));
+  auto reduce_fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(reduce_fn));
+  auto zero_id = TFF_ASSERT_OK(test_executor_->CreateValue(zero));
+  // Packages mapped sequence as argument to sequence reduce.
+  auto reduce_struct_id = TFF_ASSERT_OK(
+      test_executor_->CreateStruct({map_call_id, zero_id, reduce_fn_id}));
+  auto reduce_call_id = TFF_ASSERT_OK(
+      test_executor_->CreateCall(sequence_reduce_id, reduce_struct_id));
+  ExpectMaterialize(reduce_call_id, expected_sum_result);
 }
 
 }  // namespace

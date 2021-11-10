@@ -28,4 +28,12 @@ absl::StatusOr<SequenceIntrinsic> SequenceIntrinsicFromUri(
         absl::StrCat("Unsupported sequence intrinsic URI: ", uri));
   }
 }
+absl::string_view SequenceIntrinsicToUri(const SequenceIntrinsic& intrinsic) {
+  switch (intrinsic) {
+    case SequenceIntrinsic::MAP:
+      return kSequenceMapUri;
+    case SequenceIntrinsic::REDUCE:
+      return kSequenceReduceUri;
+  }
+}
 }  // namespace tensorflow_federated

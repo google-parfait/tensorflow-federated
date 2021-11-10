@@ -142,6 +142,12 @@ inline v0::Value SequenceV(int64_t start, int64_t stop, int64_t step) {
   v0::Value::Sequence* sequence_pb = value_proto.mutable_sequence();
   *sequence_pb->mutable_serialized_graph_def() =
       std::string(sequence_graph.data(), sequence_graph.size());
+
+  v0::TensorType tensor_type;
+  tensor_type.set_dtype(v0::TensorType::DT_INT64);
+  v0::Type el_type;
+  *el_type.mutable_tensor() = tensor_type;
+  *sequence_pb->mutable_element_type() = el_type;
   return value_proto;
 }
 
