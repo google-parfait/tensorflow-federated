@@ -44,11 +44,7 @@ cc_library(
 
 cc_test(
     name = "local_stacks_test",
-    srcs = [
-        "local_stacks_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
-    ],
+    srcs = ["local_stacks_test.cc"],
     deps = [
         ":local_stacks",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
@@ -57,7 +53,6 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
         "//tensorflow_federated/cc/core/impl/executors:status_matchers",
         "@com_google_absl//absl/strings",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -84,11 +79,7 @@ cc_library(
 
 cc_test(
     name = "remote_stacks_test",
-    srcs = [
-        "remote_stacks_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
-    ],
+    srcs = ["remote_stacks_test.cc"],
     deps = [
         ":remote_stacks",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
@@ -101,6 +92,5 @@ cc_test(
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
