@@ -15,6 +15,38 @@ package_group(
 
 licenses(["notice"])
 
+cc_import(
+    name = "libtensorflow_cc_import_major_version",
+    shared_library = select({
+        "@platforms//os:macos": "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@platforms//os:linux": "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+    }),
+)
+
+cc_import(
+    name = "libtensorflow_cc_import_no_version",
+    shared_library = select({
+        "@platforms//os:macos": "@org_tensorflow//tensorflow:libtensorflow_cc.dylib",
+        "@platforms//os:linux": "@org_tensorflow//tensorflow:libtensorflow_cc.so",
+    }),
+)
+
+cc_import(
+    name = "libtensorflow_framework_import_major_version",
+    shared_library = select({
+        "@platforms//os:macos": "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+        "@platforms//os:linux": "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    }),
+)
+
+cc_import(
+    name = "libtensorflow_framework_import_no_version",
+    shared_library = select({
+        "@platforms//os:macos": "@org_tensorflow//tensorflow:libtensorflow_framework.dylib",
+        "@platforms//os:linux": "@org_tensorflow//tensorflow:libtensorflow_framework.so",
+    }),
+)
+
 pybind_extension(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.cc"],
@@ -46,10 +78,15 @@ cc_test(
     name = "local_stacks_test",
     srcs = [
         "local_stacks_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+    ],
+    data = [
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
+        ":libtensorflow_framework_import_major_version",
         ":local_stacks",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
@@ -57,7 +94,6 @@ cc_test(
         "//tensorflow_federated/cc/core/impl/executors:mock_executor",
         "//tensorflow_federated/cc/core/impl/executors:status_matchers",
         "@com_google_absl//absl/strings",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -86,10 +122,15 @@ cc_test(
     name = "remote_stacks_test",
     srcs = [
         "remote_stacks_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+    ],
+    data = [
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
+        ":libtensorflow_framework_import_major_version",
         ":remote_stacks",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
@@ -101,6 +142,5 @@ cc_test(
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )

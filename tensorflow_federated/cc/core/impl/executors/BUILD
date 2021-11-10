@@ -18,6 +18,38 @@ package_group(
 
 licenses(["notice"])
 
+cc_import(
+    name = "libtensorflow_cc_import_major_version",
+    shared_library = select({
+        "@platforms//os:macos": "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@platforms//os:linux": "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+    }),
+)
+
+cc_import(
+    name = "libtensorflow_cc_import_no_version",
+    shared_library = select({
+        "@platforms//os:macos": "@org_tensorflow//tensorflow:libtensorflow_cc.dylib",
+        "@platforms//os:linux": "@org_tensorflow//tensorflow:libtensorflow_cc.so",
+    }),
+)
+
+cc_import(
+    name = "libtensorflow_framework_import_major_version",
+    shared_library = select({
+        "@platforms//os:macos": "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+        "@platforms//os:linux": "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    }),
+)
+
+cc_import(
+    name = "libtensorflow_framework_import_no_version",
+    shared_library = select({
+        "@platforms//os:macos": "@org_tensorflow//tensorflow:libtensorflow_framework.dylib",
+        "@platforms//os:linux": "@org_tensorflow//tensorflow:libtensorflow_framework.so",
+    }),
+)
+
 cc_library(
     name = "cardinalities",
     srcs = ["cardinalities.cc"],
@@ -38,6 +70,7 @@ cc_library(
         ":computations",
         ":executor",
         ":federated_intrinsics",
+        ":libtensorflow_framework_import_major_version",
         ":status_macros",
         ":threading",
         ":value_validation",
@@ -52,7 +85,6 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
@@ -60,8 +92,12 @@ cc_test(
     name = "composing_executor_test",
     srcs = [
         "composing_executor_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+    ],
+    data = [
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
         ":composing_executor",
@@ -69,6 +105,7 @@ cc_test(
         ":executor",
         ":executor_test_base",
         ":federated_intrinsics",
+        ":libtensorflow_framework_import_major_version",
         ":mock_executor",
         ":status_matchers",
         ":value_test_utils",
@@ -78,7 +115,6 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -115,6 +151,7 @@ cc_library(
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
     deps = [
+        ":libtensorflow_framework_import_major_version",
         ":status_macros",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -126,7 +163,6 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
         "@org_tensorflow//tensorflow/core/profiler/lib:traceme",
     ],
 )
@@ -158,12 +194,17 @@ cc_test(
     name = "executor_service_test",
     srcs = [
         "executor_service_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+    ],
+    data = [
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
         ":executor",
         ":executor_service",
+        ":libtensorflow_framework_import_major_version",
         ":mock_executor",
         ":protobuf_matchers",
         ":status_conversion",
@@ -178,7 +219,6 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -216,6 +256,7 @@ cc_library(
         ":cardinalities",
         ":executor",
         ":federated_intrinsics",
+        ":libtensorflow_framework_import_major_version",
         ":status_macros",
         ":threading",
         ":value_validation",
@@ -227,7 +268,6 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
@@ -235,13 +275,18 @@ cc_test(
     name = "federating_executor_test",
     srcs = [
         "federating_executor_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+    ],
+    data = [
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
         ":executor",
         ":executor_test_base",
         ":federating_executor",
+        ":libtensorflow_framework_import_major_version",
         ":mock_executor",
         ":status_matchers",
         ":value_test_utils",
@@ -250,7 +295,6 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -302,6 +346,7 @@ cc_library(
     hdrs = ["reference_resolving_executor.h"],
     deps = [
         ":executor",
+        ":libtensorflow_framework_import_major_version",
         ":status_macros",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -310,7 +355,6 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
@@ -319,12 +363,17 @@ cc_test(
     timeout = "short",
     srcs = [
         "reference_resolving_executor_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+    ],
+    data = [
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
         ":executor",
         ":executor_test_base",
+        ":libtensorflow_framework_import_major_version",
         ":mock_executor",
         ":protobuf_matchers",
         ":reference_resolving_executor",
@@ -338,7 +387,6 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -370,11 +418,16 @@ cc_test(
     timeout = "short",
     srcs = [
         "remote_executor_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+    ],
+    data = [
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
         ":executor",
+        ":libtensorflow_framework_import_major_version",
         ":mock_grpc",
         ":protobuf_matchers",
         ":remote_executor",
@@ -390,7 +443,6 @@ cc_test(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -408,11 +460,11 @@ pybind_extension(
     name = "serialization_bindings",
     srcs = ["serialization_bindings.cc"],
     deps = [
+        ":libtensorflow_framework_import_major_version",
         ":status_macros",
         ":tensor_serialization",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status:statusor",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
         "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor",
         "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
         "@pybind11_abseil//pybind11_abseil:status_casters",
@@ -460,11 +512,11 @@ cc_library(
     srcs = ["tensor_serialization.cc"],
     hdrs = ["tensor_serialization.h"],
     deps = [
+        ":libtensorflow_framework_import_major_version",
         ":status_macros",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
@@ -473,6 +525,7 @@ cc_library(
     srcs = ["session_provider.cc"],
     hdrs = ["session_provider.h"],
     deps = [
+        ":libtensorflow_framework_import_major_version",
         ":status_macros",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",
@@ -480,7 +533,6 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
@@ -488,14 +540,18 @@ cc_test(
     name = "session_provider_test",
     srcs = [
         "session_provider_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+    ],
+    data = [
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
+        ":libtensorflow_framework_import_major_version",
         ":session_provider",
         ":status_matchers",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -505,6 +561,7 @@ cc_library(
     hdrs = ["tensorflow_executor.h"],
     deps = [
         ":executor",
+        ":libtensorflow_framework_import_major_version",
         ":session_provider",
         ":status_macros",
         ":tensor_serialization",
@@ -521,7 +578,6 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
@@ -547,8 +603,8 @@ cc_cpu_gpu_test(
     name = "tensorflow_executor_test",
     srcs = [
         "tensorflow_executor_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     args = [
         "--reduce_graph_path",
@@ -556,9 +612,12 @@ cc_cpu_gpu_test(
     ],
     data = [
         "reduce_lambda_test.pbtxt",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
         ":executor",
+        ":libtensorflow_framework_import_major_version",
         ":protobuf_matchers",
         ":status_macros",
         ":status_matchers",
@@ -572,7 +631,6 @@ cc_cpu_gpu_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -595,15 +653,19 @@ cc_test(
     timeout = "short",
     srcs = [
         "threading_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+    ],
+    data = [
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
+        ":libtensorflow_framework_import_major_version",
         ":status_matchers",
         ":threading",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "@com_google_absl//absl/status",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
@@ -613,12 +675,12 @@ cc_library(
     hdrs = ["value_test_utils.h"],
     deps = [
         ":executor",
+        ":libtensorflow_framework_import_major_version",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
@@ -642,10 +704,15 @@ cc_test(
     timeout = "short",
     srcs = [
         "value_validation_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+    ],
+    data = [
+        "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+        "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
     ],
     deps = [
+        ":libtensorflow_framework_import_major_version",
         ":status_matchers",
         ":value_test_utils",
         ":value_validation",
@@ -654,6 +721,5 @@ cc_test(
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
