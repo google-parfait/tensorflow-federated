@@ -716,6 +716,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr.release(value, 1)
 
     _, actual_value = _read_values_from_csv(temp_file)
+    self.assertAllEqual(type(actual_value), type(expected_value))
     self.assertAllEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(

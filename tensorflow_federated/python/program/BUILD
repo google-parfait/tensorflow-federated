@@ -162,7 +162,10 @@ py_library(
 py_test(
     name = "structure_utils_test",
     srcs = ["structure_utils_test.py"],
-    deps = [":structure_utils"],
+    deps = [
+        ":structure_utils",
+        ":test_utils",
+    ],
 )
 
 py_library(

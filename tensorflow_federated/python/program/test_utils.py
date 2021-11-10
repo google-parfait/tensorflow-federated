@@ -55,3 +55,11 @@ class TestServerArrayReference(value_reference.ServerArrayReference):
 
   def get_value(self) -> Union[np.generic, np.ndarray]:
     return self._value
+
+  def __eq__(self, other):
+    if self is other:
+      return True
+    elif not isinstance(other, TestServerArrayReference):
+      return NotImplemented
+    return (self._value == other._value and
+            self._type_signature == other._type_signature)

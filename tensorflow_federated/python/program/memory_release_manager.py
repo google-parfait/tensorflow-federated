@@ -14,7 +14,7 @@
 """Utilities for releasing values from a federated program to memory."""
 
 import collections
-from typing import Any, Dict, Hashable
+from typing import Any, OrderedDict, Hashable
 
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
@@ -48,6 +48,6 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
     materialized_value = value_reference.materialize_value(value)
     self._values[key] = materialized_value
 
-  def values(self) -> Dict[Hashable, Any]:
+  def values(self) -> OrderedDict[Hashable, Any]:
     """Returns a dict of all keys and released values."""
     return self._values.copy()

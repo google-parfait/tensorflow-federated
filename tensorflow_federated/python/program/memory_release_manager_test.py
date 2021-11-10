@@ -76,6 +76,7 @@ class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertLen(release_mngr._values, 1)
     actual_value = release_mngr._values[1]
+    self.assertEqual(type(actual_value), type(expected_value))
     self.assertAllEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(

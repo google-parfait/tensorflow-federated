@@ -14,12 +14,12 @@
 """Utilities for working with structured data."""
 
 import collections
-from typing import Any, Dict
+from typing import Any, OrderedDict
 
 import tree
 
 
-def flatten(structure: Any) -> Dict[str, Any]:
+def flatten(structure: Any) -> OrderedDict[str, Any]:
   """Creates a flattened representation of the given `structure`.
 
   Args:
@@ -28,13 +28,12 @@ def flatten(structure: Any) -> Dict[str, Any]:
   Returns:
     A `collections.OrderedDict` representing the flattened version of the given
     `structure`, where the keys are string uniquely identifying the position of
-    the values in the structure of the given `structure`. The returned
-    `collections.OrderedDict` is sorted by key.
+    the values in the structure of the given `structure`.
   """
-  flat = tree.flatten_with_path(structure)
+  flattened = tree.flatten_with_path(structure)
 
   def name(path):
     return '/'.join(map(str, path))
 
-  named = [(name(path), item) for path, item in flat]
-  return collections.OrderedDict(sorted(named))
+  named = [(name(path), item) for path, item in flattened]
+  return collections.OrderedDict(named)

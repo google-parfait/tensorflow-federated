@@ -79,6 +79,7 @@ class LoggingReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
       call = mock_info.mock_calls[0]
       _, args, _ = call
       _, actual_value = args
+      self.assertEqual(type(actual_value), type(expected_value))
       self.assertAllEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(

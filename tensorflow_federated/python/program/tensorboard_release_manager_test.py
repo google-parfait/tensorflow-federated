@@ -109,7 +109,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
        [('0', 1), ('1', 2)]),
   )
   # pyformat: enable
-  def test_writes_value_scalar(self, value, expected_named_values):
+  def test_writes_value_scalar(self, value, expected_names_and_values):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -118,7 +118,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
       release_mngr.release(value, 1)
 
       calls = []
-      for name, value in expected_named_values:
+      for name, value in expected_names_and_values:
         call = mock.call(name, value, step=1)
         calls.append(call)
       mock_scalar.assert_has_calls(calls)
@@ -127,7 +127,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
       ('tensor_2d', tf.ones((2, 3)), [('', tf.ones((2, 3)))]),
       ('numpy_2d', np.ones((2, 3)), [('', np.ones((2, 3)))]),
   )
-  def test_writes_value_histogram(self, value, expected_named_values):
+  def test_writes_value_histogram(self, value, expected_names_and_values):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
         summary_dir=temp_dir)
@@ -136,7 +136,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
       release_mngr.release(value, 1)
 
       calls = []
-      for name, value in expected_named_values:
+      for name, value in expected_names_and_values:
         mock.call(name, value, step=1)
       mock_histogram.assert_has_calls(calls)
 
