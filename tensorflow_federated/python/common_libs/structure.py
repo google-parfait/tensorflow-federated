@@ -23,7 +23,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 
 class Struct(object):
-  """Represents a struct-like structure with named and/or unnamed fields.
+  """Represents a structure with named or unnamed fields.
 
   `Struct`s are similar to `collections.namedtuple` in that their elements can
   be accessed by name or by index. However, `Struct`s provide a performance
@@ -38,7 +38,7 @@ class Struct(object):
   Example:
 
   ```python
-  x = Struct([('foo', 10), (None, 20), ('bar', 30)])
+  x = Struct([('foo', 10), ('baz', 20), ('bar', 30)])
 
   len(x) == 3
   x[0] == 10
@@ -83,11 +83,15 @@ class Struct(object):
     names = []
     name_to_index = {}
     reserved_names = frozenset(('_asdict',) + Struct.__slots__)
+    first_element = None
     for idx, e in enumerate(elements):
       if not py_typecheck.is_name_value_pair(e, name_required=False):
         raise TypeError(
             'Expected every item on the list to be a pair in which the first '
             'element is a string, found {!r}.'.format(e))
+      if not first_element:
+        first_element = e
+        expect_names = first_element[0] is not None
       name, value = e
       if name in reserved_names:
         raise ValueError(
@@ -98,7 +102,19 @@ class Struct(object):
                          'found {}.'.format([e[0] for e in elements]))
       names.append(name)
       values.append(value)
-      if name is not None:
+      if name is None:
+        if expect_names:
+          raise ValueError(
+              'Attempted to construct a `Struct` whose first element is '
+              f'named `{first_element[0]}`, but element at index {idx} has '
+              'no name. `Struct` fields must either all be named or all be '
+              'unnamed.')
+      else:
+        if not expect_names:
+          raise ValueError(
+              'Attempted to construct a `Struct` whose first element is '
+              f'unnamed, but element at index {idx} has the name `{name}`. '
+              '`Struct` fields must either all be named or all be unnamed.')
         name_to_index[name] = idx
     self._element_array = tuple(values)
     self._name_to_index = name_to_index

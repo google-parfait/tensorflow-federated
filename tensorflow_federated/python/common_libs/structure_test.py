@@ -30,13 +30,21 @@ class StructTest(tf.test.TestCase):
     x = structure.Struct.unnamed(1, 4)
     self.assertSequenceEqual(structure.to_elements(x), [(None, 1), (None, 4)])
 
+  def test_raises_on_mixed_naming_named_then_unnamed(self):
+    with self.assertRaises(ValueError):
+      structure.Struct([('foo', 5), (None, 6)])
+
+  def test_raises_on_mixed_naming_unnamed_then_named(self):
+    with self.assertRaises(ValueError):
+      structure.Struct([(None, 5), ('foo', 6)])
+
   def test_construction_from_list(self):
-    v = [('a', 1), ('b', 2), (None, 3)]
+    v = [('a', 1), ('b', 2), ('c', 3)]
     x = structure.Struct(v)
     self.assertSequenceEqual(structure.to_elements(x), v)
 
   def test_construction_from_tuple(self):
-    v = (('a', 1), ('b', 2), (None, 3))
+    v = (('a', 1), ('b', 2), ('c', 3))
     x = structure.Struct(v)
     self.assertSequenceEqual(structure.to_elements(x), v)
 
@@ -46,12 +54,12 @@ class StructTest(tf.test.TestCase):
     self.assertSequenceEqual(structure.to_elements(x), list(v.items()))
 
   def test_construction_from_generator_expression(self):
-    x = structure.Struct((name, i) for i, name in enumerate(('a', 'b', None)))
+    x = structure.Struct((name, i) for i, name in enumerate(('a', 'b', 'c')))
     self.assertSequenceEqual(
-        structure.to_elements(x), [('a', 0), ('b', 1), (None, 2)])
+        structure.to_elements(x), [('a', 0), ('b', 1), ('c', 2)])
 
   def test_construction_from_iter_elements(self):
-    x = structure.Struct((('a', 1), ('b', 2), (None, 3)))
+    x = structure.Struct((('a', 1), ('b', 2), ('c', 3)))
     self.assertSequenceEqual(structure.Struct(structure.iter_elements(x)), x)
 
   def test_empty(self):
@@ -84,7 +92,7 @@ class StructTest(tf.test.TestCase):
     self.assertNotEqual(x, structure.Struct([]))
     self.assertNotEqual(x, structure.Struct([('foo', 10)]))
     self.assertEqual(x, structure.Struct([(None, 10)]))
-    self.assertNotEqual(x, structure.Struct([(None, 10), ('foo', 20)]))
+    self.assertNotEqual(x, structure.Struct([('bar', 10), ('foo', 20)]))
     self.assertEqual(structure.to_elements(x), v)
     self.assertEqual(repr(x), 'Struct([(None, 10)])')
     self.assertEqual(str(x), '<10>')
@@ -113,8 +121,8 @@ class StructTest(tf.test.TestCase):
     self.assertEqual(structure.to_odict(x), collections.OrderedDict(v))
     self.assertEqual(structure.to_odict_or_tuple(x), collections.OrderedDict(v))
 
-  def test_multiple_named_and_unnamed(self):
-    v = [(None, 10), ('foo', 20), ('bar', 30)]
+  def test_multiple_named(self):
+    v = [('buz', 10), ('foo', 20), ('bar', 30)]
     x = structure.Struct(v)
     self.assertLen(x, 3)
     self.assertEqual(x[0], 10)
@@ -122,23 +130,22 @@ class StructTest(tf.test.TestCase):
     self.assertEqual(x[2], 30)
     self.assertRaises(IndexError, lambda _: x[3], None)
     self.assertEqual(list(iter(x)), [10, 20, 30])
-    self.assertEqual(dir(x), ['bar', 'foo'])
-    self.assertEqual(structure.name_list(x), ['foo', 'bar'])
+    self.assertEqual(dir(x), ['bar', 'buz', 'foo'])
+    self.assertEqual(structure.name_list(x), ['buz', 'foo', 'bar'])
+    self.assertEqual(x.buz, 10)
     self.assertEqual(x.foo, 20)
     self.assertEqual(x.bar, 30)
     self.assertRaises(AttributeError, lambda _: x.baz, None)
-    self.assertEqual(x, structure.Struct([(None, 10), ('foo', 20),
+    self.assertEqual(x, structure.Struct([('buz', 10), ('foo', 20),
                                           ('bar', 30)]))
     self.assertNotEqual(
-        x, structure.Struct([('foo', 10), ('bar', 20), (None, 30)]))
+        x, structure.Struct([('foo', 10), ('bar', 20), ('buz', 30)]))
     self.assertEqual(structure.to_elements(x), v)
     self.assertEqual(
-        repr(x), 'Struct([(None, 10), (\'foo\', 20), (\'bar\', 30)])')
-    self.assertEqual(str(x), '<10,foo=20,bar=30>')
-    with self.assertRaisesRegex(ValueError, 'unnamed'):
-      structure.to_odict(x)
-    with self.assertRaisesRegex(ValueError, 'named and unnamed'):
-      structure.to_odict_or_tuple(x)
+        repr(x), 'Struct([(\'buz\', 10), (\'foo\', 20), (\'bar\', 30)])')
+    self.assertEqual(str(x), '<buz=10,foo=20,bar=30>')
+    self.assertEqual(structure.to_odict(x), collections.OrderedDict(v))
+    self.assertEqual(structure.to_odict_or_tuple(x), collections.OrderedDict(v))
 
   def test_bad_names(self):
     with self.assertRaisesRegex(ValueError, 'duplicated.*foo'):
@@ -256,7 +263,7 @@ class StructTest(tf.test.TestCase):
     self.assertTrue(t5.__ne__(t1))
 
   def test_hash(self):
-    v1 = [(str(i) if i > 30 else None, i) for i in range(0, 50, 10)]
+    v1 = [(str(i), i) for i in range(0, 50, 10)]
     x1 = structure.Struct(v1)
     self.assertNotEqual(x1, v1)
     self.assertNotEqual(hash(x1), hash(iter(v1)))
@@ -497,13 +504,6 @@ class StructTest(tf.test.TestCase):
     unnamed_struct = structure.Struct.unnamed(10, 20)
     self.assertEmpty(structure.name_to_index_map(unnamed_struct))
 
-  def test_name_to_index_map_partially_named_struct(self):
-    partially_named_struct = structure.Struct([(None, 10), ('a', 20)])
-
-    name_to_index_dict = structure.name_to_index_map(partially_named_struct)
-    expected_name_to_index_map = {'a': 1}
-    self.assertEqual(name_to_index_dict, expected_name_to_index_map)
-
   def test_name_to_index_map_fully_named_struct(self):
     partially_named_struct = structure.Struct.named(b=10, a=20)
 
@@ -518,13 +518,6 @@ class StructTest(tf.test.TestCase):
       self.assertEqual(state, structure.Struct.named(a=1, b=2, c=7))
       state = structure.update_struct(state, a=8)
       self.assertEqual(state, structure.Struct.named(a=8, b=2, c=7))
-    with self.subTest('partially_named'):
-      state = structure.Struct([(None, 1), ('b', 2), (None, 3)])
-      state = structure.update_struct(state, b=7)
-      self.assertEqual(state, structure.Struct([(None, 1), ('b', 7),
-                                                (None, 3)]))
-      with self.assertRaises(KeyError):
-        structure.update_struct(state, a=8)
     with self.subTest('nested'):
       state = structure.Struct.named(a=dict(a1=1, a2=2), b=2, c=3)
       state = structure.update_struct(state, a=7)
@@ -630,12 +623,6 @@ class StructTest(tf.test.TestCase):
     s = odict(a=1, b=2, c=tuple([3, odict(d=4, e=5)]))
     x = structure.from_container(s, recursive=False)
     self.assertEqual(s, structure.to_odict_or_tuple(x, recursive=False))
-
-    # Struct with named and unnamed elements should raise error.
-    s = [(None, 10), ('foo', 20), ('bar', 30)]
-    x = structure.Struct(s)
-    with self.assertRaisesRegex(ValueError, 'named and unnamed'):
-      structure.to_odict_or_tuple(x)
 
 
 if __name__ == '__main__':
