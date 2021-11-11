@@ -331,10 +331,8 @@ class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_dataset_computation_raises_error_if_unknown_client_id(self):
     client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
-
     dataset_computation = client_data.dataset_computation
-
-    with self.assertRaises(tf.errors.InvalidArgumentError):
+    with self.assertRaises(Exception):
       dataset_computation(CLIENT_ID_NOT_IN_TEST_DATA)
 
 
