@@ -69,7 +69,7 @@ RUN ${PIP} install --no-cache-dir --upgrade \
     numpy~=1.19.2 \
     portpicker~=1.3.1 \
     semantic-version~=2.8.5 \
-    tensorflow-model-optimization~=0.5.0 \
+    tensorflow-model-optimization~=0.7.0 \
     tensorflow-privacy~=0.7.3 \
     tf-nightly
 RUN pip freeze
