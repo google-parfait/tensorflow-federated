@@ -23,6 +23,7 @@ from tensorflow_federated.python.core.api import computation_base
 
 MODEL_ARG_NAME = 'x'
 MODEL_LABEL_NAME = 'y'
+MetricFinalizersType = OrderedDict[str, Callable[[Any], Any]]
 
 
 @attr.s(frozen=True, slots=True, eq=False)
@@ -290,7 +291,7 @@ class Model(object, metaclass=abc.ABCMeta):
     pass
 
   @abc.abstractmethod
-  def metric_finalizers(self) -> OrderedDict[str, Callable[[Any], Any]]:
+  def metric_finalizers(self) -> MetricFinalizersType:
     """Creates an `OrderedDict` of metric names to finalizers.
 
     This method and the `report_local_unfinalized_metrics()` method should have

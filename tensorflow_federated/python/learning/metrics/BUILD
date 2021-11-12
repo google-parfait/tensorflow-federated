@@ -12,7 +12,10 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
-    deps = [":finalizer"],
+    deps = [
+        ":aggregator",
+        ":finalizer",
+    ],
 )
 
 py_test(
@@ -28,9 +31,34 @@ py_test(
     ],
 )
 
+py_test(
+    name = "aggregator_test",
+    srcs = ["aggregator_test.py"],
+    deps = [
+        ":aggregator",
+        ":finalizer",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
 py_library(
     name = "finalizer",
     srcs = ["finalizer.py"],
     srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+)
+
+py_library(
+    name = "aggregator",
+    srcs = ["aggregator.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/learning:model",
+    ],
 )

@@ -13,4 +13,5 @@
 # limitations under the License.
 """Libraries for working with metrics in Federated Learning algorithms."""
 
+from tensorflow_federated.python.learning.metrics.aggregator import sum_then_finalize
 from tensorflow_federated.python.learning.metrics.finalizer import create_keras_metric_finalizer
