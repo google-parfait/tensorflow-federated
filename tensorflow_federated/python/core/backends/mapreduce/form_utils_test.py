@@ -18,7 +18,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
@@ -638,10 +637,10 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
     mrf = form_utils.get_map_reduce_form_for_iterative_process(it)
     new_it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
     state = new_it.initialize()
-    self.assertEqual(state.num_rounds, 0)
+    self.assertEqual(state['num_rounds'], 0)
 
     state, metrics = new_it.next(state, [[28.0], [30.0, 33.0, 29.0]])
-    self.assertEqual(state.num_rounds, 1)
+    self.assertEqual(state['num_rounds'], 1)
     self.assertAllClose(metrics,
                         collections.OrderedDict(ratio_over_threshold=0.5))
 
@@ -743,18 +742,17 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
   def test_returns_map_reduce_form_with_secure_sum_bitwidth(self):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(
         lambda data: intrinsics.federated_secure_sum_bitwidth(data, 7))
-    self.assertEqual(mrf.secure_sum_bitwidth(), structure.Struct.unnamed(7))
+    self.assertEqual(mrf.secure_sum_bitwidth(), (7,))
 
   def test_returns_map_reduce_form_with_secure_sum_max_input(self):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(
         lambda data: intrinsics.federated_secure_sum(data, 12))
-    self.assertEqual(mrf.secure_sum_max_input(), structure.Struct.unnamed(12))
+    self.assertEqual(mrf.secure_sum_max_input(), (12,))
 
   def test_returns_map_reduce_form_with_secure_modular_sum_modulus(self):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(
         lambda data: intrinsics.federated_secure_modular_sum(data, 22))
-    self.assertEqual(mrf.secure_modular_sum_modulus(),
-                     structure.Struct.unnamed(22))
+    self.assertEqual(mrf.secure_modular_sum_modulus(), (22,))
 
 
 class BroadcastFormTest(test_case.TestCase):

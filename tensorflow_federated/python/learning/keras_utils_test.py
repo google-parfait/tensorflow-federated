@@ -23,7 +23,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -148,9 +147,9 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError())
     self.assertIsInstance(tff_model, model_lib.Model)
-    self.assertIsInstance(tff_model.input_spec, structure.Struct)
-    structure.map_structure(lambda x: self.assertIsInstance(x, tf.TensorSpec),
-                            tff_model.input_spec)
+    self.assertIsInstance(tff_model.input_spec, collections.OrderedDict)
+    tf.nest.map_structure(lambda x: self.assertIsInstance(x, tf.TensorSpec),
+                          tff_model.input_spec)
 
   def test_input_spec_ragged_tensor(self):
     keras_model = model_examples.build_ragged_tensor_input_keras_model()

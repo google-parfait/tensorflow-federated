@@ -68,7 +68,7 @@ class StructTest(tf.test.TestCase):
     self.assertNotEqual(x, structure.Struct([('foo', 10)]))
     self.assertEqual(structure.to_elements(x), v)
     self.assertEqual(structure.to_odict(x), collections.OrderedDict())
-    self.assertEqual(structure.to_odict_or_tuple(x), collections.OrderedDict())
+    self.assertEqual(structure.to_odict_or_tuple(x), ())
     self.assertEqual(repr(x), 'Struct([])')
     self.assertEqual(str(x), '<>')
 
@@ -554,6 +554,12 @@ class StructTest(tf.test.TestCase):
     state3 = structure.update_struct(state2, a=8)
     self.assertEqual(state3, {'a': 8, 'b': 2, 'c': 7})
 
+  def test_update_struct_on_dict_does_not_mutate_original(self):
+    state = collections.OrderedDict(a=1, b=2, c=3)
+    state2 = structure.update_struct(state, c=7)
+    del state2
+    self.assertEqual(state, collections.OrderedDict(a=1, b=2, c=3))
+
   def test_update_struct_ordereddict(self):
     state = collections.OrderedDict([('a', 1), ('b', 2), ('c', 3)])
     state2 = structure.update_struct(state, c=7)
@@ -600,8 +606,8 @@ class StructTest(tf.test.TestCase):
     x = structure.from_container(s)
     self.assertEqual(structure.to_odict_or_tuple(x), s)
 
-    # Single empty OrderedDict.
-    s = odict()
+    # Single empty tuple.
+    s = ()
     x = structure.from_container(s)
     self.assertEqual(structure.to_odict_or_tuple(x), s)
 
@@ -615,11 +621,11 @@ class StructTest(tf.test.TestCase):
     x = structure.from_container(s)
     self.assertEqual(structure.to_odict_or_tuple(x), s)
 
-    # Struct from a single empty tuple should be converted to an empty
-    # OrderedDict.
-    s = tuple()
+    # Struct from a single empty OrderedDict should be converted to an empty
+    # tuple.
+    s = collections.OrderedDict()
     x = structure.from_container(s)
-    self.assertEqual(structure.to_odict_or_tuple(x), collections.OrderedDict())
+    self.assertEqual(structure.to_odict_or_tuple(x), ())
 
     # Mixed OrderedDicts and tuples.
     s = odict(a=1, b=2, c=tuple([3, odict(d=4, e=5)]))

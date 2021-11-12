@@ -260,7 +260,7 @@ def iter_elements(struct: Struct) -> Iterator[Tuple[Optional[str], Any]]:
   # pylint: enable=protected-access
 
 
-def to_odict(struct: Struct, recursive=False):
+def to_odict(struct: Struct, recursive=False) -> collections.OrderedDict:
   """Returns `struct` as an `OrderedDict`, if possible.
 
   Args:
@@ -285,7 +285,9 @@ def to_odict(struct: Struct, recursive=False):
     return _to_odict(to_elements(struct))
 
 
-def to_odict_or_tuple(struct: Struct, recursive=True):
+def to_odict_or_tuple(
+    struct: Struct,
+    recursive=True) -> Union[collections.OrderedDict, Tuple[Any, ...]]:
   """Returns `struct` as an `OrderedDict` or `tuple`, if possible.
 
   If all elements of `struct` have names, convert `struct` to an
@@ -304,16 +306,13 @@ def to_odict_or_tuple(struct: Struct, recursive=True):
 
   def _to_odict_or_tuple(elements):
     field_is_named = tuple(name is not None for name, _ in elements)
-    has_names = any(field_is_named)
-    is_all_named = all(field_is_named)
-    if is_all_named:
+    if any(field_is_named):
+      if not all(field_is_named):
+        raise ValueError(
+            'Cannot convert a `Struct` with both named and unnamed '
+            'entries to an OrderedDict or tuple: {!r}'.format(struct))
       return collections.OrderedDict(elements)
-    elif not has_names:
-      return tuple(value for _, value in elements)
-    else:
-      raise ValueError(
-          'Cannot convert an `Struct` with both named and unnamed '
-          'entries to an OrderedDict or tuple: {!r}'.format(struct))
+    return tuple(value for _, value in elements)
 
   if recursive:
     return to_container_recursive(struct, _to_odict_or_tuple)
@@ -665,7 +664,8 @@ def update_struct(structure, **kwargs):
       if key not in structure:
         raise KeyError(
             'structure does not contain a field named "{!s}"'.format(key))
-    d = structure
+    # Create a copy to prevent mutation of the original `structure`
+    d = type(structure)(**structure)
   d.update(kwargs)
   if isinstance(structure, collections.abc.Mapping):
     return d

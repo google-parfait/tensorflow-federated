@@ -516,7 +516,7 @@ class TypeFromTensorsTest(test_case.TestCase):
 
 class TypeToPyContainerTest(test_case.TestCase):
 
-  def test_not_anon_tuple_passthrough(self):
+  def test_tuple_passthrough(self):
     value = (1, 2.0)
     result = type_conversions.type_to_py_container(
         (1, 2.0),
@@ -524,12 +524,27 @@ class TypeToPyContainerTest(test_case.TestCase):
                                                container_type=list))
     self.assertEqual(result, value)
 
-  def test_anon_tuple_return(self):
-    anon_tuple = structure.Struct([(None, 1), (None, 2.0)])
+  def test_represents_unnamed_fields_as_tuple(self):
+    input_value = structure.Struct([(None, 1), (None, 2.0)])
+    input_type = computation_types.StructType([tf.int32, tf.float32])
     self.assertEqual(
-        type_conversions.type_to_py_container(
-            anon_tuple, computation_types.StructType([tf.int32, tf.float32])),
-        anon_tuple)
+        type_conversions.type_to_py_container(input_value, input_type),
+        (1, 2.0))
+
+  def test_represents_named_fields_as_odict(self):
+    input_value = structure.Struct([('a', 1), ('b', 2.0)])
+    input_type = computation_types.StructType([('a', tf.int32),
+                                               ('b', tf.float32)])
+    self.assertEqual(
+        type_conversions.type_to_py_container(input_value, input_type),
+        collections.OrderedDict(a=1, b=2.0))
+
+  def test_raises_on_mixed_named_unnamed(self):
+    input_value = structure.Struct([('a', 1), (None, 2.0)])
+    input_type = computation_types.StructType([('a', tf.int32),
+                                               (None, tf.float32)])
+    with self.assertRaises(ValueError):
+      type_conversions.type_to_py_container(input_value, input_type)
 
   def test_anon_tuple_without_names_to_container_without_names(self):
     anon_tuple = structure.Struct([(None, 1), (None, 2.0)])
@@ -575,11 +590,12 @@ class TypeToPyContainerTest(test_case.TestCase):
     anon_tuple = structure.Struct([(None, 1), ('a', 2.0)])
     types = [tf.int32, tf.float32]
     with self.assertRaisesRegex(ValueError,
-                                'contains a mix of named and unnamed elements'):
+                                'Cannot convert value with field name'):
       type_conversions.type_to_py_container(
           anon_tuple, computation_types.StructWithPythonType(types, tuple))
     anon_tuple = structure.Struct([('a', 1), ('b', 2.0)])
-    with self.assertRaisesRegex(ValueError, 'which does not support names'):
+    with self.assertRaisesRegex(ValueError,
+                                'Cannot convert value with field name'):
       type_conversions.type_to_py_container(
           anon_tuple, computation_types.StructWithPythonType(types, list))
 
@@ -645,7 +661,7 @@ class TypeToPyContainerTest(test_case.TestCase):
   def test_nested_py_containers(self):
     anon_tuple = structure.Struct([
         (None, 1), (None, 2.0),
-        ('dict_key',
+        (None,
          structure.Struct([('a', 3),
                            ('b', structure.Struct([(None, 4), (None, 5)]))]))
     ])
@@ -657,17 +673,9 @@ class TypeToPyContainerTest(test_case.TestCase):
         dict)
     type_spec = computation_types.StructType([(None, tf.int32),
                                               (None, tf.float32),
-                                              ('dict_key', dict_subtype)])
+                                              (None, dict_subtype)])
 
-    expected_nested_structure = structure.Struct([
-        (None, 1),
-        (None, 2.0),
-        ('dict_key', {
-            'a': 3,
-            'b': (4, 5)
-        }),
-    ])
-
+    expected_nested_structure = (1, 2.0, collections.OrderedDict(a=3, b=(4, 5)))
     self.assertEqual(
         type_conversions.type_to_py_container(anon_tuple, type_spec),
         expected_nested_structure)
@@ -752,13 +760,13 @@ class StructureFromTensorTypeTreeTest(test_case.TestCase):
         expect_tfint32_return_5, tf.int32)
     self.assertEqual(result, 5)
 
-  def test_structure(self):
-    struct_type = computation_types.StructType([('a', tf.int32),
-                                                (None, tf.int32)])
+  def test_dict(self):
+    struct_type = computation_types.StructWithPythonType(
+        [('a', tf.int32), ('b', tf.int32)], collections.OrderedDict)
     return_incr = self.get_incrementing_function()
     result = type_conversions.structure_from_tensor_type_tree(
         return_incr, struct_type)
-    self.assertEqual(result, structure.Struct([('a', 0), (None, 1)]))
+    self.assertEqual(result, collections.OrderedDict(a=0, b=1))
 
   def test_nested_python_type(self):
     return_incr = self.get_incrementing_function()
