@@ -33,9 +33,9 @@ class _RmsProp(optimizer.Optimizer):
                decay: float = 0.9,
                epsilon: float = 1e-7):
     """Initializes RMSprop optimizer."""
-    optimizer.check_non_negative_float(learning_rate, 'learning rate')
+    py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
     _check_decay(decay)
-    optimizer.check_non_negative_float(epsilon, 'epsilon')
+    py_typecheck.check_non_negative_float(epsilon, 'epsilon')
     self._lr = learning_rate
     self._decay = decay
     self._epsilon = epsilon

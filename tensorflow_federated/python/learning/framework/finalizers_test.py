@@ -320,7 +320,7 @@ class ApplyOptimizerFinalizerComputationTest(test_case.TestCase,
     expected_result_type = computation_types.at_server(mw_type)
     expected_state_type = computation_types.at_server(
         computation_types.to_type(
-            collections.OrderedDict([(sgdm.LEARNING_RATE_KEY, tf.float32)])))
+            collections.OrderedDict([(sgdm._LEARNING_RATE_KEY, tf.float32)])))
     expected_measurements_type = computation_types.at_server(())
 
     expected_initialize_type = computation_types.FunctionType(
@@ -373,7 +373,7 @@ class ApplyOptimizerFinalizerExecutionTest(test_case.TestCase):
       output = finalizer.next(optimizer_state, weights, update)
       optimizer_state = output.state
       weights = output.result
-      self.assertEqual(1.0, optimizer_state[sgdm.LEARNING_RATE_KEY])
+      self.assertEqual(1.0, optimizer_state[sgdm._LEARNING_RATE_KEY])
       self.assertAllClose(1.0 - 0.1 * (i + 1), weights.trainable)
       self.assertEqual((), output.measurements)
 

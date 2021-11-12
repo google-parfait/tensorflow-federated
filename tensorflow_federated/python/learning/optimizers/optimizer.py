@@ -16,8 +16,6 @@
 import abc
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
-
 
 class Optimizer(abc.ABC):
   """Represents an optimizer for use in TensorFlow Federated.
@@ -71,18 +69,6 @@ class Optimizer(abc.ABC):
     pass
 
 
-def check_non_negative_float(value, name):
-  py_typecheck.check_type(value, float)
-  if value < 0.0:
-    raise ValueError(f'Provided {name} must be non-negative.')
-
-
-def check_momentum(momentum):
-  py_typecheck.check_type(momentum, float)
-  if momentum < 0.0 or momentum >= 1.0:
-    raise ValueError('Momentum must be between 0.0 and 1.0.')
-
-
 def _check_shape_dtype_match(x, y):
   if not x.shape.is_compatible_with(y.shape) or x.dtype != y.dtype:
     raise TypeError('Provided tensors do not have the same shapes and dtypes.')
@@ -100,7 +86,7 @@ def check_weights_gradients_match(weights, gradients):
     gradients: A structure of tensors.
 
   Raises:
-    ValueError: If `weights` and `graidnets` do not have the same structure, or
+    ValueError: If `weights` and `gradients` do not have the same structure, or
       if the tensors in the structures do not have the same shapes and dtypes.
   """
   try:
@@ -132,7 +118,7 @@ def check_weights_state_match(weights, state, name):
 
 
 def handle_indexed_slices_gradients(gradients):
-  """Converts any tf.IndexedSlices to tensors.
+  """Converts any `tf.IndexedSlices` to tensors.
 
   The `tf.IndexedSlices` class is used principally in the definition of
   gradients for operations that have sparse gradients (e.g. `tf.gather`). See

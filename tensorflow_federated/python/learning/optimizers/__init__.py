@@ -15,6 +15,8 @@
 
 from tensorflow_federated.python.learning.optimizers.adagrad import build_adagrad
 from tensorflow_federated.python.learning.optimizers.adam import build_adam
+from tensorflow_federated.python.learning.optimizers.optimizer import check_weights_gradients_match
+from tensorflow_federated.python.learning.optimizers.optimizer import handle_indexed_slices_gradients
 from tensorflow_federated.python.learning.optimizers.optimizer import Optimizer
 from tensorflow_federated.python.learning.optimizers.rmsprop import build_rmsprop
 from tensorflow_federated.python.learning.optimizers.sgdm import build_sgdm

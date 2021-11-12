@@ -33,9 +33,9 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     optimizer = adagrad.build_adagrad(0.01)
     state = optimizer.initialize(_SCALAR_SPEC)
     self.assertLen(state, 3)
-    self.assertIn(adagrad.LEARNING_RATE_KEY, state)
-    self.assertIn(adagrad.EPSILON_KEY, state)
-    self.assertIn(adagrad.PRECONDITIONER_KEY, state)
+    self.assertIn(adagrad._LEARNING_RATE_KEY, state)
+    self.assertIn(adagrad._EPSILON_KEY, state)
+    self.assertIn(adagrad._PRECONDITIONER_KEY, state)
 
   def test_math_no_momentum(self):
     weights = tf.constant([1.0], tf.float32)
