@@ -1012,7 +1012,7 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
       return zero_for([('A', tf.int32), ('B', tf.float32)])
 
     self.assertEqual(str(foo.type_signature), '( -> <A=int32,B=float32>)')
-    self.assertEqual(str(foo()), '<A=0,B=0.0>')
+    self.assertEqual(foo(), collections.OrderedDict(A=0, B=0.0))
 
   def test_generic_zero_with_federated_int_on_server(self):
 
@@ -1046,10 +1046,10 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
         '(<x=<A=int32,B=float32>,y=<A=int32,B=float32>> -> <A=int32,B=float32>)'
     )
     foo_result = foo([2, 0.1], [3, 0.2])
-    self.assertIsInstance(foo_result, structure.Struct)
-    self.assertSameElements(dir(foo_result), ['A', 'B'])
-    self.assertEqual(foo_result.A, 5)
-    self.assertAlmostEqual(foo_result.B, 0.3, places=2)
+    self.assertIsInstance(foo_result, collections.OrderedDict)
+    self.assertSameElements(foo_result.keys(), ['A', 'B'])
+    self.assertEqual(foo_result['A'], 5)  # pylint: disable=invalid-sequence-index
+    self.assertAlmostEqual(foo_result['B'], 0.3, places=2)  # pylint: disable=invalid-sequence-index
 
   def test_sequence_map_with_list_of_integers(self):
 
@@ -1123,17 +1123,16 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
         str(foo.type_signature),
         '({<A=float32,B=float32>}@CLIENTS -> <A=float32,B=float32>@SERVER)')
     self.assertEqual(
-        str(
-            foo([{
-                'A': 1.0,
-                'B': 5.0
-            }, {
-                'A': 2.0,
-                'B': 6.0
-            }, {
-                'A': 3.0,
-                'B': 7.0
-            }])), '<A=2.0,B=6.0>')
+        foo([{
+            'A': 1.0,
+            'B': 5.0
+        }, {
+            'A': 2.0,
+            'B': 6.0
+        }, {
+            'A': 3.0,
+            'B': 7.0
+        }]), collections.OrderedDict(A=2.0, B=6.0))
 
   def test_federated_zip_at_server(self):
 

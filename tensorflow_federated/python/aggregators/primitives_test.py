@@ -268,11 +268,10 @@ class FederatedSampleTest(tf.test.TestCase):
     x1 = -1.0
     y1 = 5.0
     test_type = collections.namedtuple('NestedScalars', ['x', 'y'])
-    value = call_federated_sample(
+    result = call_federated_sample(
         [test_type(x0, y0),
          test_type(x1, y1),
          test_type(2.0, -10.0)])
-    result = value._asdict()
     i0 = list(result['x']).index(x0)
     i1 = list(result['y']).index(y1)
 
@@ -334,11 +333,10 @@ class FederatedSampleTest(tf.test.TestCase):
     x = 0.0
     y = 5.0
     test_type = collections.namedtuple('NestedScalars', ['x', 'y'])
-    value = call_federated_sample(
+    result = call_federated_sample(
         [test_type(x, y),
          test_type(3.4, 5.6),
          test_type(1.0, 1.0)])
-    result = value._asdict()
 
     self.assertIn(y, result['y'])
     self.assertIn(x, result['x'])
@@ -360,13 +358,13 @@ class FederatedSampleTest(tf.test.TestCase):
 
     tuple_type = collections.namedtuple('NestedScalars', ['x', 'y'])
     dict_type = collections.namedtuple('NestedScalars', ['a', 'b'])
-    value = call_federated_sample([
+    result = call_federated_sample([
         nested_test_type(tuple_type(1.2, 2.2), dict_type(1.3, 8.8)),
         nested_test_type(tuple_type(-9.1, 3.1), dict_type(1.2, -5.4))
-    ])._asdict(recursive=True)
+    ])
 
-    self.assertIn(1.2, value['tuple_1']['x'])
-    self.assertIn(8.8, value['tuple_2']['b'])
+    self.assertIn(1.2, result['tuple_1']['x'])
+    self.assertIn(8.8, result['tuple_2']['b'])
 
 
 class SecureQuantizedSumStaticAssertsTest(tf.test.TestCase,

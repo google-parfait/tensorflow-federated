@@ -134,24 +134,24 @@ class MapReduceFormTest(tff.test.TestCase):
     client_data = [sample_batch]
     state_1 = ip_1.initialize()
     server_state_1, server_output_1 = ip_1.next(state_1, [client_data])
-    server_state_1 = tff.structure.from_container(
-        server_state_1, recursive=True)
-    server_output_1 = tff.structure.from_container(
-        server_output_1, recursive=True)
-    server_state_1_arrays = tff.structure.flatten(server_state_1)
-    server_output_1_arrays = tff.structure.flatten(server_output_1)
+    # The serialized representation of `ip` loses the Python containers, so we
+    # assert that it matches the odict_or_tuple-ified representations.
+    server_state_1 = tff.structure.to_odict_or_tuple(
+        tff.structure.from_container(server_state_1, recursive=True))
+    server_output_1 = tff.structure.to_odict_or_tuple(
+        tff.structure.from_container(server_output_1, recursive=True))
+    server_state_1_arrays = tf.nest.flatten(server_state_1)
+    server_output_1_arrays = tf.nest.flatten(server_output_1)
     state_2 = ip_2.initialize()
     server_state_2, server_output_2 = ip_2.next(state_2, [client_data])
-    server_state_2_arrays = tff.structure.flatten(server_state_2)
-    server_output_2_arrays = tff.structure.flatten(server_output_2)
+    server_state_2_arrays = tf.nest.flatten(server_state_2)
+    server_output_2_arrays = tf.nest.flatten(server_output_2)
 
-    self.assertEmpty(server_state_1.model_broadcast_state)
+    self.assertEqual(server_state_1['model_broadcast_state'], ())
     # Note that we cannot simply use assertEqual because the values may differ
     # due to floating point issues.
-    self.assertTrue(
-        tff.structure.is_same_structure(server_state_1, server_state_2))
-    self.assertTrue(
-        tff.structure.is_same_structure(server_output_1, server_output_2))
+    tf.nest.assert_same_structure(server_state_1, server_state_2)
+    tf.nest.assert_same_structure(server_output_1, server_output_2)
     self.assertAllClose(server_state_1_arrays, server_state_2_arrays)
     self.assertAllClose(server_output_1_arrays[:2], server_output_2_arrays[:2])
 
