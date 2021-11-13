@@ -183,3 +183,25 @@ py_test(
         ":sgdm",
     ],
 )
+
+py_library(
+    name = "yogi",
+    srcs = ["yogi.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":optimizer",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "yogi_test",
+    srcs = ["yogi_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":optimizer",
+        ":optimizer_test_utils",
+        ":yogi",
+    ],
+)
