@@ -26,14 +26,14 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import client_works
+from tensorflow_federated.python.learning import composers
+from tensorflow_federated.python.learning import distributors
+from tensorflow_federated.python.learning import finalizers
 from tensorflow_federated.python.learning import learning_process
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import example_weighted_federated_averaging
-from tensorflow_federated.python.learning.framework import client_works
-from tensorflow_federated.python.learning.framework import composers
-from tensorflow_federated.python.learning.framework import distributors
-from tensorflow_federated.python.learning.framework import finalizers
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 
 TFFOrKerasOptimizer = Union[optimizer_base.Optimizer,

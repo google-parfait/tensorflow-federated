@@ -16,17 +16,17 @@ import collections
 
 import tensorflow as tf
 
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import client_works
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
-from tensorflow_federated.python.learning.framework import client_works
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 SERVER_INT = computation_types.FederatedType(tf.int32, placements.SERVER)
