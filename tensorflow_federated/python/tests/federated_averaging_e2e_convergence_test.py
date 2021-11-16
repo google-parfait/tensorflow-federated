@@ -80,7 +80,6 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters([
       ('robust_aggregator', tff.learning.robust_aggregator),
-      ('compression_aggregator', tff.learning.compression_aggregator),
       ('secure_aggregator', tff.learning.secure_aggregator),
   ])
   def test_emnist10_cnn_convergence_with_aggregator(self,
@@ -90,6 +89,14 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
         aggregator_factory=aggregator_factory_fn())
     self.assertLessEqual(loss, 0.15)
     self.assertGreater(accuracy, 0.95)
+
+  def test_emnist10_cnn_convergence_compression_aggregator(self):
+    loss, accuracy = self._build_and_run_process(
+        client_optimizer_fn=_get_keras_optimizer_fn(),
+        aggregator_factory=tff.learning.compression_aggregator())
+
+    self.assertLessEqual(loss, 0.16)
+    self.assertGreater(accuracy, 0.92)
 
   def test_emnist10_cnn_convergence_dp_aggregator_low_noise(self):
     # Test with very small noise multiplier. Results should be good,
