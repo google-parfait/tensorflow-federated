@@ -1,4 +1,4 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "cc_cpu_gpu_test")
+load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_cpu_gpu_test_with_tf_deps", "tff_cc_library_with_tf_deps", "tff_cc_test_with_tf_deps", "tff_pybind_extension_with_tf_deps")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_binary")
 
@@ -18,7 +18,7 @@ package_group(
 
 licenses(["notice"])
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "cardinalities",
     srcs = ["cardinalities.cc"],
     hdrs = ["cardinalities.h"],
@@ -29,10 +29,11 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "composing_executor",
     srcs = ["composing_executor.cc"],
     hdrs = ["composing_executor.h"],
+    tf_deps = ["@org_tensorflow//tensorflow/core/platform:macros"],
     deps = [
         ":cardinalities",
         ":computations",
@@ -52,17 +53,12 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
         "@com_google_protobuf//:protobuf",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
-cc_test(
+tff_cc_test_with_tf_deps(
     name = "composing_executor_test",
-    srcs = [
-        "composing_executor_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
-    ],
+    srcs = ["composing_executor_test.cc"],
     deps = [
         ":composing_executor",
         ":computations",
@@ -78,11 +74,10 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "computations",
     hdrs = ["computations.h"],
     deps = ["//tensorflow_federated/proto/v0:computation_cc_proto"],
@@ -110,10 +105,11 @@ pybind_extension(
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "executor",
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
+    tf_deps = ["@org_tensorflow//tensorflow/core/profiler/lib:traceme"],
     deps = [
         ":status_macros",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -126,12 +122,10 @@ cc_library(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
-        "@org_tensorflow//tensorflow/core/profiler/lib:traceme",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "executor_service",
     srcs = ["executor_service.cc"],
     hdrs = ["executor_service.h"],
@@ -154,13 +148,9 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test_with_tf_deps(
     name = "executor_service_test",
-    srcs = [
-        "executor_service_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
-    ],
+    srcs = ["executor_service_test.cc"],
     deps = [
         ":executor",
         ":executor_service",
@@ -178,11 +168,10 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "executor_test_base",
     testonly = True,
     srcs = [],
@@ -197,7 +186,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "federated_intrinsics",
     srcs = ["federated_intrinsics.cc"],
     hdrs = ["federated_intrinsics.h"],
@@ -208,10 +197,11 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "federating_executor",
     srcs = ["federating_executor.cc"],
     hdrs = ["federating_executor.h"],
+    tf_deps = ["@org_tensorflow//tensorflow/core/platform:macros"],
     deps = [
         ":cardinalities",
         ":executor",
@@ -227,17 +217,12 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
-cc_test(
+tff_cc_test_with_tf_deps(
     name = "federating_executor_test",
-    srcs = [
-        "federating_executor_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
-    ],
+    srcs = ["federating_executor_test.cc"],
     deps = [
         ":executor",
         ":executor_test_base",
@@ -250,11 +235,10 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "mock_executor",
     testonly = True,
     hdrs = ["mock_executor.h"],
@@ -270,7 +254,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "mock_grpc",
     testonly = True,
     hdrs = ["mock_grpc.h"],
@@ -283,7 +267,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "protobuf_matchers",
     testonly = True,
     hdrs = ["protobuf_matchers.h"],
@@ -296,10 +280,11 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "reference_resolving_executor",
     srcs = ["reference_resolving_executor.cc"],
     hdrs = ["reference_resolving_executor.h"],
+    tf_deps = ["@org_tensorflow//tensorflow/core:tensorflow"],
     deps = [
         ":executor",
         ":status_macros",
@@ -310,17 +295,22 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
-cc_test(
+tff_cc_test_with_tf_deps(
     name = "reference_resolving_executor_test",
     timeout = "short",
-    srcs = [
-        "reference_resolving_executor_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    srcs = ["reference_resolving_executor_test.cc"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:math_ops",
+        "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/platform:byte_order",
+        "@org_tensorflow//tensorflow/core/platform:status",
     ],
     deps = [
         ":executor",
@@ -338,11 +328,10 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "remote_executor",
     srcs = ["remote_executor.cc"],
     hdrs = ["remote_executor.h"],
@@ -365,13 +354,13 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test_with_tf_deps(
     name = "remote_executor_test",
     timeout = "short",
-    srcs = [
-        "remote_executor_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+    srcs = ["remote_executor_test.cc"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:math_ops",
     ],
     deps = [
         ":executor",
@@ -390,11 +379,10 @@ cc_test(
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "sequence_intrinsics",
     srcs = ["sequence_intrinsics.cc"],
     hdrs = ["sequence_intrinsics.h"],
@@ -404,23 +392,29 @@ cc_library(
     ],
 )
 
-pybind_extension(
+tff_pybind_extension_with_tf_deps(
     name = "serialization_bindings",
     srcs = ["serialization_bindings.cc"],
+    extra_tf_dyn_deps = ["@org_tensorflow//tensorflow/python:_pywrap_tensorflow_internal.so"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/c:tf_status",
+        "@org_tensorflow//tensorflow/c:tf_tensor",
+        "@org_tensorflow//tensorflow/core/platform:status",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor",
+        "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
+    ],
     deps = [
         ":status_macros",
         ":tensor_serialization",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status:statusor",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
-        "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor",
-        "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
         "@pybind11_abseil//pybind11_abseil:status_casters",
         "@pybind11_protobuf//pybind11_protobuf:wrapped_proto_caster",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "status_conversion",
     srcs = ["status_conversion.cc"],
     hdrs = ["status_conversion.h"],
@@ -430,7 +424,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "status_macros",
     hdrs = ["status_macros.h"],
     deps = [
@@ -440,7 +434,7 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "status_matchers",
     testonly = True,
     srcs = ["status_matchers.cc"],
@@ -455,23 +449,35 @@ cc_library(
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "tensor_serialization",
     srcs = ["tensor_serialization.cc"],
     hdrs = ["tensor_serialization.h"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/platform:byte_order",
+    ],
     deps = [
         ":status_macros",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "session_provider",
     srcs = ["session_provider.cc"],
     hdrs = ["session_provider.h"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:graph",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/common_runtime:device_mgr",
+        "@org_tensorflow//tensorflow/core/common_runtime:session",
+        "@org_tensorflow//tensorflow/core/common_runtime:session_options",
+    ],
     deps = [
         ":status_macros",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -480,29 +486,33 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:optional",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
-cc_test(
+tff_cc_test_with_tf_deps(
     name = "session_provider_test",
-    srcs = [
-        "session_provider_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
-    ],
+    srcs = ["session_provider_test.cc"],
+    tf_deps = ["@org_tensorflow//tensorflow/core:tensorflow"],
     deps = [
         ":session_provider",
         ":status_matchers",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "tensorflow_executor",
     srcs = ["tensorflow_executor.cc"],
     hdrs = ["tensorflow_executor.h"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/common_runtime:core",
+        "@org_tensorflow//tensorflow/core/common_runtime:session",
+        "@org_tensorflow//tensorflow/core/platform:macros",
+        "@org_tensorflow//tensorflow/core/platform:status",
+        "@org_tensorflow//tensorflow/core/platform:tstring",
+    ],
     deps = [
         ":executor",
         ":session_provider",
@@ -521,7 +531,6 @@ cc_library(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
@@ -543,19 +552,24 @@ genrule(
     exec_tools = [":make_reduce_lambda_test_graph"],
 )
 
-cc_cpu_gpu_test(
+tff_cc_cpu_gpu_test_with_tf_deps(
     name = "tensorflow_executor_test",
-    srcs = [
-        "tensorflow_executor_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
-    ],
+    srcs = ["tensorflow_executor_test.cc"],
     args = [
         "--reduce_graph_path",
         "$(location reduce_lambda_test.pbtxt)",
     ],
-    data = [
-        "reduce_lambda_test.pbtxt",
+    data = ["reduce_lambda_test.pbtxt"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/cc:cc_ops",
+        "@org_tensorflow//tensorflow/cc:ops",
+        "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@org_tensorflow//tensorflow/core/platform:status",
+        "@org_tensorflow//tensorflow/core/platform:tstring",
     ],
     deps = [
         ":executor",
@@ -572,11 +586,10 @@ cc_cpu_gpu_test(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "threading",
     srcs = ["threading.cc"],
     hdrs = ["threading.h"],
@@ -590,27 +603,32 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test_with_tf_deps(
     name = "threading_test",
     timeout = "short",
-    srcs = [
-        "threading_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
-    ],
+    srcs = ["threading_test.cc"],
     deps = [
         ":status_matchers",
         ":threading",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "@com_google_absl//absl/status",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "value_test_utils",
     testonly = True,
     hdrs = ["value_test_utils.h"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/cc:client_session",
+        "@org_tensorflow//tensorflow/cc:const_op",
+        "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
+        "@org_tensorflow//tensorflow/cc:ops",
+        "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/platform:tstring",
+    ],
     deps = [
         ":executor",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
@@ -618,11 +636,10 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
     ],
 )
 
-cc_library(
+tff_cc_library_with_tf_deps(
     name = "value_validation",
     srcs = ["value_validation.cc"],
     hdrs = ["value_validation.h"],
@@ -637,14 +654,10 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_test_with_tf_deps(
     name = "value_validation_test",
     timeout = "short",
-    srcs = [
-        "value_validation_test.cc",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
-        "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
-    ],
+    srcs = ["value_validation_test.cc"],
     deps = [
         ":status_matchers",
         ":value_test_utils",
@@ -654,6 +667,5 @@ cc_test(
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
     ],
 )
