@@ -40,6 +40,11 @@ class NumTokensCounter(tf.keras.metrics.Sum):
     sample_weight = tf.reshape(sample_weight, [-1])
     super().update_state(sample_weight)
 
+  def get_config(self):
+    config = super().get_config()
+    config['masked_tokens'] = tuple(self._masked_tokens)
+    return config
+
 
 class MaskedCategoricalAccuracy(tf.keras.metrics.SparseCategoricalAccuracy):
   """An accuracy metric that masks some tokens."""

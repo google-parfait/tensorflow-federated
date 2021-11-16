@@ -1020,6 +1020,57 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           metrics=[NumBatchesCounter(),
                    NumExamplesCounter()])
 
+  def test_custom_keras_metric_with_extra_init_args_raises(self):
+
+    class CustomCounter(tf.keras.metrics.Sum):
+      """A custom `tf.keras.metrics.Metric` with extra args in `__init__`."""
+
+      def __init__(self, name='new_counter', arg1=0, dtype=tf.int64):
+        super().__init__(name, dtype)
+        self._arg1 = arg1
+
+      def update_state(self, y_true, y_pred, sample_weight=None):
+        return super().update_state(1, sample_weight)
+
+    feature_dims = 3
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims)
+
+    with self.assertRaisesRegex(TypeError, 'extra arguments'):
+      keras_utils.from_keras_model(
+          keras_model=keras_model,
+          input_spec=_create_whimsy_types(feature_dims),
+          loss=tf.keras.losses.MeanSquaredError(),
+          metrics=[CustomCounter(arg1=1)])
+
+  def test_custom_keras_metric_no_extra_init_args_builds(self):
+
+    class CustomCounter(tf.keras.metrics.Sum):
+      """A custom `tf.keras.metrics.Metric` without extra args in `__init__`."""
+
+      def __init__(self, name='new_counter', arg1=0, dtype=tf.int64):
+        super().__init__(name, dtype)
+        self._arg1 = arg1
+
+      def update_state(self, y_true, y_pred, sample_weight=None):
+        return super().update_state(1, sample_weight)
+
+      def get_config(self):
+        config = super().get_config()
+        config['arg1'] = self._arg1
+        return config
+
+    feature_dims = 3
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims)
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=_create_whimsy_types(feature_dims),
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[CustomCounter(arg1=1)])
+
+    self.assertIsInstance(tff_model, model_lib.Model)
+
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()

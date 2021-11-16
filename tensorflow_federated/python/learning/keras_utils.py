@@ -242,21 +242,8 @@ def federated_aggregate_keras_metric(
       # If type(metric) is subclass of another tf.keras.metric arguments passed
       # to __init__ must include arguments expected by the superclass and
       # specified in superclass get_config().
-      # TODO(b/197746608): finds a safer way of reconstructing the metric,
-      # default argument values in Metric constructors can cause problems here.
-      keras_metric = None
-      try:
-        # This is some trickery to reconstruct a metric object in the current
-        # scope, so that the `tf.Variable`s get created when we desire.
-        keras_metric = type(metric).from_config(metric.get_config())
-      except TypeError as e:
-        # Re-raise the error with a more helpful message, but the previous stack
-        # trace.
-        raise TypeError(
-            'Caught exception trying to call `{t}.from_config()` with '
-            'config {c}. Confirm that {t}.__init__() has an argument for '
-            'each member of the config.\nException: {e}'.format(
-                t=type(metric), c=metric.get_config(), e=e))
+      finalizer.check_keras_metric_config_constructable(metric)
+      keras_metric = type(metric).from_config(metric.get_config())
 
       assignments = []
       for v, a in zip(keras_metric.variables, values):
