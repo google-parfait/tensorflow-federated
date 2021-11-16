@@ -14,6 +14,7 @@
 """Libraries for computing private heavy hitters with IBLT."""
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.chunkers import UTF8Chunker
+from tensorflow_federated.python.analytics.heavy_hitters.iblt.hyperedge_hashers import CoupledHyperEdgeHasher
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.hyperedge_hashers import RandomHyperEdgeHasher
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_lib import decode_iblt_tf
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_lib import IbltDecoder
