@@ -82,6 +82,17 @@ class CustomSumMetric(tf.keras.metrics.Sum):
     return config
 
 
+class CustomCounter(tf.keras.metrics.Sum):
+  """A custom `tf.keras.metrics.Metric` with extra arguments in `__init__`."""
+
+  def __init__(self, name='new_metric', arg1=0, dtype=tf.int64):
+    super().__init__(name, dtype)
+    self._arg1 = arg1
+
+  def update_state(self, y_true, y_pred, sample_weight=None):
+    return super().update_state(1, sample_weight)
+
+
 class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(
@@ -115,8 +126,10 @@ class FinalizerTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(
       ('tensor', tf.constant(1.0), 'found a non-callable'),
-      ('loss_constructor', tf.keras.losses.MeanSquaredError, 'found a callable')
-  )
+      ('loss_constructor', tf.keras.losses.MeanSquaredError,
+       'found a callable'),  # go/pyformat-break
+      ('custom_metric_with_extra_init_args', CustomCounter(arg1=1),
+       'extra arguments'))
   def test_create_keras_metric_finalizer_fails_with_invalid_input(
       self, invalid_metric, error_message):
     unused_type = [tf.TensorSpec(shape=[], dtype=tf.float32)]

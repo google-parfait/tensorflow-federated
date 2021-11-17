@@ -13,6 +13,8 @@
 # limitations under the License.
 """Helper functions for creating metric finalizers."""
 
+import inspect
+
 from typing import Any, Callable, List, Union
 import tensorflow as tf
 
@@ -56,6 +58,7 @@ def create_keras_metric_finalizer(
     # use `keras_metric.result()`.
     with tf.init_scope():
       if isinstance(metric, tf.keras.metrics.Metric):
+        check_keras_metric_config_constructable(metric)
         keras_metric = type(metric).from_config(metric.get_config())
       elif callable(metric):
         keras_metric = metric()
@@ -89,3 +92,50 @@ def create_keras_metric_finalizer(
     return keras_metric.result()
 
   return finalizer
+
+
+def check_keras_metric_config_constructable(
+    metric: tf.keras.metrics.Metric) -> tf.keras.metrics.Metric:
+  """Checks that a Keras metric is constructable from the `get_config()` method.
+
+  Args:
+    metric: A single `tf.keras.metrics.Metric`.
+
+  Returns:
+    The metric.
+
+  Raises:
+    TypeError: If the metric is not an instance of `tf.keras.metrics.Metric`, if
+    the metric is not constructable from the `get_config()` method.
+  """
+  if not isinstance(metric, tf.keras.metrics.Metric):
+    raise TypeError(f'Metric {type(metric)} is not a `tf.keras.metrics.Metric` '
+                    'to be constructable from the `get_config()` method.')
+
+  metric_type_str = type(metric).__name__
+
+  if hasattr(tf.keras.metrics, metric_type_str):
+    return metric
+
+  init_args = inspect.getfullargspec(metric.__init__).args
+  init_args.remove('self')
+  get_config_args = metric.get_config().keys()
+  extra_args = [arg for arg in init_args if arg not in get_config_args]
+  if extra_args:
+    # TODO(b/197746608): Updates the error message to redirect users to use
+    # metric constructors instead of constructed metrics when we support both
+    # cases in `from_keras_model`.
+    raise TypeError(f'Metric {metric_type_str} is not constructable from '
+                    'the `get_config()` method, because `__init__` takes extra '
+                    'arguments that are not included in the `get_config()`: '
+                    f'{extra_args}. Override or update the `get_config()` in '
+                    'the metric class to include these extra arguments.\n'
+                    'Example:\n'
+                    'class CustomMetric(tf.keras.metrics.Metric):\n'
+                    '  def __init__(self, arg1):\n'
+                    '    self._arg1 = arg1\n\n'
+                    '  def get_config(self)\n'
+                    '    config = super().get_config()\n'
+                    '    config[\'arg1\'] = self._arg1\n'
+                    '    return config')
+  return metric
