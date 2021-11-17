@@ -22,7 +22,7 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
-from tensorflow_federated.python.learning import learning_process
+from tensorflow_federated.python.learning.templates import learning_process
 
 LearningProcessOutput = learning_process.LearningProcessOutput
 
