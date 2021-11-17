@@ -47,6 +47,9 @@ build:linux --copt=-Wno-maybe-uninitialized
 # more information.
 build:macos --copt=-DGRPC_BAZEL_BUILD
 
+# Sets the default Apple platform to macOS.
+build:macos --apple_platform_type=macos
+
 #
 # Remote execution capabilities.
 #
