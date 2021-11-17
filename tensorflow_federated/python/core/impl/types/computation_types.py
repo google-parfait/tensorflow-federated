@@ -1327,7 +1327,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
       return _combine([element_lines, ['*']])
     elif type_spec.is_tensor():
       if type_spec.shape.ndims is None:
-        return ['{!r}[{}]'.format(type_spec.dtype, None)]
+        return ['{!r}(shape=None)'.format(type_spec.dtype.name)]
       elif type_spec.shape.ndims > 0:
 
         def _value_string(value):
