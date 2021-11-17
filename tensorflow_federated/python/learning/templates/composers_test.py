@@ -27,14 +27,14 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning import client_works
-from tensorflow_federated.python.learning import composers
-from tensorflow_federated.python.learning import distributors
-from tensorflow_federated.python.learning import finalizers
-from tensorflow_federated.python.learning import learning_process
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.optimizers import sgdm
+from tensorflow_federated.python.learning.templates import client_works
+from tensorflow_federated.python.learning.templates import composers
+from tensorflow_federated.python.learning.templates import distributors
+from tensorflow_federated.python.learning.templates import finalizers
+from tensorflow_federated.python.learning.templates import learning_process
 
 FLOAT_TYPE = computation_types.TensorType(tf.float32)
 MODEL_WEIGHTS_TYPE = computation_types.to_type(

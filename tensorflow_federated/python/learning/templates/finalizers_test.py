@@ -25,9 +25,9 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning import finalizers
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.optimizers import sgdm
+from tensorflow_federated.python.learning.templates import finalizers
 
 SERVER_INT = computation_types.FederatedType(tf.int32, placements.SERVER)
 SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
