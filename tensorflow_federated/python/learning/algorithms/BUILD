@@ -14,6 +14,14 @@ package_group(
 licenses(["notice"])
 
 py_library(
+    name = "algorithms",
+    srcs = ["__init__.py"],
+    srcs_version = "PY3",
+    visibility = ["//tensorflow_federated/python/learning:__pkg__"],
+    deps = [":client_scheduled_federated_averaging"],
+)
+
+py_library(
     name = "client_scheduled_federated_averaging",
     srcs = ["client_scheduled_federated_averaging.py"],
     srcs_version = "PY3",

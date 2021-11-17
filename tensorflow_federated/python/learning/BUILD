@@ -37,6 +37,7 @@ py_library(
         ":model_update_aggregator",
         ":model_utils",
         ":personalization_eval",
+        "//tensorflow_federated/python/learning/algorithms",
         "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/learning/metrics",

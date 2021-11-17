@@ -19,6 +19,10 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     H. Brendan McMahan, Eider Moore, Daniel Ramage,
     Seth Hampson, Blaise Aguera y Arcas. AISTATS 2017.
     https://arxiv.org/abs/1602.05629
+
+Currently, this code is intended only as an example of how to use the building
+block components of TFF's learning API to implement an algorithm that is
+compatible with things like broadcast and aggregation processes.
 """
 
 import collections
