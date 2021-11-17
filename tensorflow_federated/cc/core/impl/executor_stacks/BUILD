@@ -81,6 +81,10 @@ cc_library(
 tff_cc_test_with_tf_deps(
     name = "remote_stacks_test",
     srcs = ["remote_stacks_test.cc"],
+    #tags = select({
+    #    "//conditions:default": [],
+    #    "//third_party/tensorflow:macos": ["nokokoro"],
+    #}),
     deps = [
         ":remote_stacks",
         "//tensorflow_federated/cc/common_libs:oss_test_main",

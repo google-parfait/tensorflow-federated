@@ -13,8 +13,8 @@ common --announce_rc
 common --enable_platform_specific_config
 
 # Enable logging error output.
-test --test_output=errors
-test --test_summary=detailed
+test --experimental_cc_shared_library --test_output=errors
+test --experimental_cc_shared_library --test_summary=detailed
 
 # Execute commands as local subprocesses
 build --spawn_strategy=local
@@ -41,6 +41,7 @@ build --copt=-Wno-missing-field-initializers
 build --copt=-Wno-unknown-pragmas
 build:linux --copt=-Wno-stringop-truncation
 build:linux --copt=-Wno-maybe-uninitialized
+build:macos --copt=-Wno-unknown-warning-option
 
 # gRPC on MacOS requires this define, see
 # https://github.com/bazelbuild/bazel/issues/4341#issuecomment-572050759 for

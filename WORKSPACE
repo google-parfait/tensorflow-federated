@@ -36,7 +36,7 @@ git_repository(
     # Patched to give visibility into private targets to pybind11_protobuf
     patches = ["//third_party/protobuf:com_google_protobuf_build.patch"],
     remote = "https://github.com/protocolbuffers/protobuf.git",
-    tag = "v3.18.0-rc1",
+    tag = "v3.19.1",
 )
 
 git_repository(
@@ -125,7 +125,7 @@ protobuf_deps()
 git_repository(
     name = "com_github_grpc_grpc",
     remote = "https://github.com/grpc/grpc.git",
-    tag = "v1.38.1",
+    tag = "v1.42.0",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")

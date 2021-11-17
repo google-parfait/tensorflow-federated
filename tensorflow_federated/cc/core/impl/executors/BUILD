@@ -335,6 +335,10 @@ tff_cc_library_with_tf_deps(
     name = "remote_executor",
     srcs = ["remote_executor.cc"],
     hdrs = ["remote_executor.h"],
+    # tags = select({
+    #     "//conditions:default": [],
+    #     "@org_tensorflow//tensorflow:macos": ["nokokoro"],
+    # }),
     deps = [
         ":cardinalities",
         ":executor",
