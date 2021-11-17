@@ -48,6 +48,7 @@ using testing::intrinsic::FederatedAggregateV;
 using testing::intrinsic::FederatedBroadcastV;
 using testing::intrinsic::FederatedEvalAtClientsV;
 using testing::intrinsic::FederatedEvalAtServerV;
+using testing::intrinsic::FederatedMapAllEqualV;
 using testing::intrinsic::FederatedMapV;
 using testing::intrinsic::FederatedValueAtClientsV;
 using testing::intrinsic::FederatedValueAtServerV;
@@ -409,6 +410,33 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedMapAtClients) {
   }
   TFF_ASSERT_OK_AND_ASSIGN(auto map_id,
                            test_executor_->CreateValue(FederatedMapV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
+                           test_executor_->CreateStruct({fn_id, input_id}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(map_id, arg_id));
+  ExpectMaterialize(result_id, value);
+}
+
+TEST_F(FederatingExecutorTest, CreateCallFederatedMapAllEqualAtClients) {
+  std::vector<v0::Value> client_vals;
+  std::vector<ValueId> client_vals_child_ids;
+  for (int i = 0; i < NUM_CLIENTS; i++) {
+    client_vals.emplace_back(TensorV(i));
+    client_vals_child_ids.emplace_back(ExpectCreateInChild(TensorV(i)));
+  }
+  v0::Value value = ClientsV(client_vals);
+  TFF_ASSERT_OK_AND_ASSIGN(auto input_id,
+                           test_executor_->CreateValue(ClientsV(client_vals)));
+  v0::Value fn = TensorV(2);
+  ValueId fn_child_id = ExpectCreateInChild(fn);
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  for (int i = 0; i < NUM_CLIENTS; i++) {
+    ValueId result_child_id =
+        ExpectCreateCallInChild(fn_child_id, client_vals_child_ids[i]);
+    ExpectMaterializeInChild(result_child_id, client_vals[i]);
+  }
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto map_id, test_executor_->CreateValue(FederatedMapAllEqualV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
                            test_executor_->CreateStruct({fn_id, input_id}));
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,

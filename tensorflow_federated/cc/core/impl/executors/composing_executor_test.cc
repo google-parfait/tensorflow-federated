@@ -46,6 +46,7 @@ using testing::intrinsic::FederatedAggregateV;
 using testing::intrinsic::FederatedBroadcastV;
 using testing::intrinsic::FederatedEvalAtClientsV;
 using testing::intrinsic::FederatedEvalAtServerV;
+using testing::intrinsic::FederatedMapAllEqualV;
 using testing::intrinsic::FederatedMapV;
 using testing::intrinsic::FederatedValueAtClientsV;
 using testing::intrinsic::FederatedValueAtServerV;
@@ -456,6 +457,43 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedMapAtClients) {
       auto input_id, test_executor_->CreateValue(ClientsV(client_vals_in)));
   TFF_ASSERT_OK_AND_ASSIGN(auto map_id,
                            test_executor_->CreateValue(FederatedMapV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
+                           test_executor_->CreateStruct({fn_id, input_id}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
+                           test_executor_->CreateCall(map_id, arg_id));
+  ExpectMaterialize(res_id, ClientsV(client_vals_out));
+}
+
+TEST_F(ComposingExecutorTest, CreateCallFederatedMapAllEqualAtClients) {
+  std::vector<v0::Value> client_vals_in;
+  std::vector<v0::Value> client_vals_out;
+  v0::Value fn = TensorV(24601);
+  for (uint32_t i = 0; i < mock_children_.size(); i++) {
+    const auto& child = mock_children_[i];
+    std::vector<v0::Value> in_vec;
+    std::vector<v0::Value> out_vec;
+    for (uint32_t j = 0; j < clients_per_child_[i]; j++) {
+      v0::Value in = TensorV(i * 10000 + j * 100);
+      v0::Value out = TensorV(i * 10000 + j * 100 + 1);
+      client_vals_in.push_back(in);
+      in_vec.push_back(in);
+      client_vals_out.push_back(out);
+      out_vec.push_back(out);
+    }
+    auto in_id = child->ExpectCreateValue(ClientsV(in_vec));
+    // We convert the all-equal map to a usual map in our children, relying on
+    // our callers to reinsert the all-equal information if desired.
+    auto map_id = child->ExpectCreateValue(FederatedMapV());
+    auto fn_id = child->ExpectCreateValue(fn);
+    auto args_id = child->ExpectCreateStruct({fn_id, in_id});
+    auto res_id = child->ExpectCreateCall(map_id, args_id);
+    child->ExpectMaterialize(res_id, ClientsV(out_vec));
+  }
+  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto input_id, test_executor_->CreateValue(ClientsV(client_vals_in)));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto map_id, test_executor_->CreateValue(FederatedMapAllEqualV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
                            test_executor_->CreateStruct({fn_id, input_id}));
   TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
