@@ -242,6 +242,7 @@ def federated_aggregate_keras_metric(
       # If type(metric) is subclass of another tf.keras.metric arguments passed
       # to __init__ must include arguments expected by the superclass and
       # specified in superclass get_config().
+      # update comment.
       finalizer.check_keras_metric_config_constructable(metric)
       keras_metric = type(metric).from_config(metric.get_config())
 
