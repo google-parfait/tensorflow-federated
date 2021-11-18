@@ -26,6 +26,7 @@ from typing import Any, List, Optional, Union
 
 from absl import logging
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.program import file_utils
@@ -187,7 +188,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     module = tf.saved_model.load(path)
     flattened_value = module()
     try:
-      program_state = tf.nest.pack_sequence_as(self._structure, flattened_value)
+      program_state = tree.unflatten_as(self._structure, flattened_value)
     except ValueError as e:
       raise FileProgramStateManagerStructureError(
           f'The structure of type {type(self._structure)}:\n'
@@ -237,7 +238,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       raise program_state_manager.ProgramStateManagerStateAlreadyExistsError(
           f'Program state already exists for version: {version}')
     materialized_value = value_reference.materialize_value(program_state)
-    flattened_value = tf.nest.flatten(materialized_value)
+    flattened_value = tree.flatten(materialized_value)
     module = file_utils.ValueModule(flattened_value)
     file_utils.write_saved_model(module, path)
     self._remove_old_program_state()

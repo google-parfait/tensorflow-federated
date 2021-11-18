@@ -19,15 +19,15 @@ from typing import Any, OrderedDict
 import tree
 
 
-def flatten(structure: Any) -> OrderedDict[str, Any]:
-  """Creates a flattened representation of the given `structure`.
+def flatten_with_name(structure: Any) -> OrderedDict[str, Any]:
+  """Creates a flattened representation of the given `structure` with names.
 
   Args:
     structure: A possibly nested structure.
 
   Returns:
     A `collections.OrderedDict` representing the flattened version of the given
-    `structure`, where the keys are string uniquely identifying the position of
+    `structure`, where the keys are names uniquely identifying the position of
     the values in the structure of the given `structure`.
   """
   flattened = tree.flatten_with_path(structure)

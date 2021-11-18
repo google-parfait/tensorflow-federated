@@ -77,7 +77,7 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
     """
     py_typecheck.check_type(key, int)
     materialized_value = value_reference.materialize_value(value)
-    flattened_value = structure_utils.flatten(materialized_value)
+    flattened_value = structure_utils.flatten_with_name(materialized_value)
 
     with self._summary_writer.as_default():
       for name, value in flattened_value.items():

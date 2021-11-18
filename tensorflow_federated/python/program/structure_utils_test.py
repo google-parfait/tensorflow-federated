@@ -21,7 +21,7 @@ from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import test_utils
 
 
-class FlattenTest(parameterized.TestCase, tf.test.TestCase):
+class FlattenWithNameTest(parameterized.TestCase, tf.test.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -64,7 +64,7 @@ class FlattenTest(parameterized.TestCase, tf.test.TestCase):
   )
   # pyformat: enable
   def test_returns_result(self, structure, expected_result):
-    actual_result = structure_utils.flatten(structure)
+    actual_result = structure_utils.flatten_with_name(structure)
 
     # The results are zipped and each item is compared because `assertAllEqual`
     # fails to compare nonscalar numpy arrays correctly when they are nested in
