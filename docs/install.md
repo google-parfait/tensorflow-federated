@@ -10,8 +10,8 @@ There are a few ways to set up your environment to use TensorFlow Federated
     [install the TFF package](#install-tensorflow-federated-using-pip) with
     Python's `pip` package manager.
 *   If you have a unique machine configuration,
-    [build the TFF package](#build-the-tensorflow-federated-pip-package) from
-    source.
+    [build the TFF package from source](#build-the-tensorflow-federated-python-package-from-source)
+    .
 
 ## Install TensorFlow Federated using `pip`
 
