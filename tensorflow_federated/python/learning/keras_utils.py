@@ -14,7 +14,7 @@
 """Utility methods for working with Keras in TensorFlow Federated."""
 
 import collections
-from typing import List, Optional, OrderedDict, Sequence, Union
+from typing import List, Optional, OrderedDict, Sequence, Union, Callable
 import warnings
 
 import tensorflow as tf
@@ -38,7 +38,10 @@ def from_keras_model(
     loss: Loss,
     input_spec,
     loss_weights: Optional[List[float]] = None,
-    metrics: Optional[List[tf.keras.metrics.Metric]] = None) -> model_lib.Model:
+    metrics: Optional[List[tf.keras.metrics.Metric]] = None,
+    metric_constructors: Optional[List[Callable[
+        [], tf.keras.metrics.Metric]]] = None
+) -> model_lib.Model:
   """Builds a `tff.learning.Model` from a `tf.keras.Model`.
 
   The `tff.learning.Model` returned by this function uses `keras_model` for
@@ -174,6 +177,14 @@ def from_keras_model(
     for metric in metrics:
       py_typecheck.check_type(metric, tf.keras.metrics.Metric)
 
+  if metric_constructors is None:
+    metric_constructors = []
+  else:
+    py_typecheck.check_type(metric_constructors, list)
+    for metric_constructor in metric_constructors:
+      if not callable(metric_constructor):
+        raise TypeError(f'The {metric_constructor} is not callable.')
+
   for layer in keras_model.layers:
     if isinstance(layer, tf.keras.layers.BatchNormalization):
       warnings.warn(
@@ -187,12 +198,15 @@ def from_keras_model(
       input_spec=input_spec,
       loss_fns=loss,
       loss_weights=loss_weights,
-      metrics=metrics)
+      metrics=metrics,
+      metric_constructors=metric_constructors)
 
 
 def federated_aggregate_keras_metric(
-    metrics: Union[tf.keras.metrics.Metric,
-                   Sequence[tf.keras.metrics.Metric]], federated_values):
+    metrics: Union[tf.keras.metrics.Metric, Sequence[tf.keras.metrics.Metric],
+                   Callable[[], tf.keras.metrics.Metric],
+                   Sequence[Callable[[], tf.keras.metrics.Metric]]],
+    federated_values):
   """Aggregates variables a keras metric placed at CLIENTS to SERVER.
 
   Args:
@@ -232,8 +246,11 @@ def federated_aggregate_keras_metric(
   def report(accumulators):
     """Insert `accumulators` back into the keras metric to obtain result."""
 
-    def finalize_metric(metric: tf.keras.metrics.Metric, values):
-      # Note: the following call requires that `type(metric)` have a no argument
+    def finalize_metric(metric: Union[tf.keras.metrics.Metric,
+                                      Callable[[], tf.keras.metrics.Metric]],
+                        values):
+      # Note: if the input metric is an instance of `tf.keras.metrics.Metric`,
+      # the following call requires that `type(metric)` have a no argument
       # __init__ method, which will restrict the types of metrics that can be
       # used. This is somewhat limiting, but the pattern to use default
       # arguments and export the values in `get_config()` (see
@@ -242,8 +259,7 @@ def federated_aggregate_keras_metric(
       # If type(metric) is subclass of another tf.keras.metric arguments passed
       # to __init__ must include arguments expected by the superclass and
       # specified in superclass get_config().
-      finalizer.check_keras_metric_config_constructable(metric)
-      keras_metric = type(metric).from_config(metric.get_config())
+      keras_metric = finalizer.create_keras_metric(metric)
 
       assignments = []
       for v, a in zip(keras_metric.variables, values):
@@ -270,12 +286,22 @@ class _KerasModel(model_lib.Model):
 
   def __init__(self, keras_model: tf.keras.Model, input_spec,
                loss_fns: List[tf.keras.losses.Loss], loss_weights: List[float],
-               metrics: List[tf.keras.metrics.Metric]):
+               metrics: List[tf.keras.metrics.Metric],
+               metric_constructors: List[Callable[[],
+                                                  tf.keras.metrics.Metric]]):
     self._keras_model = keras_model
     self._input_spec = input_spec
     self._loss_fns = loss_fns
     self._loss_weights = loss_weights
     self._metrics = metrics
+    if not metrics and metric_constructors:
+      for metric_constructor in metric_constructors:
+        metric = metric_constructor()
+        if not isinstance(metric, tf.keras.metrics.Metric):
+          raise TypeError(f'{metric} is not a no-arg callable that creates a '
+                          '`tf.keras.metrics.Metric`.')
+        self._metrics.append(metric_constructor())
+    self._metric_constructors = metric_constructors
 
     # This is defined here so that it closes over the `loss_fn`.
     class _WeightedMeanLossMetric(tf.keras.metrics.Mean):
@@ -302,7 +328,8 @@ class _KerasModel(model_lib.Model):
 
         return super().update_state(batch_loss, batch_size)
 
-    self._loss_metric = _WeightedMeanLossMetric()
+    self._loss_metric_constructor = _WeightedMeanLossMetric
+    self._loss_metric = self._loss_metric_constructor()
 
     metric_variable_type_dict = tf.nest.map_structure(
         tf.TensorSpec.from_tensor, self.report_local_outputs())
@@ -310,6 +337,9 @@ class _KerasModel(model_lib.Model):
         metric_variable_type_dict, placements.CLIENTS)
 
     def federated_output(local_outputs):
+      if self._metric_constructors:
+        return federated_aggregate_keras_metric(self.get_metric_constructors(),
+                                                local_outputs)
       return federated_aggregate_keras_metric(self.get_metrics(), local_outputs)
 
     self._federated_output_computation = computations.federated_computation(
@@ -332,6 +362,9 @@ class _KerasModel(model_lib.Model):
 
   def get_metrics(self):
     return self._metrics + [self._loss_metric]
+
+  def get_metric_constructors(self):
+    return self._metric_constructors + [self._loss_metric_constructor]
 
   @property
   def input_spec(self):

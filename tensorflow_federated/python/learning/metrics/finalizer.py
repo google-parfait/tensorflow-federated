@@ -57,22 +57,7 @@ def create_keras_metric_finalizer(
     # we need the `tf.Variable`s to be created in the current scope in order to
     # use `keras_metric.result()`.
     with tf.init_scope():
-      if isinstance(metric, tf.keras.metrics.Metric):
-        check_keras_metric_config_constructable(metric)
-        keras_metric = type(metric).from_config(metric.get_config())
-      elif callable(metric):
-        keras_metric = metric()
-        if not isinstance(keras_metric, tf.keras.metrics.Metric):
-          raise TypeError(
-              'Expected input `metric` to be either a `tf.keras.metrics.Metric`'
-              ' or a no-arg callable that creates a `tf.keras.metrics.Metric`, '
-              'found a callable that returns a '
-              f'{py_typecheck.type_string(type(keras_metric))}.')
-      else:
-        raise TypeError(
-            'Expected input `metric` to be either a `tf.keras.metrics.Metric` '
-            'or a no-arg callable that constructs a `tf.keras.metrics.Metric`, '
-            f'found a non-callable {py_typecheck.type_string(type(metric))}.')
+      keras_metric = create_keras_metric(metric)
     py_typecheck.check_type(unfinalized_metric_values, list)
     if len(keras_metric.variables) != len(unfinalized_metric_values):
       raise ValueError(
@@ -139,3 +124,42 @@ def check_keras_metric_config_constructable(
                     '    config[\'arg1\'] = self._arg1\n'
                     '    return config')
   return metric
+
+
+def create_keras_metric(
+    metric: Union[tf.keras.metrics.Metric, Callable[[],
+                                                    tf.keras.metrics.Metric]]
+) -> tf.keras.metrics.Metric:
+  """Create a `tf.keras.metrics.Metric` from a `tf.keras.metrics.Metric`.
+
+  So the `tf.Variable`s in the metric can get created in the right scope in TFF.
+
+  Args:
+    metric: A single `tf.keras.metrics.Metric` or a no-arg callable that creates
+      a `tf.keras.metrics.Metric`.
+
+  Returns:
+    A `tf.keras.metrics.Metric` object.
+
+  Raises:
+    TypeError: If input metric is neither a `tf.keras.metrics.Metric` or a
+    no-arg callable that creates a `tf.keras.metrics.Metric`.
+  """
+  keras_metric = None
+  if isinstance(metric, tf.keras.metrics.Metric):
+    check_keras_metric_config_constructable(metric)
+    keras_metric = type(metric).from_config(metric.get_config())
+  elif callable(metric):
+    keras_metric = metric()
+    if not isinstance(keras_metric, tf.keras.metrics.Metric):
+      raise TypeError(
+          'Expected input `metric` to be either a `tf.keras.metrics.Metric` '
+          'or a no-arg callable that creates a `tf.keras.metrics.Metric`, '
+          'found a callable that returns a '
+          f'{py_typecheck.type_string(type(keras_metric))}.')
+  else:
+    raise TypeError(
+        'Expected input `metric` to be either a `tf.keras.metrics.Metric` '
+        'or a no-arg callable that constructs a `tf.keras.metrics.Metric`, '
+        f'found a non-callable {py_typecheck.type_string(type(metric))}.')
+  return keras_metric
