@@ -62,7 +62,7 @@ You can set the context TFF will use to [construct](tracing.md),
 *   Invoking
     [set_default_context.set_default_context](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/context_stack/set_default_context.py)
     to set the default context. This API is often used to install a context that
-    will compile or execute a computaiton.
+    will compile or execute a computation.
 
 *   Invoking
     [get_context_stack.get_context_stack](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/context_stack/get_context_stack.py)
