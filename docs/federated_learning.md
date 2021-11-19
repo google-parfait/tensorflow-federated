@@ -344,7 +344,7 @@ input to the generated federated computations in eager mode.
 It should be noted that the ability to access client identities is a feature
 that's only provided by the datasets for use in simulations, where the ability
 to train on data from specific subsets of clients may be needed (e.g., to
-simulate the diurnal avaiablity of different types of clients). The compiled
+simulate the diurnal availability of different types of clients). The compiled
 computations and the underlying runtime do *not* involve any notion of client
 identity. Once data from a specific subset of clients has been selected as an
 input, e.g., in a call to `tff.templates.IterativeProcess.next`, client
