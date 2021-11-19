@@ -57,7 +57,7 @@ def foo(x):
   return x[0]
 ```
 
-Here the function’s parameter is a tuple and in the body of the fuction the 0th
+Here the function’s parameter is a tuple and in the body of the function the 0th
 element is selected. This invokes Python’s `__getitem__` method, which is
 overridden on `ValueImpl`. In the simplest case, the implementation of
 `ValueImpl.__getitem__` constructs a
@@ -80,7 +80,7 @@ returned as a Python object that fully represents the user’s Python function.
 
 ## Tracing a TensorFlow Computation
 
-TODO(b/153500547): Describe the process of tracing a TensorFlow compuation.
+TODO(b/153500547): Describe the process of tracing a TensorFlow computation.
 
 ## Clean Error Messages from Exceptions During Tracing
 
