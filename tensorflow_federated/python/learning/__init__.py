@@ -11,7 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for using Federated Learning algorithms."""
+"""Libraries for building federated learning algorithms.
+
+Currently, `tff.learning` provides a few types of functionality.
+
+*   Algorithmic building blocks (see `tff.learning.templates`)
+    for constructing federated learning algorithms. These are algorithms
+    centered around the client work, server work, broadcast, or aggregation
+    steps of a federated algorithms, and are intended to compose in a somewhat
+    modular fashion.
+*   End-to-end federated learning algorithms (such as
+    `tff.learning.build_federated_averaging_process`) that combine broadcast,
+    client work, aggregation, and server update logic into a single algorithm
+    (often by composing the building blocks discussed above). This library also
+    provides end-to-end algorithms for federated evaluation (see
+    `tff.learning.build_federated_evaluation`).
+*   Functionality supporting the development of the algorithms above. This
+    includes `tff.learning.optimizers`, `tff.learning.metrics` and recommended
+    aggregators, such as `tff.learning.robust_aggregator`.
+
+The library also contains classes of models that are used for the purposes of
+model training. See `tff.learning.Model` for the overall base class, and
+`tff.learning.models` for related model classes.
+"""
 
 from tensorflow_federated.python.learning import algorithms
 from tensorflow_federated.python.learning import framework
