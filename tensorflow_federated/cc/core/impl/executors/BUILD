@@ -358,6 +358,7 @@ tff_cc_test_with_tf_deps(
     name = "remote_executor_test",
     timeout = "short",
     srcs = ["remote_executor_test.cc"],
+    tags = ["nomacos"],
     tf_deps = [
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:math_ops",
