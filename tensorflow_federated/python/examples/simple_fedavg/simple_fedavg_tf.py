@@ -31,12 +31,6 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-@attr.s
-class ModelOutputs:
-  """A container of local client training outputs."""
-  loss = attr.ib()
-
-
 @attr.s(eq=False, frozen=True, slots=True)
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
