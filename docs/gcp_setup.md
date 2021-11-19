@@ -104,7 +104,7 @@ $ cd "federated"
 
     1.  Click **Create** to create the instance.
 
-1.  Copy your experiement to the Compute Engine instance.
+1.  Copy your experiment to the Compute Engine instance.
 
     ```shell
     $ gcloud compute scp \
