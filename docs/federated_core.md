@@ -41,7 +41,7 @@ see expressed in pseudocode in a
 [research publication](https://arxiv.org/pdf/1602.05629.pdf) that describes a
 new distributed learning algorithm.
 
-The goal of FC, in a nusthell, is to enable similarly compact representation, at
+The goal of FC, in a nutshell, is to enable similarly compact representation, at
 a similar pseudocode-like level of abstraction, of program logic that is *not*
 pseudocode, but rather, that's executable in a variety of target environments.
 
