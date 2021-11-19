@@ -28,7 +28,7 @@ Since TFF has federated computing baked into its core, the writer of TFF should
 not assume control over where and how TensorFlow `Session`s are entered, or
 `run` is called within those sessions. The semantics of randomness can depend on
 entry and exit of TensorFlow `Session`s if seeds are set. We recommend using
-TensorFlow 2-style radomness, using for example
+TensorFlow 2-style randomness, using for example
 `tf.random.experimental.Generator` as of TF 1.14. This uses a `tf.Variable` to
 manage its internal state.
 
