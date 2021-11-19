@@ -43,7 +43,7 @@ inheritance.
 The
 [native](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/native)
 backend composes of the TFF compiler and TFF runtime in order to compile and
-execute an AST in a way that is reasonably efficiant and debuggable.
+execute an AST in a way that is reasonably efficient and debuggable.
 
 ### Native Form
 
@@ -59,7 +59,7 @@ function compiles an AST into a [native form](#native-form).
 
 ### Runtime
 
-The native backend does not contain backend specific extentions to the TFF
+The native backend does not contain backend specific extensions to the TFF
 runtime, instead an [execution stack](execution.md#execution-stack) can be used
 directly.
 
@@ -138,8 +138,8 @@ an AST.
 
 The
 [compiler](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/iree/compiler.py)
-module contains transformations required to comiple an AST to a form that can be
-exected using an
+module contains transformations required to compile an AST to a form that can be
+executed using an
 [executor.IreeExecutor](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/iree/executor.py).
 
 ### Runtime
