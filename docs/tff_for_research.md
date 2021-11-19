@@ -124,7 +124,7 @@ for local computation,
 for orchestration, and a
 [driver script](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/emnist_fedavg_main.py)
 on the EMNIST dataset as an example. These files can easily be adapted for
-customized applciations and algorithmic changes following detailed instructions
+customized applications and algorithmic changes following detailed instructions
 in the
 [README](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/README.md).
 
