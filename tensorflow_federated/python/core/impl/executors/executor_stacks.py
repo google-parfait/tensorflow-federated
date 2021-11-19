@@ -27,7 +27,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
-from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
@@ -253,12 +252,9 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
 
 # pylint:disable=missing-function-docstring
 def _wrap_executor_in_threading_stack(ex: executor_base.Executor,
-                                      use_caching: Optional[bool] = False,
                                       support_sequence_ops: bool = False,
                                       can_resolve_references=True):
   threaded_ex = thread_delegating_executor.ThreadDelegatingExecutor(ex)
-  if use_caching:
-    threaded_ex = caching_executor.CachingExecutor(threaded_ex)
   if support_sequence_ops:
     if not can_resolve_references:
       raise ValueError(
@@ -281,13 +277,11 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
 
   def __init__(self,
                *,
-               use_caching: bool,
                support_sequence_ops: bool = False,
                can_resolve_references: bool = True,
                server_device: Optional[tf.config.LogicalDevice] = None,
                client_devices: Optional[Sequence[tf.config.LogicalDevice]] = (),
                leaf_executor_fn=eager_tf_executor.EagerTFExecutor):
-    self._use_caching = use_caching
     self._support_sequence_ops = support_sequence_ops
     self._can_resolve_references = can_resolve_references
     self._server_device = server_device
@@ -322,7 +316,6 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
     leaf_ex = self._leaf_executor_fn(device=device)
     return _wrap_executor_in_threading_stack(
         leaf_ex,
-        use_caching=self._use_caching,
         support_sequence_ops=self._support_sequence_ops,
         can_resolve_references=self._can_resolve_references)
 
@@ -669,7 +662,6 @@ def local_executor_factory(
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   unplaced_ex_factory = UnplacedExecutorFactory(
-      use_caching=False,
       support_sequence_ops=support_sequence_ops,
       can_resolve_references=reference_resolving_clients,
       server_device=server_tf_device,
@@ -754,7 +746,6 @@ def thread_debugging_executor_factory(
   """
   py_typecheck.check_type(clients_per_thread, int)
   unplaced_ex_factory = UnplacedExecutorFactory(
-      use_caching=False,
       can_resolve_references=False,
       leaf_executor_fn=leaf_executor_fn)
   federating_executor_factory = FederatingExecutorFactory(
@@ -804,7 +795,7 @@ def sizing_executor_factory(
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   unplaced_ex_factory = UnplacedExecutorFactory(
-      use_caching=False, leaf_executor_fn=leaf_executor_fn)
+      leaf_executor_fn=leaf_executor_fn)
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
@@ -988,7 +979,7 @@ def remote_executor_factory(
     num_clients = cardinalities.get(placements.CLIENTS, default_num_clients)
     return _configure_remote_workers(num_clients, remote_executors)
 
-  unplaced_ex_factory = UnplacedExecutorFactory(use_caching=False)
+  unplaced_ex_factory = UnplacedExecutorFactory()
   composing_executor_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,

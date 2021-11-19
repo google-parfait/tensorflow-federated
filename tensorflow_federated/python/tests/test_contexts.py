@@ -26,18 +26,6 @@ WORKER_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 
 
-def create_native_local_caching_context():
-  local_ex_factory = tff.framework.local_executor_factory()
-
-  def _wrap_local_executor_with_caching(cardinalities):
-    local_ex = local_ex_factory.create_executor(cardinalities)
-    return tff.framework.CachingExecutor(local_ex)
-
-  return tff.framework.ExecutionContext(
-      tff.framework.ResourceManagingExecutorFactory(
-          _wrap_local_executor_with_caching))
-
-
 def _create_local_mergeable_comp_context():
   factory = tff.framework.local_executor_factory()
   return tff.backends.native.create_mergeable_comp_execution_context([factory])
@@ -47,7 +35,6 @@ def _get_all_contexts():
   # pyformat: disable
   return [
       ('native_local', tff.backends.native.create_local_python_execution_context()),
-      ('native_local_caching', create_native_local_caching_context()),
       ('native_mergeable', _create_local_mergeable_comp_context()),
       ('native_remote',
        remote_runtime_test_utils.create_localhost_remote_context(WORKER_PORTS),

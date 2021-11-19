@@ -89,7 +89,6 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
     server_tf_device = None if not tf_devices else tf_devices[0]
     gpu_devices = tf.config.list_logical_devices('GPU')
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(
-        use_caching=True,
         server_device=server_tf_device,
         client_devices=gpu_devices)
     unplaced_executor = unplaced_factory.create_executor()

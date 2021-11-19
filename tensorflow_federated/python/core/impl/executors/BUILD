@@ -23,44 +23,6 @@ py_library(
 )
 
 py_library(
-    name = "caching_executor",
-    srcs = ["caching_executor.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":executor_base",
-        ":executor_utils",
-        ":executor_value_base",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
-)
-
-py_test(
-    name = "caching_executor_test",
-    size = "small",
-    timeout = "moderate",
-    srcs = ["caching_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":caching_executor",
-        ":eager_tf_executor",
-        ":executor_base",
-        ":executor_stacks",
-        ":executor_test_utils",
-        ":reference_resolving_executor",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_library(
     name = "cardinalities_utils",
     srcs = ["cardinalities_utils.py"],
     srcs_version = "PY3",
@@ -231,7 +193,7 @@ py_library(
     srcs_version = "PY3",
     tags = ["nokokoro"],
     deps = [
-        "//tensorflow_federated/python/core/impl/executors:data_conversions",
+        ":data_conversions",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
@@ -349,7 +311,6 @@ py_library(
     srcs = ["executor_stacks.py"],
     srcs_version = "PY3",
     deps = [
-        ":caching_executor",
         ":eager_tf_executor",
         ":executor_base",
         ":executor_factory",
@@ -806,7 +767,6 @@ py_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
-        ":caching_executor",
         ":eager_tf_executor",
         ":reference_resolving_executor",
         ":sizing_executor",
@@ -836,7 +796,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":caching_executor",
         ":eager_tf_executor",
         ":executor_base",
         ":thread_delegating_executor",

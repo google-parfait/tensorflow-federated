@@ -20,7 +20,6 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
@@ -147,17 +146,6 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
     ex.close()
     result = self.use_executor(ex)
     self.assertEqual(self._threaded_eager_value_to_numpy(result), 11)
-
-  def test_close_then_use_executor_with_cache(self):
-    # Integration that use after close is compatible with the combined
-    # concurrent executors and cached executors. This was broken in
-    # the past due to interactions between closing, caching, and the
-    # concurrent executor. See b/148288711 for context.
-    ex = thread_delegating_executor.ThreadDelegatingExecutor(
-        caching_executor.CachingExecutor(eager_tf_executor.EagerTFExecutor()))
-    self.use_executor(ex)
-    ex.close()
-    self.use_executor(ex)
 
   def test_multiple_computations_with_same_executor(self):
 

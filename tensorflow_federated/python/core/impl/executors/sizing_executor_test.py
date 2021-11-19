@@ -21,7 +21,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
@@ -186,25 +185,11 @@ class SizingExecutorTest(parameterized.TestCase):
       ('big_stack', [
           sizing_executor.SizingExecutor,
           reference_resolving_executor.ReferenceResolvingExecutor,
-          caching_executor.CachingExecutor,
           reference_resolving_executor.ReferenceResolvingExecutor,
-      ]),
-      ('big_caching_stack', [
-          sizing_executor.SizingExecutor,
-          caching_executor.CachingExecutor,
-          reference_resolving_executor.ReferenceResolvingExecutor,
-          caching_executor.CachingExecutor,
-          caching_executor.CachingExecutor,
-          reference_resolving_executor.ReferenceResolvingExecutor,
-          caching_executor.CachingExecutor,
       ]),
       ('reference_resolving_executor', [
           sizing_executor.SizingExecutor,
           reference_resolving_executor.ReferenceResolvingExecutor,
-      ]),
-      ('caching_executor', [
-          sizing_executor.SizingExecutor,
-          caching_executor.CachingExecutor,
       ]),
   )
   def test_executor_stacks(self, executor_stack):
