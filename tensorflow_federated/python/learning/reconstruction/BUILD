@@ -39,6 +39,7 @@ py_library(
     deps = [
         ":model",
         "//tensorflow_federated/python/learning:model_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -51,6 +52,7 @@ py_test(
         ":keras_utils",
         ":reconstruction_utils",
         "//tensorflow_federated/python/learning:model_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -63,6 +65,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning:keras_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -74,6 +77,7 @@ py_test(
     deps = [
         ":keras_utils",
         ":model",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -103,6 +107,7 @@ py_library(
         "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -135,6 +140,8 @@ py_test(
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -154,6 +161,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -175,5 +183,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
