@@ -67,30 +67,23 @@ build:remote --project_id=tensorflow-federated
 #
 # Required to build TensorFlow.
 #
-build --define framework_shared_object=true
-# Modular TF build options
-build:dynamic_kernels --define=dynamic_loaded_kernels=true
-build:dynamic_kernels --copt=-DAUTOLOAD_DYNAMIC_KERNELS
+
+# Default build options. These are applied first and unconditionally.
 
 # GCC >= 5 requires specify this to be ABI compatible with how the TensorFlow
 # pip package is built. More details at
 # https://www.tensorflow.org/guide/create_op#build_the_op_library.
 build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0
 
-# On linux, don't cross compile by default
-build:linux --config=dynamic_kernels
-build:linux --distinct_host_configuration=false
-build:linux --experimental_guard_against_concurrent_changes
-build:linux --define=PREFIX=/usr
-build:linux --define=LIBDIR=$(PREFIX)/lib
-build:linux --define=INCLUDEDIR=$(PREFIX)/include
-build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
+# For projects which use TensorFlow as part of a Bazel build process, putting
+# nothing in a bazelrc will default to a monolithic build. The following line
+# opts in to modular op registration support by default.
+build --define framework_shared_object=true
 
-build:avx_linux --copt=-mavx
-build:avx_linux --host_copt=-mavx
-build:native_arch_linux --copt=-march=native
-build:v1 --define=tf_api_version=1 --action_env=TF2_BEHAVIOR=0
-build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
+build --spawn_strategy=standalone
+build -c opt
+
+build --define=grpc_no_ares=true
 
 # See https://github.com/bazelbuild/bazel/issues/7362 for information on what
 # --incompatible_remove_legacy_whole_archive flag does.
@@ -105,14 +98,69 @@ build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
 # Remove this line once TF doesn't depend on Bazel wrapping all library
 # archives in -whole_archive -no_whole_archive.
 build --noincompatible_remove_legacy_whole_archive
-build --enable_platform_specific_config
 
-build --define=grpc_no_ares=true
+# Enable XLA support by default.
+build --define=with_xla_support=true
+
+build --config=short_logs
+
+build --config=v2
+
+# Disable AWS/HDFS support by default
 build --define=no_aws_support=true
 build --define=no_hdfs_support=true
 
-build --define=with_xla_support=true
-build --config=v2
+# Default options should come above this line.
+
+# This config refers to building CUDA op kernels with nvcc.
+build:cuda --repo_env TF_NEED_CUDA=1
+build:cuda --crosstool_top=@local_config_cuda//crosstool:toolchain
+build:cuda --@local_config_cuda//:enable_cuda
+build:cuda --action_env=TF_CUDA_VERSION="11"
+build:cuda --action_env=TF_CUDNN_VERSION="8"
+
+# Modular TF build options
+build:dynamic_kernels --define=dynamic_loaded_kernels=true
+build:dynamic_kernels --copt=-DAUTOLOAD_DYNAMIC_KERNELS
+
+# Suppress C++ compiler warnings, otherwise build logs become 10s of MBs.
+build:linux --copt=-w
+build:linux --host_copt=-w
+build:macos --copt=-w
+
+# Default paths for TF_SYSTEM_LIBS
+build:linux --define=PREFIX=/usr
+build:linux --define=LIBDIR=$(PREFIX)/lib
+build:linux --define=INCLUDEDIR=$(PREFIX)/include
+build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
+build:macos --define=PREFIX=/usr
+build:macos --define=LIBDIR=$(PREFIX)/lib
+build:macos --define=INCLUDEDIR=$(PREFIX)/include
+build:macos --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
+
+# By default, build TF in C++ 14 mode.
+build:linux --cxxopt=-std=c++14
+build:linux --host_cxxopt=-std=c++14
+build:macos --cxxopt=-std=c++14
+build:macos --host_cxxopt=-std=c++14
+
+# On linux, we dynamically link small amount of kernels
+build:linux --config=dynamic_kernels
+
+# On linux, don't cross compile by default
+build:linux --distinct_host_configuration=false
+
+# Do not risk cache corruption. See:
+# https://github.com/bazelbuild/bazel/issues/3360
+build:linux --experimental_guard_against_concurrent_changes
+
+# Configure short or long logs
+build:short_logs --output_filter=DONT_MATCH_ANYTHING
+build:verbose_logs --output_filter=
+
+# Options to build TensorFlow 1.x or 2.x.
+build:v1 --define=tf_api_version=1 --action_env=TF2_BEHAVIOR=0
+build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
 
 # Enable remote execution capabilities.
 common --experimental_repo_remote_exec

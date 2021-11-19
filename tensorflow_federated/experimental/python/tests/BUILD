@@ -14,5 +14,8 @@ py_test(
     srcs = ["jax_training_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@absl_py//absl/testing:absltest",
+    ],
 )
