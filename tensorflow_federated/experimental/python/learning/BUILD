@@ -51,5 +51,6 @@ py_test(
         ":jax_components",
         "//tensorflow_federated/python/core/backends/xla:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:absltest",
     ],
 )
