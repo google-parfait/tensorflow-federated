@@ -1,7 +1,6 @@
 # Requirements for TensorFlow Federated development. If you add a dependency
 # here and the dependency is required by the Python package, also add it to
 # https://github.com/tensorflow/federated/blob/main/tensorflow_federated/tools/development/setup.py.
-absl-py~=0.15.0
 attrs~=21.2.0
 cachetools~=3.1.1
 dm-tree~=0.1.1
@@ -14,5 +13,4 @@ portpicker~=1.3.1
 semantic-version~=2.8.5
 tensorflow-model-optimization~=0.7.0
 tensorflow-privacy~=0.7.3
-tf-nightly
 tqdm~=4.28.1
