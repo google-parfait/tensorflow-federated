@@ -135,6 +135,14 @@ found in existing mainstream languages:
     protocol. Thus, the TFF tensor type is simply an abstract version of a
     concrete physical representation of such type in Python or TensorFlow.
 
+    TFF's `TensorTypes` can be stricter in their (static) treatment of shapes
+    than TensorFlow. For example, TFF's typesystem treats a tensor with unknown
+    rank as assignable *from* any other tensor of the same `dtype`, but not
+    assignable *to* any tensor with fixed rank. This treatment prevents certain
+    runtime failures (e.g., attempting to reshape a tensor of unknown rank into
+    a shape with incorrect number of elements), at the cost of greater
+    strictness in what computations TFF accepts as valid.
+
     The compact notation for tensor types is `dtype` or `dtype[shape]`. For
     example, `int32` and `int32[10]` are the types of integers and int vectors,
     respectively.
