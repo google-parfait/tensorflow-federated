@@ -375,7 +375,7 @@ class SerializationTest(test_case.TestCase, parameterized.TestCase):
 
 def initial_weights():
   """Returns lists of trainable variables and non-trainable variables."""
-  trainable_variables = (np.asarray([[0.0, 0.0, 0.0]], dtype=np.float32),
+  trainable_variables = (np.asarray([[0.0], [0.0], [0.0]], dtype=np.float32),
                          np.asarray([0.0], dtype=np.float32))
   non_trainable_variables = ()
   return (trainable_variables, non_trainable_variables)
@@ -385,7 +385,7 @@ def initial_weights():
 def predict_on_batch(model_weights, x, training):
   del training  # Unused
   trainable = model_weights[0]
-  return tf.matmul(x, trainable[0], transpose_b=True) + trainable[1]
+  return tf.matmul(x, trainable[0]) + trainable[1]
 
 
 @tf.function
@@ -415,38 +415,73 @@ def get_dataset():
   return preprocess(tf.data.Dataset.range(15).enumerate())
 
 
-class FunctionalModelTest(tf.test.TestCase):
+@tf.function
+def get_example_batch(dataset):
+  return next(iter(dataset))
 
-  def test_functional_predict_on_batch(self):
+
+def create_test_functional_model(input_spec):
+  return functional.FunctionalModel(initial_weights(), forward_pass,
+                                    predict_on_batch, input_spec)
+
+
+def create_test_keras_functional_model(input_spec):
+  # We must create the functional model that wraps a keras model in a graph
+  # context (see IMPORTANT note in `functional_model_from_keras`), otherwise
+  # we'll get non-model Variables.
+  keras_model = tf.keras.Sequential([
+      tf.keras.layers.InputLayer(input_shape=[3]),
+      tf.keras.layers.Dense(
+          1, kernel_initializer='zeros', bias_initializer='zeros')
+  ])
+  return functional.functional_model_from_keras(
+      keras_model,
+      loss_fn=tf.keras.losses.MeanSquaredError(),
+      input_spec=input_spec)
+
+
+class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('tf_function', create_test_functional_model),
+      ('keras_model', create_test_keras_functional_model))
+  def test_functional_predict_on_batch(self, model_fn):
     dataset = get_dataset()
-    example_batch = next(iter(dataset))
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-    model_weights = functional_model.initial_weights
+    functional_model = model_fn(input_spec=dataset.element_spec)
+
+    # The wrapped keras model can only be used inside a `tff.tf_computation`.
+    @computations.tf_computation
+    def _predict_on_batch(dataset, model_weights):
+      example_batch = get_example_batch(dataset)
+      return functional_model.predict_on_batch(model_weights, example_batch[0])
+
     self.assertAllClose(
-        functional_model.predict_on_batch(model_weights, example_batch[0]),
+        _predict_on_batch(dataset, functional_model.initial_weights),
         [[0.]] * 5)
 
-  def test_construct_tff_model_from_functional_predict_on_batch(self):
+  @parameterized.named_parameters(
+      ('tf_function', create_test_functional_model),
+      ('keras_model', create_test_keras_functional_model))
+  def test_construct_tff_model_from_functional_predict_on_batch(self, model_fn):
     dataset = get_dataset()
-    example_batch = next(iter(dataset))
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
+    functional_model = model_fn(input_spec=dataset.element_spec)
 
-    tff_model = functional.model_from_functional(functional_model)
-    self.assertAllClose(
-        tff_model.predict_on_batch(example_batch[0]), [[0.]] * 5)
+    # The wrapped keras model can only be used inside a `tff.tf_computation`.
+    @computations.tf_computation
+    def _predict_on_batch(dataset):
+      tff_model = functional.model_from_functional(functional_model)
+      example_batch = get_example_batch(dataset)
+      return tff_model.predict_on_batch(example_batch[0])
 
-  def test_construct_tff_model_from_functional_and_train(self):
+    self.assertAllClose(_predict_on_batch(dataset), [[0.]] * 5)
+
+  @parameterized.named_parameters(
+      ('tf_function', create_test_functional_model),
+      ('keras_model', create_test_keras_functional_model))
+  def test_construct_tff_model_from_functional_and_train(
+      self, functional_model_fn):
     dataset = get_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
+    functional_model = functional_model_fn(input_spec=dataset.element_spec)
 
     def model_fn():
       return functional.model_from_functional(functional_model)
@@ -458,36 +493,36 @@ class FunctionalModelTest(tf.test.TestCase):
     for _ in range(2):
       state, _ = training_process.next(state, [dataset])
 
-  def test_save_functional_model(self):
+  @parameterized.named_parameters(
+      ('tf_function', create_test_functional_model),
+      ('keras_model', create_test_keras_functional_model))
+  def test_save_functional_model(self, model_fn):
     dataset = get_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
+    functional_model = model_fn(input_spec=dataset.element_spec)
     path = self.get_temp_dir()
     serialization.save_functional_model(functional_model, path)
 
-  def test_save_and_load_functional_model(self):
+  @parameterized.named_parameters(
+      ('tf_function', create_test_functional_model),
+      ('keras_model', create_test_keras_functional_model))
+  def test_save_and_load_functional_model(self, model_fn):
     dataset = get_dataset()
-    example_batch = next(iter(dataset))
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
+    functional_model = model_fn(input_spec=dataset.element_spec)
     path = self.get_temp_dir()
     serialization.save_functional_model(functional_model, path)
     loaded_model = serialization.load_functional_model(path)
     model_weights = loaded_model.initial_weights
+    example_batch = next(iter(dataset))
     self.assertAllClose(
         loaded_model.predict_on_batch(
             model_weights=model_weights, x=example_batch[0]), [[0.]] * 5)
 
-  def test_initial_model_weights_before_after_save(self):
+  @parameterized.named_parameters(
+      ('tf_function', create_test_functional_model),
+      ('keras_model', create_test_keras_functional_model))
+  def test_initial_model_weights_before_after_save(self, model_fn):
     dataset = get_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
+    functional_model = model_fn(input_spec=dataset.element_spec)
     model_weights1 = functional_model.initial_weights
     path = self.get_temp_dir()
     serialization.save_functional_model(functional_model, path)
@@ -495,23 +530,28 @@ class FunctionalModelTest(tf.test.TestCase):
     model_weights2 = loaded_model.initial_weights
     self.assertAllClose(model_weights1, model_weights2)
 
-  def test_convert_to_tff_model(self):
+  @parameterized.named_parameters(
+      ('tf_function', create_test_functional_model),
+      ('keras_model', create_test_keras_functional_model))
+  def test_convert_to_tff_model(self, model_fn):
     dataset = get_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-    tff_model = functional.model_from_functional(functional_model)
-    example_batch = next(iter(dataset))
-    self.assertAllClose(
-        tff_model.predict_on_batch(x=example_batch[0]), [[0.]] * 5)
+    functional_model = model_fn(input_spec=dataset.element_spec)
 
-  def test_save_load_convert_to_tff_model(self):
+    # The wrapped keras model can only be used inside a `tff.tf_computation`.
+    @computations.tf_computation
+    def _predict_on_batch(dataset):
+      tff_model = functional.model_from_functional(functional_model)
+      example_batch = get_example_batch(dataset)
+      return tff_model.predict_on_batch(x=example_batch[0])
+
+    self.assertAllClose(_predict_on_batch(dataset), [[0.]] * 5)
+
+  @parameterized.named_parameters(
+      ('tf_function', create_test_functional_model),
+      ('keras_model', create_test_keras_functional_model))
+  def test_save_load_convert_to_tff_model(self, model_fn):
     dataset = get_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
+    functional_model = model_fn(input_spec=dataset.element_spec)
     path = self.get_temp_dir()
     serialization.save_functional_model(functional_model, path)
     loaded_model = serialization.load_functional_model(path)
@@ -528,13 +568,13 @@ class FunctionalModelTest(tf.test.TestCase):
           model_lib.BatchOutput(
               loss=74.250, predictions=np.zeros(shape=[5, 1]), num_examples=5))
 
-  def test_save_load_convert_to_tff_model_and_train_to_convergence(self):
+  @parameterized.named_parameters(
+      ('tf_function', create_test_functional_model),
+      ('keras_model', create_test_keras_functional_model))
+  def test_save_load_convert_to_tff_model_and_train_to_convergence(
+      self, functional_model_fn):
     dataset = get_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-
+    functional_model = functional_model_fn(input_spec=dataset.element_spec)
     path = self.get_temp_dir()
     serialization.save_functional_model(functional_model, path)
     loaded_model = serialization.load_functional_model(path)
@@ -546,14 +586,14 @@ class FunctionalModelTest(tf.test.TestCase):
         model_fn, lambda: tf.keras.optimizers.SGD(learning_rate=0.05))
     state = training_process.initialize()
     self.assertAllClose(state.model.trainable,
-                        [np.zeros([1, 3]), np.zeros([1])])
+                        [np.zeros([3, 1]), np.zeros([1])])
     num_rounds = 50
     for _ in range(num_rounds):
       state, _ = training_process.next(state, [dataset])
     # Test that we came close to convergence.
     self.assertAllClose(
         state.model.trainable,
-        [np.asarray([[1.0, 2.0, 3.0]]),
+        [np.asarray([[1.0], [2.0], [3.0]]),
          np.asarray([5.0])],
         atol=0.5)
 

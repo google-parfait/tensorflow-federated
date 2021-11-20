@@ -348,8 +348,9 @@ def save_functional_model(functional_model: functional.FunctionalModel,
   # structure of tensors with the initial weights. This way we can add it to the
   # tf.SavedModel and call it to create initial weights after deserialization.
   create_initial_weights = lambda: functional_model.initial_weights
-  concrete_structured_fn = tf.function(
-      create_initial_weights).get_concrete_function()
+  with tf.Graph().as_default():
+    concrete_structured_fn = tf.function(
+        create_initial_weights).get_concrete_function()
   model_weights_tensor_specs = tf.nest.map_structure(
       tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs)
   initial_weights_result_type_spec = type_serialization.serialize_type(
@@ -360,8 +361,9 @@ def save_functional_model(functional_model: functional.FunctionalModel,
   def flat_initial_weights():
     return tf.nest.flatten(create_initial_weights())
 
-  m.create_initial_weights = tf.function(
-      flat_initial_weights).get_concrete_function()
+  with tf.Graph().as_default():
+    m.create_initial_weights = tf.function(
+        flat_initial_weights).get_concrete_function()
 
   # Serialize forward pass concretely, once for training and once for
   # non-training.
@@ -384,11 +386,12 @@ def save_functional_model(functional_model: functional.FunctionalModel,
     # during function conretization. The resulting concrete function only has
     # parameters for `model_weights` and `batch_input`, which are
     # `tf.TensorSpec` structures here.
-    concrete_structured_fn = functional_model.forward_pass.get_concrete_function(
-        model_weights_tensor_specs,
-        functional_model.input_spec,
-        # Note: training does not appear in the resulting concrete function.
-        training=training)
+    with tf.Graph().as_default():
+      concrete_structured_fn = functional_model.forward_pass.get_concrete_function(
+          model_weights_tensor_specs,
+          functional_model.input_spec,
+          # Note: training does not appear in the resulting concrete function.
+          training=training)
     output_tensor_spec_structure = tf.nest.map_structure(
         tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs)
     result_type_spec = type_serialization.serialize_type(
@@ -399,11 +402,12 @@ def save_functional_model(functional_model: functional.FunctionalModel,
       return tf.nest.flatten(
           functional_model.forward_pass(model_weights, batch_input, training))
 
-    flat_concrete_fn = flat_forward_pass.get_concrete_function(
-        model_weights_tensor_specs,
-        functional_model.input_spec,
-        # Note: training does not appear in the resulting concrete function.
-        training=training)
+    with tf.Graph().as_default():
+      flat_concrete_fn = flat_forward_pass.get_concrete_function(
+          model_weights_tensor_specs,
+          functional_model.input_spec,
+          # Note: training does not appear in the resulting concrete function.
+          training=training)
     return flat_concrete_fn, result_type_spec
 
   fw_pass_training, fw_pass_training_type_spec = make_concrete_flat_forward_pass(
@@ -466,15 +470,17 @@ def save_functional_model(functional_model: functional.FunctionalModel,
         training=training)
     return flat_concrete_fn, result_type_spec
 
-  predict_training, predict_training_type_spec = make_concrete_flat_predict_on_batch(
-      training=True)
+  with tf.Graph().as_default():
+    predict_training, predict_training_type_spec = make_concrete_flat_predict_on_batch(
+        training=True)
   m.predict_on_batch_training = predict_training
   m.predict_on_batch_training_type_spec = tf.Variable(
       predict_training_type_spec.SerializeToString(deterministic=True),
       trainable=False)
 
-  predict_inference, predict_inference_type_spec = make_concrete_flat_predict_on_batch(
-      training=False)
+  with tf.Graph().as_default():
+    predict_inference, predict_inference_type_spec = make_concrete_flat_predict_on_batch(
+        training=False)
   m.predict_on_batch_inference = predict_inference
   m.predict_on_batch_inference_type_spec = tf.Variable(
       predict_inference_type_spec.SerializeToString(deterministic=True),
