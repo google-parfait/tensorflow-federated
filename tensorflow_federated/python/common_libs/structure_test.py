@@ -14,13 +14,16 @@
 
 import collections
 
+from absl.testing import parameterized
 import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 
+ODict = collections.OrderedDict
 
-class StructTest(tf.test.TestCase):
+
+class StructTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_new_named(self):
     x = structure.Struct.named(a=1, b=4)
@@ -68,7 +71,7 @@ class StructTest(tf.test.TestCase):
     self.assertNotEqual(x, structure.Struct([('foo', 10)]))
     self.assertEqual(structure.to_elements(x), v)
     self.assertEqual(structure.to_odict(x), collections.OrderedDict())
-    self.assertEqual(structure.to_odict_or_tuple(x), collections.OrderedDict())
+    self.assertEqual(structure.to_odict_or_tuple(x), ())
     self.assertEqual(repr(x), 'Struct([])')
     self.assertEqual(str(x), '<>')
 
@@ -468,28 +471,17 @@ class StructTest(tf.test.TestCase):
         tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5]))
     self.assertEqual(str(x), '<indices=[[1]],values=[2],dense_shape=[5]>')
 
-  def test_to_container_recursive(self):
+  @parameterized.named_parameters(
+      ('empty', ODict()),
+      ('flat', ODict(a=1, b=2)),
+      ('nested', ODict(a=1, b=2, c=ODict(d=3, e=ODict(f=4, g=5)))),
+  )
+  def test_from_container_asdict_roundtrip(self, dict_in):
+    structure_repr = structure.from_container(dict_in, recursive=True)
+    dict_out = structure_repr._asdict(recursive=True)
+    self.assertEqual(dict_in, dict_out)
 
-    def odict(**kwargs):
-      return collections.OrderedDict(sorted(list(kwargs.items())))
-
-    # Nested OrderedDicts.
-    s = odict(a=1, b=2, c=odict(d=3, e=odict(f=4, g=5)))
-    x = structure.from_container(s, recursive=True)
-    s2 = x._asdict(recursive=True)
-    self.assertEqual(s, s2)
-
-    # Single OrderedDict.
-    s = odict(a=1, b=2)
-    x = structure.from_container(s)
-    self.assertEqual(x._asdict(recursive=True), s)
-
-    # Single empty OrderedDict.
-    s = odict()
-    x = structure.from_container(s)
-    self.assertEqual(x._asdict(recursive=True), s)
-
-    # Invalid argument.
+  def test_from_container_raises_on_non_container_argument(self):
     with self.assertRaises(TypeError):
       structure.from_container(3)
 
@@ -554,6 +546,12 @@ class StructTest(tf.test.TestCase):
     state3 = structure.update_struct(state2, a=8)
     self.assertEqual(state3, {'a': 8, 'b': 2, 'c': 7})
 
+  def test_update_struct_on_dict_does_not_mutate_original(self):
+    state = collections.OrderedDict(a=1, b=2, c=3)
+    state2 = structure.update_struct(state, c=7)
+    del state2
+    self.assertEqual(state, collections.OrderedDict(a=1, b=2, c=3))
+
   def test_update_struct_ordereddict(self):
     state = collections.OrderedDict([('a', 1), ('b', 2), ('c', 3)])
     state2 = structure.update_struct(state, c=7)
@@ -585,53 +583,30 @@ class StructTest(tf.test.TestCase):
     with self.assertRaisesRegex(KeyError, 'does not contain a field'):
       structure.update_struct({'z': 1}, a=8)
 
-  def test_to_ordered_dict_or_tuple(self):
+  @parameterized.named_parameters(
+      ('empty_tuple', ()),
+      ('flat_tuple', (1, 2)),
+      ('nested_tuple', (1, 2, (3, (4, 5)))),
+      ('flat_dict', ODict(a=1, b=2)),
+      ('nested_dict', ODict(a=1, b=2, c=ODict(d=3, e=ODict(f=4, g=5)))),
+      ('mixed', ODict(a=1, b=2, c=(3, ODict(d=4, e=5)))),
+  )
+  def test_to_odict_or_tuple_from_container_roundtrip(self, original):
+    structure_repr = structure.from_container(original, recursive=True)
+    out = structure.to_odict_or_tuple(structure_repr)
+    self.assertEqual(original, out)
 
-    def odict(**kwargs):
-      return collections.OrderedDict(sorted(list(kwargs.items())))
-
-    # Nested OrderedDicts.
-    s = odict(a=1, b=2, c=odict(d=3, e=odict(f=4, g=5)))
-    x = structure.from_container(s, recursive=True)
-    self.assertEqual(s, structure.to_odict_or_tuple(x))
-
-    # Single OrderedDict.
-    s = odict(a=1, b=2)
+  def test_to_odict_or_tuple_empty_dict_becomes_empty_tuple(self):
+    s = collections.OrderedDict()
     x = structure.from_container(s)
-    self.assertEqual(structure.to_odict_or_tuple(x), s)
+    self.assertEqual(structure.to_odict_or_tuple(x), ())
 
-    # Single empty OrderedDict.
-    s = odict()
-    x = structure.from_container(s)
-    self.assertEqual(structure.to_odict_or_tuple(x), s)
-
-    # Nested tuples.
-    s = tuple([1, 2, tuple([3, tuple([4, 5])])])
-    x = structure.from_container(s, recursive=True)
-    self.assertEqual(s, structure.to_odict_or_tuple(x))
-
-    # Single tuple.
-    s = tuple([1, 2])
-    x = structure.from_container(s)
-    self.assertEqual(structure.to_odict_or_tuple(x), s)
-
-    # Struct from a single empty tuple should be converted to an empty
-    # OrderedDict.
-    s = tuple()
-    x = structure.from_container(s)
-    self.assertEqual(structure.to_odict_or_tuple(x), collections.OrderedDict())
-
-    # Mixed OrderedDicts and tuples.
-    s = odict(a=1, b=2, c=tuple([3, odict(d=4, e=5)]))
-    x = structure.from_container(s, recursive=True)
-    self.assertEqual(s, structure.to_odict_or_tuple(x))
-
-    # Mixed OrderedDicts and tuples with recursive=False.
-    s = odict(a=1, b=2, c=tuple([3, odict(d=4, e=5)]))
+  def test_to_odict_or_tuple_mixed_nonrecursive(self):
+    s = ODict(a=1, b=2, c=(3, ODict(d=4, e=5)))
     x = structure.from_container(s, recursive=False)
     self.assertEqual(s, structure.to_odict_or_tuple(x, recursive=False))
 
-    # Struct with named and unnamed elements should raise error.
+  def test_to_odict_or_tuple_raises_on_mixed_named_and_unnamed(self):
     s = [(None, 10), ('foo', 20), ('bar', 30)]
     x = structure.Struct(s)
     with self.assertRaisesRegex(ValueError, 'named and unnamed'):

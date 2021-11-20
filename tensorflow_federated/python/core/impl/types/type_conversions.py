@@ -13,7 +13,7 @@
 """Utilities for type conversion, type checking, type inference, etc."""
 
 import collections
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Type
 
 import attr
 import numpy as np
@@ -348,6 +348,19 @@ def type_from_tensors(tensors):
   return computation_types.to_type(type_spec)
 
 
+def is_container_type_without_names(container_type: Type[Any]) -> bool:
+  """Returns whether `container_type`'s elements are unnamed."""
+  return (issubclass(container_type, (list, tuple)) and
+          not py_typecheck.is_named_tuple(container_type))
+
+
+def is_container_type_with_names(container_type: Type[Any]) -> bool:
+  """Returns whether `container_type`'s elements are named."""
+  return (py_typecheck.is_named_tuple(container_type) or
+          py_typecheck.is_attrs(container_type) or
+          issubclass(container_type, dict))
+
+
 def type_to_py_container(value, type_spec):
   """Recursively convert `structure.Struct`s to Python containers.
 
@@ -366,7 +379,8 @@ def type_to_py_container(value, type_spec):
 
   Raises:
     ValueError: If the conversion is not possible due to a mix of named
-      and unnamed values.
+      and unnamed values, or if `value` contains names that are mismatched or
+      not present in the corresponding index of `type_spec`.
   """
   if type_spec.is_federated():
     if type_spec.all_equal:
@@ -398,44 +412,50 @@ def type_to_py_container(value, type_spec):
     return value
 
   if not isinstance(value, structure.Struct):
-    # NOTE: When encountering non-anonymous tuples, we assume that
+    # NOTE: When encountering non-`structure.Struct`s, we assume that
     # this means that we're attempting to re-convert a value that
     # already has the proper containers, and we short-circuit to
     # avoid re-converting. This is a possibly dangerous assumption.
     return value
-  anon_tuple = value
 
-  def is_container_type_without_names(container_type):
-    return (issubclass(container_type, (list, tuple)) and
-            not py_typecheck.is_named_tuple(container_type))
+  container_type = structure_type_spec.python_container
 
-  def is_container_type_with_names(container_type):
-    return (py_typecheck.is_named_tuple(container_type) or
-            py_typecheck.is_attrs(container_type) or
-            issubclass(container_type, dict))
+  # Ensure that names are only added, not mismatched or removed
+  names_from_value = structure.name_list_with_nones(value)
+  names_from_type_spec = structure.name_list_with_nones(structure_type_spec)
+  for value_name, type_name in zip(names_from_value, names_from_type_spec):
+    if value_name is not None:
+      if value_name != type_name:
+        raise ValueError(
+            f'Cannot convert value with field name `{value_name}` into a '
+            f'type with field name `{type_name}`.')
 
-  # TODO(b/133228705): Consider requiring StructWithPythonType.
-  container_type = structure_type_spec.python_container or structure.Struct
-  container_is_anon_tuple = structure_type_spec.python_container is None
+  num_named_elements = len(dir(structure_type_spec))
+  num_unnamed_elements = len(structure_type_spec) - num_named_elements
+  if num_named_elements > 0 and num_unnamed_elements > 0:
+    raise ValueError(
+        f'Cannot represent value {value} with a Python container because it '
+        'contains a mix of named and unnamed elements.\n\nNote: this was '
+        'previously allowed when using the `tff.structure.Struct` container. '
+        'This support has been removed: please change to use structures with '
+        'either all-named or all-unnamed fields.')
+  if container_type is None:
+    if num_named_elements:
+      container_type = collections.OrderedDict
+    else:
+      container_type = tuple
 
   # Avoid projecting the `structure.StructType`d TFF value into a Python
   # container that is not supported.
-  if not container_is_anon_tuple:
-    num_named_elements = len(dir(anon_tuple))
-    num_unnamed_elements = len(anon_tuple) - num_named_elements
-    if num_named_elements > 0 and num_unnamed_elements > 0:
-      raise ValueError('Cannot represent value {} with container type {}, '
-                       'because value contains a mix of named and unnamed '
-                       'elements.'.format(anon_tuple, container_type))
-    if (num_named_elements > 0 and
-        is_container_type_without_names(container_type)):
-      raise ValueError(
-          'Cannot represent value {} with named elements '
-          'using container type {} which does not support names. In TFF\'s '
-          'typesystem, this corresponds to an implicit downcast'.format(
-              anon_tuple, container_type))
+  if (num_named_elements > 0 and
+      is_container_type_without_names(container_type)):
+    raise ValueError(
+        'Cannot represent value {} with named elements '
+        'using container type {} which does not support names. In TFF\'s '
+        'typesystem, this corresponds to an implicit downcast'.format(
+            value, container_type))
   if (is_container_type_with_names(container_type) and
-      len(dir(structure_type_spec)) != len(anon_tuple)):
+      len(dir(structure_type_spec)) != len(value)):
     # If the type specifies the names, we have all the information we need.
     # Otherwise we must raise here.
     raise ValueError('When packaging as a Python value which requires names, '
@@ -443,17 +463,17 @@ def type_to_py_container(value, type_spec):
                      '{} names in type spec {} of length {}, with requested'
                      'python type {}.'.format(
                          len(dir(structure_type_spec)), structure_type_spec,
-                         len(anon_tuple), container_type))
+                         len(value), container_type))
 
   elements = []
   for index, (elem_name, elem_type) in enumerate(
       structure.iter_elements(structure_type_spec)):
-    value = type_to_py_container(anon_tuple[index], elem_type)
+    element = type_to_py_container(value[index], elem_type)
 
-    if elem_name is None and not container_is_anon_tuple:
-      elements.append(value)
+    if elem_name is None:
+      elements.append(element)
     else:
-      elements.append((elem_name, value))
+      elements.append((elem_name, element))
 
   if (py_typecheck.is_named_tuple(container_type) or
       py_typecheck.is_attrs(container_type) or

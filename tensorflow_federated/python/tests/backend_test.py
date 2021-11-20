@@ -48,8 +48,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
                                      report)
 
     result = empty_agg()
-    self.assertIsInstance(result, tff.structure.Struct)
-    self.assertEmpty(result)
+    self.assertEqual(result, ())
 
   @test_contexts.with_contexts
   def test_executes_empty_sum(self):

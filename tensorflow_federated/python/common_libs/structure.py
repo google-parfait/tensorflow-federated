@@ -260,7 +260,7 @@ def iter_elements(struct: Struct) -> Iterator[Tuple[Optional[str], Any]]:
   # pylint: enable=protected-access
 
 
-def to_odict(struct: Struct, recursive=False):
+def to_odict(struct: Struct, recursive=False) -> collections.OrderedDict:
   """Returns `struct` as an `OrderedDict`, if possible.
 
   Args:
@@ -285,7 +285,9 @@ def to_odict(struct: Struct, recursive=False):
     return _to_odict(to_elements(struct))
 
 
-def to_odict_or_tuple(struct: Struct, recursive=True):
+def to_odict_or_tuple(
+    struct: Struct,
+    recursive=True) -> Union[collections.OrderedDict, Tuple[Any, ...]]:
   """Returns `struct` as an `OrderedDict` or `tuple`, if possible.
 
   If all elements of `struct` have names, convert `struct` to an
@@ -304,16 +306,13 @@ def to_odict_or_tuple(struct: Struct, recursive=True):
 
   def _to_odict_or_tuple(elements):
     field_is_named = tuple(name is not None for name, _ in elements)
-    has_names = any(field_is_named)
-    is_all_named = all(field_is_named)
-    if is_all_named:
+    if any(field_is_named):
+      if not all(field_is_named):
+        raise ValueError(
+            'Cannot convert a `Struct` with both named and unnamed '
+            'entries to an OrderedDict or tuple: {!r}'.format(struct))
       return collections.OrderedDict(elements)
-    elif not has_names:
-      return tuple(value for _, value in elements)
-    else:
-      raise ValueError(
-          'Cannot convert an `Struct` with both named and unnamed '
-          'entries to an OrderedDict or tuple: {!r}'.format(struct))
+    return tuple(value for _, value in elements)
 
   if recursive:
     return to_container_recursive(struct, _to_odict_or_tuple)
@@ -657,16 +656,17 @@ def update_struct(structure, **kwargs):
     # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather a
     # regular `dict`, so we wrap here to get consistent types across Python
     # version.s
-    d = collections.OrderedDict(structure._asdict())
+    dictionary = collections.OrderedDict(structure._asdict())
   elif py_typecheck.is_attrs(structure):
-    d = attr.asdict(structure, dict_factory=collections.OrderedDict)
+    dictionary = attr.asdict(structure, dict_factory=collections.OrderedDict)
   else:
     for key in kwargs:
       if key not in structure:
         raise KeyError(
             'structure does not contain a field named "{!s}"'.format(key))
-    d = structure
-  d.update(kwargs)
+    # Create a copy to prevent mutation of the original `structure`
+    dictionary = type(structure)(**structure)
+  dictionary.update(kwargs)
   if isinstance(structure, collections.abc.Mapping):
-    return d
-  return type(structure)(**d)
+    return dictionary
+  return type(structure)(**dictionary)
