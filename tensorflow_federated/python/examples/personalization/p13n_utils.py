@@ -157,9 +157,7 @@ def evaluate_fn(model: tff.learning.Model,
       initial_state=0, reduce_func=reduce_fn)
   eval_metrics = collections.OrderedDict()
   eval_metrics['num_test_examples'] = num_examples_sum
-  # TODO(b/202027089): Removes this pytype comment once this function does not
-  # use `report_local_outputs`.
-  local_outputs = model.report_local_outputs()  # pytype: disable=attribute-error
+  local_outputs = model.report_local_outputs()
   # Postprocesses the metric values. This is needed because the values returned
   # by `model.report_local_outputs()` are values of the state variables in each
   # `tf.keras.metrics.Metric`. These values should be processed in the same way
