@@ -19,8 +19,6 @@ from typing import Any, Callable, OrderedDict, Sequence
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_base
-
 MODEL_ARG_NAME = 'x'
 MODEL_LABEL_NAME = 'y'
 MetricFinalizersType = OrderedDict[str, Callable[[Any], Any]]
@@ -189,65 +187,6 @@ class Model(object, metaclass=abc.ABCMeta):
       writers are not restricted to these, the only requirement is their loss
       function understands the result.
     """.format(MODEL_ARG_NAME)
-
-  @abc.abstractmethod
-  def report_local_outputs(self):
-    """Returns tensors representing values aggregated over `forward_pass` calls.
-
-    In federated learning, the values returned by this method will typically
-    be further aggregated across clients and made available on the server.
-
-    This method returns results from aggregating across *all* previous calls
-    to `forward_pass`, most typically metrics like accuracy and loss. If needed,
-    we may add a `clear_aggregated_outputs` method, which would likely just
-    run the initializers on the `local_variables`.
-
-    In general, the tensors returned can be an arbitrary function of all
-    the `tf.Variables` of this model, not just the `local_variables`; for
-    example, this could return tensors measuring the total L2 norm of the model
-    (which might have been updated by training).
-
-    This method may return arbitrarily shaped tensors, not just scalar metrics.
-    For example, it could return the average feature vector or a count of
-    how many times each feature exceed a certain magnitude.
-
-    Returns:
-      A structure of tensors (as supported by `tf.nest`)
-      to be aggregated across clients.
-    """
-    pass
-
-  @abc.abstractproperty
-  def federated_output_computation(self) -> computation_base.Computation:
-    """Performs federated aggregation of the `Model's` `local_outputs`.
-
-    This is typically used to aggregate metrics across many clients, e.g. the
-    body of the computation might be:
-
-    ```python
-    return {
-        'num_examples': tff.federated_sum(local_outputs.num_examples),
-        'loss': tff.federated_mean(local_outputs.loss)
-    }
-    ```
-
-    N.B. It is assumed all TensorFlow computation happens in the
-    `report_local_outputs` method, and this method only uses TFF constructs to
-    specify aggregations across clients.
-
-    Returns:
-      Either a `tff.Computation`, or None if no federated aggregation is needed.
-
-      The `tff.Computation` should take as its single input a
-      `tff.CLIENTS`-placed `tff.Value` corresponding to the return value of
-      `Model.report_local_outputs`, and return an `OrderedDict` (possibly
-      nested) of `tff.SERVER`-placed values. The consumer of this
-      method should generally provide these server-placed values as outputs of
-      the overall computation consuming the model. Using an `OrderedDict`
-      allows the value returned by TFF executor to be converted back to an
-      `OrderedDict` via the `._asdict(recursive=True)` member function.
-    """
-    pass
 
   @abc.abstractmethod
   def report_local_unfinalized_metrics(self) -> OrderedDict[str, Any]:
