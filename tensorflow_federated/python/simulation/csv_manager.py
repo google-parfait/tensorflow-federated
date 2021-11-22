@@ -304,7 +304,7 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
 
     latest_round_num = None
     for metric_row in metrics:
-      metric_row_round_num = metric_row['round_num']
+      metric_row_round_num = int(metric_row['round_num'])
       if metric_row_round_num <= round_num:
         reduced_fieldnames = reduced_fieldnames.union(metric_row.keys())
         reduced_metrics.append(metric_row)
