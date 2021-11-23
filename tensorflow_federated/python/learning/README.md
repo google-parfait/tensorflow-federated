@@ -1,7 +1,45 @@
-# TensorFlow Federated Learning
+# TensorFlow Federated's Learning API
 
-This document contains brief guidelines on the organization of this component,
-to evolve incrementally as new capabilities are added.
+This document contains brief guidelines on the organization of this component.
+This is expected to evolve as new capabilities are added.
+
+## What is `tff.learning` for?
+
+This API contains libraries intended to make it easy to build federated learning
+algorithms. The API is focused on `production-ready` algorithms, which typically
+meet the following criteria:
+
+1.  Allow integrations with privacy technologies. Currently, most privacy
+    technologies offered by TFF are in the form of
+    [aggregators](https://www.tensorflow.org/federated/api_docs/python/tff/aggregators),
+    which can aggregate client updates in privacy-preserving ways.
+2.  Are generally (but not exclusively) model-agnostic, either by applying to a
+    large number of model architectures (such as Federated Averaging), or by
+    providing functionality independent of the model architecture (such as
+    optimizers).
+
+See
+[Federated Reconstruction](https://www.tensorflow.org/federated/api_docs/python/tff/learning/reconstruction)
+for an example of a production-ready algorithm that differs from Federated
+Averaging.
+
+## How do I get my algorithm into `tff.learning`?
+
+We welcome contributions. Generally, we require algorithms to be 1) well-tested,
+2) have strong evidence that they solve a well-scoped problem in federated
+learning, and 3) can be easily composed or applied to a wide variety of
+federated settings. If your algorithm meets these criteria, please reach out and
+we will work with you to to make sure the algorithm can be added to the API.
+
+Note that algorithms are generally intended to be built by composing various
+algorithmic building blocks. Please see the
+[`tff.learning.templates`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/templates)
+API for examples of these algorithmic building blocks, and see the
+[`tff.learning.algorithms` API](https://www.tensorflow.org/federated/api_docs/python/tff/learning/algorithms)
+for examples of algorithms composing these.
+
+We also welcome contributions related to supporting libraries, including
+metrics, learning-specific aggregators, and optimizers.
 
 ## Target Audience and Interface Surfaces
 
@@ -36,10 +74,11 @@ classes of users:
     this API are included in the documentation generated for
     `tff.learning.framework`.
 
-    TODO(b/117177413): Create the `research` directory and update the pointer to
-    a more specific location.
-
 *   **TensorFlow Federated Contributors**. Users who will contribute federated
     learning algorithms to TensorFlow Federated should nest their code within
     the `learning` directory, and may link directly against all the modules and
-    symbols contained herein.
+    symbols contained herein. If you are interested in contributing, but need to
+    validate the algorithm's design and performance, we recommend checking out
+    the
+    [federated research repository](https://github.com/google-research/federated)
+    and potentially contributing there first.
