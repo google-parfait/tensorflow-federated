@@ -86,6 +86,7 @@ def _serialize_tensor_value(
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
+  original_value = value
   if tf.is_tensor(value):
     if isinstance(value, tf.Variable):
       value = value.read_value()
@@ -107,7 +108,13 @@ def _serialize_tensor_value(
     raise TypeError(f'Cannot serialize tensor with shape {value.shape} to '
                     f'shape {type_spec.shape}.')
   if value.dtype != type_spec.dtype.as_numpy_dtype:
-    value = value.astype(type_spec.dtype.as_numpy_dtype, casting='same_kind')
+    try:
+      value = value.astype(type_spec.dtype.as_numpy_dtype, casting='same_kind')
+    except TypeError as te:
+      value_type_string = py_typecheck.type_string(type(original_value))
+      raise TypeError(
+          f'Failed to serialize value of Python type {value_type_string} to '
+          f'a tensor of type {type_spec}.\nValue: {original_value}') from te
   return serialization_bindings.serialize_tensor_value(value), type_spec
 
 

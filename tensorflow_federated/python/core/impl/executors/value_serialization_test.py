@@ -28,7 +28,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
 
-
 # Convenience aliases.
 TensorType = computation_types.TensorType
 
@@ -110,20 +109,20 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     self.assert_types_identical(type_spec, TensorType(tf.float32))
     self.assertAllEqual(x, y)
 
+  def test_serialize_raises_on_incompatible_dtype_float_to_int(self):
+    x = tf.constant(10.0)
+    with self.assertRaisesRegex(TypeError, 'Failed to serialize value'):
+      value_serialization.serialize_value(x, TensorType(tf.int32))
+
   def test_serialize_deserialize_tensor_value_with_different_dtype(self):
-    with self.subTest('float2int'):
-      x = tf.constant(10.0)
-      with self.assertRaisesRegex(TypeError, 'Cannot cast scalar'):
-        value_serialization.serialize_value(x, TensorType(tf.int32))
-    with self.subTest('int2float'):
-      x = tf.constant(10)
-      value_proto, value_type = value_serialization.serialize_value(
-          x, TensorType(tf.float32))
-      self.assertIsInstance(value_proto, executor_pb2.Value)
-      self.assert_types_identical(value_type, TensorType(tf.float32))
-      y, type_spec = value_serialization.deserialize_value(value_proto)
-      self.assert_types_identical(type_spec, TensorType(tf.float32))
-      self.assertEqual(y, 10.0)
+    x = tf.constant(10)
+    value_proto, value_type = value_serialization.serialize_value(
+        x, TensorType(tf.float32))
+    self.assertIsInstance(value_proto, executor_pb2.Value)
+    self.assert_types_identical(value_type, TensorType(tf.float32))
+    y, type_spec = value_serialization.deserialize_value(value_proto)
+    self.assert_types_identical(type_spec, TensorType(tf.float32))
+    self.assertEqual(y, 10.0)
 
   def test_serialize_deserialize_tensor_value_with_nontrivial_shape(self):
     x = tf.constant([10, 20, 30])
