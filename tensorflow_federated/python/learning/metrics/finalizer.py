@@ -57,22 +57,7 @@ def create_keras_metric_finalizer(
     # we need the `tf.Variable`s to be created in the current scope in order to
     # use `keras_metric.result()`.
     with tf.init_scope():
-      if isinstance(metric, tf.keras.metrics.Metric):
-        check_keras_metric_config_constructable(metric)
-        keras_metric = type(metric).from_config(metric.get_config())
-      elif callable(metric):
-        keras_metric = metric()
-        if not isinstance(keras_metric, tf.keras.metrics.Metric):
-          raise TypeError(
-              'Expected input `metric` to be either a `tf.keras.metrics.Metric`'
-              ' or a no-arg callable that creates a `tf.keras.metrics.Metric`, '
-              'found a callable that returns a '
-              f'{py_typecheck.type_string(type(keras_metric))}.')
-      else:
-        raise TypeError(
-            'Expected input `metric` to be either a `tf.keras.metrics.Metric` '
-            'or a no-arg callable that constructs a `tf.keras.metrics.Metric`, '
-            f'found a non-callable {py_typecheck.type_string(type(metric))}.')
+      keras_metric = create_keras_metric(metric)
     py_typecheck.check_type(unfinalized_metric_values, list)
     if len(keras_metric.variables) != len(unfinalized_metric_values):
       raise ValueError(
@@ -94,15 +79,11 @@ def create_keras_metric_finalizer(
   return finalizer
 
 
-def check_keras_metric_config_constructable(
-    metric: tf.keras.metrics.Metric) -> tf.keras.metrics.Metric:
+def _check_keras_metric_config_constructable(metric: tf.keras.metrics.Metric):
   """Checks that a Keras metric is constructable from the `get_config()` method.
 
   Args:
     metric: A single `tf.keras.metrics.Metric`.
-
-  Returns:
-    The metric.
 
   Raises:
     TypeError: If the metric is not an instance of `tf.keras.metrics.Metric`, if
@@ -114,28 +95,64 @@ def check_keras_metric_config_constructable(
 
   metric_type_str = type(metric).__name__
 
-  if hasattr(tf.keras.metrics, metric_type_str):
-    return metric
+  if not hasattr(tf.keras.metrics, metric_type_str):
+    init_args = inspect.getfullargspec(metric.__init__).args
+    init_args.remove('self')
+    get_config_args = metric.get_config().keys()
+    extra_args = [arg for arg in init_args if arg not in get_config_args]
+    if extra_args:
+      # TODO(b/197746608): Remove the suggestion of updating `get_config` if
+      # that code path is removed.
+      raise TypeError(
+          f'Metric {metric_type_str} is not constructable from the '
+          '`get_config()` method, because `__init__` takes extra arguments '
+          f'that are not included in the `get_config()`: {extra_args}. '
+          'Pass the metric constructor instead, or update the `get_config()` '
+          'in the metric class to include these extra arguments.\n'
+          'Example:\n'
+          'class CustomMetric(tf.keras.metrics.Metric):\n'
+          '  def __init__(self, arg1):\n'
+          '    self._arg1 = arg1\n\n'
+          '  def get_config(self)\n'
+          '    config = super().get_config()\n'
+          '    config[\'arg1\'] = self._arg1\n'
+          '    return config')
 
-  init_args = inspect.getfullargspec(metric.__init__).args
-  init_args.remove('self')
-  get_config_args = metric.get_config().keys()
-  extra_args = [arg for arg in init_args if arg not in get_config_args]
-  if extra_args:
-    # TODO(b/197746608): Updates the error message to redirect users to use
-    # metric constructors instead of constructed metrics when we support both
-    # cases in `from_keras_model`.
-    raise TypeError(f'Metric {metric_type_str} is not constructable from '
-                    'the `get_config()` method, because `__init__` takes extra '
-                    'arguments that are not included in the `get_config()`: '
-                    f'{extra_args}. Override or update the `get_config()` in '
-                    'the metric class to include these extra arguments.\n'
-                    'Example:\n'
-                    'class CustomMetric(tf.keras.metrics.Metric):\n'
-                    '  def __init__(self, arg1):\n'
-                    '    self._arg1 = arg1\n\n'
-                    '  def get_config(self)\n'
-                    '    config = super().get_config()\n'
-                    '    config[\'arg1\'] = self._arg1\n'
-                    '    return config')
-  return metric
+
+def create_keras_metric(
+    metric: Union[tf.keras.metrics.Metric, Callable[[],
+                                                    tf.keras.metrics.Metric]]
+) -> tf.keras.metrics.Metric:
+  """Create a `tf.keras.metrics.Metric` from a `tf.keras.metrics.Metric`.
+
+  So the `tf.Variable`s in the metric can get created in the right scope in TFF.
+
+  Args:
+    metric: A single `tf.keras.metrics.Metric` or a no-arg callable that creates
+      a `tf.keras.metrics.Metric`.
+
+  Returns:
+    A `tf.keras.metrics.Metric` object.
+
+  Raises:
+    TypeError: If input metric is neither a `tf.keras.metrics.Metric` or a
+    no-arg callable that creates a `tf.keras.metrics.Metric`.
+  """
+  keras_metric = None
+  if isinstance(metric, tf.keras.metrics.Metric):
+    _check_keras_metric_config_constructable(metric)
+    keras_metric = type(metric).from_config(metric.get_config())
+  elif callable(metric):
+    keras_metric = metric()
+    if not isinstance(keras_metric, tf.keras.metrics.Metric):
+      raise TypeError(
+          'Expected input `metric` to be either a `tf.keras.metrics.Metric` '
+          'or a no-arg callable that creates a `tf.keras.metrics.Metric`, '
+          'found a callable that returns a '
+          f'{py_typecheck.type_string(type(keras_metric))}.')
+  else:
+    raise TypeError(
+        'Expected input `metric` to be either a `tf.keras.metrics.Metric` '
+        'or a no-arg callable that constructs a `tf.keras.metrics.Metric`, '
+        f'found a non-callable {py_typecheck.type_string(type(metric))}.')
+  return keras_metric

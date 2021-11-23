@@ -1070,6 +1070,128 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
 
     self.assertIsInstance(tff_model, model_lib.Model)
 
+  @parameterized.named_parameters(
+      # Test cases for the cartesian product of all parameter values.
+      *_create_tff_model_from_keras_model_tuples())
+  def test_keras_model_with_metric_constructors(self, feature_dims, model_fn):
+    keras_model = model_fn(feature_dims)
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=_create_whimsy_types(feature_dims),
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[NumBatchesCounter, NumExamplesCounter])
+    self.assertIsInstance(tff_model, model_lib.Model)
+
+    # Metrics should be zero, though the model wrapper internally executes the
+    # forward pass once.
+    self.assertSequenceEqual(tff_model.local_variables, [0, 0, 0.0, 0.0])
+
+    batch = collections.OrderedDict(
+        x=np.stack([
+            np.zeros(feature_dims, np.float32),
+            np.ones(feature_dims, np.float32)
+        ]),
+        y=[[0.0], [1.0]])
+    # from_model() was called without an optimizer which creates a tff.Model.
+    # There is no train_on_batch() method available in tff.Model.
+    with self.assertRaisesRegex(AttributeError,
+                                'no attribute \'train_on_batch\''):
+      tff_model.train_on_batch(batch)
+
+    output = tff_model.forward_pass(batch)
+    # Since the model initializes all weights and biases to zero, we expect
+    # all predictions to be zero:
+    #    0*x1 + 0*x2 + ... + 0 = 0
+    self.assertAllEqual(output.predictions, [[0.0], [0.0]])
+    # For the single batch:
+    #
+    # Example | Prediction | Label | Residual | Loss
+    # --------+------------+-------+----------+ -----
+    #    1    |    0.0     |  0.0  |    0.0   |  0.0
+    #    2    |    0.0     |  1.0  |    1.0   |  1.0
+    #
+    # Note that though regularization might be applied, this has no effect on
+    # the loss since all weights are 0.
+    # Total loss: 1.0
+    # Batch average loss: 0.5
+    self.assertEqual(output.loss, 0.5)
+    self.assertAllEqual(tff_model.report_local_outputs(),
+                        tff_model.report_local_unfinalized_metrics())
+    metrics = tff_model.report_local_unfinalized_metrics()
+    self.assertEqual(metrics['num_batches'], [1])
+    self.assertEqual(metrics['num_examples'], [2])
+    self.assertGreater(metrics['loss'][0], 0)
+    self.assertEqual(metrics['loss'][1], 2)
+
+  @parameterized.named_parameters(
+      # Test cases for the cartesian product of all parameter values.
+      *_create_tff_model_from_keras_model_tuples())
+  def test_keras_model_without_input_metrics(self, feature_dims, model_fn):
+    keras_model = model_fn(feature_dims)
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=_create_whimsy_types(feature_dims),
+        loss=tf.keras.losses.MeanSquaredError())
+    self.assertIsInstance(tff_model, model_lib.Model)
+
+    # Metrics should be zero, though the model wrapper internally executes the
+    # forward pass once.
+    self.assertSequenceEqual(tff_model.local_variables, [0, 0])
+
+    batch = collections.OrderedDict(
+        x=np.stack([
+            np.zeros(feature_dims, np.float32),
+            np.ones(feature_dims, np.float32)
+        ]),
+        y=[[0.0], [1.0]])
+    # from_model() was called without an optimizer which creates a tff.Model.
+    # There is no train_on_batch() method available in tff.Model.
+    with self.assertRaisesRegex(AttributeError,
+                                'no attribute \'train_on_batch\''):
+      tff_model.train_on_batch(batch)
+
+    output = tff_model.forward_pass(batch)
+    # Since the model initializes all weights and biases to zero, we expect
+    # all predictions to be zero:
+    #    0*x1 + 0*x2 + ... + 0 = 0
+    self.assertAllEqual(output.predictions, [[0.0], [0.0]])
+    # For the single batch:
+    #
+    # Example | Prediction | Label | Residual | Loss
+    # --------+------------+-------+----------+ -----
+    #    1    |    0.0     |  0.0  |    0.0   |  0.0
+    #    2    |    0.0     |  1.0  |    1.0   |  1.0
+    #
+    # Note that though regularization might be applied, this has no effect on
+    # the loss since all weights are 0.
+    # Total loss: 1.0
+    # Batch average loss: 0.5
+    self.assertEqual(output.loss, 0.5)
+    self.assertAllEqual(tff_model.report_local_outputs(),
+                        tff_model.report_local_unfinalized_metrics())
+    metrics = tff_model.report_local_unfinalized_metrics()
+    self.assertGreater(metrics['loss'][0], 0)
+    self.assertEqual(metrics['loss'][1], 2)
+
+  @parameterized.named_parameters(
+      ('both_metrics_and_constructors',
+       [NumExamplesCounter, NumBatchesCounter()], 'found both types'),
+      ('non_callable', [tf.constant(1.0)], 'found a non-callable'),
+      ('non_keras_metric_constructor', [tf.keras.losses.MeanSquaredError
+                                       ], 'not a no-arg callable'))
+  def test_keras_model_provided_invalid_metrics_raises(self, metrics,
+                                                       error_message):
+    feature_dims = 3
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims)
+
+    with self.assertRaisesRegex(TypeError, error_message):
+      keras_utils.from_keras_model(
+          keras_model=keras_model,
+          input_spec=_create_whimsy_types(feature_dims),
+          loss=tf.keras.losses.MeanSquaredError(),
+          metrics=metrics)
+
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
