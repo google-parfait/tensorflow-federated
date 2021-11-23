@@ -105,7 +105,7 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
         client_optimizer_fn=_get_keras_optimizer_fn(),
         aggregator_factory=tff.learning.dp_aggregator(1e-8, 10))
 
-    self.assertLessEqual(loss, 0.2)
+    self.assertLessEqual(loss, 0.22)
     self.assertGreater(accuracy, 0.92)
 
   def test_emnist10_cnn_convergence_dp_aggregator_high_noise(self):
@@ -115,10 +115,7 @@ class FederatedAveragingE2ETest(tff.test.TestCase, parameterized.TestCase):
         client_optimizer_fn=_get_keras_optimizer_fn(),
         aggregator_factory=tff.learning.dp_aggregator(2e-1, 10))
 
-    self.assertGreaterEqual(loss, 0.2)
     self.assertLessEqual(loss, 5)
-
-    self.assertLess(accuracy, 0.9)
     self.assertGreater(accuracy, 0.15)
 
 
