@@ -33,6 +33,7 @@ class CharacterRecognitionModel(enum.Enum):
   """Enum for EMNIST character recognition models."""
   CNN_DROPOUT = 'cnn_dropout'
   CNN = 'cnn'
+  DETERMNISTIC_CNN = 'deterministic_cnn'
   TWO_LAYER_DNN = '2nn'
 
 
@@ -54,6 +55,9 @@ def _get_character_recognition_model(model_id: Union[str,
         only_digits=only_digits)
   elif model_enum == CharacterRecognitionModel.CNN:
     keras_model = emnist_models.create_original_fedavg_cnn_model(
+        only_digits=only_digits)
+  elif model_enum == CharacterRecognitionModel.DETERMNISTIC_CNN:
+    keras_model = emnist_models.create_determnistic_cnn_model(
         only_digits=only_digits)
   elif model_enum == CharacterRecognitionModel.TWO_LAYER_DNN:
     keras_model = emnist_models.create_two_hidden_layer_model(
@@ -145,6 +149,8 @@ def create_character_recognition_task(
   *   `model_id = cnn`: A moderately sized convolutional network, without any
   dropout layers. Matches the architecture of the convolutional network used
   by (McMahan et al., 2017) for the purposes of testing the FedAvg algorithm.
+  *   `model_id = deterministic_cnn`: The same model as when `model_id = cnn`,
+  but with a deterministic zero initialization for purposes of reproducibility.
   *   `model_id = 2nn`: A densely connected network with 2 hidden layers, each
   with 200 hidden units and ReLU activations.
 

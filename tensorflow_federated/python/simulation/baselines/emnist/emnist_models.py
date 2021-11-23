@@ -149,6 +149,82 @@ def create_original_fedavg_cnn_model(
   return model
 
 
+def create_determnistic_cnn_model(only_digits: bool = True) -> tf.keras.Model:
+  """Create a convolutional network with deterministically initialized layers.
+
+  This recreates the CNN model used in the original FedAvg paper,
+  https://arxiv.org/abs/1602.05629. The number of parameters when
+  `only_digits=True` is (1,663,370), which matches what is reported in the
+  paper. When `only_digits=True`, the summary of returned model is
+  ```
+  Model: "sequential"
+  _________________________________________________________________
+  Layer (type)                 Output Shape              Param #
+  =================================================================
+  reshape (Reshape)            (None, 28, 28, 1)         0
+  _________________________________________________________________
+  conv2d (Conv2D)              (None, 28, 28, 32)        832
+  _________________________________________________________________
+  max_pooling2d (MaxPooling2D) (None, 14, 14, 32)        0
+  _________________________________________________________________
+  conv2d_1 (Conv2D)            (None, 14, 14, 64)        51264
+  _________________________________________________________________
+  max_pooling2d_1 (MaxPooling2 (None, 7, 7, 64)          0
+  _________________________________________________________________
+  flatten (Flatten)            (None, 3136)              0
+  _________________________________________________________________
+  dense (Dense)                (None, 512)               1606144
+  _________________________________________________________________
+  dense_1 (Dense)              (None, 10)                5130
+  =================================================================
+  Total params: 1,663,370
+  Trainable params: 1,663,370
+  Non-trainable params: 0
+  ```
+  For `only_digits=False`, the last dense layer is slightly larger.
+
+  Unlike `create_original_fedavg_cnn_model`, this initializes all layers with
+  in a deterministic manner by setting all variables to zero. This should
+  generally be used only in settings where reproducibility of results is more
+  important than utility, such as end-to-end algorithm testing.
+
+  Args:
+    only_digits: If `True`, uses a final layer with 10 outputs, for use with the
+      digits only EMNIST dataset. If `False`, uses 62 outputs for the larger
+      dataset.
+
+  Returns:
+    An uncompiled `tf.keras.Model`.
+  """
+  data_format = 'channels_last'
+  max_pool = functools.partial(
+      tf.keras.layers.MaxPooling2D,
+      pool_size=(2, 2),
+      padding='same',
+      data_format=data_format)
+  conv2d = functools.partial(
+      tf.keras.layers.Conv2D,
+      kernel_size=5,
+      padding='same',
+      data_format=data_format,
+      activation=tf.nn.relu,
+      kernel_initializer='zeros')
+  model = tf.keras.models.Sequential([
+      conv2d(filters=32, input_shape=(28, 28, 1)),
+      max_pool(),
+      conv2d(filters=64),
+      max_pool(),
+      tf.keras.layers.Flatten(),
+      tf.keras.layers.Dense(
+          512, activation=tf.nn.relu, kernel_initializer='zeros'),
+      tf.keras.layers.Dense(
+          10 if only_digits else 62,
+          activation=tf.nn.softmax,
+          kernel_initializer='zeros'),
+  ])
+  return model
+
+
 def create_two_hidden_layer_model(only_digits: bool = True,
                                   hidden_units: int = 200) -> tf.keras.Model:
   """Create a two hidden-layer fully connected neural network.

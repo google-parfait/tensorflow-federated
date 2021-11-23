@@ -59,7 +59,7 @@ class FederatedSGDE2ETest(tff.test.TestCase, parameterized.TestCase):
     train_client_spec = tff.simulation.baselines.ClientSpec(
         num_epochs=1, batch_size=32, shuffle_buffer_size=1)
     task = tff.simulation.baselines.emnist.create_character_recognition_task(
-        train_client_spec, model_id='cnn', only_digits=True)
+        train_client_spec, model_id='deterministic_cnn', only_digits=True)
     train_client_ids = sorted(task.datasets.train_data.client_ids)
     preprocessed_train_data = task.datasets.train_data.preprocess(
         task.datasets.train_preprocess_fn)
@@ -85,7 +85,7 @@ class FederatedSGDE2ETest(tff.test.TestCase, parameterized.TestCase):
     train_client_spec = tff.simulation.baselines.ClientSpec(
         num_epochs=1, batch_size=32, shuffle_buffer_size=1)
     task = tff.simulation.baselines.emnist.create_character_recognition_task(
-        train_client_spec, model_id='cnn', only_digits=True)
+        train_client_spec, model_id='deterministic_cnn', only_digits=True)
     train_client_ids = sorted(task.datasets.train_data.client_ids)
     preprocessed_train_data = task.datasets.train_data.preprocess(
         task.datasets.train_preprocess_fn)
@@ -107,7 +107,7 @@ class FederatedSGDE2ETest(tff.test.TestCase, parameterized.TestCase):
     train_client_spec = tff.simulation.baselines.ClientSpec(
         num_epochs=1, batch_size=32, shuffle_buffer_size=1)
     task = tff.simulation.baselines.emnist.create_character_recognition_task(
-        train_client_spec, model_id='cnn', only_digits=True)
+        train_client_spec, model_id='deterministic_cnn', only_digits=True)
     train_client_ids = sorted(task.datasets.train_data.client_ids)
     preprocessed_train_data = task.datasets.train_data.preprocess(
         task.datasets.train_preprocess_fn)

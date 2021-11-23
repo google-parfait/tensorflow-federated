@@ -12,35 +12,80 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.baselines.emnist import emnist_models
 
 
-class ModelCollectionTest(tf.test.TestCase):
+class ModelCollectionTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_conv_dropout_only_digits_shape(self):
+  @parameterized.named_parameters(
+      ('cnn_dropout', emnist_models.create_conv_dropout_model),
+      ('cnn', emnist_models.create_original_fedavg_cnn_model),
+      ('deterministic_cnn', emnist_models.create_determnistic_cnn_model),
+      ('two_hidden_layer_model', emnist_models.create_two_hidden_layer_model),
+  )
+  def test_char_prediction_models_input_shape(self, model_builder):
+    model = model_builder(only_digits=False)
+    self.assertEqual(model.input_shape, (None, 28, 28, 1))
+
+  @parameterized.named_parameters(
+      ('cnn_dropout', emnist_models.create_conv_dropout_model),
+      ('cnn', emnist_models.create_original_fedavg_cnn_model),
+      ('deterministic_cnn', emnist_models.create_determnistic_cnn_model),
+      ('two_hidden_layer_model', emnist_models.create_two_hidden_layer_model),
+  )
+  def test_char_prediction_models_input_shape_only_digits(self, model_builder):
+    model = model_builder(only_digits=True)
+    self.assertEqual(model.input_shape, (None, 28, 28, 1))
+
+  @parameterized.named_parameters(
+      ('cnn_dropout', emnist_models.create_conv_dropout_model),
+      ('cnn', emnist_models.create_original_fedavg_cnn_model),
+      ('deterministic_cnn', emnist_models.create_determnistic_cnn_model),
+      ('two_hidden_layer_model', emnist_models.create_two_hidden_layer_model),
+  )
+  def test_char_prediction_models_output_shape(self, model_builder):
+    image = tf.random.normal([3, 28, 28, 1])
+    model = model_builder(only_digits=False)
+    logits = model(image)
+    self.assertIsNotNone(logits)
+    self.assertEqual(logits.shape, [3, 62])
+
+  @parameterized.named_parameters(
+      ('cnn_dropout', emnist_models.create_conv_dropout_model),
+      ('cnn', emnist_models.create_original_fedavg_cnn_model),
+      ('deterministic_cnn', emnist_models.create_determnistic_cnn_model),
+      ('two_hidden_layer_model', emnist_models.create_two_hidden_layer_model),
+  )
+  def test_char_prediction_models_output_shape_only_digits(self, model_builder):
     image = tf.random.normal([4, 28, 28, 1])
-    model = emnist_models.create_conv_dropout_model(only_digits=True)
+    model = model_builder(only_digits=True)
     logits = model(image)
     self.assertIsNotNone(logits)
     self.assertEqual(logits.shape, [4, 10])
 
-  def test_conv_dropout_shape(self):
-    image = tf.random.normal([3, 28, 28, 1])
-    model = emnist_models.create_conv_dropout_model(only_digits=False)
-    logits = model(image)
+  @parameterized.named_parameters(
+      ('only_digits_true', True),
+      ('only_digits_false', False),
+  )
+  def test_non_dropout_cnn_models_have_same_shape(self, only_digits):
+    model1 = emnist_models.create_original_fedavg_cnn_model(
+        only_digits=only_digits)
+    model2 = emnist_models.create_determnistic_cnn_model(
+        only_digits=only_digits)
+    for x, y in zip(model1.variables, model2.variables):
+      self.assertEqual(x.shape, y.shape)
 
-    self.assertIsNotNone(logits)
-    self.assertEqual(logits.shape, [3, 62])
-
-  def test_2nn_output_shape(self):
-    image = tf.random.normal([7, 28, 28, 1])
-    model = emnist_models.create_two_hidden_layer_model(
-        only_digits=False, hidden_units=200)
-    logits = model(image)
-    self.assertIsNotNone(logits)
-    self.assertEqual(logits.shape, [7, 62])
+  @parameterized.named_parameters(
+      ('only_digits_true', True),
+      ('only_digits_false', False),
+  )
+  def test_deterministic_model_has_all_zero_variables(self, only_digits):
+    model = emnist_models.create_determnistic_cnn_model(only_digits=only_digits)
+    all_zero_structure = tf.nest.map_structure(tf.zeros_like, model.variables)
+    self.assertAllClose(all_zero_structure, model.variables)
 
   def test_2nn_raises_on_nonpositive_hidden_units(self):
     with self.assertRaisesRegex(ValueError,
@@ -59,13 +104,17 @@ class ModelCollectionTest(tf.test.TestCase):
     num_model_params = (28 * 28 + 1) * 200 + 201 * 200 + 201 * 10
     self.assertEqual(model.count_params(), num_model_params)
 
-  def test_autoencoder_model_shape(self):
-    image = tf.random.normal([4, 28 * 28])
+  def test_autoencoder_model_input_shape(self):
+    model = emnist_models.create_autoencoder_model()
+    self.assertEqual(model.input_shape, (None, 784))
+
+  def test_autoencoder_model_output_shape(self):
+    image = tf.random.normal([4, 784])
     model = emnist_models.create_autoencoder_model()
     reconstructed_image = model(image)
     num_model_params = 2837314
     self.assertIsNotNone(reconstructed_image)
-    self.assertEqual(reconstructed_image.shape, [4, 28 * 28])
+    self.assertEqual(reconstructed_image.shape, [4, 784])
     self.assertEqual(model.count_params(), num_model_params)
 
 

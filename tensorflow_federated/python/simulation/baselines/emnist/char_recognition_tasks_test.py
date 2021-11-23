@@ -55,6 +55,18 @@ class CreateCharacterRecognitionModelTest(tf.test.TestCase,
       ('emnist_62', False),
   )
   @mock.patch('tensorflow_federated.python.simulation.'
+              'baselines.emnist.emnist_models.create_determnistic_cnn_model')
+  def test_get_character_recognition_model_constructs_deterministic_cnn(
+      self, only_digits, mock_model_builder):
+    char_recognition_tasks._get_character_recognition_model(
+        model_id='deterministic_cnn', only_digits=only_digits)
+    mock_model_builder.assert_called_once_with(only_digits=only_digits)
+
+  @parameterized.named_parameters(
+      ('emnist_10', True),
+      ('emnist_62', False),
+  )
+  @mock.patch('tensorflow_federated.python.simulation.'
               'baselines.emnist.emnist_models.create_two_hidden_layer_model')
   def test_get_character_recognition_model_constructs_2nn(
       self, only_digits, mock_model_builder):
@@ -80,6 +92,8 @@ class CreateCharacterRecognitionTaskTest(tf.test.TestCase,
       ('emnist_62_cnn', False, 'cnn'),
       ('emnist_10_cnn_dropout', True, 'cnn_dropout'),
       ('emnist_62_cnn_dropout', False, 'cnn_dropout'),
+      ('emnist_10_deterministic_cnn', True, 'deterministic_cnn'),
+      ('emnist_62_deterministic_cnn', False, 'deterministic_cnn'),
       ('emnist_10_2nn', True, '2nn'),
       ('emnist_62_2nn', False, '2nn'),
   )
@@ -101,6 +115,8 @@ class CreateCharacterRecognitionTaskTest(tf.test.TestCase,
       ('emnist_62_cnn', False, 'cnn'),
       ('emnist_10_cnn_dropout', True, 'cnn_dropout'),
       ('emnist_62_cnn_dropout', False, 'cnn_dropout'),
+      ('emnist_10_deterministic_cnn', True, 'deterministic_cnn'),
+      ('emnist_62_deterministic_cnn', False, 'deterministic_cnn'),
       ('emnist_10_2nn', True, '2nn'),
       ('emnist_62_2nn', False, '2nn'),
   )
