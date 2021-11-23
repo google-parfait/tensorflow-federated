@@ -133,7 +133,6 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
 
-@tf.function
 def _sub_sample_clip(histogram, sample_num):
   """Clips `histogram` by sub-sampling.
 
@@ -168,7 +167,6 @@ def _sub_sample_clip(histogram, sample_num):
   return result
 
 
-@tf.function
 def _distinct_clip(histogram, sample_num):
   """Clips `histogram` by distinct sub-sampling.
 
@@ -187,8 +185,8 @@ def _distinct_clip(histogram, sample_num):
   """
 
   def distinct():
-    indices = tf.cast(
-        tf.squeeze(tf.where(tf.not_equal(histogram, 0))), tf.int32)
+    indices = tf.squeeze(
+        tf.cast(tf.where(tf.not_equal(histogram, 0)), tf.int32))
     seed = tf.cast(
         tf.stack([tf.timestamp() * 1e6,
                   tf.timestamp() * 1e6]), dtype=tf.int64)

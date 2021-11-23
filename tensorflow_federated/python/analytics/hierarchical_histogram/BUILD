@@ -5,6 +5,13 @@ package(default_visibility = ["//tensorflow_federated/python/analytics:__subpack
 licenses(["notice"])
 
 py_library(
+    name = "hierarchical_histogram",
+    srcs = ["__init__.py"],
+    srcs_version = "PY3",
+    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
+)
+
+py_library(
     name = "hierarchical_histogram_factory",
     srcs = ["hierarchical_histogram_factory.py"],
     srcs_version = "PY3",
@@ -38,25 +45,29 @@ py_test(
 )
 
 py_library(
-    name = "hierarchical_histogram",
-    srcs = ["hierarchical_histogram.py"],
+    name = "hierarchical_histogram_lib",
+    srcs = ["hierarchical_histogram_lib.py"],
     srcs_version = "PY3",
+    visibility = ["//tensorflow_federated/python/analytics:__pkg__"],
     deps = [
         ":clipping_factory",
         ":hierarchical_histogram_factory",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/templates:iterative_process",
     ],
 )
 
 py_test(
-    name = "hierarchical_histogram_test",
-    srcs = ["hierarchical_histogram_test.py"],
+    name = "hierarchical_histogram_lib_test",
+    srcs = ["hierarchical_histogram_lib_test.py"],
     python_version = "PY3",
+    shard_count = 4,
     srcs_version = "PY3",
     deps = [
-        ":hierarchical_histogram",
+        ":hierarchical_histogram_lib",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
     ],

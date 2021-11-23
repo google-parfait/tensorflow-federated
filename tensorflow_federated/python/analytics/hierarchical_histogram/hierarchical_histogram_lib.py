@@ -13,6 +13,7 @@
 # limitations under the License.
 """The functions for creating the federated computation for hierarchical histogram aggregation."""
 import math
+import numpy as np
 
 import tensorflow as tf
 
@@ -21,9 +22,10 @@ from tensorflow_federated.python.analytics.hierarchical_histogram import hierarc
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.templates import iterative_process
 
 
-@tf.function
 def _discretized_histogram_counts(client_data: tf.data.Dataset,
                                   lower_bound: float, upper_bound: float,
                                   num_bins: int) -> tf.Tensor:
@@ -120,8 +122,8 @@ def build_hierarchical_histogram_computation(
       use. Currently supported mechanisms are
       - 'no-noise': (Default) Tree aggregation mechanism without noise.
       - 'central-gaussian': Tree aggregation with central Gaussian mechanism.
-      - 'distributed-discrete-gaussian': Tree aggregation mechanism with
-        the distributed discrete Gaussian mechanism in "The Distributed Discrete
+      - 'distributed-discrete-gaussian': Tree aggregation mechanism with the
+        distributed discrete Gaussian mechanism in "The Distributed Discrete
         Gaussian Mechanism for Federated Learning with Secure Aggregation. Peter
         Kairouz, Ziyu Liu, Thomas Steinke".
      noise_multiplier: A `float` specifying the noise multiplier (central noise
@@ -133,15 +135,13 @@ def build_hierarchical_histogram_computation(
       2**B will be the field size for SecAgg operations). Only needed when
       `dp_mechanism` is 'distributed-discrete-gaussian'. Please read the below
       precautions carefully and set `bits` accordingly. Otherwise, unexpected
-      overflow or accuracy degradation might happen.
-      (1) Should be in the inclusive range [1, 22] to avoid overflow inside
-      secure aggregation;
-      (2) Should be at least as large as
-      `log2(4 * sqrt(expected_clients_per_round)* noise_multiplier *
-      l2_norm_bound + expected_clients_per_round * max_records_per_user) + 1`
-      to avoid accuracy degradation caused by frequent modular clipping;
-      (3) If the number of clients exceed `expected_clients_per_round`, overflow
-      might happen.
+      overflow or accuracy degradation might happen. (1) Should be in the
+      inclusive range [1, 22] to avoid overflow inside secure aggregation; (2)
+      Should be at least as large as `log2(4 * sqrt(expected_clients_per_round)*
+      noise_multiplier * l2_norm_bound + expected_clients_per_round *
+      max_records_per_user) + 1` to avoid accuracy degradation caused by
+      frequent modular clipping; (3) If the number of clients exceed
+      `expected_clients_per_round`, overflow might happen.
 
   Returns:
     A federated computation that performs hierarchical histogram aggregation.
@@ -179,6 +179,124 @@ def build_hierarchical_histogram_computation(
     return process.next(process.initialize(), client_histogram).result
 
   return hierarchical_histogram_computation
+
+
+def build_hierarchical_histogram_process(
+    lower_bound: float,
+    upper_bound: float,
+    num_bins: int,
+    arity: int = 2,
+    clip_mechanism: str = 'sub-sampling',
+    max_records_per_user: int = 10,
+    dp_mechanism: str = 'no-noise',
+    noise_multiplier: float = 0.0,
+    expected_clients_per_round: int = 10,
+    bits: int = 22) -> iterative_process.IterativeProcess:
+  """Creates an IterativeProcess for hierarchical histogram aggregation.
+
+  This function wraps the `tff.computation` created by the
+  `build_hierarchical_histogram_computation` in an `IterativeProcess` that
+  is compatible with `tff.backends.mapreduce.MapReduceForm`.
+
+  Args:
+    lower_bound: A `float` specifying the lower bound of the data range.
+    upper_bound: A `float` specifying the upper bound of the data range.
+    num_bins: The integer number of bins to compute.
+    arity: The branching factor of the tree. Defaults to 2.
+    clip_mechanism: A `str` representing the clipping mechanism. Currently
+      supported mechanisms are
+      - 'sub-sampling': (Default) Uniformly sample up to `max_records_per_user`
+        records without replacement from the client dataset.
+      - 'distinct': Uniquify client dataset and uniformly sample up to
+        `max_records_per_user` records without replacement from it.
+    max_records_per_user: An `int` representing the maximum of records each user
+      can include in their local histogram. Defaults to 10.
+    dp_mechanism: A `str` representing the differentially private mechanism to
+      use. Currently supported mechanisms are
+      - 'no-noise': (Default) Tree aggregation mechanism without noise.
+      - 'central-gaussian': Tree aggregation with central Gaussian mechanism.
+      - 'distributed-discrete-gaussian': Tree aggregation mechanism with the
+        distributed discrete Gaussian mechanism in "The Distributed Discrete
+        Gaussian Mechanism for Federated Learning with Secure Aggregation. Peter
+        Kairouz, Ziyu Liu, Thomas Steinke".
+     noise_multiplier: A `float` specifying the noise multiplier (central noise
+       stddev / L2 clip norm) for model updates. Defaults to 0.0.
+    expected_clients_per_round: An `int` specifying the lower bound on the
+      expected number of clients. Only needed when `dp_mechanism` is
+      'distributed-discrete-gaussian'. Defaults to 10.
+    bits: A positive integer specifying the communication bit-width B (where
+      2**B will be the field size for SecAgg operations). Only needed when
+      `dp_mechanism` is 'distributed-discrete-gaussian'. Please read the below
+      precautions carefully and set `bits` accordingly. Otherwise, unexpected
+      overflow or accuracy degradation might happen. (1) Should be in the
+      inclusive range [1, 22] to avoid overflow inside secure aggregation; (2)
+      Should be at least as large as `log2(4 * sqrt(expected_clients_per_round)*
+      noise_multiplier * l2_norm_bound + expected_clients_per_round *
+      max_records_per_user) + 1` to avoid accuracy degradation caused by
+      frequent modular clipping; (3) If the number of clients exceed
+      `expected_clients_per_round`, overflow might happen.
+
+  Returns:
+    A federated computation that performs hierarchical histogram aggregation.
+  """
+  _check_greater_than_equal(upper_bound, lower_bound, 'upper_bound',
+                            'lower_bound')
+  _check_positive(num_bins, 'num_bins')
+  _check_greater_than_equal_thres(arity, 2, 'arity')
+  _check_membership(clip_mechanism, clipping_factory.CLIP_MECHANISMS,
+                    'clip_mechanism')
+  _check_greater_than_equal_thres(max_records_per_user, 1,
+                                  'max_records_per_user')
+  _check_membership(dp_mechanism, hihi_factory.DP_MECHANISMS, 'dp_mechanism')
+  _check_greater_than_equal_thres(noise_multiplier, 0., noise_multiplier)
+  _check_positive(expected_clients_per_round, 'expected_clients_per_round')
+  _check_in_range(bits, 'bits', 1, 22)
+  _check_greater_than_equal_thres(bits, math.log2(expected_clients_per_round),
+                                  'bits')
+
+  one_round_computation = build_hierarchical_histogram_computation(
+      lower_bound=lower_bound,
+      upper_bound=upper_bound,
+      num_bins=num_bins,
+      arity=arity,
+      clip_mechanism=clip_mechanism,
+      max_records_per_user=max_records_per_user,
+      dp_mechanism=dp_mechanism,
+      noise_multiplier=noise_multiplier,
+      expected_clients_per_round=expected_clients_per_round,
+      bits=bits)
+
+  parameter_type_signature = one_round_computation.type_signature.parameter
+  result_type_signature = one_round_computation.type_signature.result
+
+  @computations.tf_computation
+  def initialize():
+    # Creates a `tf.RaggedTensor` that has the same `type_signature` as the
+    # result returned by `one_round_computation`. This is to make sure the
+    # generated IterativeProcess is compatible with
+    # `tff.backends.mapreduce.MapReduceForm`.
+    flat_values_shape = result_type_signature.member[0].shape
+    flat_values_dtype = result_type_signature.member[0].dtype
+    nested_row_splits = np.zeros(shape=result_type_signature.member[1][0].shape)
+    # To generated a valid `tf.RaggedTensor`, the first element in
+    # `nested_row_splits` must be 0, and the last element in `nested_row_splits`
+    # must be the length of `flat_values`.
+    nested_row_splits[-1] = flat_values_shape[0]
+    return tf.RaggedTensor.from_nested_row_splits(
+        flat_values=tf.zeros(shape=flat_values_shape, dtype=flat_values_dtype),
+        nested_row_splits=[nested_row_splits])
+
+  @computations.federated_computation
+  def init_fn():
+    return intrinsics.federated_eval(initialize, placements.SERVER)
+
+  @computations.federated_computation(init_fn.type_signature.result,
+                                      parameter_type_signature)
+  def next_fn(_, client_data):
+    return one_round_computation(client_data), intrinsics.federated_value(
+        (), placements.SERVER)
+
+  return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
 def _check_greater_than_equal(lvalue, rvalue, llabel, rlabel):
