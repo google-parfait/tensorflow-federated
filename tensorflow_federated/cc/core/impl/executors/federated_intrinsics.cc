@@ -26,7 +26,8 @@ namespace tensorflow_federated {
 
 absl::StatusOr<FederatedIntrinsic> FederatedIntrinsicFromUri(
     const absl::string_view uri) {
-  if (uri == kFederatedMapAtClientsUri || uri == "federated_apply") {
+  if (uri == kFederatedMapAtClientsUri || uri == "federated_apply" ||
+      uri == "federated_map_all_equal") {
     return FederatedIntrinsic::MAP;
   } else if (uri == kFederatedZipAtClientsUri ||
              uri == "federated_zip_at_server") {

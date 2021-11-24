@@ -141,6 +141,7 @@ namespace intrinsic {
 INTRINSIC_FUNC(FederatedAggregateV, federated_aggregate);
 INTRINSIC_FUNC(FederatedBroadcastV, federated_broadcast);
 INTRINSIC_FUNC(FederatedMapV, federated_map);
+INTRINSIC_FUNC(FederatedMapAllEqualV, federated_map_all_equal);
 INTRINSIC_FUNC(FederatedEvalAtClientsV, federated_eval_at_clients);
 INTRINSIC_FUNC(FederatedEvalAtServerV, federated_eval_at_server);
 INTRINSIC_FUNC(FederatedValueAtClientsV, federated_value_at_clients);
