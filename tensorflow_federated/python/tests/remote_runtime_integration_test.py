@@ -160,21 +160,27 @@ class WorkerFailureTest(parameterized.TestCase):
         self.assertEqual(sum_arg(1), 10)
 
 
-@parameterized.named_parameters((
-    'native_remote',
-    remote_runtime_test_utils.create_localhost_remote_context(_WORKER_PORTS),
-    remote_runtime_test_utils.create_inprocess_worker_contexts(_WORKER_PORTS),
-), (
-    'native_remote_intermediate_aggregator',
-    remote_runtime_test_utils.create_localhost_remote_context(
-        _AGGREGATOR_PORTS),
-    remote_runtime_test_utils.create_inprocess_aggregator_contexts(
-        _WORKER_PORTS, _AGGREGATOR_PORTS),
-))
+@parameterized.named_parameters(
+    # pylint: disable=g-long-lambda
+    # pylint: disable=unnecessary-lambda
+    (
+        'native_remote',
+        lambda: remote_runtime_test_utils.create_localhost_remote_context(
+            _WORKER_PORTS),
+        lambda: remote_runtime_test_utils.create_inprocess_worker_contexts(
+            _WORKER_PORTS),
+    ),
+    (
+        'native_remote_intermediate_aggregator',
+        lambda: remote_runtime_test_utils.create_localhost_remote_context(
+            _AGGREGATOR_PORTS),
+        lambda: remote_runtime_test_utils.create_inprocess_aggregator_contexts(
+            _WORKER_PORTS, _AGGREGATOR_PORTS),
+    ))
 class RemoteRuntimeConfigurationChangeTest(parameterized.TestCase):
 
-  def test_computations_run_with_changing_clients(self, context,
-                                                  server_contexts):
+  def test_computations_run_with_changing_clients(self, context_fn,
+                                                  server_contexts_fn):
 
     @tff.tf_computation(tf.int32)
     @tf.function
@@ -186,10 +192,10 @@ class RemoteRuntimeConfigurationChangeTest(parameterized.TestCase):
       return tff.federated_map(add_one, federated_arg)
 
     context_stack = tff.framework.get_context_stack()
-    with context_stack.install(context):
+    with context_stack.install(context_fn()):
 
       with contextlib.ExitStack() as stack:
-        for server_context in server_contexts:
+        for server_context in server_contexts_fn():
           stack.enter_context(server_context)
         result_two_clients = map_add_one([0, 1])
         self.assertEqual(result_two_clients, [1, 2])

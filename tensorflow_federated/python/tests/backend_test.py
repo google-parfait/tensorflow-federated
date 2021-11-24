@@ -329,16 +329,17 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   # pyformat: disable
   @test_contexts.with_contexts(
-      ('native_local', tff.backends.native.create_local_python_execution_context()),
+      # pylint: disable=unnecessary-lambda
+      ('native_local', lambda: tff.backends.native.create_local_python_execution_context()),
       ('native_remote',
-       remote_runtime_test_utils.create_localhost_remote_context(test_contexts.WORKER_PORTS),
-       remote_runtime_test_utils.create_inprocess_worker_contexts(test_contexts.WORKER_PORTS)),
+       lambda: remote_runtime_test_utils.create_localhost_remote_context(test_contexts.WORKER_PORTS),
+       lambda: remote_runtime_test_utils.create_inprocess_worker_contexts(test_contexts.WORKER_PORTS)),
       ('native_remote_intermediate_aggregator',
-       remote_runtime_test_utils.create_localhost_remote_context(test_contexts.AGGREGATOR_PORTS),
-       remote_runtime_test_utils.create_inprocess_aggregator_contexts(test_contexts.WORKER_PORTS, test_contexts.AGGREGATOR_PORTS)),
-      ('native_sizing', tff.backends.native.create_sizing_execution_context()),
+       lambda: remote_runtime_test_utils.create_localhost_remote_context(test_contexts.AGGREGATOR_PORTS),
+       lambda: remote_runtime_test_utils.create_inprocess_aggregator_contexts(test_contexts.WORKER_PORTS, test_contexts.AGGREGATOR_PORTS)),
+      ('native_sizing', lambda: tff.backends.native.create_sizing_execution_context()),
       ('native_thread_debug',
-       tff.backends.native.create_thread_debugging_execution_context()),
+       lambda: tff.backends.native.create_thread_debugging_execution_context()),
   )
   # pyformat: enable
   def test_takes_infinite_dataset(self):
@@ -355,16 +356,17 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   # pyformat: disable
   @test_contexts.with_contexts(
-      ('native_local', tff.backends.native.create_local_python_execution_context()),
+      # pylint: disable=unnecessary-lambda
+      ('native_local', lambda: tff.backends.native.create_local_python_execution_context()),
       ('native_remote',
-       remote_runtime_test_utils.create_localhost_remote_context(test_contexts.WORKER_PORTS),
-       remote_runtime_test_utils.create_inprocess_worker_contexts(test_contexts.WORKER_PORTS)),
+       lambda: remote_runtime_test_utils.create_localhost_remote_context(test_contexts.WORKER_PORTS),
+       lambda: remote_runtime_test_utils.create_inprocess_worker_contexts(test_contexts.WORKER_PORTS)),
       ('native_remote_intermediate_aggregator',
-       remote_runtime_test_utils.create_localhost_remote_context(test_contexts.AGGREGATOR_PORTS),
-       remote_runtime_test_utils.create_inprocess_aggregator_contexts(test_contexts.WORKER_PORTS, test_contexts.AGGREGATOR_PORTS)),
-      ('native_sizing', tff.backends.native.create_sizing_execution_context()),
+       lambda: remote_runtime_test_utils.create_localhost_remote_context(test_contexts.AGGREGATOR_PORTS),
+       lambda: remote_runtime_test_utils.create_inprocess_aggregator_contexts(test_contexts.WORKER_PORTS, test_contexts.AGGREGATOR_PORTS)),
+      ('native_sizing', lambda: tff.backends.native.create_sizing_execution_context()),
       ('native_thread_debug',
-       tff.backends.native.create_thread_debugging_execution_context()),
+       lambda: tff.backends.native.create_thread_debugging_execution_context()),
   )
   # pyformat: enable
   def test_returns_infinite_dataset(self):
@@ -451,7 +453,8 @@ class NonDeterministicTest(parameterized.TestCase):
 class SizingExecutionContextTest(parameterized.TestCase):
 
   @test_contexts.with_context(
-      tff.backends.native.create_sizing_execution_context())
+      # pylint: disable=unnecessary-lambda
+      lambda: tff.backends.native.create_sizing_execution_context())
   def test_get_size_info(self):
     num_clients = 10
     to_float = lambda x: tf.cast(x, tf.float32)
