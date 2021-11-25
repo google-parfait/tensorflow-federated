@@ -76,6 +76,7 @@ py_library(
         ":optimizer",
         ":rmsprop",
         ":sgdm",
+        ":yogi",
     ],
 )
 

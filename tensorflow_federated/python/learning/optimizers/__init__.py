@@ -20,3 +20,4 @@ from tensorflow_federated.python.learning.optimizers.optimizer import handle_ind
 from tensorflow_federated.python.learning.optimizers.optimizer import Optimizer
 from tensorflow_federated.python.learning.optimizers.rmsprop import build_rmsprop
 from tensorflow_federated.python.learning.optimizers.sgdm import build_sgdm
+from tensorflow_federated.python.learning.optimizers.yogi import build_yogi
