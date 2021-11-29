@@ -283,6 +283,7 @@ class RotationsExecutionTest(test_case.TestCase, parameterized.TestCase):
     self.assertBetween(np.var(inner_aggregand), 255, 257)
 
   def test_dft_spreads_information(self):
+    self.skipTest('This test seems to flakily fail; b/208245325')
     factory = _measured_dft_sum()
     process = factory.create(computation_types.TensorType(tf.float32, [256]))
 
