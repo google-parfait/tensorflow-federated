@@ -55,7 +55,7 @@ class Capability(enum.Enum):
 
 
 class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
-  """An abstract interface for representing federated data sources iterators.
+  """An abstract interface for representing federated data source iterators.
 
   This interface abstracts away the specifics of iterating over data in a data
   source.
@@ -70,7 +70,7 @@ class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
     `select`.
 
   Please see `tff.program.FederatedDataSource` for additional context and the
-  high-level description how to use data sources.
+  high-level description of how to use data sources.
   """
 
   @abc.abstractproperty
@@ -117,8 +117,8 @@ class FederatedDataSource(metaclass=abc.ABCMeta):
   * Determine the guarantees/features offered by this data source by inspecting
     the `capabilities` property.
 
-  * Construct a new iterator for this data source by invoking `iterater` on it.
-    Each iterator represents an indepenent pass over the data from this data
+  * Construct a new iterator for this data source by invoking `iterator` on it.
+    Each iterator represents an independent pass over the data from this data
     source. See the descriptions of capabilities for the formal guarantees.
   """
 
