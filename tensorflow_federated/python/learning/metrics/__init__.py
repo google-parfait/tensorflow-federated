@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for working with metrics in Federated Learning algorithms."""
+"""Libraries for working with metrics in federated learning algorithms."""
 
 from tensorflow_federated.python.learning.metrics.aggregator import sum_then_finalize
 from tensorflow_federated.python.learning.metrics.finalizer import create_keras_metric_finalizer

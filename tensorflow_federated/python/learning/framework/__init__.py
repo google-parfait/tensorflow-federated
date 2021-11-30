@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for developing Federated Learning algorithms."""
+"""Libraries for developing federated learning algorithms."""
 
 from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_broadcast_process_from_model
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_process

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for working with models in Federated Learning algorithms."""
+"""Libraries for working with models in federated learning algorithms."""
 
 from tensorflow_federated.python.learning.models.functional import functional_model_from_keras
 from tensorflow_federated.python.learning.models.functional import FunctionalModel

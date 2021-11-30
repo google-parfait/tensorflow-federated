@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for using Federated Reconstruction algorithms."""
+"""Libraries for using federated reconstruction algorithms."""
 
 from tensorflow_federated.python.learning.reconstruction.evaluation_computation import build_federated_evaluation
 from tensorflow_federated.python.learning.reconstruction.keras_utils import from_keras_model
