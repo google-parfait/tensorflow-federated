@@ -201,8 +201,10 @@ def federated_aggregate_keras_metric(
   """Aggregates variables a keras metric placed at CLIENTS to SERVER.
 
   Args:
-    metrics: A single `tf.keras.metrics.Metric` or a `Sequence` of metrics . The
-      order must match the order of variables in `federated_values`.
+    metrics: A single or a `Sequence` of `tf.keras.metrics.Metric` objects, or
+      a single or a `Sequence` of no-arg callables that each constructs a
+      `tf.keras.metrics.Metric`. The order must match the order of variables in
+      `federated_values`.
     federated_values: A single federated value, or a `Sequence` of federated
       values. The values must all have `tff.CLIENTS` placement. If value is a
       `Sequence` type, it must match the order of the sequence in `metrics.
