@@ -462,30 +462,24 @@ FEDERATED_WEIGHTED_MEAN = IntrinsicDef(
 
 # Zips a tuple of two federated types into a federated tuple.
 #
-# Type signature: <{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS
+# Type signature: T -> U@CLIENTS
+# where `T` is a structure of client-placed values.
+# `U` must be identical to `T` with federated placement removed.
 FEDERATED_ZIP_AT_CLIENTS = IntrinsicDef(
     'FEDERATED_ZIP_AT_CLIENTS', 'federated_zip_at_clients',
     computation_types.FunctionType(
-        parameter=[
-            computation_types.at_clients(computation_types.AbstractType('T')),
-            computation_types.at_clients(computation_types.AbstractType('U'))
-        ],
-        result=computation_types.at_clients([
-            computation_types.AbstractType('T'),
-            computation_types.AbstractType('U')
-        ])))
-# Type signature: <T@SERVER,U@SERVER> -> <T,U>@SERVER
+        parameter=computation_types.AbstractType('T'),
+        result=computation_types.at_clients(
+            computation_types.AbstractType('U'))))
+# Type signature: T -> U@SERVER
+# where `T` is a structure of server-placed values.
+# `U` must be identical to `T` with federated placement removed.
 FEDERATED_ZIP_AT_SERVER = IntrinsicDef(
     'FEDERATED_ZIP_AT_SERVER', 'federated_zip_at_server',
     computation_types.FunctionType(
-        parameter=[
-            computation_types.at_server(computation_types.AbstractType('T')),
-            computation_types.at_server(computation_types.AbstractType('U'))
-        ],
-        result=computation_types.at_server([
-            computation_types.AbstractType('T'),
-            computation_types.AbstractType('U')
-        ])))
+        parameter=computation_types.AbstractType('T'),
+        result=computation_types.at_server(
+            computation_types.AbstractType('U'))))
 
 # TODO(b/122728050): Define GENERIC_DIVIDE, GENERIC_MULTIPLY, and GENERIC_ONE
 # to support intrinsic reductions (see the uses in intrinsic_bodies.py for

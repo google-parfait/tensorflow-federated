@@ -63,6 +63,7 @@ from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_transformations
 
 
 class FederatedComposingStrategyValue(executor_value_base.ExecutorValue):
@@ -620,61 +621,62 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
         arg,
         local_computation_factory=self._local_computation_factory)
 
+  async def _zip_struct_into_child(self, child, child_index, value, value_type):
+    """Embeds elements of `value` at `child_index` into `child`."""
+    if value_type.is_federated():
+      py_typecheck.check_type(value, list)
+      return value[child_index]
+    py_typecheck.check_type(value, structure.Struct)
+    new_elements = await asyncio.gather(*[
+        self._zip_struct_into_child(child, child_index, element, element_type)
+        for element, element_type in zip(value, value_type)
+    ])
+    named_elements = structure.Struct(
+        list(zip(structure.name_list_with_nones(value), new_elements)))
+    return await child.create_struct(named_elements)
+
   @tracing.trace
   async def compute_federated_zip_at_clients(
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
-    py_typecheck.check_len(arg.type_signature, 2)
-    py_typecheck.check_type(arg.internal_representation, structure.Struct)
-    py_typecheck.check_len(arg.internal_representation, 2)
-    keys = [k for k, _ in structure.to_elements(arg.type_signature)]
-    vals = [arg.internal_representation[n] for n in [0, 1]]
-    types = [arg.type_signature[n] for n in [0, 1]]
-    for n in [0, 1]:
-      type_analysis.check_federated_type(types[n], placement=placements.CLIENTS)
-      types[n] = computation_types.at_clients(types[n].member)
-      py_typecheck.check_type(vals[n], list)
-      py_typecheck.check_len(vals[n], len(self._target_executors))
-    item_type = computation_types.StructType([
-        ((keys[n], types[n].member) if keys[n] else types[n].member)
-        for n in [0, 1]
-    ])
-    result_type = computation_types.at_clients(item_type)
-    zip_type = computation_types.FunctionType(
-        computation_types.StructType([
-            ((keys[n], types[n]) if keys[n] else types[n]) for n in [0, 1]
-        ]), result_type)
+    result_type = computation_types.at_clients(
+        type_transformations.strip_placement(arg.type_signature))
+    zip_type = computation_types.FunctionType(arg.type_signature, result_type)
     zip_comp = executor_utils.create_intrinsic_comp(
         intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS, zip_type)
 
-    async def _child_fn(ex, x, y):
-      py_typecheck.check_type(x, executor_value_base.ExecutorValue)
-      py_typecheck.check_type(y, executor_value_base.ExecutorValue)
-      return await ex.create_call(
-          await ex.create_value(zip_comp, zip_type), await
-          ex.create_struct(structure.Struct([(keys[0], x), (keys[1], y)])))
+    async def _child_fn(child, child_index):
+      struct_value = await self._zip_struct_into_child(
+          child, child_index, arg.internal_representation, arg.type_signature)
+      return await child.create_call(
+          await child.create_value(zip_comp, zip_type), struct_value)
 
-    result = await asyncio.gather(*[
-        _child_fn(c, x, y)
-        for c, x, y in zip(self._target_executors, vals[0], vals[1])
-    ])
+    result = await asyncio.gather(
+        *[_child_fn(c, i) for (i, c) in enumerate(self._target_executors)])
     return FederatedComposingStrategyValue(result, result_type)
+
+  async def _zip_struct_into_server(self, value, value_type):
+    """Embeds `value` into `self._server_executor`."""
+    if value_type.is_federated():
+      py_typecheck.check_type(value, executor_value_base.ExecutorValue)
+      return value
+    py_typecheck.check_type(value, structure.Struct)
+    new_elements = await asyncio.gather(*[
+        self._zip_struct_into_server(element, element_type)
+        for element, element_type in zip(value, value_type)
+    ])
+    named_elements = structure.Struct(
+        list(zip(structure.name_list_with_nones(value), new_elements)))
+    return await self._server_executor.create_struct(named_elements)
 
   @tracing.trace
   async def compute_federated_zip_at_server(
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
-    py_typecheck.check_len(arg.type_signature, 2)
-    py_typecheck.check_type(arg.internal_representation, structure.Struct)
-    py_typecheck.check_len(arg.internal_representation, 2)
-    for n in [0, 1]:
-      type_analysis.check_federated_type(
-          arg.type_signature[n], placement=placements.SERVER, all_equal=True)
+    result_type = computation_types.at_server(
+        type_transformations.strip_placement(arg.type_signature))
     return FederatedComposingStrategyValue(
-        await self._server_executor.create_struct(
-            [arg.internal_representation[n] for n in [0, 1]]),
-        computation_types.at_server(
-            computation_types.StructType(
-                [arg.type_signature[0].member, arg.type_signature[1].member])))
+        await self._zip_struct_into_server(arg.internal_representation,
+                                           arg.type_signature), result_type)

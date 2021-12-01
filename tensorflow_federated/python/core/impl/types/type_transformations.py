@@ -21,6 +21,18 @@ from tensorflow_federated.python.core.impl.types import computation_types
 T = TypeVar('T')
 
 
+def strip_placement(
+    type_signature: computation_types.Type) -> computation_types.Type:
+  """Removes instances of `FederatedType` from `type_signature`."""
+
+  def _remove_placement(type_signature):
+    if type_signature.is_federated():
+      return type_signature.member, True
+    return type_signature, False
+
+  return transform_type_postorder(type_signature, _remove_placement)[0]
+
+
 # TODO(b/134525440): Unifying the recursive methods in type_analysis.
 def transform_type_postorder(
     type_signature: computation_types.Type,
