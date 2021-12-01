@@ -287,12 +287,12 @@ def run_simulation(
                                            metrics_managers, validation_fn)
   on_round_end = _create_on_round_end_fn(file_checkpoint_manager,
                                          metrics_managers, validation_fn)
-  return run_simulation_with_callbacks(process, client_selection_fn,
-                                       total_rounds, on_loop_start,
-                                       on_round_end)
+  return _run_simulation_with_callbacks(process, client_selection_fn,
+                                        total_rounds, on_loop_start,
+                                        on_round_end)
 
 
-def run_simulation_with_callbacks(
+def _run_simulation_with_callbacks(
     process: iterative_process.IterativeProcess,
     client_selection_fn: Callable[[int], Any],
     total_rounds: int,
