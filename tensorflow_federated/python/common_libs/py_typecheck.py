@@ -36,9 +36,9 @@ def check_type(target, type_spec, label=None):
     TypeError: when the target is not of one of the types in `type_spec`.
   """
   if not isinstance(target, type_spec):
-    raise TypeError('Expected {}{}, found {}.'.format(
+    raise TypeError('Expected {}{}, found {}: {}.'.format(
         '{} to be of type '.format(label) if label is not None else '',
-        type_string(type_spec), type_string(type(target))))
+        type_string(type_spec), type_string(type(target)), target))
   return target
 
 

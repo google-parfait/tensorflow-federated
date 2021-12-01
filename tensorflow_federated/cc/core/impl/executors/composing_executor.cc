@@ -18,6 +18,7 @@ limitations under the License
 #include <cstddef>
 #include <functional>
 #include <future>  // NOLINT
+#include <memory>
 #include <string>
 #include <tuple>
 
@@ -367,49 +368,47 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ValueFuture> CreateCall(
       ValueFuture function, absl::optional<ValueFuture> argument) final {
-    return ThreadRun(
-        [function = std::move(function), argument = std::move(argument), this,
-         this_keepalive =
-             shared_from_this()]() -> absl::StatusOr<ExecutorValue> {
-          ExecutorValue fn = TFF_TRY(Wait(function));
-          absl::optional<ExecutorValue> arg = absl::nullopt;
-          if (argument.has_value()) {
-            arg = TFF_TRY(Wait(argument.value()));
-          }
+    return ThreadRun([function = std::move(function),
+                      argument = std::move(argument), this,
+                      this_keepalive = shared_from_this()]()
+                         -> absl::StatusOr<ExecutorValue> {
+      ExecutorValue fn = TFF_TRY(Wait(function));
+      absl::optional<ExecutorValue> arg = absl::nullopt;
+      if (argument.has_value()) {
+        arg = TFF_TRY(Wait(argument.value()));
+      }
 
-          switch (fn.type()) {
-            case ExecutorValue::ValueType::CLIENTS:
-            case ExecutorValue::ValueType::SERVER: {
-              return absl::InvalidArgumentError(
-                  "Cannot call a federated value.");
-            }
-            case ExecutorValue::ValueType::STRUCTURE: {
-              return absl::InvalidArgumentError("Cannot call a structure.");
-            }
-            case ExecutorValue::ValueType::UNPLACED: {
-              // We need to materialize functions into the server
-              // executor in order to execute them.
-              auto fn_id = TFF_TRY(fn.unplaced()->Embedded(*server_));
-              absl::optional<std::shared_ptr<OwnedValueId>> arg_owner;
-              absl::optional<ValueId> arg_id = absl::nullopt;
-              if (arg.has_value()) {
-                arg_owner = TFF_TRY(arg.value().Embed(*server_));
-                arg_id = arg_owner.value()->ref();
-              }
-              return ExecutorValue::CreateUnplaced(
-                  std::make_shared<UnplacedInner>(
-                      TFF_TRY(server_->CreateCall(fn_id->ref(), arg_id))));
-            }
-            case ExecutorValue::ValueType::INTRINSIC: {
-              if (!arg.has_value()) {
-                return absl::InvalidArgumentError(
-                    "no argument provided for federated intrinsic");
-              }
-              return this->CallFederatedIntrinsic_(fn.intrinsic(),
-                                                   std::move(arg.value()));
-            }
+      switch (fn.type()) {
+        case ExecutorValue::ValueType::CLIENTS:
+        case ExecutorValue::ValueType::SERVER: {
+          return absl::InvalidArgumentError("Cannot call a federated value.");
+        }
+        case ExecutorValue::ValueType::STRUCTURE: {
+          return absl::InvalidArgumentError("Cannot call a structure.");
+        }
+        case ExecutorValue::ValueType::UNPLACED: {
+          // We need to materialize functions into the server
+          // executor in order to execute them.
+          auto fn_id = TFF_TRY(fn.unplaced()->Embedded(*server_));
+          absl::optional<std::shared_ptr<OwnedValueId>> arg_owner;
+          absl::optional<ValueId> arg_id = absl::nullopt;
+          if (arg.has_value()) {
+            arg_owner = TFF_TRY(arg.value().Embed(*server_));
+            arg_id = arg_owner.value()->ref();
           }
-        });
+          return ExecutorValue::CreateUnplaced(std::make_shared<UnplacedInner>(
+              TFF_TRY(server_->CreateCall(fn_id->ref(), arg_id))));
+        }
+        case ExecutorValue::ValueType::INTRINSIC: {
+          if (!arg.has_value()) {
+            return absl::InvalidArgumentError(
+                "no argument provided for federated intrinsic");
+          }
+          return this->CallFederatedIntrinsic_(fn.intrinsic(),
+                                               std::move(arg.value()));
+        }
+      }
+    });
   }
 
   absl::StatusOr<ValueFuture> CreateStruct(
@@ -706,43 +705,90 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     }
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicZip_(ExecutorValue&& arg) const {
-    TFF_TRY(arg.CheckLenForUseAsArgument("federated_zip", 2));
-    const auto& first = arg.structure()->at(0);
-    const auto& second = arg.structure()->at(1);
-    if (first.type() != second.type()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Attempted to zip values with different placements: ", first.type(),
-          " and ", second.type()));
-    }
-    if (first.type() == ExecutorValue::ValueType::CLIENTS) {
-      v0::Value zip_at_clients;
-      zip_at_clients.mutable_computation()
-          ->mutable_intrinsic()
-          ->mutable_uri()
-          ->assign(kFederatedZipAtClientsUri.data(),
-                   kFederatedZipAtClientsUri.size());
-      auto pairs = NewClients();
-      for (uint32_t i = 0; i < children_.size(); i++) {
-        auto child = children_[i].executor();
-        auto zip = TFF_TRY(child->CreateValue(zip_at_clients));
-        auto arg = TFF_TRY(child->CreateStruct({
-            first.clients()->at(i)->ref(),
-            second.clients()->at(i)->ref(),
-        }));
-        auto res = TFF_TRY(child->CreateCall(zip, arg));
-        pairs->emplace_back(ShareValueId(std::move(res)));
+  // Pushes `arg` containing structs of client-placed values into
+  // the `children_[i]` executor.
+  absl::StatusOr<std::shared_ptr<OwnedValueId>> ZipStructIntoChild_(
+      const ExecutorValue& arg, uint32_t child_index) const {
+    switch (arg.type()) {
+      case ExecutorValue::ValueType::CLIENTS: {
+        return arg.clients()->at(child_index);
       }
-      return ExecutorValue::CreateClientsPlaced(std::move(pairs));
-    } else if (first.type() == ExecutorValue::ValueType::SERVER) {
-      ValueId first_id = first.server()->ref();
-      ValueId second_id = second.server()->ref();
-      auto pair = TFF_TRY(server_->CreateStruct({first_id, second_id}));
-      return ExecutorValue::CreateServerPlaced(ShareValueId(std::move(pair)));
-    } else {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Attempted to zip non-federated value of type ", first.type()));
+      case ExecutorValue::ValueType::STRUCTURE: {
+        std::vector<std::shared_ptr<OwnedValueId>> owned_element_ids;
+        owned_element_ids.reserve(arg.structure()->size());
+        for (const auto& element : *arg.structure()) {
+          owned_element_ids.push_back(
+              TFF_TRY(ZipStructIntoChild_(element, child_index)));
+        }
+        std::vector<ValueId> element_ids;
+        element_ids.reserve(arg.structure()->size());
+        for (const auto& owned_id : owned_element_ids) {
+          element_ids.push_back(owned_id->ref());
+        }
+        const std::shared_ptr<Executor>& child =
+            children_[child_index].executor();
+        return ShareValueId(TFF_TRY(child->CreateStruct(element_ids)));
+      }
+      default: {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Cannot `", kFederatedZipAtClientsUri,
+            "` a structure containing a value of kind ", arg.type()));
+      }
     }
+  }
+
+  absl::StatusOr<ExecutorValue> CallIntrinsicZipAtClients_(
+      ExecutorValue&& arg) const {
+    v0::Value zip_at_clients;
+    zip_at_clients.mutable_computation()
+        ->mutable_intrinsic()
+        ->mutable_uri()
+        ->assign(kFederatedZipAtClientsUri.data(),
+                 kFederatedZipAtClientsUri.size());
+    auto pairs = NewClients();
+    for (uint32_t i = 0; i < children_.size(); i++) {
+      auto child = children_[i].executor();
+      auto zip = TFF_TRY(child->CreateValue(zip_at_clients));
+      auto arg_struct_in_child = TFF_TRY(ZipStructIntoChild_(arg, i));
+      pairs->push_back(ShareValueId(
+          TFF_TRY(child->CreateCall(zip, arg_struct_in_child->ref()))));
+    }
+    return ExecutorValue::CreateClientsPlaced(std::move(pairs));
+  }
+
+  // Pushes `arg` containing structs of server-placed values into the `server_`
+  // executor.
+  absl::StatusOr<std::shared_ptr<OwnedValueId>> ZipStructIntoServer_(
+      const ExecutorValue& arg) const {
+    switch (arg.type()) {
+      case ExecutorValue::ValueType::SERVER: {
+        return arg.server();
+      }
+      case ExecutorValue::ValueType::STRUCTURE: {
+        std::vector<std::shared_ptr<OwnedValueId>> owned_element_ids;
+        owned_element_ids.reserve(arg.structure()->size());
+        for (const auto& element : *arg.structure()) {
+          owned_element_ids.push_back(TFF_TRY(ZipStructIntoServer_(element)));
+        }
+        std::vector<ValueId> element_ids;
+        element_ids.reserve(arg.structure()->size());
+        for (const auto& owned_id : owned_element_ids) {
+          element_ids.push_back(owned_id->ref());
+        }
+        return ShareValueId(TFF_TRY(server_->CreateStruct(element_ids)));
+      }
+      default: {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Cannot `", kFederatedZipAtServerUri,
+            "` a structure containing a value of kind ", arg.type()));
+      }
+    }
+  }
+
+  absl::StatusOr<ExecutorValue> CallIntrinsicZipAtServer_(
+      ExecutorValue&& arg) const {
+    return ExecutorValue::CreateServerPlaced(
+        TFF_TRY(ZipStructIntoServer_(arg)));
   }
 
   absl::StatusOr<ExecutorValue> CallFederatedIntrinsic_(
@@ -769,8 +815,11 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       case FederatedIntrinsic::MAP: {
         return CallIntrinsicMap_(std::move(arg));
       }
-      case FederatedIntrinsic::ZIP: {
-        return CallIntrinsicZip_(std::move(arg));
+      case FederatedIntrinsic::ZIP_AT_CLIENTS: {
+        return CallIntrinsicZipAtClients_(std::move(arg));
+      }
+      case FederatedIntrinsic::ZIP_AT_SERVER: {
+        return CallIntrinsicZipAtServer_(std::move(arg));
       }
     }
   }

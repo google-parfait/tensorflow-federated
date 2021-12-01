@@ -288,6 +288,66 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     }
   }
 
+  // Embeds `arg` containing structures of server-placed values into the
+  // `child_` executor.
+  absl::StatusOr<std::shared_ptr<OwnedValueId>> ZipStructIntoServer(
+      const ExecutorValue& arg) {
+    switch (arg.type()) {
+      case ExecutorValue::ValueType::SERVER: {
+        return arg.server();
+      }
+      case ExecutorValue::ValueType::STRUCTURE: {
+        std::vector<std::shared_ptr<OwnedValueId>> owned_element_ids;
+        owned_element_ids.reserve(arg.structure()->size());
+        for (const auto& element : *arg.structure()) {
+          owned_element_ids.push_back(TFF_TRY(ZipStructIntoServer(element)));
+        }
+        std::vector<ValueId> element_ids;
+        element_ids.reserve(arg.structure()->size());
+        for (const auto& owned_id : owned_element_ids) {
+          element_ids.push_back(owned_id->ref());
+        }
+        return ShareValueId(TFF_TRY(child_->CreateStruct(element_ids)));
+      }
+      default: {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Cannot `", kFederatedZipAtServerUri,
+            "` a structure containing a value of kind ", arg.type()));
+      }
+    }
+  }
+
+  // Embeds `arg` containing structures of client-placed values into the
+  // `child_` executor. The resulting structure on `child_` will contain all
+  // values for the client corresponding to `client_index`.
+  absl::StatusOr<std::shared_ptr<OwnedValueId>> ZipStructIntoClient(
+      const ExecutorValue& arg, uint32_t client_index) {
+    switch (arg.type()) {
+      case ExecutorValue::ValueType::CLIENTS: {
+        return arg.clients()->at(client_index);
+      }
+      case ExecutorValue::ValueType::STRUCTURE: {
+        std::vector<std::shared_ptr<OwnedValueId>> owned_element_ids;
+        owned_element_ids.reserve(arg.structure()->size());
+        for (const auto& element : *arg.structure()) {
+          owned_element_ids.push_back(
+              TFF_TRY(ZipStructIntoClient(element, client_index)));
+        }
+        std::vector<ValueId> element_ids;
+        element_ids.reserve(arg.structure()->size());
+        for (const auto& owned_id : owned_element_ids) {
+          element_ids.push_back(owned_id->ref());
+        }
+        return ShareValueId(TFF_TRY(child_->CreateStruct(element_ids)));
+      }
+      default: {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Cannot `", kFederatedZipAtClientsUri,
+            "` a structure containing a value of kind ", arg.type()));
+      }
+    }
+  }
+
   absl::StatusOr<ExecutorValue> CallFederatedIntrinsic(
       FederatedIntrinsic function, ExecutorValue arg) {
     switch (function) {
@@ -370,34 +430,16 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
               "Attempted to map non-federated value.");
         }
       }
-      case FederatedIntrinsic::ZIP: {
-        TFF_TRY(CheckLenForUseAsArgument(arg, "federated_zip", 2));
-        const auto& first = arg.structure()->at(0);
-        const auto& second = arg.structure()->at(1);
-        if (first.type() != second.type()) {
-          return absl::InvalidArgumentError(absl::StrCat(
-              "Attempted to zip values with different placements: ",
-              first.type(), " and ", second.type()));
+      case FederatedIntrinsic::ZIP_AT_CLIENTS: {
+        Clients results = NewClients();
+        for (uint32_t i = 0; i < num_clients_; i++) {
+          results->push_back(TFF_TRY(ZipStructIntoClient(arg, i)));
         }
-        if (first.type() == ExecutorValue::ValueType::CLIENTS) {
-          Clients pairs = NewClients();
-          for (int i = 0; i < num_clients_; i++) {
-            ValueId first_id = first.clients()->at(i)->ref();
-            ValueId second_id = second.clients()->at(i)->ref();
-            auto pair = TFF_TRY(child_->CreateStruct({first_id, second_id}));
-            pairs->emplace_back(ShareValueId(std::move(pair)));
-          }
-          return ExecutorValue::CreateClientsPlaced(std::move(pairs));
-        } else if (first.type() == ExecutorValue::ValueType::SERVER) {
-          ValueId first_id = first.server()->ref();
-          ValueId second_id = second.server()->ref();
-          auto pair = TFF_TRY(child_->CreateStruct({first_id, second_id}));
-          return ExecutorValue::CreateServerPlaced(
-              ShareValueId(std::move(pair)));
-        } else {
-          return absl::InvalidArgumentError(
-              "Attempted to zip non-federated value.");
-        }
+        return ExecutorValue::CreateClientsPlaced(std::move(results));
+      }
+      case FederatedIntrinsic::ZIP_AT_SERVER: {
+        return ExecutorValue::CreateServerPlaced(
+            TFF_TRY(ZipStructIntoServer(arg)));
       }
     }
   }

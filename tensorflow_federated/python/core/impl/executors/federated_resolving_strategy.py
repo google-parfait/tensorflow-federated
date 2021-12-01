@@ -59,6 +59,8 @@ from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_transformations
 
 
 class FederatedResolvingStrategyValue(executor_value_base.ExecutorValue):
@@ -338,30 +340,45 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
         computation_types.FederatedType(
             fn_type.result, val_type.placement, all_equal=all_equal))
 
+  async def _zip_struct_into_child(self, child, child_index, value, value_type):
+    """Embeds `value` elements at `child_index` into `child`."""
+    if value_type.is_federated():
+      py_typecheck.check_type(value, list)
+      return value[child_index]
+    value_type.check_struct()
+    # Note that structs whose members are all federated values may appear
+    # embedded iff the struct *has no non-struct members*, e.g.:
+    # <>; <<>>; <<>, <>>
+    if isinstance(value, executor_value_base.ExecutorValue):
+      if not type_analysis.contains_only(
+          value_type, lambda element_type: element_type.is_struct()):
+        raise ValueError(
+            f'Expected zippable value of type `structure.Struct`, but found '
+            f'value of type {value} (TFF type {value_type})')
+      return value
+    py_typecheck.check_type(value, structure.Struct)
+    new_elements = await asyncio.gather(*[
+        self._zip_struct_into_child(child, child_index, element, element_type)
+        for element, element_type in zip(value, value_type)
+    ])
+    named_elements = structure.Struct(
+        list(zip(structure.name_list_with_nones(value), new_elements)))
+    return await child.create_struct(named_elements)
+
   @tracing.trace
   async def _zip(self, arg, placement, all_equal):
-    self._check_arg_is_structure(arg)
     py_typecheck.check_type(placement, placements.PlacementLiteral)
     self._check_strategy_compatible_with_placement(placement)
     children = self._target_executors[placement]
-    cardinality = len(children)
-    elements = structure.to_elements(arg.internal_representation)
-    for _, v in elements:
-      py_typecheck.check_type(v, list)
-      if len(v) != cardinality:
-        raise RuntimeError('Expected {} items, found {}.'.format(
-            cardinality, len(v)))
-    new_vals = []
-    for idx in range(cardinality):
-      new_vals.append(structure.Struct([(k, v[idx]) for k, v in elements]))
-    new_vals = await asyncio.gather(
-        *[c.create_struct(x) for c, x in zip(children, new_vals)])
+    results = await asyncio.gather(*[
+        self._zip_struct_into_child(children[i], i, arg.internal_representation,
+                                    arg.type_signature)
+        for i in range(len(children))
+    ])
     return FederatedResolvingStrategyValue(
-        new_vals,
+        results,
         computation_types.FederatedType(
-            computation_types.StructType(
-                ((k, v.member) if k else v.member
-                 for k, v in structure.iter_elements(arg.type_signature))),
+            type_transformations.strip_placement(arg.type_signature),
             placement,
             all_equal=all_equal))
 

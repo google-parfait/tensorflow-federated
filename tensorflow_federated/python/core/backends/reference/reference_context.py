@@ -40,6 +40,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -1190,36 +1191,74 @@ class ReferenceContext(context_base.Context):
   def _federated_zip_at_server(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
-    for idx in range(len(arg.type_signature)):
-      type_analysis.check_federated_type(arg.type_signature[idx], None,
-                                         placements.SERVER, True)
+    py_typecheck.check_type(arg.value, structure.Struct)
+
+    def server_placed_if_federated(element_type):
+      if element_type.is_federated():
+        return element_type.placement.is_server()
+      return True
+
+    if not type_analysis.contains_only(arg.type_signature,
+                                       server_placed_if_federated):
+      raise TypeError(
+          'Attempted to zip_at_server with non-server-placed federated type:\n'
+          f'{arg.type_signature}')
     return ComputedValue(
         arg.value,
         computation_types.at_server(
-            computation_types.StructType([
-                (k, v.member) if k else v.member
-                for k, v in structure.iter_elements(arg.type_signature)
-            ])))
+            type_transformations.strip_placement(arg.type_signature)))
 
   def _federated_zip_at_clients(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     py_typecheck.check_type(arg.value, structure.Struct)
-    zip_args = []
-    zip_arg_types = []
-    for idx in range(len(arg.type_signature)):
-      val = arg.value[idx]
-      py_typecheck.check_type(val, list)
-      zip_args.append(val)
-      val_type = arg.type_signature[idx]
-      type_analysis.check_federated_type(val_type, None, placements.CLIENTS,
-                                         False)
-      zip_arg_types.append(val_type.member)
-    zipped_val = [structure.from_container(x) for x in zip(*zip_args)]
-    return ComputedValue(
-        zipped_val,
-        computation_types.at_clients(
-            computation_types.StructType(zip_arg_types)))
+
+    def get_num_clients(value, value_type) -> Optional[int]:
+      if (value_type.is_federated() and value_type.placement.is_clients() and
+          not value_type.all_equal):
+        py_typecheck.check_type(value, list)
+        return len(value)
+      value_type.check_struct()
+      py_typecheck.check_type(value, structure.Struct)
+      for element, element_type in zip(value, value_type):
+        result_opt = get_num_clients(element, element_type)
+        if result_opt:
+          return result_opt
+      return None
+
+    num_clients = get_num_clients(arg.value, arg.type_signature)
+    if not num_clients:
+      raise TypeError('Found no clients-placed values in zip_at_clients arg of '
+                      f'type:\n{arg.type_signature}')
+
+    def value_for_client(value, value_type, client_index):
+      """Recursively constructs the zipped value for one client."""
+      if value_type.is_federated():
+        if not value_type.placement.is_clients():
+          raise TypeError(
+              'Attempted to zip_at_clients with non-clients-placed federated '
+              f'type:\n{arg.type_signature}')
+        if not isinstance(value, list):
+          raise ValueError(
+              f'value: {arg.value}\ntype: {arg.type_signature}\nall_equal: {value_type.all_equal}'
+          )
+        py_typecheck.check_type(value, list)
+        return value[client_index]
+      value_type.check_struct()
+      py_typecheck.check_type(value, structure.Struct)
+      result_elements = []
+      for ((key, element),
+           element_type) in zip(structure.iter_elements(value), value_type):
+        result_elements.append(
+            (key, value_for_client(element, element_type, client_index)))
+      return structure.Struct(result_elements)
+
+    result_type = computation_types.at_clients(
+        type_transformations.strip_placement(arg.type_signature))
+    return ComputedValue([
+        value_for_client(arg.value, arg.type_signature, i)
+        for i in range(num_clients)
+    ], result_type)
 
   def _federated_aggregate(self, arg, context):
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)

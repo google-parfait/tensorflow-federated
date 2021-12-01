@@ -16,6 +16,7 @@ import asyncio
 import collections
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -76,7 +77,7 @@ def _invoke(ex, comp, arg=None):
   return loop.run_until_complete(v3.compute())
 
 
-class FederatedComposingStrategyTest(absltest.TestCase):
+class FederatedComposingStrategyTest(parameterized.TestCase):
 
   def test_recovers_from_raising(self):
 
@@ -236,14 +237,14 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
     executor, num_clients = _create_test_executor()
     result = _invoke(executor, comp)
-    excepted_result = structure.Struct([
+    expected_result = structure.Struct([
         ('a',
          structure.Struct([
              (None, 10 * num_clients + 5),
              (None, 2.0 * num_clients + 3.0),
          ])),
     ])
-    self.assertEqual(result, excepted_result)
+    self.assertEqual(result, expected_result)
 
   def test_federated_broadcast(self):
 
@@ -348,8 +349,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
                      '( -> <int32,int32>@SERVER)')
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
-    excepted_result = structure.Struct([(None, 10), (None, 20)])
-    self.assertEqual(result, excepted_result)
+    expected_result = structure.Struct([(None, 10), (None, 20)])
+    self.assertEqual(result, expected_result)
 
   def test_federated_zip_at_server_named(self):
 
@@ -365,8 +366,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
                      '( -> <A=int32,B=int32>@SERVER)')
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
-    excepted_result = structure.Struct([('A', 10), ('B', 20)])
-    self.assertEqual(result, excepted_result)
+    expected_result = structure.Struct([('A', 10), ('B', 20)])
+    self.assertEqual(result, expected_result)
 
   def test_federated_zip_at_clients_unnamed(self):
 
@@ -402,6 +403,26 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     for value in result:
       excepted_value = structure.Struct([('A', 10), ('B', 20)])
       self.assertEqual(value, excepted_value)
+
+  @parameterized.named_parameters([
+      ('at_clients', placements.CLIENTS),
+      ('at_server', placements.SERVER),
+  ])
+  def test_federated_zip_nested(self, placement):
+
+    @computations.federated_computation()
+    def comp():
+      server_val = intrinsics.federated_value(10, placement)
+      return intrinsics.federated_zip((server_val, (server_val, server_val)))
+
+    executor, num_clients = _create_test_executor()
+    result = _invoke(executor, comp)
+    if placement.is_clients():
+      self.assertIsInstance(result, list)
+      self.assertLen(result, num_clients)
+      result = result[0]
+    expected_result = structure.from_container((10, (10, 10)), recursive=True)
+    self.assertEqual(result, expected_result)
 
   def test_federated_sum(self):
 
