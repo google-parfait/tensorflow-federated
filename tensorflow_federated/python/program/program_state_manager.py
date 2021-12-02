@@ -25,6 +25,10 @@ class ProgramStateManagerStateNotFoundError(Exception):
   pass
 
 
+class ProgramStateManagerStructureError(Exception):
+  pass
+
+
 class ProgramStateManager(metaclass=abc.ABCMeta):
   """An interface for saving and loading program state in a federated program.
 
@@ -43,11 +47,14 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def load(self, version: int) -> Any:
+  def load(self, version: int, structure: Any) -> Any:
     """Returns the saved program state for the given `version`.
 
     Args:
       version: A integer representing the version of a saved program state.
+      structure: The nested structure of the saved program state for the given
+        `version` used to support serialization and deserailization of
+        user-defined classes in the structure.
 
     Raises:
       ProgramStateManagerStateNotFoundError: If there is no program state for
@@ -55,8 +62,13 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     """
     raise NotImplementedError
 
-  def load_latest(self) -> Tuple[Any, int]:
+  def load_latest(self, structure: Any) -> Tuple[Any, int]:
     """Returns the latest saved program state and version or (`None`, 0).
+
+    Args:
+      structure: The nested structure of the saved program state for the given
+        `version` used to support serialization and deserailization of
+        user-defined classes in the structure.
 
     Returns:
       A tuple of the latest saved (program state, version) or (`None`, 0) if
@@ -67,7 +79,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
       return None, 0
     latest_version = max(versions)
     try:
-      return self.load(latest_version), latest_version
+      return self.load(latest_version, structure), latest_version
     except ProgramStateManagerStateNotFoundError:
       return None, 0
 

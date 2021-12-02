@@ -34,12 +34,6 @@ from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import value_reference
 
 
-# TODO(b/199737690): Update `FileProgramStateManager` to not require a structure
-# to load program state.
-class FileProgramStateManagerStructureError(Exception):
-  pass
-
-
 class FileProgramStateManager(program_state_manager.ProgramStateManager):
   """A `tff.program.ProgramStateManager` that is backed by a file system.
 
@@ -99,20 +93,6 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     self._prefix = prefix
     self._keep_total = keep_total
     self._keep_first = keep_first
-    self._structure = None
-
-  # TODO(b/199737690): Update `FileProgramStateManager` to not require a
-  # structure to load program state.
-  def set_structure(self, structure: Any):
-    """Configures a structure to use when loading program state.
-
-    The structure must be set before calling `load`.
-
-    Args:
-      structure: A nested structure which `tf.convert_to_tensor` supports to use
-        as a template when calling `load`.
-    """
-    self._structure = structure
 
   def versions(self) -> Optional[List[int]]:
     """Returns a list of saved versions or `None`.
@@ -169,16 +149,20 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     basename = f'{self._prefix}{version}'
     return os.path.join(self._root_dir, basename)
 
-  def load(self, version: int) -> Any:
+  def load(self, version: int, structure: Any) -> Any:
     """Returns the program state for the given `version`.
 
     Args:
       version: A integer representing the version of a saved program state.
+      structure: The nested structure of the saved program state for the given
+        `version` used to support serialization and deserailization of
+        user-defined classes in the structure.
 
     Raises:
       ProgramStateManagerStateNotFoundError: If there is no program state for
         the given `version`.
-      FileProgramStateManagerStructureError: If `structure` has not been set.
+      ProgramStateManagerStructureError: If `structure` does not match the value
+        loaded for the given `version`.
     """
     py_typecheck.check_type(version, int)
     path = self._get_path_for_version(version)
@@ -186,15 +170,15 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       raise program_state_manager.ProgramStateManagerStateNotFoundError(
           f'No program state found for version: {version}')
     module = tf.saved_model.load(path)
-    flattened_value = module()
+    flattened_state = module()
     try:
-      program_state = tree.unflatten_as(self._structure, flattened_value)
+      program_state = tree.unflatten_as(structure, flattened_state)
     except ValueError as e:
-      raise FileProgramStateManagerStructureError(
-          f'The structure of type {type(self._structure)}:\n'
-          f'{self._structure}\n'
-          f'does not match the value of type {type(flattened_value)}:\n'
-          f'{flattened_value}\n') from e
+      raise program_state_manager.ProgramStateManagerStructureError(
+          f'The structure of type {type(structure)}:\n'
+          f'{structure}\n'
+          f'does not match the value of type {type(flattened_state)}:\n'
+          f'{flattened_state}\n') from e
     logging.info('Program state loaded: %s', path)
     return program_state
 
@@ -237,8 +221,8 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     if tf.io.gfile.exists(path):
       raise program_state_manager.ProgramStateManagerStateAlreadyExistsError(
           f'Program state already exists for version: {version}')
-    materialized_value = value_reference.materialize_value(program_state)
-    flattened_value = tree.flatten(materialized_value)
-    module = file_utils.ValueModule(flattened_value)
+    materialized_state = value_reference.materialize_value(program_state)
+    flattened_state = tree.flatten(materialized_state)
+    module = file_utils.ValueModule(flattened_state)
     file_utils.write_saved_model(module, path)
     self._remove_old_program_state()

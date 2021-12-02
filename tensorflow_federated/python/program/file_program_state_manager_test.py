@@ -318,10 +318,10 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase, tf.test.TestCase):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
-    program_state_mngr.set_structure(program_state)
     program_state_mngr.save(program_state, 1)
+    structure = program_state
 
-    actual_program_state = program_state_mngr.load(1)
+    actual_program_state = program_state_mngr.load(1, structure)
 
     self.assertEqual(type(actual_program_state), type(expected_program_state))
     self.assertAllEqual(actual_program_state, expected_program_state)
@@ -335,11 +335,11 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase, tf.test.TestCase):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
-    program_state_mngr.set_structure('state')
     for i in range(3):
       program_state_mngr.save(f'state_{i}', i)
+    structure = 'state'
 
-    actual_program_state = program_state_mngr.load(version)
+    actual_program_state = program_state_mngr.load(version, structure)
 
     expected_program_state = f'state_{version}'
     self.assertEqual(actual_program_state, expected_program_state)
@@ -348,33 +348,32 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase, tf.test.TestCase):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
-    program_state_mngr.set_structure('state')
 
     with self.assertRaises(
         program_state_manager.ProgramStateManagerStateNotFoundError):
-      _ = program_state_mngr.load(0)
+      _ = program_state_mngr.load(0, None)
 
   def test_raises_version_not_found_error_with_unknown_version(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
-    program_state_mngr.set_structure('state')
     program_state_mngr.save('state_1', 1)
+    structure = 'state'
 
     with self.assertRaises(
         program_state_manager.ProgramStateManagerStateNotFoundError):
-      program_state_mngr.load(10)
+      program_state_mngr.load(10, structure)
 
   def test_raises_structure_error(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
-    program_state_mngr.set_structure([])
     program_state_mngr.save('state_1', 1)
+    structure = []
 
     with self.assertRaises(
-        file_program_state_manager.FileProgramStateManagerStructureError):
-      program_state_mngr.load(1)
+        program_state_manager.ProgramStateManagerStructureError):
+      program_state_mngr.load(1, structure)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -387,7 +386,7 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase, tf.test.TestCase):
         root_dir=temp_dir, prefix='a_')
 
     with self.assertRaises(TypeError):
-      program_state_mngr.load(version)
+      program_state_mngr.load(version, None)
 
 
 class FileProgramStateManagerRemoveTest(parameterized.TestCase):

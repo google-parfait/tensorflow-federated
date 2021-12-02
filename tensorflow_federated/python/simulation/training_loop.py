@@ -16,14 +16,12 @@
 import collections
 import pprint
 import time
-import typing
 from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Tuple
 
 from absl import logging
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
-from tensorflow_federated.python.program import file_program_state_manager as file_program_state_manager_lib
 from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
 from tensorflow_federated.python.program import release_manager as release_manager_lib
 from tensorflow_federated.python.simulation import checkpoint_manager
@@ -536,20 +534,9 @@ def run_training_process(
     The `state` of the training process after training.
   """
   logging.info('Running training process')
-
-  # TODO(b/199737690): Update `FileProgramStateManager` to not require a
-  # structure to load program state; once this is fixed, we can move the
-  # initialize invocation down so it's only called if required.
-  initial_state = training_process.initialize()
-  if isinstance(program_state_manager,
-                file_program_state_manager_lib.FileProgramStateManager):
-    file_program_state_manager = typing.cast(
-        file_program_state_manager_lib.FileProgramStateManager,
-        program_state_manager)
-    file_program_state_manager.set_structure(initial_state)
-
   if program_state_manager is not None:
-    program_state, version = program_state_manager.load_latest()
+    structure = training_process.initialize()
+    program_state, version = program_state_manager.load_latest(structure)
   else:
     program_state = None
   if program_state is not None:
@@ -558,7 +545,7 @@ def run_training_process(
     start_round = version
   else:
     logging.info('Initializing training process')
-    state = initial_state
+    state = training_process.initialize()
     start_round = 1
 
     if evaluation_fn is not None and evaluation_selection_fn is not None:
