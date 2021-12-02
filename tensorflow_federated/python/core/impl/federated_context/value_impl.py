@@ -16,7 +16,7 @@
 import abc
 import collections
 import itertools
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import attr
 import tensorflow as tf
@@ -206,7 +206,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
       arg = function_utils.pack_args(self.type_signature.parameter, args,
                                      kwargs,
                                      context_stack_impl.context_stack.current)
-      arg = to_value(arg, None, self).comp
+      arg = to_value(arg, None).comp
     else:
       arg = None
     call = building_blocks.Call(self._comp, arg)
@@ -296,9 +296,9 @@ def _dictlike_items_to_value(items, type_spec, container_type) -> Value:
 
 def to_value(
     arg: Any,
-    type_spec,
-    parameter_type_hint=None,
+    type_spec: Optional[computation_types.Type],
     *,
+    parameter_type_hint=None,
     zip_if_needed: bool = False,
 ) -> Value:
   """Converts the argument into an instance of the abstract class `tff.Value`.
