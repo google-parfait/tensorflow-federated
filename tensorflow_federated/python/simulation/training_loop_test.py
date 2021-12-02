@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import os
 from unittest import mock
 
 from absl.testing import absltest
@@ -20,9 +21,68 @@ from absl.testing import parameterized
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.program import file_program_state_manager as file_program_state_manager_lib
+from tensorflow_federated.python.program import file_release_manager as file_release_manager_lib
+from tensorflow_federated.python.program import logging_release_manager as logging_release_manager_lib
+from tensorflow_federated.python.program import tensorboard_release_manager as tensorboard_release_manager_lib
 from tensorflow_federated.python.simulation import checkpoint_manager
 from tensorflow_federated.python.simulation import metrics_manager as metrics_manager_lib
 from tensorflow_federated.python.simulation import training_loop
+
+
+class CreateManagersTest(parameterized.TestCase):
+
+  def test_create_managers_returns_managers(self):
+    root_dir = self.create_tempdir()
+
+    file_program_state_manager, release_managers = training_loop.create_managers(
+        root_dir=root_dir, experiment_name='test')
+
+    self.assertIsInstance(
+        file_program_state_manager,
+        file_program_state_manager_lib.FileProgramStateManager)
+    self.assertLen(release_managers, 3)
+    self.assertIsInstance(release_managers[0],
+                          logging_release_manager_lib.LoggingReleaseManager)
+    self.assertIsInstance(release_managers[1],
+                          file_release_manager_lib.CSVFileReleaseManager)
+    self.assertIsInstance(
+        release_managers[2],
+        tensorboard_release_manager_lib.TensorboardReleaseManager)
+
+  @mock.patch('tensorflow_federated.python.program.'
+              'tensorboard_release_manager.TensorboardReleaseManager')
+  @mock.patch('tensorflow_federated.python.program.'
+              'file_release_manager.CSVFileReleaseManager')
+  @mock.patch('tensorflow_federated.python.program.'
+              'logging_release_manager.LoggingReleaseManager')
+  @mock.patch('tensorflow_federated.python.program.'
+              'file_program_state_manager.FileProgramStateManager')
+  def test_create_managers_creates_managers(self,
+                                            mock_file_program_state_manager,
+                                            mock_logging_release_manager,
+                                            mock_csv_file_release_manager,
+                                            mock_tensorboard_release_manager):
+    root_dir = self.create_tempdir()
+    experiment_name = 'test'
+    csv_save_mode = file_release_manager_lib.CSVSaveMode.APPEND
+
+    training_loop.create_managers(
+        root_dir=root_dir,
+        experiment_name=experiment_name,
+        csv_save_mode=csv_save_mode)
+
+    program_state_dir = os.path.join(root_dir, 'program_state', experiment_name)
+    mock_file_program_state_manager.assert_called_with(
+        root_dir=program_state_dir)
+    mock_logging_release_manager.assert_called_once_with()
+    csv_file_path = os.path.join(root_dir, 'metrics', experiment_name,
+                                 'experiment.metrics.csv')
+    mock_csv_file_release_manager.assert_called_once_with(
+        file_path=csv_file_path, save_mode=csv_save_mode)
+    summary_dir = os.path.join(root_dir, 'logdir', experiment_name)
+    mock_tensorboard_release_manager.assert_called_once_with(
+        summary_dir=summary_dir)
 
 
 class LoadInitialCheckpointTest(parameterized.TestCase):

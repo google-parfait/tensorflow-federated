@@ -109,6 +109,9 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     py_typecheck.check_type(save_mode, CSVSaveMode)
     if not file_path:
       raise ValueError('Expected `file_path` to not be an empty string.')
+    file_dir = os.path.dirname(file_path)
+    if not tf.io.gfile.exists(file_dir):
+      tf.io.gfile.makedirs(file_dir)
     self._file_path = file_path
     self._save_mode = save_mode
 

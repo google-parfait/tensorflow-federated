@@ -14,6 +14,7 @@
 """Training loops for iterative process simulations."""
 
 import collections
+import os
 import pprint
 import time
 from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Tuple
@@ -22,8 +23,12 @@ from absl import logging
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.program import file_program_state_manager as file_program_state_manager_lib
+from tensorflow_federated.python.program import file_release_manager as file_release_manager_lib
+from tensorflow_federated.python.program import logging_release_manager as logging_release_manager_lib
 from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
 from tensorflow_federated.python.program import release_manager as release_manager_lib
+from tensorflow_federated.python.program import tensorboard_release_manager as tensorboard_release_manager_lib
 from tensorflow_federated.python.simulation import checkpoint_manager
 from tensorflow_federated.python.simulation import metrics_manager as metrics_manager_lib
 
@@ -40,6 +45,54 @@ ROUND_NUMBER_KEY = 'round_number'
 TRAINING_TIME_KEY = 'training_time_in_seconds'
 EVALUATION_METRICS_PREFIX = 'evaluation/'
 EVALUATION_TIME_KEY = 'evaluation_time_in_seconds'
+
+
+def create_managers(
+    root_dir: str,
+    experiment_name: str,
+    csv_save_mode: file_release_manager_lib
+    .CSVSaveMode = file_release_manager_lib.CSVSaveMode.APPEND
+) -> Tuple[file_program_state_manager_lib.FileProgramStateManager,
+           List[release_manager_lib.ReleaseManager]]:
+  """Creates a set of managers for running a simulation.
+
+  The managers that are created and how they are configured are indended to be
+  used with `tff.simulation.run_training_process` to run a simulation.
+
+  Args:
+    root_dir: A string representing the root output directory for the
+      simulation.
+    experiment_name: A unique identifier for the simulation, used to create
+      appropriate subdirectories in `root_dir`.
+    csv_save_mode: A `tff.program.CSVSaveMode` specifying the save mode for the
+      `tff.program.CSVFileReleaseManager`.
+
+  Returns:
+    A `tff.program.FileProgramStateManager`, and a list of
+    `tff.program.ReleaseManager`s consisting of a
+    `tff.program.LoggingReleaseManager`, a `tff.program.CSVFileReleaseManager`,
+    and a `tff.program.TensorboardReleaseManager`.
+  """
+  program_state_dir = os.path.join(root_dir, 'program_state', experiment_name)
+  program_state_manager = file_program_state_manager_lib.FileProgramStateManager(
+      root_dir=program_state_dir)
+
+  logging_release_manager = logging_release_manager_lib.LoggingReleaseManager()
+
+  csv_file_path = os.path.join(root_dir, 'metrics', experiment_name,
+                               'experiment.metrics.csv')
+  csv_file_release_manager = file_release_manager_lib.CSVFileReleaseManager(
+      file_path=csv_file_path, save_mode=csv_save_mode)
+
+  summary_dir = os.path.join(root_dir, 'logdir', experiment_name)
+  tensorboard_release_manager = tensorboard_release_manager_lib.TensorboardReleaseManager(
+      summary_dir=summary_dir)
+
+  return program_state_manager, [
+      logging_release_manager,
+      csv_file_release_manager,
+      tensorboard_release_manager,
+  ]
 
 
 def _load_initial_checkpoint(

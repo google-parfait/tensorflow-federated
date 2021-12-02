@@ -26,7 +26,7 @@ from tensorflow_federated.python.program import test_utils
 
 class TensorboardReleaseManagerInitTest(parameterized.TestCase):
 
-  def test_creates_root_dir(self):
+  def test_creates_summary_dir(self):
     temp_dir = self.create_tempdir()
     summary_dir = os.path.join(temp_dir, 'test')
     self.assertFalse(os.path.exists(summary_dir))

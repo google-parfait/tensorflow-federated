@@ -49,10 +49,20 @@ def _write_values_to_csv(file_path: os.PathLike, fieldnames: Sequence[str],
 
 class CSVFileReleaseManagerInitTest(parameterized.TestCase):
 
-  def test_creates_root_dir(self):
+  def test_creates_file_path(self):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     self.assertFalse(os.path.exists(temp_file))
+
+    file_release_manager.CSVFileReleaseManager(file_path=temp_file)
+
+    self.assertTrue(os.path.exists(temp_file))
+
+  def test_creates_file_dir(self):
+    temp_dir = self.create_tempdir()
+    shutil.rmtree(temp_dir)
+    self.assertFalse(os.path.exists(temp_dir))
+    temp_file = os.path.join(temp_dir, 'a')
 
     file_release_manager.CSVFileReleaseManager(file_path=temp_file)
 
