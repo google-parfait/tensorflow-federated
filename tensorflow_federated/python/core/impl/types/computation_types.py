@@ -1348,3 +1348,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
     return '\n'.join(lines)
   else:
     return ''.join(lines)
+
+
+def some_test_func_for_pytype(x: Type) -> int:
+  return len(x)
