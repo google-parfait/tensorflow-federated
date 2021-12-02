@@ -1932,5 +1932,117 @@ class SelectOutputFromLambdaTest(test_case.TestCase):
     self.assertEqual(str(tuple_selected), '(x -> <x.a.inner,x.b>)')
 
 
+class ZipUpToTest(test_case.TestCase):
+
+  def test_zips_struct_of_federated_values(self):
+    comp = building_blocks.Struct([
+        building_blocks.Reference(
+            'x', computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+        building_blocks.Reference(
+            'y', computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    ])
+    zippable_type = computation_types.FederatedType(
+        computation_types.StructType([(None, tf.int32), (None, tf.int32)]),
+        placements.CLIENTS)
+    zipped = building_block_factory.zip_to_match_type(
+        comp_to_zip=comp, target_type=zippable_type)
+    self.assert_types_equivalent(zipped.type_signature, zippable_type)
+
+  def test_does_not_zip_different_placement_target(self):
+    comp = building_blocks.Struct([
+        building_blocks.Reference(
+            'x', computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+        building_blocks.Reference(
+            'y', computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    ])
+    non_zippable_type = computation_types.FederatedType(
+        computation_types.StructType([(None, tf.int32), (None, tf.int32)]),
+        placements.SERVER)
+    zipped = building_block_factory.zip_to_match_type(
+        comp_to_zip=comp, target_type=non_zippable_type)
+    self.assertIsNone(zipped)
+
+  def test_zips_struct_of_federated_values_under_struct(self):
+    comp = building_blocks.Struct([
+        building_blocks.Struct([
+            building_blocks.Reference(
+                'x',
+                computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+            building_blocks.Reference(
+                'y',
+                computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        ])
+    ])
+    zippable_type = computation_types.StructType([
+        (None,
+         computation_types.FederatedType(
+             computation_types.StructType([(None, tf.int32), (None, tf.int32)]),
+             placements.CLIENTS))
+    ])
+    zipped = building_block_factory.zip_to_match_type(
+        comp_to_zip=comp, target_type=zippable_type)
+    self.assert_types_equivalent(zipped.type_signature, zippable_type)
+
+  def test_assignability_with_names(self):
+    # This would correspond to an implicit downcast in TFF's typesystem; the
+    # result would not be assignable to the requested type.
+    comp = building_blocks.Struct([
+        building_blocks.Struct([
+            ('a',
+             building_blocks.Reference(
+                 'x',
+                 computation_types.FederatedType(tf.int32,
+                                                 placements.CLIENTS))),
+            ('b',
+             building_blocks.Reference(
+                 'y',
+                 computation_types.FederatedType(tf.int32, placements.CLIENTS)))
+        ])
+    ])
+    unnamed_zippable_type = computation_types.StructType([
+        (None,
+         computation_types.FederatedType(
+             computation_types.StructType([(None, tf.int32), (None, tf.int32)]),
+             placements.CLIENTS))
+    ])
+    named_zippable_type = computation_types.StructType([
+        (None,
+         computation_types.FederatedType(
+             computation_types.StructType([('a', tf.int32), ('b', tf.int32)]),
+             placements.CLIENTS))
+    ])
+
+    not_zipped = building_block_factory.zip_to_match_type(
+        comp_to_zip=comp, target_type=unnamed_zippable_type)
+    zipped = building_block_factory.zip_to_match_type(
+        comp_to_zip=comp, target_type=named_zippable_type)
+
+    self.assertFalse(
+        unnamed_zippable_type.is_assignable_from(named_zippable_type))
+
+    self.assertIsNone(not_zipped)
+
+    self.assert_types_equivalent(zipped.type_signature, named_zippable_type)
+
+  def test_does_not_zip_under_function(self):
+    result_comp = building_blocks.Struct([
+        building_blocks.Reference(
+            'x', computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+        building_blocks.Reference(
+            'y', computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    ])
+    lam = building_blocks.Lambda(None, None, result_comp)
+    zippable_function_type = computation_types.FunctionType(
+        None,
+        computation_types.FederatedType(
+            computation_types.StructType([(None, tf.int32), (None, tf.int32)]),
+            placements.CLIENTS))
+
+    zipped = building_block_factory.zip_to_match_type(
+        comp_to_zip=lam, target_type=zippable_function_type)
+
+    self.assertIsNone(zipped)
+
+
 if __name__ == '__main__':
   test_case.main()

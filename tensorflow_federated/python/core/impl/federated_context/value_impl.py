@@ -298,6 +298,8 @@ def to_value(
     arg: Any,
     type_spec,
     parameter_type_hint=None,
+    *,
+    zip_if_needed: bool = False,
 ) -> Value:
   """Converts the argument into an instance of the abstract class `tff.Value`.
 
@@ -339,6 +341,9 @@ def to_value(
     parameter_type_hint: An optional `tff.Type` or value convertible to it by
       `tff.to_type()` which specifies an argument type to use in the case that
       `arg` is a `function_utils.PolymorphicComputation`.
+    zip_if_needed: If `True`, attempt to coerce the result of `to_value` to
+      match `type_spec` by applying `intrinsics.federated_zip` to appropriate
+      elements.
 
   Returns:
     An instance of `tff.Value` as described above.
@@ -409,6 +414,12 @@ def to_value(
   py_typecheck.check_type(result, Value)
   if (type_spec is not None and
       not type_spec.is_assignable_from(result.type_signature)):
+    if zip_if_needed:
+      # Returns `None` if such a zip can't be performed.
+      zipped_comp = building_block_factory.zip_to_match_type(
+          comp_to_zip=result.comp, target_type=type_spec)
+      if zipped_comp is not None:
+        return Value(zipped_comp)
     raise TypeError(
         'The supplied argument maps to TFF type {}, which is incompatible with '
         'the requested type {}.'.format(result.type_signature, type_spec))

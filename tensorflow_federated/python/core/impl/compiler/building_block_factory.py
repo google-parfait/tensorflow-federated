@@ -33,6 +33,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -1997,3 +1998,115 @@ def apply_binary_operator_with_upcast(
     called = building_blocks.Call(tf_representing_op, arg)
 
   return called
+
+
+def zip_to_match_type(
+    *, comp_to_zip: building_blocks.ComputationBuildingBlock,
+    target_type: computation_types.Type
+) -> Optional[building_blocks.ComputationBuildingBlock]:
+  """Zips computation argument to match target type.
+
+  This function will apply the appropriate federated zips to match `comp_to_zip`
+  to the requested type `target_type`, subject to a few caveats. We will
+  traverse `computation_types.StructTypes` to match types, so for example we
+  would zip `<<T@P, R@P>>` to match `<<T, R>@P>`, but we will not traverse
+  `computation_types.FunctionTypes`. Therefore we would not apply a zip to the
+  parameter of `(<<T@P, R@P>> -> Q)` to match (<<T, R>@P> -> Q).
+
+  If zipping in this manner cannot match the type of `comp_to_zip` to
+  `target_type`, `None` will be returned.
+
+  Args:
+    comp_to_zip: Instance of `building_blocks.ComputationBuildingBlock` to
+      traverse and attempt to zip to match `target_type`.
+    target_type: The type to target when traversing and zipping `comp_to_zip`.
+
+  Returns:
+    Either a potentially transformed version of `comp_to_zip` or `None`,
+    depending on whether inserting a zip according to the semantics above
+    can transformed `comp_to_zip` to the requested type.
+  """
+  py_typecheck.check_type(comp_to_zip, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(target_type, computation_types.Type)
+
+  def _can_be_zipped_into(source_type: computation_types.Type,
+                          target_type: computation_types.Type) -> bool:
+    """Indicates possibility of the transformation `zip_to_match_type`."""
+
+    def _struct_can_be_zipped_to_federated(
+        struct_type: computation_types.StructType,
+        federated_type: computation_types.FederatedType) -> bool:
+
+      placements_encountered = set()
+
+      def _remove_placement(
+          subtype: computation_types.Type
+      ) -> Tuple[computation_types.Type, bool]:
+        if subtype.is_federated():
+          placements_encountered.add(subtype.placement)
+          return subtype.member, True
+        return subtype, False
+
+      unplaced_struct, _ = type_transformations.transform_type_postorder(
+          struct_type, _remove_placement)
+      if not (all(
+          x is federated_type.placement for x in placements_encountered)):
+        return False
+      if (federated_type.placement is placements.CLIENTS and
+          federated_type.all_equal):
+        # There is no all-equal clients zip; return false.
+        return False
+      return federated_type.member.is_assignable_from(unplaced_struct)
+
+    def _struct_elem_zippable(source_name, source_element, target_name,
+                              target_element):
+      return _can_be_zipped_into(
+          source_element, target_element) and source_name in (target_name, None)
+
+    if source_type.is_struct():
+      if target_type.is_federated():
+        return _struct_can_be_zipped_to_federated(source_type, target_type)
+      elif target_type.is_struct():
+        elements_zippable = []
+        for (s_name, s_el), (t_name, t_el) in zip(
+            structure.iter_elements(source_type),
+            structure.iter_elements(target_type)):
+          elements_zippable.append(
+              _struct_elem_zippable(s_name, s_el, t_name, t_el))
+        return all(elements_zippable)
+    else:
+      return target_type.is_assignable_from(source_type)
+
+  def _zip_to_match(
+      *, source: building_blocks.ComputationBuildingBlock,
+      target_type: computation_types.Type
+  ) -> building_blocks.ComputationBuildingBlock:
+    if target_type.is_federated() and source.type_signature.is_struct():
+      return create_federated_zip(source)
+    elif target_type.is_struct() and source.type_signature.is_struct():
+      zipped_elements = []
+      # Bind a reference to the source to prevent duplication in the AST.
+      ref_name = next(unique_name_generator(source))
+      ref_to_source = building_blocks.Reference(ref_name, source.type_signature)
+      for idx, ((_, t_el), (s_name, _)) in enumerate(
+          zip(
+              structure.iter_elements(target_type),
+              structure.iter_elements(source.type_signature))):
+        s_selection = building_blocks.Selection(ref_to_source, index=idx)
+        zipped_elements.append(
+            (s_name, _zip_to_match(source=s_selection, target_type=t_el)))
+        # Insert binding above the constructed structure.
+        return building_blocks.Block([(ref_name, source)],
+                                     building_blocks.Struct(zipped_elements))
+    else:
+      # No zipping to be done here.
+      return source
+
+  if target_type.is_assignable_from(comp_to_zip.type_signature):
+    # No zipping needs to be done; return directly.
+    return comp_to_zip
+  elif _can_be_zipped_into(comp_to_zip.type_signature, target_type):
+    return _zip_to_match(source=comp_to_zip, target_type=target_type)
+  else:
+    # Zipping cannot be performed here.
+    return None

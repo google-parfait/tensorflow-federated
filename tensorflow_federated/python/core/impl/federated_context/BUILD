@@ -74,8 +74,11 @@ py_test(
         ":federated_computation_context",
         ":value_impl",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 

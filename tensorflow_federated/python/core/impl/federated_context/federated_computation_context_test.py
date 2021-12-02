@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 from tensorflow_federated.python.core.impl.federated_context import value_impl
+from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
 
-class FederatedComputationContextTest(absltest.TestCase):
+class FederatedComputationContextTest(test_case.TestCase):
 
   def test_invoke_returns_value_with_correct_type(self):
     context = federated_computation_context.FederatedComputationContext(
@@ -32,6 +34,46 @@ class FederatedComputationContextTest(absltest.TestCase):
       result = context.invoke(comp, None)
     self.assertIsInstance(result, value_impl.Value)
     self.assertEqual(str(result.type_signature), 'int32')
+
+  def test_ingest_zips_value_when_necessary_to_match_federated_type(self):
+    context = federated_computation_context.FederatedComputationContext(
+        context_stack_impl.context_stack)
+    # This thing will be <{int}@C, {int}@C>
+    comp = building_blocks.Struct([
+        building_blocks.Reference(
+            'x', computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+        building_blocks.Reference(
+            'y', computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    ])
+    # The type of comp can be zipped to the below.
+    zippable_type = computation_types.FederatedType(
+        computation_types.StructType([(None, tf.int32), (None, tf.int32)]),
+        placements.CLIENTS)
+    ingested = context.ingest(comp, type_spec=zippable_type)
+    self.assert_types_equivalent(ingested.type_signature, zippable_type)
+
+  def test_ingest_zips_federated_under_struct(self):
+    context = federated_computation_context.FederatedComputationContext(
+        context_stack_impl.context_stack)
+    comp = building_blocks.Struct([
+        building_blocks.Struct([
+            building_blocks.Reference(
+                'x',
+                computation_types.FederatedType(tf.int32, placements.CLIENTS)),
+            building_blocks.Reference(
+                'y',
+                computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        ])
+    ])
+    # The type of comp can be zipped to the below.
+    zippable_type = computation_types.StructType([
+        (None,
+         computation_types.FederatedType(
+             computation_types.StructType([(None, tf.int32), (None, tf.int32)]),
+             placements.CLIENTS))
+    ])
+    ingested = context.ingest(comp, type_spec=zippable_type)
+    self.assert_types_equivalent(ingested.type_signature, zippable_type)
 
   def test_construction_populates_name(self):
     context = federated_computation_context.FederatedComputationContext(
@@ -94,4 +136,4 @@ class FederatedComputationContextTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  absltest.main()
+  test_case.main()

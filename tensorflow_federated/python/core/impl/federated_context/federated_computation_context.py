@@ -98,12 +98,11 @@ class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
     return self._symbol_bindings
 
   def ingest(self, val, type_spec):
-    val = value_impl.to_value(val, type_spec, self._context_stack)
-    type_analysis.check_type(val, type_spec)
+    val = value_impl.to_value(val, type_spec, zip_if_needed=True)
     return val
 
   def invoke(self, comp, arg):
-    fn = value_impl.to_value(comp, None, self._context_stack)
+    fn = value_impl.to_value(comp, None)
     tys = fn.type_signature
     py_typecheck.check_type(tys, computation_types.FunctionType)
     if arg is not None:
