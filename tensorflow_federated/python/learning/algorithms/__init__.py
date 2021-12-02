@@ -14,3 +14,4 @@
 """Libraries providing implementations of federated learning algorithms."""
 
 from tensorflow_federated.python.learning.algorithms.client_scheduled_federated_averaging import build_client_scheduled_federated_averaging_process
+from tensorflow_federated.python.learning.algorithms.fed_prox import build_example_weighted_fed_prox_process

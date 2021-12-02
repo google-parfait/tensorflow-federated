@@ -18,7 +18,10 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
-    deps = [":client_scheduled_federated_averaging"],
+    deps = [
+        ":client_scheduled_federated_averaging",
+        ":fed_prox",
+    ],
 )
 
 py_library(
