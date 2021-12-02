@@ -36,11 +36,11 @@ build --copt=-O3
 # C++ compiler options.
 build --cxxopt=-std=c++14
 build --host_cxxopt=-std=c++14
-build --copt=-Wno-ignored-attributes
-build --copt=-Wno-missing-field-initializers
-build --copt=-Wno-unknown-pragmas
-build:linux --copt=-Wno-stringop-truncation
-build:linux --copt=-Wno-maybe-uninitialized
+
+# Suppress C++ compiler warnings.
+build:linux --copt=-w
+build:linux --host_copt=-w
+build:macos --copt=-w
 
 # gRPC on MacOS requires this define, see
 # https://github.com/bazelbuild/bazel/issues/4341#issuecomment-572050759 for
