@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import sampling
@@ -450,6 +451,56 @@ class BuildFinalizeSampleTest(test_case.TestCase):
     self.assertAllEqual(finalize_computation(reservoir), test_samples)
 
 
+class BuildCheckNonFiniteLeavesComputationTest(test_case.TestCase,
+                                               parameterized.TestCase):
+
+  @parameterized.named_parameters(('float32_nan', tf.float32, np.nan, True),
+                                  ('bfloat16_inf', tf.bfloat16, np.inf, True),
+                                  ('half_nan', tf.half, np.nan, True),
+                                  ('float64_inf', tf.float64, np.inf, True),
+                                  ('int32_finite', tf.int32, 1, False),
+                                  ('bool_finite', tf.bool, False, False))
+  def test_scalar(self, dtype, value, is_non_finite):
+    computation = sampling._build_check_non_finite_leaves_computation(
+        TensorType(dtype))
+    result = computation(value)
+    expected_result = tf.constant(is_non_finite, dtype=tf.int64)
+    self.assertEqual(result, expected_result)
+
+  def test_structure(self):
+    value_type = computation_types.to_type(
+        collections.OrderedDict(
+            a=TensorType(tf.int32),
+            b=[TensorType(tf.float32, [3]),
+               TensorType(tf.bool)],
+            c=collections.OrderedDict(d=TensorType(tf.float64, [2, 2]))))
+    computation = sampling._build_check_non_finite_leaves_computation(
+        value_type)
+    value = collections.OrderedDict(
+        a=1,
+        b=[[1.0, np.nan, np.inf], True],
+        c=collections.OrderedDict(d=[[np.inf, 2.0], [3.0, 4.0]]))
+    result = computation(value)
+    expected_result = collections.OrderedDict(
+        a=tf.constant(0, dtype=tf.int64),
+        b=[tf.constant(1, dtype=tf.int64),
+           tf.constant(0, dtype=tf.int64)],
+        c=collections.OrderedDict(d=tf.constant(1, dtype=tf.int64)))
+    self.assertEqual(result, expected_result)
+
+  def test_fails_with_non_tensor_type(self):
+    with self.assertRaisesRegex(TypeError, 'only contain `TensorType`s'):
+      sampling._build_check_non_finite_leaves_computation(
+          SequenceType(TensorType(tf.int32)))
+    with self.assertRaisesRegex(TypeError, 'only contain `TensorType`s'):
+      sampling._build_check_non_finite_leaves_computation(
+          computation_types.to_type(
+              collections.OrderedDict(
+                  a=TensorType(tf.float32, [3]),
+                  b=[SequenceType(TensorType(tf.int32)),
+                     TensorType(tf.bool)])))
+
+
 class UnweightedReservoirSamplingFactoryTest(test_case.TestCase,
                                              parameterized.TestCase):
 
@@ -502,6 +553,38 @@ class UnweightedReservoirSamplingFactoryTest(test_case.TestCase,
       sampling.UnweightedReservoirSamplingFactory(sample_size=None)
     with self.assertRaises(TypeError):
       sampling.UnweightedReservoirSamplingFactory(sample_size='5')
+
+  def test_measurements_scalar_value(self):
+    process = sampling.UnweightedReservoirSamplingFactory(sample_size=1).create(
+        computation_types.to_type(tf.float32))
+    state = process.initialize()
+    output = process.next(state, [1.0, np.nan, np.inf, 2.0, 3.0])
+    # Two clients' values are non-infinte.
+    self.assertEqual(output.measurements, tf.constant(2, dtype=tf.int64))
+
+  def test_measurements_structure_value(self):
+    process = sampling.UnweightedReservoirSamplingFactory(sample_size=1).create(
+        computation_types.to_type(
+            collections.OrderedDict(
+                a=TensorType(tf.float32),
+                b=[TensorType(tf.float32, [2, 2]),
+                   TensorType(tf.bool)])))
+    state = process.initialize()
+    output = process.next(state, [
+        collections.OrderedDict(
+            a=1.0, b=[[[1.0, np.nan], [np.inf, 4.0]], True]),
+        collections.OrderedDict(a=2.0, b=[[[1.0, 2.0], [3.0, 4.0]], False]),
+        collections.OrderedDict(
+            a=np.inf, b=[[[np.nan, 2.0], [3.0, 4.0]], True])
+    ])
+    self.assertEqual(
+        output.measurements,
+        collections.OrderedDict(
+            # One client has non-infinte tensors for this leaf node.
+            a=tf.constant(1, dtype=tf.int64),
+            # Two clients have non-infinte tensors for this leaf node.
+            b=[tf.constant(2, dtype=tf.int64),
+               tf.constant(0, dtype=tf.int64)]))
 
 
 if __name__ == '__main__':
