@@ -493,6 +493,11 @@ def to_representation_for_type(
         computation_impl.ConcreteComputation.get_proto(value),
         tf_function_cache, type_spec, device)
   elif isinstance(value, pb.Computation):
+    computation_oneof = value.WhichOneof('computation')
+    if computation_oneof != 'tensorflow':
+      raise ValueError('Eager TF Executor can only execute computations of '
+                       'TensorFlow flavor; encountered a computation of type '
+                       f'{computation_oneof}')
     return _to_computation_internal_rep(
         value=value,
         tf_function_cache=tf_function_cache,

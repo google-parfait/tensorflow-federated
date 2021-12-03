@@ -432,6 +432,17 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(str(val.type_signature), 'int32')
     self.assertEqual(val.internal_representation, 10)
 
+  def test_executor_create_value_raises_on_lambda(self):
+    ex = eager_tf_executor.EagerTFExecutor()
+
+    @computations.federated_computation(tf.int32)
+    def comp(x):
+      return x
+
+    with self.assertRaisesRegex(ValueError, 'computation of type lambda'):
+      asyncio.get_event_loop().run_until_complete(
+          ex.create_value(comp.to_building_block().proto, comp.type_signature))
+
   def test_executor_create_value_struct_mismatched_type(self):
     ex = eager_tf_executor.EagerTFExecutor()
     with self.assertRaises(TypeError):
