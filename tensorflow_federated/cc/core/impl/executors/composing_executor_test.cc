@@ -630,7 +630,7 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedValueAtServer) {
   ExpectMaterialize(result_id, ServerV(tensor));
 }
 
-TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClients) {
+TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsFlat) {
   v0::Value v1 = ClientsV({TensorV(1)}, true);
   v0::Value v2 = ClientsV({TensorV(2)}, true);
   auto merged_struct = StructV({TensorV(1), TensorV(2)});
@@ -646,14 +646,39 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClients) {
   TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
                            test_executor_->CreateValue(StructV({v1, v2})));
   TFF_ASSERT_OK_AND_ASSIGN(
-      auto zip_id, test_executor_->CreateValue(FederatedZipAtServerV()));
+      auto zip_id, test_executor_->CreateValue(FederatedZipAtClientsV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
                            test_executor_->CreateCall(zip_id, arg_id));
   ExpectMaterialize(
       res_id, ClientsV(std::vector<v0::Value>(total_clients_, merged_struct)));
 }
 
-TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtServer) {
+TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtClientsNested) {
+  v0::Value v1 = ClientsV({TensorV(1)}, true);
+  v0::Value v2 = ClientsV({TensorV(2)}, true);
+  v0::Value v2_struct = StructV({v2});
+  auto merged_struct = StructV({TensorV(1), StructV({TensorV(2)})});
+  v0::Value merged = ClientsV({merged_struct}, true);
+  for (const auto& child : mock_children_) {
+    auto child_v1 = child->ExpectCreateValue(v1);
+    auto child_v2 = child->ExpectCreateValue(v2);
+    auto child_zip = child->ExpectCreateValue(FederatedZipAtClientsV());
+    auto child_v2_struct = child->ExpectCreateStruct({child_v2});
+    auto child_zip_arg = child->ExpectCreateStruct({child_v1, child_v2_struct});
+    auto child_res = child->ExpectCreateCall(child_zip, child_zip_arg);
+    child->ExpectMaterialize(child_res, merged);
+  }
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto arg_id, test_executor_->CreateValue(StructV({v1, v2_struct})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto zip_id, test_executor_->CreateValue(FederatedZipAtClientsV()));
+  TFF_ASSERT_OK_AND_ASSIGN(auto res_id,
+                           test_executor_->CreateCall(zip_id, arg_id));
+  ExpectMaterialize(
+      res_id, ClientsV(std::vector<v0::Value>(total_clients_, merged_struct)));
+}
+
+TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtServerFlat) {
   v0::Value v1 = TensorV(1);
   v0::Value v2 = TensorV(2);
   ValueId v1_child_id = mock_server_->ExpectCreateValue(v1);
@@ -668,6 +693,26 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtServer) {
                            test_executor_->CreateCall(zip_id, v_id));
   mock_server_->ExpectMaterialize(struct_child_id, StructV({v1, v2}));
   ExpectMaterialize(result_id, ServerV(StructV({v1, v2})));
+}
+
+TEST_F(ComposingExecutorTest, CreateCallFederatedZipAtServerNested) {
+  v0::Value v1 = TensorV(1);
+  v0::Value v2 = TensorV(2);
+  ValueId v1_child_id = mock_server_->ExpectCreateValue(v1);
+  ValueId v2_child_id = mock_server_->ExpectCreateValue(v2);
+  TFF_ASSERT_OK_AND_ASSIGN(auto v_id,
+                           test_executor_->CreateValue(
+                               StructV({ServerV(v1), StructV({ServerV(v2)})})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto zip_id, test_executor_->CreateValue(FederatedZipAtServerV()));
+  ValueId v2_struct_child_id = mock_server_->ExpectCreateStruct({v2_child_id});
+  ValueId struct_child_id =
+      mock_server_->ExpectCreateStruct({v1_child_id, v2_struct_child_id});
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(zip_id, v_id));
+  mock_server_->ExpectMaterialize(struct_child_id,
+                                  StructV({v1, StructV({v2})}));
+  ExpectMaterialize(result_id, ServerV(StructV({v1, StructV({v2})})));
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedZipDifferentPlacementsFails) {

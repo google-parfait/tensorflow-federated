@@ -27,8 +27,9 @@ def _get_intrinsic_names():
 
 class IntrinsicDefsTest(parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      *[(name.lower(), name) for name in _get_intrinsic_names()])
+  @parameterized.named_parameters(*[
+      (name.lower(), name) for name in _get_intrinsic_names()
+  ])
   def test_names_match_those_in_module(self, name):
     self.assertEqual(getattr(intrinsic_defs, name).name, name)
 
@@ -61,9 +62,8 @@ class IntrinsicDefsTest(parameterized.TestCase):
       ),
       ('federated_sum', 'FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),
       ('federated_zip_at_clients', 'FEDERATED_ZIP_AT_CLIENTS',
-       '(<{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS)'),
-      ('federated_zip_at_server', 'FEDERATED_ZIP_AT_SERVER',
-       '(<T@SERVER,U@SERVER> -> <T,U>@SERVER)'),
+       '(T -> {U}@CLIENTS)'),
+      ('federated_zip_at_server', 'FEDERATED_ZIP_AT_SERVER', '(T -> U@SERVER)'),
   )
   def test_type_signature_strings(self, name, type_str):
     intrinsic = getattr(intrinsic_defs, name)

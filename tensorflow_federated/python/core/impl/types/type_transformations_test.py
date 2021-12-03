@@ -63,6 +63,24 @@ def _convert_tuple_to_tensor(type_spec):
   return type_spec, False
 
 
+class StripPlacementTest(parameterized.TestCase):
+
+  @parameterized.named_parameters([
+      ('noop_for_non_federated', tf.int32, tf.int32),
+      ('removes_server', computation_types.at_server(tf.int32), tf.int32),
+      ('removes_clients', computation_types.at_clients(tf.int32), tf.int32),
+      ('removes_nested', [computation_types.at_server(tf.int32)], [tf.int32]),
+      ('removes_multiple', [
+          computation_types.at_server(tf.int32),
+          computation_types.at_clients(tf.float16)
+      ], [tf.int32, tf.float16]),
+  ])
+  def test_strips_placement(self, argument, expected):
+    argument = computation_types.to_type(argument)
+    expected = computation_types.to_type(expected)
+    self.assertEqual(expected, type_transformations.strip_placement(argument))
+
+
 class TransformTypePostorderTest(absltest.TestCase):
 
   def test_raises_on_none_type(self):

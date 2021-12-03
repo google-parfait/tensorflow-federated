@@ -520,7 +520,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedValueAtServer) {
   ExpectMaterialize(result_id, ServerV(tensor));
 }
 
-TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtClients) {
+TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtClientsFlat) {
   v0::Value v1 = TensorV(1);
   v0::Value v2 = TensorV(2);
   ValueId v1_child_id = ExpectCreateInChild(v1);
@@ -539,7 +539,29 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtClients) {
                                    NUM_CLIENTS, StructV({v1, v2}))));
 }
 
-TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtServer) {
+TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtClientsNested) {
+  v0::Value v1 = TensorV(1);
+  v0::Value v2 = TensorV(2);
+  ValueId v1_child_id = ExpectCreateInChild(v1);
+  ValueId v2_child_id = ExpectCreateInChild(v2);
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto v_id, test_executor_->CreateValue(StructV(
+                     {ClientsV({v1}, true), StructV({ClientsV({v2}, true)})})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto zip_id, test_executor_->CreateValue(FederatedZipAtClientsV()));
+  ValueId v2_struct_child_id =
+      ExpectCreateStructInChild({v2_child_id}, ONCE_PER_CLIENT);
+  ValueId struct_child_id = ExpectCreateStructInChild(
+      {v1_child_id, v2_struct_child_id}, ONCE_PER_CLIENT);
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(zip_id, v_id));
+  ExpectMaterializeInChild(struct_child_id, StructV({v1, StructV({v2})}),
+                           ONCE_PER_CLIENT);
+  ExpectMaterialize(result_id, ClientsV(std::vector<v0::Value>(
+                                   NUM_CLIENTS, StructV({v1, StructV({v2})}))));
+}
+
+TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtServerFlat) {
   v0::Value v1 = TensorV(1);
   v0::Value v2 = TensorV(2);
   ValueId v1_child_id = ExpectCreateInChild(v1);
@@ -554,6 +576,25 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtServer) {
                            test_executor_->CreateCall(zip_id, v_id));
   ExpectMaterializeInChild(struct_child_id, StructV({v1, v2}));
   ExpectMaterialize(result_id, ServerV(StructV({v1, v2})));
+}
+
+TEST_F(FederatingExecutorTest, CreateCallFederatedZipAtServerNested) {
+  v0::Value v1 = TensorV(1);
+  v0::Value v2 = TensorV(2);
+  ValueId v1_child_id = ExpectCreateInChild(v1);
+  ValueId v2_child_id = ExpectCreateInChild(v2);
+  TFF_ASSERT_OK_AND_ASSIGN(auto v_id,
+                           test_executor_->CreateValue(
+                               StructV({ServerV(v1), StructV({ServerV(v2)})})));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto zip_id, test_executor_->CreateValue(FederatedZipAtServerV()));
+  ValueId v2_struct_child_id = ExpectCreateStructInChild({v2_child_id});
+  ValueId struct_child_id =
+      ExpectCreateStructInChild({v1_child_id, v2_struct_child_id});
+  TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
+                           test_executor_->CreateCall(zip_id, v_id));
+  ExpectMaterializeInChild(struct_child_id, StructV({v1, StructV({v2})}));
+  ExpectMaterialize(result_id, ServerV(StructV({v1, StructV({v2})})));
 }
 
 TEST_F(FederatingExecutorTest, CreateCallFederatedZipMixedPlacementsFails) {
