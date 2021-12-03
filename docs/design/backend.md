@@ -158,16 +158,3 @@ with an iree compiler and an [execution stack](execution.md#execution-stack)
 with an
 [executor.IreeExecutor](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/iree/executor.py)
 delegating to an external IREE runtime.
-
-## Reference
-
-A
-[reference_context.ReferenceContext](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/reference/reference_context.py)
-is a
-[context_base.Context](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/context_stack/context_base.py)
-that compiles and executes ASTs. Note that the `ReferenceContext` does not
-inherit from
-[execution_context.ExecutionContext](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/execution_contexts/sync_execution_context.py)
-and the runtime is not implemented as an
-[execution stack](execution.md#execution-stack); instead the compiler and
-runtime are trivially implemented inline in the `ReferenceContext`.

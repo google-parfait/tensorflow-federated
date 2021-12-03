@@ -87,7 +87,7 @@ py_test(
         ":test_utils",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/reference:reference_context",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",

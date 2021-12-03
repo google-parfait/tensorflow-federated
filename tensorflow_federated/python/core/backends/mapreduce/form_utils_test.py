@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
-from tensorflow_federated.python.core.backends.reference import reference_context
+from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
@@ -656,8 +656,16 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
   def test_mnist_training_round_trip(self):
     it = form_utils.get_iterative_process_for_map_reduce_form(
         mapreduce_test_utils.get_mnist_training_example())
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(it)
+
+    # TODO(b/208887729): We disable grappler to work around attempting to hoist
+    # transformed functions of the same name into the eager context. When this
+    # execution is C++-backed, this can go away.
+    grappler_config = tf.compat.v1.ConfigProto()
+    grappler_config.graph_options.rewrite_options.disable_meta_optimizer = True
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(
+        it, grappler_config)
     new_it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
+
     state1 = it.initialize()
     state2 = new_it.initialize()
     self.assertAllClose(state1, state2)
@@ -1046,7 +1054,7 @@ class AsFunctionOfSomeSubparametersTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  # The reference context is used here because it is currently the only context
-  # which implements the `tff.federated_secure_sum_bitwidth` intrinsic.
-  reference_context.set_reference_context()
+  # The test execution context replaces all secure intrinsics with insecure
+  # reductions.
+  execution_contexts.set_test_execution_context()
   test_case.main()
