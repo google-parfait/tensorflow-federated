@@ -157,6 +157,28 @@ class UtilsTest(test_case.TestCase):
                          np.int64(4)])
     self.assertAllClose(new_state.model.non_trainable, [3])
 
+    state_odict = collections.OrderedDict()
+    state_odict['model'] = collections.OrderedDict()
+    state_odict['model']['trainable'] = trainable
+    state_odict['model']['non_trainable'] = non_trainable
+    state_odict['optimizer_state'] = collections.OrderedDict()
+    state_odict['delta_aggregate_state'] = tf.constant(0)
+    state_odict['model_broadcast_state'] = tf.constant(0)
+
+    new_state_odict = optimizer_utils.state_with_new_model_weights(
+        state_odict,
+        trainable_weights=[
+            np.array([3.0, 3.0]),
+            np.array([[3.0]]),
+            np.int64(4)
+        ],
+        non_trainable_weights=[np.array(3)])
+    self.assertAllClose(new_state_odict['model']['trainable'],
+                        [np.array([3.0, 3.0]),
+                         np.array([[3.0]]),
+                         np.int64(4)])
+    self.assertAllClose(new_state_odict['model']['non_trainable'], [3])
+
     with self.assertRaisesRegex(TypeError, 'tensor type'):
       optimizer_utils.state_with_new_model_weights(
           state,

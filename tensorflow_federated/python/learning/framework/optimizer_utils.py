@@ -24,6 +24,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -122,15 +123,19 @@ class ServerState(object):
 
 
 def state_with_new_model_weights(
-    server_state: ServerState,
+    server_state: Union[ServerState, collections.OrderedDict],
     trainable_weights: List[np.ndarray],
     non_trainable_weights: List[np.ndarray],
-) -> ServerState:
+) -> Union[ServerState, collections.OrderedDict]:
   """Returns a `ServerState` with updated model weights.
 
   Args:
     server_state: A server state object returned by an iterative training
-      process like `tff.learning.build_federated_averaging_process`.
+      process like `tff.learning.build_federated_averaging_process`, or a
+      server state in the form of an OrderedDict. When an iterative process is
+      serialized and deserialized, the states it generates lose the ServerState
+      container type, and become `Struct`s that are then transformed to
+      `OrderedDict`s.
     trainable_weights: A list of `numpy` values in the order of the original
       model's `trainable_variables`.
     non_trainable_weights: A list of `numpy` values in the order of the original
@@ -138,9 +143,12 @@ def state_with_new_model_weights(
 
   Returns:
     A new server `ServerState` object which can be passed to the `next` method
-    of the iterative process.
+    of the iterative process, or a new OrderedDict if the input server_state
+    is an OrderedDict.
   """
-  py_typecheck.check_type(server_state, ServerState)
+  py_typecheck.check_type(server_state, (ServerState, collections.OrderedDict))
+  if isinstance(server_state, collections.OrderedDict):
+    server_state = structure.from_container(server_state, recursive=True)
   leaf_types = (int, float, np.ndarray, tf.Tensor, np.number)
 
   def assert_weight_lists_match(old_value, new_value):
@@ -168,8 +176,13 @@ def state_with_new_model_weights(
                           old=tf.nest.map_structure(type, old_value),
                           new=tf.nest.map_structure(type, new_value)))
 
-  assert_weight_lists_match(server_state.model.trainable, trainable_weights)
-  assert_weight_lists_match(server_state.model.non_trainable,
+  if isinstance(server_state, ServerState):
+    old_model_weights = server_state.model
+  else:
+    old_model_weights = model_utils.ModelWeights.from_tff_result(
+        server_state.model)
+  assert_weight_lists_match(old_model_weights.trainable, trainable_weights)
+  assert_weight_lists_match(old_model_weights.non_trainable,
                             non_trainable_weights)
   new_server_state = ServerState(
       model=model_utils.ModelWeights(
@@ -177,7 +190,11 @@ def state_with_new_model_weights(
       optimizer_state=server_state.optimizer_state,
       delta_aggregate_state=server_state.delta_aggregate_state,
       model_broadcast_state=server_state.model_broadcast_state)
-  return new_server_state
+  if isinstance(server_state, ServerState):
+    return new_server_state
+  else:
+    return structure.to_odict_or_tuple(
+        structure.from_container(new_server_state, recursive=True))
 
 
 def _apply_delta(
