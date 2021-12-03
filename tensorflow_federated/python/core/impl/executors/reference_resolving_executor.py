@@ -40,7 +40,7 @@ def _hash_proto(comp: pb.Computation) -> int:
 class _UnboundRefChecker:
   """Callable implementing memoized checks for unbound references."""
 
-  # TODO(b/149315253): This is the place to check for the computation we
+  # This is the place to check for the computation we
   # are about to push down to the target executor making references to
   # something declared outside of its scope. Notice that it is
   # safe to keep this global cache around, since the check here is for a static
