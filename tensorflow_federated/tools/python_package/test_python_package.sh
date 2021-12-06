@@ -70,7 +70,7 @@ main() {
   pushd "${temp_dir}"
 
   # Create a virtual environment
-  virtualenv --python="${python}" "venv"
+  "${python}" -m venv "venv"
   source "venv/bin/activate"
   python --version
   pip install --upgrade pip

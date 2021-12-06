@@ -22,7 +22,6 @@ On Ubuntu:
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">sudo apt update</code>
 <code class="devsite-terminal">sudo apt install python3-dev python3-pip  # Python 3</code>
-<code class="devsite-terminal">sudo pip3 install --user --upgrade virtualenv</code>
 </pre>
 
 On macOS:
@@ -32,13 +31,12 @@ On macOS:
 <code class="devsite-terminal">export PATH="/usr/local/bin:/usr/local/sbin:$PATH"</code>
 <code class="devsite-terminal">brew update</code>
 <code class="devsite-terminal">brew install python  # Python 3</code>
-<code class="devsite-terminal">sudo pip3 install --user --upgrade virtualenv</code>
 </pre>
 
 ### 2. Create a virtual environment.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">virtualenv --python python3 "venv"</code>
+<code class="devsite-terminal">python3 -m venv "venv"</code>
 <code class="devsite-terminal">source "venv/bin/activate"</code>
 <code class="devsite-terminal tfo-terminal-venv">pip install --upgrade pip</code>
 </pre>
@@ -87,7 +85,6 @@ On Ubuntu:
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">sudo apt update</code>
 <code class="devsite-terminal">sudo apt install python3-dev python3-pip  # Python 3</code>
-<code class="devsite-terminal">sudo pip3 install --user --upgrade virtualenv</code>
 </pre>
 
 On macOS:
@@ -97,7 +94,6 @@ On macOS:
 <code class="devsite-terminal">export PATH="/usr/local/bin:/usr/local/sbin:$PATH"</code>
 <code class="devsite-terminal">brew update</code>
 <code class="devsite-terminal">brew install python  # Python 3</code>
-<code class="devsite-terminal">sudo pip3 install --user --upgrade virtualenv</code>
 </pre>
 
 ### 2. Install Bazel.
@@ -131,7 +127,7 @@ build tool used to compile Tensorflow Federated.
 ### 6. Create a virtual environment.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">virtualenv --python python3 "venv"</code>
+<code class="devsite-terminal">python3 -m venv "venv"</code>
 <code class="devsite-terminal">source "venv/bin/activate"</code>
 <code class="devsite-terminal tfo-terminal-venv">pip install --upgrade pip</code>
 </pre>
