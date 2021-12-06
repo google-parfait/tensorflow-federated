@@ -487,6 +487,49 @@ class NonDeterministicTest(parameterized.TestCase):
     self.assertNotEqual(first_random, second_random)
 
 
+class SequenceExecutorIntegrationTest(parameterized.TestCase):
+
+  @test_contexts.with_context(
+      test_contexts.create_sequence_op_supporting_context)
+  def test_inlined_value_in_sequence_reduce(self):
+
+    @tff.tf_computation(tf.float32, tf.float32)
+    def add_floats(x, y):
+      return x + y
+
+    @tff.federated_computation(tff.SequenceType(tf.float32))
+    def sum_floats(sequence):
+      return tff.sequence_reduce(sequence, 0., add_floats)
+
+    ds = tf.data.Dataset.range(10).map(lambda x: tf.cast(x, tf.float32))
+
+    value = sum_floats(ds)
+    self.assertEqual(value, 10. * 9 / 2)
+
+  @test_contexts.with_context(
+      test_contexts.create_sequence_op_supporting_context)
+  def test_inlined_value_in_mapped_sequence_reduce(self):
+
+    @tff.tf_computation(tf.float32, tf.float32)
+    def add_floats(x, y):
+      return x + y
+
+    @tff.federated_computation(tff.SequenceType(tf.float32))
+    def sum_floats(sequence):
+      return tff.sequence_reduce(sequence, 0., add_floats)
+
+    @tff.federated_computation(
+        tff.FederatedType(sum_floats.type_signature.parameter, tff.SERVER))
+    def map_reduction(placed_sequence):
+      return tff.federated_map(sum_floats, placed_sequence)
+
+    ds = tf.data.Dataset.range(10).map(lambda x: tf.cast(x, tf.float32))
+
+    with self.assertRaises(RuntimeError):
+      # Raises due to b/208736990
+      map_reduction(ds)
+
+
 class SizingExecutionContextTest(parameterized.TestCase):
 
   @test_contexts.with_context(
