@@ -10,7 +10,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_r
 git_repository(
     name = "absl_py",
     remote = "https://github.com/abseil/abseil-py.git",
-    tag = "pypi-v0.10.0",
+    tag = "pypi-v0.15.0",
 )
 
 git_repository(

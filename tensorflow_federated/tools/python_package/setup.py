@@ -56,7 +56,7 @@ import setuptools
 DOCLINES = __doc__.split('\n')
 
 REQUIRED_PACKAGES = [
-    'absl-py~=0.10',
+    'absl-py~=0.15.0',
     'attrs~=21.2.0',
     'cachetools~=3.1.1',
     'dm-tree~=0.1.1',
