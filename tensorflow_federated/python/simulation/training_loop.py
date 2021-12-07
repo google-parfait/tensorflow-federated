@@ -49,7 +49,6 @@ EVALUATION_TIME_KEY = 'evaluation_time_in_seconds'
 
 def create_managers(
     root_dir: str,
-    experiment_name: str,
     csv_save_mode: file_release_manager_lib
     .CSVSaveMode = file_release_manager_lib.CSVSaveMode.APPEND
 ) -> Tuple[file_program_state_manager_lib.FileProgramStateManager,
@@ -62,8 +61,6 @@ def create_managers(
   Args:
     root_dir: A string representing the root output directory for the
       simulation.
-    experiment_name: A unique identifier for the simulation, used to create
-      appropriate subdirectories in `root_dir`.
     csv_save_mode: A `tff.program.CSVSaveMode` specifying the save mode for the
       `tff.program.CSVFileReleaseManager`.
 
@@ -73,18 +70,17 @@ def create_managers(
     `tff.program.LoggingReleaseManager`, a `tff.program.CSVFileReleaseManager`,
     and a `tff.program.TensorboardReleaseManager`.
   """
-  program_state_dir = os.path.join(root_dir, 'program_state', experiment_name)
+  program_state_dir = os.path.join(root_dir, 'program_state')
   program_state_manager = file_program_state_manager_lib.FileProgramStateManager(
       root_dir=program_state_dir)
 
   logging_release_manager = logging_release_manager_lib.LoggingReleaseManager()
 
-  csv_file_path = os.path.join(root_dir, 'metrics', experiment_name,
-                               'experiment.metrics.csv')
+  csv_file_path = os.path.join(root_dir, 'metrics', 'experiment.metrics.csv')
   csv_file_release_manager = file_release_manager_lib.CSVFileReleaseManager(
       file_path=csv_file_path, save_mode=csv_save_mode)
 
-  summary_dir = os.path.join(root_dir, 'logdir', experiment_name)
+  summary_dir = os.path.join(root_dir, 'logdir')
   tensorboard_release_manager = tensorboard_release_manager_lib.TensorboardReleaseManager(
       summary_dir=summary_dir)
 
