@@ -86,16 +86,27 @@ def _fetch_client_ids(database_filepath: str,
 class SqlClientData(client_data.ClientData):
   """A `tff.simulation.datasets.ClientData` backed by an SQL file.
 
-  This class expects that the SQL file has an `examples` table where each
-  row is an example in the dataset. The table must contain at least the
-  following columns:
+  This class expects that the SQL file has two tables: `examples` and
+  `client_metadata`.
+
+  Each row of the `examples` table corresponds to a sample in the dataset.
+  This table must contain at least the following three columns:
 
      -   `split_name`: `TEXT` column used to split test, holdout, and
          training examples.
      -   `client_id`: `TEXT` column identifying which user the example belongs
          to.
      -   `serialized_example_proto`: A serialized `tf.train.Example` protocol
-         buffer containing containing the example data.
+         buffer containing the example data.
+
+  Each row of the `client_metadata` table corresponds to a client in the
+  dataset. This table must contain at least the following three columns:
+
+     -   `client_id`: `TEXT` column used to identify the client.
+     -   `split_name`: `TEXT` column used to split test, holdout, and
+         training examples.
+     -   `num_examples`: `INTEGER` column containing the number of examples
+         held by this client.
   """
 
   def __init__(self, database_filepath: str, split_name: Optional[str] = None):
