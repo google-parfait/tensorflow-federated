@@ -41,7 +41,7 @@ git_repository(
 
 git_repository(
     name = "org_tensorflow",
-    commit = "a8ceadab4071fc05993edb394279ecaffd97ca47",
+    commit = "7059eeb4b55ba316d959e923e51be3403a2924a8",
     patches = ["//third_party/tensorflow:internal_visibility.patch"],
     remote = "https://github.com/tensorflow/tensorflow.git",
 )
