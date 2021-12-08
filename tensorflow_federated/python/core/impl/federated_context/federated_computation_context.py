@@ -11,7 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# pytype: skip-file
+# This modules disables the Pytype analyzer, see
+# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
+# information.
 """The implementation of a context to use in building federated computations."""
+
 from typing import List, Tuple
 
 from tensorflow_federated.python.common_libs import py_typecheck

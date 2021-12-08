@@ -10,6 +10,11 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # limitations under the License.
+#
+# pytype: skip-file
+# This modules disables the Pytype analyzer, see
+# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
+# information.
 """Helpers for creating larger structures out of computating building blocks."""
 
 from typing import Optional

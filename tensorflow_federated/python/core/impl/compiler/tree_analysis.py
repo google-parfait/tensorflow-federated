@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permisions and
 # limitations under the License.
+#
+# pytype: skip-file
+# This modules disables the Pytype analyzer, see
+# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
+# information.
 """A library of static analysis functions for ASTs."""
 
 import functools

@@ -17,16 +17,17 @@ computations, such as aggregated analytics over decentralized data.
 
 TFF's interfaces are organized in two layers:
 
-*   [Federated Learning (FL) API](docs/federated_learning.md) The
-    `tff.learning` layer offers a set of high-level interfaces that allow
+*   [Federated Learning (FL) API](https://github.com/tensorflow/federated/blob/main/docs/federated_learning.md)
+    The `tff.learning` layer offers a set of high-level interfaces that allow
     developers to apply the included implementations of federated training and
     evaluation to their existing TensorFlow models.
 
-*   [Federated Core (FC) API](docs/federated_core.md) At the core of the system
-    is a set of lower-level interfaces for concisely expressing novel federated
-    algorithms by combining TensorFlow with distributed communication operators
-    within a strongly-typed functional programming environment. This layer also
-    serves as the foundation upon which we've built `tff.learning`.
+*   [Federated Core (FC) API](https://github.com/tensorflow/federated/blob/main/docs/federated_core.md)
+    At the core of the system is a set of lower-level interfaces for concisely
+    expressing novel federated algorithms by combining TensorFlow with
+    distributed communication operators within a strongly-typed functional
+    programming environment. This layer also serves as the foundation upon which
+    we've built `tff.learning`.
 
 TFF enables developers to declaratively express federated computations, so they
 could be deployed to diverse runtime environments. Included with TFF is a
@@ -35,14 +36,16 @@ and try it out yourself!
 
 ## Installation
 
-See the [install](docs/install.md) documentation for instructions on how to
-install TensorFlow Federated as a package or build TensorFlow Federated from
-source.
+See the
+[install](https://github.com/tensorflow/federated/blob/main/docs/install.md)
+documentation for instructions on how to install TensorFlow Federated as a
+package or build TensorFlow Federated from source.
 
 ## Getting Started
 
-See the [get started](docs/get_started.md) documentation for instructions on
-how to use TensorFlow Federated.
+See the
+[get started](https://github.com/tensorflow/federated/blob/main/docs/get_started.md)
+documentation for instructions on how to use TensorFlow Federated.
 
 ## Contributing
 

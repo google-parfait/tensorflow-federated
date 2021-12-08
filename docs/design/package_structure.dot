@@ -9,7 +9,7 @@ digraph {
   examples -> tff
   tests -> tff
 
-  research [href="https://github.com/google-research/federated/blob/master/" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+  research [href="https://github.com/google-research/federated/blob/master" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
   examples [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
   tests [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/tests" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
 
@@ -17,7 +17,7 @@ digraph {
   tff -> simulation [arrowhead="none", style="invisible"]
   tff -> simulation_baselines [arrowhead="none", style="invisible"]
 
-  tff [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+  tff [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
 
   // Simulation
   simulation_baselines -> simulation_models
