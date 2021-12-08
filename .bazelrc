@@ -105,6 +105,10 @@ build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
 # Remove this line once TF doesn't depend on Bazel wrapping all library
 # archives in -whole_archive -no_whole_archive.
 build --noincompatible_remove_legacy_whole_archive
+# We need to avoid adding empty __init__.py files when the original intent was
+# to not have an __init__.py.
+# https://github.com/bazelbuild/bazel/issues/10076
+build --incompatible_default_to_explicit_init_py
 build --enable_platform_specific_config
 
 build --define=grpc_no_ares=true
