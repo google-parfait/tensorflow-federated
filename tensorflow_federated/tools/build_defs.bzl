@@ -120,6 +120,49 @@ def tff_cc_library_with_tf_deps(name, tf_deps = [], **kwargs):
         **kwargs
     )
 
+def tff_cc_library_with_tf_runtime_deps(name, tf_deps = [], **kwargs):
+    """A version of `cc_library` that links against TF statically or dynamically.
+
+    Note that targets of this type will not work with pybind, due to conflicting
+    symbols.
+
+    Args:
+      name: A unique name for this target.
+      tf_deps: List of TensorFlow static dependencies.
+      **kwargs: `cc_test` keyword arguments.
+    """
+
+    # TODO(b/209816646): This target will not work with pybind, but is
+    # currently necessary to build dataset_conversions.cc in OSS.
+    srcs = kwargs.pop("srcs", [])
+    deps = kwargs.pop("deps", [])
+    native.cc_library(
+        name = name,
+        srcs = srcs + if_static(
+            [],
+            macos = [
+                "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
+                "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
+            ],
+            otherwise = [
+                "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+                "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+            ],
+        ),
+        deps = deps + if_static(
+            tf_deps,
+            macos = [
+                "@org_tensorflow//tensorflow:libtensorflow_framework.2.8.0.dylib",
+                "@org_tensorflow//tensorflow:libtensorflow_cc.2.8.0.dylib",
+            ],
+            otherwise = [
+                "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
+                "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
+            ],
+        ),
+        **kwargs
+    )
+
 def tff_pybind_extension_with_tf_deps(name, tf_deps = [], extra_tf_dyn_deps = [], **kwargs):
     """A version of `pybind_extension` that links against TF statically or dynamically.
 

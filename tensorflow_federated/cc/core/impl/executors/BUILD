@@ -1,4 +1,4 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_cpu_gpu_test_with_tf_deps", "tff_cc_library_with_tf_deps", "tff_cc_test_with_tf_deps", "tff_pybind_extension_with_tf_deps")
+load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_cpu_gpu_test_with_tf_deps", "tff_cc_library_with_tf_deps", "tff_cc_library_with_tf_runtime_deps", "tff_cc_test_with_tf_deps", "tff_pybind_extension_with_tf_deps")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_binary")
 
@@ -81,6 +81,38 @@ tff_cc_library_with_tf_deps(
     name = "computations",
     hdrs = ["computations.h"],
     deps = ["//tensorflow_federated/proto/v0:computation_cc_proto"],
+)
+
+tff_cc_library_with_tf_runtime_deps(
+    name = "dataset_conversions",
+    srcs = ["dataset_conversions.cc"],
+    hdrs = ["dataset_conversions.h"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core/data:standalone",
+    ],
+    deps = [
+        ":status_macros",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+tff_cc_test_with_tf_deps(
+    name = "dataset_conversions_test",
+    srcs = ["dataset_conversions_test.cc"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/cc:cc_ops",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core:tensorflow",
+    ],
+    deps = [
+        ":dataset_conversions",
+        ":executor",
+        ":mock_executor",
+        ":status_matchers",
+        ":value_test_utils",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+    ],
 )
 
 pybind_extension(
