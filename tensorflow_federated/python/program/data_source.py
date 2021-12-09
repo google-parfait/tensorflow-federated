@@ -78,6 +78,7 @@ class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
     """The type of the data returned by calling `select`."""
     raise NotImplementedError
 
+  # TODO(b/210022038): Finalize the design for data returned by a data source.
   @abc.abstractmethod
   def select(self, number_of_clients: Optional[int] = None) -> Any:
     """Returns a new selection of federated data from this iterator.
@@ -94,8 +95,8 @@ class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
         positive integer, or `None` if unspecified.
 
     Returns:
-      An opaque object that represents the selected data, and that can be
-      supplied as an argument to a computation invocation.
+      An object of type `federted_type` representing the selected data, and that
+      can be supplied as an argument to a computation invocation.
     """
     raise NotImplementedError
 
