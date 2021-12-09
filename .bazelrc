@@ -116,3 +116,5 @@ build --config=v2
 
 # Enable remote execution capabilities.
 common --experimental_repo_remote_exec
+
+common --experimental_cc_shared_library
