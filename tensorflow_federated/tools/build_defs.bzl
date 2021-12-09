@@ -163,23 +163,37 @@ def tff_cc_library_with_tf_runtime_deps(name, tf_deps = [], **kwargs):
         **kwargs
     )
 
-def tff_pybind_extension_with_tf_deps(name, tf_deps = [], extra_tf_dyn_deps = [], **kwargs):
+def tff_pybind_extension_with_tf_deps(name, tf_deps = [], tf_python_dependency = False, **kwargs):
     """A version of `pybind_extension` that links against TF statically or dynamically.
 
     Args:
       name: A unique name for this target.
       tf_deps: List of TensorFlow static dependencies.
-      extra_tf_dyn_deps: List of extra TensorFlow dynamic dependencies.
+      tf_python_dependency: Wether this binding needs to depend on the TensorFlow Python bindings.
       **kwargs: `cc_test` keyword arguments.
     """
     deps = kwargs.pop("deps", [])
+    srcs = kwargs.pop("srcs", [])
+    if tf_python_dependency:
+        extra_tf_dyn_deps = select({
+            "@org_tensorflow//tensorflow:framework_shared_object": ["@org_tensorflow//tensorflow/python:lib_pywrap_tensorflow_internal.so"],
+            "@org_tensorflow//tensorflow:macos_with_framework_shared_object": ["@org_tensorflow//tensorflow/python:lib_pywrap_tensorflow_internal.dylib"],
+            "//conditions:default": [],
+        })
+    else:
+        extra_tf_dyn_deps = []
     pybind_extension(
         name = name,
+        srcs = srcs + if_static(
+            [],
+            macos = ["@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib"],
+            otherwise = ["@org_tensorflow//tensorflow:libtensorflow_framework.so.2"],
+        ) + extra_tf_dyn_deps,
         deps = deps + if_static(
             tf_deps,
-            macos = ["@org_tensorflow//tensorflow:libtensorflow_framework.2.8.0.dylib"] + extra_tf_dyn_deps,
-            otherwise = ["@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0"] + extra_tf_dyn_deps,
-        ),
+            macos = ["@org_tensorflow//tensorflow:libtensorflow_framework.2.8.0.dylib"],
+            otherwise = ["@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0"],
+        ) + extra_tf_dyn_deps,
         **kwargs
     )
 
