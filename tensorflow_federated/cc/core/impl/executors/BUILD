@@ -428,7 +428,6 @@ tff_cc_library_with_tf_deps(
 tff_pybind_extension_with_tf_deps(
     name = "serialization_bindings",
     srcs = ["serialization_bindings.cc"],
-    extra_tf_dyn_deps = ["@org_tensorflow//tensorflow/python:_pywrap_tensorflow_internal.so"],
     tf_deps = [
         "@org_tensorflow//tensorflow/c:tf_status",
         "@org_tensorflow//tensorflow/c:tf_tensor",
@@ -437,6 +436,7 @@ tff_pybind_extension_with_tf_deps(
         "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor",
         "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
     ],
+    tf_python_dependency = True,
     deps = [
         ":status_macros",
         ":tensor_serialization",
