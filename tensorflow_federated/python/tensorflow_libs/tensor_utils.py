@@ -102,13 +102,18 @@ def zero_all_if_any_non_finite(structure):
   """
   flat = tf.nest.flatten(structure)
   if not flat:
-    return (structure, tf.constant(0))
-  flat_bools = [tf.reduce_all(tf.math.is_finite(t)) for t in flat]
+    return structure, tf.constant(0)
+
+  def is_all_finite(t):
+    return tf.math.is_finite(tf.reduce_max(t)), tf.math.is_finite(
+        tf.reduce_min(t))
+
+  flat_bools = [is_all_finite(t) for t in flat]
   all_finite = functools.reduce(tf.logical_and, flat_bools)
   if all_finite:
-    return (structure, tf.constant(0))
+    return structure, tf.constant(0)
   else:
-    return (tf.nest.map_structure(tf.zeros_like, structure), tf.constant(1))
+    return tf.nest.map_structure(tf.zeros_like, structure), tf.constant(1)
 
 
 def is_scalar(tensor):
