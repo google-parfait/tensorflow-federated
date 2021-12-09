@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -40,6 +41,7 @@ py_library(
     srcs = ["celeba.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":download",
         ":sql_client_data",
     ],
@@ -51,7 +53,10 @@ py_test(
     srcs = ["celeba_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":celeba"],
+    deps = [
+        requirement("tf-nightly"),
+        ":celeba",
+    ],
 )
 
 py_library(
@@ -59,6 +64,7 @@ py_library(
     srcs = ["cifar100.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
@@ -71,13 +77,17 @@ py_test(
     srcs = ["cifar100_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":cifar100"],
+    deps = [
+        requirement("tf-nightly"),
+        ":cifar100",
+    ],
 )
 
 py_library(
     name = "dataset_utils",
     srcs = ["dataset_utils.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_test(
@@ -87,6 +97,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":dataset_utils",
         ":from_tensor_slices_client_data",
     ],
@@ -96,6 +107,10 @@ py_library(
     name = "download",
     srcs = ["download.py"],
     srcs_version = "PY3",
+    deps = [
+        requirement("tf-nightly"),
+        requirement("tqdm"),
+    ],
 )
 
 py_test(
@@ -112,6 +127,7 @@ py_library(
     srcs = ["emnist.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
@@ -124,7 +140,10 @@ py_test(
     srcs = ["emnist_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":emnist"],
+    deps = [
+        requirement("tf-nightly"),
+        ":emnist",
+    ],
 )
 
 py_library(
@@ -132,6 +151,7 @@ py_library(
     srcs = ["shakespeare.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_data",
         ":download",
         ":from_tensor_slices_client_data",
@@ -145,7 +165,10 @@ py_test(
     srcs = ["shakespeare_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":shakespeare"],
+    deps = [
+        requirement("tf-nightly"),
+        ":shakespeare",
+    ],
 )
 
 py_library(
@@ -153,6 +176,7 @@ py_library(
     srcs = ["stackoverflow.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
@@ -165,7 +189,10 @@ py_test(
     srcs = ["stackoverflow_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":stackoverflow"],
+    deps = [
+        requirement("tf-nightly"),
+        ":stackoverflow",
+    ],
 )
 
 py_library(
@@ -173,6 +200,7 @@ py_library(
     srcs = ["gldv2.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_data",
         ":vision_datasets_utils",
     ],
@@ -185,6 +213,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":gldv2",
         ":vision_datasets_utils",
     ],
@@ -195,6 +224,7 @@ py_library(
     srcs = ["inaturalist.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_data",
         ":vision_datasets_utils",
     ],
@@ -207,6 +237,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":inaturalist",
         ":vision_datasets_utils",
     ],
@@ -217,6 +248,7 @@ py_library(
     srcs = ["vision_datasets_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_data",
         ":file_per_user_client_data",
     ],
@@ -227,7 +259,10 @@ py_test(
     srcs = ["vision_datasets_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":vision_datasets_utils"],
+    deps = [
+        requirement("tf-nightly"),
+        ":vision_datasets_utils",
+    ],
 )
 
 py_library(
@@ -235,6 +270,8 @@ py_library(
     srcs = ["client_data.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
@@ -248,6 +285,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_data",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -259,6 +297,7 @@ py_library(
     srcs = ["file_per_user_client_data.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
@@ -272,6 +311,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":file_per_user_client_data",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -283,6 +323,7 @@ py_library(
     srcs = ["from_tensor_slices_client_data.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -295,6 +336,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":from_tensor_slices_client_data",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -307,6 +349,7 @@ py_library(
     srcs = ["sql_client_data.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -319,6 +362,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":sql_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
@@ -329,6 +373,7 @@ py_library(
     srcs = ["transforming_client_data.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -340,6 +385,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":from_tensor_slices_client_data",
         ":transforming_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",

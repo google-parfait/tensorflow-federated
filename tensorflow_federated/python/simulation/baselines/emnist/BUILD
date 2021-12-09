@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -28,6 +29,7 @@ py_library(
     srcs = ["autoencoder_tasks.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":emnist_models",
         ":emnist_preprocessing",
         "//tensorflow_federated/python/learning:keras_utils",
@@ -46,6 +48,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":autoencoder_tasks",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
@@ -58,6 +61,7 @@ py_library(
     srcs = ["char_recognition_tasks.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":emnist_models",
         ":emnist_preprocessing",
         "//tensorflow_federated/python/learning:keras_utils",
@@ -76,6 +80,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":char_recognition_tasks",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
@@ -87,6 +92,7 @@ py_library(
     name = "emnist_models",
     srcs = ["emnist_models.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_test(
@@ -94,14 +100,20 @@ py_test(
     srcs = ["emnist_models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":emnist_models"],
+    deps = [
+        requirement("tf-nightly"),
+        ":emnist_models",
+    ],
 )
 
 py_library(
     name = "emnist_preprocessing",
     srcs = ["emnist_preprocessing.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
+    deps = [
+        requirement("tf-nightly"),
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+    ],
 )
 
 py_test(
@@ -111,6 +123,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":emnist_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",

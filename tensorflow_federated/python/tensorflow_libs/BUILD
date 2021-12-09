@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -30,14 +31,20 @@ py_test(
     srcs = ["function_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":function"],
+    deps = [
+        requirement("tf-nightly"),
+        ":function",
+    ],
 )
 
 py_library(
     name = "graph_merge",
     srcs = ["graph_merge.py"],
     srcs_version = "PY3",
-    deps = [":graph_spec"],
+    deps = [
+        requirement("tf-nightly"),
+        ":graph_spec",
+    ],
 )
 
 py_test(
@@ -46,6 +53,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":graph_merge",
         ":graph_spec",
     ],
@@ -64,6 +73,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":graph_optimizations",
         ":graph_spec",
     ],
@@ -73,6 +83,10 @@ py_library(
     name = "graph_spec",
     srcs = ["graph_spec.py"],
     srcs_version = "PY3",
+    deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
+    ],
 )
 
 py_test(
@@ -80,14 +94,20 @@ py_test(
     srcs = ["graph_spec_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":graph_spec"],
+    deps = [
+        requirement("tf-nightly"),
+        ":graph_spec",
+    ],
 )
 
 py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        requirement("tf-nightly"),
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
 )
 
 py_test(
@@ -96,13 +116,18 @@ py_test(
     srcs = ["tensor_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tensor_utils"],
+    deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        ":tensor_utils",
+    ],
 )
 
 py_library(
     name = "variable_utils",
     srcs = ["variable_utils.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_test(
@@ -111,13 +136,17 @@ py_test(
     srcs = ["variable_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":variable_utils"],
+    deps = [
+        requirement("tf-nightly"),
+        ":variable_utils",
+    ],
 )
 
 py_library(
     name = "version_check",
     srcs = ["version_check.py"],
     srcs_version = "PY3",
+    deps = [requirement("semantic-version")],
 )
 
 py_test(
@@ -126,5 +155,8 @@ py_test(
     srcs = ["version_check_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":version_check"],
+    deps = [
+        requirement("tf-nightly"),
+        ":version_check",
+    ],
 )

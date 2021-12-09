@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -30,6 +31,7 @@ py_library(
     name = "model",
     srcs = ["model.py"],
     srcs_version = "PY3",
+    deps = [requirement("attrs")],
 )
 
 py_library(
@@ -37,6 +39,7 @@ py_library(
     srcs = ["reconstruction_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":model",
         "//tensorflow_federated/python/learning:model_utils",
     ],
@@ -48,6 +51,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":keras_utils",
         ":reconstruction_utils",
         "//tensorflow_federated/python/learning:model_utils",
@@ -59,6 +63,7 @@ py_library(
     srcs = ["keras_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":model",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -72,6 +77,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":keras_utils",
         ":model",
     ],
@@ -82,6 +88,8 @@ py_library(
     srcs = ["training_process.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
         ":keras_utils",
         ":model",
         ":reconstruction_utils",
@@ -113,6 +121,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("numpy"),
+        requirement("tensorflow-privacy"),
+        requirement("tf-nightly"),
         ":keras_utils",
         ":model",
         ":reconstruction_utils",
@@ -143,6 +155,7 @@ py_library(
     srcs = ["evaluation_computation.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":keras_utils",
         ":reconstruction_utils",
         ":training_process",
@@ -162,6 +175,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
         ":evaluation_computation",
         ":keras_utils",
         ":model",

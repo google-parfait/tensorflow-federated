@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -46,6 +47,7 @@ py_library(
     srcs = ["concat.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":factory",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
@@ -64,6 +66,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":concat",
         ":mean",
         ":sum_factory",
@@ -80,6 +84,8 @@ py_library(
     srcs = ["differential_privacy.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tensorflow-privacy"),
+        requirement("tf-nightly"),
         ":factory",
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -99,6 +105,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tensorflow-privacy"),
+        requirement("tf-nightly"),
         ":differential_privacy",
         ":factory",
         ":test_utils",
@@ -117,6 +126,9 @@ py_library(
     srcs = ["encoded.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("dm-tree"),
+        requirement("tensorflow-model-optimization"),
+        requirement("tf-nightly"),
         ":factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
@@ -136,6 +148,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tensorflow-model-optimization"),
+        requirement("tf-nightly"),
         ":encoded",
         ":factory",
         "//tensorflow_federated/python/core/api:test_case",
@@ -161,6 +175,7 @@ py_library(
     name = "hadamard",
     srcs = ["hadamard.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_test(
@@ -168,7 +183,11 @@ py_test(
     srcs = ["hadamard_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":hadamard"],
+    deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        ":hadamard",
+    ],
 )
 
 py_library(
@@ -176,6 +195,7 @@ py_library(
     srcs = ["mean.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":factory",
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -196,6 +216,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":factory",
         ":mean",
         ":test_utils",
@@ -228,6 +249,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":mean",
         ":measurements",
         ":primitives",
@@ -245,6 +267,8 @@ py_library(
     srcs = ["primitives.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
@@ -262,6 +286,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":primitives",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
@@ -278,6 +304,8 @@ py_library(
     srcs = ["quantile_estimation.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tensorflow-privacy"),
+        requirement("tf-nightly"),
         ":factory",
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -295,6 +323,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tensorflow-privacy"),
+        requirement("tf-nightly"),
         ":quantile_estimation",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -310,6 +341,8 @@ py_library(
     srcs = ["robust.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":factory",
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -331,6 +364,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":mean",
         ":robust",
         ":sum_factory",
@@ -351,6 +385,7 @@ py_library(
     srcs = ["rotation.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":factory",
         ":hadamard",
         ":sum_factory",
@@ -372,6 +407,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":mean",
         ":measurements",
         ":rotation",
@@ -389,6 +426,7 @@ py_library(
     srcs = ["sampling.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -410,6 +448,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":sampling",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
@@ -423,6 +463,8 @@ py_library(
     srcs = ["secure.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":factory",
         ":primitives",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -444,6 +486,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":factory",
         ":secure",
         "//tensorflow_federated/python/core/api:computations",
@@ -481,6 +525,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":factory",
         ":sum_factory",
         "//tensorflow_federated/python/core/api:test_case",
@@ -498,6 +543,7 @@ py_library(
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
@@ -516,6 +562,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":factory",
         ":test_utils",
         "//tensorflow_federated/python/core/api:test_case",

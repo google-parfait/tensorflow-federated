@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -26,6 +27,7 @@ py_library(
     srcs = ["adagrad.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -37,6 +39,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":adagrad",
         ":optimizer",
         ":optimizer_test_utils",
@@ -48,6 +51,7 @@ py_library(
     srcs = ["adam.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -59,6 +63,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":adam",
         ":optimizer",
         ":optimizer_test_utils",
@@ -84,7 +89,10 @@ py_library(
     name = "keras_optimizer",
     srcs = ["keras_optimizer.py"],
     srcs_version = "PY3",
-    deps = [":optimizer"],
+    deps = [
+        requirement("tf-nightly"),
+        ":optimizer",
+    ],
 )
 
 py_test(
@@ -93,6 +101,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":keras_optimizer",
         ":optimizer",
         ":optimizer_test_utils",
@@ -107,6 +116,7 @@ py_library(
     name = "optimizer",
     srcs = ["optimizer.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_test(
@@ -115,6 +125,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         "//tensorflow_federated/python/core/api:test_case",
     ],
@@ -126,6 +137,7 @@ py_library(
     srcs = ["optimizer_test_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         "//tensorflow_federated/python/core/api:test_case",
     ],
@@ -137,6 +149,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer_test_utils",
         "//tensorflow_federated/python/core/api:test_case",
     ],
@@ -147,6 +160,7 @@ py_library(
     srcs = ["rmsprop.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -158,6 +172,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         ":optimizer_test_utils",
         ":rmsprop",
@@ -169,6 +184,7 @@ py_library(
     srcs = ["sgdm.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -180,6 +196,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         ":optimizer_test_utils",
         ":sgdm",
@@ -191,6 +208,7 @@ py_library(
     srcs = ["yogi.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -202,6 +220,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":optimizer",
         ":optimizer_test_utils",
         ":yogi",

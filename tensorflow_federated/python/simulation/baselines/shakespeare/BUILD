@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -24,6 +25,7 @@ py_library(
     name = "char_prediction_models",
     srcs = ["char_prediction_models.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_test(
@@ -31,14 +33,20 @@ py_test(
     srcs = ["char_prediction_models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":char_prediction_models"],
+    deps = [
+        requirement("tf-nightly"),
+        ":char_prediction_models",
+    ],
 )
 
 py_library(
     name = "char_prediction_preprocessing",
     srcs = ["char_prediction_preprocessing.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
+    deps = [
+        requirement("tf-nightly"),
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+    ],
 )
 
 py_test(
@@ -48,6 +56,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":char_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
@@ -59,6 +68,7 @@ py_library(
     srcs = ["char_prediction_tasks.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":char_prediction_models",
         ":char_prediction_preprocessing",
         "//tensorflow_federated/python/learning:keras_utils",
@@ -78,6 +88,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":char_prediction_tasks",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",

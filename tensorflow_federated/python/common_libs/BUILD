@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -58,6 +59,7 @@ py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
     srcs_version = "PY3",
+    deps = [requirement("attrs")],
 )
 
 py_test(
@@ -67,6 +69,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":py_typecheck",
         ":structure",
     ],
@@ -95,6 +98,7 @@ py_library(
     srcs = ["serialization_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":py_typecheck",
         "@com_google_protobuf//:protobuf_python",
     ],
@@ -107,6 +111,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":serialization_utils",
         "@com_google_protobuf//:protobuf_python",
     ],
@@ -116,7 +121,11 @@ py_library(
     name = "structure",
     srcs = ["structure.py"],
     srcs_version = "PY3",
-    deps = [":py_typecheck"],
+    deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
+        ":py_typecheck",
+    ],
 )
 
 py_test(
@@ -125,7 +134,11 @@ py_test(
     srcs = ["structure_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":structure"],
+    deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
+        ":structure",
+    ],
 )
 
 py_library(
@@ -133,6 +146,7 @@ py_library(
     testonly = True,
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_library(

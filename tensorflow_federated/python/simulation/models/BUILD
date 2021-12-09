@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -25,6 +26,7 @@ py_library(
     name = "group_norm",
     srcs = ["group_norm.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 py_test(
@@ -33,11 +35,16 @@ py_test(
     srcs = ["group_norm_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":group_norm"],
+    deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        ":group_norm",
+    ],
 )
 
 py_library(
     name = "mnist",
     srcs = ["mnist.py"],
     srcs_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )

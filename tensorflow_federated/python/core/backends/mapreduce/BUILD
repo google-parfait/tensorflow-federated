@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -42,6 +43,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":forms",
         ":test_utils",
         "//tensorflow_federated/python/core/api:computations",
@@ -54,6 +56,7 @@ py_library(
     srcs = ["form_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":forms",
         ":transformations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -82,6 +85,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":form_utils",
         ":forms",
         ":test_utils",
@@ -105,6 +110,8 @@ py_library(
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":forms",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
@@ -138,6 +145,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":form_utils",
         ":test_utils",
         ":transformations",

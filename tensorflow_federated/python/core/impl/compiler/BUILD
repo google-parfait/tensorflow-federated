@@ -1,4 +1,5 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -45,6 +46,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_analysis",
         ":building_blocks",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -61,6 +63,7 @@ py_library(
     srcs = ["building_block_factory.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_blocks",
         ":intrinsic_defs",
         ":tensorflow_computation_factory",
@@ -129,6 +132,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":building_block_factory",
         ":building_blocks",
         ":intrinsic_defs",
@@ -166,6 +171,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_factory",
         ":building_blocks",
         ":intrinsic_defs",
@@ -183,6 +189,7 @@ py_library(
     srcs = ["compiled_computation_transforms.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_factory",
         ":building_blocks",
         ":tensorflow_computation_transformations",
@@ -208,6 +215,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_factory",
         ":building_blocks",
         ":compiled_computation_transforms",
@@ -243,6 +251,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":computation_factory",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -256,6 +265,7 @@ py_library(
     srcs = ["intrinsic_defs.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_factory",
@@ -267,6 +277,7 @@ py_library(
     srcs = ["intrinsic_reductions.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_factory",
         ":building_blocks",
         ":intrinsic_defs",
@@ -287,6 +298,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_blocks",
         ":intrinsic_defs",
         ":intrinsic_reductions",
@@ -343,6 +355,7 @@ py_library(
     srcs = ["tensorflow_computation_factory.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":local_computation_factory_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -363,6 +376,8 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":tensorflow_computation_factory",
         ":test_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -379,6 +394,7 @@ py_library(
     srcs = ["tensorflow_computation_transformations.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
@@ -393,6 +409,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_analysis",
         ":building_block_factory",
         ":building_blocks",
@@ -412,6 +429,8 @@ py_library(
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
         ":building_block_factory",
         ":building_blocks",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -428,6 +447,7 @@ py_library(
     srcs = ["transformations.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":building_block_factory",
         ":building_blocks",
         ":compiled_computation_transforms",
@@ -448,6 +468,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_analysis",
         ":building_block_factory",
         ":building_blocks",
@@ -485,6 +506,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_factory",
         ":building_blocks",
         ":test_utils",
@@ -500,6 +522,7 @@ py_library(
     srcs = ["tree_analysis.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_analysis",
         ":building_blocks",
         ":intrinsic_defs",
@@ -517,6 +540,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_analysis",
         ":building_block_factory",
         ":building_blocks",
@@ -550,6 +574,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_factory",
         ":building_blocks",
         ":tensorflow_computation_factory",
@@ -642,6 +667,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":building_block_analysis",
         ":building_block_factory",
         ":building_blocks",

@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -24,6 +25,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":finalizer",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -35,6 +37,7 @@ py_test(
     name = "aggregator_test",
     srcs = ["aggregator_test.py"],
     deps = [
+        requirement("tf-nightly"),
         ":aggregator",
         ":finalizer",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -46,7 +49,10 @@ py_library(
     name = "finalizer",
     srcs = ["finalizer.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        requirement("tf-nightly"),
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
 )
 
 py_library(

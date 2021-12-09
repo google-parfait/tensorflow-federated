@@ -1,4 +1,5 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_cpu_gpu_test_with_tf_deps", "tff_cc_library_with_tf_deps", "tff_cc_library_with_tf_runtime_deps", "tff_cc_test_with_tf_deps", "tff_pybind_extension_with_tf_deps")
+load("@pip//:requirements.bzl", "requirement")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_binary")
 
@@ -574,6 +575,7 @@ py_binary(
     testonly = True,
     srcs = ["make_reduce_lambda_test_graph.py"],
     python_version = "PY3",
+    deps = [requirement("tf-nightly")],
 )
 
 genrule(

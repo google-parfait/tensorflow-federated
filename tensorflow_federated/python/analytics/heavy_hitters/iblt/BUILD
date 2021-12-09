@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -32,6 +33,7 @@ py_library(
     ],
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":chunkers",
         ":hyperedge_hashers",
     ],
@@ -43,6 +45,10 @@ py_library(
         "chunkers.py",
     ],
     srcs_version = "PY3",
+    deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+    ],
 )
 
 py_library(
@@ -51,6 +57,11 @@ py_library(
         "hyperedge_hashers.py",
     ],
     srcs_version = "PY3",
+    deps = [
+        requirement("farmhashpy"),
+        requirement("numpy"),
+        requirement("tf-nightly"),
+    ],
 )
 
 py_test(
@@ -61,7 +72,11 @@ py_test(
     python_version = "PY3",
     shard_count = 4,
     srcs_version = "PY3",
-    deps = [":iblt_lib"],
+    deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        ":iblt_lib",
+    ],
 )
 
 py_test(
@@ -69,7 +84,10 @@ py_test(
     srcs = ["chunkers_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":chunkers"],
+    deps = [
+        requirement("tf-nightly"),
+        ":chunkers",
+    ],
 )
 
 py_test(
@@ -78,7 +96,11 @@ py_test(
     srcs = ["hyperedge_hashers_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":hyperedge_hashers"],
+    deps = [
+        requirement("numpy"),
+        requirement("tf-nightly"),
+        ":hyperedge_hashers",
+    ],
 )
 
 py_library(
@@ -86,6 +108,8 @@ py_library(
     srcs = ["iblt_tff.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("tf-nightly"),
         ":chunkers",
         ":iblt_lib",
         "//tensorflow_federated/python/analytics:data_processing",
@@ -106,6 +130,7 @@ py_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
+        requirement("tf-nightly"),
         ":iblt_tff",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:test_case",

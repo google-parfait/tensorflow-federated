@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
@@ -25,6 +26,8 @@ py_library(
     srcs = ["compiler.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
@@ -41,6 +44,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
         ":compiler",
         ":runtime",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -68,6 +73,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
         ":execution_contexts",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
@@ -85,6 +92,7 @@ py_library(
     srcs = ["executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":runtime",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -106,6 +114,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
         ":executor",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -118,6 +128,8 @@ py_library(
     srcs = ["runtime.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -134,6 +146,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
         ":runtime",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
