@@ -41,8 +41,8 @@ class LearningProcessOutputError(TypeError):
   """Raises when a learning process does not have the expected output type."""
 
 
-class ReportFnTypeSignatureError(TypeError):
-  """Raises when the type signature `report_fn` is not correct."""
+class GetModelWeightsTypeSignatureError(TypeError):
+  """Raises when the type signature of `get_model_weights` is not correct."""
 
 
 @attr.s(frozen=True, eq=False, slots=True)
@@ -96,7 +96,7 @@ class LearningProcess(iterative_process.IterativeProcess):
 
   def __init__(self, initialize_fn: computation_base.Computation,
                next_fn: computation_base.Computation,
-               report_fn: computation_base.Computation):
+               get_model_weights: computation_base.Computation):
     """Creates a `tff.templates.AggregationProcess`.
 
     Args:
@@ -107,12 +107,12 @@ class LearningProcess(iterative_process.IterativeProcess):
         `LearningProcessOutput` where the `state` attribute matches the type
         `S@SERVER`, and accepts two argument of types `S@SERVER` and
         `{D*}@CLIENTS`.
-     report_fn: A `tff.Computation` that accepts an input `S` where the output
-       of `initialize_fn` is of type `S@SERVER`. This computation is used to
-       create a representation of the state that can be used for downstream
+     get_model_weights: A `tff.Computation` that accepts an input `S` where the
+       output of `initialize_fn` is of type `S@SERVER`. This computation is used
+       to create a representation of the state that can be used for downstream
        tasks without requiring access to the entire server state. For example,
-       `report_fn` could be used to extract model weights for computing metrics
-       on held-out data.
+       `get_model_weights` could be used to extract model weights suitable for
+       computing evaluation metrics on held-out data.
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
@@ -168,25 +168,26 @@ class LearningProcess(iterative_process.IterativeProcess):
           f'The result of `next_fn` must be placed at `SERVER` but found '
           f'placement {next_fn_result.metrics.placement} for `metrics`.')
 
-    py_typecheck.check_type(report_fn, computation_base.Computation)
+    py_typecheck.check_type(get_model_weights, computation_base.Computation)
 
-    report_fn_type = report_fn.type_signature
-    if report_fn_type.is_federated():
+    get_model_weights_type = get_model_weights.type_signature
+    if get_model_weights_type.is_federated():
       raise LearningProcessPlacementError(
-          f'The `report_fn` must not be a federated computation, '
-          f'but found `report_fn` with type signature:\n'
-          f'{report_fn_type}')
+          f'The `get_model_weights` must not be a federated computation, '
+          f'but found `get_model_weights` with type signature:\n'
+          f'{get_model_weights_type}')
 
-    report_fn_param = report_fn.type_signature.parameter
+    get_model_weights_param = get_model_weights.type_signature.parameter
     state_type_without_placement = initialize_fn.type_signature.result.member
-    if not report_fn_param.is_assignable_from(state_type_without_placement):
-      raise ReportFnTypeSignatureError(
-          f'The input type of `report_fn` must be assignable from '
+    if not get_model_weights_param.is_assignable_from(
+        state_type_without_placement):
+      raise GetModelWeightsTypeSignatureError(
+          f'The input type of `get_model_weights` must be assignable from '
           f'the member type of the output of `initialize_fn`, but found input '
-          f'type {report_fn_param}, which is not assignable from '
+          f'type {get_model_weights_param}, which is not assignable from '
           f'{state_type_without_placement}.')
 
-    self._report_fn = report_fn
+    self._get_model_weights = get_model_weights
 
   @property
   def initialize(self) -> computation_base.Computation:
@@ -215,14 +216,16 @@ class LearningProcess(iterative_process.IterativeProcess):
     return super().next
 
   @property
-  def report(self) -> computation_base.Computation:
-    """A `tff.Computation` that creates a representation of the process state.
+  def get_model_weights(self) -> computation_base.Computation:
+    """A `tff.Computation` returning the model weights of a server state.
 
-    This computation should accept the unplaced member of the current state of
-    the process (originally produced by the `initialize` attribute), and returns
-    an unplaced representation of that state.
+    This computation accepts an unplaced state of the process (originally
+    produced by the `initialize` attribute), and returns an unplaced
+    representation of the model weights of the state. Note that this
+    representation need not take the form of a `tff.learning.ModelWeights`
+    object, and may depend on the specific `LearningProcess` in question.
 
     Returns:
       A `tff.Computation`.
     """
-    return self._report_fn
+    return self._get_model_weights

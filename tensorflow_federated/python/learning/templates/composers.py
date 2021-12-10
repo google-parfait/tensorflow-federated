@@ -172,10 +172,10 @@ def compose_learning_process(
     return learning_process.LearningProcessOutput(new_state, metrics)
 
   @computations.tf_computation(next_fn.type_signature.result.state.member)
-  def report_fn(state):
+  def model_weights_fn(state):
     return state.global_model_weights
 
-  return learning_process.LearningProcess(init_fn, next_fn, report_fn)
+  return learning_process.LearningProcess(init_fn, next_fn, model_weights_fn)
 
 
 def _validate_args(initial_model_weights_fn, model_weights_distributor,

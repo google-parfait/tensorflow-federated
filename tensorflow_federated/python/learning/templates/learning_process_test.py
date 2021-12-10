@@ -59,17 +59,17 @@ def build_next_fn(server_init_fn):
   return next_fn
 
 
-def build_report_fn(server_init_fn):
+def build_get_model_weights(server_init_fn):
 
   @computations.tf_computation(server_init_fn.type_signature.result.member)
-  def report_fn(state):
+  def get_model_weights(state):
     return state
 
-  return report_fn
+  return get_model_weights
 
 
 test_next_fn = build_next_fn(test_init_fn)
-test_report_fn = build_report_fn(test_init_fn)
+test_get_model_weights = build_get_model_weights(test_init_fn)
 
 
 class LearningProcessTest(test_case.TestCase):
@@ -77,16 +77,16 @@ class LearningProcessTest(test_case.TestCase):
   def test_construction_does_not_raise(self):
     try:
       learning_process.LearningProcess(test_init_fn, test_next_fn,
-                                       test_report_fn)
+                                       test_get_model_weights)
     except:  # pylint: disable=bare-except
       self.fail('Could not construct a valid LearningProcess.')
 
   def test_learning_process_can_be_reconstructed(self):
     process = learning_process.LearningProcess(test_init_fn, test_next_fn,
-                                               test_report_fn)
+                                               test_get_model_weights)
     try:
       learning_process.LearningProcess(process.initialize, process.next,
-                                       process.report)
+                                       process.get_model_weights)
     except:  # pylint: disable=bare-except
       self.fail('Could not reconstruct the LearningProcess.')
 
@@ -97,10 +97,11 @@ class LearningProcessTest(test_case.TestCase):
       return intrinsics.federated_value((), placements.SERVER)
 
     next_fn = build_next_fn(empty_initialize_fn)
-    report_fn = build_report_fn(empty_initialize_fn)
+    get_model_weights = build_get_model_weights(empty_initialize_fn)
 
     try:
-      learning_process.LearningProcess(empty_initialize_fn, next_fn, report_fn)
+      learning_process.LearningProcess(empty_initialize_fn, next_fn,
+                                       get_model_weights)
     except:  # pylint: disable=bare-except
       self.fail('Could not construct a LearningProcess with empty state.')
 
@@ -111,10 +112,11 @@ class LearningProcessTest(test_case.TestCase):
         lambda: intrinsics.federated_value(create_empty_string(), placements.
                                            SERVER))
     next_fn = build_next_fn(initialize_fn)
-    report_fn = build_report_fn(initialize_fn)
+    get_model_weights = build_get_model_weights(initialize_fn)
 
     try:
-      learning_process.LearningProcess(initialize_fn, next_fn, report_fn)
+      learning_process.LearningProcess(initialize_fn, next_fn,
+                                       get_model_weights)
     except:  # pylint: disable=bare-except
       self.fail('Could not construct a LearningProcess with state type having '
                 'statically unknown shape.')
@@ -122,14 +124,15 @@ class LearningProcessTest(test_case.TestCase):
   def test_init_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       init_fn = lambda: 0
-      learning_process.LearningProcess(init_fn, test_next_fn, test_report_fn)
+      learning_process.LearningProcess(init_fn, test_next_fn,
+                                       test_get_model_weights)
 
   def test_next_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       learning_process.LearningProcess(
           initialize_fn=test_init_fn,
           next_fn=lambda state, client_data: LearningProcessOutput(state, ()),
-          report_fn=test_report_fn)
+          get_model_weights=test_get_model_weights)
 
   def test_init_param_not_empty_raises(self):
 
@@ -140,20 +143,20 @@ class LearningProcessTest(test_case.TestCase):
 
     with self.assertRaises(errors.TemplateInitFnParamNotEmptyError):
       learning_process.LearningProcess(one_arg_initialize_fn, test_next_fn,
-                                       test_report_fn)
+                                       test_get_model_weights)
 
   def test_init_state_not_assignable(self):
     float_initialize_fn = computations.federated_computation()(lambda: 0.0)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       learning_process.LearningProcess(float_initialize_fn, test_next_fn,
-                                       test_report_fn)
+                                       test_get_model_weights)
 
   def test_next_state_not_assignable(self):
     float_initialize_fn = computations.federated_computation()(lambda: 0.0)
     float_next_fn = build_next_fn(float_initialize_fn)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       learning_process.LearningProcess(test_init_fn, float_next_fn,
-                                       test_report_fn)
+                                       test_get_model_weights)
 
   def test_init_fn_with_client_placed_state_raises(self):
 
@@ -166,7 +169,7 @@ class LearningProcessTest(test_case.TestCase):
       return LearningProcessOutput(state, client_values)
 
     with self.assertRaises(learning_process.LearningProcessPlacementError):
-      learning_process.LearningProcess(init_fn, next_fn, test_report_fn)
+      learning_process.LearningProcess(init_fn, next_fn, test_get_model_weights)
 
   def test_next_return_tuple_raises(self):
 
@@ -178,7 +181,7 @@ class LearningProcessTest(test_case.TestCase):
 
     with self.assertRaises(learning_process.LearningProcessOutputError):
       learning_process.LearningProcess(test_init_fn, tuple_next_fn,
-                                       test_report_fn)
+                                       test_get_model_weights)
 
   def test_next_return_namedtuple_raises(self):
 
@@ -193,7 +196,7 @@ class LearningProcessTest(test_case.TestCase):
 
     with self.assertRaises(learning_process.LearningProcessOutputError):
       learning_process.LearningProcess(test_init_fn, namedtuple_next_fn,
-                                       test_report_fn)
+                                       test_get_model_weights)
 
   def test_next_return_odict_raises(self):
 
@@ -205,7 +208,7 @@ class LearningProcessTest(test_case.TestCase):
 
     with self.assertRaises(learning_process.LearningProcessOutputError):
       learning_process.LearningProcess(test_init_fn, odict_next_fn,
-                                       test_report_fn)
+                                       test_get_model_weights)
 
   def test_next_fn_with_one_parameter_raises(self):
 
@@ -214,7 +217,8 @@ class LearningProcessTest(test_case.TestCase):
       return LearningProcessOutput(state, 0)
 
     with self.assertRaises(errors.TemplateNextFnNumArgsError):
-      learning_process.LearningProcess(test_init_fn, next_fn, test_report_fn)
+      learning_process.LearningProcess(test_init_fn, next_fn,
+                                       test_get_model_weights)
 
   def test_next_fn_with_three_parameters_raises(self):
 
@@ -226,7 +230,8 @@ class LearningProcessTest(test_case.TestCase):
       return LearningProcessOutput(state, metrics)
 
     with self.assertRaises(errors.TemplateNextFnNumArgsError):
-      learning_process.LearningProcess(test_init_fn, next_fn, test_report_fn)
+      learning_process.LearningProcess(test_init_fn, next_fn,
+                                       test_get_model_weights)
 
   def test_next_fn_with_non_client_placed_second_arg_raises(self):
 
@@ -239,7 +244,8 @@ class LearningProcessTest(test_case.TestCase):
       return LearningProcessOutput(state, metrics)
 
     with self.assertRaises(learning_process.LearningProcessPlacementError):
-      learning_process.LearningProcess(test_init_fn, next_fn, test_report_fn)
+      learning_process.LearningProcess(test_init_fn, next_fn,
+                                       test_get_model_weights)
 
   def test_next_fn_with_non_sequence_second_arg_raises(self):
     ints_at_clients = computation_types.FederatedType(tf.int32,
@@ -251,7 +257,8 @@ class LearningProcessTest(test_case.TestCase):
       return LearningProcessOutput(state, metrics)
 
     with self.assertRaises(learning_process.LearningProcessSequenceTypeError):
-      learning_process.LearningProcess(test_init_fn, next_fn, test_report_fn)
+      learning_process.LearningProcess(test_init_fn, next_fn,
+                                       test_get_model_weights)
 
   def test_next_fn_with_client_placed_metrics_result_raises(self):
 
@@ -260,22 +267,27 @@ class LearningProcessTest(test_case.TestCase):
       return LearningProcessOutput(state, metrics)
 
     with self.assertRaises(learning_process.LearningProcessPlacementError):
-      learning_process.LearningProcess(test_init_fn, next_fn, test_report_fn)
+      learning_process.LearningProcess(test_init_fn, next_fn,
+                                       test_get_model_weights)
 
-  def test_non_tff_computation_report_fn_raises(self):
-    report_fn = lambda x: x
+  def test_non_tff_computation_get_model_weights_raises(self):
+    get_model_weights = lambda x: x
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
-      learning_process.LearningProcess(test_init_fn, test_next_fn, report_fn)
+      learning_process.LearningProcess(test_init_fn, test_next_fn,
+                                       get_model_weights)
 
-  def test_federated_report_fn_raises(self):
-    report_fn = computations.federated_computation(test_state_type)(lambda x: x)
-    with self.assertRaises(learning_process.ReportFnTypeSignatureError):
-      learning_process.LearningProcess(test_init_fn, test_next_fn, report_fn)
+  def test_federated_get_model_weights_raises(self):
+    get_model_weights = computations.federated_computation(test_state_type)(
+        lambda x: x)
+    with self.assertRaises(learning_process.GetModelWeightsTypeSignatureError):
+      learning_process.LearningProcess(test_init_fn, test_next_fn,
+                                       get_model_weights)
 
-  def test_report_param_not_assignable(self):
-    report_fn = computations.tf_computation(tf.float32)(lambda x: x)
-    with self.assertRaises(learning_process.ReportFnTypeSignatureError):
-      learning_process.LearningProcess(test_init_fn, test_next_fn, report_fn)
+  def test_get_model_weights_param_not_assignable(self):
+    get_model_weights = computations.tf_computation(tf.float32)(lambda x: x)
+    with self.assertRaises(learning_process.GetModelWeightsTypeSignatureError):
+      learning_process.LearningProcess(test_init_fn, test_next_fn,
+                                       get_model_weights)
 
 
 if __name__ == '__main__':
