@@ -40,6 +40,28 @@ git_repository(
 )
 
 git_repository(
+    name = "io_bazel_rules_go",
+    remote = "https://github.com/bazelbuild/rules_go.git",
+    tag = "v0.29.0",
+)
+
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+
+go_rules_dependencies()
+
+go_register_toolchains(version = "1.17.1")
+
+git_repository(
+    name = "bazel_gazelle",
+    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
+    tag = "v0.24.0",
+)
+
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+
+gazelle_dependencies()
+
+git_repository(
     name = "org_tensorflow",
     commit = "7059eeb4b55ba316d959e923e51be3403a2924a8",
     patches = ["//third_party/tensorflow:internal_visibility.patch"],
