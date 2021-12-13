@@ -1,5 +1,6 @@
 load("@com_github_grpc_grpc//bazel:cc_grpc_library.bzl", "cc_grpc_library")
 load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library", "go_proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
@@ -72,6 +73,17 @@ cc_grpc_library(
     srcs = [":executor_proto"],
     grpc_only = True,
     deps = [":executor_cc_proto"],
+)
+
+go_proto_library(
+    name = "executor_go_proto",
+    deps = [":executor_proto"],
+)
+
+go_grpc_library(
+    name = "executor_go_grpc_proto",
+    srcs = [":executor_proto"],
+    deps = [":executor_go_proto"],
 )
 
 filegroup(
