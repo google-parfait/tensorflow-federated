@@ -96,6 +96,11 @@ landing_page:
 
   - classname: devsite-landing-row-cards
     items:
+    - heading: "Federated Learning and Analytics Research Demos using TFF"
+      youtube_id: ssM0iQRR94E
+      buttons:
+      - label: "Watch the video"
+        path: https://www.youtube.com/watch?v=ssM0iQRR94E
     - heading: "Federated Learning Workshop using TensorFlow Federated"
       youtube_id: JBNas6Yd30A
       buttons:
