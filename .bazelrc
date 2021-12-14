@@ -85,6 +85,7 @@ build:linux --define=PREFIX=/usr
 build:linux --define=LIBDIR=$(PREFIX)/lib
 build:linux --define=INCLUDEDIR=$(PREFIX)/include
 build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
+build:linux --config=avx_linux
 
 build:avx_linux --copt=-mavx
 build:avx_linux --host_copt=-mavx
