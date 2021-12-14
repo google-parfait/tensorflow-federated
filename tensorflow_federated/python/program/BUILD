@@ -23,6 +23,7 @@ py_library(
         ":data_source",
         ":file_program_state_manager",
         ":file_release_manager",
+        ":logging_release_manager",
         ":memory_release_manager",
         ":program_state_manager",
         ":release_manager",
