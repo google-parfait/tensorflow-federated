@@ -509,6 +509,70 @@ tff_cc_library_with_tf_deps(
     ],
 )
 
+tff_cc_library_with_tf_runtime_deps(
+    name = "dataset_from_tensor_structures",
+    srcs = ["dataset_from_tensor_structures.cc"],
+    hdrs = ["dataset_from_tensor_structures.h"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:const_op",
+        "@org_tensorflow//tensorflow/cc:cc_ops",
+        "@org_tensorflow//tensorflow/cc:ops",
+        "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:graph",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+    deps = [
+        ":session_provider",
+        ":status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+# Python target which generates an example GraphDef for testing structural `reduce`
+# in `dataset_from_tensor_structures_test`.
+py_binary(
+    name = "make_structural_reduce_test_graph",
+    testonly = True,
+    srcs = ["make_structural_reduce_test_graph.py"],
+    python_version = "PY3",
+)
+
+genrule(
+    name = "structural_reduce_test_graph",
+    testonly = True,
+    srcs = [],
+    outs = ["structural_reduce_test.pbtxt"],
+    cmd = "$(location :make_structural_reduce_test_graph) --output \"$@\"",
+    exec_tools = [":make_structural_reduce_test_graph"],
+)
+
+tff_cc_test_with_tf_deps(
+    name = "dataset_from_tensor_structures_test",
+    srcs = ["dataset_from_tensor_structures_test.cc"],
+    args = [
+        "--reduce_graph_path",
+        "$(location structural_reduce_test.pbtxt)",
+    ],
+    data = ["structural_reduce_test.pbtxt"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+    deps = [
+        ":dataset_from_tensor_structures",
+        ":session_provider",
+        ":status_matchers",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "@com_google_absl//absl/flags:flag",
+    ],
+)
+
 tff_cc_library_with_tf_deps(
     name = "session_provider",
     srcs = ["session_provider.cc"],
