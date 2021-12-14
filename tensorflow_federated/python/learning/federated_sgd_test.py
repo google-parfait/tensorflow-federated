@@ -19,6 +19,7 @@ tensorflow_federated/python/tests/federated_sgd_integration_test.py.
 """
 
 import collections
+import itertools
 from unittest import mock
 
 from absl.testing import parameterized
@@ -49,8 +50,9 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
     # as it adds the batch dimension which is expected by the model.
     return dataset.repeat(2).batch(3)
 
-  def model(self):
-    return model_examples.LinearRegression(feature_dim=2)
+  def model(self, use_metrics_aggregator=False):
+    return model_examples.LinearRegression(
+        feature_dim=2, use_metrics_aggregator=use_metrics_aggregator)
 
   def initial_weights(self):
     return model_utils.ModelWeights(
@@ -65,15 +67,18 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(TypeError, 'Model'):
       federated_sgd.ClientSgd(keras_model)
 
-  @parameterized.named_parameters(
-      ('non-simulation_weighted', False, True),
-      ('non-simulation_unweighted', False, False),
-      ('simulation_weighted', True, True),
-      ('simulation_unweighted', True, False),
-  )
+  @parameterized.named_parameters((  # pylint: disable=g-complex-comprehension
+      '_'.join(name for name, _ in named_params),
+      *(param for _, param in named_params),
+  ) for named_params in itertools.product([(
+      'non-simulation',
+      False), ('simulation', True)], [('weighted', True), (
+          'unweighted', False)], [('use_metrics_aggregator',
+                                   True), ('not_use_metrics_aggregator',
+                                           False)]))
   @test_utils.skip_test_for_multi_gpu
-  def test_client_tf(self, simulation, weighted):
-    model = self.model()
+  def test_client_tf(self, simulation, weighted, use_metrics_aggregator):
+    model = self.model(use_metrics_aggregator)
     dataset = self.dataset()
     if weighted:
       client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
@@ -93,13 +98,17 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
     else:
       self.assertAllClose(client_outputs.weights_delta_weight, 1.0)
 
-    self.assertDictContainsSubset(
-        client_outputs.model_output, {
-            'num_examples': 8,
-            'num_examples_float': 8.0,
-            'num_batches': 3,
-            'loss': 0.5,
-        })
+    if use_metrics_aggregator:
+      self.assertEqual(client_outputs.model_output,
+                       collections.OrderedDict(loss=[4.0, 8.0], num_examples=8))
+    else:
+      self.assertDictContainsSubset(
+          client_outputs.model_output, {
+              'num_examples': 8,
+              'num_examples_float': 8.0,
+              'num_batches': 3,
+              'loss': 0.5,
+          })
     self.assertEqual(client_outputs.optimizer_output['has_non_finite_delta'], 0)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))

@@ -151,6 +151,7 @@ py_cpu_gpu_test(
         ":optimizer_utils",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
+        "//tensorflow_federated/python/aggregators:primitives",
         "//tensorflow_federated/python/aggregators:sampling",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/common_libs:test_utils",
@@ -165,6 +166,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )

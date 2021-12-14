@@ -195,9 +195,18 @@ class Model(object, metaclass=abc.ABCMeta):
       function understands the result.
     """.format(MODEL_ARG_NAME)
 
+  # TODO(b/202027329): Remove this method once all models do not implement
+  # `report_local_outputs` and `federated_output_computation`.
   @abc.abstractmethod
   def report_local_outputs(self):
     """Returns tensors representing values aggregated over `forward_pass` calls.
+
+    Important: `report_local_outputs` and `federated_output_computation` are
+    deprecated and will be removed in 2022Q1. You should use
+    `report_local_unfinalized_metrics` and `metric_finalizers` instead. The
+    cross-client metrics aggregation should be specified as the
+    `metrics_aggregator` argument when you build a training process or
+    evaluation computation using this model.
 
     In federated learning, the values returned by this method will typically
     be further aggregated across clients and made available on the server.
@@ -222,9 +231,18 @@ class Model(object, metaclass=abc.ABCMeta):
     """
     pass
 
+  # TODO(b/202027329): Remove this property once all models do not implement
+  # `report_local_outputs` and `federated_output_computation`.
   @abc.abstractproperty
   def federated_output_computation(self) -> computation_base.Computation:
     """Performs federated aggregation of the `Model's` `local_outputs`.
+
+    Important: `report_local_outputs` and `federated_output_computation` are
+    deprecated and will be removed in 2022Q1. You should use
+    `report_local_unfinalized_metrics` and `metric_finalizers` instead. The
+    cross-client metrics aggregation should be specified as the
+    `metrics_aggregator` argument when you build a training process or
+    evaluation computation using this model.
 
     This is typically used to aggregate metrics across many clients, e.g. the
     body of the computation might be:

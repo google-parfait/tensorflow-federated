@@ -34,10 +34,17 @@ from tensorflow_federated.python.learning import model
 class LinearRegression(model.Model):
   """Example of a simple linear regression implemented directly."""
 
-  def __init__(self, feature_dim: int = 2):
+  # TODO(b/202027089): Remove the `use_metrics_aggregator` argument once we do
+  # not need it to test both ways of defining cross-client metrics aggregation.
+  def __init__(self,
+               feature_dim: int = 2,
+               use_metrics_aggregator: bool = False):
     # Define all the variables, similar to what Keras Layers and Models
     # do in build().
     self._feature_dim = feature_dim
+    # If True, do not implement `report_local_outputs` and
+    # `federated_output_computation`.
+    self._use_metrics_aggregator = use_metrics_aggregator
     # TODO(b/124070381): Support for integers in num_examples, etc., is handled
     # here in learning, by adding an explicit cast to a float where necessary in
     # order to pass typechecking in the reference executor.
@@ -98,30 +105,51 @@ class LinearRegression(model.Model):
 
   @tf.function
   def report_local_outputs(self):
-    return collections.OrderedDict(
-        num_examples=self._num_examples,
-        num_examples_float=tf.cast(self._num_examples, tf.float32),
-        num_batches=self._num_batches,
-        loss=self._loss_sum / tf.cast(self._num_examples, tf.float32))
+    if self._use_metrics_aggregator:
+      raise NotImplementedError(
+          'Do not implement. `report_local_outputs` and '
+          '`federated_output_computation` are deprecated and will be removed '
+          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+          '`metric_finalizers` instead. The cross-client metrics aggregation '
+          'should be specified as the `metrics_aggregator` argument when you '
+          'build a training process or evaluation computation using this model.'
+      )
+    else:
+      return collections.OrderedDict(
+          num_examples=self._num_examples,
+          num_examples_float=tf.cast(self._num_examples, tf.float32),
+          num_batches=self._num_batches,
+          loss=self._loss_sum / tf.cast(self._num_examples, tf.float32))
 
   @property
   def federated_output_computation(self) -> computation_base.Computation:
 
-    @computations.federated_computation(
-        computation_types.at_clients(
-            collections.OrderedDict(
-                num_examples=tf.int32,
-                num_examples_float=tf.float32,
-                num_batches=tf.int32,
-                loss=tf.float32)))
-    def fed_output(local_outputs):
-      # TODO(b/124070381): Remove need for using num_examples_float here.
-      return collections.OrderedDict(
-          loss=intrinsics.federated_mean(
-              local_outputs.loss, weight=local_outputs.num_examples_float),
-          num_examples=intrinsics.federated_sum(local_outputs.num_examples))
+    if self._use_metrics_aggregator:
+      raise NotImplementedError(
+          'Do not implement. `report_local_outputs` and '
+          '`federated_output_computation` are deprecated and will be removed '
+          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+          '`metric_finalizers` instead. The cross-client metrics aggregation '
+          'should be specified as the `metrics_aggregator` argument when you '
+          'build a training process or evaluation computation using this model.'
+      )
+    else:
 
-    return fed_output
+      @computations.federated_computation(
+          computation_types.at_clients(
+              collections.OrderedDict(
+                  num_examples=tf.int32,
+                  num_examples_float=tf.float32,
+                  num_batches=tf.int32,
+                  loss=tf.float32)))
+      def fed_output(local_outputs):
+        # TODO(b/124070381): Remove need for using num_examples_float here.
+        return collections.OrderedDict(
+            loss=intrinsics.federated_mean(
+                local_outputs.loss, weight=local_outputs.num_examples_float),
+            num_examples=intrinsics.federated_sum(local_outputs.num_examples))
+
+      return fed_output
 
   @tf.function
   def report_local_unfinalized_metrics(
@@ -137,9 +165,9 @@ class LinearRegression(model.Model):
       when defining the federated training processes or evaluation computations.
     """
     return collections.OrderedDict(
-        num_examples=self._num_examples,
         loss=[self._loss_sum,
-              tf.cast(self._num_examples, tf.float32)])
+              tf.cast(self._num_examples, tf.float32)],
+        num_examples=self._num_examples)
 
   def metric_finalizers(
       self
@@ -156,8 +184,8 @@ class LinearRegression(model.Model):
       when defining the federated training processes or evaluation computations.
     """
     return collections.OrderedDict(
-        num_examples=tf.function(func=lambda x: x),
-        loss=tf.function(func=lambda x: x[0] / x[1]))
+        loss=tf.function(func=lambda x: x[0] / x[1]),
+        num_examples=tf.function(func=lambda x: x))
 
 
 def _dense_all_zeros_layer(input_dims=None, output_dim=1):
