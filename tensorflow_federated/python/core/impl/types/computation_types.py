@@ -24,7 +24,7 @@ import collections
 import difflib
 import enum
 import typing
-from typing import Any, Dict, Optional, Sequence, Type as TypingType, TypeVar
+from typing import Any, Dict, Optional, Sequence, Type as TypingType, TypeVar, Union
 import weakref
 
 import attr
@@ -971,7 +971,7 @@ def at_clients(type_spec: Any, all_equal: bool = False) -> FederatedType:
   return FederatedType(type_spec, placements.CLIENTS, all_equal=all_equal)
 
 
-def to_type(spec) -> Type:
+def to_type(spec) -> Union[TensorType, StructType, StructWithPythonType]:
   """Converts the argument into an instance of `tff.Type`.
 
   Examples of arguments convertible to tensor types:
