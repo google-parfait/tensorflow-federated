@@ -21,20 +21,18 @@
 import collections
 from typing import Callable, Optional
 
-from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import optimizer_utils
-from tensorflow_federated.python.learning.metrics import aggregator
+
 
 # Convenience aliases.
 SequenceType = computation_types.SequenceType
@@ -98,34 +96,15 @@ def build_local_evaluation(
         use_experimental_simulation_loop)
     num_examples = dataset_reduce_fn(reduce_fn, dataset,
                                      lambda: tf.zeros([], dtype=tf.int64))
-    # TODO(b/202027089): Remove this try/except logic once all models do not
-    # implement `report_local_outputs` and `federated_output_computation`.
-    try:
-      model_output = model.report_local_outputs()
-      logging.warning(
-          'DeprecationWarning: `report_local_outputs` and '
-          '`federated_output_computation` are deprecated and will be removed '
-          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers` instead. The cross-client metrics aggregation '
-          'should be specified as the `metrics_aggregator` argument when you '
-          'build a training process or evaluation computation using this model.'
-      )
-    except NotImplementedError:
-      model_output = model.report_local_unfinalized_metrics()
     return collections.OrderedDict(
-        local_outputs=model_output, num_examples=num_examples)
+        local_outputs=model.report_local_outputs(), num_examples=num_examples)
 
   return client_eval
 
 
-# TODO(b/202027089): Remove the note on `metrics_aggregator` once all models do
-# not implement `report_local_outputs` and `federated_output_computation`.
 def build_federated_evaluation(
     model_fn: Callable[[], model_lib.Model],
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
-    metrics_aggregator: Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation] = aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False,
 ) -> computation_base.Computation:
   """Builds the TFF computation for federated evaluation of the given model.
@@ -140,30 +119,13 @@ def build_federated_evaluation(
       `(input_values@SERVER -> output_values@CLIENTS)` and have empty state. If
       set to default None, the server model is broadcast to the clients using
       the default tff.federated_broadcast.
-    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a federated TFF computation of the following type signature
-      `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. Default
-      is `tff.learning.metrics.sum_then_finalize`, which returns a federated TFF
-      computation that sums the unfinalized metrics from `CLIENTS`, and then
-      applies the corresponding metric finalizers at `SERVER`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A federated computation (an instance of `tff.Computation`) that accepts
-    model parameters and federated data, and returns the evaluation metrics.
-    Note that if `federated_output_computation` and `report_local_outputs` are
-    implemented in `model_fn()` (these two methods are deprecated and will be
-    removed in 2022Q1), then the `metrics_aggregator` argument will be ignored,
-    and the aggregated evaluation metrics are the result of applying
-    `federated_output_computation` on the clients' local outputs. Otherwise,
-    if calling `federated_output_computation` and `report_local_outputs` on the
-    `model_fn()` throw `NotImplementedError`, then the `metrics_aggregator`
-    argument will be used to generate the metrics aggregation computation, which
-    is then applied to the clients' local unfinalized metrics.
+    model parameters and federated data, and returns the evaluation metrics
+    as aggregated by `tff.learning.Model.federated_output_computation`.
   """
   if broadcast_process is not None:
     if not isinstance(broadcast_process, measured_process.MeasuredProcess):
@@ -182,8 +144,6 @@ def build_federated_evaluation(
     model = model_fn()
     model_weights_type = model_utils.weights_type_from_model(model)
     batch_type = computation_types.to_type(model.input_spec)
-    unfinalized_metrics_type = type_conversions.type_from_tensors(
-        model.report_local_unfinalized_metrics())
 
   @computations.federated_computation(
       computation_types.at_server(model_weights_type),
@@ -205,22 +165,7 @@ def build_federated_evaluation(
           intrinsics.federated_broadcast(server_model_weights),
           federated_dataset
       ])
-    # TODO(b/202027089): Remove this try/except logic once all models do not
-    # implement `report_local_outputs` and `federated_output_computation`.
-    try:
-      metrics_aggregation_computation = model.federated_output_computation
-      logging.warning(
-          'DeprecationWarning: `report_local_outputs` and '
-          '`federated_output_computation` are deprecated and will be removed '
-          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers` instead. The cross-client metrics aggregation '
-          'should be specified as the `metrics_aggregator` argument when you '
-          'build a training process or evaluation computation using this model.'
-      )
-    except NotImplementedError:
-      metrics_aggregation_computation = metrics_aggregator(
-          model.metric_finalizers(), unfinalized_metrics_type)
-    model_metrics = metrics_aggregation_computation(
+    model_metrics = model.federated_output_computation(
         client_outputs.local_outputs)
     statistics = collections.OrderedDict(
         num_examples=intrinsics.federated_sum(client_outputs.num_examples))

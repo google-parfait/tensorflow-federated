@@ -28,14 +28,11 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 
 from typing import Callable, Optional, Union
 
-from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
@@ -43,13 +40,10 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import optimizer_utils
-from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-# TODO(b/202027089): Revise the following docstring once all models do not
-# implement `report_local_outputs` and `federated_output_computation`.
 class ClientSgd(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated SGD."""
 
@@ -65,21 +59,12 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
     variable construction) must occur in during construction, and not during
     `__call__`.
 
-    If `model.report_local_outputs` is implemented (this method is deprecated
-    and will be removed in 2022Q1), then in the returned
-    `tff.learning.framework.ClientOutput`, the `model_output` field will be a
-    strcuture matching `model.report_local_outputs`. Otherwise, if calling
-    `model.report_local_outputs` throws a `NotImplementedError`, then it will be
-    a structure matching `model.report_local_unfinalized_metrics`.
-
     Args:
       model: A `learning.Model` for which gradients are computed.
-      client_weighting: A value of `tff.learning.ClientWeighting` that specifies
-        a built-in weighting method, or a callable that takes the output of
-        `model.report_local_outputs` (or
-        `model.report_local_unfinalized_metrics` if `model.report_local_outputs`
-        throws a `NotImplementedError`) and returns a tensor that provides the
-        weight in the federated average of model deltas.
+      client_weighting: A value of `tff.learning.ClientWeighting` that
+        specifies a built-in weighting method, or a callable that takes the
+        output of `model.report_local_outputs` and returns a tensor that
+        provides the weight in the federated average of model deltas.
       use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
     """
@@ -152,20 +137,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
     weights_delta = tf.nest.map_structure(
         lambda gradient: -1.0 * gradient / num_examples_as_float, grad_sums)
 
-    # TODO(b/202027089): Remove this try/except logic once all models do not
-    # implement `report_local_outputs` and `federated_output_computation`.
-    try:
-      model_output = model.report_local_outputs()
-      logging.warning(
-          'DeprecationWarning: `report_local_outputs` and '
-          '`federated_output_computation` are deprecated and will be removed '
-          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers` instead. The cross-client metrics aggregation '
-          'should be specified as the `metrics_aggregator` argument when you '
-          'build a training process or evaluation computation using this model.'
-      )
-    except NotImplementedError:
-      model_output = model.report_local_unfinalized_metrics()
+    model_output = model.report_local_outputs()
 
     weights_delta, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(weights_delta))
@@ -179,7 +151,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       weights_delta_weight = self._client_weighting(model_output)
 
     return optimizer_utils.ClientOutput(
-        weights_delta, weights_delta_weight, model_output,
+        weights_delta, weights_delta_weight, model.report_local_outputs(),
         tensor_utils.to_odict({
             'client_weight': weights_delta_weight,
             'has_non_finite_delta': has_non_finite_delta,
@@ -190,8 +162,6 @@ DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
 
 
 # TODO(b/192094313): refactor to accept tff.learning.Optimizer arguments
-# TODO(b/202027089): Remove the note on `metrics_aggregator` once all models do
-# not implement `report_local_outputs` and `federated_output_computation`.
 def build_federated_sgd_process(
     model_fn: Callable[[], model_lib.Model],
     server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
@@ -201,9 +171,6 @@ def build_federated_sgd_process(
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
         factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation] = aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False,
 ) -> iterative_process.IterativeProcess:
   """Builds the TFF computations for optimization using federated SGD.
@@ -221,17 +188,9 @@ def build_federated_sgd_process(
       of `initialize`, and `{B*}@CLIENTS` represents the client datasets, where
       `B` is the type of a single batch. This computation returns a
       `tff.learning.framework.ServerState` representing the updated server state
-      and aggregated metrics at the server, including client training metrics
-      and any other metrics from broadcast and aggregation processes. Note that
-      if `federated_output_computation` and `report_local_outputs` are
-      implemented in `model_fn()` (these two methods are deprecated and will be
-      removed in 2022Q1), then the `metrics_aggregator` argument is ignored, and
-      the aggregated training metrics are the result of applying
-      `federated_output_computation` on the clients' local outputs. Otherwise,
-      if calling `federated_output_computation` and `report_local_outputs` on
-      the `model_fn()` throw `NotImplementedError`, then `metrics_aggregator`
-      argument will be used to generate the metrics aggregation computation,
-      which is then applied to the clients' local unfinalized metrics.
+      and metrics that are the result of
+      `tff.learning.Model.federated_output_computation` during client training
+      and any other metrics from broadcast and aggregation processes.
 
   The iterative process also has the following method not inherited from
   `tff.templates.IterativeProcess`:
@@ -278,17 +237,8 @@ def build_federated_sgd_process(
       `tff.templates.AggregationProcess` for aggregating the client model
       updates on the server. If `None`, uses a default constructed
       `tff.aggregators.MeanFactory`, creating a stateless mean aggregation.
-    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a federated TFF computation of the following type signature
-      `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. Default
-      is `tff.learning.metrics.sum_then_finalize`, which returns a federated TFF
-      computation that sums the unfinalized metrics from `CLIENTS`, and then
-      applies the corresponding metric finalizers at `SERVER`.
     use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation.
+        input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A `tff.templates.IterativeProcess`.
@@ -315,8 +265,7 @@ def build_federated_sgd_process(
       model_to_client_delta_fn=client_sgd_avg,
       server_optimizer_fn=server_optimizer_fn,
       broadcast_process=broadcast_process,
-      model_update_aggregation_factory=model_update_aggregation_factory,
-      metrics_aggregator=metrics_aggregator)
+      model_update_aggregation_factory=model_update_aggregation_factory)
 
   server_state_type = iter_proc.state_type.member
 
