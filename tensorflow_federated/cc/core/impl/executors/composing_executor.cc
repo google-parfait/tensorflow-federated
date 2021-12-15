@@ -21,6 +21,7 @@ limitations under the License
 #include <memory>
 #include <string>
 #include <tuple>
+#include <utility>
 
 #include "google/protobuf/repeated_field.h"
 #include "absl/base/thread_annotations.h"
@@ -64,12 +65,13 @@ inline std::shared_ptr<OwnedValueId> ShareValueId(OwnedValueId&& id) {
 // (3) both.
 class UnplacedInner {
  public:
-  UnplacedInner(std::shared_ptr<v0::Value> proto) : proto_(std::move(proto)) {}
-  UnplacedInner(v0::Value proto)
+  explicit UnplacedInner(std::shared_ptr<v0::Value> proto)
+      : proto_(std::move(proto)) {}
+  explicit UnplacedInner(v0::Value proto)
       : proto_(std::make_shared<v0::Value>(std::move(proto))) {}
-  UnplacedInner(std::shared_ptr<OwnedValueId> embedded)
+  explicit UnplacedInner(std::shared_ptr<OwnedValueId> embedded)
       : embedded_(std::move(embedded)) {}
-  UnplacedInner(OwnedValueId embedded)
+  explicit UnplacedInner(OwnedValueId embedded)
       : embedded_(std::make_shared<OwnedValueId>(std::move(embedded))) {}
   // NOTE: all constructors must set either `proto` OR (inclusive) `embedded`.
   // Internals assume that at least one of these values is set.
@@ -705,6 +707,58 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     }
   }
 
+  absl::StatusOr<ExecutorValue> CallIntrinsicSelect_(
+      ExecutorValue&& arg) const {
+    TFF_TRY(arg.CheckLenForUseAsArgument("federated_select", 4));
+    const ExecutorValue& keys = arg.structure()->at(0);
+    const ExecutorValue& max_key = arg.structure()->at(1);
+    const ExecutorValue& server_val = arg.structure()->at(2);
+    const ExecutorValue& select_fn = arg.structure()->at(3);
+    if (keys.type() != ExecutorValue::ValueType::CLIENTS) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "`federated_select` keys must be placed at CLIENTS, found ",
+          keys.type()));
+    }
+    const Clients& keys_child_ids = keys.clients();
+    // Both `max_key_pb` and `server_val_pb` must be materialized from the
+    // `server_` executor so that they can be placed on `children_`.
+    ParallelTasks tasks;
+    v0::Value max_key_pb;
+    TFF_TRY(MaterializeValue(max_key, &max_key_pb, tasks));
+    v0::Value server_val_pb;
+    TFF_TRY(MaterializeValue(server_val, &server_val_pb, tasks));
+    TFF_TRY(tasks.WaitAll());
+    std::shared_ptr<v0::Value> select_fn_val =
+        TFF_TRY(select_fn.GetUnplacedFunctionProto("select_fn"));
+
+    v0::Value select;
+    select.mutable_computation()->mutable_intrinsic()->mutable_uri()->assign(
+        kFederatedSelectUri.data(), kFederatedSelectUri.size());
+
+    std::vector<std::shared_ptr<OwnedValueId>> child_result_ids;
+    child_result_ids.reserve(children_.size());
+    for (uint32_t i = 0; i < children_.size(); i++) {
+      const std::shared_ptr<Executor>& child = children_[i].executor();
+      ValueId child_keys = keys_child_ids->at(i)->ref();
+      std::vector<OwnedValueId> arg_owners;
+      std::vector<ValueId> arg_ids;
+      arg_ids.emplace_back(child_keys);
+      for (const v0::Value& arg_value :
+           {max_key_pb, server_val_pb, *select_fn_val}) {
+        OwnedValueId child_id = TFF_TRY(child->CreateValue(arg_value));
+        arg_ids.emplace_back(child_id.ref());
+        arg_owners.emplace_back(std::move(child_id));
+      }
+      OwnedValueId child_arg_id =
+          TFF_TRY(child->CreateStruct(std::move(arg_ids)));
+      OwnedValueId child_select_id = TFF_TRY(child->CreateValue(select));
+      OwnedValueId child_result_id =
+          TFF_TRY(child->CreateCall(child_select_id, child_arg_id));
+      child_result_ids.push_back(ShareValueId(std::move(child_result_id)));
+    }
+    return ExecutorValue::CreateClientsPlaced(std::move(child_result_ids));
+  }
+
   // Pushes `arg` containing structs of client-placed values into
   // the `children_[i]` executor.
   absl::StatusOr<std::shared_ptr<OwnedValueId>> ZipStructIntoChild(
@@ -814,6 +868,9 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
       }
       case FederatedIntrinsic::MAP: {
         return CallIntrinsicMap(std::move(arg));
+      }
+      case FederatedIntrinsic::SELECT: {
+        return CallIntrinsicSelect_(std::move(arg));
       }
       case FederatedIntrinsic::ZIP_AT_CLIENTS: {
         return CallIntrinsicZipAtClients(std::move(arg));

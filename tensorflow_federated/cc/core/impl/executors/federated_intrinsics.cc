@@ -46,13 +46,7 @@ absl::StatusOr<FederatedIntrinsic> FederatedIntrinsicFromUri(
   } else if (uri == "federated_eval_at_server") {
     return FederatedIntrinsic::EVAL_AT_SERVER;
   } else if (uri == "federated_select") {
-    return absl::UnimplementedError(
-        "`federated_select` simulation is not yet supported in the TFF C++ "
-        "runtime. For `federated_select` support, consider opting into the "
-        "Python runtime using "
-        "`tff.backends.native.set_local_python_execution_context()` (or "
-        "`tff.google.backends.native.set_borg_execution_context(...)` for "
-        "multi-machine uses).");
+    return FederatedIntrinsic::SELECT;
   } else {
     return absl::UnimplementedError(
         absl::StrCat("Unsupported intrinsic URI: ", uri));

@@ -22,6 +22,7 @@ limitations under the License
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -29,11 +30,13 @@ limitations under the License
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federated_intrinsics.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_validation.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
@@ -112,6 +115,18 @@ class ExecutorValue {
 
   inline ValueType type() const { return type_; }
 
+  absl::Status CheckArgumentType(ValueType expected_type,
+                                 absl::string_view argument_identifier) const {
+    if (type() == expected_type) {
+      return absl::OkStatus();
+    } else {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Expected ", argument_identifier,
+                       " argument to have type ", expected_type,
+                       ", but an argument of type ", type(), " was provided."));
+    }
+  }
+
   ExecutorValue(ValueVariant value, ValueType type)
       : value_(std::move(value)), type_(type) {}
 
@@ -124,12 +139,8 @@ class ExecutorValue {
 absl::Status CheckLenForUseAsArgument(const ExecutorValue& value,
                                       absl::string_view function_name,
                                       size_t len) {
-  if (value.type() != ExecutorValue::ValueType::STRUCTURE) {
-    return absl::InvalidArgumentError(
-        absl::StrCat(function_name,
-                     " expected a structural argument, found argument of type ",
-                     value.type()));
-  }
+  TFF_TRY(value.CheckArgumentType(ExecutorValue::ValueType::STRUCTURE,
+                                  function_name));
   if (value.structure()->size() != len) {
     return absl::InvalidArgumentError(absl::StrCat(function_name, " expected ",
                                                    len, " arguments, found ",
@@ -381,10 +392,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         // `merge` is unused (argument four).
         const auto& report = arg.structure()->at(4);
         auto report_child_id = TFF_TRY(Embed(report));
-        if (value.type() != ExecutorValue::ValueType::CLIENTS) {
-          return absl::InvalidArgumentError(
-              "Cannot aggregate a value not placed at clients.");
-        }
+        TFF_TRY(value.CheckArgumentType(ExecutorValue::ValueType::CLIENTS,
+                                        "`federated_aggregate`'s `value`"));
         absl::optional<OwnedValueId> current_owner = absl::nullopt;
         ValueId current = zero_child_id->ref();
         for (const auto& client_val_id : *value.clients()) {
@@ -400,10 +409,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
             ShareValueId(std::move(result)));
       }
       case FederatedIntrinsic::BROADCAST: {
-        if (arg.type() != ExecutorValue::ValueType::SERVER) {
-          return absl::InvalidArgumentError(
-              "Attempted to broadcast a value not placed at server.");
-        }
+        TFF_TRY(arg.CheckArgumentType(ExecutorValue::ValueType::SERVER,
+                                      "`federated_broadcast`"));
         return ClientsAllEqualValue(arg.server());
       }
       case FederatedIntrinsic::MAP: {
@@ -430,6 +437,26 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
               "Attempted to map non-federated value.");
         }
       }
+      case FederatedIntrinsic::SELECT: {
+        TFF_TRY(CheckLenForUseAsArgument(arg, "federated_select", 4));
+        const auto& keys = arg.structure()->at(0);
+        // Argument two (`max_key`) is unused in this impl.
+        const auto& server_val = arg.structure()->at(2);
+        const auto& select_fn = arg.structure()->at(3);
+        TFF_TRY(keys.CheckArgumentType(ExecutorValue::ValueType::CLIENTS,
+                                       "`federated_select`'s `keys`"));
+        const Clients& keys_child_ids = keys.clients();
+        TFF_TRY(
+            server_val.CheckArgumentType(ExecutorValue::ValueType::SERVER,
+                                         "`federated_select`'s `server_val`"));
+        ValueId server_val_child_id = server_val.server()->ref();
+        TFF_TRY(
+            select_fn.CheckArgumentType(ExecutorValue::ValueType::UNPLACED,
+                                        "`federated_select`'s `select_fn`"));
+        ValueId select_fn_child_id = select_fn.unplaced()->ref();
+        return CallFederatedSelect(keys_child_ids, server_val_child_id,
+                                   select_fn_child_id);
+      }
       case FederatedIntrinsic::ZIP_AT_CLIENTS: {
         Clients results = NewClients();
         for (uint32_t i = 0; i < num_clients_; i++) {
@@ -442,6 +469,94 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
             TFF_TRY(ZipStructIntoServer(arg)));
       }
     }
+  }
+
+  // A container for information about the keys in a `federated_select` round.
+  struct KeyData {
+    // The values of every key in a `federated_select`.
+    // `all` contains the joined values of all `for_clients`.
+    absl::flat_hash_set<int32_t> all;
+    // The list of keys to slices requested for each client.
+    // e.g. Client N's keys can be found at `for_clients[N]`.
+    std::vector<std::vector<int32_t>> for_clients;
+  };
+
+  absl::StatusOr<ExecutorValue> CallFederatedSelect(
+      const Clients& keys_child_ids, ValueId server_val_child_id,
+      ValueId select_fn_child_id) {
+    KeyData keys = TFF_TRY(MaterializeKeys(keys_child_ids));
+    absl::flat_hash_map<int32_t, OwnedValueId> slice_for_key;
+    slice_for_key.reserve(keys.all.size());
+    for (int32_t key : keys.all) {
+      slice_for_key.insert(
+          {key, TFF_TRY(SelectSliceForKey(key, server_val_child_id,
+                                          select_fn_child_id))});
+    }
+    v0::Value args_into_sequence_pb;
+    args_into_sequence_pb.mutable_computation()->mutable_intrinsic()->set_uri(
+        "args_into_sequence");
+    OwnedValueId args_into_sequence_id =
+        TFF_TRY(child_->CreateValue(args_into_sequence_pb));
+    Clients client_datasets = NewClients();
+    for (const auto& keys_for_client : keys.for_clients) {
+      std::vector<ValueId> slice_ids_for_client;
+      slice_ids_for_client.reserve(keys_for_client.size());
+      for (int32_t key : keys_for_client) {
+        slice_ids_for_client.push_back(slice_for_key.at(key).ref());
+      }
+      OwnedValueId slices = TFF_TRY(child_->CreateStruct(slice_ids_for_client));
+      OwnedValueId dataset =
+          TFF_TRY(child_->CreateCall(args_into_sequence_id, slices));
+      client_datasets->push_back(ShareValueId(std::move(dataset)));
+    }
+    return ExecutorValue::CreateClientsPlaced(std::move(client_datasets));
+  }
+
+  absl::StatusOr<KeyData> MaterializeKeys(const Clients& keys_child_ids) {
+    KeyData keys;
+    keys.for_clients.reserve(keys_child_ids->size());
+    for (const auto& keys_child_id : *keys_child_ids) {
+      // TODO(b/209504748) Make federating_executor value a future so that these
+      // materialize calls don't block.
+      v0::Value keys_for_client_pb =
+          TFF_TRY(child_->Materialize(keys_child_id->ref()));
+      tensorflow::Tensor keys_for_client_tensor =
+          TFF_TRY(DeserializeTensorValue(keys_for_client_pb));
+      if (keys_for_client_tensor.dtype() != tensorflow::DT_INT32) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("Expected int32_t key, found key of tensor dtype ",
+                         keys_for_client_tensor.dtype()));
+      }
+      if (keys_for_client_tensor.dims() != 1) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Expected key tensor to be rank one, but found tensor of rank ",
+            keys_for_client_tensor.dims()));
+      }
+      int64_t num_keys = keys_for_client_tensor.NumElements();
+      std::vector<int32_t> keys_for_client;
+      keys_for_client.reserve(num_keys);
+      auto keys_for_client_eigen = keys_for_client_tensor.flat<int32_t>();
+      for (int64_t i = 0; i < num_keys; i++) {
+        int32_t key = keys_for_client_eigen(i);
+        keys_for_client.push_back(key);
+        keys.all.insert(key);
+      }
+      keys.for_clients.push_back(std::move(keys_for_client));
+    }
+    return keys;
+  }
+
+  absl::StatusOr<OwnedValueId> SelectSliceForKey(int32_t key,
+                                                 ValueId server_val_child_id,
+                                                 ValueId select_fn_child_id) {
+    v0::Value key_pb;
+    TFF_TRY(SerializeTensorValue(tensorflow::Tensor(key), &key_pb));
+    OwnedValueId key_id = TFF_TRY(child_->CreateValue(key_pb));
+    OwnedValueId arg_id =
+        TFF_TRY(child_->CreateStruct({server_val_child_id, key_id}));
+    OwnedValueId slice_id =
+        TFF_TRY(child_->CreateCall(select_fn_child_id, arg_id));
+    return slice_id;
   }
 
   absl::StatusOr<ExecutorValue> CreateStruct(

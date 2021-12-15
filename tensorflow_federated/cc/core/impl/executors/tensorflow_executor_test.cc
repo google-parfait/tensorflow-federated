@@ -57,11 +57,15 @@ ABSL_FLAG(std::string, reduce_graph_path, "",
 namespace tensorflow_federated {
 namespace {
 
+using ::absl::StatusCode;
 using ::tensorflow_federated::testing::CreateSerializedRangeDatasetGraphDef;
 using ::tensorflow_federated::testing::EqualsProto;
 using ::tensorflow_federated::testing::SequenceV;
 using ::tensorflow_federated::testing::StructV;
 using ::tensorflow_federated::testing::TensorV;
+using ::tensorflow_federated::testing::TensorVFromIntList;
+using ::tensorflow_federated::testing::intrinsic::ArgsIntoSequenceV;
+using ::testing::HasSubstr;
 
 template <class TfOp>
 inline v0::TensorFlow::Binding TensorB(const TfOp& op) {
@@ -250,8 +254,10 @@ TEST_F(TensorFlowExecutorTest, CallReduceOnSequence) {
   int64_t stop = 10;
   int64_t step = 2;
   int64_t expected_sum = 0 + 2 + 4 + 6 + 8;
-  CheckCallEqualsProto(CreateDatasetReduceComputationV(),
-                       SequenceV(start, stop, step), TensorV(expected_sum));
+  auto sequence = SequenceV(start, stop, step);
+  auto sequence2 = SequenceV(4, 5, 1);
+  CheckCallEqualsProto(CreateDatasetReduceComputationV(), sequence,
+                       TensorV(expected_sum));
 }
 
 TEST_F(TensorFlowExecutorTest, RoundTripEmptyStruct) {
@@ -390,15 +396,11 @@ TEST_F(TensorFlowExecutorTest, CallNoArgOneOutWithInitialize) {
       /*in_binding=*/absl::nullopt,
       /*out_binding=*/TensorB(read_var), root,
       /*init_op=*/var_init);
-  tensorflow::Tensor expected(tensorflow::DT_INT32, shape);
-  auto data = expected.flat<int32_t>();
-  data(0) = 1;
-  data(1) = 2;
-  data(2) = 3;
-  CheckCallEqualsProto(fn, absl::nullopt, TensorV(expected));
+  v0::Value expected = TensorVFromIntList({1, 2, 3});
+  CheckCallEqualsProto(fn, absl::nullopt, expected);
   // Ensure that repeatedly using the same session from the session provider
   // works correctly.
-  CheckCallRepeatedlyEqualsProto(fn, absl::nullopt, TensorV(expected));
+  CheckCallRepeatedlyEqualsProto(fn, absl::nullopt, expected);
 }
 
 TEST_F(TensorFlowExecutorTest, CallOneInOut) {
@@ -484,6 +486,12 @@ TEST_F(TensorFlowExecutorTest, CallWithComputationId) {
   CheckCallEqualsProto(fn, arg, expected);
   // Call a second time to exercise the cache.
   CheckCallEqualsProto(fn, arg, expected);
+}
+
+TEST_F(TensorFlowExecutorTest, CreateValueArgsIntoSequenceSuggestsPython) {
+  EXPECT_THAT(test_executor_->CreateValue(ArgsIntoSequenceV()),
+              StatusIs(StatusCode::kUnimplemented,
+                       HasSubstr("consider opting into the Python runtime")));
 }
 
 }  // namespace

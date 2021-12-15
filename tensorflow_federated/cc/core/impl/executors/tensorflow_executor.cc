@@ -86,7 +86,7 @@ struct NamesForBindingRewrite {
   // The variant dataset node name without tensor output identifier (no ":N"
   // suffix).
   std::string variant_node_name;
-  // The graph serialziation/deserialization node name without tensor output
+  // The graph serialization/deserialization node name without tensor output
   // identifier (no ":N" suffix).
   std::string graph_def_node_name;
   // The graph tensor name with a tensor output identifier (a ":N" suffix).
@@ -134,7 +134,7 @@ NamesForBindingRewrite GetVariantTensorNodeNameAndReplacement(
 //   └─────────┘
 //
 // This is used on parameter bindings of `v0::TensorFlow` computations. This is
-// the reseverse of `AddSerializationOpsForResults`, which is used on the result
+// the reverse of `AddSerializationOpsForResults`, which is used on the result
 // bindings of the function.
 absl::Status AddDeserializationOpsForParameters(
     tensorflow::GraphDef& graphdef_pb, v0::TensorFlow::Binding& binding,
@@ -211,7 +211,7 @@ absl::Status AddDeserializationOpsForParameters(
 // Given a GraphDef and a tensor binding, replace sequences that use the
 // variant_tensor_name binding with a new binding that uses `DatasetToGraphV2`
 // ops to serialize the Dataset's variant tensors. This is necessary to avoid
-// isues with stateful datasets used across sessions.
+// issues with stateful datasets used across sessions.
 //
 // Example:
 //
@@ -295,7 +295,7 @@ absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
   }
 }
 
-absl::Status AddDatastSerializationToSequenceBindings(
+absl::Status AddDatasetSerializationToSequenceBindings(
     tensorflow::GraphDef& graphdef_pb,
     absl::optional<v0::TensorFlow::Binding>& parameter_binding,
     v0::TensorFlow::Binding& result_binding) {
@@ -322,7 +322,7 @@ class Computation {
       parameter_shape = comp_pb.parameter();
     }
     v0::TensorFlow::Binding result_shape = comp_pb.result();
-    TFF_TRY(AddDatastSerializationToSequenceBindings(
+    TFF_TRY(AddDatasetSerializationToSequenceBindings(
         graphdef_pb, parameter_shape, result_shape));
     std::vector<std::string> output_tensor_names;
     TFF_TRY(TensorNamesFromBinding(result_shape, &output_tensor_names));
@@ -695,11 +695,25 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ExecutorValue> CreateValueComputation(
       const v0::Computation& comp_pb) {
-    if (!comp_pb.has_tensorflow()) {
+    if (!comp_pb.has_tensorflow() && !comp_pb.has_intrinsic()) {
       return absl::InvalidArgumentError(absl::StrCat(
-          "`TensorFlowExecutor::CreateValue` cannot create values for "
-          "non-TensorFlow computations. Found computation of type ",
+          "`TensorFlowExecutor::CreateValue` can only create values for "
+          "TensorFlow computations and intrinsics. Found computation of type ",
           comp_pb.computation_case()));
+    }
+    if (comp_pb.has_intrinsic()) {
+      if (comp_pb.intrinsic().uri() == "args_into_sequence") {
+        return absl::UnimplementedError(
+            "`federated_select` simulation is not yet supported in the TFF C++ "
+            "runtime. For `federated_select` support, consider opting into the "
+            "Python runtime using "
+            "`tff.backends.native.set_local_python_execution_context()` (or "
+            "`tff.google.backends.native.set_borg_execution_context(...)` for "
+            "multi-machine uses).");
+      }
+      return absl::InvalidArgumentError(
+          absl::StrCat("TensorFlowExecutor does not support intrinsic ",
+                       comp_pb.intrinsic().uri()));
     }
     if (!comp_pb.tensorflow().has_cache_key() ||
         comp_pb.tensorflow().cache_key().id() == 0) {

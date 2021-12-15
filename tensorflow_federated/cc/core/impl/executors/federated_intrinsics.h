@@ -27,6 +27,7 @@ const absl::string_view kFederatedEvalAtClientsUri =
 const absl::string_view kFederatedZipAtClientsUri = "federated_zip_at_clients";
 const absl::string_view kFederatedZipAtServerUri = "federated_zip_at_server";
 const absl::string_view kFederatedAggregateUri = "federated_aggregate";
+const absl::string_view kFederatedSelectUri = "federated_select";
 
 enum class FederatedIntrinsic {
   MAP,
@@ -38,6 +39,7 @@ enum class FederatedIntrinsic {
   EVAL_AT_CLIENTS,
   EVAL_AT_SERVER,
   AGGREGATE,
+  SELECT,
 };
 
 absl::StatusOr<FederatedIntrinsic> FederatedIntrinsicFromUri(

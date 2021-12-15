@@ -37,28 +37,37 @@ namespace tensorflow_federated {
 namespace {
 
 using ::absl::StatusCode;
+using ::tensorflow_federated::testing::ClientsV;
+using ::tensorflow_federated::testing::IntrinsicV;
+using ::tensorflow_federated::testing::SequenceV;
+using ::tensorflow_federated::testing::ServerV;
+using ::tensorflow_federated::testing::StructV;
+using ::tensorflow_federated::testing::TensorV;
+using ::tensorflow_federated::testing::TensorVFromIntList;
+using ::tensorflow_federated::testing::intrinsic::ArgsIntoSequenceV;
+using ::tensorflow_federated::testing::intrinsic::FederatedAggregateV;
+using ::tensorflow_federated::testing::intrinsic::FederatedBroadcastV;
+using ::tensorflow_federated::testing::intrinsic::FederatedEvalAtClientsV;
+using ::tensorflow_federated::testing::intrinsic::FederatedEvalAtServerV;
+using ::tensorflow_federated::testing::intrinsic::FederatedMapAllEqualV;
+using ::tensorflow_federated::testing::intrinsic::FederatedMapV;
+using ::tensorflow_federated::testing::intrinsic::FederatedSelectV;
+using ::tensorflow_federated::testing::intrinsic::FederatedValueAtClientsV;
+using ::tensorflow_federated::testing::intrinsic::FederatedValueAtServerV;
+using ::tensorflow_federated::testing::intrinsic::FederatedZipAtClientsV;
+using ::tensorflow_federated::testing::intrinsic::FederatedZipAtServerV;
 using ::testing::Cardinality;
-using testing::ClientsV;
 using ::testing::HasSubstr;
-using testing::IntrinsicV;
-using testing::ServerV;
-using testing::StructV;
-using testing::TensorV;
-using testing::intrinsic::FederatedAggregateV;
-using testing::intrinsic::FederatedBroadcastV;
-using testing::intrinsic::FederatedEvalAtClientsV;
-using testing::intrinsic::FederatedEvalAtServerV;
-using testing::intrinsic::FederatedMapAllEqualV;
-using testing::intrinsic::FederatedMapV;
-using testing::intrinsic::FederatedValueAtClientsV;
-using testing::intrinsic::FederatedValueAtServerV;
-using testing::intrinsic::FederatedZipAtClientsV;
-using testing::intrinsic::FederatedZipAtServerV;
 
 const uint16_t NUM_CLIENTS = 10;
 
 const Cardinality ONCE = ::testing::Exactly(1);
 const Cardinality ONCE_PER_CLIENT = ::testing::Exactly(NUM_CLIENTS);
+
+struct IdPair {
+  OwnedValueId id;
+  ValueId child_id;
+};
 
 class FederatingExecutorTest : public ExecutorTestBase {
  public:
@@ -105,6 +114,12 @@ class FederatingExecutorTest : public ExecutorTestBase {
     ValueId id = ExpectCreateInChild(value, repeatedly);
     ExpectMaterializeInChild(id, value, repeatedly);
   }
+
+  absl::StatusOr<IdPair> CreatePassthroughValue(const v0::Value& value) {
+    ValueId child_id = ExpectCreateInChild(value);
+    OwnedValueId id = TFF_TRY(test_executor_->CreateValue(value));
+    return IdPair{std::move(id), child_id};
+  }
 };
 
 TEST_F(FederatingExecutorTest, ConstructsExecutorWithEmptyCardinalities) {
@@ -126,12 +141,6 @@ TEST_F(FederatingExecutorTest, CreateValueIntrinsic) {
 TEST_F(FederatingExecutorTest, CreateValueBadIntrinsic) {
   EXPECT_THAT(test_executor_->CreateValue(IntrinsicV("blech")),
               StatusIs(StatusCode::kUnimplemented));
-}
-
-TEST_F(FederatingExecutorTest, CreateValueFederatedSelectSuggestsPython) {
-  EXPECT_THAT(test_executor_->CreateValue(IntrinsicV("federated_select")),
-              StatusIs(StatusCode::kUnimplemented,
-                       HasSubstr("consider opting into the Python runtime")));
 }
 
 TEST_F(FederatingExecutorTest, MaterializeIntrinsicFails) {
@@ -272,51 +281,43 @@ TEST_F(FederatingExecutorTest, CreateSelectionOutOfBoundsFails) {
 }
 
 TEST_F(FederatingExecutorTest, CreateCallEmbeddedNoArg) {
-  v0::Value fn = TensorV(5);
+  IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(TensorV(5)));
   v0::Value result = TensorV(22);
-  ValueId fn_child_id = ExpectCreateInChild(fn);
-  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   ValueId fn_result_child_id =
-      ExpectCreateCallInChild(fn_child_id, absl::nullopt);
+      ExpectCreateCallInChild(fn.child_id, absl::nullopt);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_result_id,
-                           test_executor_->CreateCall(fn_id, absl::nullopt));
+                           test_executor_->CreateCall(fn.id, absl::nullopt));
   ExpectMaterializeInChild(fn_result_child_id, result);
   ExpectMaterialize(fn_result_id, result);
 }
 
 TEST_F(FederatingExecutorTest, CreateCallEmbeddedSingleArg) {
-  v0::Value fn = TensorV(5);
-  v0::Value arg = TensorV(6);
+  IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(TensorV(5)));
+  IdPair arg = TFF_ASSERT_OK(CreatePassthroughValue(TensorV(6)));
   v0::Value result = TensorV(22);
-  ValueId fn_child_id = ExpectCreateInChild(fn);
-  ValueId arg_child_id = ExpectCreateInChild(arg);
   ValueId fn_result_child_id =
-      ExpectCreateCallInChild(fn_child_id, arg_child_id);
-  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-  TFF_ASSERT_OK_AND_ASSIGN(auto arg_id, test_executor_->CreateValue(arg));
+      ExpectCreateCallInChild(fn.child_id, arg.child_id);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_result_id,
-                           test_executor_->CreateCall(fn_id, arg_id));
+                           test_executor_->CreateCall(fn.id, arg.id));
   ExpectMaterializeInChild(fn_result_child_id, result);
   ExpectMaterialize(fn_result_id, result);
 }
 
 TEST_F(FederatingExecutorTest, CreateCallEmbedsStructArg) {
-  v0::Value fn = TensorV(5);
+  IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(TensorV(5)));
   v0::Value arg_1 = TensorV(6);
   v0::Value arg_2 = TensorV(7);
   v0::Value result = TensorV(22);
-  ValueId fn_child_id = ExpectCreateInChild(fn);
   ValueId arg_1_child_id = ExpectCreateInChild(arg_1);
   ValueId arg_2_child_id = ExpectCreateInChild(arg_2);
-  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
   TFF_ASSERT_OK_AND_ASSIGN(
       auto arg_id, test_executor_->CreateValue(StructV({arg_1, arg_2})));
   ValueId arg_child_id =
       ExpectCreateStructInChild({arg_1_child_id, arg_2_child_id});
   ValueId fn_result_child_id =
-      ExpectCreateCallInChild(fn_child_id, arg_child_id);
+      ExpectCreateCallInChild(fn.child_id, arg_child_id);
   TFF_ASSERT_OK_AND_ASSIGN(auto fn_result_id,
-                           test_executor_->CreateCall(fn_id, arg_id));
+                           test_executor_->CreateCall(fn.id, arg_id));
   ExpectMaterializeInChild(fn_result_child_id, result);
   ExpectMaterialize(fn_result_id, result);
 }
@@ -400,18 +401,16 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedMapAtClients) {
   v0::Value value = ClientsV(client_vals);
   TFF_ASSERT_OK_AND_ASSIGN(auto input_id,
                            test_executor_->CreateValue(ClientsV(client_vals)));
-  v0::Value fn = TensorV(2);
-  ValueId fn_child_id = ExpectCreateInChild(fn);
-  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(TensorV(2)));
   for (int i = 0; i < NUM_CLIENTS; i++) {
     ValueId result_child_id =
-        ExpectCreateCallInChild(fn_child_id, client_vals_child_ids[i]);
+        ExpectCreateCallInChild(fn.child_id, client_vals_child_ids[i]);
     ExpectMaterializeInChild(result_child_id, client_vals[i]);
   }
   TFF_ASSERT_OK_AND_ASSIGN(auto map_id,
                            test_executor_->CreateValue(FederatedMapV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
-                           test_executor_->CreateStruct({fn_id, input_id}));
+                           test_executor_->CreateStruct({fn.id, input_id}));
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
                            test_executor_->CreateCall(map_id, arg_id));
   ExpectMaterialize(result_id, value);
@@ -427,18 +426,16 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedMapAllEqualAtClients) {
   v0::Value value = ClientsV(client_vals);
   TFF_ASSERT_OK_AND_ASSIGN(auto input_id,
                            test_executor_->CreateValue(ClientsV(client_vals)));
-  v0::Value fn = TensorV(2);
-  ValueId fn_child_id = ExpectCreateInChild(fn);
-  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(TensorV(2)));
   for (int i = 0; i < NUM_CLIENTS; i++) {
     ValueId result_child_id =
-        ExpectCreateCallInChild(fn_child_id, client_vals_child_ids[i]);
+        ExpectCreateCallInChild(fn.child_id, client_vals_child_ids[i]);
     ExpectMaterializeInChild(result_child_id, client_vals[i]);
   }
   TFF_ASSERT_OK_AND_ASSIGN(
       auto map_id, test_executor_->CreateValue(FederatedMapAllEqualV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
-                           test_executor_->CreateStruct({fn_id, input_id}));
+                           test_executor_->CreateStruct({fn.id, input_id}));
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
                            test_executor_->CreateCall(map_id, arg_id));
   ExpectMaterialize(result_id, value);
@@ -449,15 +446,13 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedMapAtServer) {
   ValueId tensor_child_id = ExpectCreateInChild(tensor);
   TFF_ASSERT_OK_AND_ASSIGN(auto server_id,
                            test_executor_->CreateValue(ServerV(tensor)));
-  v0::Value fn = TensorV(44);
-  ValueId fn_child_id = ExpectCreateInChild(fn);
-  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(TensorV(44)));
   TFF_ASSERT_OK_AND_ASSIGN(auto map_id,
                            test_executor_->CreateValue(FederatedMapV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto arg_id,
-                           test_executor_->CreateStruct({fn_id, server_id}));
+                           test_executor_->CreateStruct({fn.id, server_id}));
   ValueId result_child_id =
-      ExpectCreateCallInChild(fn_child_id, tensor_child_id);
+      ExpectCreateCallInChild(fn.child_id, tensor_child_id);
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
                            test_executor_->CreateCall(map_id, arg_id));
   v0::Value output_tensor = TensorV(89);
@@ -466,15 +461,13 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedMapAtServer) {
 }
 
 TEST_F(FederatingExecutorTest, CreateCallFederatedEvalAtClients) {
-  v0::Value fn = TensorV(1);
-  ValueId fn_child_id = ExpectCreateInChild(fn);
-  TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
+  IdPair fn = TFF_ASSERT_OK(CreatePassthroughValue(TensorV(1)));
   ValueId result_child_id =
-      ExpectCreateCallInChild(fn_child_id, absl::nullopt, ONCE_PER_CLIENT);
+      ExpectCreateCallInChild(fn.child_id, absl::nullopt, ONCE_PER_CLIENT);
   TFF_ASSERT_OK_AND_ASSIGN(
       auto fed_eval_id, test_executor_->CreateValue(FederatedEvalAtClientsV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
-                           test_executor_->CreateCall(fed_eval_id, fn_id));
+                           test_executor_->CreateCall(fed_eval_id, fn.id));
   v0::Value result_tensor = TensorV(3);
   ExpectMaterializeInChild(result_child_id, result_tensor, ONCE_PER_CLIENT);
   ExpectMaterialize(
@@ -495,17 +488,153 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedEvalAtServer) {
   ExpectMaterialize(result_id, ServerV(result_tensor));
 }
 
+TEST_F(FederatingExecutorTest, CreateCallFederatedSelectUniqueKeyPerClient) {
+  OwnedValueId select_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(FederatedSelectV()));
+  IdPair select_fn =
+      TFF_ASSERT_OK(CreatePassthroughValue(TensorV("select_fn")));
+  IdPair max_key = TFF_ASSERT_OK(CreatePassthroughValue(TensorV("max_key")));
+  v0::Value server_value = TensorV("server_value");
+  ValueId server_value_child_id = ExpectCreateInChild(server_value);
+  OwnedValueId server_value_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ServerV(server_value)));
+  ValueId args_into_sequence_id = ExpectCreateInChild(ArgsIntoSequenceV());
+  std::vector<v0::Value> keys_pbs;
+  std::vector<v0::Value> dataset_pbs;
+  for (int32_t i = 0; i < NUM_CLIENTS; i++) {
+    v0::Value keys_for_client_pb = TensorVFromIntList({i});
+    keys_pbs.push_back(keys_for_client_pb);
+    ExpectCreateMaterializeInChild(keys_for_client_pb);
+    ValueId key_id = ExpectCreateInChild(TensorV(i));
+    ValueId select_fn_args_id =
+        ExpectCreateStructInChild({server_value_child_id, key_id});
+    ValueId slice_id =
+        ExpectCreateCallInChild(select_fn.child_id, select_fn_args_id);
+    ValueId slices_id = ExpectCreateStructInChild({slice_id});
+    ValueId dataset_id =
+        ExpectCreateCallInChild(args_into_sequence_id, slices_id);
+    v0::Value dataset_pb = SequenceV(i, i + 1, 1);
+    ExpectMaterializeInChild(dataset_id, dataset_pb);
+    dataset_pbs.push_back(dataset_pb);
+  }
+  OwnedValueId keys_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ClientsV(keys_pbs)));
+  OwnedValueId select_args_id = TFF_ASSERT_OK(test_executor_->CreateStruct(
+      {keys_id, max_key.id, server_value_id, select_fn.id}));
+  OwnedValueId result_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(select_id, select_args_id));
+  ExpectMaterialize(result_id, ClientsV(dataset_pbs));
+}
+
+TEST_F(FederatingExecutorTest, CreateCallFederatedSelectAllClientsSameKeys) {
+  OwnedValueId select_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(FederatedSelectV()));
+  IdPair select_fn =
+      TFF_ASSERT_OK(CreatePassthroughValue(TensorV("select_fn")));
+  IdPair max_key = TFF_ASSERT_OK(CreatePassthroughValue(TensorV("max_key")));
+  v0::Value server_value = TensorV("server_val");
+  ValueId server_value_child_id = ExpectCreateInChild(server_value);
+  OwnedValueId server_value_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ServerV(server_value)));
+  ValueId args_into_sequence_id = ExpectCreateInChild(ArgsIntoSequenceV());
+  std::vector<int32_t> keys({1, 2, 3});
+  v0::Value keys_pb = TensorVFromIntList(keys);
+  std::vector<ValueId> slice_child_ids;
+  // Every unique key should only have its slice created once (not once per
+  // client).
+  for (int32_t key : keys) {
+    ValueId key_id = ExpectCreateInChild(TensorV(key));
+    ValueId select_fn_args_id =
+        ExpectCreateStructInChild({server_value_child_id, key_id});
+    ValueId slice_id =
+        ExpectCreateCallInChild(select_fn.child_id, select_fn_args_id);
+    slice_child_ids.push_back(slice_id);
+  }
+  // However, each client should still create its own dataset from the slices:
+  // we don't yet bother to optimize for the case where clients have the exact
+  // same list of keys, as that should be less frequent in practice.
+  ExpectCreateMaterializeInChild(keys_pb, ONCE_PER_CLIENT);
+  ValueId slices_id =
+      ExpectCreateStructInChild(slice_child_ids, ONCE_PER_CLIENT);
+  ValueId dataset_id = ExpectCreateCallInChild(args_into_sequence_id, slices_id,
+                                               ONCE_PER_CLIENT);
+  v0::Value dataset_pb = SequenceV(0, 10, 2);
+  ExpectMaterializeInChild(dataset_id, dataset_pb, ONCE_PER_CLIENT);
+  std::vector<v0::Value> keys_pbs;
+  keys_pbs.resize(NUM_CLIENTS, keys_pb);
+  std::vector<v0::Value> dataset_pbs;
+  dataset_pbs.resize(NUM_CLIENTS, dataset_pb);
+  OwnedValueId keys_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ClientsV(keys_pbs)));
+  OwnedValueId select_args_id = TFF_ASSERT_OK(test_executor_->CreateStruct(
+      {keys_id, max_key.id, server_value_id, select_fn.id}));
+  OwnedValueId result_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(select_id, select_args_id));
+  ExpectMaterialize(result_id, ClientsV(dataset_pbs));
+}
+
+TEST_F(FederatingExecutorTest, CreateCallFederatedSelectNonInt32KeysFails) {
+  OwnedValueId select_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(FederatedSelectV()));
+  IdPair select_fn =
+      TFF_ASSERT_OK(CreatePassthroughValue(TensorV("select_fn")));
+  IdPair max_key = TFF_ASSERT_OK(CreatePassthroughValue(TensorV("max_key")));
+  v0::Value server_value = TensorV("server_val");
+  ExpectCreateInChild(server_value);
+  OwnedValueId server_value_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ServerV(server_value)));
+
+  tensorflow::TensorShape keys_shape({1});
+  tensorflow::Tensor keys_tensor(tensorflow::DT_UINT8, keys_shape);
+  v0::Value keys_pb = TensorV(keys_tensor);
+  // The child `keys_pb` value is only created once due to the ALL_EQUALS bit,
+  // and then is only materialized once after which the operation fails.
+  ExpectCreateMaterializeInChild(keys_pb, ONCE);
+  OwnedValueId keys_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ClientsV({keys_pb}, true)));
+  OwnedValueId select_args_id = TFF_ASSERT_OK(test_executor_->CreateStruct(
+      {keys_id, max_key.id, server_value_id, select_fn.id}));
+  ASSERT_THAT(test_executor_->CreateCall(select_id, select_args_id),
+              StatusIs(StatusCode::kInvalidArgument,
+                       HasSubstr("Expected int32_t key")));
+}
+
+TEST_F(FederatingExecutorTest, CreateCallFederatedSelectNonRankOneKeysFails) {
+  OwnedValueId select_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(FederatedSelectV()));
+  IdPair select_fn =
+      TFF_ASSERT_OK(CreatePassthroughValue(TensorV("select_fn")));
+  IdPair max_key = TFF_ASSERT_OK(CreatePassthroughValue(TensorV("max_key")));
+  v0::Value server_value = TensorV("server_val");
+  ExpectCreateInChild(server_value);
+  OwnedValueId server_value_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ServerV(server_value)));
+
+  tensorflow::TensorShape keys_shape({2, 2});
+  tensorflow::Tensor keys_tensor(tensorflow::DT_INT32, keys_shape);
+  v0::Value keys_pb = TensorV(keys_tensor);
+  // The child `keys_pb` value is only created once due to the ALL_EQUALS bit,
+  // and then is only materialized once after which the operation fails.
+  ExpectCreateMaterializeInChild(keys_pb, ONCE);
+  OwnedValueId keys_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ClientsV({keys_pb}, true)));
+  OwnedValueId select_args_id = TFF_ASSERT_OK(test_executor_->CreateStruct(
+      {keys_id, max_key.id, server_value_id, select_fn.id}));
+  ASSERT_THAT(test_executor_->CreateCall(select_id, select_args_id),
+              StatusIs(StatusCode::kInvalidArgument,
+                       HasSubstr("Expected key tensor to be rank one")));
+}
+
 TEST_F(FederatingExecutorTest, CreateCallFederatedValueAtClients) {
-  v0::Value tensor = TensorV(1);
-  ValueId tensor_child_id = ExpectCreateInChild(tensor);
-  TFF_ASSERT_OK_AND_ASSIGN(auto tensor_id, test_executor_->CreateValue(tensor));
+  v0::Value tensor_pb = TensorV(1);
+  IdPair tensor = TFF_ASSERT_OK(CreatePassthroughValue(tensor_pb));
   TFF_ASSERT_OK_AND_ASSIGN(
       auto fed_val_id, test_executor_->CreateValue(FederatedValueAtClientsV()));
   TFF_ASSERT_OK_AND_ASSIGN(auto result_id,
-                           test_executor_->CreateCall(fed_val_id, tensor_id));
-  ExpectMaterializeInChild(tensor_child_id, tensor, ONCE_PER_CLIENT);
+                           test_executor_->CreateCall(fed_val_id, tensor.id));
+  ExpectMaterializeInChild(tensor.child_id, tensor_pb, ONCE_PER_CLIENT);
   ExpectMaterialize(result_id,
-                    ClientsV(std::vector<v0::Value>(NUM_CLIENTS, tensor)));
+                    ClientsV(std::vector<v0::Value>(NUM_CLIENTS, tensor_pb)));
 }
 
 TEST_F(FederatingExecutorTest, CreateCallFederatedValueAtServer) {

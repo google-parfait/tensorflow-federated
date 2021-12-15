@@ -16,6 +16,8 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 
 #include <cstddef>
+#include <utility>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
@@ -39,15 +41,18 @@ namespace {
 using ::absl::StatusCode;
 using testing::ClientsV;
 using testing::IntrinsicV;
+using testing::SequenceV;
 using testing::ServerV;
 using testing::StructV;
 using testing::TensorV;
+using testing::TensorVFromIntList;
 using testing::intrinsic::FederatedAggregateV;
 using testing::intrinsic::FederatedBroadcastV;
 using testing::intrinsic::FederatedEvalAtClientsV;
 using testing::intrinsic::FederatedEvalAtServerV;
 using testing::intrinsic::FederatedMapAllEqualV;
 using testing::intrinsic::FederatedMapV;
+using testing::intrinsic::FederatedSelectV;
 using testing::intrinsic::FederatedValueAtClientsV;
 using testing::intrinsic::FederatedValueAtServerV;
 using testing::intrinsic::FederatedZipAtClientsV;
@@ -575,6 +580,63 @@ TEST_F(ComposingExecutorTest, CreateCallFederatedEvalAtServer) {
   v0::Value result_tensor = TensorV(3);
   mock_server_->ExpectMaterialize(result_child_id, result_tensor);
   ExpectMaterialize(result_id, ServerV(result_tensor));
+}
+
+TEST_F(ComposingExecutorTest, CreateCallFederatedSelect) {
+  v0::Value keys = ClientsV({TensorVFromIntList({22, 47, 89})}, true);
+  v0::Value max_key = TensorV("max_key");
+  v0::Value server_val = ServerV(TensorV("server_val"));
+  v0::Value select_fn = TensorV("select_fn");
+  mock_server_->ExpectCreateMaterialize(TensorV("server_val"));
+  std::vector<v0::Value> results;
+  results.reserve(mock_children_.size());
+  for (uint32_t i = 0; i < mock_children_.size(); i++) {
+    const auto& child = mock_children_[i];
+    uint32_t num_clients = clients_per_child_[i];
+    ValueId child_keys = child->ExpectCreateValue(keys);
+    ValueId child_max_key = child->ExpectCreateValue(max_key);
+    ValueId child_server_val = child->ExpectCreateValue(server_val);
+    ValueId child_select_fn = child->ExpectCreateValue(select_fn);
+    ValueId child_sel = child->ExpectCreateValue(FederatedSelectV());
+    ValueId arg = child->ExpectCreateStruct(
+        {child_keys, child_max_key, child_server_val, child_select_fn});
+    ValueId res = child->ExpectCreateCall(child_sel, arg);
+    std::vector<v0::Value> child_results;
+    child_results.reserve(num_clients);
+    for (uint32_t client_i = 0; client_i < num_clients; client_i++) {
+      v0::Value sequence = SequenceV(client_i, client_i + 3, 1);
+      results.push_back(sequence);
+      child_results.push_back(std::move(sequence));
+    }
+    child->ExpectMaterialize(res, ClientsV(std::move(child_results)));
+  }
+  auto keys_id = TFF_ASSERT_OK(test_executor_->CreateValue(keys));
+  auto max_key_id = TFF_ASSERT_OK(test_executor_->CreateValue(max_key));
+  auto server_val_id = TFF_ASSERT_OK(test_executor_->CreateValue(server_val));
+  auto select_fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(select_fn));
+  auto args_id = TFF_ASSERT_OK(test_executor_->CreateStruct(
+      {keys_id, max_key_id, server_val_id, select_fn_id}));
+  auto select_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(FederatedSelectV()));
+  auto result_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(select_id, args_id));
+  ExpectMaterialize(result_id, ClientsV(results));
+}
+
+TEST_F(ComposingExecutorTest,
+       CreateCallFederatedSelectFailsWithNonClientsPlacedKeys) {
+  v0::Value unplaced_value = TensorV(1);
+  auto unplaced_id = TFF_ASSERT_OK(test_executor_->CreateValue(unplaced_value));
+  auto arg = TFF_ASSERT_OK(test_executor_->CreateStruct({
+      unplaced_id,  // keys
+      unplaced_id,  // max_key
+      unplaced_id,  // server_val
+      unplaced_id,  // select_fn
+  }));
+  auto agg = TFF_ASSERT_OK(test_executor_->CreateValue(FederatedAggregateV()));
+  auto res = TFF_ASSERT_OK(test_executor_->CreateCall(agg, arg));
+  EXPECT_THAT(test_executor_->Materialize(res),
+              StatusIs(StatusCode::kInvalidArgument));
 }
 
 TEST_F(ComposingExecutorTest, CreateCallFederatedValueAtClients) {

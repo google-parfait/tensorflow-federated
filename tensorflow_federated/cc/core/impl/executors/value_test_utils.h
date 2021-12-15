@@ -23,6 +23,7 @@ limitations under the License
 #include <utility>
 #include <vector>
 
+#include "google/protobuf/any.pb.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -92,6 +93,17 @@ v0::Value TensorV(Ts... tensor_constructor_args) {
   return value_proto;
 }
 
+inline v0::Value TensorVFromIntList(absl::Span<const int32_t> elements) {
+  size_t num_elements = elements.size();
+  tensorflow::TensorShape shape({static_cast<int64_t>(num_elements)});
+  tensorflow::Tensor tensor(tensorflow::DT_INT32, shape);
+  auto flat = tensor.flat<int32_t>();
+  for (size_t i = 0; i < num_elements; i++) {
+    flat(i) = elements[i];
+  }
+  return TensorV(tensor);
+}
+
 inline v0::Value StructV(const absl::Span<const v0::Value> elements) {
   v0::Value value_proto;
   auto struct_proto = value_proto.mutable_struct_();
@@ -138,12 +150,14 @@ namespace intrinsic {
 #define INTRINSIC_FUNC(name, uri) \
   inline v0::Value name() { return IntrinsicV(#uri); }
 
+INTRINSIC_FUNC(ArgsIntoSequenceV, args_into_sequence);
 INTRINSIC_FUNC(FederatedAggregateV, federated_aggregate);
 INTRINSIC_FUNC(FederatedBroadcastV, federated_broadcast);
 INTRINSIC_FUNC(FederatedMapV, federated_map);
 INTRINSIC_FUNC(FederatedMapAllEqualV, federated_map_all_equal);
 INTRINSIC_FUNC(FederatedEvalAtClientsV, federated_eval_at_clients);
 INTRINSIC_FUNC(FederatedEvalAtServerV, federated_eval_at_server);
+INTRINSIC_FUNC(FederatedSelectV, federated_select);
 INTRINSIC_FUNC(FederatedValueAtClientsV, federated_value_at_clients);
 INTRINSIC_FUNC(FederatedValueAtServerV, federated_value_at_server);
 INTRINSIC_FUNC(FederatedZipAtClientsV, federated_zip_at_clients);

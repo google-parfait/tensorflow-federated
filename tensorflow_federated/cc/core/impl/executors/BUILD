@@ -59,6 +59,9 @@ tff_cc_library_with_tf_deps(
 tff_cc_test_with_tf_deps(
     name = "composing_executor_test",
     srcs = ["composing_executor_test.cc"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:tensorflow",
+    ],
     deps = [
         ":composing_executor",
         ":computations",
@@ -233,16 +236,21 @@ tff_cc_library_with_tf_deps(
     name = "federating_executor",
     srcs = ["federating_executor.cc"],
     hdrs = ["federating_executor.h"],
-    tf_deps = ["@org_tensorflow//tensorflow/core/platform:macros"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/platform:macros",
+    ],
     deps = [
         ":cardinalities",
         ":executor",
         ":federated_intrinsics",
         ":status_macros",
+        ":tensor_serialization",
         ":threading",
         ":value_validation",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -255,6 +263,9 @@ tff_cc_library_with_tf_deps(
 tff_cc_test_with_tf_deps(
     name = "federating_executor_test",
     srcs = ["federating_executor_test.cc"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:tensorflow",
+    ],
     deps = [
         ":executor",
         ":executor_test_base",
