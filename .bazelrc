@@ -1,7 +1,9 @@
-# TensorFlow Federated Bazel configuration.
+# TensorFlow Federated Bazel configuration
 #
 # See https://docs.bazel.build/versions/master/user-manual.html#config for
 # details on the various configuration options.
+#
+# ##
 
 # Enable verbose failures for testing only.
 build --verbose_failures
@@ -51,7 +53,7 @@ build:macos --copt=-DGRPC_BAZEL_BUILD
 build:macos --apple_platform_type=macos
 
 #
-# Remote execution capabilities.
+# Remote execution capabilities
 #
 
 # Enable authentication.
@@ -65,33 +67,32 @@ build:remote --remote_instance_name=projects/tensorflow-federated/instances/defa
 build:remote --project_id=tensorflow-federated
 
 #
-# Required to build TensorFlow.
+# Required to build TensorFlow
 #
-build --define framework_shared_object=true
-# Modular TF build options
-build:dynamic_kernels --define=dynamic_loaded_kernels=true
-build:dynamic_kernels --copt=-DAUTOLOAD_DYNAMIC_KERNELS
+
+# Default build options. These are applied first and unconditionally.
 
 # GCC >= 5 requires specify this to be ABI compatible with how the TensorFlow
 # pip package is built. More details at
 # https://www.tensorflow.org/guide/create_op#build_the_op_library.
 build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0
 
-# On linux, don't cross compile by default
-build:linux --config=dynamic_kernels
-build:linux --distinct_host_configuration=false
-build:linux --experimental_guard_against_concurrent_changes
-build:linux --define=PREFIX=/usr
-build:linux --define=LIBDIR=$(PREFIX)/lib
-build:linux --define=INCLUDEDIR=$(PREFIX)/include
-build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
-build:linux --config=avx_linux
+# For projects which use TensorFlow as part of a Bazel build process, putting
+# nothing in a bazelrc will default to a monolithic build. The following line
+# opts in to modular op registration support by default.
+build --define framework_shared_object=true
 
+build:linux --config=avx_linux
 build:avx_linux --copt=-mavx
 build:avx_linux --host_copt=-mavx
-build:native_arch_linux --copt=-march=native
-build:v1 --define=tf_api_version=1 --action_env=TF2_BEHAVIOR=0
-build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
+
+build:linux --crosstool_top="@ubuntu18.04-gcc7_manylinux2010-cuda11.2-cudnn8.1-tensorrt7.2_config_cuda//crosstool:toolchain"
+test:linux --test_env=LD_LIBRARY_PATH
+
+build --spawn_strategy=standalone
+build -c opt
+
+build --define=grpc_no_ares=true
 
 # See https://github.com/bazelbuild/bazel/issues/7362 for information on what
 # --incompatible_remove_legacy_whole_archive flag does.
@@ -106,14 +107,76 @@ build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
 # Remove this line once TF doesn't depend on Bazel wrapping all library
 # archives in -whole_archive -no_whole_archive.
 build --noincompatible_remove_legacy_whole_archive
-build --enable_platform_specific_config
 
-build --define=grpc_no_ares=true
+# Enable XLA support by default.
+build --define=with_xla_support=true
+
+build --config=short_logs
+
+build --config=v2
+
+# Disable AWS/HDFS support by default
 build --define=no_aws_support=true
 build --define=no_hdfs_support=true
 
-build --define=with_xla_support=true
-build --config=v2
+build:tensorrt --repo_env TF_NEED_TENSORRT=1
+
+# Default options should come above this line.
+
+# This config refers to building CUDA op kernels with nvcc.
+build:cuda --config=tensorrt
+build:cuda --repo_env TF_NEED_CUDA=1
+build:cuda --crosstool_top=@local_config_cuda//crosstool:toolchain
+build:cuda --@local_config_cuda//:enable_cuda
+build:cuda --action_env=TF_CUDA_VERSION="11.2"
+build:cuda --action_env=TF_CUDNN_VERSION="8"
+build:cuda --repo_env=TF_CUDA_COMPUTE_CAPABILITIES="sm_60,sm_70,sm_75,compute_80"
+# TensorRT 7 for CUDA 11.1 is compatible with CUDA 11.2, but requires
+# libnvrtc.so.11.1. See https://github.com/NVIDIA/TensorRT/issues/1064.
+# TODO(b/187962120): Remove when upgrading to TensorRT 8.
+#test:cuda --test_env=LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda-11.1/lib64"
+build:cuda --action_env=CUDA_TOOLKIT_PATH="/usr/local/cuda-11.2"
+build:cuda --action_env=LD_LIBRARY_PATH="/usr/local/cuda:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/tensorrt/lib"
+build:cuda --action_env=GCC_HOST_COMPILER_PATH="/dt7/usr/bin/gcc"
+#build:cuda --action_env=GCC_HOST_COMPILER_PATH="/dt7/usr/bin/gcc"
+
+# Modular TF build options
+build:dynamic_kernels --define=dynamic_loaded_kernels=true
+build:dynamic_kernels --copt=-DAUTOLOAD_DYNAMIC_KERNELS
+
+# Default paths for TF_SYSTEM_LIBS
+build:linux --define=PREFIX=/usr
+build:linux --define=LIBDIR=$(PREFIX)/lib
+build:linux --define=INCLUDEDIR=$(PREFIX)/include
+build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
+build:macos --define=PREFIX=/usr
+build:macos --define=LIBDIR=$(PREFIX)/lib
+build:macos --define=INCLUDEDIR=$(PREFIX)/include
+build:macos --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
+
+# By default, build TF in C++ 14 mode.
+build:linux --cxxopt=-std=c++14
+build:linux --host_cxxopt=-std=c++14
+build:macos --cxxopt=-std=c++14
+build:macos --host_cxxopt=-std=c++14
+
+# On linux, we dynamically link small amount of kernels
+build:linux --config=dynamic_kernels
+
+# On linux, don't cross compile by default
+build:linux --distinct_host_configuration=false
+
+# Do not risk cache corruption. See:
+# https://github.com/bazelbuild/bazel/issues/3360
+build:linux --experimental_guard_against_concurrent_changes
+
+# Configure short or long logs
+build:short_logs --output_filter=DONT_MATCH_ANYTHING
+build:verbose_logs --output_filter=
+
+# Options to build TensorFlow 1.x or 2.x.
+build:v1 --define=tf_api_version=1 --action_env=TF2_BEHAVIOR=0
+build:v2 --define=tf_api_version=2 --action_env=TF2_BEHAVIOR=1
 
 # Enable remote execution capabilities.
 common --experimental_repo_remote_exec
