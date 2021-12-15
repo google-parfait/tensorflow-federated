@@ -44,12 +44,12 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
             num_examples=2, num_examples_float=2.0, num_batches=1, loss=0.25))
     unfinalized_metrics = model.report_local_unfinalized_metrics()
     self.assertEqual(unfinalized_metrics,
-                     collections.OrderedDict(num_examples=2, loss=[0.5, 2.0]))
+                     collections.OrderedDict(loss=[0.5, 2.0], num_examples=2))
     finalized_metrics = collections.OrderedDict(
         (metric_name, finalizer(unfinalized_metrics[metric_name]))
         for metric_name, finalizer in model.metric_finalizers().items())
     self.assertEqual(finalized_metrics,
-                     collections.OrderedDict(num_examples=2, loss=0.25))
+                     collections.OrderedDict(loss=0.25, num_examples=2))
 
   def test_tff(self):
     feature_dim = 2
@@ -78,15 +78,22 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
         collections.OrderedDict(
             num_examples=2, num_examples_float=2.0, num_batches=1, loss=0.25))
     self.assertEqual(unfinalized_metrics,
-                     collections.OrderedDict(num_examples=2, loss=[0.5, 2.0]))
+                     collections.OrderedDict(loss=[0.5, 2.0], num_examples=2))
     model = model_examples.LinearRegression(feature_dim)
     finalized_metrics = collections.OrderedDict(
         (metric_name, finalizer(unfinalized_metrics[metric_name]))
         for metric_name, finalizer in model.metric_finalizers().items())
     self.assertEqual(finalized_metrics,
-                     collections.OrderedDict(num_examples=2, loss=0.25))
+                     collections.OrderedDict(loss=0.25, num_examples=2))
 
     # TODO(b/122114585): Add tests for model.federated_output_computation.
+
+  def test_raise_not_implemented_error(self):
+    model = model_examples.LinearRegression(use_metrics_aggregator=True)
+    with self.assertRaisesRegex(NotImplementedError, 'Do not implement'):
+      model.report_local_outputs()
+    with self.assertRaisesRegex(NotImplementedError, 'Do not implement'):
+      model.federated_output_computation  # pylint: disable=pointless-statement
 
 
 if __name__ == '__main__':
