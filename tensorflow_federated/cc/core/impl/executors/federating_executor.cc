@@ -554,9 +554,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     OwnedValueId key_id = TFF_TRY(child_->CreateValue(key_pb));
     OwnedValueId arg_id =
         TFF_TRY(child_->CreateStruct({server_val_child_id, key_id}));
-    OwnedValueId slice_id =
-        TFF_TRY(child_->CreateCall(select_fn_child_id, arg_id));
-    return slice_id;
+    return TFF_TRY(child_->CreateCall(select_fn_child_id, arg_id));
   }
 
   absl::StatusOr<ExecutorValue> CreateStruct(
