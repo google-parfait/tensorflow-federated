@@ -283,7 +283,6 @@ class RotationsExecutionTest(test_case.TestCase, parameterized.TestCase):
     self.assertBetween(np.var(inner_aggregand), 255, 257)
 
   def test_dft_spreads_information(self):
-    self.skipTest('This test seems to flakily fail; b/208245325')
     factory = _measured_dft_sum()
     process = factory.create(computation_types.TensorType(tf.float32, [256]))
 
@@ -291,14 +290,10 @@ class RotationsExecutionTest(test_case.TestCase, parameterized.TestCase):
     output = process.next(process.initialize(), [client_input])
     inner_aggregand = output.measurements['dft']['sum']
 
-    # Columns of DFT matrix have roots of unity, so a prime index column should
-    # give around 256 unique real/imag components that are negatives of each
-    # other. We can simply test that we have at least half as much unique
-    # components to account for precision issues, zero components, etc.
-    num_uniq = len(np.unique(np.around(inner_aggregand, 4)))
-    num_abs_uniq = len(np.unique(np.abs(np.around(inner_aggregand, 4))))
-    self.assertGreaterEqual(num_uniq, 256 // 2)
-    self.assertGreaterEqual(num_abs_uniq, 256 // 4)
+    # We expect the values to be non-zero. Check that numerically the values are
+    # bounded away from zero, with some slack (240 out of 256 scalars).
+    self.assertGreaterEqual(
+        np.sum(np.greater(np.abs(inner_aggregand), 1e-6)), 240)
     self.assertBetween(np.var(inner_aggregand), 255, 257)
 
 
