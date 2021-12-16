@@ -93,6 +93,96 @@ class DataProcessingTest(parameterized.TestCase,
       data_processing.get_all_elements(ds)
 
   @parameterized.named_parameters(
+      ('empty_dataset', tf.constant([], dtype=tf.string), 2, 10, [], []),
+      ('batch_size_1', ['a', 'b', 'a', 'c', 'b', 'c', 'c'
+                       ], 1, 4, [b'a', b'b', b'c'], [2, 1, 1]),
+      ('batch_size_3', ['a', 'b', 'a', 'c', 'b', 'c', 'c'], 3, 4, [b'a', b'b'
+                                                                  ], [2, 1]))
+  def test_capped_elements_with_counts_returns_expected_values(
+      self, input_data, batch_size, max_user_contribution, expected_elements,
+      expected_counts):
+    ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
+    capped_elements, counts = data_processing.get_capped_elements_with_counts(
+        ds, max_user_contribution=max_user_contribution, batch_size=batch_size)
+    self.assert_histograms_all_close(capped_elements, counts, expected_elements,
+                                     expected_counts)
+
+  @parameterized.named_parameters(
+      ('empty_dataset', tf.constant([], dtype=tf.string), 3, 10, 3, [], []),
+      ('string_1', ['abcd', 'abcde', 'bcd', 'bcdef', 'def'
+                   ], 1, 4, 3, ['abc', 'bcd'], [2, 2]),
+      ('string_2', ['abcd', 'abcde', 'bcd', 'bcdef', 'def'], 2, 2, 2, ['ab'
+                                                                      ], [2]),
+      ('unicode', ['新年快乐', '新年', '☺️😇', '☺️😇', '☺️'], 2, 3, 6, ['新年'], [2]),
+  )
+  def test_capped_elements_with_counts_max_len_returns_expected_values(
+      self, input_data, batch_size, max_user_contribution, max_string_length,
+      expected_elements, expected_counts):
+    ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
+    capped_elements, counts = data_processing.get_capped_elements_with_counts(
+        ds,
+        batch_size=batch_size,
+        max_user_contribution=max_user_contribution,
+        max_string_length=max_string_length)
+    capped_elements = [
+        elem.decode('utf-8', 'ignore') for elem in capped_elements.numpy()
+    ]
+    self.assert_histograms_all_close(capped_elements, counts, expected_elements,
+                                     expected_counts)
+
+  @parameterized.named_parameters(
+      ('rank_0', None),
+      ('rank_2', 2),
+      ('rank_3', 3),
+  )
+  def test_capped_elements_with_counts_raise_rank_value_error(
+      self, dataset_rank):
+    ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b', 'c'])
+    max_user_contribution = 3
+    batch_size = 1
+    while dataset_rank:
+      ds = ds.batch(batch_size=batch_size)
+      dataset_rank -= 1
+
+    with self.assertRaisesRegex(
+        ValueError, 'The shape of elements in `dataset` must be of rank 1.*'):
+      data_processing.get_capped_elements_with_counts(
+          ds,
+          max_user_contribution=max_user_contribution,
+          batch_size=batch_size)
+
+  @parameterized.named_parameters(
+      ('batch_size', 5, 0, 10, '`batch_size` must be at least 1.'),
+      ('max_user_contribution', -10, 10, 10,
+       '`max_user_contribution` must be at least 1.'),
+      ('max_string_length', 10, 5, 0,
+       '`max_string_length` must be at least 1.'),
+  )
+  def test_capped_elements_with_counts_raise_params_value_error(
+      self, max_user_contribution, batch_size, max_string_length, raises_regex):
+    ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b',
+                                             'c']).batch(batch_size=1)
+    with self.assertRaisesRegex(ValueError, raises_regex):
+      data_processing.get_capped_elements_with_counts(
+          ds,
+          max_user_contribution=max_user_contribution,
+          batch_size=batch_size,
+          max_string_length=max_string_length)
+
+  @parameterized.named_parameters(
+      ('int_dataset', [1, 3, 2, 2, 4, 6, 3]),
+      ('float_dataset', [1.0, 4.0, 4.0, 6.0]),
+      ('bool_dataset', [True, True, False]),
+  )
+  def test_capped_elements_with_counts_raise_type_error(self, input_data):
+    ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size=1)
+
+    with self.assertRaisesRegex(
+        TypeError, '`dataset.element_spec.dtype` must be `tf.string`.'):
+      data_processing.get_capped_elements_with_counts(
+          ds, max_user_contribution=10, batch_size=1)
+
+  @parameterized.named_parameters(
       ('empty_dataset', tf.constant([], dtype=tf.string), 2, 10, []),
       ('batch_size_1', ['a', 'b', 'a', 'c', 'b', 'c', 'c'
                        ], 1, 4, [b'a', b'b', b'a', b'c']),

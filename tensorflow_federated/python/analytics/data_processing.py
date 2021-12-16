@@ -13,7 +13,6 @@
 # limitations under the License.
 """A set of utility functions for data processing."""
 
-import math
 from typing import Optional, Tuple
 import tensorflow as tf
 
@@ -71,12 +70,59 @@ def get_all_elements(dataset: tf.data.Dataset,
   return all_element_list
 
 
-@tf.function
+def _get_capped_dataset(dataset: tf.data.Dataset,
+                        max_user_contribution: int,
+                        batch_size: int = 1):
+  """Returns capped `tf.data.Dataset` with the input `dataset`.
+
+  The input `dataset` must yield batched rank-1 tensors. This function caps the
+  number of elements in the dataset. Note either none of the elements in one
+  batch is added to the returned result, or all the elements are added. This
+  means the total number of elements in the returned dataset could be less than
+  `max_user_contribution`.
+
+  Args:
+    dataset: A `tf.data.Dataset`.
+    max_user_contribution: The maximum number of elements to return.
+    batch_size: The number of elements in each batch of `dataset`.
+
+  Returns:
+    A `tf.data.Dataset` that contains at most the first `max_user_contribution`
+      elements in the input `dataset`.
+
+  Raises:
+    ValueError:
+      -- If the shape of elements in `dataset` is not rank 1.
+      -- If `max_user_contribution` is less than 1.
+      -- If `batch_size` is less than 1.
+    TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
+      `tf.string`.
+  """
+  if dataset.element_spec.shape.rank != 1:
+    raise ValueError('The shape of elements in `dataset` must be of rank 1, '
+                     f' found rank = {dataset.element_spec.shape.rank}'
+                     ' instead.')
+
+  if max_user_contribution < 1:
+    raise ValueError('`max_user_contribution` must be at least 1.')
+
+  if batch_size < 1:
+    raise ValueError('`batch_size` must be at least 1.')
+
+  if dataset.element_spec.dtype != tf.string:
+    raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
+                    f' element type {dataset.element_spec.dtype}')
+
+  capped_size = max_user_contribution // batch_size
+  capped_dataset = dataset.take(capped_size)
+  return capped_dataset
+
+
 def get_capped_elements(dataset: tf.data.Dataset,
                         max_user_contribution: int,
                         batch_size: int = 1,
                         max_string_length: Optional[int] = None):
-  """Gets the first max_user_contribution words from the input dataset.
+  """Gets the first `max_user_contribution` elements from the input dataset.
 
   The input `dataset` must yield batched rank-1 tensors. This function reads
   each coordinate of the tensor as an individual element and caps the total
@@ -95,8 +141,8 @@ def get_capped_elements(dataset: tf.data.Dataset,
 
   Returns:
     A rank-1 Tensor containing the elements of the input dataset after being
-    capped. If the total number of words is less than or equal to
-    `max_user_contribution`, returns all the words in `dataset`.
+    capped. If the total number of elements is less than or equal to
+    `max_user_contribution`, returns all the elements in `dataset`.
 
   Raises:
     ValueError:
@@ -108,28 +154,61 @@ def get_capped_elements(dataset: tf.data.Dataset,
       `tf.string`.
   """
 
-  if dataset.element_spec.shape.rank != 1:
-    raise ValueError('The shape of elements in `dataset` must be of rank 1, '
-                     f' found rank = {dataset.element_spec.shape.rank}'
-                     ' instead.')
-
-  if max_user_contribution < 1:
-    raise ValueError('`max_user_contribution` must be at least 1.')
-
-  if batch_size < 1:
-    raise ValueError('`batch_size` must be at least 1.')
-
-  if dataset.element_spec.dtype != tf.string:
-    raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
-                    f' element type {dataset.element_spec.dtype}')
-
   if max_string_length is not None and max_string_length < 1:
     raise ValueError('`max_string_length` must be at least 1 when it is not'
                      ' None.')
-
-  capped_size = math.floor(max_user_contribution / batch_size)
-  capped_dataset = dataset.take(capped_size)
+  capped_dataset = _get_capped_dataset(
+      dataset=dataset,
+      max_user_contribution=max_user_contribution,
+      batch_size=batch_size)
   return get_all_elements(capped_dataset, max_string_length)
+
+
+def get_capped_elements_with_counts(dataset: tf.data.Dataset,
+                                    max_user_contribution: int,
+                                    batch_size: int = 1,
+                                    max_string_length: Optional[int] = None):
+  """Gets the capped elements with counts from the input dataset.
+
+  The input `dataset` must yield batched rank-1 tensors. This function reads
+  each coordinate of the tensor as an individual element and caps the total
+  number of elements to return. Note either none of the elements in one batch is
+  added to the returned result, or all the elements are added. This means the
+  length of the returned list of elements could be less than
+  `max_user_contribution` when `dataset` is capped.
+
+  Args:
+    dataset: A `tf.data.Dataset`.
+    max_user_contribution: The maximum number of elements to return.
+    batch_size: The number of elements in each batch of `dataset`.
+    max_string_length: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `max_string_length` will be truncated. Defaults to
+      `None`, which means there is no limit of the string length.
+
+  Returns:
+    elements: A rank-1 Tensor containing the unique elements of the input
+    dataset after being capped. If the total number of elements is less than or
+    equal to `max_user_contribution`, returns all the elements in `dataset`.
+    counts: A rank-1 Tensor containing the counts for each of the elements in
+      `elements`.
+
+  Raises:
+    ValueError:
+      -- If the shape of elements in `dataset` is not rank 1.
+      -- If `max_user_contribution` is less than 1.
+      -- If `batch_size` is less than 1.
+      -- If `max_string_length` is not `None` and is less than 1.
+    TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
+      `tf.string`.
+  """
+  if max_string_length is not None and max_string_length < 1:
+    raise ValueError('`max_string_length` must be at least 1 when it is not'
+                     ' None.')
+  capped_dataset = _get_capped_dataset(
+      dataset=dataset,
+      max_user_contribution=max_user_contribution,
+      batch_size=batch_size)
+  return get_unique_elements_with_counts(capped_dataset, max_string_length)
 
 
 @tf.function
