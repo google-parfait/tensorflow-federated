@@ -17,9 +17,11 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics import data_processing
+from tensorflow_federated.python.analytics import histogram_test_utils
 
 
-class DataProcessingTest(tf.test.TestCase, parameterized.TestCase):
+class DataProcessingTest(parameterized.TestCase,
+                         histogram_test_utils.HistogramTest):
 
   @parameterized.named_parameters(
       ('empty_dataset', tf.constant([], dtype=tf.string), 2, []),
@@ -247,6 +249,81 @@ class DataProcessingTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(
         TypeError, '`dataset.element_spec.dtype` must be `tf.string`.'):
       data_processing.get_unique_elements(ds)
+
+  @parameterized.named_parameters(
+      ('empty_dataset', tf.constant([], dtype=tf.string), 3, [], []),
+      ('string_dataset_batch_size_1', ['a', 'b', 'a', 'c', 'b', 'c', 'c'
+                                      ], 1, [b'a', b'b', b'c'], [2, 2, 3]),
+      ('string_dataset_batch_size_3', ['a', 'b', 'a', 'c', 'b', 'c', 'c'
+                                      ], 3, [b'a', b'b', b'c'], [2, 2, 3]),
+  )
+  def test_unique_elements_with_counts_returns_expected_values(
+      self, input_data, batch_size, expected_elements, expected_counts):
+    ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
+    (unique_elements,
+     counts) = data_processing.get_unique_elements_with_counts(ds)
+    self.assertAllEqual(unique_elements, expected_elements)
+    self.assertAllEqual(counts, expected_counts)
+
+  @parameterized.named_parameters(
+      ('empty_dataset', tf.constant([], dtype=tf.string), 3, 3, [], []),
+      ('string', ['abcd', 'abcde', 'bcd', 'bcdef', 'def'
+                 ], 1, 3, ['abc', 'bcd', 'def'], [2, 2, 1]),
+      ('unicode', ['新年快乐', '新年', '☺️😇', '☺️😇', '☺️'], 3, 6, ['新年', '☺️'
+                                                            ], [2, 3]),
+  )
+  def test_get_unique_elements_with_counts_max_len_returns_expected_values(
+      self, input_data, batch_size, max_string_length, expected_elements,
+      expected_counts):
+    ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
+    unique_elements, counts = data_processing.get_unique_elements_with_counts(
+        ds, max_string_length=max_string_length)
+    unique_elements = [
+        elem.decode('utf-8', 'ignore') for elem in unique_elements.numpy()
+    ]
+    self.assert_histograms_all_close(unique_elements, counts, expected_elements,
+                                     expected_counts)
+
+  @parameterized.named_parameters(
+      ('rank_0', None),
+      ('rank_2', 2),
+      ('rank_3', 3),
+  )
+  def test_unique_elements_with_counts_raise_value_error(self, dataset_rank):
+    ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b', 'c'])
+    batch_size = 1
+    while dataset_rank:
+      ds = ds.batch(batch_size=batch_size)
+      dataset_rank -= 1
+
+    with self.assertRaises(ValueError):
+      data_processing.get_unique_elements_with_counts(ds)
+
+  @parameterized.named_parameters(
+      ('max_string_length_0', 0),
+      ('max_string_length_neg', -1),
+  )
+  def test_unique_elements_with_counts_raise_params_value_error(
+      self, max_string_length):
+    ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b',
+                                             'c']).batch(batch_size=1)
+
+    with self.assertRaisesRegex(ValueError,
+                                '`max_string_length` must be at least 1.'):
+      data_processing.get_unique_elements_with_counts(
+          ds, max_string_length=max_string_length)
+
+  @parameterized.named_parameters(
+      ('int_dataset', [1, 3, 2, 2, 4, 6, 3]),
+      ('float_dataset', [1.0, 4.0, 4.0, 6.0]),
+      ('bool_dataset', [True, True, False]),
+  )
+  def test_unique_elements_with_counts_raise_type_error(self, input_data):
+    ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size=1)
+
+    with self.assertRaisesRegex(
+        TypeError, '`dataset.element_spec.dtype` must be `tf.string`.'):
+      data_processing.get_unique_elements_with_counts(ds)
 
   @parameterized.named_parameters(
       ('empty_dataset', tf.constant([], dtype=tf.string), 3, 1, []),
