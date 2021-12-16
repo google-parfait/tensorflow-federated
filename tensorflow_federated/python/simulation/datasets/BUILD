@@ -345,3 +345,18 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
 )
+
+py_library(
+    name = "sql_client_data_utils",
+    srcs = ["sql_client_data_utils.py"],
+    deps = [
+        ":client_data",
+        ":sql_client_data",
+    ],
+)
+
+py_test(
+    name = "sql_client_data_utils_test",
+    srcs = ["sql_client_data_utils_test.py"],
+    deps = [":sql_client_data_utils"],
+)
