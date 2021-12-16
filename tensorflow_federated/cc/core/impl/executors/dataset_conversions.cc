@@ -42,7 +42,7 @@ SequenceValueToDataset(const v0::Value::Sequence& sequence_pb) {
                      status.error_message()));
   }
 
-  return dataset;
+  return std::move(dataset);
 }
 
 }  // namespace tensorflow_federated
