@@ -20,6 +20,7 @@ import os.path
 import shutil
 import tempfile
 from typing import Any, Dict, List, Mapping, Tuple, Sequence, Set, Union
+import warnings
 
 from absl import logging
 import numpy as np
@@ -102,7 +103,11 @@ def _flatten_nested_dict(struct: Mapping[str, Any]) -> Dict[str, Any]:
 
 
 class CSVMetricsManager(metrics_manager.MetricsManager):
-  """Utility class for saving/loading experiment metrics via a CSV file."""
+  """Utility class for saving/loading experiment metrics via a CSV file.
+
+  DEPRECATED: `tff.simulation.CSVMetricsManager` is deprecated, please use
+  `tff.program.CSVFileReleaseManager` instead.
+  """
 
   def __init__(self, csv_filepath: str, save_mode: SaveMode = SaveMode.APPEND):
     """Returns an initialized `CSVMetricsManager`.
@@ -135,6 +140,9 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
       ValueError: If the file at `csv_filepath` already exists but does not
         contain a `round_num` column.
     """
+    warnings.warn(
+        '`tff.simulation.CSVMetricsManager` is deprecated, please use '
+        '`tff.program.CSVFileReleaseManager` instead.', DeprecationWarning)
     super().__init__()
     if not csv_filepath:
       raise ValueError('Empty string passed for csv_filepath argument.')

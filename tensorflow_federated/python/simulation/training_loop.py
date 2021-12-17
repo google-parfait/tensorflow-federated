@@ -17,6 +17,7 @@ import collections
 import pprint
 import time
 from typing import Any, Callable, Iterable, List, Mapping, MutableMapping, Optional, Tuple
+import warnings
 
 from absl import logging
 
@@ -240,6 +241,9 @@ def run_simulation(
     validation_fn: Optional[ValidationFnType] = None):
   """Runs a federated training simulation for a given iterative process.
 
+  DEPRECATED: `tff.simulation.run_simulation` is deprecated, please use
+  `tff.simulation.run_training_process` instead.
+
   We assume that the iterative process has the following functional type
   signatures:
 
@@ -281,6 +285,9 @@ def run_simulation(
   Returns:
     The `state` of the iterative process after training.
   """
+  warnings.warn(
+      '`tff.simulation.run_simulation` is deprecated, please use '
+      '`tff.simulation.run_training_process` instead.', DeprecationWarning)
   on_loop_start = _create_on_loop_start_fn(file_checkpoint_manager,
                                            metrics_managers, validation_fn)
   on_round_end = _create_on_round_end_fn(file_checkpoint_manager,
