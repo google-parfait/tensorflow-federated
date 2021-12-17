@@ -817,8 +817,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 0})
     training_selection_fn = mock.MagicMock()
-    evaluation_fn = mock.create_autospec(
-        computation_base.Computation, return_value={'metric': 0})
+    evaluation_fn = mock.MagicMock()
+    evaluation_fn.return_value = {'metric': 0}
     evaluation_selection_fn = mock.MagicMock()
     metrics_manager_1 = mock.MagicMock()
     metrics_manager_2 = mock.MagicMock()
@@ -864,8 +864,8 @@ class RunTrainingProcessTest(parameterized.TestCase):
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 0})
     training_selection_fn = mock.MagicMock()
-    evaluation_fn = mock.create_autospec(
-        computation_base.Computation, return_value={'metric': 0})
+    evaluation_fn = mock.MagicMock()
+    evaluation_fn.return_value = {'metric': 0}
     evaluation_selection_fn = mock.MagicMock()
     metrics_manager = mock.MagicMock()
 

@@ -464,7 +464,7 @@ def _run_training(training_fn: computation_base.Computation,
   return state, metrics
 
 
-def _run_evaluation(evaluation_fn: computation_base.Computation,
+def _run_evaluation(evaluation_fn: Callable[[Any, Any], MetricsType],
                     client_selection_fn: Callable[[int], Any], state: Any,
                     round_num: int) -> Mapping[str, Any]:
   """Runs one round of federated evaluation."""
@@ -483,7 +483,7 @@ def run_training_process(
     training_process: iterative_process.IterativeProcess,
     training_selection_fn: Callable[[int], Any],
     total_rounds: int,
-    evaluation_fn: Optional[computation_base.Computation] = None,
+    evaluation_fn: Optional[Callable[[Any, Any], MetricsType]] = None,
     evaluation_selection_fn: Optional[Callable[[int], Any]] = None,
     rounds_per_evaluation: int = 1,
     program_state_manager: Optional[
@@ -524,7 +524,9 @@ def run_training_process(
     training_selection_fn: A `Callable` accepting an integer round number, and
       returning a list of client data to use for trainig in that round.
     total_rounds: The number of training rounds to run.
-    evaluation_fn: An optional `tff.Computation` to run for evaluation.
+    evaluation_fn: An optional callable accepting the state of
+      `training_process` and the output of `evaluation_selection_fn`, and
+      returning a mutable mapping with string-valued keys.
     evaluation_selection_fn: A optional `Callable` accepting an integer round
       number, and returning a list of client data to use for evaluation in that
       round.
