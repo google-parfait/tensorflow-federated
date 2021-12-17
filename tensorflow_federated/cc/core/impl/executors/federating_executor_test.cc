@@ -586,6 +586,7 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectNonInt32KeysFails) {
 
   tensorflow::TensorShape keys_shape({1});
   tensorflow::Tensor keys_tensor(tensorflow::DT_UINT8, keys_shape);
+  keys_tensor.flat<uint8_t>()(0) = 0;
   v0::Value keys_pb = TensorV(keys_tensor);
   // The child `keys_pb` value is only created once due to the ALL_EQUALS bit,
   // and then is only materialized once after which the operation fails.
@@ -611,7 +612,12 @@ TEST_F(FederatingExecutorTest, CreateCallFederatedSelectNonRankOneKeysFails) {
       TFF_ASSERT_OK(test_executor_->CreateValue(ServerV(server_value)));
 
   tensorflow::TensorShape keys_shape({2, 2});
+  const size_t num_keys = 2 * 2;
   tensorflow::Tensor keys_tensor(tensorflow::DT_INT32, keys_shape);
+  auto flat_keys = keys_tensor.flat<int32_t>();
+  for (size_t i = 0; i < num_keys; i++) {
+    flat_keys(i) = 0;
+  }
   v0::Value keys_pb = TensorV(keys_tensor);
   // The child `keys_pb` value is only created once due to the ALL_EQUALS bit,
   // and then is only materialized once after which the operation fails.
