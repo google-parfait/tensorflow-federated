@@ -20,6 +20,7 @@ from absl.testing import parameterized
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.program import release_manager as release_manager_lib
 from tensorflow_federated.python.simulation import checkpoint_manager
 from tensorflow_federated.python.simulation import metrics_manager as metrics_manager_lib
 from tensorflow_federated.python.simulation import training_loop
@@ -613,8 +614,8 @@ class RunStatelessSimulationTest(absltest.TestCase):
     mock_time.return_value = 0
     computation = mock.MagicMock(return_value={'a': 4, 'b': 5})
     client_selection_fn = mock.MagicMock()
-    metric_manager1 = mock.create_autospec(metrics_manager_lib.MetricsManager)
-    metric_manager2 = mock.create_autospec(metrics_manager_lib.MetricsManager)
+    metric_manager1 = mock.create_autospec(release_manager_lib.ReleaseManager)
+    metric_manager2 = mock.create_autospec(release_manager_lib.ReleaseManager)
     metrics_managers = [metric_manager1, metric_manager2]
     training_loop.run_stateless_simulation(
         computation,
@@ -622,9 +623,8 @@ class RunStatelessSimulationTest(absltest.TestCase):
         total_rounds=1,
         metrics_managers=metrics_managers)
     for manager in metrics_managers:
-      manager.clear_metrics.assert_called_once_with(0)
-      manager.save_metrics.assert_called_once()
-      save_call = manager.save_metrics.call_args
+      manager.release.assert_called_once()
+      save_call = manager.release.call_args
       self.assertEmpty(save_call[1])
       unnamed_args = save_call[0]
       self.assertLen(unnamed_args, 2)

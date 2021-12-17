@@ -389,11 +389,11 @@ def _run_simulation_with_callbacks(
   return state
 
 
-def run_stateless_simulation(
-    computation: computation_base.Computation,
-    client_selection_fn: Callable[[int], Any],
-    total_rounds: int,
-    metrics_managers: Optional[List[MetricsManager]] = None):
+def run_stateless_simulation(computation: computation_base.Computation,
+                             client_selection_fn: Callable[[int], Any],
+                             total_rounds: int,
+                             metrics_managers: Optional[Iterable[
+                                 release_manager_lib.ReleaseManager]] = None):
   """Runs a federated computation on a given set of client data.
 
   This method performs `total_rounds` calls to the `computation`. At each round,
@@ -411,8 +411,8 @@ def run_stateless_simulation(
     client_selection_fn: Callable accepting an integer round number, and
       returning a list of client data to use as federated data for that round.
     total_rounds: The number of federated training rounds to perform.
-    metrics_managers: An optional list of `tff.simulation.MetricsManager`
-      objects used to save metrics throughout the simulation.
+    metrics_managers: An optional list of `tff.program.ReleaseManagers`s to use
+      to save metrics.
 
   Returns:
     An dictionary, keyed by round number, with values corresponding to the
@@ -422,9 +422,6 @@ def run_stateless_simulation(
   # TODO(b/194841884): Add an optional checkpoint manager argument once the
   # checkpoint managers have compatibility with "stateless" structures.
   start_round = 0
-  if metrics_managers is not None:
-    for manager in metrics_managers:
-      manager.clear_metrics(start_round)
 
   all_metrics = collections.OrderedDict()
   for round_num in range(start_round, total_rounds):
@@ -440,8 +437,8 @@ def run_stateless_simulation(
     round_metrics[ROUND_TIME_KEY] = computation_time
 
     if metrics_managers is not None:
-      for manager in metrics_managers:
-        manager.save_metrics(round_metrics, round_num)
+      for metrics_manager in metrics_managers:
+        metrics_manager.release(round_metrics, round_num)
 
     all_metrics[round_num] = round_metrics
 
