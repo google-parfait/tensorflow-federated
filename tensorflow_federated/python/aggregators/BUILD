@@ -35,7 +35,6 @@ py_library(
         ":primitives",
         ":quantile_estimation",
         ":robust",
-        ":rotation",
         ":sampling",
         ":secure",
         ":sum_factory",
