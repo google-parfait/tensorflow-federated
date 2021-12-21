@@ -141,7 +141,8 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
     @computations.federated_computation()
     def init_fn():
       inner_state = inner_agg_process.initialize()
-      my_state = intrinsics.federated_eval(_init_global_seed, placements.SERVER)
+      my_state = intrinsics.federated_eval(
+          computations.tf_computation(_init_global_seed), placements.SERVER)
       return intrinsics.federated_zip((inner_state, my_state))
 
     @computations.federated_computation(init_fn.type_signature.result,
@@ -265,7 +266,8 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
     @computations.federated_computation()
     def init_fn():
       inner_state = inner_agg_process.initialize()
-      my_state = intrinsics.federated_eval(_init_global_seed, placements.SERVER)
+      my_state = intrinsics.federated_eval(
+          computations.tf_computation(_init_global_seed), placements.SERVER)
       return intrinsics.federated_zip((inner_state, my_state))
 
     @computations.federated_computation(init_fn.type_signature.result,
@@ -308,7 +310,6 @@ def _build_next_fn(client_transform, inner_agg_process, server_transform,
   return next_fn_impl
 
 
-@computations.tf_computation
 def _init_global_seed():
   """Returns an initial global random seed.
 
@@ -341,7 +342,7 @@ def _build_next_global_seed_fn(stride):
     A `tff.Computation` that takes and returns `tf.int64` tensor with shape [2].
   """
 
-  @computations.tf_computation(_init_global_seed.type_signature.result)
+  @computations.tf_computation(SEED_TFF_TYPE)
   def _next_global_seed(global_seed):
     timestamp_microseconds, sequence_number = global_seed[0], global_seed[1]
     return tf.convert_to_tensor(
