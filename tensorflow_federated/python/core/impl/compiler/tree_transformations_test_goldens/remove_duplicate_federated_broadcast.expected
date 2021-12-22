@@ -1,0 +1,18 @@
+Before transformation:
+
+<
+  federated_broadcast(data),
+  federated_broadcast(data)
+>
+
+After transformation:
+
+(let
+  _lhn1=federated_broadcast,
+  _lhn2=data,
+  _lhn3=_lhn1(_lhn2),
+  _lhn4=<
+    _lhn3,
+    _lhn3
+  >
+ in _lhn4)

@@ -1,0 +1,32 @@
+Before transformation:
+
+(b -> <
+  federated_mean(federated_map(<
+    comp#a,
+    federated_broadcast(b)
+  >)),
+  federated_mean(federated_map(<
+    comp#a,
+    federated_broadcast(b)
+  >))
+>)
+
+After transformation:
+
+(_dep1 -> (let
+  _dep2=federated_mean,
+  _dep3=federated_map,
+  _dep4=comp#a,
+  _dep5=federated_broadcast,
+  _dep6=_dep5(_dep1),
+  _dep7=<
+    _dep4,
+    _dep6
+  >,
+  _dep8=_dep3(_dep7),
+  _dep9=_dep2(_dep8),
+  _dep10=<
+    _dep9,
+    _dep9
+  >
+ in _dep10))
