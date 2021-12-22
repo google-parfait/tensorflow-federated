@@ -21,7 +21,12 @@ load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 # used when using the framework_shared_object config on MacOS platforms. If
 # "macos" is not provided, the "otherwise" list is used for all
 # framework_shared_object platforms including MacOS.
-def if_static(extra_deps, otherwise = [], macos = []):
+# This is implemented via 3 macros: "if_static", "if_static_oss", and
+# "if_static_google". In Google internal builds we only use the "extra_deps",
+# that is, we use the "if_static_google" macro. In OSS, we use all arguments
+# via "if_static_oss". We convert between the two macros in the "if_static"
+# macro using the OSS export automation.
+def if_static_oss(extra_deps, otherwise = [], macos = []):
     return_value = {
         str(Label("@org_tensorflow//tensorflow:framework_shared_object")): otherwise,
         "//conditions:default": extra_deps,
@@ -29,6 +34,15 @@ def if_static(extra_deps, otherwise = [], macos = []):
     if macos:
         return_value[str(Label("@org_tensorflow//tensorflow:macos_with_framework_shared_object"))] = macos
     return select(return_value)
+
+def if_static_google(extra_deps, otherwise = [], macos = []):
+    return_value = {
+        "//conditions:default": extra_deps,
+    }
+    return select(return_value)
+
+def if_static(extra_deps, otherwise = [], macos = []):
+    return if_static_oss(extra_deps, otherwise, macos)
 
 def py_cpu_gpu_test(name, main = None, tags = [], **kwargs):
     """A version of `py_test` that tests both cpu and gpu.
