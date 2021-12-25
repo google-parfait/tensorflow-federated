@@ -544,156 +544,6 @@ class IbltEncoder:
       raise NotImplementedError(
           "Hash family {} not supported in IBLTs.".format(hash_family))
 
-  def compute_hash_check(self, input_strings):
-    """Returns Tensor containing hash_check for each (input string, repetition).
-
-    Args:
-      input_strings: A tensor of strings.
-
-    Returns:
-      A tensor of shape (input_length, repetitions) containing hash_check[i]
-      at index (i, r).
-    """
-    hash_check = _compute_hash_check(
-        input_strings,
-        self.field_size,
-        seed=self.seed,
-        dtype=self.internal_dtype)
-    hash_check = tf.tile(hash_check, [1, self.repetitions])
-    return hash_check
-
-  def compute_chunks(self, input_strings):
-    """Returns Tensor containing integer chunks for input strings.
-
-    Args:
-      input_strings: A tensor of strings.
-
-    Returns:
-      A 2D tensor with rows consisting of integer chunks corresponding to the
-      string indexed by the row and a trimmed input_strings that can fit in the
-      IBLT.
-    """
-    return self.chunker.encode_tensorflow(input_strings)
-
-  def compute_counts(self, sparse_indices, input_length, input_counts=None):
-    """Returns SparseTensor with value 1 for each (input string, repetition).
-
-    Args:
-      sparse_indices: A tensor of shape (input_length, repetitions, 3).
-      input_length: An integer.
-      input_counts: A 1D tensor of self.dtype representing the count of each
-        string.
-
-    Returns:
-      A SparseTensor of dense_shape
-      [input_length, repetitions, table_size, num_chunks+2]
-      containing a count of 1 for each index of the form
-      (i, r, h, num_chunks) where 0 <= i < input_length, 0 <= r < repetitions,
-      and h is the hash-position of the ith input string in repetition r.
-    """
-    counts_chunk_indices = tf.fill([input_length, self.repetitions, 1],
-                                   self.num_chunks)
-    counts_chunk_indices = tf.cast(
-        counts_chunk_indices, dtype=self.internal_dtype)
-    counts_sparse_indices = tf.concat([sparse_indices, counts_chunk_indices],
-                                      axis=2)
-    counts_sparse_indices = tf.reshape(counts_sparse_indices, shape=[-1, 4])
-    if input_counts is not None:
-      counts_values = tf.repeat(input_counts, [self.repetitions])
-    else:
-      counts_values = tf.fill([tf.shape(counts_sparse_indices)[0]], 1)
-      counts_values = tf.cast(counts_values, dtype=self.internal_dtype)
-    counts = tf.SparseTensor(
-        indices=counts_sparse_indices,
-        values=counts_values,
-        dense_shape=(input_length,) + self.iblt_shape)
-    return counts
-
-  def compute_checks(self,
-                     sparse_indices,
-                     hash_check,
-                     input_length,
-                     input_counts=None):
-    """Returns SparseTensor with hash_check for each (input string, repetition).
-
-    Args:
-      sparse_indices: A tensor of shape (input_length, repetitions, 3).
-      hash_check: A tensor of shape (input_length, repetitions).
-      input_length: An integer.
-      input_counts: A 1D tensor of self.dtype representing the count of each
-        string.
-
-    Returns:
-      A SparseTensor of dense_shape
-      [input_length, repetitions, table_size, num_chunks+2]
-      containing hash_check[i, r] for each index of the form
-      (i, r, h, num_chunks+1) where 0 <= i < input_length, 0 <= r < repetitions,
-      and h is the hash-position of the ith input string in repetition r.
-    """
-    if input_counts is not None:
-      hash_check = hash_check * input_counts
-
-    checks_chunk_indices = tf.fill([input_length, self.repetitions, 1],
-                                   self.num_chunks + 1)
-    checks_chunk_indices = tf.cast(
-        checks_chunk_indices, dtype=self.internal_dtype)
-    checks_sparse_indices = tf.concat([sparse_indices, checks_chunk_indices],
-                                      axis=2)
-    checks_sparse_indices = tf.reshape(checks_sparse_indices, shape=[-1, 4])
-    checks_values = tf.reshape(hash_check, shape=[-1])
-    checks = tf.SparseTensor(
-        indices=checks_sparse_indices,
-        values=checks_values,
-        dense_shape=(input_length,) + self.iblt_shape)
-    return checks
-
-  def compute_keys(self,
-                   sparse_indices,
-                   chunks,
-                   input_length,
-                   input_counts=None):
-    """Returns SparseTensor with key for each (input string, repetition, chunk).
-
-    Args:
-      sparse_indices: A tensor of shape (input_length, repetitions, 3).
-      chunks: A tensor of shape (input_length, num_chunks).
-      input_length: An integer.
-      input_counts: A 1D tensor of self.dtype representing the count of each
-        string.
-
-    Returns:
-      A SparseTensor of dense_shape
-      [input_length, repetitions, table_size, num_chunks+2]
-      containing chunk[i, c] for each index of the form
-      (i, r, h, c) where 0 <= i < input_length, 0 <= r < repetitions,
-      0 <= c < num_chunks, and h is the hash-position of the ith input string
-      in repetition r.
-    """
-    if input_counts is not None:
-      chunks = chunks * input_counts
-
-    keys_chunk_indices = tf.range(self.num_chunks)
-    keys_chunk_indices = tf.cast(keys_chunk_indices, dtype=self.internal_dtype)
-    keys_chunk_indices = tf.expand_dims(keys_chunk_indices, 0)
-    keys_chunk_indices = tf.expand_dims(keys_chunk_indices, 0)
-    keys_chunk_indices = tf.expand_dims(keys_chunk_indices, -1)
-    keys_chunk_indices = tf.tile(keys_chunk_indices,
-                                 [input_length, self.repetitions, 1, 1])
-    keys_sparse_indices = tf.expand_dims(sparse_indices, -2)
-    keys_sparse_indices = tf.tile(keys_sparse_indices,
-                                  [1, 1, self.num_chunks, 1])
-    keys_sparse_indices = tf.concat([keys_sparse_indices, keys_chunk_indices],
-                                    axis=-1)
-    keys_sparse_indices = tf.reshape(keys_sparse_indices, shape=[-1, 4])
-    keys_values = tf.expand_dims(chunks, 1)
-    keys_values = tf.tile(keys_values, [1, self.repetitions, 1])
-    keys_values = tf.reshape(keys_values, shape=[-1])
-    keys = tf.SparseTensor(
-        indices=keys_sparse_indices,
-        values=keys_values,
-        dense_shape=(input_length,) + self.iblt_shape)
-    return keys
-
   @tf.function
   def compute_iblt(self, input_strings, input_counts=None):
     """Returns Tensor containing the values of the IBLT data structure.
@@ -716,34 +566,44 @@ class IbltEncoder:
       tf.debugging.assert_equal(tf.shape(input_strings), tf.shape(input_counts))
       tf.debugging.assert_type(input_counts, self.dtype)
       input_counts = tf.expand_dims(input_counts, 1)
+      input_counts = tf.cast(input_counts, dtype=self.internal_dtype)
+    else:
+      input_counts = tf.ones_like(input_strings, dtype=self.internal_dtype)
+      input_counts = tf.expand_dims(input_counts, 1)
 
-    chunks, trimmed_input_strings = self.compute_chunks(input_strings)
+    chunks, trimmed_input_strings = self.chunker.encode_tensorflow(
+        input_strings)
+    chunks = chunks * input_counts
+
+    hash_check = _compute_hash_check(
+        trimmed_input_strings,
+        self.field_size,
+        seed=self.seed,
+        dtype=self.internal_dtype)
+    hash_check = hash_check * input_counts
+
     if self.drop_strings_above_max_length:
       indices_to_keep = tf.equal(trimmed_input_strings, input_strings)
       trimmed_input_strings = trimmed_input_strings[indices_to_keep]
       chunks = chunks[indices_to_keep]
-      if input_counts:
-        input_counts = input_counts[indices_to_keep]
+      input_counts = input_counts[indices_to_keep]
+      hash_check = hash_check[indices_to_keep]
 
-    hash_check = self.compute_hash_check(trimmed_input_strings)
+    check = tf.reshape(hash_check, shape=[-1, 1])
+    updates = tf.concat([chunks, input_counts, check], axis=-1)
 
     sparse_indices = self.hyperedge_hasher.get_hash_indices_tf(
         trimmed_input_strings)
 
-    input_length = tf.size(trimmed_input_strings)
-    counts = self.compute_counts(sparse_indices, input_length, input_counts)
-    checks = self.compute_checks(sparse_indices, hash_check, input_length,
-                                 input_counts)
-    keys = self.compute_keys(sparse_indices, chunks, input_length, input_counts)
-    sparse_iblt = tf.sparse.add(keys, counts)
-    sparse_iblt = tf.sparse.add(sparse_iblt, checks)
-    iblt = tf.sparse.reduce_sum(sparse_iblt, 0)
-    iblt = tf.cast(iblt, self.dtype)
+    indices = tf.reshape(sparse_indices[:, :, -2:], shape=[-1, 2])
+
+    iblt = tf.scatter_nd(
+        indices=indices,
+        # repeat each value for each repetition to match the number of indices
+        updates=tf.repeat(updates, self.repetitions, axis=0),
+        shape=self.iblt_shape)
     iblt = tf.math.floormod(iblt, self.field_size)
-    # Force the result shape so that it can be staticly checked and analyzed.
-    # Otherwise the shape is returned as `[None]`.
-    iblt = tf.reshape(iblt, self.iblt_shape)
-    return iblt
+    return tf.cast(iblt, dtype=self.dtype)
 
 
 def decode_iblt_tf(
