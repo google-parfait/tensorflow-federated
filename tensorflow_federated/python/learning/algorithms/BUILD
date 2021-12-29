@@ -1,5 +1,5 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":algorithms_packages",
@@ -21,6 +21,35 @@ py_library(
     deps = [
         ":client_scheduled_federated_averaging",
         ":fed_prox",
+    ],
+)
+
+py_library(
+    name = "aggregation",
+    srcs = ["aggregation.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+    ],
+)
+
+py_test(
+    name = "aggregation_test",
+    srcs = ["aggregation_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":aggregation",
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:mean",
+        "//tensorflow_federated/python/aggregators:sum_factory",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
 
