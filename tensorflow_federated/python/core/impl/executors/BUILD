@@ -731,25 +731,6 @@ py_test(
 )
 
 py_library(
-    name = "serialization_bindings",
-    srcs = ["serialization_bindings.py"],
-    srcs_version = "PY3",
-    tags = ["nokokoro"],
-)
-
-py_test(
-    name = "serialization_bindings_test",
-    srcs = ["serialization_bindings_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    tags = ["nokokoro"],
-    deps = [
-        ":serialization_bindings",
-        "//tensorflow_federated/python/core/api:test_case",
-    ],
-)
-
-py_library(
     name = "sizing_executor",
     srcs = ["sizing_executor.py"],
     srcs_version = "PY3",
@@ -843,8 +824,8 @@ py_library(
     srcs_version = "PY3",
     tags = ["nokokoro"],
     deps = [
+        ":executor_bindings",
         ":executor_utils",
-        ":serialization_bindings",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",

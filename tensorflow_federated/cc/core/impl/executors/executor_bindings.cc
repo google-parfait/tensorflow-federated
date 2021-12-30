@@ -33,19 +33,32 @@ limitations under the License
 #include "grpcpp/grpcpp.h"
 #include "include/pybind11/detail/common.h"
 #include "include/pybind11/pybind11.h"
+#include "include/pybind11/pytypes.h"
 #include "include/pybind11/stl.h"
 #include "pybind11_abseil/absl_casters.h"
 #include "pybind11_abseil/status_casters.h"
 #include "pybind11_protobuf/wrapped_proto_caster.h"
+#include "tensorflow/c/tf_status.h"
+#include "tensorflow/c/tf_tensor.h"
+#include "tensorflow/core/framework/tensor.h"
+#include "tensorflow/core/platform/status.h"
+#include "tensorflow/python/lib/core/ndarray_tensor.h"
+#include "tensorflow/python/lib/core/safe_ptr.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
+
+namespace tensorflow {
+Status TF_TensorToTensor(const TF_Tensor* src, Tensor* dst);
+}  // namespace tensorflow
 
 namespace tensorflow_federated {
 
@@ -67,6 +80,17 @@ PYBIND11_MODULE(executor_bindings, m) {
   using pybind11_protobuf::WithWrappedProtos;
 
   m.doc() = "Bindings for the C++ ";
+
+  // v0::Value serialization methods.
+  m.def("serialize_tensor_value",
+        py::google::WithWrappedProtos(
+            [](const tensorflow::Tensor& tensor) -> absl::StatusOr<v0::Value> {
+              v0::Value value_pb;
+              TFF_TRY(SerializeTensorValue(tensor, &value_pb));
+              return value_pb;
+            }));
+  m.def("deserialize_tensor_value",
+        py::google::WithWrappedProtos(&DeserializeTensorValue));
 
   // Provide an `OwnedValueId` class to handle return values from the
   // `Executor` interface.
@@ -165,3 +189,45 @@ PYBIND11_MODULE(executor_bindings, m) {
 
 }  // namespace
 }  // namespace tensorflow_federated
+
+namespace pybind11 {
+namespace detail {
+
+template <>
+struct type_caster<tensorflow::Tensor> {
+ public:
+  // Macro to create `value` variable which is used in `load` to store the
+  // result of the conversion.
+  PYBIND11_TYPE_CASTER(tensorflow::Tensor, _("Tensor"));
+
+  // Pybind11 caster for PyArray (Python) -> tensorflow::Tensor (C++).
+  bool load(handle src, bool) {
+    tensorflow::Safe_TF_TensorPtr tf_tensor_ptr;
+    tensorflow::Status status =
+        tensorflow::NdarrayToTensor(/*ctx=*/nullptr, src.ptr(), &tf_tensor_ptr);
+    if (!status.ok()) {
+      LOG(ERROR) << status;
+      return false;
+    }
+    status = TF_TensorToTensor(tf_tensor_ptr.get(), &value);
+    if (!status.ok()) {
+      LOG(ERROR) << status;
+      return false;
+    }
+    return !PyErr_Occurred();
+  }
+
+  // Convert tensorflow::Tensor (C++) back to a PyArray (Python).
+  static handle cast(const tensorflow::Tensor tensor, return_value_policy,
+                     handle) {
+    PyObject* result = nullptr;
+    tensorflow::Status status = tensorflow::TensorToNdarray(tensor, &result);
+    if (!status.ok()) {
+      PyErr_SetString(PyExc_ValueError, "Failed to create np.ndarray");
+      return nullptr;
+    }
+    return result;
+  }
+};
+}  // namespace detail
+}  // namespace pybind11

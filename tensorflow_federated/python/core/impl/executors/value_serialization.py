@@ -35,8 +35,8 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_utils
-from tensorflow_federated.python.core.impl.executors import serialization_bindings
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -120,7 +120,7 @@ def _serialize_tensor_value(
       raise TypeError(
           f'Failed to serialize value of Python type {value_type_string} to '
           f'a tensor of type {type_spec}.\nValue: {original_value}') from te
-  return serialization_bindings.serialize_tensor_value(value), type_spec
+  return executor_bindings.serialize_tensor_value(value), type_spec
 
 
 def _serialize_dataset(
@@ -322,7 +322,7 @@ def _deserialize_tensor_value(
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
-  value = serialization_bindings.deserialize_tensor_value(value_proto)
+  value = executor_bindings.deserialize_tensor_value(value_proto)
   value_type = computation_types.TensorType(
       dtype=value.dtype, shape=value.shape)
   if not value.shape:

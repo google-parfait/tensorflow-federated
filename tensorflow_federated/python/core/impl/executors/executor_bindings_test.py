@@ -489,5 +489,38 @@ class ComposingExecutorBindingsTest(test_case.TestCase):
     self.assertIsInstance(composing_ex, executor_bindings.Executor)
 
 
+class SerializeTensorTest(test_case.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('scalar_int32', 1, tf.int32),
+      ('scalar_float64', 2.0, tf.float64),
+      ('scalar_string', b'abc', tf.string),
+      ('tensor_int32', [1, 2, 3], tf.int32),
+      ('tensor_float64', [2.0, 4.0, 6.0], tf.float64),
+      ('tensor_string', [[b'abc', b'xyz']], tf.string),
+  )
+  def test_serialize(self, input_value, dtype):
+    value_proto = executor_bindings.serialize_tensor_value(
+        tf.convert_to_tensor(input_value, dtype))
+    tensor_proto = tf.make_tensor_proto(values=0)
+    self.assertTrue(value_proto.tensor.Unpack(tensor_proto))
+    roundtrip_value = tf.make_ndarray(tensor_proto)
+    self.assertAllEqual(roundtrip_value, input_value)
+
+  @parameterized.named_parameters(
+      ('scalar_int32', 1, tf.int32),
+      ('scalar_float64', 2.0, tf.float64),
+      ('scalar_string', b'abc', tf.string),
+      ('tensor_int32', [1, 2, 3], tf.int32),
+      ('tensor_float64', [2.0, 4.0, 6.0], tf.float64),
+      ('tensor_string', [[b'abc', b'xyz']], tf.string),
+  )
+  def test_roundtrip(self, input_value, dtype):
+    value_proto = executor_bindings.serialize_tensor_value(
+        tf.convert_to_tensor(input_value, dtype))
+    roundtrip_value = executor_bindings.deserialize_tensor_value(value_proto)
+    self.assertAllEqual(roundtrip_value, input_value)
+
+
 if __name__ == '__main__':
   test_case.main()

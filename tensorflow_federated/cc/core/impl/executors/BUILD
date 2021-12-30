@@ -120,6 +120,15 @@ tff_cc_test_with_tf_deps(
 tff_pybind_extension_with_tf_deps(
     name = "executor_bindings",
     srcs = ["executor_bindings.cc"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/c:tf_status",
+        "@org_tensorflow//tensorflow/c:tf_tensor",
+        "@org_tensorflow//tensorflow/core/platform:status",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor",
+        "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
+    ],
+    tf_python_dependency = True,
     deps = [
         ":cardinalities",
         ":composing_executor",
@@ -127,6 +136,8 @@ tff_pybind_extension_with_tf_deps(
         ":federating_executor",
         ":reference_resolving_executor",
         ":remote_executor",
+        ":status_macros",
+        ":tensor_serialization",
         ":tensorflow_executor",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
@@ -432,28 +443,6 @@ tff_cc_library_with_tf_deps(
     deps = [
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-    ],
-)
-
-tff_pybind_extension_with_tf_deps(
-    name = "serialization_bindings",
-    srcs = ["serialization_bindings.cc"],
-    tf_deps = [
-        "@org_tensorflow//tensorflow/c:tf_status",
-        "@org_tensorflow//tensorflow/c:tf_tensor",
-        "@org_tensorflow//tensorflow/core/platform:status",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/python/lib/core:ndarray_tensor",
-        "@org_tensorflow//tensorflow/python/lib/core:safe_ptr",
-    ],
-    tf_python_dependency = True,
-    deps = [
-        ":status_macros",
-        ":tensor_serialization",
-        "//tensorflow_federated/proto/v0:executor_cc_proto",
-        "@com_google_absl//absl/status:statusor",
-        "@pybind11_abseil//pybind11_abseil:status_casters",
-        "@pybind11_protobuf//pybind11_protobuf:wrapped_proto_caster",
     ],
 )
 

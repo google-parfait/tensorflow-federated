@@ -24,6 +24,10 @@ from tensorflow_federated.cc.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import data_conversions
 from tensorflow_federated.python.core.impl.types import placements
 
+# Serialization methods.
+serialize_tensor_value = executor_bindings.serialize_tensor_value
+deserialize_tensor_value = executor_bindings.deserialize_tensor_value
+
 # Import classes.
 OwnedValueId = executor_bindings.OwnedValueId
 Executor = executor_bindings.Executor
