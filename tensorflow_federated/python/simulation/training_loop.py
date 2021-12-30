@@ -542,13 +542,14 @@ def run_training_process(
   logging.info('Running training process')
   if program_state_manager is not None:
     structure = training_process.initialize()
-    program_state, version = program_state_manager.load_latest(structure)
+    program_state, previous_saved_version = program_state_manager.load_latest(
+        structure)
   else:
     program_state = None
   if program_state is not None:
-    logging.info('Loaded program state at version %d', version)
+    logging.info('Loaded program state at version %d', previous_saved_version)
     state = program_state
-    start_round = version
+    start_round = previous_saved_version + 1
   else:
     logging.info('Initializing training process')
     state = training_process.initialize()
