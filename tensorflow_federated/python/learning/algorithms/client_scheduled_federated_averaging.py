@@ -31,9 +31,10 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
-from tensorflow_federated.python.learning.algorithms import example_weighted_federated_averaging
+from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
@@ -86,16 +87,17 @@ def build_scheduled_client_work(
   weights_type = model_utils.weights_type_from_model(whimsy_model)
 
   if isinstance(whimsy_optimizer, optimizer_base.Optimizer):
-    build_client_update_fn = example_weighted_federated_averaging.build_client_update_with_tff_optimizer
+    build_client_update_fn = fed_avg.build_client_update_with_tff_optimizer
   else:
-    build_client_update_fn = example_weighted_federated_averaging.build_client_update_with_keras_optimizer
+    build_client_update_fn = fed_avg.build_client_update_with_keras_optimizer
 
   @computations.tf_computation(weights_type, data_type, tf.int32)
   def client_update_computation(initial_model_weights, dataset, round_num):
     learning_rate = learning_rate_fn(round_num)
     optimizer = optimizer_fn(learning_rate)
-    client_update = build_client_update_fn(model_fn,
-                                           use_experimental_simulation_loop)
+    client_update = build_client_update_fn(
+        model_fn, client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        use_experimental_simulation_loop)
     return client_update(optimizer, initial_model_weights, dataset)
 
   @computations.federated_computation
@@ -130,8 +132,7 @@ def build_client_scheduled_federated_averaging_process(
     client_learning_rate_fn: Callable[[int], float],
     client_optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
     server_optimizer_fn: Callable[
-        [int], TFFOrKerasOptimizer] = example_weighted_federated_averaging
-    .DEFAULT_SERVER_OPTIMIZER_FN,
+        [int], TFFOrKerasOptimizer] = fed_avg.DEFAULT_SERVER_OPTIMIZER_FN,
     distributor: Optional[distributors.DistributionProcess] = None,
     model_update_aggregation_factory: Optional[
         factory.WeightedAggregationFactory] = None,

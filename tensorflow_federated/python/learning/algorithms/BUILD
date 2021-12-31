@@ -58,7 +58,7 @@ py_library(
     srcs = ["client_scheduled_federated_averaging.py"],
     srcs_version = "PY3",
     deps = [
-        ":example_weighted_federated_averaging",
+        ":fed_avg",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -67,6 +67,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
@@ -95,10 +96,11 @@ py_cpu_gpu_test(
 )
 
 py_library(
-    name = "example_weighted_federated_averaging",
-    srcs = ["example_weighted_federated_averaging.py"],
+    name = "fed_avg",
+    srcs = ["fed_avg.py"],
     srcs_version = "PY3",
     deps = [
+        ":aggregation",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -107,6 +109,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
@@ -121,20 +124,24 @@ py_library(
 )
 
 py_cpu_gpu_test(
-    name = "example_weighted_federated_averaging_test",
+    name = "fed_avg_test",
     timeout = "long",
-    srcs = ["example_weighted_federated_averaging_test.py"],
+    srcs = ["fed_avg_test.py"],
     python_version = "PY3",
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
-        ":example_weighted_federated_averaging",
+        ":fed_avg",
         "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:iterative_process",
+        "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_update_aggregator",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "//tensorflow_federated/python/learning/templates:distributors",
     ],
 )
 

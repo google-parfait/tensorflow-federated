@@ -43,8 +43,10 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.algorithms import aggregation
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
@@ -56,7 +58,7 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 def build_client_update_with_tff_optimizer(
-    model_fn, use_experimental_simulation_loop: bool = False):
+    model_fn, weighting, use_experimental_simulation_loop: bool = False):
   """Creates client update logic in FedAvg using a TFF optimizer.
 
   In contrast to using a `tf.keras.optimizers.Optimizer`, we avoid creating
@@ -68,6 +70,7 @@ def build_client_update_with_tff_optimizer(
 
   Args:
     model_fn: A no-arg callable returning a `tff.learning.Model`.
+    weighting: A `tff.learning.ClientWeighting` value.
     use_experimental_simulation_loop: Controls the reduce loop function for the
       input dataset. An experimental reduce loop is used for simulation.
 
@@ -123,11 +126,8 @@ def build_client_update_with_tff_optimizer(
     # tff.federated_mean?
     client_update, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(client_update))
-    # Zero out the weight if there are any non-finite values.
-    if has_non_finite_delta > 0:
-      client_weight = tf.constant(0.0)
-    else:
-      client_weight = tf.cast(num_examples, tf.float32)
+    client_weight = _choose_client_weight(weighting, has_non_finite_delta,
+                                          num_examples)
 
     return client_works.ClientResult(
         update=client_update,
@@ -137,7 +137,7 @@ def build_client_update_with_tff_optimizer(
 
 
 def build_client_update_with_keras_optimizer(
-    model_fn, use_experimental_simulation_loop: bool = False):
+    model_fn, weighting, use_experimental_simulation_loop: bool = False):
   """Creates client update logic in FedAvg using a `tf.keras` optimizer.
 
   In contrast to using a `tff.learning.optimizers.Optimizer`, we have to
@@ -147,6 +147,7 @@ def build_client_update_with_keras_optimizer(
 
   Args:
     model_fn: A no-arg callable returning a `tff.learning.Model`.
+    weighting: A `tff.learning.ClientWeighting` value.
     use_experimental_simulation_loop: Controls the reduce loop function for the
       input dataset. An experimental reduce loop is used for simulation.
 
@@ -196,12 +197,8 @@ def build_client_update_with_keras_optimizer(
     # tff.federated_mean?
     client_update, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(client_update))
-    # Zero out the weight if there are any non-finite values.
-    if has_non_finite_delta > 0:
-      client_weight = tf.constant(0.0)
-    else:
-      client_weight = tf.cast(num_examples, tf.float32)
-
+    client_weight = _choose_client_weight(weighting, has_non_finite_delta,
+                                          num_examples)
     return client_works.ClientResult(
         update=client_update,
         update_weight=client_weight), model_output, stat_output
@@ -209,10 +206,23 @@ def build_client_update_with_keras_optimizer(
   return client_update
 
 
+def _choose_client_weight(weighting, has_non_finite_delta, num_examples):
+  if has_non_finite_delta > 0:
+    return tf.constant(0.0, tf.float32)
+  else:
+    if weighting == client_weight_lib.ClientWeighting.NUM_EXAMPLES:
+      return tf.cast(num_examples, tf.float32)
+    elif weighting == client_weight_lib.ClientWeighting.UNIFORM:
+      return tf.constant(1.0, tf.float32)
+    else:
+      raise ValueError(f'Unexpected weighting argument: {weighting}')
+
+
 def build_fed_avg_client_work(
     model_fn: Callable[[], model_lib.Model],
     optimizer_fn: Union[optimizer_base.Optimizer,
                         Callable[[], tf.keras.optimizers.Optimizer]],
+    client_weighting: client_weight_lib.ClientWeighting,
     use_experimental_simulation_loop: bool = False
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
@@ -235,6 +245,7 @@ def build_fed_avg_client_work(
       the same pre-constructed model each call will result in an error.
     optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg callable
       that returns a `tf.keras.Optimizer`.
+    client_weighting:  A `tff.learning.ClientWeighting` value.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -255,7 +266,7 @@ def build_fed_avg_client_work(
     @computations.tf_computation(weights_type, data_type)
     def client_update_computation(initial_model_weights, dataset):
       client_update = build_client_update_with_tff_optimizer(
-          model_fn, use_experimental_simulation_loop)
+          model_fn, client_weighting, use_experimental_simulation_loop)
       return client_update(optimizer_fn, initial_model_weights, dataset)
 
   else:
@@ -264,7 +275,7 @@ def build_fed_avg_client_work(
     def client_update_computation(initial_model_weights, dataset):
       optimizer = optimizer_fn()
       client_update = build_client_update_with_keras_optimizer(
-          model_fn, use_experimental_simulation_loop)
+          model_fn, client_weighting, use_experimental_simulation_loop)
       return client_update(optimizer, initial_model_weights, dataset)
 
   @computations.federated_computation
@@ -290,15 +301,17 @@ def build_fed_avg_client_work(
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
 
-def build_example_weighted_federated_averaging_process(
+def weighted_fed_avg(
     model_fn: Callable[[], model_lib.Model],
     client_optimizer_fn: Union[optimizer_base.Optimizer,
                                Callable[[], tf.keras.optimizers.Optimizer]],
     server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
         [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
-    distributor: Optional[distributors.DistributionProcess] = None,
-    model_update_aggregation_factory: Optional[
-        factory.WeightedAggregationFactory] = None,
+    client_weighting: Optional[
+        client_weight_lib
+        .ClientWeighting] = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+    model_distributor: Optional[distributors.DistributionProcess] = None,
+    model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
     use_experimental_simulation_loop: bool = False
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
@@ -317,17 +330,18 @@ def build_example_weighted_federated_averaging_process(
       contains the updated server state, as well as metrics that are the result
       of `tff.learning.Model.federated_output_computation` during client
       training, and any other metrics from broadcast and aggregation processes.
-  *   `report`: A `tff.Computation` with type signature `( -> M@SERVER)`, where
-      `M` represents the type of the model weights used during training.
+  *   `report`: A `tff.Computation` with type signature `(S -> M)`, where
+      `S` is a `LearningAlgorithmState` whose type matchs the output of
+      `initialize` and `next` and `M` represents the type of the model weights
+      used during training.
 
-  Each time the `next` method is called, the server model is broadcast to each
-  client using a broadcast function. For each client, local training is
-  performed using `client_optimizer_fn`. Each client computes the difference
-  between the client model after training and the initial broadcast model.
+  Each time the `next` method is called, the server model is communicated to
+  each client using the provided `model_distributor`. For each client, local
+  training is performed using `client_optimizer_fn`. Each client computes the
+  difference between the client model after training and its initial model.
   These model deltas are then aggregated at the server using a weighted
-  aggregation function. Clients weighted by the number of examples they see
-  thoughout local training. The aggregate model delta is applied at the server
-  using a server optimizer.
+  aggregation function, according to `client_weighting`. The aggregate model
+  delta is applied at the server using a server optimizer.
 
   Note: the default server optimizer function is `tf.keras.optimizers.SGD`
   with a learning rate of 1.0, which corresponds to adding the model delta to
@@ -346,12 +360,14 @@ def build_example_weighted_federated_averaging_process(
     server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`. By default, this uses
       `tf.keras.optimizers.SGD` with a learning rate of 1.0.
-    distributor: An optional `DistributionProcess` that broadcasts the model
-      weights on the server to the clients. If set to `None`, the distributor is
-      constructed via `distributors.build_broadcast_process`.
-    model_update_aggregation_factory: An optional
-      `tff.aggregators.WeightedAggregationFactory` used to aggregate client
-      updates on the server. If `None`, this is set to
+    client_weighting: A member `tff.learning.ClientWeighting` that specifies a
+      built-in weighting method. By default, weighting by number of examples is
+      used.
+    model_distributor: An optional `DistributionProcess` that distributes the
+      model weights on the server to the clients. If set to `None`, the
+      distributor is constructed via `distributors.build_broadcast_process`.
+    model_aggregator: An optional `tff.aggregators.WeightedAggregationFactory`
+      used to aggregate client updates on the server. If `None`, this is set to
       `tff.aggregators.MeanFactory`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
@@ -362,6 +378,7 @@ def build_example_weighted_federated_averaging_process(
     A `LearningProcess`.
   """
   py_typecheck.check_callable(model_fn)
+  py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
 
   @computations.tf_computation()
   def initial_model_weights_fn():
@@ -369,29 +386,114 @@ def build_example_weighted_federated_averaging_process(
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 
-  if distributor is None:
-    distributor = distributors.build_broadcast_process(model_weights_type)
+  if model_distributor is None:
+    model_distributor = distributors.build_broadcast_process(model_weights_type)
 
-  if model_update_aggregation_factory is None:
-    model_update_aggregation_factory = mean.MeanFactory()
-  py_typecheck.check_type(model_update_aggregation_factory,
-                          factory.WeightedAggregationFactory)
-  aggregator = model_update_aggregation_factory.create(
+  if model_aggregator is None:
+    model_aggregator = mean.MeanFactory()
+  py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
+  aggregator = model_aggregator.create(
       model_weights_type.trainable, computation_types.TensorType(tf.float32))
   process_signature = aggregator.next.type_signature
   input_client_value_type = process_signature.parameter[1]
   result_server_value_type = process_signature.result[1]
   if input_client_value_type.member != result_server_value_type.member:
-    raise TypeError('`model_update_aggregation_factory` does not produce a '
-                    'compatible `AggregationProcess`. The processes must '
-                    'retain the type structure of the inputs on the '
-                    f'server, but got {input_client_value_type.member} != '
+    raise TypeError('`model_aggregator` does not produce a compatible '
+                    '`AggregationProcess`. The processes must retain the type '
+                    'structure of the inputs on the server, but got '
+                    f'{input_client_value_type.member} != '
                     f'{result_server_value_type.member}.')
 
   client_work = build_fed_avg_client_work(model_fn, client_optimizer_fn,
+                                          client_weighting,
                                           use_experimental_simulation_loop)
   finalizer = finalizers.build_apply_optimizer_finalizer(
       server_optimizer_fn, model_weights_type)
   return composers.compose_learning_process(initial_model_weights_fn,
-                                            distributor, client_work,
+                                            model_distributor, client_work,
                                             aggregator, finalizer)
+
+
+def unweighted_fed_avg(
+    model_fn: Callable[[], model_lib.Model],
+    client_optimizer_fn: Union[optimizer_base.Optimizer,
+                               Callable[[], tf.keras.optimizers.Optimizer]],
+    server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
+        [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
+    model_distributor: Optional[distributors.DistributionProcess] = None,
+    model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
+    use_experimental_simulation_loop: bool = False
+) -> learning_process.LearningProcess:
+  """Builds a learning process that performs federated averaging.
+
+  This function creates a `LearningProcess` that performs federated averaging on
+  client models. The iterative process has the following methods inherited from
+  `LearningProcess`:
+
+  *   `initialize`: A `tff.Computation` with the functional type signature
+      `( -> S@SERVER)`, where `S` is a `LearningAlgorithmState` representing the
+      initial state of the server.
+  *   `next`: A `tff.Computation` with the functional type signature
+      `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
+      `LearningAlgorithmState` whose type matches the output of `initialize`
+      and `{B*}@CLIENTS` represents the client datasets. The output `L`
+      contains the updated server state, as well as metrics that are the result
+      of `tff.learning.Model.federated_output_computation` during client
+      training, and any other metrics from broadcast and aggregation processes.
+  *   `report`: A `tff.Computation` with type signature `(S -> M)`, where
+      `S` is a `LearningAlgorithmState` whose type matchs the output of
+      `initialize` and `next` and `M` represents the type of the model weights
+      used during training.
+
+  Each time the `next` method is called, the server model is communicated to
+  each client using the provided `model_distributor`. For each client, local
+  training is performed using `client_optimizer_fn`. Each client computes the
+  difference between the client model after training and its initial model.
+  These model deltas are then aggregated at the server using an unweighted
+  aggregation function. The aggregate model delta is applied at the server using
+  a server optimizer.
+
+  Note: the default server optimizer function is `tf.keras.optimizers.SGD`
+  with a learning rate of 1.0, which corresponds to adding the model delta to
+  the current server model. This recovers the original FedAvg algorithm in
+  [McMahan et al., 2017](https://arxiv.org/abs/1602.05629). More
+  sophisticated federated averaging procedures may use different learning rates
+  or server optimizers.
+
+  Args:
+    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
+      must *not* capture TensorFlow tensors or variables and use them. The model
+      must be constructed entirely from scratch on each invocation, returning
+      the same pre-constructed model each call will result in an error.
+    client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
+      callable that returns a `tf.keras.Optimizer`.
+    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
+      callable that returns a `tf.keras.Optimizer`. By default, this uses
+      `tf.keras.optimizers.SGD` with a learning rate of 1.0.
+    model_distributor: An optional `DistributionProcess` that distributes the
+      model weights on the server to the clients. If set to `None`, the
+      distributor is constructed via `distributors.build_broadcast_process`.
+    model_aggregator: An optional `tff.aggregators.UnweightedAggregationFactory`
+      used to aggregate client updates on the server. If `None`, this is set to
+      `tff.aggregators.UnweightedMeanFactory`.
+    use_experimental_simulation_loop: Controls the reduce loop function for
+      input dataset. An experimental reduce loop is used for simulation. It is
+      currently necessary to set this flag to True for performant GPU
+      simulations.
+
+  Returns:
+    A `LearningProcess`.
+  """
+  if model_aggregator is None:
+    model_aggregator = mean.UnweightedMeanFactory()
+  py_typecheck.check_type(model_aggregator,
+                          factory.UnweightedAggregationFactory)
+
+  return weighted_fed_avg(
+      model_fn=model_fn,
+      client_optimizer_fn=client_optimizer_fn,
+      server_optimizer_fn=server_optimizer_fn,
+      client_weighting=client_weight_lib.ClientWeighting.UNIFORM,
+      model_distributor=model_distributor,
+      model_aggregator=aggregation.as_weighted_aggregator(model_aggregator),
+      use_experimental_simulation_loop=use_experimental_simulation_loop)
