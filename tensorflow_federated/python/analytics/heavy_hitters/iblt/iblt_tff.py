@@ -53,7 +53,6 @@ def build_iblt_computation(
     max_string_length: int = 10,
     repetitions: int = 3,
     seed: int = 0,
-    dtype: tf.dtypes.DType = tf.int64,
     max_heavy_hitters: Optional[int] = None,
     max_words_per_user: Optional[int] = None,
     k_anonymity: int = 1,
@@ -72,8 +71,6 @@ def build_iblt_computation(
     repetitions: The number of repetitions in IBLT data structure (must be >=
       3). Defaults to `3`. Must be at least `3`.
     seed: An integer seed for hash functions. Defaults to `0`.
-    dtype: A tensorflow data type which determines the type of the IBLT values.
-      Must be `tf.int32` or `tf.int64`. Defaults to `tf.int64`.
     max_heavy_hitters: The maximum number of items to return. If the decoded
       results have more than this number of items, will order decreasingly by
       the estimated counts and return the top max_heavy_hitters items. Default
@@ -107,9 +104,6 @@ def build_iblt_computation(
                      f'{max_string_length}')
   if repetitions < 3:
     raise ValueError(f'repetitions should be at least 3, got {repetitions}')
-  if dtype not in [tf.int32, tf.int64]:
-    raise ValueError(
-        f'`dtype` must be one of tf.int32 or tf.int64, got {dtype}')
   if max_heavy_hitters is not None and max_heavy_hitters < 1:
     raise ValueError(
         'max_heavy_hitters should be at least 1 when it is not None, '
@@ -143,8 +137,7 @@ def build_iblt_computation(
         capacity=capacity,
         string_max_length=max_string_length,
         repetitions=repetitions,
-        seed=seed,
-        dtype=dtype)
+        seed=seed)
     if max_words_per_user is not None:
       if multi_contribution:
         k_words = data_processing.get_capped_elements(
@@ -174,8 +167,7 @@ def build_iblt_computation(
         capacity=capacity,
         string_max_length=max_string_length,
         repetitions=repetitions,
-        seed=seed,
-        dtype=dtype)
+        seed=seed)
     k_words = data_processing.get_unique_elements(
         dataset, max_string_length=max_string_length)
     return encoder.compute_iblt(k_words)
@@ -202,8 +194,8 @@ def build_iblt_computation(
                   num_chunks + num_chunks_for_hash_check + num_chunks_for_value)
 
   @computations.tf_computation(
-      computation_types.TensorType(dtype=dtype, shape=sketch_shape),
-      computation_types.TensorType(dtype=dtype, shape=sketch_shape))
+      computation_types.TensorType(dtype=tf.int64, shape=sketch_shape),
+      computation_types.TensorType(dtype=tf.int64, shape=sketch_shape))
   @tf.function
   def decode_heavy_hitters(sketch, unique_sketch):
     """The TF computation to decode the heavy hitters."""
@@ -212,15 +204,13 @@ def build_iblt_computation(
         capacity=capacity,
         string_max_length=max_string_length,
         repetitions=repetitions,
-        seed=seed,
-        dtype=dtype)
+        seed=seed)
     unique_decoded = decode_iblt_fn(
         iblt=unique_sketch,
         capacity=capacity,
         string_max_length=max_string_length,
         repetitions=repetitions,
-        seed=seed,
-        dtype=dtype)
+        seed=seed)
     heavy_hitters, heavy_hitters_counts, num_not_decoded = iblt_decoded
     unique_heavy_hitters, unique_heavy_hitters_counts, _ = unique_decoded
     if k_anonymity > 1:

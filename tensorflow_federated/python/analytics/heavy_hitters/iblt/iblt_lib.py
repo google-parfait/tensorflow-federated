@@ -207,7 +207,6 @@ class IbltDecoder:
       repetitions: int = DEFAULT_REPETITIONS,
       hash_family: Optional[str] = None,
       hash_family_params: Optional[Dict[str, Union[int, float]]] = None,
-      dtype=tf.int64,
       field_size: int = DEFAULT_FIELD_SIZE,
   ):
     """Initializes the IBLT Decoder.
@@ -236,10 +235,9 @@ class IbltDecoder:
         Options include coupled or random, default is chosen based on capacity.
       hash_family_params: An optional `dict` of parameters that the hash family
         hasher expects. Defaults are chosen based on capacity.
-      dtype: A tensorflow data type which determines the type of the IBLT values
       field_size: The field size for all values in IBLT. Defaults to 2**31 - 1.
     """
-    self._dtype = dtype
+    self._dtype = tf.int64
     self.iblt = iblt
     self.table_size, self.hash_family, self.hash_family_params = _internal_parameters(
         capacity, repetitions, hash_family, hash_family_params)
@@ -500,7 +498,6 @@ class IbltEncoder:
                repetitions=DEFAULT_REPETITIONS,
                hash_family=None,
                hash_family_params=None,
-               dtype=tf.int64,
                field_size=DEFAULT_FIELD_SIZE):
     """Initializes internal IBLT parameters.
 
@@ -516,8 +513,6 @@ class IbltEncoder:
         (options include coupled or random, default is chosen based on capacity)
       hash_family_params: A dict of parameters that the hash family hasher
         expects. (defaults are chosen based on capacity.)
-      dtype: A tensorflow data type which determines the type of the IBLT
-        values.
       field_size: The field size for all values in IBLT. Defaults to 2**31 - 1.
     """
     self.string_max_length = string_max_length
@@ -527,12 +522,9 @@ class IbltEncoder:
     self.seed = seed
     self.field_size = field_size
     self.drop_strings_above_max_length = drop_strings_above_max_length
-    self.dtype = dtype
-    self.internal_dtype = tf.int64
+    self._dtype = tf.int64
     self.chunker = chunkers.UTF8Chunker(
-        string_max_length,
-        max_chunk_value=self.field_size,
-        dtype=self.internal_dtype)
+        string_max_length, max_chunk_value=self.field_size, dtype=self._dtype)
     self.num_chunks = self.chunker.get_num_chunks()
     self.iblt_shape = (self.repetitions, self.table_size, self.num_chunks + 2)
     if hash_family == _HASH_FAMILY_RANDOM:
@@ -556,10 +548,7 @@ class IbltEncoder:
       at index `(i, r)`.
     """
     hash_check = _compute_hash_check(
-        input_strings,
-        self.field_size,
-        seed=self.seed,
-        dtype=self.internal_dtype)
+        input_strings, self.field_size, seed=self.seed, dtype=self._dtype)
     hash_check = tf.tile(hash_check, [1, self.repetitions])
     return hash_check
 
@@ -582,7 +571,7 @@ class IbltEncoder:
     Args:
       sparse_indices: A tensor of shape (input_length, repetitions, 3).
       input_length: An integer.
-      input_counts: A 1D tensor of self.dtype representing the count of each
+      input_counts: A 1D tensor of tf.int64 representing the count of each
         string.
 
     Returns:
@@ -595,8 +584,7 @@ class IbltEncoder:
     """
     counts_chunk_indices = tf.fill([input_length, self.repetitions, 1],
                                    self.num_chunks)
-    counts_chunk_indices = tf.cast(
-        counts_chunk_indices, dtype=self.internal_dtype)
+    counts_chunk_indices = tf.cast(counts_chunk_indices, dtype=self._dtype)
     counts_sparse_indices = tf.concat([sparse_indices, counts_chunk_indices],
                                       axis=2)
     counts_sparse_indices = tf.reshape(counts_sparse_indices, shape=[-1, 4])
@@ -604,7 +592,7 @@ class IbltEncoder:
       counts_values = tf.repeat(input_counts, [self.repetitions])
     else:
       counts_values = tf.fill([tf.shape(counts_sparse_indices)[0]], 1)
-      counts_values = tf.cast(counts_values, dtype=self.internal_dtype)
+      counts_values = tf.cast(counts_values, dtype=self._dtype)
     counts = tf.SparseTensor(
         indices=counts_sparse_indices,
         values=counts_values,
@@ -622,7 +610,7 @@ class IbltEncoder:
       sparse_indices: A tensor of shape `(input_length, repetitions, 3)`.
       hash_check: A tensor of shape `(input_length, repetitions)`.
       input_length: An integer.
-      input_counts: A 1D tensor of self.dtype representing the count of each
+      input_counts: A 1D tensor of tf.int64 representing the count of each
         string.
 
     Returns:
@@ -638,8 +626,7 @@ class IbltEncoder:
 
     checks_chunk_indices = tf.fill([input_length, self.repetitions, 1],
                                    self.num_chunks + 1)
-    checks_chunk_indices = tf.cast(
-        checks_chunk_indices, dtype=self.internal_dtype)
+    checks_chunk_indices = tf.cast(checks_chunk_indices, dtype=self._dtype)
     checks_sparse_indices = tf.concat([sparse_indices, checks_chunk_indices],
                                       axis=2)
     checks_sparse_indices = tf.reshape(checks_sparse_indices, shape=[-1, 4])
@@ -661,7 +648,7 @@ class IbltEncoder:
       sparse_indices: A tensor of shape `(input_length, repetitions, 3)`.
       chunks: A tensor of shape `(input_length, num_chunks)`.
       input_length: An integer.
-      input_counts: A 1D tensor of `self.dtype` representing the count of each
+      input_counts: A 1D tensor of `tf.int64` representing the count of each
         string.
 
     Returns:
@@ -676,7 +663,7 @@ class IbltEncoder:
       chunks = chunks * input_counts
 
     keys_chunk_indices = tf.range(self.num_chunks)
-    keys_chunk_indices = tf.cast(keys_chunk_indices, dtype=self.internal_dtype)
+    keys_chunk_indices = tf.cast(keys_chunk_indices, dtype=self._dtype)
     keys_chunk_indices = tf.expand_dims(keys_chunk_indices, 0)
     keys_chunk_indices = tf.expand_dims(keys_chunk_indices, 0)
     keys_chunk_indices = tf.expand_dims(keys_chunk_indices, -1)
@@ -703,7 +690,7 @@ class IbltEncoder:
 
     Args:
       input_strings: A 1D tensor of strings.
-      input_counts: A 1D tensor of self.dtype representing the count of each
+      input_counts: A 1D tensor of tf.int64 representing the count of each
         string.
 
     Returns:
@@ -717,7 +704,7 @@ class IbltEncoder:
     if input_counts is not None:
       tf.debugging.assert_rank(input_counts, 1)
       tf.debugging.assert_equal(tf.shape(input_strings), tf.shape(input_counts))
-      tf.debugging.assert_type(input_counts, self.dtype)
+      tf.debugging.assert_type(input_counts, self._dtype)
       input_counts = tf.expand_dims(input_counts, 1)
 
     chunks, trimmed_input_strings = self.compute_chunks(input_strings)
@@ -742,7 +729,6 @@ class IbltEncoder:
     sparse_iblt = tf.sparse.add(keys, counts)
     sparse_iblt = tf.sparse.add(sparse_iblt, checks)
     iblt = tf.sparse.reduce_sum(sparse_iblt, 0)
-    iblt = tf.cast(iblt, self.dtype)
     iblt = tf.math.floormod(iblt, self.field_size)
     # Force the result shape so that it can be staticly checked and analyzed.
     # Otherwise the shape is returned as `[None]`.
@@ -759,7 +745,6 @@ def decode_iblt_tf(
     repetitions: int = DEFAULT_REPETITIONS,
     hash_family: Optional[str] = None,
     hash_family_params: Optional[Dict[str, Union[int, float]]] = None,
-    dtype=tf.int64,
     field_size: int = DEFAULT_FIELD_SIZE,
 ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
   """Decode a IBLT sketch.
@@ -778,7 +763,6 @@ def decode_iblt_tf(
       Options include coupled or random, default is chosen based on capacity.
     hash_family_params: An optional `dict` of parameters that the hash family
       hasher expects. Defaults are chosen based on capacity.
-    dtype: A tensorflow data type which determines the type of the IBLT values
     field_size: The field size for all values in IBLT. Defaults to 2**31 - 1.
 
   Returns:
@@ -795,7 +779,5 @@ def decode_iblt_tf(
       repetitions=repetitions,
       hash_family=hash_family,
       hash_family_params=hash_family_params,
-      dtype=dtype,
-      field_size=field_size,
-  )
+      field_size=field_size)
   return iblt_decoder.get_freq_estimates_tf()
