@@ -760,7 +760,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
     if version == 0:
       call = mock.call('initialize', 0)
       calls.append(call)
-    for round_num in range(1, total_rounds + 1):
+    for round_num in range(version + 1, total_rounds + 1):
       if round_num % rounds_per_saving_program_state == 0:
         call = mock.call('update', round_num)
         calls.append(call)
@@ -891,6 +891,40 @@ class RunTrainingProcessTest(parameterized.TestCase):
           metrics[training_loop.EVALUATION_METRICS_PREFIX +
                   training_loop.EVALUATION_TIME_KEY], 10.0)
       self.assertEqual(round_num, index)
+
+  @parameterized.named_parameters(
+      ('0_1', 0, 1),
+      ('0_3', 0, 3),
+      ('1_0', 1, 0),
+      ('1_1', 1, 1),
+      ('2_0', 2, 0),
+      ('2_2', 2, 2),
+      ('2_3', 2, 3),
+      ('2_5', 2, 5),
+      ('5_2', 5, 2),
+  )
+  def test_program_state_manager_calls_on_existing_program_state(
+      self, version, total_rounds):
+    training_process = mock.create_autospec(iterative_process.IterativeProcess)
+    training_process.initialize.return_value = 'initialize'
+    training_process.next.return_value = ('update', {'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    program_state_manager = mock.MagicMock()
+    program_state_manager.load_latest.return_value = ('program_state', version)
+
+    training_loop.run_training_process(
+        training_process=training_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds,
+        program_state_manager=program_state_manager,
+        rounds_per_saving_program_state=1)
+
+    self.assertEqual(program_state_manager.load_latest.call_count, 1)
+    calls = []
+    for round_num in range(version + 1, total_rounds + 1):
+      call = mock.call('update', round_num)
+      calls.append(call)
+    program_state_manager.save.assert_has_calls(calls)
 
 
 if __name__ == '__main__':
