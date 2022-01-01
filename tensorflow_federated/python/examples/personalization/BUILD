@@ -8,7 +8,11 @@ py_library(
     name = "p13n_utils",
     srcs = ["p13n_utils.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras",
+    ],
 )
 
 py_test(
@@ -19,6 +23,8 @@ py_test(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras",
     ],
 )
 
@@ -30,5 +36,8 @@ py_binary(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
+        "@absl_py//absl:app",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras",
     ],
 )

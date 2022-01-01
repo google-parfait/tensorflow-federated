@@ -9,5 +9,11 @@ py_binary(
     srcs = ["remote_executor_example.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras",
+    ],
 )

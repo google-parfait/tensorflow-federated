@@ -44,6 +44,7 @@ py_library(
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -66,6 +67,8 @@ py_test(
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras",
     ],
 )
 
@@ -117,6 +120,8 @@ py_test(
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -153,6 +158,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -173,6 +180,8 @@ py_library(
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras",
     ],
 )
 
@@ -194,6 +203,9 @@ py_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras",
     ],
 )
 
@@ -225,5 +237,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:errors",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

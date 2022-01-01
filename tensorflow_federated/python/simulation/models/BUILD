@@ -25,6 +25,10 @@ py_library(
     name = "group_norm",
     srcs = ["group_norm.py"],
     srcs_version = "PY3",
+    deps = [
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras",
+    ],
 )
 
 py_test(
@@ -33,11 +37,20 @@ py_test(
     srcs = ["group_norm_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":group_norm"],
+    deps = [
+        ":group_norm",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras",
+    ],
 )
 
 py_library(
     name = "mnist",
     srcs = ["mnist.py"],
     srcs_version = "PY3",
+    deps = [
+        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow/python/keras",
+    ],
 )
