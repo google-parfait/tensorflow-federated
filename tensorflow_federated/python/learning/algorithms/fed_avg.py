@@ -18,12 +18,19 @@
 # information.
 """An implementation of the Federated Averaging algorithm.
 
-Based on the paper:
+The original Federated Averaging algorithm is proposed by the paper:
 
 Communication-Efficient Learning of Deep Networks from Decentralized Data
     H. Brendan McMahan, Eider Moore, Daniel Ramage,
     Seth Hampson, Blaise Aguera y Arcas. AISTATS 2017.
     https://arxiv.org/abs/1602.05629
+
+This file implements a generalized version of the Federated Averaging algorithm:
+
+Adaptive Federated Optimization
+    Sashank Reddi, Zachary Charles, Manzil Zaheer, Zachary Garrett, Keith Rush,
+    Jakub Konečný, Sanjiv Kumar, H. Brendan McMahan. ICLR 2021.
+    https://arxiv.org/abs/2003.00295
 
 Currently, this code is intended only as an example of how to use the building
 block components of TFF's learning API to implement an algorithm that is
@@ -348,7 +355,8 @@ def weighted_fed_avg(
   the current server model. This recovers the original FedAvg algorithm in
   [McMahan et al., 2017](https://arxiv.org/abs/1602.05629). More
   sophisticated federated averaging procedures may use different learning rates
-  or server optimizers.
+  or server optimizers (this generalized FedAvg algorithm is described in
+  [Reddi et al., 2021](https://arxiv.org/abs/2003.00295)).
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`. This method

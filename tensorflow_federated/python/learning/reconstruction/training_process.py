@@ -42,7 +42,7 @@ rounds.
 Based on the paper:
 Federated Reconstruction: Partially Local Federated Learning
     Karan Singhal, Hakim Sidahmed, Zachary Garrett, Shanshan Wu, Keith Rush,
-    Sushant Prakash. https://arxiv.org/abs/2102.03448
+    Sushant Prakash. NeurIPS 2021. https://arxiv.org/abs/2102.03448
 """
 
 import collections
