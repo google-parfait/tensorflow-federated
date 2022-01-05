@@ -189,7 +189,8 @@ def test_measured_process_double(state_type, state_init, values_type):
     return MeasuredProcessOutput(
         state=intrinsics.federated_map(double, state),
         result=intrinsics.federated_map(double, values),
-        measurements=intrinsics.federated_value({'a': 1}, placements.SERVER))
+        measurements=intrinsics.federated_value(
+            collections.OrderedDict(a=1), placements.SERVER))
 
   return measured_process.MeasuredProcess(
       initialize_fn=computations.federated_computation(
@@ -210,7 +211,8 @@ def test_measured_process_sum(state_type, state_init, values_type):
     return MeasuredProcessOutput(
         state=intrinsics.federated_map(add_one, state),
         result=intrinsics.federated_sum(values),
-        measurements=intrinsics.federated_value({'b': 2}, placements.SERVER))
+        measurements=intrinsics.federated_value(
+            collections.OrderedDict(b=2), placements.SERVER))
 
   return measured_process.MeasuredProcess(
       initialize_fn=computations.federated_computation(

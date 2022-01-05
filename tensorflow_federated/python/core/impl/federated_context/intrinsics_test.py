@@ -492,7 +492,7 @@ class FederatedZipTest(parameterized.TestCase, IntrinsicTestBase):
         computation_types.at_clients(tf.int32, all_equal=False))
     y = _mock_data_of_type(
         computation_types.at_clients(tf.bool, all_equal=True))
-    val = intrinsics.federated_zip({'x': x, 'y': y})
+    val = intrinsics.federated_zip(collections.OrderedDict(x=x, y=y))
     self.assert_value(val, '{<x=int32,y=bool>}@CLIENTS')
 
   def test_federated_zip_with_client_all_equal_int_and_bool(self):
@@ -508,7 +508,7 @@ class FederatedZipTest(parameterized.TestCase, IntrinsicTestBase):
         computation_types.at_clients(tf.int32, all_equal=True))
     y = _mock_data_of_type(
         computation_types.at_clients(tf.bool, all_equal=True))
-    val = intrinsics.federated_zip({'x': x, 'y': y})
+    val = intrinsics.federated_zip(collections.OrderedDict(x=x, y=y))
     self.assert_value(val, '{<x=int32,y=bool>}@CLIENTS')
 
   def test_federated_zip_with_server_int_and_bool(self):
@@ -520,7 +520,7 @@ class FederatedZipTest(parameterized.TestCase, IntrinsicTestBase):
   def test_federated_zip_with_names_server_int_and_bool(self):
     x = _mock_data_of_type(computation_types.at_server(tf.int32))
     y = _mock_data_of_type(computation_types.at_server(tf.bool))
-    val = intrinsics.federated_zip({'x': x, 'y': y})
+    val = intrinsics.federated_zip(collections.OrderedDict(x=x, y=y))
     self.assert_value(val, '<x=int32,y=bool>@SERVER')
 
   def test_federated_zip_error_different_placements(self):
