@@ -36,10 +36,6 @@ from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 
 
-class ModelWeightsTypeError(TypeError):
-  """`TypeError` for incorrect container of model weights."""
-
-
 class FinalizerResultTypeError(TypeError):
   """`TypeError` for finalizer not updating model weights as expected."""
 
@@ -55,24 +51,22 @@ class FinalizerProcess(measured_process.MeasuredProcess):
   ```
     - initialize_fn: ( -> S@SERVER)
     - next_fn: (<S@SERVER,
-                 ModelWeights(TRAINABLE, NON_TRAINABLE)@SERVER,
-                 WEIGHT_UPDATE@SERVER>
+                 A@SERVER,
+                 B@SERVER>
                 ->
                 <state=S@SERVER,
-                 result=ModelWeights(TRAINABLE, NON_TRAINABLE)@SERVER,
+                 result=A@SERVER,
                  measurements=M@SERVER>)
   ```
 
   `FinalizerProcess` requires `next_fn` with a second and a third input
-  argument, which are both placed at `SERVER`. The second argument represents
-  the model weights to be updated. It must be of a type matching
-  `tff.learning.ModelWeights`. The third input argument represents information
-  to be used to update the model weights, often matching the type signature of
-  `TRAINABLE`.
+  argument, which are both placed at `SERVER`. The second type `A` represents
+  the current server parameters to be updated, while the third type `B`
+  represents an update to the parameter `A`, and often matches the type of `B`.
 
   The `result` field of the returned `tff.templates.MeasuredProcessOutput` must
-  be placed at `SERVER`, be of type matching that of second input argument,
-  which represents the updated ("finalized") model weights.
+  be placed at `SERVER`, be of type matching that of second input argument (`B`)
+  and represents the updated ("finalized") model parameters.
   """
 
   def __init__(self, initialize_fn, next_fn):
@@ -120,13 +114,6 @@ class FinalizerProcess(measured_process.MeasuredProcess):
       raise errors.TemplatePlacementError(
           f'The second input argument of `next_fn` must be placed at SERVER '
           f'but found {model_weights_param}.')
-    if (not model_weights_param.member.is_struct_with_python() or
-        model_weights_param.member.python_container
-        is not model_utils.ModelWeights):
-      raise ModelWeightsTypeError(
-          f'The second input argument of `next_fn` must have the '
-          f'`tff.learning.ModelWeights` container but found '
-          f'{model_weights_param}')
     if update_from_clients_param.placement != placements.SERVER:
       raise errors.TemplatePlacementError(
           f'The third input argument of `next_fn` must be placed at SERVER '

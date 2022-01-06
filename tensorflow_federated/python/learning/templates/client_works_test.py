@@ -241,20 +241,6 @@ class ClientWorkTest(test_case.TestCase):
     with self.assertRaises(errors.TemplatePlacementError):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
-  def test_bad_next_weights_param_type_raises(self):
-    bad_model_weights_type = computation_types.at_clients(
-        computation_types.to_type(
-            collections.OrderedDict(trainable=tf.float32, non_trainable=())))
-
-    @computations.federated_computation(SERVER_INT, bad_model_weights_type,
-                                        CLIENTS_FLOAT_SEQUENCE)
-    def next_fn(state, weights, data):
-      return MeasuredProcessOutput(state, test_client_result(weights, data),
-                                   server_zero())
-
-    with self.assertRaises(client_works.ModelWeightsTypeError):
-      client_works.ClientWorkProcess(test_initialize_fn, next_fn)
-
   def test_non_clients_placed_next_data_param_raises(self):
     server_sequence_float_type = computation_types.at_server(
         computation_types.SequenceType(tf.float32))
@@ -327,23 +313,23 @@ class ClientWorkTest(test_case.TestCase):
     with self.assertRaises(client_works.ClientResultTypeError):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
-  def test_trainable_weights_not_assignable_from_update_raises(self):
-    bad_cast_fn = computations.tf_computation(lambda x: tf.cast(x, tf.float64))
+  def test_constructs_with_update_not_assignable_to_state(self):
+    cast_to_float_64_fn = computations.tf_computation(
+        lambda x: tf.cast(x, tf.float64))
 
     @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
                                         CLIENTS_FLOAT_SEQUENCE)
     def next_fn(state, weights, data):
       reduced_data = intrinsics.federated_map(tf_data_sum, data)
       not_assignable_update = intrinsics.federated_map(
-          bad_cast_fn, federated_add(weights.trainable, reduced_data))
+          cast_to_float_64_fn, federated_add(weights.trainable, reduced_data))
       return MeasuredProcessOutput(
           state,
           intrinsics.federated_zip(
               client_works.ClientResult(not_assignable_update, client_one())),
           server_zero())
 
-    with self.assertRaises(client_works.ClientResultTypeError):
-      client_works.ClientWorkProcess(test_initialize_fn, next_fn)
+    client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_measurements_raises(self):
 

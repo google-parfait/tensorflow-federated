@@ -37,7 +37,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/learning:model_utils",
     ],
 )
 

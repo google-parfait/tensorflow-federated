@@ -170,18 +170,6 @@ class ComposeLearningProcessTest(test_case.TestCase):
                                          test_distributor(), test_client_work(),
                                          test_aggregator(), test_finalizer())
 
-  def test_not_model_weights_init_raises(self):
-
-    @computations.tf_computation()
-    def init_model_weights_fn():
-      return collections.OrderedDict(
-          trainable=tf.constant(1.0), non_trainable=())
-
-    with self.assertRaisesRegex(TypeError, 'ModelWeights'):
-      composers.compose_learning_process(init_model_weights_fn,
-                                         test_distributor(), test_client_work(),
-                                         test_aggregator(), test_finalizer())
-
   def test_not_distributor_type_raises(self):
     distributor = test_distributor()
     bad_distributor = measured_process.MeasuredProcess(distributor.initialize,
