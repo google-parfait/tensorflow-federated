@@ -86,10 +86,11 @@ grpc::Status ExecutorService::EnsureGeneration_(int reference_generation,
   if (reference_generation != expected_generation) {
     return grpc::Status(
         grpc::StatusCode::INVALID_ARGUMENT,
-        absl::StrCat("Remote value refers to a non-live executor generation. "
-                     "Current generation is: ",
-                     expected_generation, "remote valuerefers to generation: ",
-                     reference_generation));
+        absl::StrCat(
+            "Remote value refers to a non-live executor generation. "
+            "Current generation is: ",
+            expected_generation,
+            " remote value refers to generation: ", reference_generation));
   }
   return grpc::Status::OK;
 }
