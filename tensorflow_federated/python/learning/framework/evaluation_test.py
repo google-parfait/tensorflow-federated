@@ -24,9 +24,11 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import evaluation
+from tensorflow_federated.python.learning.metrics import aggregator
 
 # Convenience aliases.
 StructType = computation_types.StructType
@@ -190,9 +192,15 @@ class BuildModelMetricsAggregatorTest(tf.test.TestCase):
         model, metrics_type)
 
     aggregate_metrics = model_metrics_aggregator([client_metrics])
+    try:
+      metrics_aggregation_computation = model.federated_output_computation
+    except NotImplementedError:
+      unfinalized_metrics_type = type_conversions.type_from_tensors(
+          model.report_local_unfinalized_metrics())
+      metrics_aggregation_computation = aggregator.sum_then_finalize(
+          model.metric_finalizers(), unfinalized_metrics_type)
     expected_metrics = collections.OrderedDict(
-        eval=model.federated_output_computation(
-            [client_metrics['local_outputs']]),
+        eval=metrics_aggregation_computation([client_metrics['local_outputs']]),
         stat=collections.OrderedDict(num_examples=10.0))
     self.assertAllClose(aggregate_metrics, expected_metrics, atol=1e-6)
 
@@ -219,8 +227,15 @@ class BuildModelMetricsAggregatorTest(tf.test.TestCase):
     federated_local_outputs = [x['local_outputs'] for x in federated_metrics]
 
     aggregate_metrics = model_metrics_aggregator(federated_metrics)
+    try:
+      metrics_aggregation_computation = model.federated_output_computation
+    except NotImplementedError:
+      unfinalized_metrics_type = type_conversions.type_from_tensors(
+          model.report_local_unfinalized_metrics())
+      metrics_aggregation_computation = aggregator.sum_then_finalize(
+          model.metric_finalizers(), unfinalized_metrics_type)
     expected_metrics = collections.OrderedDict(
-        eval=model.federated_output_computation(federated_local_outputs),
+        eval=metrics_aggregation_computation(federated_local_outputs),
         stat=collections.OrderedDict(num_examples=20.0))
     self.assertAllClose(aggregate_metrics, expected_metrics, atol=1e-6)
 

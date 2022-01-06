@@ -29,9 +29,11 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.metrics import aggregator
 
 
 def build_eval_work(
@@ -80,8 +82,12 @@ def build_eval_work(
         reduce_fn=reduce_fn,
         dataset=dataset,
         initial_state_fn=lambda: tf.zeros([], dtype=tf.int64))
+    try:
+      local_outputs = model.report_local_outputs()
+    except NotImplementedError:
+      local_outputs = model.report_local_unfinalized_metrics()
     return collections.OrderedDict(
-        local_outputs=model.report_local_outputs(), num_examples=num_examples)
+        local_outputs=local_outputs, num_examples=num_examples)
 
   return client_eval
 
@@ -94,7 +100,15 @@ def build_model_metrics_aggregator(
   @computations.federated_computation(
       computation_types.at_clients(metrics_type))
   def aggregate_metrics(client_metrics):
-    model_metrics = model.federated_output_computation(
+    try:
+      metrics_aggregation_computation = model.federated_output_computation
+    except NotImplementedError:
+      metrics_aggregator = aggregator.sum_then_finalize
+      unfinalized_metrics_type = type_conversions.type_from_tensors(
+          model.report_local_unfinalized_metrics())
+      metrics_aggregation_computation = metrics_aggregator(
+          model.metric_finalizers(), unfinalized_metrics_type)
+    model_metrics = metrics_aggregation_computation(
         client_metrics.local_outputs)
     statistics = collections.OrderedDict(
         num_examples=intrinsics.federated_sum(client_metrics.num_examples))

@@ -261,8 +261,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # Total loss: 1.0
     # Batch average loss: 0.5
     self.assertEqual(output.loss, 0.5)
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [1])
     self.assertEqual(metrics['num_examples'], [2])
@@ -312,8 +310,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # Batch average loss: 5.0
     # Total batch loss with regularization: 5.04
     self.assertAlmostEqual(output.loss, 5.04)
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [1])
     self.assertEqual(metrics['num_examples'], [2])
@@ -361,8 +357,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # Total loss: 1.0
     # Batch average loss: 0.5
     self.assertEqual(output.loss, 0.5)
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [1])
     self.assertEqual(metrics['num_examples'], [2])
@@ -461,8 +455,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
       batch_output = tff_model.forward_pass(batch)
       self.assertGreater(batch_output.loss, 0.0)
 
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     m = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(m['num_batches'], [num_train_steps])
     self.assertEqual(m['num_examples'], [input_vocab_size * num_train_steps])
@@ -493,8 +485,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     for _ in range(num_train_steps):
       tff_model.forward_pass(real_batch)
 
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     m = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(m['num_batches'], [num_train_steps])
     self.assertEqual(m['num_examples'], [batch_size * num_train_steps])
@@ -546,8 +536,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     for _ in range(num_train_steps):
       tff_model.forward_pass(batch)
 
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     m = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(m['num_batches'], [num_train_steps])
     self.assertEqual(m['num_examples'], [batch_size * num_train_steps])
@@ -568,63 +556,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
                              tff_weights.trainable)
     assert_all_weights_close(keras_model.non_trainable_weights,
                              tff_weights.non_trainable)
-
-  def test_keras_model_federated_output_computation(self):
-    feature_dims = 3
-    num_train_steps = 3
-
-    def _make_keras_model():
-      keras_model = model_examples.build_linear_regression_keras_functional_model(
-          feature_dims)
-      return keras_model
-
-    def _model_fn():
-      return keras_utils.from_keras_model(
-          keras_model=_make_keras_model(),
-          input_spec=_create_whimsy_types(feature_dims),
-          loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[NumBatchesCounter(),
-                   NumExamplesCounter()])
-
-    @computations.tf_computation()
-    def _train():
-      # Create variables outside the tf.function.
-      tff_model = _model_fn()
-      optimizer = tf.keras.optimizers.SGD(0.1)
-
-      @tf.function
-      def _train_loop():
-        for _ in range(num_train_steps):
-          with tf.GradientTape() as tape:
-            batch_output = tff_model.forward_pass(
-                collections.OrderedDict(
-                    x=np.ones([2, feature_dims], dtype=np.float32),
-                    y=np.ones([2, 1], dtype=np.float32)))
-          gradients = tape.gradient(batch_output.loss,
-                                    tff_model.trainable_variables)
-          optimizer.apply_gradients(
-              zip(gradients, tff_model.trainable_variables))
-        return (tff_model.report_local_unfinalized_metrics(),
-                tff_model.report_local_outputs(),
-                model_utils.ModelWeights.from_model(tff_model))
-
-      return _train_loop()
-
-    # Simulate 'CLIENT' local training.
-    client_unfinalized_metrics, client_local_outputs, tff_weights = _train()
-    self.assertAllEqual(client_unfinalized_metrics, client_local_outputs)
-
-    # Simulate entering the 'SERVER' context.
-    tf.keras.backend.clear_session()
-
-    aggregated_outputs = _model_fn().federated_output_computation(
-        [client_local_outputs])
-    self.assertEqual(aggregated_outputs['num_batches'], num_train_steps)
-    self.assertEqual(aggregated_outputs['num_examples'], 2 * num_train_steps)
-    self.assertGreater(aggregated_outputs['loss'], 0.0)
-
-    keras_model = _make_keras_model()
-    tff_weights.assign_weights_to(keras_model)
 
   def test_keras_model_metric_finalizers_work_with_report_local_unfinalized_metrics(
       self):
@@ -939,8 +870,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     for _ in range(num_train_steps):
       tff_model.forward_pass(batch)
 
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [num_train_steps])
     self.assertEqual(metrics['num_examples'], [batch_size * num_train_steps])
@@ -982,8 +911,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     for _ in range(num_train_steps):
       tff_model.forward_pass(batch)
 
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [num_train_steps])
     self.assertEqual(metrics['num_examples'], [batch_size * num_train_steps])
@@ -1018,57 +945,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[NumBatchesCounter(),
                    NumExamplesCounter()])
-
-  def test_custom_keras_metric_with_extra_init_args_raises(self):
-
-    class CustomCounter(tf.keras.metrics.Sum):
-      """A custom `tf.keras.metrics.Metric` with extra args in `__init__`."""
-
-      def __init__(self, name='new_counter', arg1=0, dtype=tf.int64):
-        super().__init__(name, dtype)
-        self._arg1 = arg1
-
-      def update_state(self, y_true, y_pred, sample_weight=None):
-        return super().update_state(1, sample_weight)
-
-    feature_dims = 3
-    keras_model = model_examples.build_linear_regression_keras_functional_model(
-        feature_dims)
-
-    with self.assertRaisesRegex(TypeError, 'extra arguments'):
-      keras_utils.from_keras_model(
-          keras_model=keras_model,
-          input_spec=_create_whimsy_types(feature_dims),
-          loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[CustomCounter(arg1=1)])
-
-  def test_custom_keras_metric_no_extra_init_args_builds(self):
-
-    class CustomCounter(tf.keras.metrics.Sum):
-      """A custom `tf.keras.metrics.Metric` without extra args in `__init__`."""
-
-      def __init__(self, name='new_counter', arg1=0, dtype=tf.int64):
-        super().__init__(name, dtype)
-        self._arg1 = arg1
-
-      def update_state(self, y_true, y_pred, sample_weight=None):
-        return super().update_state(1, sample_weight)
-
-      def get_config(self):
-        config = super().get_config()
-        config['arg1'] = self._arg1
-        return config
-
-    feature_dims = 3
-    keras_model = model_examples.build_linear_regression_keras_functional_model(
-        feature_dims)
-    tff_model = keras_utils.from_keras_model(
-        keras_model=keras_model,
-        input_spec=_create_whimsy_types(feature_dims),
-        loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[CustomCounter(arg1=1)])
-
-    self.assertIsInstance(tff_model, model_lib.Model)
 
   @parameterized.named_parameters(
       # Test cases for the cartesian product of all parameter values.
@@ -1115,8 +991,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # Total loss: 1.0
     # Batch average loss: 0.5
     self.assertEqual(output.loss, 0.5)
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [1])
     self.assertEqual(metrics['num_examples'], [2])
@@ -1167,8 +1041,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # Total loss: 1.0
     # Batch average loss: 0.5
     self.assertEqual(output.loss, 0.5)
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2)

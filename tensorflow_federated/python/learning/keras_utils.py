@@ -29,7 +29,6 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
@@ -206,8 +205,8 @@ def federated_aggregate_keras_metric(
   """Aggregates variables a keras metric placed at CLIENTS to SERVER.
 
   Args:
-    metrics: A single or a `Sequence` of `tf.keras.metrics.Metric` objects, or
-      a single or a `Sequence` of no-arg callables that each constructs a
+    metrics: A single or a `Sequence` of `tf.keras.metrics.Metric` objects, or a
+      single or a `Sequence` of no-arg callables that each constructs a
       `tf.keras.metrics.Metric`. The order must match the order of variables in
       `federated_values`.
     federated_values: A single federated value, or a `Sequence` of federated
@@ -353,20 +352,6 @@ class _KerasModel(model_lib.Model):
     if not metrics or self._metric_constructors:
       self._metric_constructors.append(_WeightedMeanLossMetric)
 
-    metric_variable_type_dict = tf.nest.map_structure(
-        tf.TensorSpec.from_tensor, self.report_local_outputs())
-    federated_local_outputs_type = computation_types.FederatedType(
-        metric_variable_type_dict, placements.CLIENTS)
-
-    def federated_output(local_outputs):
-      if self._metric_constructors:
-        return federated_aggregate_keras_metric(self._metric_constructors,
-                                                local_outputs)
-      return federated_aggregate_keras_metric(self.get_metrics(), local_outputs)
-
-    self._federated_output_computation = computations.federated_computation(
-        federated_output, federated_local_outputs_type)
-
   @property
   def trainable_variables(self):
     return self._keras_model.trainable_variables
@@ -452,20 +437,23 @@ class _KerasModel(model_lib.Model):
 
   @tf.function
   def report_local_outputs(self):
-    """Reports the variables of the metrics tracked during local training.
-
-    Returns:
-      A `collections.OrderedDict` of metric name keys to lists of metric
-      variables.
-    """
-    outputs = collections.OrderedDict()
-    for metric in self.get_metrics():
-      outputs[metric.name] = [v.read_value() for v in metric.variables]
-    return outputs
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` are deprecated and will be removed '
+        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers` instead. The cross-client metrics aggregation '
+        'should be specified as the `metrics_aggregator` argument when you '
+        'build a training process or evaluation computation using this model.')
 
   @property
   def federated_output_computation(self):
-    return self._federated_output_computation
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` are deprecated and will be removed '
+        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers` instead. The cross-client metrics aggregation '
+        'should be specified as the `metrics_aggregator` argument when you '
+        'build a training process or evaluation computation using this model.')
 
   @tf.function
   def report_local_unfinalized_metrics(

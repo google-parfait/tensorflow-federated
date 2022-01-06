@@ -58,13 +58,43 @@ class _LoadedSavedModel(model_lib.Model):
         loaded_module.predict_on_batch_inference,
         loaded_module.predict_on_batch_inference_type_spec, tuple)
 
-    self._report_local_outputs = loaded_module.report_local_outputs
+    if not hasattr(loaded_module, 'report_local_outputs'):
+
+      def report_local_outputs(self):
+        raise NotImplementedError(
+            'Do not implement. `report_local_outputs` and '
+            '`federated_output_computation` are deprecated and will be removed '
+            'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+            '`metric_finalizers` instead. The cross-client metrics aggregation '
+            'should be specified as the `metrics_aggregator` argument when you '
+            'build a training process or evaluation computation using this model.'
+        )
+
+      self._report_local_outputs = report_local_outputs
+    else:
+      self._report_local_outputs = loaded_module.report_local_outputs
+
     self._input_spec = _deserialize_type_spec(
         loaded_module.serialized_input_spec)
-    self._federated_output_computation = computation_serialization.deserialize_computation(
-        computation_pb2.Computation.FromString(
-            loaded_module.serialized_federated_output_computation.read_value(
-            ).numpy()))
+
+    if not hasattr(loaded_module, 'serialized_federated_output_computation'):
+
+      def federated_output_computation(self):
+        raise NotImplementedError(
+            'Do not implement. `report_local_outputs` and '
+            '`federated_output_computation` are deprecated and will be removed '
+            'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+            '`metric_finalizers` instead. The cross-client metrics aggregation '
+            'should be specified as the `metrics_aggregator` argument when you '
+            'build a training process or evaluation computation using this model.'
+        )
+
+      self._federated_output_computation = federated_output_computation
+    else:
+      self._federated_output_computation = computation_serialization.deserialize_computation(
+          computation_pb2.Computation.FromString(
+              loaded_module.serialized_federated_output_computation.read_value(
+              ).numpy()))
 
     self._report_local_unfinalized_metrics = loaded_module.report_local_unfinalized_metrics
     self._serialized_metric_finalizers = loaded_module.serialized_metric_finalizers
@@ -287,7 +317,10 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
       predict_on_batch_inference[1].SerializeToString(deterministic=True),
       trainable=False)
   # Serialize the report_local_outputs tf.function.
-  m.report_local_outputs = model.report_local_outputs.get_concrete_function()
+  try:
+    m.report_local_outputs = model.report_local_outputs.get_concrete_function()
+  except NotImplementedError:
+    m.report_local_outputs = None
 
   # Serialize the report_local_unfinalized_metrics tf.function.
   m.report_local_unfinalized_metrics = (
@@ -316,11 +349,15 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
           computation_types.to_type(
               model.input_spec)).SerializeToString(deterministic=True),
       trainable=False)
-  m.serialized_federated_output_computation = tf.Variable(
-      computation_serialization.serialize_computation(
-          model.federated_output_computation).SerializeToString(
-              deterministic=True),
-      trainable=False)
+  try:
+    m.serialized_federated_output_computation = tf.Variable(
+        computation_serialization.serialize_computation(
+            model.federated_output_computation).SerializeToString(
+                deterministic=True),
+        trainable=False)
+  except NotImplementedError:
+    m.serialized_federated_output_computation = None
+
   _save_tensorflow_module(m, path)
 
 

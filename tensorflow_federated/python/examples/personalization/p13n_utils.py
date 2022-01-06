@@ -124,7 +124,8 @@ def evaluate_fn(model: tff.learning.Model,
                 dataset: tf.data.Dataset) -> OrderedDict[str, tf.Tensor]:
   """Evaluates a model on the given dataset.
 
-  The returned metrics include those given by `model.report_local_outputs`.
+  The returned metrics include those given by
+  `model.report_local_unfinalized_metrics`.
   These are specified by the `loss` and `metrics` arguments when the model is
   created by `tff.learning.from_keras_model`. The returned metrics also contain
   an integer metric with name 'num_test_examples'.
@@ -137,8 +138,9 @@ def evaluate_fn(model: tff.learning.Model,
     An `OrderedDict` of metric names to scalar `tf.Tensor`s.
   """
   # Resets the model's local variables. This is necessary because
-  # `model.report_local_outputs()` aggregates the metrics from *all* previous
-  # calls to `forward_pass` (which include the metrics computed in training).
+  # `model.report_local_unfinalized_metrics()` aggregates the metrics from *all*
+  # previous calls to `forward_pass` (which include the metrics computed in
+  # training).
   # Resetting ensures that the returned metrics are computed on test data.
   # Similar to the `reset_states` method of `tf.keras.metrics.Metric`.
   for var in model.local_variables:
@@ -152,22 +154,24 @@ def evaluate_fn(model: tff.learning.Model,
     return num_examples_sum + output.num_examples
 
   # Runs `reduce_fn` over the input dataset. The final metrics can be accessed
-  # by `model.report_local_outputs()`.
+  # by `model.report_local_unfinalized_metrics()`.
   num_examples_sum = dataset.batch(_EVAL_BATCH_SIZE).reduce(
       initial_state=0, reduce_func=reduce_fn)
   eval_metrics = collections.OrderedDict()
   eval_metrics['num_test_examples'] = num_examples_sum
-  local_outputs = model.report_local_outputs()
+  local_outputs = model.report_local_unfinalized_metrics()
   # Postprocesses the metric values. This is needed because the values returned
-  # by `model.report_local_outputs()` are values of the state variables in each
-  # `tf.keras.metrics.Metric`. These values should be processed in the same way
-  # as the `result()` method of a `tf.keras.metrics.Metric`.
+  # by `model.report_local_unfinalized_metrics()` are values of the state
+  # variables in each `tf.keras.metrics.Metric`. These values should be
+  # processed in the same way as the `result()` method of a
+  # `tf.keras.metrics.Metric`.
   for name, metric in local_outputs.items():
     if not isinstance(metric, list):
-      raise TypeError(f'The metric value returned by `report_local_outputs` is '
-                      f'expected to be a list, but found an instance of '
-                      f'{type(metric)}. Please check that your TFF model is '
-                      'built from a keras model.')
+      raise TypeError(
+          f'The metric value returned by `report_local_unfinalized_metrics` is '
+          f'expected to be a list, but found an instance of '
+          f'{type(metric)}. Please check that your TFF model is '
+          'built from a keras model.')
     if len(metric) == 2:
       # The loss and accuracy metrics used in this p13n example has two values:
       # one represents `sum`, and the other represents `count`.
@@ -175,7 +179,8 @@ def evaluate_fn(model: tff.learning.Model,
     elif len(metric) == 1:
       eval_metrics[name] = metric[0]
     else:
-      raise ValueError(f'The metric value returned by `report_local_outputs` '
-                       f'is expected to be a list of length 1 or 2, but found '
-                       f'one with length {len(metric)}.')
+      raise ValueError(
+          f'The metric value returned by `report_local_unfinalized_metrics` '
+          f'is expected to be a list of length 1 or 2, but found '
+          f'one with length {len(metric)}.')
   return eval_metrics

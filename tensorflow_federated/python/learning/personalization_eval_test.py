@@ -57,7 +57,10 @@ def _evaluate_fn(model, dataset, batch_size=1):
 
   # Obtain the metrics.
   results = collections.OrderedDict()
-  local_outputs = model.report_local_outputs()
+  try:
+    local_outputs = model.report_local_outputs()
+  except NotImplementedError:
+    local_outputs = model.report_local_unfinalized_metrics()
   for name, metric in local_outputs.items():
     if isinstance(metric, list) and (len(metric) == 2):
       # Some metrics returned by `report_local_outputs()` can have two scalars:

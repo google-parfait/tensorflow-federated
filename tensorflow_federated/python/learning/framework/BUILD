@@ -93,8 +93,10 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/metrics:aggregator",
     ],
 )
 
@@ -112,8 +114,10 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning:keras_utils",
         "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/metrics:aggregator",
     ],
 )
 
