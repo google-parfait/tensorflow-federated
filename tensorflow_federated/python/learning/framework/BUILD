@@ -6,6 +6,7 @@ package(default_visibility = [
     "//tensorflow_federated/python/learning:learning_visibility",
     "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
     "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
+    "//tensorflow_federated/python/learning/templates:templates_packages",
 
     # TODO(b/151441025): This visibility is temporary and can be removed once
     # the dependencies between `tff.learning` and `tff.learning.framework` are
