@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
+from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.optimizers import sgdm
@@ -38,6 +39,7 @@ from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
+from tensorflow_federated.python.learning.templates import model_delta_client_work
 
 
 # TODO(b/190334722): Add SLO guarantees / backwards compatibility guarantees.
@@ -291,8 +293,10 @@ def build_basic_fedavg_process(model_fn: Callable[[], model_lib.Model],
   model_weights_type = initial_model_weights_fn.type_signature.result
 
   distributor = distributors.build_broadcast_process(model_weights_type)
-  client_work = client_works.build_model_delta_client_work(
-      model_fn, sgdm.build_sgdm(client_learning_rate))
+  client_work = model_delta_client_work.build_model_delta_client_work(
+      model_fn,
+      sgdm.build_sgdm(client_learning_rate),
+      client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
   aggregator = mean.MeanFactory().create(
       client_work.next.type_signature.result.result.member.update,
       client_work.next.type_signature.result.result.member.update_weight)

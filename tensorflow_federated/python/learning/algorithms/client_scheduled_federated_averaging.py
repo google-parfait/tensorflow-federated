@@ -41,6 +41,7 @@ from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
+from tensorflow_federated.python.learning.templates import model_delta_client_work
 
 TFFOrKerasOptimizer = Union[optimizer_base.Optimizer,
                             tf.keras.optimizers.Optimizer]
@@ -87,9 +88,9 @@ def build_scheduled_client_work(
   weights_type = model_utils.weights_type_from_model(whimsy_model)
 
   if isinstance(whimsy_optimizer, optimizer_base.Optimizer):
-    build_client_update_fn = fed_avg.build_client_update_with_tff_optimizer
+    build_client_update_fn = model_delta_client_work.build_model_delta_update_with_tff_optimizer
   else:
-    build_client_update_fn = fed_avg.build_client_update_with_keras_optimizer
+    build_client_update_fn = model_delta_client_work.build_model_delta_update_with_keras_optimizer
 
   @computations.tf_computation(weights_type, data_type, tf.int32)
   def client_update_computation(initial_model_weights, dataset, round_num):

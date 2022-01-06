@@ -13,7 +13,6 @@
 # limitations under the License.
 """Libraries of specialized processes used for building learning algorithms."""
 
-from tensorflow_federated.python.learning.templates.client_works import build_model_delta_client_work
 from tensorflow_federated.python.learning.templates.client_works import ClientResult
 from tensorflow_federated.python.learning.templates.client_works import ClientWorkProcess
 from tensorflow_federated.python.learning.templates.composers import compose_learning_process
@@ -24,3 +23,4 @@ from tensorflow_federated.python.learning.templates.finalizers import build_appl
 from tensorflow_federated.python.learning.templates.finalizers import FinalizerProcess
 from tensorflow_federated.python.learning.templates.learning_process import LearningProcess
 from tensorflow_federated.python.learning.templates.learning_process import LearningProcessOutput
+from tensorflow_federated.python.learning.templates.model_delta_client_work import build_model_delta_client_work

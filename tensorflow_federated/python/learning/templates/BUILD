@@ -24,6 +24,7 @@ py_library(
         ":distributors",
         ":finalizers",
         ":learning_process",
+        ":model_delta_client_work",
     ],
 )
 
@@ -32,18 +33,11 @@ py_library(
     srcs = ["client_works.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_utils",
-        "//tensorflow_federated/python/learning/optimizers:optimizer",
     ],
 )
 
@@ -57,15 +51,12 @@ py_test(
         ":client_works",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
-        "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )
 
@@ -78,6 +69,7 @@ py_library(
         ":distributors",
         ":finalizers",
         ":learning_process",
+        ":model_delta_client_work",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
@@ -86,6 +78,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
@@ -225,5 +218,47 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:errors",
+    ],
+)
+
+py_library(
+    name = "model_delta_client_work",
+    srcs = ["model_delta_client_work.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":client_works",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning:client_weight_lib",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+    ],
+)
+
+py_test(
+    name = "model_delta_client_work_test",
+    size = "small",
+    srcs = ["model_delta_client_work_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":client_works",
+        ":model_delta_client_work",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning:client_weight_lib",
+        "//tensorflow_federated/python/learning:model_examples",
+        "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )
