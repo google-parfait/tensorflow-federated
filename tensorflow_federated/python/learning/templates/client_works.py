@@ -24,7 +24,6 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning import model_utils
 
 
 @attr.s(frozen=True)
@@ -37,10 +36,6 @@ class ClientResult():
   """
   update = attr.ib()
   update_weight = attr.ib()
-
-
-class ModelWeightsTypeError(TypeError):
-  """`TypeError` for incorrect container of model weights."""
 
 
 class ClientDataTypeError(TypeError):
@@ -66,27 +61,25 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
   ```
     - initialize_fn: ( -> S@SERVER)
     - next_fn: (<S@SERVER,
-                 ModelWeights(TRAINABLE, NON_TRAINABLE)@CLIENTS,
+                 A@CLIENTS,
                  DATA@CLIENTS>
                 ->
                 <state=S@SERVER,
-                 result=ClientResult(TRAINABLE, W)@CLIENTS,
+                 result=ClientResult(B, C)@CLIENTS,
                  measurements=M@SERVER>)
   ```
-  with `W` and `M` being arbitrary types not dependent on other types here.
+  with `A`, `B` and `C` being arbitrary types not dependent on other types here.
 
   `ClientWorkProcess` requires `next_fn` with a second and a third input
-  argument, which are both values placed at `CLIENTS`. The second argument is
-  initial model weights to be used for the work to be performed by clients. It
-  must be of a type matching `tff.learning.ModelWeights`, for these to be
-  assignable to the weights of a `tff.learning.Model`. The third argument must
-  be a `tff.SequenceType` representing the data available at clients.
+  argument, which are both values placed at `CLIENTS`. The second argument is a
+  kind of parameter informing the client update (such as model weights). The
+  third argument must be a `tff.SequenceType`, and represents the data available
+  at clients.
 
   The `result` field of the returned `tff.templates.MeasuredProcessOutput` must
   be placed at `CLIENTS`, and be of type matching `ClientResult`, of which the
-  `update` field represents the update to the trainable model weights, and
-  `update_weight` represents the weight to be used for weighted aggregation of
-  the updates.
+  `update` field represents the client's update, and `update_weight` represents
+  the weight to be used for weighted aggregation of the updates.
 
   The `measurements` field of the returned `tff.templates.MeasuredProcessOutput`
   must be placed at `SERVER`. Thus, implementation of this process must include
@@ -133,19 +126,12 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
       raise errors.TemplateNextFnNumArgsError(
           f'The `next_fn` must have exactly three input arguments, but found '
           f'{len(next_fn_param)} input arguments:\n{next_param_str}')
-    model_weights_param = next_fn_param[1]
+    second_next_param = next_fn_param[1]
     client_data_param = next_fn_param[2]
-    if model_weights_param.placement != placements.CLIENTS:
+    if second_next_param.placement != placements.CLIENTS:
       raise errors.TemplatePlacementError(
           f'The second input argument of `next_fn` must be placed at CLIENTS '
-          f'but found {model_weights_param}.')
-    if (not model_weights_param.member.is_struct_with_python() or
-        model_weights_param.member.python_container
-        is not model_utils.ModelWeights):
-      raise ModelWeightsTypeError(
-          f'The second input argument of `next_fn` must have the '
-          f'`tff.learning.ModelWeights` container but found '
-          f'{model_weights_param}')
+          f'but found {second_next_param}.')
     if client_data_param.placement != placements.CLIENTS:
       raise errors.TemplatePlacementError(
           f'The third input argument of `next_fn` must be placed at CLIENTS '
@@ -166,14 +152,6 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
       raise ClientResultTypeError(
           f'The "result" attribute of the return type of `next_fn` must have '
           f'the `ClientResult` container, but found {next_fn_result.result}.')
-    if not model_weights_param.member.trainable.is_assignable_from(
-        next_fn_result.result.member.update):
-      raise ClientResultTypeError(
-          f'The "update" attribute of returned `ClientResult` must match '
-          f'the "trainable" attribute of the `tff.learning.ModelWeights` '
-          f'expected as second input argument of the `next_fn`. Found:\n'
-          f'Second input argument: {model_weights_param.member.trainable}\n'
-          f'Update attribute of result: {next_fn_result.result.member.update}.')
     if next_fn_result.measurements.placement != placements.SERVER:
       raise errors.TemplatePlacementError(
           f'The "measurements" attribute of return type of `next_fn` must be '

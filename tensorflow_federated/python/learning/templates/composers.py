@@ -191,13 +191,10 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
         f'Found input parameter: '
         f'{initial_model_weights_fn.type_signature.parameter}')
   global_model_weights_type = initial_model_weights_fn.type_signature.result
-  if (global_model_weights_type.is_federated() or
-      not global_model_weights_type.is_struct_with_python() or
-      global_model_weights_type.python_container
-      is not model_utils.ModelWeights):
+  if global_model_weights_type.is_federated():
     raise TypeError(
         f'Provided initial_model_weights_fn must be a tff.Computation with '
-        f'return type being an unplaced tff.learning.ModelWeights.\n'
+        f'unplaced return type.\n'
         f'Return type found: {global_model_weights_type}')
   global_model_weights_type = computation_types.at_server(
       global_model_weights_type)

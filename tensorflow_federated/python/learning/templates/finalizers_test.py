@@ -230,23 +230,18 @@ class FinalizerTest(test_case.TestCase):
     with self.assertRaises(errors.TemplatePlacementError):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
-  def test_bad_next_weights_param_type_raises(self):
-    bad_model_weights_type = computation_types.at_server(
+  def test_constructs_with_non_model_weights_parameter(self):
+    non_model_weights_type = computation_types.at_server(
         computation_types.to_type(
             collections.OrderedDict(trainable=tf.float32, non_trainable=())))
 
-    @computations.federated_computation(SERVER_INT, bad_model_weights_type,
+    @computations.federated_computation(SERVER_INT, non_model_weights_type,
                                         SERVER_FLOAT)
     def next_fn(state, weights, update):
-      return MeasuredProcessOutput(
-          state,
-          intrinsics.federated_zip(
-              model_utils.ModelWeights(
-                  federated_add(weights['trainable'], update), ())),
-          server_zero())
+      del update
+      return MeasuredProcessOutput(state, weights, server_zero())
 
-    with self.assertRaises(finalizers.ModelWeightsTypeError):
-      finalizers.FinalizerProcess(test_initialize_fn, next_fn)
+    finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_update_param_raises(self):
 
