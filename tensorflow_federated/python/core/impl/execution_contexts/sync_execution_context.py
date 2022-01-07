@@ -23,6 +23,7 @@ from typing import Any
 from typing import Callable
 from typing import Optional
 
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_base
@@ -57,10 +58,14 @@ class ExecutionContext(context_base.Context):
   def executor_factory(self):
     return self._executor_factory
 
+  async def _invoke_and_materialize(self, comp, arg):
+    result_value = await self._async_context.invoke(comp, arg)
+    return await result_value.materialize()
+
   def ingest(self, val, type_spec):
     return self._event_loop.run_until_complete(
         self._async_context.ingest(val, type_spec))
 
   def invoke(self, comp, arg):
     return self._event_loop.run_until_complete(
-        self._async_context.invoke(comp, arg))
+        self._invoke_and_materialize(comp, arg))

@@ -44,24 +44,8 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
-def _unwrap(value):
-  if isinstance(value, tf.Tensor):
-    return value.numpy()
-  elif isinstance(value, structure.Struct):
-    return structure.Struct(
-        (k, _unwrap(v)) for k, v in structure.iter_elements(value))
-  elif isinstance(value, list):
-    return [_unwrap(v) for v in value]
-  else:
-    return value
-
-
-def _is_retryable_error(exception):
-  return isinstance(exception, executors_errors.RetryableError)
-
-
-class AsyncExecutionContextValue(typed_object.TypedObject):
-  """Wrapper class for values produced by `ExecutionContext`."""
+class IngestedValue(typed_object.TypedObject):
+  """Wrapper class for values ingested by `ExecutionContext`."""
 
   def __init__(self, value, type_spec):
     py_typecheck.check_type(type_spec, computation_types.Type)
@@ -75,6 +59,38 @@ class AsyncExecutionContextValue(typed_object.TypedObject):
   @property
   def value(self):
     return self._value
+
+
+def _unwrap(value):
+  if isinstance(value, tf.Tensor):
+    return value.numpy()
+  elif isinstance(value, structure.Struct):
+    return structure.Struct(
+        (k, _unwrap(v)) for k, v in structure.iter_elements(value))
+  elif isinstance(value, list):
+    return [_unwrap(v) for v in value]
+  else:
+    return value
+
+
+class AsyncExecutionContextValue(typed_object.TypedObject):
+  """Represents a value computed by the async execution context."""
+
+  def __init__(self, underlying_value: executor_value_base.ExecutorValue,
+               value_type: computation_types.Type):
+    self._underlying_value = underlying_value
+    self._value_type = value_type
+
+  @property
+  def type_signature(self):
+    return self._value_type
+
+  def get_embedded_value(self) -> executor_value_base.ExecutorValue:
+    return self._underlying_value
+
+  async def materialize(self):
+    result_val = _unwrap(await self._underlying_value.compute())
+    return type_conversions.type_to_py_container(result_val, self._value_type)
 
 
 async def _ingest(executor, val, type_spec):
@@ -91,6 +107,8 @@ async def _ingest(executor, val, type_spec):
   Raises:
     TypeError: If the `val` is not a value of type `type_spec`.
   """
+  if isinstance(val, AsyncExecutionContextValue):
+    return val.get_embedded_value()
   if isinstance(val, executor_value_base.ExecutorValue):
     return val
   elif isinstance(val, ingestable_base.Ingestable):
@@ -129,8 +147,8 @@ async def _invoke(executor, comp, arg, result_type: computation_types.Type):
     executor: An instance of `executor_base.Executor`.
     comp: The first argument to `context_base.Context.invoke()`.
     arg: The optional second argument to `context_base.Context.invoke()`.
-    result_type: The type signature of the result. This is used to convert the
-      execution result into the proper container types.
+    result_type: The expected type of the result, carrying e.g. Python
+      container information.
 
   Returns:
     The result of the invocation.
@@ -140,18 +158,17 @@ async def _invoke(executor, comp, arg, result_type: computation_types.Type):
   comp = await executor.create_value(comp)
   result = await executor.create_call(comp, arg)
   py_typecheck.check_type(result, executor_value_base.ExecutorValue)
-  result_val = _unwrap(await result.compute())
-  return type_conversions.type_to_py_container(result_val, result_type)
+  return AsyncExecutionContextValue(result, result_type)
 
 
-def _unwrap_execution_context_value(val):
+def _unwrap_ingested_value(val):
   """Recursively removes wrapping from `val` under anonymous tuples."""
   if isinstance(val, structure.Struct):
     value_elements_iter = structure.iter_elements(val)
-    return structure.Struct((name, _unwrap_execution_context_value(elem))
+    return structure.Struct((name, _unwrap_ingested_value(elem))
                             for name, elem in value_elements_iter)
-  elif isinstance(val, AsyncExecutionContextValue):
-    return _unwrap_execution_context_value(val.value)
+  elif isinstance(val, IngestedValue):
+    return _unwrap_ingested_value(val.value)
   else:
     return val
 
@@ -227,6 +244,10 @@ class SingleCardinalityAsyncContext(context_base.Context):
         self.cardinalities_condition.notify_all()
 
 
+def _is_retryable_error(exception):
+  return isinstance(exception, executors_errors.RetryableError)
+
+
 class AsyncExecutionContext(SingleCardinalityAsyncContext):
   """An asynchronous execution context backed by an `executor_base.Executor`.
 
@@ -257,24 +278,23 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
     else:
       self._compiler_pipeline = None
 
-  async def ingest(self, val, type_spec):
-    return AsyncExecutionContextValue(val, type_spec)
+  async def ingest(self, val, type_spec) -> IngestedValue:
+    return IngestedValue(val, type_spec)
 
   @retrying.retry(
       retry_on_exception_filter=_is_retryable_error,
       wait_max_ms=30 * 1000,
       wait_multiplier=2)
-  async def invoke(self, comp, arg):
+  async def invoke(self, comp, arg) -> AsyncExecutionContextValue:
     if asyncio.iscoroutine(arg):
       # Awaiting if we are passed a coro allows us to install and use the async
       # context in conjunction with ConcreteComputations' implementation of
       # __call__.
       arg = await arg
     comp.type_signature.check_function()
-    # Save the type signature before compiling. Compilation currently loses
-    # container types, so we must remember them here so that they can be
-    # restored in the output.
-    result_type = comp.type_signature.result
+    # We persist the container type here as compilation may destroy container
+    # information.
+    result_type_spec = comp.type_signature.result
     if self._compiler_pipeline is not None:
       with tracing.span('ExecutionContext', 'Compile', span=True):
         comp = self._compiler_pipeline.compile(comp)
@@ -282,8 +302,8 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
     with tracing.span('ExecutionContext', 'Invoke', span=True):
 
       if arg is not None:
-        py_typecheck.check_type(arg, AsyncExecutionContextValue)
-        unwrapped_arg = _unwrap_execution_context_value(arg)
+        py_typecheck.check_type(arg, IngestedValue)
+        unwrapped_arg = _unwrap_ingested_value(arg)
         cardinalities = cardinalities_utils.infer_cardinalities(
             unwrapped_arg, arg.type_signature)
       else:
@@ -298,4 +318,4 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
               _ingest(executor, unwrapped_arg, arg.type_signature))
 
         return await tracing.wrap_coroutine_in_current_trace_context(
-            _invoke(executor, comp, arg, result_type))
+            _invoke(executor, comp, arg, result_type_spec))

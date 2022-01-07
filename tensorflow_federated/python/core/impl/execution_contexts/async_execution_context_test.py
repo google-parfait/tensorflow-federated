@@ -64,10 +64,14 @@ class AsyncContextInstallationTest(tf.test.TestCase):
     def add_one(x):
       return x + 1
 
+    async def add_one_and_materialize():
+      two = await add_one(1)
+      return await two.materialize()
+
     with get_context_stack.get_context_stack().install(context):
-      val_coro = add_one(1)
-      self.assertTrue(asyncio.iscoroutine(val_coro))
-      self.assertEqual(asyncio.get_event_loop().run_until_complete(val_coro), 2)
+      self.assertEqual(
+          asyncio.get_event_loop().run_until_complete(
+              add_one_and_materialize()), 2)
 
   def test_install_and_execute_computations_with_different_cardinalities(self):
     factory = executor_stacks.local_executor_factory()
@@ -78,15 +82,16 @@ class AsyncContextInstallationTest(tf.test.TestCase):
     def repackage_arg(x):
       return [x, x]
 
+    async def materialize_repackaged_args():
+      single_val, second_val = await asyncio.gather(
+          repackage_arg([1]), repackage_arg([1, 2]))
+      return await asyncio.gather(single_val.materialize(),
+                                  second_val.materialize())
+
     with get_context_stack.get_context_stack().install(context):
-      single_val_coro = repackage_arg([1])
-      second_val_coro = repackage_arg([1, 2])
-      self.assertTrue(asyncio.iscoroutine(single_val_coro))
-      self.assertTrue(asyncio.iscoroutine(second_val_coro))
       self.assertEqual(
           asyncio.get_event_loop().run_until_complete(
-              asyncio.gather(single_val_coro, second_val_coro)),
-          [[[1], [1]], [[1, 2], [1, 2]]])
+              materialize_repackaged_args()), [[[1], [1]], [[1, 2], [1, 2]]])
 
 
 if __name__ == '__main__':
