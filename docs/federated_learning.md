@@ -354,8 +354,8 @@ identities no longer appear in it.
 
 We have dedicated the namespace `tff.simulation.datasets` for datasets that
 implement the `tff.simulation.datasets.ClientData` interface for use in
-simulations, and seeded it with 2 data sets to support the
+simulations, and seeded it with datasets to support the
 [image classification](tutorials/federated_learning_for_image_classification.ipynb)
 and [text generation](tutorials/federated_learning_for_text_generation.ipynb)
-tutorials. We'd like to encourage you to contribute your own data sets to the
+tutorials. We'd like to encourage you to contribute your own datasets to the
 platform.

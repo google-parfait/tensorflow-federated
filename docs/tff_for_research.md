@@ -248,3 +248,19 @@ To explore and compare different personalization strategies, you can:
     personalization strategies, and use it as the `personalize_fn_dict` argument
     in
     [`tff.learning.build_personalization_eval`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval).
+
+Another approach is to avoid training a fully global model by training part of a
+model entirely locally. An instantiation of this approach is described in
+[this blog post](https://ai.googleblog.com/2021/12/a-scalable-approach-for-partially-local.html).
+This approach is also connected to meta learning, see
+[this paper](https://arxiv.org/abs/2102.03448). To explore partially local
+federated learning, you can:
+
+*   Check out the
+    [tutorial](https://www.tensorflow.org/federated/tutorials/federated_reconstruction_for_matrix_factorization)
+    for a complete code example applying Federated Reconstruction and
+    [follow-up exercises](https://www.tensorflow.org/federated/tutorials/federated_reconstruction_for_matrix_factorization#further_explorations).
+
+*   Create a partially local training process using
+    [`tff.learning.reconstruction.build_training_process`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/reconstruction/build_training_process),
+    modifying `dataset_split_fn` to customize process behavior.
