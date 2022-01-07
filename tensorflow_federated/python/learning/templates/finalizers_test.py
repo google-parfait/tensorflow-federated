@@ -241,7 +241,10 @@ class FinalizerTest(test_case.TestCase):
       del update
       return MeasuredProcessOutput(state, weights, server_zero())
 
-    finalizers.FinalizerProcess(test_initialize_fn, next_fn)
+    try:
+      finalizers.FinalizerProcess(test_initialize_fn, next_fn)
+    except:  # pylint: disable=bare-except
+      self.fail('Could not construct a valid FinalizerProcess.')
 
   def test_non_server_placed_next_update_param_raises(self):
 
