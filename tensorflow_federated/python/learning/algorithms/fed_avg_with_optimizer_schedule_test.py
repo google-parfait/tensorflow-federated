@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
-from tensorflow_federated.python.learning.algorithms import client_scheduled_federated_averaging as fed_avg
+from tensorflow_federated.python.learning.algorithms import fed_avg_with_optimizer_schedule
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 
@@ -47,7 +47,7 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
     # processing, etc).
     learning_rate_fn = lambda x: 0.1
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
-    fed_avg.build_client_scheduled_federated_averaging_process(
+    fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
         model_fn=mock_model_fn,
         client_learning_rate_fn=learning_rate_fn,
         client_optimizer_fn=optimizer_fn,
@@ -61,7 +61,7 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
   def test_construction_calls_client_learning_rate_fn(self, optimizer_fn):
     mock_learning_rate_fn = mock.Mock(side_effect=lambda x: 1.0)
     optimizer_fn = tf.keras.optimizers.SGD
-    fed_avg.build_client_scheduled_federated_averaging_process(
+    fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
         model_fn=model_examples.LinearRegression,
         client_learning_rate_fn=mock_learning_rate_fn,
         client_optimizer_fn=optimizer_fn)
@@ -75,7 +75,7 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
   def test_construction_calls_client_optimizer_fn(self, optimizer_fn):
     learning_rate_fn = lambda x: 0.5
     mock_optimizer_fn = mock.Mock(side_effect=optimizer_fn)
-    fed_avg.build_client_scheduled_federated_averaging_process(
+    fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
         model_fn=model_examples.LinearRegression,
         client_learning_rate_fn=learning_rate_fn,
         client_optimizer_fn=mock_optimizer_fn)
@@ -95,14 +95,14 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
     def learning_rate_fn(round_num):
       tf.cond(tf.less(round_num, 2), lambda: 0.1, lambda: 0.01)
 
-    fed_avg.build_client_scheduled_federated_averaging_process(
+    fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
         model_fn=model_examples.LinearRegression,
         client_learning_rate_fn=learning_rate_fn,
         client_optimizer_fn=optimizer_fn)
 
   def test_raises_on_non_callable_model_fn(self):
     with self.assertRaises(TypeError):
-      fed_avg.build_client_scheduled_federated_averaging_process(
+      fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
           model_fn=model_examples.LinearRegression(),
           client_learning_rate_fn=lambda x: 0.1,
           client_optimizer_fn=tf.keras.optimizers.SGD)

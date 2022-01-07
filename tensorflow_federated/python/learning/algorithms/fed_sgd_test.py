@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
-from tensorflow_federated.python.learning.algorithms import federated_sgd
+from tensorflow_federated.python.learning.algorithms import fed_sgd
 from tensorflow_federated.python.learning.framework import dataset_reduce
 
 
@@ -66,7 +66,7 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
   @test_utils.skip_test_for_multi_gpu
   def test_client_update(self, simulation):
     dataset = self.dataset()
-    client_update = federated_sgd._build_client_update(
+    client_update = fed_sgd._build_client_update(
         self.model_fn(), use_experimental_simulation_loop=simulation)
     client_result, model_output, stat_output = client_update(
         self.initial_weights(), dataset)
@@ -86,7 +86,7 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
     dataset = self.dataset()
-    client_update = federated_sgd._build_client_update(self.model_fn())
+    client_update = fed_sgd._build_client_update(self.model_fn())
     init_weights = self.initial_weights()
     init_weights.trainable[1] = bad_value
     client_outputs, _, _ = client_update(init_weights, dataset)
@@ -103,7 +103,7 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
   @test_utils.skip_test_for_multi_gpu
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     dataset = self.dataset()
-    client_update = federated_sgd._build_client_update(
+    client_update = fed_sgd._build_client_update(
         self.model_fn(), use_experimental_simulation_loop=simulation)
     client_update(self.initial_weights(), dataset)
     if simulation:
@@ -118,7 +118,7 @@ class FederatedSGDTest(test_case.TestCase, parameterized.TestCase):
   def test_raises_on_non_callable_model_fn(self):
     non_callable_model_fn = model_examples.LinearRegression()
     with self.assertRaisesRegex(TypeError, 'found non-callable'):
-      federated_sgd.build_federated_sgd_process(non_callable_model_fn)
+      fed_sgd.build_fed_sgd(non_callable_model_fn)
 
   # pylint: disable=g-complex-comprehension
   @parameterized.named_parameters(
@@ -133,7 +133,7 @@ class FederatedSGDTest(test_case.TestCase, parameterized.TestCase):
     # times. `model_fn` can potentially be expensive (loading weights,
     # processing, etc).
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
-    federated_sgd.build_federated_sgd_process(
+    fed_sgd.build_fed_sgd(
         model_fn=mock_model_fn,
         model_update_aggregation_factory=aggregation_factory())
     # TODO(b/186451541): reduce the number of calls to model_fn.

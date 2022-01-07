@@ -31,10 +31,6 @@ Adaptive Federated Optimization
     Sashank Reddi, Zachary Charles, Manzil Zaheer, Zachary Garrett, Keith Rush,
     Jakub Konečný, Sanjiv Kumar, H. Brendan McMahan. ICLR 2021.
     https://arxiv.org/abs/2003.00295
-
-Currently, this code is intended only as an example of how to use the building
-block components of TFF's learning API to implement an algorithm that is
-compatible with things like broadcast and aggregation processes.
 """
 
 from typing import Callable, Optional, Union
@@ -61,7 +57,7 @@ from tensorflow_federated.python.learning.templates import model_delta_client_wo
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
 
-def weighted_fed_avg(
+def build_weighted_fed_avg(
     model_fn: Callable[[], model_lib.Model],
     client_optimizer_fn: Union[optimizer_base.Optimizer,
                                Callable[[], tf.keras.optimizers.Optimizer]],
@@ -175,7 +171,7 @@ def weighted_fed_avg(
                                             aggregator, finalizer)
 
 
-def unweighted_fed_avg(
+def build_unweighted_fed_avg(
     model_fn: Callable[[], model_lib.Model],
     client_optimizer_fn: Union[optimizer_base.Optimizer,
                                Callable[[], tf.keras.optimizers.Optimizer]],
@@ -250,7 +246,7 @@ def unweighted_fed_avg(
   py_typecheck.check_type(model_aggregator,
                           factory.UnweightedAggregationFactory)
 
-  return weighted_fed_avg(
+  return build_weighted_fed_avg(
       model_fn=model_fn,
       client_optimizer_fn=client_optimizer_fn,
       server_optimizer_fn=server_optimizer_fn,

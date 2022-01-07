@@ -179,7 +179,7 @@ class FedProxConstructionTest(test_case.TestCase, parameterized.TestCase):
     # times. `model_fn` can potentially be expensive (loading weights,
     # processing, etc).
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
-    fed_prox.build_example_weighted_fed_prox_process(
+    fed_prox.build_weighted_fed_prox(
         model_fn=mock_model_fn,
         proximal_strength=1.0,
         client_optimizer_fn=optimizer_fn,
@@ -188,14 +188,14 @@ class FedProxConstructionTest(test_case.TestCase, parameterized.TestCase):
 
   def test_raises_on_non_callable_model_fn(self):
     with self.assertRaises(TypeError):
-      fed_prox.build_example_weighted_fed_prox_process(
+      fed_prox.build_weighted_fed_prox(
           model_fn=model_examples.LinearRegression(),
           proximal_strength=1.0,
           client_optimizer_fn=tf.keras.optimizers.SGD)
 
   def test_raises_on_negative_proximal_strength(self):
     with self.assertRaises(ValueError):
-      fed_prox.build_example_weighted_fed_prox_process(
+      fed_prox.build_weighted_fed_prox(
           model_fn=model_examples.LinearRegression,
           proximal_strength=-1.0,
           client_optimizer_fn=tf.keras.optimizers.SGD)

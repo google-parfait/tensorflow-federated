@@ -178,7 +178,7 @@ def _build_fed_sgd_client_work(
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
 
 
-def build_federated_sgd_process(
+def build_fed_sgd(
     model_fn: Callable[[], model_lib.Model],
     server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
         [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,

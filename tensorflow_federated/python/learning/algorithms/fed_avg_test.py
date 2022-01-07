@@ -51,39 +51,40 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
     # times. `model_fn` can potentially be expensive (loading weights,
     # processing, etc).
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
-    fed_avg.weighted_fed_avg(
+    fed_avg.build_weighted_fed_avg(
         model_fn=mock_model_fn,
         client_optimizer_fn=optimizer_fn,
         model_aggregator=aggregation_factory())
     self.assertEqual(mock_model_fn.call_count, 3)
 
   @mock.patch('tensorflow_federated.python.learning.'
-              'algorithms.fed_avg.weighted_fed_avg')
-  def test_weighted_fed_avg_called_by_unweighted_fed_avg(self, mock_fed_avg):
-    fed_avg.unweighted_fed_avg(
+              'algorithms.fed_avg.build_weighted_fed_avg')
+  def test_build_weighted_fed_avg_called_by_unweighted_fed_avg(
+      self, mock_fed_avg):
+    fed_avg.build_unweighted_fed_avg(
         model_fn=model_examples.LinearRegression,
         client_optimizer_fn=sgdm.build_sgdm(1.0))
     self.assertEqual(mock_fed_avg.call_count, 1)
 
   @mock.patch('tensorflow_federated.python.learning.'
-              'algorithms.fed_avg.weighted_fed_avg')
+              'algorithms.fed_avg.build_weighted_fed_avg')
   @mock.patch('tensorflow_federated.python.learning.'
               'algorithms.aggregation.as_weighted_aggregator')
   def test_aggregation_wrapper_called_by_unweighted(self, _, mock_as_weighted):
-    fed_avg.unweighted_fed_avg(
+    fed_avg.build_unweighted_fed_avg(
         model_fn=model_examples.LinearRegression,
         client_optimizer_fn=sgdm.build_sgdm(1.0))
     self.assertEqual(mock_as_weighted.call_count, 1)
 
   def test_raises_on_non_callable_model_fn(self):
     with self.assertRaises(TypeError):
-      fed_avg.weighted_fed_avg(
+      fed_avg.build_weighted_fed_avg(
           model_fn=model_examples.LinearRegression(),
           client_optimizer_fn=tf.keras.optimizers.SGD)
 
   def test_raises_on_invalid_client_weighting(self):
     with self.assertRaises(TypeError):
-      fed_avg.weighted_fed_avg(
+      fed_avg.build_weighted_fed_avg(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=sgdm.build_sgdm(1.0),
           client_weighting='uniform')
@@ -95,7 +96,7 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
     invalid_distributor = iterative_process.IterativeProcess(
         distributor.initialize, distributor.next)
     with self.assertRaises(TypeError):
-      fed_avg.weighted_fed_avg(
+      fed_avg.build_weighted_fed_avg(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=sgdm.build_sgdm(1.0),
           model_distributor=invalid_distributor)
@@ -103,7 +104,7 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
   def test_weighted_fed_avg_raises_on_unweighted_aggregator(self):
     aggregator = model_update_aggregator.robust_aggregator(weighted=False)
     with self.assertRaisesRegex(TypeError, 'WeightedAggregationFactory'):
-      fed_avg.weighted_fed_avg(
+      fed_avg.build_weighted_fed_avg(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=sgdm.build_sgdm(1.0),
           model_aggregator=aggregator)
@@ -111,7 +112,7 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
   def test_unweighted_fed_avg_raises_on_weighted_aggregator(self):
     aggregator = model_update_aggregator.robust_aggregator(weighted=True)
     with self.assertRaisesRegex(TypeError, 'UnweightedAggregationFactory'):
-      fed_avg.unweighted_fed_avg(
+      fed_avg.build_unweighted_fed_avg(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=sgdm.build_sgdm(1.0),
           model_aggregator=aggregator)

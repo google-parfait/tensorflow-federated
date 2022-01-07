@@ -128,7 +128,7 @@ def build_scheduled_client_work(
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
 
-def build_client_scheduled_federated_averaging_process(
+def build_weighted_fed_avg_with_optimizer_schedule(
     model_fn: Callable[[], model_lib.Model],
     client_learning_rate_fn: Callable[[int], float],
     client_optimizer_fn: Callable[[float], TFFOrKerasOptimizer],

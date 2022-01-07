@@ -315,7 +315,7 @@ def build_fed_prox_client_work(
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
 
-def build_example_weighted_fed_prox_process(
+def build_weighted_fed_prox(
     model_fn: Callable[[], model_lib.Model],
     proximal_strength: float,
     client_optimizer_fn: Union[optimizer_base.Optimizer,
