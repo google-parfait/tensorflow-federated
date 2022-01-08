@@ -228,3 +228,37 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
     ],
 )
+
+py_library(
+    name = "kmeans_clustering",
+    srcs = ["kmeans_clustering.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":aggregation",
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:sum_factory",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning/templates:client_works",
+        "//tensorflow_federated/python/learning/templates:composers",
+        "//tensorflow_federated/python/learning/templates:distributors",
+        "//tensorflow_federated/python/learning/templates:finalizers",
+        "//tensorflow_federated/python/learning/templates:learning_process",
+    ],
+)
+
+py_test(
+    name = "kmeans_clustering_test",
+    srcs = ["kmeans_clustering_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":kmeans_clustering",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
