@@ -396,11 +396,12 @@ def to_value(
         arg, dict_factory=collections.OrderedDict, recurse=False).items()
     result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif isinstance(arg, dict):
-    if isinstance(arg, collections.OrderedDict):
-      items = arg.items()
-    else:
-      items = sorted(arg.items())
-    result = _dictlike_items_to_value(items, type_spec, type(arg))
+    if not isinstance(arg, collections.OrderedDict):
+      raise TypeError(
+          'Unsupported mapping type {}. Use collections.OrderedDict for '
+          'mappings. Unsupported mapping: {}'.format(
+              py_typecheck.type_string(type(arg)), arg))
+    result = _dictlike_items_to_value(arg.items(), type_spec, type(arg))
   elif isinstance(arg, (tuple, list)):
     items = zip(itertools.repeat(None), arg)
     result = _dictlike_items_to_value(items, type_spec, type(arg))

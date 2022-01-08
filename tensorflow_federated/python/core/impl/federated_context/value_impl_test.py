@@ -169,21 +169,10 @@ class ValueTest(parameterized.TestCase):
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<foo,bar>')
 
-  def test_to_value_for_dict(self):
+  def test_to_value_for_dict_not_supported(self):
     x = value_impl.Value(building_blocks.Reference('foo', tf.int32))
-    y = value_impl.Value(building_blocks.Reference('bar', tf.bool))
-    v1 = value_impl.to_value({
-        'a': x,
-        'b': y,
-    }, None)
-    self.assertIsInstance(v1, value_impl.Value)
-    self.assertEqual(str(v1), '<a=foo,b=bar>')
-    v2 = value_impl.to_value({
-        'b': y,
-        'a': x,
-    }, None)
-    self.assertIsInstance(v2, value_impl.Value)
-    self.assertEqual(str(v2), '<a=foo,b=bar>')
+    with self.assertRaises(TypeError):
+      value_impl.to_value({'a': x}, None)
 
   def test_to_value_for_ordered_dict(self):
     x = value_impl.Value(building_blocks.Reference('foo', tf.int32))
