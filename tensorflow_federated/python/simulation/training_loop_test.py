@@ -20,6 +20,7 @@ from absl.testing import parameterized
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.learning.templates import learning_process as learning_process_lib
 from tensorflow_federated.python.program import release_manager as release_manager_lib
 from tensorflow_federated.python.simulation import checkpoint_manager
 from tensorflow_federated.python.simulation import metrics_manager as metrics_manager_lib
@@ -914,6 +915,304 @@ class RunTrainingProcessTest(parameterized.TestCase):
 
     training_loop.run_training_process(
         training_process=training_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds,
+        program_state_manager=program_state_manager,
+        rounds_per_saving_program_state=1)
+
+    self.assertEqual(program_state_manager.load_latest.call_count, 1)
+    calls = []
+    for round_num in range(version + 1, total_rounds + 1):
+      call = mock.call('update', round_num)
+      calls.append(call)
+    program_state_manager.save.assert_has_calls(calls)
+
+
+class RunLearningProcessTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('2', 2),
+      ('10', 10),
+  )
+  def test_training_fns_called(self, total_rounds):
+    learning_process = mock.create_autospec(
+        learning_process_lib.LearningProcess)
+    learning_process.initialize.return_value = 'initialize'
+    learning_process.next.return_value = learning_process_lib.LearningProcessOutput(
+        state='update', metrics={'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    training_selection_fn.return_value = [0]
+
+    training_loop.run_learning_process(
+        learning_process=learning_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds)
+
+    self.assertEqual(learning_process.initialize.call_count, 1)
+    calls = []
+    for round_num in range(1, total_rounds + 1):
+      call = mock.call(round_num)
+      calls.append(call)
+    training_selection_fn.assert_has_calls(calls)
+    calls = []
+    for round_num in range(1, total_rounds + 1):
+      if round_num == 1:
+        state = 'initialize'
+      else:
+        state = 'update'
+      call = mock.call(state, [0])
+      calls.append(call)
+    learning_process.next.assert_has_calls(calls)
+
+  @parameterized.named_parameters(
+      ('0_1', 0, 1),
+      ('1_1', 1, 1),
+      ('1_2', 1, 2),
+      ('2_1', 2, 1),
+      ('2_2', 2, 2),
+      ('10_1', 10, 1),
+      ('10_5', 10, 5),
+  )
+  def test_evaluation_fns_called(self, total_rounds, rounds_per_evaluation):
+    learning_process = mock.create_autospec(
+        learning_process_lib.LearningProcess)
+    learning_process.initialize.return_value = 'initialize'
+    learning_process.next.return_value = learning_process_lib.LearningProcessOutput(
+        state='update', metrics={'metric': 0})
+    learning_process.get_model_weights.return_value = 'model_weights'
+    training_selection_fn = mock.MagicMock()
+    evaluation_fn = mock.create_autospec(
+        computation_base.Computation, return_value={'metric': 0})
+    evaluation_selection_fn = mock.MagicMock()
+    evaluation_selection_fn.return_value = [0]
+
+    training_loop.run_learning_process(
+        learning_process=learning_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds,
+        evaluation_fn=evaluation_fn,
+        evaluation_selection_fn=evaluation_selection_fn,
+        rounds_per_evaluation=rounds_per_evaluation)
+
+    calls = [mock.call(0)]
+    for round_num in range(1, total_rounds + 1):
+      if round_num % rounds_per_evaluation == 0:
+        call = mock.call(round_num)
+        calls.append(call)
+    evaluation_selection_fn.assert_has_calls(calls)
+    calls = [mock.call('model_weights', [0])]
+    for round_num in range(1, total_rounds + 1):
+      if round_num % rounds_per_evaluation == 0:
+        call = mock.call('model_weights', [0])
+        calls.append(call)
+    evaluation_fn.assert_has_calls(calls)
+
+  @parameterized.named_parameters(
+      ('without_program_state_0_1', 0, 1, None, 0),
+      ('without_program_state_1_1', 1, 1, None, 0),
+      ('without_program_state_1_2', 1, 2, None, 0),
+      ('without_program_state_2_1', 2, 1, None, 0),
+      ('without_program_state_2_2', 2, 2, None, 0),
+      ('without_program_state_10_1', 10, 1, None, 0),
+      ('without_program_state_10_5', 10, 5, None, 0),
+      ('with_program_state_0_1', 0, 1, 'update', 1),
+      ('with_program_state_1_1', 1, 1, 'update', 1),
+      ('with_program_state_1_2', 1, 2, 'update', 1),
+      ('with_program_state_2_1', 2, 1, 'update', 1),
+      ('with_program_state_2_2', 2, 2, 'update', 1),
+      ('with_program_state_10_1', 10, 1, 'update', 1),
+      ('with_program_state_10_5', 10, 5, 'update', 1),
+  )
+  def test_program_state_manager_called(self, total_rounds,
+                                        rounds_per_saving_program_state,
+                                        program_state, version):
+    learning_process = mock.create_autospec(
+        learning_process_lib.LearningProcess)
+    learning_process.initialize.return_value = 'initialize'
+    learning_process.next.return_value = learning_process_lib.LearningProcessOutput(
+        state='update', metrics={'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    program_state_manager = mock.MagicMock()
+    program_state_manager.load_latest.return_value = (program_state, version)
+
+    training_loop.run_learning_process(
+        learning_process=learning_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds,
+        program_state_manager=program_state_manager,
+        rounds_per_saving_program_state=rounds_per_saving_program_state)
+
+    self.assertEqual(program_state_manager.load_latest.call_count, 1)
+    calls = []
+    if version == 0:
+      call = mock.call('initialize', 0)
+      calls.append(call)
+    for round_num in range(version + 1, total_rounds + 1):
+      if round_num % rounds_per_saving_program_state == 0:
+        call = mock.call('update', round_num)
+        calls.append(call)
+    program_state_manager.save.assert_has_calls(calls)
+
+  @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('2', 2),
+      ('10', 10),
+  )
+  def test_metrics_managers_called_without_evaluation(self, total_rounds):
+    learning_process = mock.create_autospec(
+        learning_process_lib.LearningProcess)
+    learning_process.initialize.return_value = 'initialize'
+    learning_process.next.return_value = learning_process_lib.LearningProcessOutput(
+        state='update', metrics={'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    metrics_manager_1 = mock.MagicMock()
+    metrics_manager_2 = mock.MagicMock()
+    metrics_manager_3 = mock.MagicMock()
+
+    training_loop.run_learning_process(
+        learning_process=learning_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds,
+        metrics_managers=[
+            metrics_manager_1, metrics_manager_2, metrics_manager_3
+        ])
+
+    calls = []
+    for round_num in range(1, total_rounds + 1):
+      metrics = collections.OrderedDict([
+          ('metric', 0),
+          ('training_time_in_seconds', mock.ANY),
+          ('round_number', round_num),
+      ])
+      call = mock.call(metrics, round_num)
+      calls.append(call)
+    metrics_manager_1.release.assert_has_calls(calls)
+    metrics_manager_2.release.assert_has_calls(calls)
+    metrics_manager_3.release.assert_has_calls(calls)
+
+  @parameterized.named_parameters(
+      ('0_1', 0, 1),
+      ('1_1', 1, 1),
+      ('1_2', 1, 2),
+      ('2_1', 2, 1),
+      ('2_2', 2, 2),
+      ('10_1', 10, 1),
+      ('10_5', 10, 5),
+  )
+  def test_metrics_managers_called_with_evaluation(self, total_rounds,
+                                                   rounds_per_evaluation):
+    learning_process = mock.create_autospec(
+        learning_process_lib.LearningProcess)
+    learning_process.initialize.return_value = 'initialize'
+    learning_process.next.return_value = learning_process_lib.LearningProcessOutput(
+        state='update', metrics={'metric': 0})
+    learning_process.get_model_weights.return_value = 'model_weights'
+    training_selection_fn = mock.MagicMock()
+    evaluation_fn = mock.MagicMock()
+    evaluation_fn.return_value = {'metric': 0}
+    evaluation_selection_fn = mock.MagicMock()
+    metrics_manager_1 = mock.MagicMock()
+    metrics_manager_2 = mock.MagicMock()
+    metrics_manager_3 = mock.MagicMock()
+
+    training_loop.run_learning_process(
+        learning_process=learning_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds,
+        evaluation_fn=evaluation_fn,
+        evaluation_selection_fn=evaluation_selection_fn,
+        rounds_per_evaluation=rounds_per_evaluation,
+        metrics_managers=[
+            metrics_manager_1, metrics_manager_2, metrics_manager_3
+        ])
+
+    calls = []
+    metrics = collections.OrderedDict([
+        ('evaluation/metric', 0),
+        ('evaluation/evaluation_time_in_seconds', mock.ANY),
+    ])
+    call = mock.call(metrics, 0)
+    calls.append(call)
+    for round_num in range(1, total_rounds + 1):
+      metrics = collections.OrderedDict([
+          ('metric', 0),
+          ('training_time_in_seconds', mock.ANY),
+          ('round_number', round_num),
+      ])
+      if round_num % rounds_per_evaluation == 0:
+        metrics.update([
+            ('evaluation/metric', 0),
+            ('evaluation/evaluation_time_in_seconds', mock.ANY),
+        ])
+      call = mock.call(metrics, round_num)
+      calls.append(call)
+    metrics_manager_1.release.assert_has_calls(calls)
+    metrics_manager_2.release.assert_has_calls(calls)
+    metrics_manager_3.release.assert_has_calls(calls)
+
+  def test_performance_metrics_with_training_and_evaluation_time_10(self):
+    learning_process = mock.create_autospec(
+        learning_process_lib.LearningProcess)
+    learning_process.initialize.return_value = 'initialize'
+    learning_process.next.return_value = learning_process_lib.LearningProcessOutput(
+        state='update', metrics={'metric': 0})
+    learning_process.get_model_weights.return_value = 'model_weights'
+    training_selection_fn = mock.MagicMock()
+    evaluation_fn = mock.MagicMock()
+    evaluation_fn.return_value = {'metric': 0}
+    evaluation_selection_fn = mock.MagicMock()
+    metrics_manager = mock.MagicMock()
+
+    with mock.patch('time.time') as mock_time:
+      # Since absl.logging.info uses a call to time.time, we mock it out.
+      with mock.patch('absl.logging.info'):
+        mock_time.side_effect = [0.0, 10.0] * 3
+        training_loop.run_learning_process(
+            learning_process=learning_process,
+            training_selection_fn=training_selection_fn,
+            total_rounds=1,
+            evaluation_fn=evaluation_fn,
+            evaluation_selection_fn=evaluation_selection_fn,
+            metrics_managers=[metrics_manager])
+
+    for index, call in enumerate(metrics_manager.release.mock_calls):
+      _, args, _ = call
+      metrics, round_num = args
+      if round_num > 0:
+        self.assertEqual(metrics[training_loop.ROUND_NUMBER_KEY], 1)
+        self.assertEqual(metrics[training_loop.TRAINING_TIME_KEY], 10.0)
+      self.assertEqual(
+          metrics[training_loop.EVALUATION_METRICS_PREFIX +
+                  training_loop.EVALUATION_TIME_KEY], 10.0)
+      self.assertEqual(round_num, index)
+
+  @parameterized.named_parameters(
+      ('0_1', 0, 1),
+      ('0_3', 0, 3),
+      ('1_0', 1, 0),
+      ('1_1', 1, 1),
+      ('2_0', 2, 0),
+      ('2_2', 2, 2),
+      ('2_3', 2, 3),
+      ('2_5', 2, 5),
+      ('5_2', 5, 2),
+  )
+  def test_program_state_manager_calls_on_existing_program_state(
+      self, version, total_rounds):
+    learning_process = mock.create_autospec(
+        learning_process_lib.LearningProcess)
+    learning_process.initialize.return_value = 'initialize'
+    learning_process.next.return_value = learning_process_lib.LearningProcessOutput(
+        state='update', metrics={'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    program_state_manager = mock.MagicMock()
+    program_state_manager.load_latest.return_value = ('program_state', version)
+
+    training_loop.run_learning_process(
+        learning_process=learning_process,
         training_selection_fn=training_selection_fn,
         total_rounds=total_rounds,
         program_state_manager=program_state_manager,

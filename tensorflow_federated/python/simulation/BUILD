@@ -168,6 +168,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
         "//tensorflow_federated/python/simulation:checkpoint_manager",
@@ -185,6 +186,7 @@ py_test(
         ":training_loop",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "//tensorflow_federated/python/learning/templates:learning_process",
         "//tensorflow_federated/python/program:release_manager",
         "//tensorflow_federated/python/simulation:checkpoint_manager",
         "//tensorflow_federated/python/simulation:metrics_manager",

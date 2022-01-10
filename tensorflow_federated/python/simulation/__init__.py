@@ -30,6 +30,7 @@ from tensorflow_federated.python.simulation.training_loop import EVALUATION_METR
 from tensorflow_federated.python.simulation.training_loop import EVALUATION_TIME_KEY
 from tensorflow_federated.python.simulation.training_loop import ROUND_NUMBER_KEY
 from tensorflow_federated.python.simulation.training_loop import ROUND_TIME_KEY
+from tensorflow_federated.python.simulation.training_loop import run_learning_process
 from tensorflow_federated.python.simulation.training_loop import run_simulation
 from tensorflow_federated.python.simulation.training_loop import run_stateless_simulation
 from tensorflow_federated.python.simulation.training_loop import run_training_process
