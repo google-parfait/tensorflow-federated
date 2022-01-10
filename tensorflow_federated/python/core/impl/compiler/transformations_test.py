@@ -61,7 +61,7 @@ class TransformToLocalCallDominantTest(test_case.TestCase):
             ('y', int_ref('x')),
             ('z', int_ref('y')),
         ], int_ref('z')))
-    after = transformations.transform_to_local_call_dominant(before)
+    after = transformations.to_call_dominant(before)
     expected = int_fn('x', int_ref('x'))
     self.assertEqual(after.compact_representation(),
                      expected.compact_representation())
@@ -77,7 +77,7 @@ class TransformToLocalCallDominantTest(test_case.TestCase):
             ('y', bb.Selection(bb.Reference('x', double), index=0)),
             ('z', bb.Selection(bb.Reference('y', structed), index=0)),
         ], bb.Reference('z', int_type)))
-    after = transformations.transform_to_local_call_dominant(before)
+    after = transformations.to_call_dominant(before)
     expected = bb.Lambda(
         'x', double,
         bb.Selection(bb.Selection(bb.Reference('x', double), index=0), index=0))
@@ -95,7 +95,7 @@ class TransformToLocalCallDominantTest(test_case.TestCase):
             ('y', bb.Struct([building_blocks.Reference('x', int_type)])),
             ('z', bb.Struct([building_blocks.Reference('y', structed)])),
         ], bb.Reference('z', double)))
-    after = transformations.transform_to_local_call_dominant(before)
+    after = transformations.to_call_dominant(before)
     expected = bb.Lambda('x', int_type,
                          bb.Struct([bb.Struct([bb.Reference('x', int_type)])]))
     self.assertEqual(after.compact_representation(),
@@ -107,7 +107,7 @@ class TransformToLocalCallDominantTest(test_case.TestCase):
     before = bb.Lambda(
         'x', int_type,
         bb.Selection(bb.Struct([bb.Reference('x', int_type)]), index=0))
-    after = transformations.transform_to_local_call_dominant(before)
+    after = transformations.to_call_dominant(before)
     expected = bb.Lambda('x', int_type, bb.Reference('x', int_type))
     self.assertEqual(after.compact_representation(),
                      expected.compact_representation())
@@ -121,7 +121,7 @@ class TransformToLocalCallDominantTest(test_case.TestCase):
         'x', int_type,
         bb.Call(int_to_int_fn,
                 bb.Call(int_to_int_fn, bb.Reference('x', int_type))))
-    after = transformations.transform_to_local_call_dominant(before)
+    after = transformations.to_call_dominant(before)
     expected = bb.Lambda(
         'x', int_type,
         bb.Block([
@@ -173,7 +173,7 @@ class TransformToLocalCallDominantTest(test_case.TestCase):
                 bb.Reference('val12', int_type),
                 bb.Reference('val2', int_type)
             ])))
-    after = transformations.transform_to_local_call_dominant(before)
+    after = transformations.to_call_dominant(before)
     expected = bb.Lambda(
         'x', int_type,
         bb.Block([
@@ -196,7 +196,7 @@ class TransformToLocalCallDominantTest(test_case.TestCase):
     get_two_int_type = computation_types.FunctionType(None, two_int_type)
     call_ext = bb.Call(bb.Data('ext', get_two_int_type))
     before = bb.Selection(call_ext, index=0)
-    after = transformations.transform_to_local_call_dominant(before)
+    after = transformations.to_call_dominant(before)
     expected = bb.Block([
         ('_var1', call_ext),
     ], bb.Selection(bb.Reference('_var1', two_int_type), index=0))
@@ -883,10 +883,9 @@ class TestTransformToCallDominantForm(test_case.TestCase):
     higher_level_lambda = building_blocks.Lambda('y', tf.int32,
                                                  lower_level_lambda)
 
-    call_dominant_rep, modified = transformations.transform_to_call_dominant(
+    call_dominant_rep = transformations.to_deduped_call_dominant(
         higher_level_lambda)
 
-    self.assertTrue(modified)
     self.assertRegexMatch(call_dominant_rep.compact_representation(),
                           [r'\(_([a-z]{3})1 -> \(_(\1)2 -> _(\1)2\)\)'])
 
@@ -895,9 +894,7 @@ class TestTransformToCallDominantForm(test_case.TestCase):
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     blk = building_blocks.Block([], lower_level_lambda)
 
-    call_dominant_rep, modified = transformations.transform_to_call_dominant(
-        blk)
-    self.assertTrue(modified)
+    call_dominant_rep = transformations.to_deduped_call_dominant(blk)
     self.assertRegexMatch(call_dominant_rep.compact_representation(),
                           [r'\(_([a-z]{3})1 -> _(\1)1\)'])
 
@@ -907,12 +904,10 @@ class TestTransformToCallDominantForm(test_case.TestCase):
     blk1 = building_blocks.Block([('x', data)], ref_to_x)
     blk2 = building_blocks.Block([('x', blk1)], ref_to_x)
 
-    call_dominant_rep, modified = transformations.transform_to_call_dominant(
-        blk2)
+    call_dominant_rep = transformations.to_deduped_call_dominant(blk2)
 
-    self.assertTrue(modified)
-    self.assertRegexMatch(call_dominant_rep.compact_representation(),
-                          [r'\(let _([a-z]{3})1=a in _(\1)1\)'])
+    self.assertEqual(call_dominant_rep.formatted_representation(),
+                     data.formatted_representation())
 
   def test_extracts_called_intrinsics_to_block(self):
     called_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
@@ -924,15 +919,14 @@ class TestTransformToCallDominantForm(test_case.TestCase):
         source=tuple_holding_aggregate, index=0)
     lambda_to_sel = building_blocks.Lambda('x', tf.int32, sel_from_tuple)
 
-    call_dominant_rep, modified = transformations.transform_to_call_dominant(
-        lambda_to_sel)
+    call_dominant_rep = transformations.to_deduped_call_dominant(lambda_to_sel)
 
-    self.assertTrue(modified)
-    self.assertIsInstance(call_dominant_rep, building_blocks.Block)
-    self.assertLen(call_dominant_rep.locals, 1)
+    call_dominant_rep.check_lambda()
+    call_dominant_rep.result.check_block()
+    self.assertLen(call_dominant_rep.result.locals, 1)
     self.assertTrue(
         building_block_analysis.is_called_intrinsic(
-            call_dominant_rep.locals[0][1],
+            call_dominant_rep.result.locals[0][1],
             intrinsic_defs.FEDERATED_AGGREGATE.uri))
 
   def test_deduplicates_called_intrinsics(self):
@@ -949,15 +943,14 @@ class TestTransformToCallDominantForm(test_case.TestCase):
     lambda_to_tup = building_blocks.Lambda('x', tf.int32,
                                            tuple_holding_aggregates)
 
-    call_dominant_rep, modified = transformations.transform_to_call_dominant(
-        lambda_to_tup)
+    call_dominant_rep = transformations.to_deduped_call_dominant(lambda_to_tup)
 
-    self.assertTrue(modified)
-    self.assertIsInstance(call_dominant_rep, building_blocks.Block)
-    self.assertLen(call_dominant_rep.locals, 1)
+    call_dominant_rep.check_lambda()
+    call_dominant_rep.result.check_block()
+    self.assertLen(call_dominant_rep.result.locals, 1)
     self.assertTrue(
         building_block_analysis.is_called_intrinsic(
-            call_dominant_rep.locals[0][1],
+            call_dominant_rep.result.locals[0][1],
             intrinsic_defs.FEDERATED_AGGREGATE.uri))
 
   def test_hoists_aggregations_packed_in_tuple(self):
@@ -976,19 +969,19 @@ class TestTransformToCallDominantForm(test_case.TestCase):
     lambda_to_tuple = building_blocks.Lambda('x', tf.int32,
                                              tuple_holding_aggregates)
 
-    call_dominant_rep, modified = transformations.transform_to_call_dominant(
+    call_dominant_rep = transformations.to_deduped_call_dominant(
         lambda_to_tuple)
 
-    self.assertTrue(modified)
-    self.assertIsInstance(call_dominant_rep, building_blocks.Block)
-    self.assertLen(call_dominant_rep.locals, 2)
+    call_dominant_rep.check_lambda()
+    call_dominant_rep.result.check_block()
+    self.assertLen(call_dominant_rep.result.locals, 2)
     self.assertTrue(
         building_block_analysis.is_called_intrinsic(
-            call_dominant_rep.locals[0][1],
+            call_dominant_rep.result.locals[0][1],
             intrinsic_defs.FEDERATED_AGGREGATE.uri))
     self.assertTrue(
         building_block_analysis.is_called_intrinsic(
-            call_dominant_rep.locals[1][1],
+            call_dominant_rep.result.locals[1][1],
             intrinsic_defs.FEDERATED_AGGREGATE.uri))
 
   def test_handles_lambda_with_lambda_parameter(self):
@@ -1012,13 +1005,15 @@ class TestTransformToCallDominantForm(test_case.TestCase):
                                                   ref_to_int.type_signature,
                                                   called_lambda_with_fn)
 
-    call_dominant_rep, modified = transformations.transform_to_call_dominant(
+    call_dominant_rep = transformations.to_deduped_call_dominant(
         lambda_accepting_int)
 
-    self.assertTrue(modified)
-    self.assertRegexMatch(call_dominant_rep.compact_representation(), [
-        r'\(_([a-z]{3})1 -> \(let _(\1)3=\(_(\1)2 -> _(\1)2\)\(_(\1)1\) in _(\1)3\)\)'
-    ])
+    call_dominant_rep.check_lambda()
+    param_name = call_dominant_rep.parameter_name
+    expected = building_blocks.Lambda(
+        param_name, tf.int32, building_blocks.Reference(param_name, tf.int32))
+    self.assertEqual(call_dominant_rep.formatted_representation(),
+                     expected.formatted_representation())
 
 
 class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
@@ -1087,7 +1082,7 @@ class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
              building_blocks.Lambda('p2', int_type, int_ref('p2')),
              client_int_ref('a'))),
     ], client_int_ref('b'))
-    comp = building_blocks.Lambda('param', int_type, body)
+    comp = building_blocks.Lambda('param', client_int_type, body)
     with self.assertRaises(transformations._NonAlignableAlongIntrinsicError):
       transformations.force_align_and_split_by_intrinsics(
           comp, [building_block_factory.create_null_federated_map()])
@@ -1118,7 +1113,7 @@ class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
     ])
     sel = building_blocks.Selection(packed_broadcast, index=0)
     second_broadcast = building_block_factory.create_federated_broadcast(sel)
-    result, _ = transformations.transform_to_call_dominant(second_broadcast)
+    result = transformations.to_deduped_call_dominant(second_broadcast)
     comp = building_blocks.Lambda('a', tf.int32, result)
     call = building_block_factory.create_null_federated_broadcast()
     self.assert_splits_on(comp, call)

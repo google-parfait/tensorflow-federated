@@ -802,11 +802,7 @@ def _replace_lambda_body_with_call_dominant_form(
   Returns:
     A transformed version of `comp`, whose body is call-dominant.
   """
-  lam_result = comp.result
-  result_as_call_dominant, _ = compiler_transformations.transform_to_call_dominant(
-      lam_result)
-  return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
-                                result_as_call_dominant)
+  return compiler_transformations.to_deduped_call_dominant(comp.result)
 
 
 def _merge_grappler_config_with_default(
