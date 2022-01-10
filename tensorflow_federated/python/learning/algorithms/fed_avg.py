@@ -72,24 +72,26 @@ def build_weighted_fed_avg(
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 
-  This function creates a `LearningProcess` that performs federated averaging on
-  client models. The iterative process has the following methods inherited from
-  `LearningProcess`:
+  This function creates a `tff.learning.templates.LearningProcess` that performs
+  federated averaging on client models. The iterative process has the following
+  methods inherited from `tff.learning.templates.LearningProcess`:
 
   *   `initialize`: A `tff.Computation` with the functional type signature
-      `( -> S@SERVER)`, where `S` is a `LearningAlgorithmState` representing the
-      initial state of the server.
+      `( -> S@SERVER)`, where `S` is a
+      `tff.learning.templates.LearningAlgorithmState` representing the initial
+      state of the server.
   *   `next`: A `tff.Computation` with the functional type signature
       `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
-      `LearningAlgorithmState` whose type matches the output of `initialize`
-      and `{B*}@CLIENTS` represents the client datasets. The output `L`
-      contains the updated server state, as well as metrics that are the result
-      of `tff.learning.Model.federated_output_computation` during client
-      training, and any other metrics from broadcast and aggregation processes.
-  *   `report`: A `tff.Computation` with type signature `(S -> M)`, where
-      `S` is a `LearningAlgorithmState` whose type matchs the output of
-      `initialize` and `next` and `M` represents the type of the model weights
-      used during training.
+      `tff.learning.templates.LearningAlgorithmState` whose type matches the
+      output of `initialize` and `{B*}@CLIENTS` represents the client datasets.
+      The output `L` contains the updated server state, as well as metrics that
+      are the result of `tff.learning.Model.federated_output_computation` during
+      client training, and any other metrics from broadcast and aggregation
+      processes.
+  *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
+      where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
+      matchs the output of `initialize` and `next` and `M` represents the type
+      of the model weights used during training.
 
   Each time the `next` method is called, the server model is communicated to
   each client using the provided `model_distributor`. For each client, local
@@ -132,7 +134,7 @@ def build_weighted_fed_avg(
       simulations.
 
   Returns:
-    A `LearningProcess`.
+    A `tff.learning.templates.LearningProcess`.
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
@@ -162,8 +164,10 @@ def build_weighted_fed_avg(
                     f'{result_server_value_type.member}.')
 
   client_work = model_delta_client_work.build_model_delta_client_work(
-      model_fn, client_optimizer_fn, client_weighting,
-      use_experimental_simulation_loop)
+      model_fn=model_fn,
+      optimizer=client_optimizer_fn,
+      client_weighting=client_weighting,
+      use_experimental_simulation_loop=use_experimental_simulation_loop)
   finalizer = finalizers.build_apply_optimizer_finalizer(
       server_optimizer_fn, model_weights_type)
   return composers.compose_learning_process(initial_model_weights_fn,
@@ -183,24 +187,26 @@ def build_unweighted_fed_avg(
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 
-  This function creates a `LearningProcess` that performs federated averaging on
-  client models. The iterative process has the following methods inherited from
-  `LearningProcess`:
+  This function creates a `tff.learning.templates.LearningProcess` that performs
+  federated averaging on client models. The iterative process has the following
+  methods inherited from `tff.learning.templates.LearningProcess`:
 
   *   `initialize`: A `tff.Computation` with the functional type signature
-      `( -> S@SERVER)`, where `S` is a `LearningAlgorithmState` representing the
-      initial state of the server.
+      `( -> S@SERVER)`, where `S` is a
+      `tff.learning.templates.LearningAlgorithmState` representing the initial
+      state of the server.
   *   `next`: A `tff.Computation` with the functional type signature
       `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
-      `LearningAlgorithmState` whose type matches the output of `initialize`
-      and `{B*}@CLIENTS` represents the client datasets. The output `L`
-      contains the updated server state, as well as metrics that are the result
-      of `tff.learning.Model.federated_output_computation` during client
-      training, and any other metrics from broadcast and aggregation processes.
-  *   `report`: A `tff.Computation` with type signature `(S -> M)`, where
-      `S` is a `LearningAlgorithmState` whose type matchs the output of
-      `initialize` and `next` and `M` represents the type of the model weights
-      used during training.
+      `tff.learning.templates.LearningAlgorithmState` whose type matches the
+      output of `initialize` and `{B*}@CLIENTS` represents the client datasets.
+      The output `L` contains the updated server state, as well as metrics that
+      are the result of `tff.learning.Model.federated_output_computation` during
+      client training, and any other metrics from broadcast and aggregation
+      processes.
+  *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
+      where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
+      matchs the output of `initialize` and `next` and `M` represents the type
+      of the model weights used during training.
 
   Each time the `next` method is called, the server model is communicated to
   each client using the provided `model_distributor`. For each client, local
@@ -239,7 +245,7 @@ def build_unweighted_fed_avg(
       simulations.
 
   Returns:
-    A `LearningProcess`.
+    A `tff.learning.templates.LearningProcess`.
   """
   if model_aggregator is None:
     model_aggregator = mean.UnweightedMeanFactory()

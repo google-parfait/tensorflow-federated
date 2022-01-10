@@ -98,6 +98,14 @@ class ModelDeltaClientWorkComputationTest(test_case.TestCase,
           sgdm.build_sgdm(1.0),
           client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
 
+  def test_negative_proximal_strength_raises(self):
+    with self.assertRaises(ValueError):
+      model_delta_client_work.build_model_delta_client_work(
+          model_examples.LinearRegression,
+          sgdm.build_sgdm(1.0),
+          client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+          delta_l2_regularizer=-1.0)
+
 
 class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
                                         parameterized.TestCase):
@@ -218,6 +226,37 @@ class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
       mock_method.assert_not_called()
     else:
       mock_method.assert_called()
+
+  @parameterized.named_parameters(
+      ('tff_optimizer', sgdm.build_sgdm(1.0)),
+      ('keras_optimizer', lambda: tf.keras.optimizers.SGD(1.0)))
+  def test_delta_regularizer_yields_smaller_model_delta(self, optimizer):
+    simple_process = model_delta_client_work.build_model_delta_client_work(
+        self.create_model,
+        optimizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        delta_l2_regularizer=0.0)
+    proximal_process = model_delta_client_work.build_model_delta_client_work(
+        self.create_model,
+        sgdm.build_sgdm(1.0),
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        delta_l2_regularizer=1.0)
+    client_data = [self.create_dataset()]
+    client_model_weights = [self.initial_weights()]
+
+    simple_output = simple_process.next(simple_process.initialize(),
+                                        client_model_weights, client_data)
+    proximal_output = proximal_process.next(proximal_process.initialize(),
+                                            client_model_weights, client_data)
+
+    simple_update_norm = tf.linalg.global_norm(
+        tf.nest.flatten(simple_output.result[0].update))
+    proximal_update_norm = tf.linalg.global_norm(
+        tf.nest.flatten(proximal_output.result[0].update))
+    self.assertGreater(simple_update_norm, proximal_update_norm)
+
+    self.assertEqual(simple_output.measurements['stat']['num_examples'],
+                     proximal_output.measurements['stat']['num_examples'])
 
   @parameterized.named_parameters(
       ('tff_simple', sgdm.build_sgdm(1.0)),

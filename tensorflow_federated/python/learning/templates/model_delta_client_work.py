@@ -46,7 +46,10 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 # TODO(b/213433744): Make this method private.
 def build_model_delta_update_with_tff_optimizer(
-    model_fn, weighting, use_experimental_simulation_loop: bool = False):
+    model_fn,
+    weighting,
+    delta_l2_regularizer=0.0,
+    use_experimental_simulation_loop: bool = False):
   """Creates client update logic in FedAvg using a TFF optimizer.
 
   In contrast to using a `tf.keras.optimizers.Optimizer`, we avoid creating
@@ -59,6 +62,8 @@ def build_model_delta_update_with_tff_optimizer(
   Args:
     model_fn: A no-arg callable returning a `tff.learning.Model`.
     weighting: A `tff.learning.ClientWeighting` value.
+    delta_l2_regularizer: A nonnegative float, L2 regularization strength of the
+      model delta.
     use_experimental_simulation_loop: Controls the reduce loop function for the
       input dataset. An experimental reduce loop is used for simulation.
 
@@ -82,6 +87,11 @@ def build_model_delta_update_with_tff_optimizer(
         output = model.forward_pass(batch, training=True)
 
       gradients = tape.gradient(output.loss, model_weights.trainable)
+      if delta_l2_regularizer > 0.0:
+        proximal_term = tf.nest.map_structure(
+            lambda x, y: delta_l2_regularizer * (y - x),
+            model_weights.trainable, initial_weights.trainable)
+        gradients = tf.nest.map_structure(tf.add, gradients, proximal_term)
       optimizer_state, updated_weights = optimizer.next(
           optimizer_state, tuple(tf.nest.flatten(model_weights.trainable)),
           tuple(tf.nest.flatten(gradients)))
@@ -130,7 +140,10 @@ def build_model_delta_update_with_tff_optimizer(
 
 # TODO(b/213433744): Make this method private.
 def build_model_delta_update_with_keras_optimizer(
-    model_fn, weighting, use_experimental_simulation_loop: bool = False):
+    model_fn,
+    weighting,
+    delta_l2_regularizer=0.0,
+    use_experimental_simulation_loop: bool = False):
   """Creates client update logic in FedAvg using a `tf.keras` optimizer.
 
   In contrast to using a `tff.learning.optimizers.Optimizer`, we have to
@@ -141,6 +154,8 @@ def build_model_delta_update_with_keras_optimizer(
   Args:
     model_fn: A no-arg callable returning a `tff.learning.Model`.
     weighting: A `tff.learning.ClientWeighting` value.
+    delta_l2_regularizer: A nonnegative float, L2 regularization strength of the
+      model delta.
     use_experimental_simulation_loop: Controls the reduce loop function for the
       input dataset. An experimental reduce loop is used for simulation.
 
@@ -163,6 +178,11 @@ def build_model_delta_update_with_keras_optimizer(
         output = model.forward_pass(batch, training=True)
 
       gradients = tape.gradient(output.loss, model_weights.trainable)
+      if delta_l2_regularizer > 0.0:
+        proximal_term = tf.nest.map_structure(
+            lambda x, y: delta_l2_regularizer * (y - x),
+            model_weights.trainable, initial_weights.trainable)
+        gradients = tf.nest.map_structure(tf.add, gradients, proximal_term)
       grads_and_vars = zip(gradients, model_weights.trainable)
       optimizer.apply_gradients(grads_and_vars)
 
@@ -216,6 +236,8 @@ def build_model_delta_client_work(
     optimizer: Union[optimizer_base.Optimizer,
                      Callable[[], tf.keras.optimizers.Optimizer]],
     client_weighting: client_weight_lib.ClientWeighting,
+    delta_l2_regularizer: float = 0.0,
+    *,
     use_experimental_simulation_loop: bool = False
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
@@ -239,6 +261,10 @@ def build_model_delta_client_work(
     optimizer: A `tff.learning.optimizers.Optimizer`, or a no-arg callable that
       returns a `tf.keras.Optimizer`.
     client_weighting:  A `tff.learning.ClientWeighting` value.
+    delta_l2_regularizer: A nonnegative float representing the parameter of the
+      L2-regularization term applied to the delta from initial model weights
+      during training. Values larger than 0.0 prevent clients from moving too
+      far from the server model during local training.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -249,6 +275,10 @@ def build_model_delta_client_work(
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
+  py_typecheck.check_type(delta_l2_regularizer, float)
+  if delta_l2_regularizer < 0.0:
+    raise ValueError(f'Provided delta_l2_regularizer must be non-negative,'
+                     f'but found: {delta_l2_regularizer}')
   if not (isinstance(optimizer, optimizer_base.Optimizer) or
           callable(optimizer)):
     raise TypeError(
@@ -267,7 +297,8 @@ def build_model_delta_client_work(
     @computations.tf_computation(weights_type, data_type)
     def client_update_computation(initial_model_weights, dataset):
       client_update = build_model_delta_update_with_tff_optimizer(
-          model_fn, client_weighting, use_experimental_simulation_loop)
+          model_fn, client_weighting, delta_l2_regularizer,
+          use_experimental_simulation_loop)
       return client_update(optimizer, initial_model_weights, dataset)
 
   else:
@@ -276,7 +307,8 @@ def build_model_delta_client_work(
     def client_update_computation(initial_model_weights, dataset):
       keras_optimizer = optimizer()
       client_update = build_model_delta_update_with_keras_optimizer(
-          model_fn, client_weighting, use_experimental_simulation_loop)
+          model_fn, client_weighting, delta_l2_regularizer,
+          use_experimental_simulation_loop)
       return client_update(keras_optimizer, initial_model_weights, dataset)
 
   @computations.federated_computation

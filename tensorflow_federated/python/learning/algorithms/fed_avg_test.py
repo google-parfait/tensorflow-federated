@@ -25,6 +25,7 @@ from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_avg
+from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import distributors
 
@@ -56,6 +57,29 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
         client_optimizer_fn=optimizer_fn,
         model_aggregator=aggregation_factory())
     self.assertEqual(mock_model_fn.call_count, 3)
+
+  @parameterized.named_parameters(
+      ('non-simulation_tff_optimizer', False, sgdm.build_sgdm(1.0)),
+      ('simulation_tff_optimizer', True, sgdm.build_sgdm(1.0)),
+      ('non-simulation_keras_optimizer', False,
+       lambda: tf.keras.optimziers.SGD(1.0)),
+      ('simulation_keras_optimizer', True,
+       lambda: tf.keras.optimziers.SGD(1.0)),
+  )
+  @mock.patch.object(
+      dataset_reduce,
+      '_dataset_reduce_fn',
+      wraps=dataset_reduce._dataset_reduce_fn)
+  def test_client_tf_dataset_reduce_fn(self, simulation, optimizer,
+                                       mock_method):
+    fed_avg.build_weighted_fed_avg(
+        model_fn=model_examples.LinearRegression,
+        client_optimizer_fn=sgdm.build_sgdm(1.0),
+        use_experimental_simulation_loop=simulation)
+    if simulation:
+      mock_method.assert_not_called()
+    else:
+      mock_method.assert_called()
 
   @mock.patch('tensorflow_federated.python.learning.'
               'algorithms.fed_avg.build_weighted_fed_avg')
