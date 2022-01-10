@@ -624,6 +624,8 @@ def trees_equal(comp_1, comp_2):
       return comp_1 is None and comp_2 is None
     if type(comp_1) != type(comp_2):  # pylint: disable=unidiomatic-typecheck
       return False
+    if hash(comp_1) != hash(comp_2):
+      return False
     if comp_1.type_signature != comp_2.type_signature:
       return False
     if comp_1.is_block():
