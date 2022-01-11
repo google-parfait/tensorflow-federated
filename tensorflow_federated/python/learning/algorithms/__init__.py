@@ -16,5 +16,6 @@
 from tensorflow_federated.python.learning.algorithms.fed_avg import build_unweighted_fed_avg
 from tensorflow_federated.python.learning.algorithms.fed_avg import build_weighted_fed_avg
 from tensorflow_federated.python.learning.algorithms.fed_avg_with_optimizer_schedule import build_weighted_fed_avg_with_optimizer_schedule
+from tensorflow_federated.python.learning.algorithms.fed_prox import build_unweighted_fed_prox
 from tensorflow_federated.python.learning.algorithms.fed_prox import build_weighted_fed_prox
 from tensorflow_federated.python.learning.algorithms.fed_sgd import build_fed_sgd
