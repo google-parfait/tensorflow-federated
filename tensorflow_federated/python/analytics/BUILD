@@ -26,6 +26,7 @@ py_library(
         ":data_processing",
         ":histogram_processing",
         "//tensorflow_federated/python/analytics/heavy_hitters",
+        "//tensorflow_federated/python/analytics/hierarchical_histogram:hierarchical_histogram_decoder",
         "//tensorflow_federated/python/analytics/hierarchical_histogram:hierarchical_histogram_lib",
     ],
 )
