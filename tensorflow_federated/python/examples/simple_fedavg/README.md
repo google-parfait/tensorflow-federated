@@ -50,12 +50,7 @@ This EMNIST example can easily be adapted for experimental changes:
     which can be substituted with `tff.learning.Model` by calling
     `tff.learning.from_keras_model`. Note that the inner
     [keras_model](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/emnist_fedavg_main.py#L174)
-    of `tff.learning.Model` may not be directly accessible for evaluation. We
-    would also encourage interested users to investigate
-    [metrics_manager](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/utils/metrics_manager.py)
-    ,
-    [checkpoint_manager](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/utils/checkpoint_manager.py)
-    and other helper functions to customize the python driver file.
+    of `tff.learning.Model` may not be directly accessible for evaluation.
 
 *   In the TF function file
     [simple_fedavg_tf](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/simple_fedavg_tf.py),

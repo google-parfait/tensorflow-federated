@@ -23,47 +23,14 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
-        ":checkpoint_manager",
-        ":csv_manager",
         ":iterative_process_compositions",
-        ":metrics_manager",
         ":sampling_utils",
         ":server_utils",
-        ":tensorboard_manager",
         ":training_loop",
         "//tensorflow_federated/python/simulation/baselines",
         "//tensorflow_federated/python/simulation/datasets",
         "//tensorflow_federated/python/simulation/models",
     ],
-)
-
-py_library(
-    name = "checkpoint_manager",
-    srcs = ["checkpoint_manager.py"],
-    srcs_version = "PY3",
-)
-
-py_test(
-    name = "checkpoint_manager_test",
-    srcs = ["checkpoint_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":checkpoint_manager"],
-)
-
-py_library(
-    name = "csv_manager",
-    srcs = ["csv_manager.py"],
-    srcs_version = "PY3",
-    deps = [":metrics_manager"],
-)
-
-py_test(
-    name = "csv_manager_test",
-    srcs = ["csv_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":csv_manager"],
 )
 
 py_library(
@@ -97,12 +64,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
     ],
-)
-
-py_library(
-    name = "metrics_manager",
-    srcs = ["metrics_manager.py"],
-    srcs_version = "PY3",
 )
 
 py_library(
@@ -147,21 +108,6 @@ py_test(
 )
 
 py_library(
-    name = "tensorboard_manager",
-    srcs = ["tensorboard_manager.py"],
-    srcs_version = "PY3",
-    deps = [":metrics_manager"],
-)
-
-py_test(
-    name = "tensorboard_manager_test",
-    srcs = ["tensorboard_manager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":tensorboard_manager"],
-)
-
-py_library(
     name = "training_loop",
     srcs = ["training_loop.py"],
     srcs_version = "PY3",
@@ -170,8 +116,6 @@ py_library(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
-        "//tensorflow_federated/python/simulation:checkpoint_manager",
-        "//tensorflow_federated/python/simulation:metrics_manager",
     ],
 )
 
@@ -186,7 +130,5 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/program:release_manager",
-        "//tensorflow_federated/python/simulation:checkpoint_manager",
-        "//tensorflow_federated/python/simulation:metrics_manager",
     ],
 )
