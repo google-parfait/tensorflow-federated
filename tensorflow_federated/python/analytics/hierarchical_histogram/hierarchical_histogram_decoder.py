@@ -62,6 +62,8 @@ class HierarchicalHistogramDecoder():
 
   def __init__(self,
                hierarchical_histogram: tf.RaggedTensor,
+               lower_bound: float,
+               upper_bound: float,
                use_efficient: bool = False):
     """Initializer for `HierarchicalHistogramDecoder`.
 
@@ -75,11 +77,17 @@ class HierarchicalHistogramDecoder():
     Args:
       hierarchical_histogram: A `tf.RaggedTensor` for the hierarchical
         histogram.
+      lower_bound: A `float` representing the lower bound of the hierarchical
+        histogram data.
+      upper_bound: A `float` representing the upper bound of the hierarchical
+        histogram data.
       use_efficient: A boolean indicating the usage of the efficient tree
         aggregation algorithm.
     """
 
     self._hierarchical_histogram = hierarchical_histogram.to_list()
+    self._lower_bound = lower_bound
+    self._upper_bound = upper_bound
     _check_hierarchical_histogram_shape(self._hierarchical_histogram)
     if len(self._hierarchical_histogram) == 1:
       self._arity = 2
@@ -397,15 +405,17 @@ class HierarchicalHistogramDecoder():
 
     return quantile
 
-  def quantile_query(self, q) -> int:
+  def quantile_query(self, q) -> Tuple[float, float]:
     """Queries the q-quantile in a hierarchical historgram.
 
     Args:
       q: A `float` specifying the wanted q-quantile.
 
     Returns:
-      An `int` representing the index of the leftmost leaf such that the sum of
-      the bins before it accounts for at least `q` proportion of the total sum.
+      A `tuple` representing the range of values within the bin such that the
+      sum of bins before it accounts for at least `q` proportion of the total
+      sum.
+
 
     Raises:
       `ValueError` if the hierarchical histogram is not consistent (e.g. with DP
@@ -421,4 +431,7 @@ class HierarchicalHistogramDecoder():
       raise ValueError(f'`q={q}` is expected to be within [0, 1].')
 
     total_weight = self.range_query(0, self._size - 1)
-    return self._quantile_query(q * total_weight, 0, 0)
+    bin_index = self._quantile_query(q * total_weight, 0, 0)
+    bin_size = (self._upper_bound - self._lower_bound) / self._size
+    bin_lower_bound = self._lower_bound + bin_index * bin_size
+    return bin_lower_bound, bin_lower_bound + bin_size
