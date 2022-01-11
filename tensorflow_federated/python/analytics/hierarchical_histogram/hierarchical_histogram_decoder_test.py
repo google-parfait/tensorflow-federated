@@ -65,7 +65,7 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
       hierarchical_histogram = _create_noisy_hierarchical_histogram(
           arity, depth)
     decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
-        hierarchical_histogram)
+        hierarchical_histogram, 0, arity**(depth - 1))
     self.assertEqual(decoder._check_consistency(), is_consistent)
 
   @parameterized.named_parameters([
@@ -86,7 +86,7 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
     noisy_hierarchical_histogram = _create_noisy_hierarchical_histogram(
         arity, depth, scale)
     decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
-        noisy_hierarchical_histogram)
+        noisy_hierarchical_histogram, 0, arity**(depth - 1))
     decoder.enforce_consistency()
 
     self.assertTrue(decoder._check_consistency())
@@ -109,7 +109,7 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
   def test_init_raises(self, hierarchical_histogram):
     with self.assertRaises(ValueError):
       hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
-          hierarchical_histogram)
+          hierarchical_histogram, 0, 0)
 
   @parameterized.named_parameters(
       ('binary_4_layer_ne', 2, 4, False, 1, 1),
@@ -124,7 +124,10 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
   def test_node_query(self, arity, depth, use_efficient, layer, index):
     hierarchical_histogram = _create_hierarchical_histogram(arity, depth)
     decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
-        hierarchical_histogram, use_efficient=use_efficient)
+        hierarchical_histogram,
+        0,
+        arity**(depth - 1),
+        use_efficient=use_efficient)
     node_value = decoder.node_query(layer, index)
     # The test histogram is from 0 to the length of the histogram, so the
     # expected node value is as follows.
@@ -145,7 +148,7 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
   def test_node_query_raises(self, layer, index):
     hierarchical_histogram = _create_hierarchical_histogram(arity=2, depth=1)
     decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
-        hierarchical_histogram)
+        hierarchical_histogram, 0, 1)
     with self.assertRaises(ValueError):
       decoder.node_query(layer, index)
 
@@ -162,7 +165,10 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
   def test_range_query(self, arity, depth, use_efficient, left, right):
     hierarchical_histogram = _create_hierarchical_histogram(arity, depth)
     decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
-        hierarchical_histogram, use_efficient=use_efficient)
+        hierarchical_histogram,
+        0,
+        arity**(depth - 1),
+        use_efficient=use_efficient)
     range_sum = decoder.range_query(left, right)
     # The test histogram is from 0 to the length of the histogram, so the
     # expected node value is as follows.
@@ -177,26 +183,26 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
   def test_range_query_raises(self, left, right):
     hierarchical_histogram = _create_hierarchical_histogram(arity=2, depth=2)
     decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
-        hierarchical_histogram)
+        hierarchical_histogram, 0, 2)
     with self.assertRaises(ValueError):
       decoder.range_query(left, right)
 
   @parameterized.named_parameters(
-      ('binary_0', 2, 0.0, 0),
-      ('binary_0_25', 2, 0.25, 4),
-      ('binary_0_5', 2, 0.5, 5),
-      ('binary_0_75', 2, 0.75, 6),
-      ('binary_1', 2, 1.0, 7),
-      ('ternary_0', 3, 0.0, 0),
-      ('ternary_0_25', 3, 0.25, 13),
-      ('ternary_0_5', 3, 0.5, 19),
-      ('ternary_0_75', 3, 0.75, 23),
-      ('ternary_1', 3, 1.0, 26),
+      ('binary_0', 2, 0.0, (0, 1)),
+      ('binary_0_25', 2, 0.25, (4, 5)),
+      ('binary_0_5', 2, 0.5, (5, 6)),
+      ('binary_0_75', 2, 0.75, (6, 7)),
+      ('binary_1', 2, 1.0, (7, 8)),
+      ('ternary_0', 3, 0.0, (0, 1)),
+      ('ternary_0_25', 3, 0.25, (13, 14)),
+      ('ternary_0_5', 3, 0.5, (19, 20)),
+      ('ternary_0_75', 3, 0.75, (23, 24)),
+      ('ternary_1', 3, 1.0, (26, 27)),
   )
   def test_quantile_query(self, arity, q, expected_quantile):
     hierarchical_histogram = _create_hierarchical_histogram(arity, depth=4)
     decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
-        hierarchical_histogram)
+        hierarchical_histogram, 0, arity**3)
     quantile = decoder.quantile_query(q)
     self.assertEqual(quantile, expected_quantile)
 
@@ -207,7 +213,7 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
   def test_quantile_query_raises_invalid_quantile(self, q):
     hierarchical_histogram = _create_hierarchical_histogram(arity=2, depth=2)
     decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
-        hierarchical_histogram)
+        hierarchical_histogram, 0, 2)
     with self.assertRaises(ValueError):
       decoder.quantile_query(q)
 
@@ -215,7 +221,7 @@ class HierarchicalHistogramDecoderTest(tf.test.TestCase,
     hierarchical_histogram = _create_noisy_hierarchical_histogram(
         arity=2, depth=2)
     decoder = hierarchical_histogram_decoder.HierarchicalHistogramDecoder(
-        hierarchical_histogram)
+        hierarchical_histogram, 0, 2)
     with self.assertRaises(ValueError):
       decoder.quantile_query(0.5)
 
