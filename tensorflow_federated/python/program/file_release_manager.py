@@ -47,9 +47,6 @@ class FileReleaseManagerPermissionDeniedError(Exception):
   pass
 
 
-_CSV_KEY_FIELDNAME = 'round_num'
-
-
 @enum.unique
 class CSVSaveMode(enum.Enum):
   APPEND = 'append'
@@ -91,43 +88,52 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
 
   def __init__(self,
                file_path: Union[str, os.PathLike],
-               save_mode: CSVSaveMode = CSVSaveMode.APPEND):
+               save_mode: CSVSaveMode = CSVSaveMode.APPEND,
+               key_fieldname: str = 'key'):
     """Returns an initialized `tff.program.CSVFileReleaseManager`.
 
     Args:
-      file_path: A path on the file system to save release values. If this file
+      file_path: A path on the file system to save releases values. If this file
         does not exist it will be created.
-      save_mode: A `tff.program.CSVSaveMode` specifying how to save release
+      save_mode: A `tff.program.CSVSaveMode` specifying how to save released
         values.
+      key_fieldname: A `str` specifying the fieldname used for the key when
+        saving released value.
 
     Raises:
-      ValueError: If `file_path` is an empty string.
-      FileReleaseManagerIncompatibleFileError: If the file exists but is
-        incompatible with the `tff.program.CSVFileReleaseManager`.
+      ValueError: If `file_path` or `key_fieldname` is an empty string.
+      FileReleaseManagerIncompatibleFileError: If the file exists but does not
+        contain a fieldname of `key_fieldname`.
     """
     py_typecheck.check_type(file_path, (str, os.PathLike))
     py_typecheck.check_type(save_mode, CSVSaveMode)
+    py_typecheck.check_type(key_fieldname, str)
     if not file_path:
       raise ValueError('Expected `file_path` to not be an empty string.')
+    if not key_fieldname:
+      raise ValueError('Expected `key_fieldname` to not be an empty string.')
     file_dir = os.path.dirname(file_path)
     if not tf.io.gfile.exists(file_dir):
       tf.io.gfile.makedirs(file_dir)
     self._file_path = file_path
     self._save_mode = save_mode
+    self._key_fieldname = key_fieldname
 
     if tf.io.gfile.exists(self._file_path):
       fieldnames, values = self._read_values()
-      if _CSV_KEY_FIELDNAME not in fieldnames:
+      if self._key_fieldname not in fieldnames:
         raise FileReleaseManagerIncompatibleFileError(
-            f'The file \'{self._file_path}\' exists but is incompatible with '
-            'the `tff.program.CSVFileReleaseManager`. It is possible that this '
-            'file was not created by a `tff.program.CSVFileReleaseManager`.')
+            f'The file \'{self._file_path}\' exists but does not contain a '
+            f'fieldname of \'{self._key_fieldname}\'. It is possible that this '
+            'file was not created by a `tff.program.CSVFileReleaseManager` or '
+            'the `tff.program.CSVFileReleaseManager` was constructed with a '
+            'different `key_fieldname`.')
       if values:
-        self._latest_key = int(values[-1][_CSV_KEY_FIELDNAME])
+        self._latest_key = int(values[-1][self._key_fieldname])
       else:
         self._latest_key = None
     else:
-      self._write_values([_CSV_KEY_FIELDNAME], [])
+      self._write_values([self._key_fieldname], [])
       self._latest_key = None
 
   def _read_values(self) -> Tuple[List[str], List[Dict[str, Any]]]:
@@ -186,17 +192,17 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
 
   def _remove_all_values(self):
     """Removes all values from the managed CSV."""
-    self._write_values([_CSV_KEY_FIELDNAME], [])
+    self._write_values([self._key_fieldname], [])
     self._latest_key = None
 
   def _remove_values_after(self, key: int):
     """Removes all values after `key` from the managed CSV."""
     py_typecheck.check_type(key, int)
-    filtered_fieldnames = [_CSV_KEY_FIELDNAME]
+    filtered_fieldnames = [self._key_fieldname]
     filtered_values = []
     _, values = self._read_values()
     for value in values:
-      current_key = int(value[_CSV_KEY_FIELDNAME])
+      current_key = int(value[self._key_fieldname])
       if current_key <= key:
         fieldnames = [x for x in value.keys() if x not in filtered_fieldnames]
         filtered_fieldnames.extend(fieldnames)
@@ -231,7 +237,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     for x, y in flattened_value.items():
       normalized_value[x] = np.array(y).tolist()
 
-    normalized_value[_CSV_KEY_FIELDNAME] = key
+    normalized_value[self._key_fieldname] = key
     if self._save_mode == CSVSaveMode.APPEND:
       self._append_value(normalized_value)
     elif self._save_mode == CSVSaveMode.WRITE:
@@ -302,8 +308,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
       value: A materialized value, a value reference, or a structure of
         materialized values and value references representing the value to
         release.
-      key: An integer used to reference the released `value`, `key` represents a
-        step in a federated program.
+      key: An integer used to reference the released `value`.
     """
     py_typecheck.check_type(key, int)
     path = self._get_path_for_key(key)

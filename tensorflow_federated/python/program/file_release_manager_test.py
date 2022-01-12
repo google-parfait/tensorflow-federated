@@ -70,10 +70,7 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
 
   def test_initializes_with_empty_file(self):
     temp_file = self.create_tempfile()
-    _write_values_to_csv(
-        file_path=temp_file,
-        fieldnames=[file_release_manager._CSV_KEY_FIELDNAME],
-        values=[])
+    _write_values_to_csv(file_path=temp_file, fieldnames=['key'], values=[])
     self.assertTrue(os.path.exists(temp_file))
 
     release_mngr = file_release_manager.CSVFileReleaseManager(
@@ -85,11 +82,11 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
     temp_file = self.create_tempfile()
     _write_values_to_csv(
         file_path=temp_file,
-        fieldnames=[file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
+        fieldnames=['key', 'a', 'b'],
         values=[{
-            file_release_manager._CSV_KEY_FIELDNAME: 1,
+            'key': 1,
             'a': 10,
-            'b': 20,
+            'b': 20
         }])
     self.assertTrue(os.path.exists(temp_file))
 
@@ -156,6 +153,53 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
       file_release_manager.CSVFileReleaseManager(
           file_path=temp_file, save_mode=save_mode)
 
+  def test_does_not_raise_type_error_with_key_fieldname(self):
+    temp_file = self.create_tempfile()
+    os.remove(temp_file)
+
+    try:
+      file_release_manager.CSVFileReleaseManager(
+          file_path=temp_file, key_fieldname='z')
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('bool', True),
+      ('int', 1),
+      ('list', []),
+  )
+  def test_raises_type_error_with_key_fieldname(self, key_fieldname):
+    temp_file = self.create_tempfile()
+    os.remove(temp_file)
+
+    with self.assertRaises(TypeError):
+      file_release_manager.CSVFileReleaseManager(
+          file_path=temp_file, key_fieldname=key_fieldname)
+
+  def test_raises_value_error_with_key_fieldname_empty(self):
+    temp_file = self.create_tempfile()
+    os.remove(temp_file)
+
+    with self.assertRaises(ValueError):
+      file_release_manager.CSVFileReleaseManager(
+          file_path=temp_file, key_fieldname='')
+
+  def test_raises_incompatible_file_error_with_unknown_key_fieldname(self):
+    temp_file = self.create_tempfile()
+    _write_values_to_csv(
+        file_path=temp_file,
+        fieldnames=['z', 'a', 'b'],
+        values=[{
+            'z': 1,
+            'a': 10,
+            'b': 20
+        }])
+
+    with self.assertRaises(
+        file_release_manager.FileReleaseManagerIncompatibleFileError):
+      file_release_manager.CSVFileReleaseManager(file_path=temp_file)
+
   def test_raises_incompatible_file_error_with_unknown_file(self):
     temp_file = self.create_tempfile()
 
@@ -174,21 +218,16 @@ class CSVFileReleaseManagerReadValuesTest(parameterized.TestCase):
 
     fieldnames, values = release_mngr._read_values()
 
-    self.assertEqual(fieldnames, [file_release_manager._CSV_KEY_FIELDNAME])
+    self.assertEqual(fieldnames, ['key'])
     self.assertEqual(values, [])
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('no_values',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       []),
-      ('one_value',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       [{file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 10, 'b': 20}]),
-      ('two_values',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       [{file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 10, 'b': 20},
-        {file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 11, 'b': 21}]),
+      ('no_values', ['key', 'a', 'b'], []),
+      ('one_value', ['key', 'a', 'b'], [{'key': 1, 'a': 10, 'b': 20}]),
+      ('two_values', ['key', 'a', 'b'],
+       [{'key': 1, 'a': 10, 'b': 20},
+        {'key': 1, 'a': 11, 'b': 21}]),
   )
   # pyformat: enable
   def test_returns_values_from_existing_file(self, fieldnames, values):
@@ -209,16 +248,11 @@ class CSVFileReleaseManagerWriteValuesTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('no_values',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       []),
-      ('one_value',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       [{file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 10, 'b': 20}]),
-      ('two_values',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       [{file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 10, 'b': 20},
-        {file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 11, 'b': 21}]),
+      ('no_values', ['key', 'a', 'b'], []),
+      ('one_value', ['key', 'a', 'b'], [{'key': 1, 'a': 10, 'b': 20}]),
+      ('two_values', ['key', 'a', 'b'],
+       [{'key': 1, 'a': 10, 'b': 20},
+        {'key': 1, 'a': 11, 'b': 21}]),
   )
   # pyformat: enable
   def test_writes_values_to_empty_file(self, fieldnames, values):
@@ -236,27 +270,22 @@ class CSVFileReleaseManagerWriteValuesTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('no_values',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       []),
-      ('one_value',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       [{file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 10, 'b': 20}]),
-      ('two_values',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       [{file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 10, 'b': 20},
-        {file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 11, 'b': 21}]),
+      ('no_values', ['key', 'a', 'b'], []),
+      ('one_value', ['key', 'a', 'b'], [{'key': 1, 'a': 10, 'b': 20}]),
+      ('two_values', ['key', 'a', 'b'],
+       [{'key': 1, 'a': 10, 'b': 20},
+        {'key': 1, 'a': 11, 'b': 21}]),
   )
   # pyformat: enable
   def test_writes_values_to_existing_file(self, fieldnames, values):
     temp_file = self.create_tempfile()
     _write_values_to_csv(
         file_path=temp_file,
-        fieldnames=[file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
+        fieldnames=['key', 'a', 'b'],
         values=[{
-            file_release_manager._CSV_KEY_FIELDNAME: 1,
+            'key': 1,
             'a': 10,
-            'b': 20,
+            'b': 20
         }])
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
@@ -286,7 +315,7 @@ class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
     release_mngr._write_value(value)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
-    expected_fieldnames = [file_release_manager._CSV_KEY_FIELDNAME]
+    expected_fieldnames = ['key']
     expected_fieldnames.extend(
         [x for x in value.keys() if x not in expected_fieldnames])
     self.assertEqual(actual_fieldnames, expected_fieldnames)
@@ -306,12 +335,8 @@ class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
   # pyformat: enable
   def test_writes_value_to_existing_file(self, value):
     temp_file = self.create_tempfile()
-    existing_fieldnames = [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b']
-    existing_value = {
-        file_release_manager._CSV_KEY_FIELDNAME: 1,
-        'a': 10,
-        'b': 20,
-    }
+    existing_fieldnames = ['key', 'a', 'b']
+    existing_value = {'key': 1, 'a': 10, 'b': 20}
     _write_values_to_csv(
         file_path=temp_file,
         fieldnames=existing_fieldnames,
@@ -352,7 +377,7 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
     release_mngr._append_value(value)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
-    expected_fieldnames = [file_release_manager._CSV_KEY_FIELDNAME]
+    expected_fieldnames = ['key']
     expected_fieldnames.extend(
         [x for x in value.keys() if x not in expected_fieldnames])
     self.assertEqual(actual_fieldnames, expected_fieldnames)
@@ -372,12 +397,8 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
   # pyformat: enable
   def test_appends_value_to_existing_file(self, value):
     temp_file = self.create_tempfile()
-    existing_fieldnames = [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b']
-    existing_value = {
-        file_release_manager._CSV_KEY_FIELDNAME: 1,
-        'a': 10,
-        'b': 20,
-    }
+    existing_fieldnames = ['key', 'a', 'b']
+    existing_value = {'key': 1, 'a': 10, 'b': 20}
     _write_values_to_csv(
         file_path=temp_file,
         fieldnames=existing_fieldnames,
@@ -425,22 +446,16 @@ class CSVFileReleaseManagerRemoveAllValuesTest(parameterized.TestCase):
     release_mngr._remove_all_values()
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
-    self.assertEqual(actual_fieldnames,
-                     [file_release_manager._CSV_KEY_FIELDNAME])
+    self.assertEqual(actual_fieldnames, ['key'])
     self.assertEqual(actual_values, [])
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('no_values',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       []),
-      ('one_value',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       [{file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 10, 'b': 20}]),
-      ('two_values',
-       [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
-       [{file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 10, 'b': 20},
-        {file_release_manager._CSV_KEY_FIELDNAME: 1, 'a': 11, 'b': 21}]),
+      ('no_values', ['key', 'a', 'b'], []),
+      ('one_value', ['key', 'a', 'b'], [{'key': 1, 'a': 10, 'b': 20}]),
+      ('two_values', ['key', 'a', 'b'],
+       [{'key': 1, 'a': 10, 'b': 20},
+        {'key': 1, 'a': 11, 'b': 21}]),
   )
   # pyformat: enable
   def test_removes_values_from_existing_file(self, fieldnames, values):
@@ -453,8 +468,7 @@ class CSVFileReleaseManagerRemoveAllValuesTest(parameterized.TestCase):
     release_mngr._remove_all_values()
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
-    self.assertEqual(actual_fieldnames,
-                     [file_release_manager._CSV_KEY_FIELDNAME])
+    self.assertEqual(actual_fieldnames, ['key'])
     self.assertEqual(actual_values, [])
 
 
@@ -473,8 +487,7 @@ class CSVFileReleaseManagerRemoveValuesAfterTest(parameterized.TestCase):
     release_mngr._remove_values_after(key)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
-    self.assertEqual(actual_fieldnames,
-                     [file_release_manager._CSV_KEY_FIELDNAME])
+    self.assertEqual(actual_fieldnames, ['key'])
     self.assertEqual(actual_values, [])
 
   @parameterized.named_parameters(
@@ -484,15 +497,15 @@ class CSVFileReleaseManagerRemoveValuesAfterTest(parameterized.TestCase):
   )
   def test_removes_values_from_existing_file(self, key):
     temp_file = self.create_tempfile()
-    existing_fieldnames = [file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b']
+    existing_fieldnames = ['key', 'a', 'b']
     existing_values = [
         {
-            file_release_manager._CSV_KEY_FIELDNAME: 1,
+            'key': 1,
             'a': 10,
             'b': 20
         },
         {
-            file_release_manager._CSV_KEY_FIELDNAME: 2,
+            'key': 2,
             'a': 11,
             'b': 21
         },
@@ -508,7 +521,7 @@ class CSVFileReleaseManagerRemoveValuesAfterTest(parameterized.TestCase):
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
     if key == 0:
-      expected_fieldnames = [file_release_manager._CSV_KEY_FIELDNAME]
+      expected_fieldnames = ['key']
     else:
       expected_fieldnames = existing_fieldnames
     self.assertEqual(actual_fieldnames, expected_fieldnames)
@@ -538,11 +551,11 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     temp_file = self.create_tempfile()
     _write_values_to_csv(
         file_path=temp_file,
-        fieldnames=[file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
+        fieldnames=['key', 'a', 'b'],
         values=[{
-            file_release_manager._CSV_KEY_FIELDNAME: 1,
+            'key': 1,
             'a': 10,
-            'b': 20,
+            'b': 20
         }])
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
@@ -573,11 +586,11 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     temp_file = self.create_tempfile()
     _write_values_to_csv(
         file_path=temp_file,
-        fieldnames=[file_release_manager._CSV_KEY_FIELDNAME, 'a', 'b'],
+        fieldnames=['key', 'a', 'b'],
         values=[{
-            file_release_manager._CSV_KEY_FIELDNAME: 1,
+            'key': 1,
             'a': 10,
-            'b': 20,
+            'b': 20
         }])
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
@@ -623,11 +636,11 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
       call = mock_append_value.mock_calls[0]
       _, args, _ = call
       actual_value, = args
-      expected_fieldnames = [file_release_manager._CSV_KEY_FIELDNAME]
+      expected_fieldnames = ['key']
       expected_fieldnames.extend(
           [x for x in value.keys() if x not in expected_fieldnames])
       expected_value = {name: '' for name in expected_fieldnames}
-      expected_value.update({file_release_manager._CSV_KEY_FIELDNAME: key})
+      expected_value.update({'key': key})
       expected_value.update(value)
       self.assertEqual(actual_value, expected_value)
 
@@ -652,11 +665,11 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
       call = mock_write_value.mock_calls[0]
       _, args, _ = call
       actual_value, = args
-      expected_fieldnames = [file_release_manager._CSV_KEY_FIELDNAME]
+      expected_fieldnames = ['key']
       expected_fieldnames.extend(
           [x for x in value.keys() if x not in expected_fieldnames])
       expected_value = {name: '' for name in expected_fieldnames}
-      expected_value.update({file_release_manager._CSV_KEY_FIELDNAME: key})
+      expected_value.update({'key': key})
       expected_value.update(value)
       self.assertEqual(actual_value, expected_value)
 
@@ -664,57 +677,57 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('none', None, [{'round_num': '1', '': ''}]),
-      ('bool', True, [{'round_num': '1', '': 'True'}]),
-      ('int', 1, [{'round_num': '1', '': '1'}]),
-      ('str', 'a', [{'round_num': '1', '': 'a'}]),
+      ('none', None, [{'key': '1', '': ''}]),
+      ('bool', True, [{'key': '1', '': 'True'}]),
+      ('int', 1, [{'key': '1', '': '1'}]),
+      ('str', 'a', [{'key': '1', '': 'a'}]),
       ('list',
        [True, 1, 'a'],
-       [{'round_num': '1', '0': 'True', '1': '1', '2': 'a'}]),
-      ('list_empty', [], [{'round_num': '1'}]),
+       [{'key': '1', '0': 'True', '1': '1', '2': 'a'}]),
+      ('list_empty', [], [{'key': '1'}]),
       ('list_nested',
        [[True, 1], ['a']],
-       [{'round_num': '1', '0/0': 'True', '0/1': '1', '1/0': 'a'}]),
+       [{'key': '1', '0/0': 'True', '0/1': '1', '1/0': 'a'}]),
       ('dict',
        {'a': True, 'b': 1, 'c': 'a'},
-       [{'round_num': '1', 'a': 'True', 'b': '1', 'c': 'a'}]),
-      ('dict_empty', {}, [{'round_num': '1'}]),
+       [{'key': '1', 'a': 'True', 'b': '1', 'c': 'a'}]),
+      ('dict_empty', {}, [{'key': '1'}]),
       ('dict_nested',
        {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
-       [{'round_num': '1', 'x/a': 'True', 'x/b': '1', 'y/c': 'a'}]),
+       [{'key': '1', 'x/a': 'True', 'x/b': '1', 'y/c': 'a'}]),
       ('attr',
        test_utils.TestAttrObject1(True, 1),
-       [{'round_num': '1', 'a': 'True', 'b': '1'}]),
+       [{'key': '1', 'a': 'True', 'b': '1'}]),
       ('attr_nested',
        {'a': [test_utils.TestAttrObject1(True, 1)],
         'b': test_utils.TestAttrObject2('a')},
-       [{'round_num': '1', 'a/0/a': 'True', 'a/0/b': '1', 'b/a': 'a'}]),
-      ('tensor_int', tf.constant(1), [{'round_num': '1', '': '1'}]),
-      ('tensor_str', tf.constant('a'), [{'round_num': '1', '': 'b\'a\''}]),
+       [{'key': '1', 'a/0/a': 'True', 'a/0/b': '1', 'b/a': 'a'}]),
+      ('tensor_int', tf.constant(1), [{'key': '1', '': '1'}]),
+      ('tensor_str', tf.constant('a'), [{'key': '1', '': 'b\'a\''}]),
       ('tensor_2d',
        tf.ones((2, 3)),
-       [{'round_num': '1', '': '[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]'}]),
+       [{'key': '1', '': '[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]'}]),
       ('tensor_nested',
        {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]},
-       [{'round_num': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'b\'a\''}]),
-      ('numpy_int', np.int32(1), [{'round_num': '1', '': '1'}]),
+       [{'key': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'b\'a\''}]),
+      ('numpy_int', np.int32(1), [{'key': '1', '': '1'}]),
       ('numpy_2d',
        np.ones((2, 3)),
-       [{'round_num': '1', '': '[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]'}]),
+       [{'key': '1', '': '[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]'}]),
       ('numpy_nested',
        {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
-       [{'round_num': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'a'}]),
+       [{'key': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'a'}]),
       ('server_array_reference',
        test_utils.TestServerArrayReference(1),
-       [{'round_num': '1', '': '1'}]),
+       [{'key': '1', '': '1'}]),
       ('server_array_reference_nested',
        {'a': [test_utils.TestServerArrayReference(True),
               test_utils.TestServerArrayReference(1)],
         'b': [test_utils.TestServerArrayReference('a')]},
-       [{'round_num': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'a'}]),
+       [{'key': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'a'}]),
       ('materialized_values_and_value_references',
        [1, test_utils.TestServerArrayReference(2)],
-       [{'round_num': '1', '0': '1', '1': '2'}]),
+       [{'key': '1', '0': '1', '1': '2'}]),
   )
   # pyformat: enable
   def test_writes_value(self, value, expected_value):
