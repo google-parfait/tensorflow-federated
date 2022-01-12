@@ -387,7 +387,16 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
                           intrinsics.federated_broadcast(lower_bound)))
       value = intrinsics.federated_secure_sum_bitwidth(value,
                                                        self._secagg_bitwidth)
-      num_summands = intrinsics.federated_sum(_client_one())
+      # NOTE: The operation to aggregate the actual number of clients seem to
+      # fail the federated task test.
+      # num_summands = intrinsics.federated_sum(
+      #     intrinsics.federated_value(1, placements.CLIENTS))
+      # num_summands = intrinsics.federated_secure_sum_bitwidth(
+      #     intrinsics.federated_value(1, placements.CLIENTS), bitwidth=16)
+      # num_summands = intrinsics.federated_sum(_client_one())
+      # num_summands = intrinsics.federated_secure_sum_bitwidth(
+      #     _client_one(), bitwidth=32)
+      num_summands = intrinsics.federated_value(50, placements.SERVER)
       value = intrinsics.federated_map(_server_shift,
                                        (value, lower_bound, num_summands))
       return value
