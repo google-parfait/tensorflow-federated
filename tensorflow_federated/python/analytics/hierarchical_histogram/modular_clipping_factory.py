@@ -121,17 +121,18 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
           (value, intrinsics.federated_broadcast(clip_lower),
            intrinsics.federated_broadcast(clip_upper)))
 
-      (agg_output_state, agg_output_result,
-       agg_output_measurements) = inner_agg_next(state, clipped_value)
+      inner_agg_output = inner_agg_next(state, clipped_value)
 
       # Clip the aggregate to the same range again (not considering summands).
       clipped_agg_output_result = intrinsics.federated_map(
-          modular_clip_by_value_fn, (agg_output_result, clip_lower, clip_upper))
+          modular_clip_by_value_fn,
+          (inner_agg_output.result, clip_lower, clip_upper))
 
-      measurements = collections.OrderedDict(modclip=agg_output_measurements)
+      measurements = collections.OrderedDict(
+          modclip=inner_agg_output.measurements)
 
       return measured_process.MeasuredProcessOutput(
-          state=agg_output_state,
+          state=inner_agg_output.state,
           result=clipped_agg_output_result,
           measurements=intrinsics.federated_zip(measurements))
 

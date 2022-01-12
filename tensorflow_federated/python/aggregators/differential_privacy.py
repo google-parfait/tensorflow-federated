@@ -351,17 +351,16 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
           intrinsics.federated_map(derive_sample_params, query_state))
       record = intrinsics.federated_map(get_query_record, (params, value))
 
-      (new_agg_state, agg_result,
-       agg_measurements) = record_agg_process.next(agg_state, record)
+      record_agg_output = record_agg_process.next(agg_state, record)
 
       result, new_query_state, _ = intrinsics.federated_map(
-          get_noised_result, (agg_result, query_state))
+          get_noised_result, (record_agg_output.result, query_state))
 
       query_metrics = intrinsics.federated_map(derive_metrics, new_query_state)
 
-      new_state = (new_query_state, new_agg_state)
+      new_state = (new_query_state, record_agg_output.state)
       measurements = collections.OrderedDict(
-          dp_query_metrics=query_metrics, dp=agg_measurements)
+          dp_query_metrics=query_metrics, dp=record_agg_output.measurements)
       return measured_process.MeasuredProcessOutput(
           intrinsics.federated_zip(new_state), result,
           intrinsics.federated_zip(measurements))

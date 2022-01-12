@@ -146,17 +146,14 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
       quantile_record = intrinsics.federated_map(get_quantile_record,
                                                  (params, value))
 
-      (new_agg_state, agg_result,
-       agg_measurements) = quantile_agg_process.next(agg_state, quantile_record)
-
-      # We expect the quantile record aggregation process to be something simple
-      # like basic sum, so we won't surface its measurements.
-      del agg_measurements
+      quantile_agg_output = quantile_agg_process.next(agg_state,
+                                                      quantile_record)
 
       _, new_quantile_query_state, _ = intrinsics.federated_map(
-          get_noised_result, (agg_result, quantile_query_state))
+          get_noised_result, (quantile_agg_output.result, quantile_query_state))
 
-      return intrinsics.federated_zip((new_quantile_query_state, new_agg_state))
+      return intrinsics.federated_zip(
+          (new_quantile_query_state, quantile_agg_output.state))
 
     report_fn = computations.federated_computation(
         lambda state: state[0].current_estimate, init_fn.type_signature.result)
