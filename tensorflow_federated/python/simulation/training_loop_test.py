@@ -104,7 +104,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
       ('2', 2),
       ('10', 10),
   )
-  def test_training_fns_called(self, total_rounds):
+  def test_training_fns_called_with_tuple_next(self, total_rounds):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 0})
@@ -121,7 +121,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
     for round_num in range(1, total_rounds + 1):
       call = mock.call(round_num)
       calls.append(call)
-    training_selection_fn.assert_has_calls(calls)
+    self.assertEqual(training_selection_fn.call_args_list, calls)
     calls = []
     for round_num in range(1, total_rounds + 1):
       if round_num == 1:
@@ -130,7 +130,42 @@ class RunTrainingProcessTest(parameterized.TestCase):
         state = 'update'
       call = mock.call(state, [0])
       calls.append(call)
-    training_process.next.assert_has_calls(calls)
+    self.assertEqual(training_process.next.call_args_list, calls)
+
+  @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('2', 2),
+      ('10', 10),
+  )
+  def test_training_fns_called_with_odict_next(self, total_rounds):
+    training_process = mock.create_autospec(iterative_process.IterativeProcess)
+    training_process.initialize.return_value = 'initialize'
+    training_process.next.return_value = collections.OrderedDict(
+        state='update', metrics={'metric': 0})
+    training_selection_fn = mock.MagicMock()
+    training_selection_fn.return_value = [0]
+
+    training_loop.run_training_process(
+        training_process=training_process,
+        training_selection_fn=training_selection_fn,
+        total_rounds=total_rounds)
+
+    self.assertEqual(training_process.initialize.call_count, 1)
+    calls = []
+    for round_num in range(1, total_rounds + 1):
+      call = mock.call(round_num)
+      calls.append(call)
+    self.assertEqual(training_selection_fn.call_args_list, calls)
+    calls = []
+    for round_num in range(1, total_rounds + 1):
+      if round_num == 1:
+        state = 'initialize'
+      else:
+        state = 'update'
+      call = mock.call(state, [0])
+      calls.append(call)
+    self.assertEqual(training_process.next.call_args_list, calls)
 
   @parameterized.named_parameters(
       ('0_1', 0, 1),
@@ -164,13 +199,13 @@ class RunTrainingProcessTest(parameterized.TestCase):
       if round_num % rounds_per_evaluation == 0:
         call = mock.call(round_num)
         calls.append(call)
-    evaluation_selection_fn.assert_has_calls(calls)
+    self.assertEqual(evaluation_selection_fn.call_args_list, calls)
     calls = [mock.call('initialize', [0])]
     for round_num in range(1, total_rounds + 1):
       if round_num % rounds_per_evaluation == 0:
         call = mock.call('update', [0])
         calls.append(call)
-    evaluation_fn.assert_has_calls(calls)
+    self.assertEqual(evaluation_fn.call_args_list, calls)
 
   @parameterized.named_parameters(
       ('without_program_state_0_1', 0, 1, None, 0),
@@ -214,7 +249,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
       if round_num % rounds_per_saving_program_state == 0:
         call = mock.call('update', round_num)
         calls.append(call)
-    program_state_manager.save.assert_has_calls(calls)
+    self.assertEqual(program_state_manager.save.call_args_list, calls)
 
   @parameterized.named_parameters(
       ('0', 0),
@@ -248,9 +283,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
       ])
       call = mock.call(metrics, round_num)
       calls.append(call)
-    metrics_manager_1.release.assert_has_calls(calls)
-    metrics_manager_2.release.assert_has_calls(calls)
-    metrics_manager_3.release.assert_has_calls(calls)
+    self.assertEqual(metrics_manager_1.release.call_args_list, calls)
+    self.assertEqual(metrics_manager_2.release.call_args_list, calls)
+    self.assertEqual(metrics_manager_3.release.call_args_list, calls)
 
   @parameterized.named_parameters(
       ('0_1', 0, 1),
@@ -305,9 +340,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
         ])
       call = mock.call(metrics, round_num)
       calls.append(call)
-    metrics_manager_1.release.assert_has_calls(calls)
-    metrics_manager_2.release.assert_has_calls(calls)
-    metrics_manager_3.release.assert_has_calls(calls)
+    self.assertEqual(metrics_manager_1.release.call_args_list, calls)
+    self.assertEqual(metrics_manager_2.release.call_args_list, calls)
+    self.assertEqual(metrics_manager_3.release.call_args_list, calls)
 
   def test_performance_metrics_with_training_and_evaluation_time_10(self):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
@@ -374,7 +409,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
     for round_num in range(version + 1, total_rounds + 1):
       call = mock.call('update', round_num)
       calls.append(call)
-    program_state_manager.save.assert_has_calls(calls)
+    self.assertEqual(program_state_manager.save.call_args_list, calls)
 
 
 if __name__ == '__main__':

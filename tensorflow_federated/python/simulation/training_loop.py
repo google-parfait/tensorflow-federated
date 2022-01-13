@@ -19,6 +19,7 @@ from typing import Any, Callable, Iterable, Mapping, MutableMapping, Optional, T
 
 from absl import logging
 
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
@@ -98,7 +99,8 @@ def _run_training(training_fn: computation_base.Computation,
   metrics = collections.OrderedDict()
   training_time_start = time.time()
   training_data = client_selection_fn(round_num)
-  state, training_metrics = training_fn(state, training_data)
+  state, training_metrics = structure.from_container(
+      training_fn(state, training_data))
   training_time = time.time() - training_time_start
   metrics.update(training_metrics)
   metrics[TRAINING_TIME_KEY] = training_time
@@ -186,9 +188,9 @@ def run_training_process(
   """
   logging.info('Running training process')
   if program_state_manager is not None:
-    structure = training_process.initialize()
+    training_process_structure = training_process.initialize()
     program_state, previous_saved_version = program_state_manager.load_latest(
-        structure)
+        training_process_structure)
   else:
     program_state = None
   if program_state is not None:

@@ -112,6 +112,7 @@ py_library(
     srcs = ["training_loop.py"],
     srcs_version = "PY3",
     deps = [
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/program:program_state_manager",
