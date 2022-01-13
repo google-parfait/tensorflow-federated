@@ -30,6 +30,7 @@ py_library(
         ":gldv2",
         ":shakespeare",
         ":sql_client_data",
+        ":sql_client_data_utils",
         ":stackoverflow",
         ":transforming_client_data",
     ],
@@ -349,6 +350,7 @@ py_test(
 py_library(
     name = "sql_client_data_utils",
     srcs = ["sql_client_data_utils.py"],
+    srcs_version = "PY3",
     deps = [
         ":client_data",
         ":sql_client_data",
@@ -358,5 +360,7 @@ py_library(
 py_test(
     name = "sql_client_data_utils_test",
     srcs = ["sql_client_data_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [":sql_client_data_utils"],
 )

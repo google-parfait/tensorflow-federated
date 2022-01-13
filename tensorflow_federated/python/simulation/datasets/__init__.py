@@ -27,4 +27,6 @@ from tensorflow_federated.python.simulation.datasets.dataset_utils import build_
 from tensorflow_federated.python.simulation.datasets.file_per_user_client_data import FilePerUserClientData
 from tensorflow_federated.python.simulation.datasets.from_tensor_slices_client_data import TestClientData
 from tensorflow_federated.python.simulation.datasets.sql_client_data import SqlClientData
+from tensorflow_federated.python.simulation.datasets.sql_client_data_utils import load_and_parse_sql_client_data
+from tensorflow_federated.python.simulation.datasets.sql_client_data_utils import save_to_sql_client_data
 from tensorflow_federated.python.simulation.datasets.transforming_client_data import TransformingClientData
