@@ -165,6 +165,10 @@ def compose_dataset_computation_with_computation(
 
     @computations.federated_computation(new_param_type)
     def new_computation(param):
+      # `param` can be either an `OrderedDict` or `tuple` depending on whether
+      # the original parameter had named elements. Normalize to `Struct` for
+      # convenience.
+      param = structure.from_container(param)
       datasets_on_clients = intrinsics.federated_map(dataset_computation,
                                                      param[dataset_index])
       original_param = []

@@ -922,7 +922,7 @@ class SelectionFromCalledTensorFlowBlockTest(test_case.TestCase,
     self.assertTrue(mutated)
 
   def test_output_selection_executes_when_selecting_by_name(self):
-    fn = lambda: {'a': tf.constant(0.0), 'b': tf.constant(1.0)}
+    fn = lambda: collections.OrderedDict(a=tf.constant(0.0), b=tf.constant(1.0))
     noarg_tuple = _create_compiled_computation(fn, None)
     called_noarg_tuple = building_blocks.Call(noarg_tuple, None)
     selected_a = building_blocks.Selection(called_noarg_tuple, name='a')

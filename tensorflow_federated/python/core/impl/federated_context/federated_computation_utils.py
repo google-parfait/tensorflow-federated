@@ -67,8 +67,9 @@ def federated_computation_serializer(
     if parameter_type is None:
       result = yield None
     else:
-      result = yield value_impl.Value(
+      arg = value_impl.structural_ref_to_struct(
           building_blocks.Reference(parameter_name, parameter_type))
+      result = yield arg
     annotated_result_type = type_conversions.infer_type(result)
     result = value_impl.to_value(result, annotated_result_type)
     result_comp = result.comp
