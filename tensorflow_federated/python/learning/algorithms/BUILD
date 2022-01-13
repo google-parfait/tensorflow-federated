@@ -23,6 +23,7 @@ py_library(
         ":fed_avg_with_optimizer_schedule",
         ":fed_prox",
         ":fed_sgd",
+        ":kmeans_clustering",
     ],
 )
 

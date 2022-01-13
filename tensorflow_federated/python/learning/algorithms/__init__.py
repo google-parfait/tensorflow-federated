@@ -19,3 +19,4 @@ from tensorflow_federated.python.learning.algorithms.fed_avg_with_optimizer_sche
 from tensorflow_federated.python.learning.algorithms.fed_prox import build_unweighted_fed_prox
 from tensorflow_federated.python.learning.algorithms.fed_prox import build_weighted_fed_prox
 from tensorflow_federated.python.learning.algorithms.fed_sgd import build_fed_sgd
+from tensorflow_federated.python.learning.algorithms.kmeans_clustering import build_fed_kmeans
