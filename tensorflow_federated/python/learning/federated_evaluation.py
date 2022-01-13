@@ -184,6 +184,21 @@ def build_federated_evaluation(
     batch_type = computation_types.to_type(model.input_spec)
     unfinalized_metrics_type = type_conversions.type_from_tensors(
         model.report_local_unfinalized_metrics())
+    # TODO(b/202027089): Remove this try/except logic once all models do not
+    # implement `report_local_outputs` and `federated_output_computation`.
+    try:
+      metrics_aggregation_computation = model.federated_output_computation
+      logging.warning(
+          'DeprecationWarning: `report_local_outputs` and '
+          '`federated_output_computation` are deprecated and will be removed '
+          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+          '`metric_finalizers` instead. The cross-client metrics aggregation '
+          'should be specified as the `metrics_aggregator` argument when you '
+          'build a training process or evaluation computation using this model.'
+      )
+    except NotImplementedError:
+      metrics_aggregation_computation = metrics_aggregator(
+          model.metric_finalizers(), unfinalized_metrics_type)
 
   @computations.federated_computation(
       computation_types.at_server(model_weights_type),
@@ -205,21 +220,6 @@ def build_federated_evaluation(
           intrinsics.federated_broadcast(server_model_weights),
           federated_dataset
       ])
-    # TODO(b/202027089): Remove this try/except logic once all models do not
-    # implement `report_local_outputs` and `federated_output_computation`.
-    try:
-      metrics_aggregation_computation = model.federated_output_computation
-      logging.warning(
-          'DeprecationWarning: `report_local_outputs` and '
-          '`federated_output_computation` are deprecated and will be removed '
-          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers` instead. The cross-client metrics aggregation '
-          'should be specified as the `metrics_aggregator` argument when you '
-          'build a training process or evaluation computation using this model.'
-      )
-    except NotImplementedError:
-      metrics_aggregation_computation = metrics_aggregator(
-          model.metric_finalizers(), unfinalized_metrics_type)
     model_metrics = metrics_aggregation_computation(
         client_outputs.local_outputs)
     statistics = collections.OrderedDict(
