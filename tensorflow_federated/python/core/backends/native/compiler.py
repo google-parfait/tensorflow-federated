@@ -34,7 +34,7 @@ def transform_to_native_form(
   """Compiles a computation for execution in the TFF native runtime.
 
   This function transforms the proto underlying `comp` by transforming it
-  to call-dominant form (see `tff.framework.transform_to_call_dominant` for
+  to call-dominant form (see `tff.framework.to_deduped_call_dominant` for
   definition).
 
   Args:
@@ -56,8 +56,8 @@ def transform_to_native_form(
   try:
     logging.debug('Compiling TFF computation to CDF.')
     with tracing.span(
-        'transform_to_native_form', 'transform_to_call_dominant', span=True):
-      call_dominant_form, _ = transformations.transform_to_call_dominant(
+        'transform_to_native_form', 'to_deduped_call_dominant', span=True):
+      call_dominant_form = transformations.to_deduped_call_dominant(
           computation_building_block)
     logging.debug('Computation compiled to:')
     logging.debug(call_dominant_form.formatted_representation())
