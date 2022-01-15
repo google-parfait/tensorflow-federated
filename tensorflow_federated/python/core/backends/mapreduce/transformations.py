@@ -221,7 +221,7 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
   comp.type_signature.check_function()
   # Drop any unused subcomputations which may reference placements different
   # from the result.
-  simplified = transformations.to_deduped_call_dominant(comp)
+  simplified, _ = transformations.transform_to_call_dominant(comp)
   unplaced, _ = tree_transformations.strip_placement(simplified)
   extracted = parse_tff_to_tf(unplaced, grappler_config_proto)
   check_extraction_result(unplaced, extracted)

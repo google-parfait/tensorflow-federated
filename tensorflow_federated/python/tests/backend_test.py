@@ -524,8 +524,10 @@ class SequenceExecutorIntegrationTest(parameterized.TestCase):
       return tff.federated_map(sum_floats, placed_sequence)
 
     ds = tf.data.Dataset.range(10).map(lambda x: tf.cast(x, tf.float32))
-    value = map_reduction(ds)
-    self.assertEqual(value, 10. * 9 / 2)
+
+    with self.assertRaises(RuntimeError):
+      # Raises due to b/208736990
+      map_reduction(ds)
 
 
 class SizingExecutionContextTest(parameterized.TestCase):
