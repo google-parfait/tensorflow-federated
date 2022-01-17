@@ -580,10 +580,10 @@ def build_model_delta_optimizer_process(
       the server model is broadcast to the clients using the default
       tff.federated_broadcast.
     model_update_aggregation_factory: An optional
-      `tff.aggregators.WeightedAggregationFactory` that contstructs
+      `tff.aggregators.WeightedAggregationFactory` or
+      `tff.aggregators.UnweightedAggregationFactory` that contstructs
       `tff.templates.AggregationProcess` for aggregating the client model
-      updates on the server. If `None`, uses a default constructed
-      `tff.aggregators.MeanFactory`, creating a stateless mean aggregation.
+      updates on the server. If `None`, uses `tff.aggregators.MeanFactory`.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.Model.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
