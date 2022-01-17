@@ -1163,7 +1163,8 @@ class TensorFlowDeserializationTest(test_case.TestCase):
     computation_proto = pb.Computation(
         type=serialized_type, tensorflow=tensorflow_proto)
     init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
-        computation_proto, tf.constant(10), tf.compat.v1.get_default_graph())
+        computation_proto, tf.constant(10), tf.compat.v1.get_default_graph(),
+        '')
     self.assertTrue(tf.is_tensor(result))
     with tf.compat.v1.Session() as sess:
       if init_op:

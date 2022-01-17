@@ -302,6 +302,23 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertCountEqual([x.numpy() for x in result], [0, 1])
 
   @test_contexts.with_contexts
+  def test_twice_used_variable_keeps_separate_state(self):
+
+    def count_one_body():
+      variable = tf.Variable(initial_value=0, name='var_of_interest')
+      with tf.control_dependencies([variable.assign_add(1)]):
+        return variable.read_value()
+
+    count_one_1 = tff.tf_computation(count_one_body)
+    count_one_2 = tff.tf_computation(count_one_body)
+
+    @tff.tf_computation
+    def count_one_twice():
+      return count_one_1(), count_one_1(), count_one_2()
+
+    self.assertEqual((1, 1, 1), count_one_twice())
+
+  @test_contexts.with_contexts
   def test_dynamic_lookup_table(self):
 
     @tff.tf_computation(

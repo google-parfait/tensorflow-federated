@@ -35,6 +35,7 @@ class TensorFlowComputationContext(context_base.Context):
     py_typecheck.check_type(graph, tf.Graph)
     self._graph = graph
     self._init_ops = []
+    self._shared_name_index = 0
 
   @property
   def init_ops(self):
@@ -55,9 +56,11 @@ class TensorFlowComputationContext(context_base.Context):
       raise ValueError(
           'Can only invoke TensorFlow in the body of a TensorFlow '
           'computation; got computation of type {}'.format(computation_oneof))
+    shared_name_suffix = f'_tffshared_{self._shared_name_index}'
+    self._shared_name_index += 1
     init_op, result = (
         tensorflow_utils.deserialize_and_call_tf_computation(
-            computation_proto, arg, self._graph))
+            computation_proto, arg, self._graph, shared_name_suffix))
     if init_op:
       self._init_ops.append(init_op)
     return type_conversions.type_to_py_container(result,

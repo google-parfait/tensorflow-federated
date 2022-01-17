@@ -1072,7 +1072,28 @@ def coerce_dataset_elements_to_tff_type_spec(dataset, element_type):
   return dataset.map(_unwrap_args)
 
 
-def deserialize_and_call_tf_computation(computation_proto, arg, graph):
+def uniquify_shared_names_with_suffix(graph_def: tf.compat.v1.GraphDef,
+                                      suffix: str) -> tf.compat.v1.GraphDef:
+  """Appends unique identifier to any shared names present in `graph`."""
+  # TODO(b/117428091): Upgrade our TF serialization mechanisms in order to
+  # unblock using more modern TF compositional constructs, and avoid direct
+  # proto manipulation as is happening here.
+  num_empty_shared_names = 0
+  for node in graph_def.node:
+    shared_name = node.attr.get('shared_name')
+    if shared_name is not None:
+      if not shared_name.s:
+        # Encountered an empty string shared name, avoid creating a shared name
+        # that starts with an underscore (not allowed by TF).
+        shared_name.s = f'empty_{num_empty_shared_names}'.encode('utf-8')
+        num_empty_shared_names += 1
+      shared_name.s += b'_' + suffix.encode('utf-8')
+  return graph_def
+
+
+def deserialize_and_call_tf_computation(
+    computation_proto: pb.Computation, arg: Any, graph: tf.Graph,
+    shared_names_suffix: str) -> Tuple[str, Any]:
   """Deserializes a TF computation and inserts it into `graph`.
 
   This method performs an action that can be considered roughly the opposite of
@@ -1091,6 +1112,9 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
     arg: The argument to invoke the computation with, or None if the computation
       does not specify a parameter type and does not expects one.
     graph: The graph to stamp into.
+    shared_names_suffix: A string suffix to append to shared names within the
+      graph. This must be unique for each call to
+      `deserialize_and_call_tf_computation` for a given `graph`.
 
   Returns:
     A tuple (init_op, result) where:
@@ -1141,14 +1165,18 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
     orig_init_op_name = computation_proto.tensorflow.initialize_op
     if orig_init_op_name:
       return_elements.append(orig_init_op_name)
+
+    graph_def = serialization_utils.unpack_graph_def(
+        computation_proto.tensorflow.graph_def)
+    graph_def = uniquify_shared_names_with_suffix(graph_def,
+                                                  shared_names_suffix)
     # Note: Unlike MetaGraphDef, the GraphDef alone contains no information
     # about collections, and hence, when we import a graph with Variables,
     # those Variables are not added to global collections, and hence
     # functions like tf.compat.v1.global_variables_initializers() will not
     # contain their initialization ops.
     output_tensors = tf.import_graph_def(
-        serialization_utils.unpack_graph_def(
-            computation_proto.tensorflow.graph_def),
+        graph_def,
         input_map,
         return_elements,
         # Note: It is very important not to return any names from the original
