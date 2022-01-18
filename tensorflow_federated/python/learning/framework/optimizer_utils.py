@@ -35,7 +35,6 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -453,18 +452,6 @@ def _build_one_round_computation(
     return new_server_state, measurements
 
   return one_round_computation
-
-
-# TODO(b/192499783): Move these utils to a more appropriate location.
-def is_stateful_process(process: measured_process.MeasuredProcess) -> bool:
-  """Determine if a `MeasuredProcess` has a non-empty state."""
-
-  def federated_empty_struct(type_spec: computation_types.Type) -> bool:
-    return type_spec.is_struct() or type_spec.is_federated()
-
-  # Check if any child type is not an empty struct.
-  return not type_analysis.contains_only(
-      process.initialize.type_signature.result, federated_empty_struct)
 
 
 def _is_valid_stateful_process(

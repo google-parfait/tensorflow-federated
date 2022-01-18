@@ -23,6 +23,7 @@ from typing import Optional
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 
 
@@ -190,3 +191,26 @@ class IterativeProcess:
   def state_type(self) -> computation_types.Type:
     """The `tff.Type` of the state of the process."""
     return self._state_type
+
+
+def is_stateful(process: IterativeProcess) -> bool:
+  """Determines whether a process is stateful.
+
+  A process that has a non-empty state is called "stateful"; it follows that
+  process with an empty state is called "stateless". In TensorFlow Federated
+  "empty" means a type structure that contains only `tff.types.StructType`; no
+  tensors or other values. These structures are "empty" in the sense no values
+  need be communicated and flattening the structure would result in an empty
+  list.
+
+  Args:
+    process: The `IterativeProcess` to test for statefulness.
+
+  Returns:
+    `True` iff the process is stateful and has a state type structure that
+    contains types other than `tff.types.StructType`, `False` otherwise.
+  """
+  state_type = process.state_type
+  if state_type.is_federated():
+    state_type = state_type.member
+  return not type_analysis.contains_only(state_type, lambda t: t.is_struct())

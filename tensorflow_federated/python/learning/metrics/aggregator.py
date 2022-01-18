@@ -35,6 +35,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
+from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
 
@@ -436,8 +437,7 @@ def secure_sum_then_finalize(
     process = aggregator_factories.get(value_range).create(tensor_type)
     # TODO(b/192499783): replace this condition with a library function once its
     # moved and renamed.
-    if (not process.initialize.type_signature.result.member.is_struct() or
-        len(process.initialize.type_signature.result.member) > 0):  # pylint: disable=g-explicit-length-test
+    if iterative_process.is_stateful(process):
       # Single we hardcode the SecureSumFactory construction above, this error
       # is only hit if someone changes the SecureSumFactory implementation to
       # include state. Such a change should be rolled back.
