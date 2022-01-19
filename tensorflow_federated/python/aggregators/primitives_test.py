@@ -384,7 +384,10 @@ class SecureQuantizedSumStaticAssertsTest(tf.test.TestCase,
           value, np.array(-1.0, dtype.as_numpy_dtype),
           np.array(1.0, dtype.as_numpy_dtype))
 
-    static_assert.assert_contains_secure_aggregation(comp_py_bounds)
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(comp_py_bounds)
+    except:  # pylint: disable=bare-except
+      self.fail('computation contains non-secure aggregation.')
 
     # Bounds provided as tff values.
     @computations.federated_computation(
@@ -394,7 +397,10 @@ class SecureQuantizedSumStaticAssertsTest(tf.test.TestCase,
     def comp_tff_bounds(value, upper_bound, lower_bound):
       return primitives.secure_quantized_sum(value, upper_bound, lower_bound)
 
-    static_assert.assert_contains_secure_aggregation(comp_tff_bounds)
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(comp_tff_bounds)
+    except:  # pylint: disable=bare-except
+      self.fail('Computation contains non-secure aggregation.')
 
 
 class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):

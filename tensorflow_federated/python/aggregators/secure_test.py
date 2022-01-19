@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.core.test import static_assert
 
 _float_at_server = computation_types.at_server(tf.float32)
 _float_at_clients = computation_types.at_clients(tf.float32)
@@ -112,6 +113,11 @@ class SecureModularSumFactoryComputationTest(test_case.TestCase,
             measurements=expected_measurements_type))
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type))
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    except:  # pylint: disable=bare-except
+      self.fail('Factory returned an AggregationProcess containing '
+                'non-secure aggregation.')
 
   def test_float_modulus_raises(self):
     with self.assertRaises(TypeError):
@@ -237,6 +243,11 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
             measurements=expected_measurements_type))
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type))
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    except:  # pylint: disable=bare-except
+      self.fail('Factory returned an AggregationProcess containing '
+                'non-secure aggregation.')
 
   @parameterized.named_parameters(
       ('float_scalar', tf.float32),
@@ -272,6 +283,11 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
             measurements=expected_measurements_type))
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type))
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    except:  # pylint: disable=bare-except
+      self.fail('Factory returned an AggregationProcess containing '
+                'non-secure aggregation.')
 
   @parameterized.named_parameters(
       ('float_scalar', tf.float32),
@@ -309,6 +325,11 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
             measurements=expected_measurements_type))
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type))
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    except:  # pylint: disable=bare-except
+      self.fail('Factory returned an AggregationProcess containing '
+                'non-secure aggregation.')
 
   @parameterized.named_parameters(('int_smaller', -1, 1), ('int_equal', 1, 1),
                                   ('float_smaller', -1.0, 1.0),

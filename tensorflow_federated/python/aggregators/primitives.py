@@ -712,7 +712,7 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
 
   value = intrinsics.federated_map(
       client_shift, (client_value, client_lower_bound, client_upper_bound))
-  num_summands = intrinsics.federated_sum(client_one)
+  num_summands = intrinsics.federated_secure_sum(client_one, max_input=1)
 
   secagg_value_type = value.type_signature.member
   assert secagg_value_type.is_tensor() or secagg_value_type.is_struct()
