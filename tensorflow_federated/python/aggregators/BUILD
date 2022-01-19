@@ -456,7 +456,6 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/core/test:static_assert",
     ],
 )
 
