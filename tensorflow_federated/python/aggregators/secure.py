@@ -387,7 +387,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
                           intrinsics.federated_broadcast(lower_bound)))
       value = intrinsics.federated_secure_sum_bitwidth(value,
                                                        self._secagg_bitwidth)
-      num_summands = intrinsics.federated_secure_sum(_client_one(), max_input=1)
+      num_summands = intrinsics.federated_secure_sum_bitwidth(
+          _client_one(), bitwidth=1)
       value = intrinsics.federated_map(_server_shift,
                                        (value, lower_bound, num_summands))
       return value
