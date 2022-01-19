@@ -19,19 +19,22 @@
 """An implementation of federated evaluation using re-usable layers."""
 
 import collections
-from typing import Callable
+from typing import Any, Callable, OrderedDict
 
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.metrics import aggregator
 
 
 def build_eval_work(
@@ -81,20 +84,30 @@ def build_eval_work(
         dataset=dataset,
         initial_state_fn=lambda: tf.zeros([], dtype=tf.int64))
     return collections.OrderedDict(
-        local_outputs=model.report_local_outputs(), num_examples=num_examples)
+        local_outputs=model.report_local_unfinalized_metrics(),
+        num_examples=num_examples)
 
   return client_eval
 
 
 def build_model_metrics_aggregator(
-    model: model_lib.Model, metrics_type: computation_types.Type
+    model: model_lib.Model,
+    metrics_type: computation_types.Type,
+    metrics_aggregator: Callable[[
+        OrderedDict[str, Callable[[Any],
+                                  Any]], computation_types.StructWithPythonType
+    ], computation_base.Computation] = aggregator.sum_then_finalize
 ) -> computation_impl.ConcreteComputation:
   """Creates a stateless aggregator for client metrics."""
+  unfinalized_metrics_type = type_conversions.type_from_tensors(
+      model.report_local_unfinalized_metrics())
+  metrics_aggregation_computation = metrics_aggregator(
+      model.metric_finalizers(), unfinalized_metrics_type)
 
   @computations.federated_computation(
       computation_types.at_clients(metrics_type))
   def aggregate_metrics(client_metrics):
-    model_metrics = model.federated_output_computation(
+    model_metrics = metrics_aggregation_computation(
         client_metrics.local_outputs)
     statistics = collections.OrderedDict(
         num_examples=intrinsics.federated_sum(client_metrics.num_examples))
