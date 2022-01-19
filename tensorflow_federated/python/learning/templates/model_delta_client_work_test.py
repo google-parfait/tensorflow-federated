@@ -20,7 +20,9 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
@@ -189,10 +191,8 @@ class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
     self.assertDictContainsSubset(
         {
             'num_examples': 8,
-            'num_examples_float': 8.0,
-            'num_batches': 3,
         }, model_output)
-    self.assertBetween(model_output['loss'], np.finfo(np.float32).eps, 10.0)
+    self.assertBetween(model_output['loss'][0], np.finfo(np.float32).eps, 10.0)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
@@ -207,6 +207,43 @@ class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
     self.assertEqual(self.evaluate(client_outputs[0].update_weight), 0.0)
     self.assertAllClose(
         self.evaluate(client_outputs[0].update), [[[0.0], [0.0]], 0.0])
+
+  def test_custom_metrics_aggregator(self):
+
+    def sum_then_finalize_then_times_two(metric_finalizers,
+                                         local_unfinalized_metrics_type):
+
+      @computations.federated_computation(
+          computation_types.at_clients(local_unfinalized_metrics_type))
+      def aggregation_computation(client_local_unfinalized_metrics):
+        unfinalized_metrics_sum = intrinsics.federated_sum(
+            client_local_unfinalized_metrics)
+
+        @computations.tf_computation(local_unfinalized_metrics_type)
+        def finalizer_computation(unfinalized_metrics):
+          finalized_metrics = collections.OrderedDict()
+          for metric_name, metric_finalizer in metric_finalizers.items():
+            finalized_metrics[metric_name] = metric_finalizer(
+                unfinalized_metrics[metric_name]) * 2
+          return finalized_metrics
+
+        return intrinsics.federated_map(finalizer_computation,
+                                        unfinalized_metrics_sum)
+
+      return aggregation_computation
+
+    process = model_delta_client_work.build_model_delta_client_work(
+        model_fn=self.create_model,
+        optimizer=sgdm.build_sgdm(1.0),
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        metrics_aggregator=sum_then_finalize_then_times_two)
+    client_model_weights = [self.initial_weights()]
+    client_data = [self.create_dataset()]
+    output = process.next(process.initialize(), client_model_weights,
+                          client_data)
+    self.assertEqual(output.measurements['stat']['num_examples'], 8)
+    # Train metrics should be multiplied by two by the custom aggregator.
+    self.assertEqual(output.measurements['train']['num_examples'], 16)
 
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))

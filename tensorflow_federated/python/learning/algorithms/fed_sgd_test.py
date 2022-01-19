@@ -76,12 +76,9 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(client_result.update, [[[-1.0], [0.0]], -1.0])
     self.assertAllClose(client_result.update_weight, 8.0)
     self.assertEqual(stat_output['num_examples'], 8.0)
-    self.assertDictContainsSubset(
-        {
-            'num_examples': 8,
-            'num_examples_float': 8.0,
-            'num_batches': 3,
-        }, model_output)
+    self.assertDictContainsSubset({
+        'num_examples': 8,
+    }, model_output)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
@@ -134,8 +131,7 @@ class FederatedSGDTest(test_case.TestCase, parameterized.TestCase):
     # processing, etc).
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
     fed_sgd.build_fed_sgd(
-        model_fn=mock_model_fn,
-        model_update_aggregation_factory=aggregation_factory())
+        model_fn=mock_model_fn, model_aggregator=aggregation_factory())
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 

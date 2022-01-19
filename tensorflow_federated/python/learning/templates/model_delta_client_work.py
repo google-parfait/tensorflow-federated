@@ -30,15 +30,18 @@ from typing import Callable, Union
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -121,7 +124,7 @@ def build_model_delta_update_with_tff_optimizer(
     client_update = tf.nest.map_structure(tf.subtract,
                                           initial_weights.trainable,
                                           model_weights.trainable)
-    model_output = model.report_local_outputs()
+    model_output = model.report_local_unfinalized_metrics()
     stat_output = collections.OrderedDict(num_examples=num_examples)
 
     # TODO(b/122071074): Consider moving this functionality into
@@ -203,7 +206,7 @@ def build_model_delta_update_with_keras_optimizer(
     client_update = tf.nest.map_structure(tf.subtract,
                                           initial_weights.trainable,
                                           model_weights.trainable)
-    model_output = model.report_local_outputs()
+    model_output = model.report_local_unfinalized_metrics()
     stat_output = collections.OrderedDict(num_examples=num_examples)
 
     # TODO(b/122071074): Consider moving this functionality into
@@ -237,6 +240,9 @@ def build_model_delta_client_work(
                      Callable[[], tf.keras.optimizers.Optimizer]],
     client_weighting: client_weight_lib.ClientWeighting,
     delta_l2_regularizer: float = 0.0,
+    metrics_aggregator: Callable[[
+        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
+    ], computation_base.Computation] = aggregator.sum_then_finalize,
     *,
     use_experimental_simulation_loop: bool = False
 ) -> client_works.ClientWorkProcess:
@@ -265,6 +271,11 @@ def build_model_delta_client_work(
       L2-regularization term applied to the delta from initial model weights
       during training. Values larger than 0.0 prevent clients from moving too
       far from the server model during local training.
+    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
+      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
+      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
+      returns a `tff.Computation` for aggregating the unfinalized metrics.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -289,6 +300,10 @@ def build_model_delta_client_work(
     # Wrap model construction in a graph to avoid polluting the global context
     # with variables created for this model.
     model = model_fn()
+    unfinalized_metrics_type = type_conversions.type_from_tensors(
+        model.report_local_unfinalized_metrics())
+    metrics_aggregation_fn = metrics_aggregator(model.metric_finalizers(),
+                                                unfinalized_metrics_type)
   data_type = computation_types.SequenceType(model.input_spec)
   weights_type = model_utils.weights_type_from_model(model)
 
@@ -321,7 +336,7 @@ def build_model_delta_client_work(
   def next_fn(state, weights, client_data):
     client_result, model_outputs, stat_output = intrinsics.federated_map(
         client_update_computation, (weights, client_data))
-    train_metrics = model.federated_output_computation(model_outputs)
+    train_metrics = metrics_aggregation_fn(model_outputs)
     stat_metrics = intrinsics.federated_sum(stat_output)
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(train=train_metrics, stat=stat_metrics))

@@ -51,7 +51,7 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
         model_fn=mock_model_fn,
         client_learning_rate_fn=learning_rate_fn,
         client_optimizer_fn=optimizer_fn,
-        model_update_aggregation_factory=aggregation_factory())
+        model_aggregator=aggregation_factory())
     self.assertEqual(mock_model_fn.call_count, 3)
 
   @parameterized.named_parameters([

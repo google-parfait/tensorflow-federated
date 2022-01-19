@@ -34,14 +34,17 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
@@ -106,7 +109,7 @@ def _build_client_update(model: model_lib.Model,
     average_gradient = tf.nest.map_structure(
         lambda gradient: gradient / num_examples_sum, gradient_sums)
 
-    model_output = model.report_local_outputs()
+    model_output = model.report_local_unfinalized_metrics()
     stat_output = collections.OrderedDict(num_examples=num_examples_sum)
 
     average_gradient, has_non_finite_delta = (
@@ -125,6 +128,9 @@ def _build_client_update(model: model_lib.Model,
 
 def _build_fed_sgd_client_work(
     model_fn: Callable[[], model_lib.Model],
+    metrics_aggregator: Callable[[
+        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
+    ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False
 ) -> client_works.ClientWorkProcess:
   """Creates a `tff.learning.templates.ClientWorkProcess` for federated SGD.
@@ -134,6 +140,11 @@ def _build_fed_sgd_client_work(
       must *not* capture TensorFlow tensors or variables and use them. The model
       must be constructed entirely from scratch on each invocation, returning
       the same pre-constructed model each call will result in an error.
+    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
+      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
+      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
+      returns a `tff.Computation` for aggregating the unfinalized metrics.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -146,6 +157,10 @@ def _build_fed_sgd_client_work(
     # Wrap model construction in a graph to avoid polluting the global context
     # with variables created for this model.
     model = model_fn()
+    unfinalized_metrics_type = type_conversions.type_from_tensors(
+        model.report_local_unfinalized_metrics())
+    metrics_aggregation_fn = metrics_aggregator(model.metric_finalizers(),
+                                                unfinalized_metrics_type)
   data_type = computation_types.SequenceType(model.input_spec)
   weights_type = model_utils.weights_type_from_model(model)
 
@@ -165,7 +180,7 @@ def _build_fed_sgd_client_work(
   def next_fn(state, model_weights, client_data):
     client_result, model_outputs, stat_output = intrinsics.federated_map(
         client_update_computation, (model_weights, client_data))
-    train_metrics = model.federated_output_computation(model_outputs)
+    train_metrics = metrics_aggregation_fn(model_outputs)
     stat_metrics = intrinsics.federated_sum(stat_output)
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(train=train_metrics, stat=stat_metrics))
@@ -182,9 +197,11 @@ def build_fed_sgd(
     model_fn: Callable[[], model_lib.Model],
     server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
         [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
-    distributor: Optional[distributors.DistributionProcess] = None,
-    model_update_aggregation_factory: Optional[
-        factory.WeightedAggregationFactory] = None,
+    model_distributor: Optional[distributors.DistributionProcess] = None,
+    model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
+    metrics_aggregator: Callable[[
+        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
+    ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated SGD.
@@ -228,14 +245,17 @@ def build_fed_sgd(
     server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`. The optimizer is used to
       apply client updates to the server model.
-    distributor: An optional `DistributionProcess` that broadcasts the model
-      weights on the server to the clients. If set to `None`, the distributor is
-      constructed via `distributors.build_broadcast_process`.
-    model_update_aggregation_factory: An optional
-      `tff.aggregators.WeightedAggregationFactory` that constructs
-      `tff.templates.AggregationProcess` for aggregating the client model
-      updates on the server. If `None`, uses a default constructed
-      `tff.aggregators.MeanFactory`, creating a stateless mean aggregation.
+    model_distributor: An optional `DistributionProcess` that distributes the
+      model weights on the server to the clients. If set to `None`, the
+      distributor is constructed via `distributors.build_broadcast_process`.
+    model_aggregator: An optional `tff.aggregators.WeightedAggregationFactory`
+      used to aggregate client updates on the server. If `None`, this is set to
+      `tff.aggregators.MeanFactory`.
+    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
+      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
+      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
+      returns a `tff.Computation` for aggregating the unfinalized metrics.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation.
 
@@ -250,19 +270,20 @@ def build_fed_sgd(
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 
-  if distributor is None:
-    distributor = distributors.build_broadcast_process(model_weights_type)
+  if model_distributor is None:
+    model_distributor = distributors.build_broadcast_process(model_weights_type)
 
-  if model_update_aggregation_factory is None:
-    model_update_aggregation_factory = mean.MeanFactory()
-  aggregator = model_update_aggregation_factory.create(
-      model_weights_type.trainable, computation_types.TensorType(tf.float32))
+  if model_aggregator is None:
+    model_aggregator = mean.MeanFactory()
+  aggregator = model_aggregator.create(model_weights_type.trainable,
+                                       computation_types.TensorType(tf.float32))
 
   client_work = _build_fed_sgd_client_work(
       model_fn,
+      metrics_aggregator,
       use_experimental_simulation_loop=use_experimental_simulation_loop)
   finalizer = finalizers.build_apply_optimizer_finalizer(
       server_optimizer_fn, model_weights_type)
   return composers.compose_learning_process(initial_model_weights_fn,
-                                            distributor, client_work,
+                                            model_distributor, client_work,
                                             aggregator, finalizer)

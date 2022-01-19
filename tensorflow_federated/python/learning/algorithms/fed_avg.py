@@ -40,19 +40,20 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import aggregation
+from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.learning.templates import model_delta_client_work
-
 
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
@@ -64,10 +65,13 @@ def build_weighted_fed_avg(
     server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
         [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
     client_weighting: Optional[
-        client_weight_lib
-        .ClientWeighting] = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        client_weight_lib.ClientWeighting] = client_weight_lib.ClientWeighting
+    .NUM_EXAMPLES,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
+    metrics_aggregator: Callable[[
+        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
+    ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
@@ -84,10 +88,9 @@ def build_weighted_fed_avg(
       `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
       `tff.learning.templates.LearningAlgorithmState` whose type matches the
       output of `initialize` and `{B*}@CLIENTS` represents the client datasets.
-      The output `L` contains the updated server state, as well as metrics that
-      are the result of `tff.learning.Model.federated_output_computation` during
-      client training, and any other metrics from broadcast and aggregation
-      processes.
+      The output `L` contains the updated server state, as well as aggregated
+      metrics at the server, including client training metrics and any other
+      metrics from distribution and aggregation processes.
   *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
       where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
       matchs the output of `initialize` and `next` and `M` represents the type
@@ -128,6 +131,11 @@ def build_weighted_fed_avg(
     model_aggregator: An optional `tff.aggregators.WeightedAggregationFactory`
       used to aggregate client updates on the server. If `None`, this is set to
       `tff.aggregators.MeanFactory`.
+    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
+      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
+      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
+      returns a `tff.Computation` for aggregating the unfinalized metrics.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -151,8 +159,8 @@ def build_weighted_fed_avg(
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
-  aggregator = model_aggregator.create(
-      model_weights_type.trainable, computation_types.TensorType(tf.float32))
+  aggregator = model_aggregator.create(model_weights_type.trainable,
+                                       computation_types.TensorType(tf.float32))
   process_signature = aggregator.next.type_signature
   input_client_value_type = process_signature.parameter[1]
   result_server_value_type = process_signature.result[1]
@@ -167,6 +175,7 @@ def build_weighted_fed_avg(
       model_fn=model_fn,
       optimizer=client_optimizer_fn,
       client_weighting=client_weighting,
+      metrics_aggregator=metrics_aggregator,
       use_experimental_simulation_loop=use_experimental_simulation_loop)
   finalizer = finalizers.build_apply_optimizer_finalizer(
       server_optimizer_fn, model_weights_type)
@@ -183,6 +192,9 @@ def build_unweighted_fed_avg(
         [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
+    metrics_aggregator: Callable[[
+        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
+    ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
     use_experimental_simulation_loop: bool = False
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
@@ -199,10 +211,9 @@ def build_unweighted_fed_avg(
       `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
       `tff.learning.templates.LearningAlgorithmState` whose type matches the
       output of `initialize` and `{B*}@CLIENTS` represents the client datasets.
-      The output `L` contains the updated server state, as well as metrics that
-      are the result of `tff.learning.Model.federated_output_computation` during
-      client training, and any other metrics from broadcast and aggregation
-      processes.
+      The output `L` contains the updated server state, as well as aggregated
+      metrics at the server, including client training metrics and any other
+      metrics from distribution and aggregation processes.
   *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
       where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
       matchs the output of `initialize` and `next` and `M` represents the type
@@ -239,6 +250,11 @@ def build_unweighted_fed_avg(
     model_aggregator: An optional `tff.aggregators.UnweightedAggregationFactory`
       used to aggregate client updates on the server. If `None`, this is set to
       `tff.aggregators.UnweightedMeanFactory`.
+    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
+      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
+      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
+      returns a `tff.Computation` for aggregating the unfinalized metrics.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -259,4 +275,5 @@ def build_unweighted_fed_avg(
       client_weighting=client_weight_lib.ClientWeighting.UNIFORM,
       model_distributor=model_distributor,
       model_aggregator=aggregation.as_weighted_aggregator(model_aggregator),
+      metrics_aggregator=metrics_aggregator,
       use_experimental_simulation_loop=use_experimental_simulation_loop)
