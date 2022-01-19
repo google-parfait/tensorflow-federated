@@ -28,6 +28,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:data_conversions",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@com_google_protobuf//:protobuf_python",
     ],
 )
 
