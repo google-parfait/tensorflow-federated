@@ -37,7 +37,8 @@ py_test(
     deps = [
         ":aggregator",
         ":finalizer",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
@@ -53,12 +54,17 @@ py_library(
     name = "aggregator",
     srcs = ["aggregator.py"],
     deps = [
+        "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model",
     ],
 )
