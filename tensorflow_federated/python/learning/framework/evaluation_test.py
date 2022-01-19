@@ -191,8 +191,7 @@ class BuildModelMetricsAggregatorTest(tf.test.TestCase):
 
     aggregate_metrics = model_metrics_aggregator([client_metrics])
     expected_metrics = collections.OrderedDict(
-        eval=model.federated_output_computation(
-            [client_metrics['local_outputs']]),
+        eval=collections.OrderedDict(mean_squared_error=2.0, loss=5.0),
         stat=collections.OrderedDict(num_examples=10.0))
     self.assertAllClose(aggregate_metrics, expected_metrics, atol=1e-6)
 
@@ -216,11 +215,10 @@ class BuildModelMetricsAggregatorTest(tf.test.TestCase):
         model, metrics_type)
 
     federated_metrics = [client_metrics1, client_metrics2, client_metrics3]
-    federated_local_outputs = [x['local_outputs'] for x in federated_metrics]
 
     aggregate_metrics = model_metrics_aggregator(federated_metrics)
     expected_metrics = collections.OrderedDict(
-        eval=model.federated_output_computation(federated_local_outputs),
+        eval=collections.OrderedDict(mean_squared_error=1.75, loss=1.0),
         stat=collections.OrderedDict(num_examples=20.0))
     self.assertAllClose(aggregate_metrics, expected_metrics, atol=1e-6)
 
