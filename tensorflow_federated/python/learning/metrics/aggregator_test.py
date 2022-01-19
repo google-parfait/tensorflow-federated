@@ -21,6 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import finalizer
 
@@ -276,6 +277,12 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
         metric_finalizers=metric_finalizers,
         local_unfinalized_metrics_type=type_conversions.type_from_tensors(
             local_unfinalized_metrics_at_clients[0]))
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(
+          aggregator_computation)
+    except:  # pylint: disable=bare-except
+      self.fail('Metric aggregation contains non-secure summation aggregation')
+
     aggregated_metrics = aggregator_computation(
         local_unfinalized_metrics_at_clients)
 
