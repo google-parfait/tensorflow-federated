@@ -16,3 +16,5 @@ tensorflow-model-optimization~=0.7.0
 tensorflow-privacy~=0.7.3
 tf-nightly
 tqdm~=4.28.1
+tensorflow
+kubernetes
