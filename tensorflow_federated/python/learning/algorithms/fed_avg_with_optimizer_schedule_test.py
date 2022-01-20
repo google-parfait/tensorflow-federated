@@ -22,6 +22,7 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_avg_with_optimizer_schedule
+from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 
@@ -53,6 +54,28 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
         client_optimizer_fn=optimizer_fn,
         model_aggregator=aggregation_factory())
     self.assertEqual(mock_model_fn.call_count, 3)
+
+  @parameterized.named_parameters(
+      ('non_simulation', False),
+      ('simulation', True),
+  )
+  @mock.patch.object(
+      dataset_reduce,
+      '_dataset_reduce_fn',
+      wraps=dataset_reduce._dataset_reduce_fn)
+  def test_client_tf_dataset_reduce_fn(self, use_simulation, mock_reduce):
+    client_learning_rate_fn = lambda x: 0.5
+    client_optimizer_fn = tf.keras.optimizers.SGD
+    fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
+        model_fn=model_examples.LinearRegression,
+        client_learning_rate_fn=client_learning_rate_fn,
+        client_optimizer_fn=client_optimizer_fn,
+        use_experimental_simulation_loop=use_simulation)
+
+    if use_simulation:
+      mock_reduce.assert_not_called()
+    else:
+      mock_reduce.assert_called()
 
   @parameterized.named_parameters([
       ('keras_optimizer', lambda x: tf.keras.optimizers.SGD()),

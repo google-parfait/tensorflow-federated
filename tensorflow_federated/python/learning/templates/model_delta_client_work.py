@@ -312,8 +312,10 @@ def build_model_delta_client_work(
     @computations.tf_computation(weights_type, data_type)
     def client_update_computation(initial_model_weights, dataset):
       client_update = build_model_delta_update_with_tff_optimizer(
-          model_fn, client_weighting, delta_l2_regularizer,
-          use_experimental_simulation_loop)
+          model_fn=model_fn,
+          weighting=client_weighting,
+          delta_l2_regularizer=delta_l2_regularizer,
+          use_experimental_simulation_loop=use_experimental_simulation_loop)
       return client_update(optimizer, initial_model_weights, dataset)
 
   else:
@@ -322,8 +324,10 @@ def build_model_delta_client_work(
     def client_update_computation(initial_model_weights, dataset):
       keras_optimizer = optimizer()
       client_update = build_model_delta_update_with_keras_optimizer(
-          model_fn, client_weighting, delta_l2_regularizer,
-          use_experimental_simulation_loop)
+          model_fn=model_fn,
+          weighting=client_weighting,
+          delta_l2_regularizer=delta_l2_regularizer,
+          use_experimental_simulation_loop=use_experimental_simulation_loop)
       return client_update(keras_optimizer, initial_model_weights, dataset)
 
   @computations.federated_computation
