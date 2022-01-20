@@ -86,6 +86,19 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(mock_optimizer_fn.call_args_list[0][0][0], 1.0)
     self.assertEqual(mock_optimizer_fn.call_args_list[1][0][0], 0.5)
 
+  def test_construction_calls_server_optimizer_fn(self):
+    learning_rate_fn = lambda x: 0.5
+    client_optimizer_fn = tf.keras.optimizers.SGD
+    mock_server_optimizer_fn = mock.Mock(side_effect=tf.keras.optimizers.SGD)
+
+    fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
+        model_fn=model_examples.LinearRegression,
+        client_learning_rate_fn=learning_rate_fn,
+        client_optimizer_fn=client_optimizer_fn,
+        server_optimizer_fn=mock_server_optimizer_fn)
+
+    mock_server_optimizer_fn.assert_called()
+
   @parameterized.named_parameters([
       ('keras_optimizer', lambda x: tf.keras.optimizers.SGD()),
       ('tff_optimizer', lambda x: sgdm.build_sgdm()),

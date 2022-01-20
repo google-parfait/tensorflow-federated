@@ -147,8 +147,9 @@ def build_weighted_fed_avg_with_optimizer_schedule(
     model_fn: Callable[[], model_lib.Model],
     client_learning_rate_fn: Callable[[int], float],
     client_optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
-    server_optimizer_fn: Callable[
-        [int], TFFOrKerasOptimizer] = fed_avg.DEFAULT_SERVER_OPTIMIZER_FN,
+    server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
+        [],
+        tf.keras.optimizers.Optimizer]] = fed_avg.DEFAULT_SERVER_OPTIMIZER_FN,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
     metrics_aggregator: Callable[[
