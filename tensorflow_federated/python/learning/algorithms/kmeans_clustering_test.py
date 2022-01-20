@@ -290,8 +290,11 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
 
 class FederatedKmeansTest(test_case.TestCase):
 
-  def test_constructs(self):
-    kmeans_clustering.build_fed_kmeans(num_clusters=3, data_shape=(2, 2))
+  def test_constructs_with_pseudocounts_of_one(self):
+    kmeans_process = kmeans_clustering.build_fed_kmeans(
+        num_clusters=3, data_shape=(2, 2))
+    state = kmeans_process.initialize()
+    self.assertAllEqual(state.finalizer, tf.ones(3,))
 
   def test_initialize_uses_random_seed(self):
     data_shape = (3, 4, 5)
@@ -321,13 +324,15 @@ class FederatedKmeansTest(test_case.TestCase):
     dataset = tf.data.Dataset.from_tensor_slices([point1, point2])
 
     state = kmeans.initialize()
+    initial_centroids = state.global_model_weights
     output = kmeans.next(state, [dataset])
-    centroids = output.state.global_model_weights
+    actual_centroids = output.state.global_model_weights
     weights = output.state.finalizer
-    expected_centroids = tf.expand_dims(0.5 * (point1 + point2), axis=0)
+    expected_centroids = (1 / 3) * (
+        initial_centroids + tf.expand_dims(point1 + point2, axis=0))
 
-    self.assertAllClose(centroids, expected_centroids)
-    self.assertAllEqual(weights, [2])
+    self.assertAllClose(actual_centroids, expected_centroids)
+    self.assertAllEqual(weights, [3])
 
   def test_single_step_with_two_clients(self):
     data_shape = (3, 2)
@@ -339,13 +344,15 @@ class FederatedKmeansTest(test_case.TestCase):
     dataset2 = tf.data.Dataset.from_tensors(point2)
 
     state = kmeans.initialize()
+    initial_centroids = state.global_model_weights
     output = kmeans.next(state, [dataset1, dataset2])
-    centroids = output.state.global_model_weights
+    actual_centroids = output.state.global_model_weights
     weights = output.state.finalizer
-    expected_centroids = tf.expand_dims(0.5 * (point1 + point2), axis=0)
+    expected_centroids = (1 / 3) * (
+        initial_centroids + tf.expand_dims(point1 + point2, axis=0))
 
-    self.assertAllClose(centroids, expected_centroids)
-    self.assertAllEqual(weights, [2])
+    self.assertAllClose(actual_centroids, expected_centroids)
+    self.assertAllEqual(weights, [3])
 
   def test_two_steps_with_one_cluster(self):
     data_shape = (3, 2)
@@ -356,20 +363,23 @@ class FederatedKmeansTest(test_case.TestCase):
     point2 = tf.fill(data_shape, value=2.0)
     dataset2 = tf.data.Dataset.from_tensors(point2)
     state = kmeans.initialize()
+    initial_centroids = state.global_model_weights
 
     output = kmeans.next(state, [dataset1])
     centroids = output.state.global_model_weights
     weights = output.state.finalizer
-    expected_step_1_centroids = tf.expand_dims(point1, axis=0)
+    expected_step_1_centroids = 0.5 * (
+        initial_centroids + tf.expand_dims(point1, axis=0))
     self.assertAllClose(centroids, expected_step_1_centroids)
-    self.assertAllEqual(weights, [1])
+    self.assertAllEqual(weights, [2])
 
     output = kmeans.next(output.state, [dataset2])
     centroids = output.state.global_model_weights
     weights = output.state.finalizer
-    expected_step_2_centroids = tf.expand_dims(0.5 * (point1 + point2), axis=0)
+    expected_step_2_centroids = (1 / 3) * (
+        initial_centroids + tf.expand_dims(point1 + point2, axis=0))
     self.assertAllClose(centroids, expected_step_2_centroids)
-    self.assertAllEqual(weights, [2])
+    self.assertAllEqual(weights, [3])
 
 
 if __name__ == '__main__':

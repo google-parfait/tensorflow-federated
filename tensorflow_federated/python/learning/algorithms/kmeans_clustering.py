@@ -192,7 +192,7 @@ def _build_kmeans_finalizer(centroids_type: computation_types.Type,
 
   @computations.tf_computation
   def initialize_weights():
-    return tf.zeros((num_centroids,), dtype=_WEIGHT_DTYPE)
+    return tf.ones((num_centroids,), dtype=_WEIGHT_DTYPE)
 
   @computations.federated_computation
   def init_fn():
@@ -269,7 +269,8 @@ def build_fed_kmeans(
   centroids. The centroids are then updated at the server based on these points.
   To do so, we keep track of how many points have been assigned to each centroid
   overall, as an integer tensor of shape `(num_clusters,)`. This information can
-  be found in `state.finalizer`.
+  be found in `state.finalizer`. Note that we begin with a "pseudo-count" of 1,
+  in order to ensure that the centroids do not collapse to zero.
 
   Args:
     num_clusters: The number of clusters to use.
