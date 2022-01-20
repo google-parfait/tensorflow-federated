@@ -41,6 +41,10 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x_proto.reference.name, x.name)
     self._serialize_deserialize_roundtrip_test(x)
 
+  def test_reference_children_is_empty(self):
+    ref = building_blocks.Reference('foo', tf.int32)
+    self.assertEqual([], list(ref.children()))
+
   def test_basic_functionality_of_selection_class(self):
     x = building_blocks.Reference('foo', [('bar', tf.int32), ('baz', tf.bool)])
     y = building_blocks.Selection(x, name='bar')
@@ -85,6 +89,11 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x0)
     self._serialize_deserialize_roundtrip_test(x1)
 
+  def test_reference_children_yields_source(self):
+    source = building_blocks.Reference('foo', (tf.int32, tf.int32))
+    selection = building_blocks.Selection(source, index=1)
+    self.assertEqual([source], list(selection.children()))
+
   def test_basic_functionality_of_struct_class(self):
     x = building_blocks.Reference('foo', tf.int32)
     y = building_blocks.Reference('bar', tf.bool)
@@ -111,6 +120,12 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(z_proto.WhichOneof('computation'), 'struct')
     self.assertEqual([e.name for e in z_proto.struct.element], ['', 'y'])
     self._serialize_deserialize_roundtrip_test(z)
+
+  def test_struct_children_yields_elements(self):
+    e1 = building_blocks.Reference('a', tf.int32)
+    e2 = building_blocks.Reference('b', tf.int32)
+    struct_ = building_blocks.Struct([(None, e1), (None, e2)])
+    self.assertEqual([e1, e2], list(struct_.children()))
 
   def test_struct_with_container_type(self):
     x = building_blocks.Reference('foo', tf.int32)
@@ -147,6 +162,19 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(str(z_proto.call.argument), str(y.proto))
     self._serialize_deserialize_roundtrip_test(z)
 
+  def test_call_children_with_no_arg_yields_function(self):
+    fn = building_blocks.Reference(
+        'a', computation_types.FunctionType(None, tf.int32))
+    call = building_blocks.Call(fn)
+    self.assertEqual([fn], list(call.children()))
+
+  def test_call_children_with_arg_yields_function_and_arg(self):
+    fn = building_blocks.Reference(
+        'a', computation_types.FunctionType(tf.int32, tf.int32))
+    arg = building_blocks.Reference('b', tf.int32)
+    call = building_blocks.Call(fn, arg)
+    self.assertEqual([fn, arg], list(call.children()))
+
   def test_basic_functionality_of_lambda_class(self):
     arg_name = 'arg'
     arg_type = [('f', computation_types.FunctionType(tf.int32, tf.int32)),
@@ -182,6 +210,11 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         str(getattr(x_proto, 'lambda').result), str(x.result.proto))
     self._serialize_deserialize_roundtrip_test(x)
 
+  def test_lambda_children_returns_result(self):
+    result = building_blocks.Reference('a', tf.int32)
+    lambda_ = building_blocks.Lambda('a', tf.int32, result)
+    self.assertEqual([result], list(lambda_.children()))
+
   def test_basic_functionality_of_block_class(self):
     x = building_blocks.Block(
         [('x', building_blocks.Reference('arg', (tf.int32, tf.int32))),
@@ -212,6 +245,13 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
       self.assertEqual(str(loc_proto.value), str(loc_value.proto))
       self._serialize_deserialize_roundtrip_test(x)
 
+  def test_block_children_returns_locals_then_result(self):
+    l1 = building_blocks.Reference('a', tf.int32)
+    l2 = building_blocks.Reference('b', tf.int32)
+    result = building_blocks.Reference('c', tf.int32)
+    block = building_blocks.Block([('1', l1), ('2', l2)], result)
+    self.assertEqual([l1, l2, result], list(block.children()))
+
   def test_basic_functionality_of_intrinsic_class(self):
     x = building_blocks.Intrinsic(
         'add_one', computation_types.FunctionType(tf.int32, tf.int32))
@@ -227,6 +267,11 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x_proto.WhichOneof('computation'), 'intrinsic')
     self.assertEqual(x_proto.intrinsic.uri, x.uri)
     self._serialize_deserialize_roundtrip_test(x)
+
+  def test_intrinsic_children_is_empty(self):
+    intrinsic = building_blocks.Intrinsic(
+        'a', computation_types.FunctionType(tf.int32, tf.int32))
+    self.assertEqual([], list(intrinsic.children()))
 
   def test_basic_intrinsic_functionality_plus_canonical_typecheck(self):
     x = building_blocks.Intrinsic(
@@ -298,6 +343,10 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x_proto.data.uri, x.uri)
     self._serialize_deserialize_roundtrip_test(x)
 
+  def test_data_children_is_empty(self):
+    data = building_blocks.Data('a', tf.int32)
+    self.assertEqual([], list(data.children()))
+
   def test_basic_functionality_of_compiled_computation_class(self):
     x_type = computation_types.TensorType(tf.int32)
     x = building_block_factory.create_compiled_identity(x_type, 'a')
@@ -314,6 +363,11 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     y = building_block_factory.create_compiled_identity(y_type)
     self._serialize_deserialize_roundtrip_test(y)
 
+  def test_compiled_computation_children_is_empty(self):
+    comp_type = computation_types.TensorType(tf.int32)
+    comp = building_block_factory.create_compiled_identity(comp_type, 'a')
+    self.assertEqual([], list(comp.children()))
+
   def test_basic_functionality_of_placement_class(self):
     x = building_blocks.Placement(placements.CLIENTS)
     self.assertEqual(str(x.type_signature), 'placement')
@@ -326,6 +380,10 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x_proto.WhichOneof('computation'), 'placement')
     self.assertEqual(x_proto.placement.uri, x.uri)
     self._serialize_deserialize_roundtrip_test(x)
+
+  def test_placement_children_is_empty(self):
+    placement = building_blocks.Placement(placements.CLIENTS)
+    self.assertEqual([], list(placement.children()))
 
   def _serialize_deserialize_roundtrip_test(self, target):
     """Performs roundtrip serialization/deserialization of the given target.
