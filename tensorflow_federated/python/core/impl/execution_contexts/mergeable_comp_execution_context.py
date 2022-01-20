@@ -387,8 +387,7 @@ async def _invoke_up_to_merge_and_return_context(
     context: async_execution_context.AsyncExecutionContext):
   ingested_arg = await _ingest_arg_or_none(
       arg, context, comp.up_to_merge.type_signature.parameter)
-  executor_value = await context.invoke(comp.up_to_merge, ingested_arg)
-  return await executor_value.materialize(), context
+  return await context.invoke(comp.up_to_merge, ingested_arg), context
 
 
 async def _merge_results(
@@ -402,15 +401,13 @@ async def _merge_results(
 async def _compute_after_merged(
     comp: MergeableCompForm, original_arg, merge_result,
     context: async_execution_context.AsyncExecutionContext):
-  """Invokes after_merge on the result of merging."""
   if original_arg is not None:
     ingested_arg = await context.ingest(
         (original_arg, merge_result), comp.after_merge.type_signature.parameter)
   else:
     ingested_arg = await context.ingest(
         merge_result, comp.after_merge.type_signature.parameter)
-  executor_value = await context.invoke(comp.after_merge, ingested_arg)
-  return await executor_value.materialize()
+  return await context.invoke(comp.after_merge, ingested_arg)
 
 
 async def _invoke_mergeable_comp_form(
@@ -436,9 +433,8 @@ async def _invoke_mergeable_comp_form(
 
   for up_to_merge_result_future in up_to_merge_futures:
     to_merge, merge_context = await up_to_merge_result_future
-    merged_value_in_context = await _merge_results(comp, merge_result, to_merge,
-                                                   merge_context)
-    merge_result = await merged_value_in_context.materialize()
+    merge_result = await _merge_results(comp, merge_result, to_merge,
+                                        merge_context)
 
   if type_analysis.contains_only(comp.after_merge.type_signature.result,
                                  lambda x: not x.is_federated() or x.all_equal):
