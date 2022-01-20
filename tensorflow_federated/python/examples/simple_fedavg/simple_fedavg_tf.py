@@ -53,11 +53,12 @@ class ServerState(object):
   """Structure for state on the server.
 
   Attributes:
-    model_weights: A dictionary of model's trainable variables.
+    model:  A `tff.learning.ModelWeights` structure, containing Tensors or
+      Variables.
     optimizer_state: Variables of optimizer.
     round_num: The current round in the training process.
   """
-  model_weights = attr.ib()
+  model = attr.ib()
   optimizer_state = attr.ib()
   round_num = attr.ib()
 
@@ -67,7 +68,8 @@ class BroadcastMessage(object):
   """Structure for tensors broadcasted by server during federated optimization.
 
   Attributes:
-    model_weights: A dictionary of model's trainable tensors.
+    model_weights: A `tff.learning.ModelWeights` structure, containing Tensors
+      or Variables.
     round_num: Round index to broadcast. We use `round_num` as an example to
       show how to broadcast auxiliary information that can be helpful on
       clients. It is not explicitly used, but can be applied to enable learning
@@ -95,7 +97,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   # Initialize the model with the current state.
   model_weights = tff.learning.ModelWeights.from_model(model)
   tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
-                        server_state.model_weights)
+                        server_state.model)
   tf.nest.map_structure(lambda v, t: v.assign(t), server_optimizer.variables(),
                         server_state.optimizer_state)
 
@@ -107,7 +109,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   # Create a new state based on the updated model.
   return tff.structure.update_struct(
       server_state,
-      model_weights=model_weights,
+      model=model_weights,
       optimizer_state=server_optimizer.variables(),
       round_num=server_state.round_num + 1)
 
@@ -127,8 +129,7 @@ def build_server_broadcast_message(server_state):
     A `BroadcastMessage`.
   """
   return BroadcastMessage(
-      model_weights=server_state.model_weights,
-      round_num=server_state.round_num)
+      model_weights=server_state.model, round_num=server_state.round_num)
 
 
 @tf.function

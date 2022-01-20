@@ -271,9 +271,7 @@ def _server_init(model, optimizer):
   """
   simple_fedavg_tff._initialize_optimizer_vars(model, optimizer)
   return simple_fedavg_tf.ServerState(
-      model_weights=model.weights,
-      optimizer_state=optimizer.variables(),
-      round_num=0)
+      model=model.weights, optimizer_state=optimizer.variables(), round_num=0)
 
 
 class ServerTest(tf.test.TestCase):
@@ -290,7 +288,7 @@ class ServerTest(tf.test.TestCase):
       state = simple_fedavg_tf.server_update(model, optimizer, state,
                                              weights_delta)
 
-    model_vars = self.evaluate(state.model_weights)
+    model_vars = self.evaluate(state.model)
     train_vars = model_vars.trainable
     self.assertLen(train_vars, 2)
     self.assertEqual(state.round_num, 2)
@@ -365,7 +363,7 @@ class RNNTest(tff.test.TestCase, parameterized.TestCase):
         global_model_type,
         tff.types.at_server(
             simple_fedavg_tf.ServerState(
-                model_weights=model_type,
+                model=model_type,
                 optimizer_state=[tf.int64],
                 round_num=tf.int32)))
     self.assert_types_identical(

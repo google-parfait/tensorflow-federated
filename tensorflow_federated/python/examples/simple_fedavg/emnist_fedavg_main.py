@@ -170,7 +170,7 @@ def main(argv):
     print(f'Round {round_num}')
     print(f'\tTraining loss: {train_metrics:.4f}')
     if round_num % FLAGS.rounds_per_eval == 0:
-      server_state.model_weights.assign_weights_to(keras_model)
+      server_state.model.assign_weights_to(keras_model)
       accuracy = evaluate(keras_model, test_data)
       print(f'\tValidation accuracy: {accuracy * 100.0:.2f}%')
 

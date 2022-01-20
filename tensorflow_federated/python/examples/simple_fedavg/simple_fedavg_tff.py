@@ -75,12 +75,12 @@ def build_federated_averaging_process(
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(
-        model_weights=model_weights,
+        model=model_weights,
         optimizer_state=server_optimizer.variables(),
         round_num=0)
 
   server_state_type = server_init_tf.type_signature.result
-  model_weights_type = server_state_type.model_weights
+  model_weights_type = server_state_type.model
 
   @tff.tf_computation(server_state_type, model_weights_type.trainable)
   def server_update_fn(server_state, model_delta):
