@@ -151,6 +151,13 @@ py_library(
     name = "eager_tf_executor",
     srcs = ["eager_tf_executor.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [
         ":executor_base",
         ":executor_utils",
@@ -212,6 +219,13 @@ py_library(
     name = "executor_base",
     srcs = ["executor_base.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [":executor_value_base"],
 )
 
@@ -249,6 +263,13 @@ py_library(
     name = "executor_factory",
     srcs = ["executor_factory.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [
         ":executor_base",
         "//tensorflow_federated/python/core/impl/types:placements",
@@ -296,6 +317,13 @@ py_library(
     name = "executor_serialization",
     srcs = ["executor_serialization.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [
         ":executor_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -338,6 +366,13 @@ py_library(
     name = "executor_stacks",
     srcs = ["executor_stacks.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [
         ":eager_tf_executor",
         ":executor_base",
@@ -497,6 +532,13 @@ py_library(
     name = "executors_errors",
     srcs = ["executors_errors.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
 )
 
 py_library(
@@ -639,6 +681,13 @@ py_library(
     name = "reference_resolving_executor",
     srcs = ["reference_resolving_executor.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [
         ":executor_base",
         ":executor_utils",
@@ -681,6 +730,13 @@ py_library(
     name = "remote_executor",
     srcs = ["remote_executor.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [
         ":executor_base",
         ":executor_serialization",
@@ -723,6 +779,13 @@ py_library(
     name = "sequence_executor",
     srcs = ["sequence_executor.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [
         ":executor_base",
         ":executor_value_base",
@@ -793,6 +856,13 @@ py_library(
     name = "thread_delegating_executor",
     srcs = ["thread_delegating_executor.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = [
         ":executor_base",
         ":executor_value_base",
