@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 
 
 def _compile_to_tf(fn):
-  simplified, _ = transformations.transform_to_call_dominant(fn)
+  simplified = transformations.to_deduped_call_dominant(fn)
   unplaced, _ = tree_transformations.strip_placement(simplified)
   return transformations.compile_local_subcomputations_to_tensorflow(unplaced)
 
@@ -142,7 +142,7 @@ def compile_to_mergeable_comp_form(
 
   # We transform the body of this computation to easily preserve the top-level
   # lambda required by force-aligning.
-  call_dominant_body_bb, _ = transformations.transform_to_call_dominant(
+  call_dominant_body_bb = transformations.to_deduped_call_dominant(
       lowered_bb.result)
   call_dominant_bb = building_blocks.Lambda(lowered_bb.parameter_name,
                                             lowered_bb.parameter_type,

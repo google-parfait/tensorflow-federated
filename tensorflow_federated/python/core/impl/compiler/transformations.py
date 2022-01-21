@@ -110,50 +110,34 @@ def prepare_for_rebinding(comp):
       comp, _transform_fn, symbol_tree)
 
 
-def _type_contains_function(t):
-  return type_analysis.contains(t, lambda x: x.is_function())
-
-
-def _disallow_higher_order(comp, global_comp):
-  if comp.type_signature.is_function():
-    param_type = comp.type_signature.parameter
-    if param_type is not None and _type_contains_function(param_type):
-      raise ValueError(
-          f'{comp}\nin\n{global_comp}\nhas higher-order parameter of type {param_type}'
-      )
-    result_type = comp.type_signature.result
-    if _type_contains_function(result_type):
-      raise ValueError(
-          f'{comp}\nin\n{global_comp}\nhas a higher-order result of type {result_type}'
-      )
-
-
-def transform_to_local_call_dominant(
-    comp: building_blocks.Lambda) -> building_blocks.Lambda:
+def to_call_dominant(
+    comp: building_blocks.ComputationBuildingBlock
+) -> building_blocks.ComputationBuildingBlock:
   """Transforms local (non-federated) computations into call-dominant form.
 
   Args:
-    comp: A local computation. Local computations must not contain intrinsics or
-      compiled computations with higher-order parameters or results, such as the
-      `federated_x` set of intrinsics.
+    comp: A computation to transform.
 
   Returns:
     A transformed but semantically-equivalent `comp`. The resulting `comp` will
     be in CDF (call-dominant form), as defined by the following CFG:
 
-    External -> Intrinsic | Data | Compiled Computation
+    External -> Intrinsic | Data | Compiled Computation |
+                Reference(to top-level lambda parameter) |
+                Reference(to value outside of `comp`)
+
+    ExternalCall -> Call(External, CDFElem)
 
     CDFElem ->
        External
      | Reference to a bound call to an External
      | Selection(CDFElem, index)
-     | Lambda(Block([bindings for External calls, CDF))
+     | Lambda(Block([bindings for ExternalCalls, CDF))
 
     CDF ->
        CDFElem
      | Struct(CDF, ...)
      | Lambda(CDF)
-     | Lambda(Block([bindings for External calls], CDF))
   """
   # Top-level comp must be a lambda to ensure that we create a set of bindings
   # immediately under it, as `_build` does for all lambdas.
@@ -184,7 +168,7 @@ def transform_to_local_call_dominant(
       if name in self._locals:
         return self._locals[name]
       if self._parent is None:
-        raise ValueError(f'Unable to resolve name `{name}` in `{global_comp}`')
+        return None
       return self._parent.resolve(name)
 
     def add_local(self, name, value):
@@ -223,7 +207,11 @@ def transform_to_local_call_dominant(
     # call-dominant form. This function may result in the patterns specified in
     # the top-level function's docstring.
     if comp.is_reference():
-      return scope.resolve(comp.name)
+      result = scope.resolve(comp.name)
+      if result is None:
+        # If `comp.name` is only bound outside of `comp`, we can't resolve it.
+        return comp
+      return result
     elif comp.is_selection():
       source = _build(comp.source, scope)
       if source.is_struct():
@@ -261,12 +249,8 @@ def transform_to_local_call_dominant(
         scope.add_local(name, _build(value, scope))
       return _build(comp.result, scope)
     elif (comp.is_intrinsic() or comp.is_data() or
-          comp.is_compiled_computation()):
-      _disallow_higher_order(comp, global_comp)
+          comp.is_compiled_computation() or comp.is_placement()):
       return comp
-    elif comp.is_placement():
-      raise ValueError(f'Found placement {comp} in\n{global_comp}\n'
-                       'but placements are not allowed in local computations.')
     else:
       raise ValueError(
           f'Unrecognized computation kind\n{comp}\nin\n{global_comp}')
@@ -422,9 +406,7 @@ def compile_local_computation_to_tensorflow(
   # Ensure that calls are deduplicated, unused values are removed, and that
   # reference bindings have unique names.
   comp = unpack_compiled_computations(comp)
-  comp = transform_to_local_call_dominant(comp)
-  comp, _ = tree_transformations.remove_duplicate_block_locals(comp)
-  comp, _ = tree_transformations.uniquify_reference_names(comp)
+  comp = to_deduped_call_dominant(comp)
   name_generator = building_block_factory.unique_name_generator(comp)
 
   if parameter_type is None:
@@ -487,9 +469,9 @@ def compile_local_subcomputations_to_tensorflow(
   return comp
 
 
-def transform_to_call_dominant(
-    comp: building_blocks.ComputationBuildingBlock
-) -> transformation_utils.TransformReturnType:
+def to_deduped_call_dominant(
+    comp: building_blocks.ComputationBuildingBlock,
+) -> building_blocks.ComputationBuildingBlock:
   """Normalizes computations into Call-Dominant Form.
 
   A computation is in call-dominant form if the following conditions are true:
@@ -517,9 +499,7 @@ def transform_to_call_dominant(
     comp: Instance of `building_blocks.ComputationBuildingBlock` to transform.
 
   Returns:
-    A two-tuple, whose first element is a building block representing the same
-    logic as `comp`, and whose second is a boolean indicating whether or not
-    any transformations were in fact run.
+    A transformed `comp` in call-dominant form, with values deduplicated.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
 
@@ -610,65 +590,17 @@ def transform_to_call_dominant(
     transformation_utils.transform_postorder_with_symbol_bindings(
         comp, _check_for_call_arguments, symbol_tree)
 
-  def _inline_functions(comp):
-    function_type_reference_names = []
-
-    def _populate_function_type_ref_names(comp):
-      if comp.is_reference() and comp.type_signature.is_function():
-        function_type_reference_names.append(comp.name)
-      return comp, False
-
-    transformation_utils.transform_postorder(comp,
-                                             _populate_function_type_ref_names)
-
-    return tree_transformations.inline_block_locals(
-        comp, variable_names=set(function_type_reference_names))
-
-  def _extract_calls_and_blocks(comp):
-
-    def _predicate(comp):
-      return comp.is_call()
-
-    block_extracter = tree_transformations.ExtractComputation(comp, _predicate)
-    return transformation_utils.transform_postorder(comp,
-                                                    block_extracter.transform)
-
-  def _resolve_calls_to_concrete_functions(comp):
-    """Removes symbol bindings which contain functional types."""
-
-    comp, refs_renamed = tree_transformations.uniquify_reference_names(comp)
-    comp, fns_resolved = tree_transformations.resolve_higher_order_functions(
-        comp)
-    comp, called_lambdas_replaced = tree_transformations.replace_called_lambda_with_block(
-        comp)
-    comp, selections_inlined = tree_transformations.inline_selections_from_tuple(
-        comp)
-    if fns_resolved or selections_inlined:
-      comp, _ = tree_transformations.uniquify_reference_names(comp)
-    comp, fns_inlined = _inline_functions(comp)
-    comp, locals_removed = tree_transformations.remove_unused_block_locals(comp)
-
-    modified = (
-        refs_renamed or fns_resolved or called_lambdas_replaced or
-        selections_inlined or fns_inlined or locals_removed)
-    return comp, modified
-
-  comp, modified = _resolve_calls_to_concrete_functions(comp)
+  comp = to_call_dominant(comp)
   _check_calls_are_concrete(comp)
 
   for transform in [
-      _extract_calls_and_blocks,
-      # Extraction can leave some tuples packing references to clean up. Leaving
-      # would not violate CDF, but we prefer to do this for cleanliness.
-      tree_transformations.inline_selections_from_tuple,
-      tree_transformations.merge_chained_blocks,
+      tree_transformations.uniquify_reference_names,
       tree_transformations.remove_duplicate_block_locals,
       tree_transformations.remove_unused_block_locals,
       tree_transformations.uniquify_reference_names,
   ]:
-    comp, transformed = transform(comp)
-    modified = modified or transformed
-  return comp, modified
+    comp, _ = transform(comp)
+  return comp
 
 
 _NamedBinding = Tuple[str, building_blocks.ComputationBuildingBlock]
@@ -1015,7 +947,7 @@ def force_align_and_split_by_intrinsics(
   # Flatten `comp` to call-dominant form so that we're working with just a
   # linear list of intrinsic calls with no indirection via tupling, selection,
   # blocks, called lambdas, or references.
-  comp, _ = transform_to_call_dominant(comp)
+  comp = to_deduped_call_dominant(comp)
 
   # CDF can potentially return blocks if there are variables not dependent on
   # the top-level parameter. We normalize these away.
@@ -1029,7 +961,7 @@ def force_align_and_split_by_intrinsics(
       additional_locals = []
       result = comp.result.result
     # Note: without uniqueness, a local in `comp.locals` could potentially
-    # shadow `comp.result.parameter_name`. However, `transform_to_call_dominant`
+    # shadow `comp.result.parameter_name`. However, `to_deduped_call_dominant`
     # above ensure that names are unique, as it ends in a call to
     # `uniquify_reference_names`.
     comp = building_blocks.Lambda(
