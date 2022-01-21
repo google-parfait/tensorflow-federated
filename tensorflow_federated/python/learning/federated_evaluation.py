@@ -29,11 +29,11 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
-from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.learning.metrics import aggregator
 
 # Convenience aliases.
@@ -169,10 +169,10 @@ def build_federated_evaluation(
     if not isinstance(broadcast_process, measured_process.MeasuredProcess):
       raise ValueError('`broadcast_process` must be a `MeasuredProcess`, got '
                        f'{type(broadcast_process)}.')
-    if optimizer_utils.is_stateful_process(broadcast_process):
+    if iterative_process.is_stateful(broadcast_process):
       raise ValueError(
           'Cannot create a federated evaluation with a stateful '
-          'broadcast process, must be stateless, has state: '
+          'broadcast process, must be stateless (have empty state), has state: '
           f'{broadcast_process.initialize.type_signature.result!r}')
   # Construct the model first just to obtain the metadata and define all the
   # types needed to define the computations that follow.

@@ -40,6 +40,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.learning.reconstruction import keras_utils
@@ -139,8 +140,9 @@ def build_federated_evaluation(
         'broadcast_process type signature does not conform to expected '
         'signature (<state@S, input@S> -> <state@S, result@C, measurements@S>).'
         ' Got: {t}'.format(t=broadcast_process.next.type_signature))
-  if optimizer_utils.is_stateful_process(broadcast_process):
-    raise TypeError(f'Eval broadcast_process must be stateless, has state '
+  if iterative_process.is_stateful(broadcast_process):
+    raise TypeError(f'Eval broadcast_process must be stateless (have an empty '
+                    'state), has state '
                     f'{broadcast_process.initialize.type_signature.result!r}')
 
   @computations.tf_computation(model_weights_type,
