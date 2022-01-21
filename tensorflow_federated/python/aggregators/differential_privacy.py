@@ -16,7 +16,7 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""Factory for aggregations parameterized by tensorflow_privacy DPQueries."""
+"""Factory for aggregations parameterized by TensorFlow Privacy DPQueries."""
 
 import collections
 from typing import Collection, Optional, Tuple
