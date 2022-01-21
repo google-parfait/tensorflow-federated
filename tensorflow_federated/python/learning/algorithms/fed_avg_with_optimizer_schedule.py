@@ -112,8 +112,9 @@ def build_scheduled_client_work(
     learning_rate = learning_rate_fn(round_num)
     optimizer = optimizer_fn(learning_rate)
     client_update = build_client_update_fn(
-        model_fn, client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-        use_experimental_simulation_loop)
+        model_fn=model_fn,
+        weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        use_experimental_simulation_loop=use_experimental_simulation_loop)
     return client_update(optimizer, initial_model_weights, dataset)
 
   @computations.federated_computation
