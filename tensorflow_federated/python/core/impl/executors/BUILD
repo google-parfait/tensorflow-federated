@@ -83,6 +83,34 @@ py_test(
 )
 
 py_library(
+    name = "data_descriptor",
+    srcs = ["data_descriptor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":cardinality_carrying_base",
+        ":ingestable_base",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_test(
+    name = "data_descriptor_test",
+    srcs = ["data_descriptor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":data_descriptor",
+        ":executor_stacks",
+        ":executor_test_utils",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_library(
     name = "data_executor",
     srcs = ["data_executor.py"],
     srcs_version = "PY3",
@@ -378,6 +406,7 @@ py_library(
         ":executor_base",
         ":executor_stacks",
         ":executor_value_base",
+        ":ingestable_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",

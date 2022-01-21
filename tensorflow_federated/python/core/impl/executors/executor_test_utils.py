@@ -37,6 +37,7 @@ from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -72,6 +73,9 @@ class TestExecutionContext(context_base.Context):
     embedded_comp = self._loop.run_until_complete(
         executor.create_value(comp, comp.type_signature))
     if arg is not None:
+      if isinstance(arg, ingestable_base.Ingestable):
+        arg_coro = self._loop.run_until_complete(arg.ingest(executor))
+        arg = self._loop.run_until_complete(arg_coro.compute())
       embedded_arg = self._loop.run_until_complete(
           executor.create_value(arg, comp.type_signature.parameter))
     else:

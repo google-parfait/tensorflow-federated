@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl.context_stack.set_default_context imp
 from tensorflow_federated.python.core.impl.execution_contexts.sync_execution_context import ExecutionContext
 from tensorflow_federated.python.core.impl.executors.cardinality_carrying_base import CardinalityCarrying
 from tensorflow_federated.python.core.impl.executors.data_backend_base import DataBackend
+from tensorflow_federated.python.core.impl.executors.data_descriptor import DataDescriptor
 from tensorflow_federated.python.core.impl.executors.data_executor import DataExecutor
 from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
