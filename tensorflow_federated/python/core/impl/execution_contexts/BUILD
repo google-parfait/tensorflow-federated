@@ -64,6 +64,11 @@ py_library(
     name = "sync_execution_context",
     srcs = ["sync_execution_context.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":execution_contexts_packages",
+        "//tensorflow_federated/python/cloud/gcp/runtime/impl:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+    ],
     deps = [
         ":async_execution_context",
         "//tensorflow_federated/python/common_libs:py_typecheck",
