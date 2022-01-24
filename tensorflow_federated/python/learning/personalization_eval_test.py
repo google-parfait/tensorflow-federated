@@ -60,9 +60,9 @@ def _evaluate_fn(model, dataset, batch_size=1):
   local_outputs = model.report_local_unfinalized_metrics()
   for name, metric in local_outputs.items():
     if isinstance(metric, list) and (len(metric) == 2):
-      # Some metrics returned by `report_local_outputs()` can have two scalars:
-      # one represents `sum`, and the other represents `count`. Ideally, we want
-      # to return a single scalar for each metric.
+      # Some metrics returned by `report_local_unfinalized_metrics()` can have
+      # two scalars: one represents `sum`, and the other represents `count`.
+      # Ideally, we want to return a single scalar for each metric.
       results[name] = metric[0] / metric[1]
     else:
       results[name] = metric[0] if isinstance(metric, list) else metric
