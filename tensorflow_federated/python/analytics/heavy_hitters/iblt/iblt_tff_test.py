@@ -65,7 +65,6 @@ def _execute_computation(
     max_string_length: int = 10,
     repetitions: int = 3,
     seed: int = 0,
-    dtype: tf.dtypes.DType = tf.int64,
     max_heavy_hitters: Optional[int] = None,
     max_words_per_user: Optional[int] = None,
     k_anonymity: int = 1,
@@ -85,8 +84,6 @@ def _execute_computation(
     repetitions: The number of repetitions in IBLT data structure (must be >=
       3). Defaults to `3`.
     seed: An integer seed for hash functions. Defaults to `0`.
-    dtype: A tensorflow data type which determines the type of the IBLT values.
-      Defaults to `tf.int64`.
     max_heavy_hitters: The maximum number of items to return. If the decoded
       results have more than this number of items, will order decreasingly by
       the estimated counts and return the top max_heavy_hitters items. Default
@@ -111,7 +108,6 @@ def _execute_computation(
       max_string_length=max_string_length,
       repetitions=repetitions,
       seed=seed,
-      dtype=dtype,
       max_heavy_hitters=max_heavy_hitters,
       max_words_per_user=max_words_per_user,
       k_anonymity=k_anonymity,
@@ -171,18 +167,6 @@ class IbltTffConstructionTest(test_case.TestCase):
     with self.assertRaisesRegex(ValueError, 'repetitions'):
       iblt_tff.build_iblt_computation(repetitions=2)
     iblt_tff.build_iblt_computation(repetitions=3)
-
-  def test_dtypes_validation(self):
-    with self.assertRaisesRegex(ValueError, 'dtype'):
-      iblt_tff.build_iblt_computation(dtype=tf.string)
-    with self.assertRaisesRegex(ValueError, 'dtype'):
-      iblt_tff.build_iblt_computation(dtype=tf.variant)
-    with self.assertRaisesRegex(ValueError, 'dtype'):
-      iblt_tff.build_iblt_computation(dtype=tf.float16)
-    with self.assertRaisesRegex(ValueError, 'dtype'):
-      iblt_tff.build_iblt_computation(dtype=tf.int16)
-    iblt_tff.build_iblt_computation(dtype=tf.int64)
-    iblt_tff.build_iblt_computation(dtype=tf.int32)
 
   def test_max_heavy_hitters_validation(self):
     with self.assertRaisesRegex(ValueError, 'max_heavy_hitters'):
@@ -252,7 +236,6 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
         max_string_length=max_string_length,
         repetitions=repetitions,
         seed=seed,
-        dtype=tf.int64,
         max_words_per_user=10,
         batch_size=batch_size)
 
@@ -384,7 +367,6 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
         max_string_length=max_string_length,
         repetitions=repetitions,
         seed=seed,
-        dtype=tf.int64,
         max_words_per_user=10,
         batch_size=batch_size,
         multi_contribution=False)
@@ -438,7 +420,6 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
         max_string_length=max_string_length,
         repetitions=repetitions,
         seed=seed,
-        dtype=tf.int64,
         max_words_per_user=10,
         batch_size=batch_size,
         multi_contribution=False)
