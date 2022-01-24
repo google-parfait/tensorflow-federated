@@ -57,7 +57,7 @@ def _evaluate_fn(model, dataset, batch_size=1):
 
   # Obtain the metrics.
   results = collections.OrderedDict()
-  local_outputs = model.report_local_outputs()
+  local_outputs = model.report_local_unfinalized_metrics()
   for name, metric in local_outputs.items():
     if isinstance(metric, list) and (len(metric) == 2):
       # Some metrics returned by `report_local_outputs()` can have two scalars:
@@ -228,9 +228,6 @@ class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
     baseline_metrics = results['baseline_metrics']
     # Number of test examples is 3 for both clients.
     self.assertAllEqual(baseline_metrics['num_examples'], [3, 3])
-    # Number of test batches is 3 for both clients, because the function that
-    # evaluates the baseline metrics `_evaluate_fn` uses a default batch size 1.
-    self.assertAllEqual(sorted(baseline_metrics['num_batches']), [3, 3])
     # The initial weights are all zeros. The average loss can be computed as:
     # Client 1, 0.5*(1 + 1 + 1)/3 = 0.5; Client 2, 0.5*(4 + 4 + 4)/3 = 2.0.
     # Note: the order is not preserved due to `federated_sample`.
@@ -247,8 +244,6 @@ class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
     bs1_test_outputs = bs1_metrics['test_outputs']
     # Number of test examples is also 3 for both clients.
     self.assertAllEqual(bs1_test_outputs['num_examples'], [3, 3])
-    # Number of test batches is 1 for both clients since test batch size is 3.
-    self.assertAllEqual(bs1_test_outputs['num_batches'], [1, 1])
     # Both clients's weights become [-3, -3, -1] after training, which gives an
     # average loss 24 for Client 1 and 88.5 for Client 2.
     self.assertAlmostEqual(bs1_test_outputs['loss'][client_1_idx], 24.0)
@@ -261,8 +256,6 @@ class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
     bs2_test_outputs = bs2_metrics['test_outputs']
     # Number of test examples is also 3 for both clients.
     self.assertAllEqual(bs2_test_outputs['num_examples'], [3, 3])
-    # Number of test batches is 1 for both clients since test batch size is 3.
-    self.assertAllEqual(bs2_test_outputs['num_batches'], [1, 1])
     # Both clients' weights become [0, 0, 1] after training, which gives an
     # average loss 0 for Client 1 and 0.5 for Client 2.
     self.assertAlmostEqual(bs2_test_outputs['loss'][client_1_idx], 0.0)
