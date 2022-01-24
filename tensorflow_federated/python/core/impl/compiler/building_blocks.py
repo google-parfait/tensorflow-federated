@@ -20,7 +20,7 @@
 
 import abc
 import enum
-from typing import Any, Iterable, Iterator, List, Optional, Tuple, Type
+from typing import Any, Iterable, List, Optional, Tuple, Type
 import zlib
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -121,11 +121,6 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   @property
   def type_signature(self) -> computation_types.Type:
     return self._type_signature
-
-  @abc.abstractmethod
-  def children(self) -> Iterator['ComputationBuildingBlock']:
-    """Returns an iterator yielding immediate child building blocks."""
-    raise NotImplementedError
 
   def compact_representation(self):
     """Returns the compact string representation of this building block."""
@@ -312,10 +307,6 @@ class Reference(ComputationBuildingBlock):
         type=type_serialization.serialize_type(self.type_signature),
         reference=pb.Reference(name=self._name))
 
-  def children(self) -> Iterator[ComputationBuildingBlock]:
-    del self
-    return iter(())
-
   def is_reference(self):
     return True
 
@@ -414,9 +405,6 @@ class Selection(ComputationBuildingBlock):
 
   def _uncached_hash(self):
     return hash((self._source, self._name, self._index))
-
-  def children(self) -> Iterator[ComputationBuildingBlock]:
-    yield self._source
 
   def is_selection(self):
     return True
@@ -528,9 +516,6 @@ class Struct(ComputationBuildingBlock, structure.Struct):
   def _uncached_hash(self):
     return structure.Struct.__hash__(self)
 
-  def children(self) -> Iterator[ComputationBuildingBlock]:
-    return (element for _, element in structure.iter_elements(self))
-
   def is_struct(self):
     return True
 
@@ -620,11 +605,6 @@ class Call(ComputationBuildingBlock):
 
   def _uncached_hash(self):
     return hash((self._function, self._argument))
-
-  def children(self) -> Iterator[ComputationBuildingBlock]:
-    yield self._function
-    if self._argument is not None:
-      yield self._argument
 
   def is_call(self):
     return True
@@ -717,9 +697,6 @@ class Lambda(ComputationBuildingBlock):
 
   def _uncached_hash(self):
     return hash((self._parameter_name, self._parameter_type, self._result))
-
-  def children(self) -> Iterator[ComputationBuildingBlock]:
-    yield self._result
 
   def is_lambda(self):
     return True
@@ -844,11 +821,6 @@ class Block(ComputationBuildingBlock):
   def _uncached_hash(self):
     return hash((tuple(self._locals), self._result))
 
-  def children(self) -> Iterator[ComputationBuildingBlock]:
-    for _, value in self._locals:
-      yield value
-    yield self._result
-
   def is_block(self):
     return True
 
@@ -923,10 +895,6 @@ class Intrinsic(ComputationBuildingBlock):
   def _uncached_hash(self):
     return hash((self._uri, self.type_signature))
 
-  def children(self) -> Iterator[ComputationBuildingBlock]:
-    del self
-    return iter(())
-
   def is_intrinsic(self):
     return True
 
@@ -984,10 +952,6 @@ class Data(ComputationBuildingBlock):
 
   def _uncached_hash(self):
     return hash((self._uri, self.type_signature))
-
-  def children(self) -> Iterator[ComputationBuildingBlock]:
-    del self
-    return iter(())
 
   def is_data(self):
     return True
@@ -1047,10 +1011,6 @@ class CompiledComputation(ComputationBuildingBlock):
   def _uncached_hash(self):
     return hash(self._proto_representation.SerializeToString())
 
-  def children(self) -> Iterator[ComputationBuildingBlock]:
-    del self
-    return iter(())
-
   def is_compiled_computation(self):
     return True
 
@@ -1099,10 +1059,6 @@ class Placement(ComputationBuildingBlock):
 
   def _uncached_hash(self):
     return hash(self._literal)
-
-  def children(self) -> Iterator[ComputationBuildingBlock]:
-    del self
-    return iter(())
 
   def is_placement(self):
     return True

@@ -251,7 +251,7 @@ def parse_tff_to_tf(comp, grappler_config_proto):
     of this function, but rather its callers, to check that the result of this
     parse is as expected.
   """
-  tf_parsed = transformations.compile_local_computation_to_tensorflow(comp)
+  tf_parsed, _ = transformations.compile_local_computations_to_tensorflow(comp)
 
   # TODO(b/184883078): Remove this check and trust Grappler to disable itself
   # based on the `disable_meta_optimizer` config.

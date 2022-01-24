@@ -433,14 +433,12 @@ py_library(
         ":compiled_computation_transforms",
         ":transformation_utils",
         ":tree_analysis",
+        ":tree_to_cc_transformations",
         ":tree_transformations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )
 
