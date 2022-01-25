@@ -88,14 +88,17 @@ def check_type(value: Any, type_spec: computation_types.Type):
       against.
 
   Raises:
-    TypeError: If the infferred type of `value` is not `type_spec`.
+    TypeError: If the inferred type of `value` is not assignable to `type_spec`.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   value_type = type_conversions.infer_type(value)
   if not type_spec.is_assignable_from(value_type):
     raise TypeError(
-        'Expected TFF type {}, which is not assignable from {}.'.format(
-            type_spec, value_type))
+        computation_types.type_mismatch_error_message(
+            value_type,
+            type_spec,
+            computation_types.TypeRelation.ASSIGNABLE,
+            second_is_expected=True))
 
 
 def is_tensorflow_compatible_type(type_spec):

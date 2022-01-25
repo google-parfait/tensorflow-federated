@@ -448,7 +448,17 @@ def assemble_result_from_graph(type_spec, binding, output_map):
       raise ValueError('Tensor named {} not found in the output map.'.format(
           binding.tensor.tensor_name))
     else:
-      return output_map[binding.tensor.tensor_name]
+      tensor_name = binding.tensor.tensor_name
+      tensor = output_map[tensor_name]
+      try:
+        type_analysis.check_type(tensor, type_spec)
+      except TypeError as te:
+        raise ValueError(
+            f'Type mismatch loading graph result tensor {tensor} '
+            f'(named "{tensor_name}").\n'
+            'This may have been caused by a use of `tf.set_shape`.\n'
+            'Prefer usage of `tf.ensure_shape` to `tf.set_shape`.') from te
+      return tensor
   elif type_spec.is_struct():
     if binding_oneof != 'struct':
       raise ValueError(

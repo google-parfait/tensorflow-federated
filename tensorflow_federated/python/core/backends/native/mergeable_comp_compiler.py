@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 def _compile_to_tf(fn):
   simplified = transformations.to_deduped_call_dominant(fn)
   unplaced, _ = tree_transformations.strip_placement(simplified)
-  return transformations.compile_local_computations_to_tensorflow(unplaced)
+  return transformations.compile_local_subcomputations_to_tensorflow(unplaced)
 
 
 def _select_output_result_and_wrap_as_noarg_tensorflow(
@@ -39,7 +39,7 @@ def _select_output_result_and_wrap_as_noarg_tensorflow(
   selected_and_wrapped = building_blocks.Lambda(
       None, None,
       building_block_factory.select_output_from_lambda(fn, path).result)
-  selected_and_compiled, _ = _compile_to_tf(selected_and_wrapped)
+  selected_and_compiled = _compile_to_tf(selected_and_wrapped)
   return computation_wrapper_instances.building_block_to_computation(
       selected_and_compiled)
 
@@ -49,7 +49,7 @@ def _select_output_result_and_wrap_as_tensorflow(
     path: building_block_factory.Path) -> computation_impl.ConcreteComputation:
   selected_fn = building_block_factory.select_output_from_lambda(fn,
                                                                  path).result
-  selected_and_compiled, _ = _compile_to_tf(selected_fn)
+  selected_and_compiled = _compile_to_tf(selected_fn)
   return computation_wrapper_instances.building_block_to_computation(
       selected_and_compiled)
 
