@@ -4,7 +4,7 @@ package(default_visibility = [":test_packages"])
 
 package_group(
     name = "test_packages",
-    packages = ["//tensorflow_federated/experimental/python/tests/..."],
+    packages = ["//third_party/tensorflow_federated/experimental/python/tests/..."],
 )
 
 licenses(["notice"])

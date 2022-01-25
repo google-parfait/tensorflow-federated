@@ -1,11 +1,11 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
+load("//third_party/tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 package(default_visibility = [":test_packages"])
 
 package_group(
     name = "test_packages",
-    packages = ["//tensorflow_federated/python/tests/..."],
+    packages = ["//third_party/tensorflow_federated/python/tests/..."],
 )
 
 licenses(["notice"])

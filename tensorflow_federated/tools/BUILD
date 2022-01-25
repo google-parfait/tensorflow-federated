@@ -5,7 +5,7 @@ package(default_visibility = [":tools_packages"])
 
 package_group(
     name = "tools_packages",
-    packages = ["//tensorflow_federated/tools/..."],
+    packages = ["//third_party/tensorflow_federated/tools/..."],
 )
 
 licenses(["notice"])
