@@ -1,4 +1,4 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_test_with_tf_deps")
+load("//third_party/tensorflow_federated/tools:build_defs.bzl", "tff_cc_test_with_tf_deps")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
 package(default_visibility = [
