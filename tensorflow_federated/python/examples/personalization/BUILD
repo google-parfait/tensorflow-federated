@@ -8,7 +8,7 @@ py_library(
     name = "p13n_utils",
     srcs = ["p13n_utils.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_test(
@@ -18,7 +18,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":p13n_utils",
-        "//tensorflow_federated",
+        "//third_party/tensorflow_federated",
     ],
 )
 
@@ -29,6 +29,6 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         ":p13n_utils",
-        "//tensorflow_federated",
+        "//third_party/tensorflow_federated",
     ],
 )

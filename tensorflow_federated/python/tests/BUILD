@@ -1,11 +1,11 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
+load("//third_party/tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 package(default_visibility = [":test_packages"])
 
 package_group(
     name = "test_packages",
-    packages = ["//tensorflow_federated/python/tests/..."],
+    packages = ["//third_party/tensorflow_federated/python/tests/..."],
 )
 
 licenses(["notice"])
@@ -16,7 +16,7 @@ py_test(
     srcs = ["ast_generation_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_test(
@@ -29,7 +29,7 @@ py_test(
         ":remote_runtime_test_utils",
         ":temperature_sensor_example",
         ":test_contexts",
-        "//tensorflow_federated",
+        "//third_party/tensorflow_federated",
     ],
 )
 
@@ -38,7 +38,7 @@ py_cpu_gpu_test(
     srcs = ["backend_accelerators_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_test(
@@ -47,7 +47,7 @@ py_test(
     srcs = ["composite_tensor_e2e_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_test(
@@ -63,7 +63,7 @@ py_test(
         "manual",
         "notap",
     ],
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_test(
@@ -79,7 +79,7 @@ py_test(
     ],
     deps = [
         ":learning_test_models",
-        "//tensorflow_federated",
+        "//third_party/tensorflow_federated",
     ],
 )
 
@@ -96,7 +96,7 @@ py_test(
         "manual",
         "notap",
     ],
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_test(
@@ -112,7 +112,7 @@ py_test(
     ],
     deps = [
         ":learning_test_models",
-        "//tensorflow_federated",
+        "//third_party/tensorflow_federated",
     ],
 )
 
@@ -121,7 +121,7 @@ py_library(
     testonly = True,
     srcs = ["learning_test_models.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_test(
@@ -130,7 +130,7 @@ py_test(
     srcs = ["map_reduce_form_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_test(
@@ -141,7 +141,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":remote_runtime_test_utils",
-        "//tensorflow_federated",
+        "//third_party/tensorflow_federated",
     ],
 )
 
@@ -151,7 +151,7 @@ py_library(
     srcs = ["remote_runtime_test_utils.py"],
     data = [":test_aggregator"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_test(
@@ -162,14 +162,14 @@ py_test(
     python_version = "PY3",
     shard_count = 4,
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_library(
     name = "temperature_sensor_example",
     srcs = ["temperature_sensor_example.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_binary(
@@ -177,7 +177,7 @@ py_binary(
     srcs = ["test_aggregator.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
 
 py_library(
@@ -187,6 +187,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":remote_runtime_test_utils",
-        "//tensorflow_federated",
+        "//third_party/tensorflow_federated",
     ],
 )

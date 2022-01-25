@@ -9,5 +9,5 @@ py_binary(
     srcs = ["test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = ["//third_party/tensorflow_federated"],
 )
