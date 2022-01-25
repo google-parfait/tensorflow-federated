@@ -91,7 +91,7 @@ def import_tensorflow_computation(comp, name='fn'):
   with tf.Graph().as_default() as graph:
     # TODO(b/153499219): See if we can reintroduce uniquify_shared_names().
     # Right now, it causes loader breakage, and unclear if still necessary.
-    import_results = tf.import_graph_def(
+    import_results = tf.graph_util.import_graph_def(
         graph_def, input_map={}, return_elements=return_elements, name='')
 
   if init_op:

@@ -91,7 +91,7 @@ def _make_dataset_constructing_graph():
 
 def _make_manual_reduce_graph(dataset_construction_graph, return_element):
   with tf.Graph().as_default() as graph:
-    v1 = tf.import_graph_def(
+    v1 = tf.graph_util.import_graph_def(
         dataset_construction_graph.as_graph_def(),
         return_elements=[return_element])[0]
     structure = tf.TensorSpec([], tf.int64)

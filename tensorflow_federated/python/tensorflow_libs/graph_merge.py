@@ -19,6 +19,7 @@ import uuid
 import tensorflow as tf
 
 from tensorflow_federated.python.tensorflow_libs import graph_spec
+from tensorflow_federated.python.tensorflow_libs import graph_utils
 
 
 # TODO(b/168706001): the last usages of the uuid based implementation is in the
@@ -83,7 +84,8 @@ def _concat_graphs(graph_def_list, graph_names_list):
     graph_def_to_merge = uniquify_shared_names_with_suffix(
         graph_def_list[k], graph_names_list[k])
     with merged_graph.as_default():
-      tf.import_graph_def(graph_def_to_merge, name=graph_names_list[k])
+      tf.graph_util.import_graph_def(
+          graph_def_to_merge, name=graph_names_list[k])
   return merged_graph
 
 
@@ -172,8 +174,8 @@ def compose_graph_specs(graph_spec_list):
   Notice that due to the semantics of composition (e.g., compose(f1, f2)
   represents first calling f2 on the argument of x, then calling f1 on the
   result), we will reverse `graph_spec_list` before wiring inputs and outputs
-  together,since `tf.import_graph_def` works in the opposite way, that is, we
-  must have tensors to map as inputs to the graph we are importing.
+  together,since `tf.graph_util.import_graph_def` works in the opposite way,
+  that is, we must have tensors to map as inputs to the graph we are importing.
 
   We enforce the invariant that each element of `graph_spec_list` must declare
   exactly as many inputs as the next element declares outputs. This removes
@@ -232,7 +234,7 @@ def compose_graph_specs(graph_spec_list):
       An instance of `tf.Graph` containing the composed logic.
     """
     with tf.Graph().as_default() as composed_graph:
-      output_elements = tf.import_graph_def(
+      output_elements = tf.graph_util.import_graph_def(
           uniquify_shared_names_with_suffix(graph_def_list[0],
                                             graph_names_list[0]),
           return_elements=out_names[0],
@@ -243,9 +245,10 @@ def compose_graph_specs(graph_spec_list):
       # incorrectly.
       graph_def_to_merge = uniquify_shared_names_with_suffix(
           graph_def_list[k], graph_names_list[k])
-      input_map = dict(zip(in_names[k], output_elements))
+      input_map = graph_utils.add_control_dep_mappings(
+          dict(zip(in_names[k], output_elements)))
       with composed_graph.as_default():
-        output_elements = tf.import_graph_def(
+        output_elements = tf.graph_util.import_graph_def(
             graph_def_to_merge,
             input_map=input_map,
             return_elements=out_names[k],

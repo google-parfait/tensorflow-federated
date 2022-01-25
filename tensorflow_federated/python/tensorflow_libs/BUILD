@@ -37,7 +37,10 @@ py_library(
     name = "graph_merge",
     srcs = ["graph_merge.py"],
     srcs_version = "PY3",
-    deps = [":graph_spec"],
+    deps = [
+        ":graph_spec",
+        ":graph_utils",
+    ],
 )
 
 py_test(
@@ -81,6 +84,20 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":graph_spec"],
+)
+
+py_library(
+    name = "graph_utils",
+    srcs = ["graph_utils.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "graph_utils_test",
+    srcs = ["graph_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":graph_utils"],
 )
 
 py_library(

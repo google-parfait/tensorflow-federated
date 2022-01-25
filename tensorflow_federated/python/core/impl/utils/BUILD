@@ -43,6 +43,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/tensorflow_libs:graph_utils",
     ],
 )
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 import numpy as np
 import tensorflow as tf
 
@@ -47,7 +49,7 @@ def _make_dataset_constructing_graph():
 
 def _make_manual_reduce_graph(dataset_construction_graph, return_element):
   with tf.Graph().as_default() as graph:
-    v1 = tf.import_graph_def(
+    v1 = tf.graph_util.import_graph_def(
         dataset_construction_graph.as_graph_def(),
         return_elements=[return_element])[0]
     structure = tf.TensorSpec([], tf.int64)
@@ -274,6 +276,38 @@ class ComposeGraphSpecTest(tf.test.TestCase):
     arg_list = [graph_spec_1, graph_spec_2]
     with self.assertRaisesRegex(ValueError, 'mismatch'):
       graph_merge.compose_graph_specs(arg_list)
+
+  def test_compose_remaps_control_deps(self):
+    graph1 = tf.Graph()
+    with graph1.as_default():
+      x = tf.compat.v1.placeholder(dtype=tf.int32, name='x')
+      y = tf.compat.v1.placeholder(dtype=tf.int32, name='y')
+      with tf.compat.v1.control_dependencies([y]):
+        out_x1 = tf.identity(x)
+      out_y1 = tf.identity(y)
+      init_op_name_1 = tf.compat.v1.global_variables_initializer().name
+    graph2 = tf.Graph()
+    with graph2.as_default():
+      x2 = tf.compat.v1.placeholder(dtype=tf.int32, name='x2')
+      y2 = tf.compat.v1.placeholder(dtype=tf.int32, name='y2')
+      with tf.compat.v1.control_dependencies([y2]):
+        out_x2 = tf.identity(x2)
+      init_op_name_2 = tf.compat.v1.global_variables_initializer().name
+
+    graph_spec_1 = graph_spec.GraphSpec(graph1.as_graph_def(), init_op_name_1,
+                                        [x.name, y.name],
+                                        [out_x1.name, out_y1.name])
+    graph_spec_2 = graph_spec.GraphSpec(graph2.as_graph_def(), init_op_name_2,
+                                        [x2.name, y2.name], [out_x2.name])
+    arg_list = [graph_spec_2, graph_spec_1]
+    composed_graph, _, _, _ = graph_merge.compose_graph_specs(arg_list)
+    # We must assert that the composed graph does not have a control dep on
+    # `y2`, it must be rewritten because it will not appear in the
+    # `in_name_map`.
+    all_inputs = set(
+        itertools.chain(
+            *(node.input for node in composed_graph.as_graph_def().node)))
+    self.assertNotIn('^graph_1/y2', all_inputs)
 
   def test_compose_two_add_one_graphs_adds_two(self):
     graph1, input_name_1, output_name_1 = _make_add_one_graph()

@@ -874,7 +874,7 @@ class LambdaWrappingNoArgGraph(transformation_utils.TransformSpec):
     rebind_name = 'reimported'
 
     with tf.Graph().as_default() as g:
-      tf.import_graph_def(
+      tf.graph_util.import_graph_def(
           tf_spec.graph_def,
           return_elements=tf_spec.out_names,
           name=rebind_name)

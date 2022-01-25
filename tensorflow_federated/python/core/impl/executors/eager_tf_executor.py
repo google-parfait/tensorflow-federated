@@ -101,7 +101,7 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
           graph_def, init_op)
 
     def _import_fn():
-      return tf.import_graph_def(
+      return tf.graph_util.import_graph_def(
           graph_merge.uniquify_shared_names(graph_def), name='')
 
     if must_pin_function_to_cpu:
@@ -204,8 +204,8 @@ def _call_embedded_tf(*, arg, param_fns, result_fns, result_type, wrapped_fn,
   result_parts = wrapped_fn(*param_elements)
 
   # There is a tf.wrap_function(...) issue b/144127474 that variables created
-  # from tf.import_graph_def(...) inside tf.wrap_function(...) is not
-  # destroyed.  So get all the variables from `wrapped_fn` and destroy
+  # from tf.graph_util.import_graph_def(...) inside tf.wrap_function(...) is not
+  # destroyed. So get all the variables from `wrapped_fn` and destroy
   # manually.
   # TODO(b/144127474): Remove this manual cleanup once tf.wrap_function(...)
   # is fixed.

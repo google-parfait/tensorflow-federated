@@ -170,7 +170,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
 
     def _function_to_wrap(arg):
       with tf.device(device.name):
-        return tf.import_graph_def(
+        return tf.graph_util.import_graph_def(
             graph.as_graph_def(),
             input_map={x.name: arg},
             return_elements=[y.name])[0]

@@ -1025,12 +1025,6 @@ class GraphUtilsTest(test_case.TestCase):
         tensorflow_utils.make_dataset_from_variant_tensor(
             tf.data.experimental.to_variant(tf.data.Dataset.range(5)), 'a')
 
-  def test_to_node_name(self):
-    self.assertEqual(tensorflow_utils.to_node_name('foo'), 'foo')
-    self.assertEqual(tensorflow_utils.to_node_name('^foo'), 'foo')
-    self.assertEqual(tensorflow_utils.to_node_name('foo:0'), 'foo')
-    self.assertEqual(tensorflow_utils.to_node_name('^foo:0'), 'foo')
-
   def test_get_deps_for_graph_node(self):
     # Creates a graph (double edges are regular dependencies, single edges are
     # control dependencies) like this:
@@ -1146,7 +1140,6 @@ class TensorFlowDeserializationTest(test_case.TestCase):
 
   @test_utils.graph_mode_test
   def test_deserialize_and_call_tf_computation_with_add_one(self):
-
     with tf.Graph().as_default() as graph:
       parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
           'x', tf.int32, graph)
@@ -1165,6 +1158,41 @@ class TensorFlowDeserializationTest(test_case.TestCase):
     init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
         computation_proto, tf.constant(10), tf.compat.v1.get_default_graph(),
         '')
+    self.assertTrue(tf.is_tensor(result))
+    with tf.compat.v1.Session() as sess:
+      if init_op:
+        sess.run(init_op)
+      result_val = sess.run(result)
+    self.assertEqual(result_val, 10)
+
+  @test_utils.graph_mode_test
+  def test_deserialize_and_call_tf_computation_with_placeholder_replacement(
+      self):
+    with tf.Graph().as_default() as graph:
+      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
+          'x', (tf.int32, tf.int32), graph)
+      # Force a control dependency on a placeholder. This will allow us to
+      # assert that control dependencies were also remapped during
+      # `tf.graph_util.import_graph_def`.
+      with tf.compat.v1.control_dependencies([parameter_value[1]]):
+        result = tf.identity(parameter_value[0])
+      result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+          result, graph)
+    parameter_type = computation_types.StructType([
+        (None, computation_types.TensorType(tf.int32)),
+        (None, computation_types.TensorType(tf.int32))
+    ])
+    type_signature = computation_types.FunctionType(parameter_type, result_type)
+    tensorflow_proto = pb.TensorFlow(
+        graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+        parameter=parameter_binding,
+        result=result_binding)
+    serialized_type = type_serialization.serialize_type(type_signature)
+    computation_proto = pb.Computation(
+        type=serialized_type, tensorflow=tensorflow_proto)
+    init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
+        computation_proto, (tf.constant(10), tf.constant(20)),
+        tf.compat.v1.get_default_graph(), '')
     self.assertTrue(tf.is_tensor(result))
     with tf.compat.v1.Session() as sess:
       if init_op:

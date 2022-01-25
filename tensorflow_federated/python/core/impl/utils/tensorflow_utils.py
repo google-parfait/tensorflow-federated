@@ -35,6 +35,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.tensorflow_libs import graph_utils
 
 TENSOR_REPRESENTATION_TYPES = (
     # Python native types
@@ -907,31 +908,6 @@ def _interleave_dataset_results_and_tensors(dataset_results, flat_run_tensors):
   return flattened_results
 
 
-def to_node_name(name):
-  """Returns the name of a node in `graph_def` that `name` refers to.
-
-  Args:
-    name: A string.
-
-  Returns:
-    A stripped version of `name` without control dependency prefix or output
-    suffix.
-
-  Raises:
-    ValueError: If `name` is not a valid name of a node or node input.
-  """
-  py_typecheck.check_type(name, str)
-  if not name:
-    raise ValueError('The argument cannot be empty.')
-  if name[0] == '^':
-    name = name[1:]
-  colon = name.rfind(':')
-  if colon >= 0:
-    return name[:colon]
-  else:
-    return name
-
-
 def get_deps_for_graph_node(graph_def, node_name):
   """Returns the set of node names that a node named `node_name` depends on.
 
@@ -947,7 +923,7 @@ def get_deps_for_graph_node(graph_def, node_name):
   py_typecheck.check_type(node_name, str)
   input_map = {}
   for node in graph_def.node:
-    input_map[node.name] = set(to_node_name(x) for x in node.input)
+    input_map[node.name] = set(graph_utils.get_node_name(x) for x in node.input)
   dependencies = set()
   initial_singleton = set([node_name])
   nodes_to_process = initial_singleton
@@ -971,7 +947,7 @@ def add_control_deps_for_init_op(graph_def, init_op):
   """
   py_typecheck.check_type(graph_def, tf.compat.v1.GraphDef)
   py_typecheck.check_type(init_op, str)
-  init_op_str = to_node_name(init_op)
+  init_op_str = graph_utils.get_node_name(init_op)
   init_op_control_dep = '^{}'.format(init_op_str)
   deps = get_deps_for_graph_node(graph_def,
                                  init_op_str).union(set([init_op_str]))
@@ -1160,6 +1136,9 @@ def deserialize_and_call_tf_computation(
             for k, v in compute_map_from_bindings(
                 computation_proto.tensorflow.parameter, arg_binding).items()
         }
+    # Add potential control dep remappings.
+    if input_map is not None:
+      input_map = graph_utils.add_control_dep_mappings(input_map)
     return_elements = extract_tensor_names_from_binding(
         computation_proto.tensorflow.result)
     orig_init_op_name = computation_proto.tensorflow.initialize_op
@@ -1175,7 +1154,7 @@ def deserialize_and_call_tf_computation(
     # those Variables are not added to global collections, and hence
     # functions like tf.compat.v1.global_variables_initializers() will not
     # contain their initialization ops.
-    output_tensors = tf.import_graph_def(
+    output_tensors = tf.graph_util.import_graph_def(
         graph_def,
         input_map,
         return_elements,
