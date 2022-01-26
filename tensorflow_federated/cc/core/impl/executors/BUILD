@@ -85,6 +85,69 @@ tff_cc_library_with_tf_deps(
     deps = ["//tensorflow_federated/proto/v0:computation_cc_proto"],
 )
 
+tff_cc_library_with_tf_deps(
+    name = "data_backend",
+    hdrs = ["data_backend.h"],
+    deps = [
+        ":status_macros",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+tff_cc_library_with_tf_deps(
+    name = "mock_data_backend",
+    testonly = True,
+    hdrs = ["mock_data_backend.h"],
+    deps = [
+        ":data_backend",
+        ":protobuf_matchers",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+tff_cc_library_with_tf_deps(
+    name = "data_executor",
+    srcs = ["data_executor.cc"],
+    hdrs = ["data_executor.h"],
+    deps = [
+        ":data_backend",
+        ":executor",
+        ":status_macros",
+        ":threading",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+tff_cc_test_with_tf_deps(
+    name = "data_executor_test",
+    srcs = ["data_executor_test.cc"],
+    deps = [
+        ":data_backend",
+        ":data_executor",
+        ":executor",
+        ":executor_test_base",
+        ":mock_data_backend",
+        ":mock_executor",
+        ":status_matchers",
+        ":value_test_utils",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+    ],
+)
+
 tff_cc_library_with_tf_runtime_deps(
     name = "dataset_conversions",
     srcs = ["dataset_conversions.cc"],
