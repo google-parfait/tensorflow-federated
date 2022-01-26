@@ -430,8 +430,11 @@ def _pad_zeros_pow2(x):
   """Pads a rank-1 tensor with zeros to the next power of two dimensions."""
   size = tf.size(x)
   log2_size = tf.math.log(tf.cast(size, tf.float32)) / math.log(2.0)
-  # NOTE: We perform `pow` in float32 to avoid the integer TF `pow` op,
-  # improving runtimes that use selective op registration.
+  # NOTE: We perform `pow` in float32 to avoid the integer TF `pow` op. This can
+  # be avoided via Grappler's constant folding optimizer, but it must be
+  # disabled due to b/164455653. While float32 can only represent the
+  # nonnegative integer range [0, 2^24] exactly, we only consider powers of 2
+  # for padding and thus can tolerate up to 2^30 with a cast to int32.
   pad_size = tf.cast(2.0**tf.math.ceil(log2_size), tf.int32)
   return tf.concat([x, tf.zeros([pad_size - size], x.dtype)], axis=0)
 
