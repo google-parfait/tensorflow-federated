@@ -133,17 +133,8 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
   def _encoders_for_value_type(self, value_type):
-    encoders = None
-    # Creates unused tf_computation to manipulate `value_type` without TFF
-    # type system, for compatibility with tree package, used later.
-    @computations.tf_computation(value_type)
-    def unused_fn(value):
-      nonlocal encoders
-      value_specs = tf.nest.map_structure(
-          lambda t: tf.TensorSpec(t.shape, t.dtype), value)
-      encoders = tf.nest.map_structure(self._encoder_fn, value_specs)
-      return value
-
+    value_specs = type_conversions.type_to_tf_tensor_specs(value_type)
+    encoders = tf.nest.map_structure(self._encoder_fn, value_specs)
     return encoders
 
 
