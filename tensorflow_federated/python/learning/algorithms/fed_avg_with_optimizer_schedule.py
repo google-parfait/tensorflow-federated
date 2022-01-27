@@ -174,8 +174,10 @@ def build_weighted_fed_avg_with_optimizer_schedule(
       The output `L` contains the updated server state, as well as aggregated
       metrics at the server, including client training metrics and any other
       metrics from distribution and aggregation processes.
-  *   `report`: A `tff.Computation` with type signature `( -> M@SERVER)`, where
-      `M` represents the type of the model weights used during training.
+  *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
+      where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
+      matchs the output of `initialize` and `M` represents the type of the model
+      weights used during training.
 
   Each time the `next` method is called, the server model is broadcast to each
   client using a broadcast function. For each client, local training is

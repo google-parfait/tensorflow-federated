@@ -72,26 +72,31 @@ class LearningProcess(iterative_process.IterativeProcess):
 
   This class inherits the constraints documented by
   `tff.templates.IterativeProcess`, including an `initialize` and `next`
-  attribute. The `LearningProcess` also contains an additional `report`
-  attribute.
+  attribute. The `LearningProcess` also contains an additional
+  `get_model_weights` attribute.
 
-  All of `initialize`, `next` and `report`  must be `tff.Computation`s, with the
-  following type signatures:
+  All of `initialize`, `next` and `get_model_weights`  must be
+  `tff.Computation`s, with the following type signatures:
     - initialize: `( -> S@SERVER)`
     - next: `(<S@SERVER, {D*}@CLIENTS> -> <state=S@SERVER, metrics=M@SERVER>)`
-    - report: `(S -> R)`
+    - get_model_weights: `(S -> M)`
   where `{D*}@CLIENTS` represents the sequence of data at a client, with `D`
-  denoting the type of a single member of that sequence, and `R` representing
-  the (unplaced) output type of the `report` function.
+  denoting the type of a single member of that sequence, and `M` representing
+  the (unplaced) output type of the `get_model_weights` function.
+
+  Note that here, "model weights" is a loosely-defined term intended to refer to
+  some kind of "representation" of the model being learned. This is typically
+  some nested structure of tensors, and is often suitable for evaluation
+  purposes.
 
   For example, given a LearningProcess `process` and client data `data`, we
-  could call the following to initialize, update the state three times, and get
-  a report of the resulting state:
+  could call the following to initialize, update the state three times, and
+  extract the model weights of the state:
   ```
   state = process.initialize()
   for _ in range(3):
     state, metrics = process.next(state, data)
-  report = process.report(state)
+  model_weights = process.get_model_weights(state)
   """
 
   def __init__(self, initialize_fn: computation_base.Computation,

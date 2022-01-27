@@ -222,10 +222,10 @@ def build_fed_sgd(
       that are the result of `tff.learning.Model.federated_output_computation`
       during client training and any other metrics from broadcast and
       aggregation processes.
-  *   get_model_weights: A `tff.Computation` with the type signature `(S -> W)`
-      where `S` is a `LearningAlgorithmState` matching
-      the output of `initialize`, and `W` is a `tff.learning.ModelWeights`
-      representing the current model weights of the state.
+  *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
+      where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
+      matchs the output of `initialize` and `M` represents the type of the model
+      weights used during training.
 
   Each time `next` is called, the server model is broadcast to each client using
   a distributor. Each client sums the gradients for each batch in its local
