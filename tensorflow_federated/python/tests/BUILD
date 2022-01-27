@@ -51,22 +51,6 @@ py_test(
 )
 
 py_test(
-    name = "federated_averaging_e2e_convergence_test",
-    timeout = "eternal",
-    srcs = ["federated_averaging_e2e_convergence_test.py"],
-    python_version = "PY3",
-    shard_count = 7,
-    srcs_version = "PY3",
-    tags = [
-        "guitar",
-        "learning",
-        "manual",
-        "notap",
-    ],
-    deps = ["//tensorflow_federated"],
-)
-
-py_test(
     name = "federated_averaging_integration_test",
     size = "large",
     srcs = ["federated_averaging_integration_test.py"],
