@@ -31,8 +31,7 @@ from tensorflow_federated.python.learning import debug_measurements
 
 
 def _default_zeroing(
-    inner_factory: factory.AggregationFactory,
-    secure_estimation: bool = False) -> factory.AggregationFactory:
+    inner_factory: factory.AggregationFactory) -> factory.AggregationFactory:
   """The default adaptive zeroing wrapper."""
 
   # Adapts very quickly to a value somewhat higher than the highest values so
@@ -42,39 +41,18 @@ def _default_zeroing(
       target_quantile=0.98,
       learning_rate=math.log(10.0),
       multiplier=2.0,
-      increment=1.0,
-      secure_estimation=secure_estimation)
-  if secure_estimation:
-    secure_count_factory = secure.SecureSumFactory(
-        upper_bound_threshold=1, lower_bound_threshold=0)
-    return robust.zeroing_factory(
-        zeroing_norm,
-        inner_factory,
-        zeroed_count_sum_factory=secure_count_factory)
-  else:
-    return robust.zeroing_factory(zeroing_norm, inner_factory)
+      increment=1.0)
+  return robust.zeroing_factory(zeroing_norm, inner_factory)
 
 
 def _default_clipping(
-    inner_factory: factory.AggregationFactory,
-    secure_estimation: bool = False) -> factory.AggregationFactory:
+    inner_factory: factory.AggregationFactory) -> factory.AggregationFactory:
   """The default adaptive clipping wrapper."""
 
   # Adapts relatively quickly to a moderately high norm.
   clipping_norm = quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
-      initial_estimate=1.0,
-      target_quantile=0.8,
-      learning_rate=0.2,
-      secure_estimation=secure_estimation)
-  if secure_estimation:
-    secure_count_factory = secure.SecureSumFactory(
-        upper_bound_threshold=1, lower_bound_threshold=0)
-    return robust.clipping_factory(
-        clipping_norm,
-        inner_factory,
-        clipped_count_sum_factory=secure_count_factory)
-  else:
-    return robust.clipping_factory(clipping_norm, inner_factory)
+      initial_estimate=1.0, target_quantile=0.8, learning_rate=0.2)
+  return robust.clipping_factory(clipping_norm, inner_factory)
 
 
 def robust_aggregator(
@@ -233,30 +211,18 @@ def secure_aggregator(
       initial_estimate=50.0,
       target_quantile=0.95,
       learning_rate=1.0,
-      multiplier=2.0,
-      secure_estimation=True)
+      multiplier=2.0)
 
   factory_ = secure.SecureSumFactory(secure_clip_bound)
 
-  if weighted:
-    factory_ = mean.MeanFactory(
-        value_sum_factory=factory_,
-        # Use a power of 2 minus one to more accurately encode floating dtypes
-        # that actually contain integer values. 2 ^ 20 gives us approximately a
-        # range of [0, 1 million]. Existing use cases have the weights either
-        # all ones, or a variant of number of examples processed locally.
-        weight_sum_factory=secure.SecureSumFactory(
-            upper_bound_threshold=float(2**20 - 1), lower_bound_threshold=0.0))
-  else:
-    factory_ = mean.UnweightedMeanFactory(
-        value_sum_factory=factory_,
-        count_sum_factory=secure.SecureSumFactory(
-            upper_bound_threshold=1, lower_bound_threshold=0))
+  factory_ = (
+      mean.MeanFactory(factory_)
+      if weighted else mean.UnweightedMeanFactory(factory_))
 
   if clipping:
-    factory_ = _default_clipping(factory_, secure_estimation=True)
+    factory_ = _default_clipping(factory_)
 
   if zeroing:
-    factory_ = _default_zeroing(factory_, secure_estimation=True)
+    factory_ = _default_zeroing(factory_)
 
   return factory_

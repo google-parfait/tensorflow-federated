@@ -96,9 +96,9 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
     param_value_type = computation_types.at_clients(value_type)
     result_value_type = computation_types.at_server(value_type)
 
-    expected_state_type = computation_types.at_server(((), ()))
+    expected_state_type = computation_types.at_server(())
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=(), mean_count=()))
+        collections.OrderedDict(mean_value=()))
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type)
@@ -171,8 +171,7 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
     value_type = computation_types.to_type(value_type)
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
 
-    factory_ = mean.UnweightedMeanFactory(
-        value_sum_factory=sum_factory, count_sum_factory=sum_factory)
+    factory_ = mean.UnweightedMeanFactory(value_sum_factory=sum_factory)
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create(value_type)
 
@@ -181,9 +180,9 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
     param_value_type = computation_types.at_clients(value_type)
     result_value_type = computation_types.at_server(value_type)
 
-    expected_state_type = computation_types.at_server(((tf.int32, tf.int32)))
+    expected_state_type = computation_types.at_server(tf.int32)
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=tf.int32, mean_count=tf.int32))
+        collections.OrderedDict(mean_value=tf.int32))
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type)
@@ -245,9 +244,8 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     value_type = computation_types.to_type(tf.float32)
 
     process = factory_.create(value_type)
-    expected_state = ((), ())
-    expected_measurements = collections.OrderedDict(
-        mean_value=(), mean_count=())
+    expected_state = ()
+    expected_measurements = collections.OrderedDict(mean_value=())
 
     state = process.initialize()
     self.assertAllEqual(expected_state, state)
@@ -283,9 +281,8 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     factory_ = mean.UnweightedMeanFactory()
     value_type = computation_types.to_type(_test_struct_type)
     process = factory_.create(value_type)
-    expected_state = ((), ())
-    expected_measurements = collections.OrderedDict(
-        mean_value=(), mean_count=())
+    expected_state = ()
+    expected_measurements = collections.OrderedDict(mean_value=())
 
     state = process.initialize()
     self.assertAllEqual(expected_state, state)
@@ -366,23 +363,21 @@ class MeanFactoryExecutionTest(test_case.TestCase):
 
   def test_inner_value_sum_factory_unweighted(self):
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
-    factory_ = mean.UnweightedMeanFactory(
-        value_sum_factory=sum_factory, count_sum_factory=sum_factory)
+    factory_ = mean.UnweightedMeanFactory(value_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type)
 
     state = process.initialize()
-    self.assertAllEqual((0, 0), state)
+    self.assertAllEqual(0, state)
 
     # Values will be summed to 7.0.
     client_data = [1.0, 2.0, 3.0]
 
     output = process.next(state, client_data)
-    self.assertAllEqual((1, 1), output.state)
-    self.assertAllClose(7 / 4, output.result)
+    self.assertAllEqual(1, output.state)
+    self.assertAllClose(7 / 3, output.result)
     self.assertEqual(
-        collections.OrderedDict(mean_value=M_CONST, mean_count=M_CONST),
-        output.measurements)
+        collections.OrderedDict(mean_value=M_CONST), output.measurements)
 
   def test_inner_weight_sum_factory(self):
     sum_factory = aggregators_test_utils.SumPlusOneFactory()

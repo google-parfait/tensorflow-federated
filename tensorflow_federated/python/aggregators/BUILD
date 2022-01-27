@@ -280,7 +280,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":factory",
-        ":secure",
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
@@ -299,12 +298,11 @@ py_test(
     deps = [
         ":quantile_estimation",
         "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:estimation_process",
-        "//tensorflow_federated/python/core/test:static_assert",
     ],
 )
 
@@ -337,7 +335,6 @@ py_test(
         ":mean",
         ":robust",
         ":sum_factory",
-        ":test_utils",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",

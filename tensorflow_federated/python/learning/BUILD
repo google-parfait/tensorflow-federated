@@ -325,7 +325,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:iterative_process",
-        "//tensorflow_federated/python/core/test:static_assert",
     ],
 )
 

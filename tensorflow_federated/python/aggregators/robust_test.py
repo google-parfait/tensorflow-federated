@@ -21,7 +21,6 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.aggregators import test_utils as aggregators_test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -230,84 +229,6 @@ class ClippingFactoryComputationTest(test_case.TestCase,
             state=server_state_type,
             value=computation_types.at_clients(value_type),
             weight=computation_types.at_clients(weight_type)),
-        result=measured_process.MeasuredProcessOutput(
-            state=server_state_type,
-            result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
-    self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
-
-  @parameterized.named_parameters(
-      ('float', tf.float32),
-      ('struct', _test_struct_type),
-  )
-  def test_zero_type_properties_with_zeroed_count_agg_factory(self, value_type):
-    factory = robust.zeroing_factory(
-        zeroing_norm=1.0,
-        inner_agg_factory=sum_factory.SumFactory(),
-        norm_order=2.0,
-        zeroed_count_sum_factory=aggregators_test_utils.SumPlusOneFactory())
-    value_type = computation_types.to_type(value_type)
-    process = factory.create(value_type)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
-
-    server_state_type = computation_types.at_server(
-        collections.OrderedDict(
-            zeroing_norm=(), inner_agg=(), zeroed_count_agg=tf.int32))
-    expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
-    self.assertTrue(
-        process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
-
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(
-            zeroing=(),
-            zeroing_norm=robust.NORM_TF_TYPE,
-            zeroed_count=robust.COUNT_TF_TYPE))
-    expected_next_type = computation_types.FunctionType(
-        parameter=collections.OrderedDict(
-            state=server_state_type,
-            value=computation_types.at_clients(value_type)),
-        result=measured_process.MeasuredProcessOutput(
-            state=server_state_type,
-            result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
-    self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
-
-  @parameterized.named_parameters(
-      ('float', tf.float32),
-      ('struct', _test_struct_type),
-  )
-  def test_clip_type_properties_with_clipped_count_agg_factory(
-      self, value_type):
-    factory = robust.clipping_factory(
-        clipping_norm=1.0,
-        inner_agg_factory=sum_factory.SumFactory(),
-        clipped_count_sum_factory=aggregators_test_utils.SumPlusOneFactory())
-    value_type = computation_types.to_type(value_type)
-    process = factory.create(value_type)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
-
-    server_state_type = computation_types.at_server(
-        collections.OrderedDict(
-            clipping_norm=(), inner_agg=(), clipped_count_agg=tf.int32))
-    expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
-    self.assertTrue(
-        process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
-
-    expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(
-            clipping=(),
-            clipping_norm=robust.NORM_TF_TYPE,
-            clipped_count=robust.COUNT_TF_TYPE))
-    expected_next_type = computation_types.FunctionType(
-        parameter=collections.OrderedDict(
-            state=server_state_type,
-            value=computation_types.at_clients(value_type)),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),

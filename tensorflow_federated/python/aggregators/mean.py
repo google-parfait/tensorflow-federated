@@ -162,64 +162,47 @@ class UnweightedMeanFactory(factory.UnweightedAggregationFactory):
 
   def __init__(
       self,
-      value_sum_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      count_sum_factory: Optional[factory.UnweightedAggregationFactory] = None):
+      value_sum_factory: Optional[factory.UnweightedAggregationFactory] = None):
     """Initializes `UnweightedMeanFactory`.
 
     Args:
       value_sum_factory: An optional
         `tff.aggregators.UnweightedAggregationFactory` responsible for summation
         of values. If not specified, `tff.aggregators.SumFactory` is used.
-      count_sum_factory: An optional
-        `tff.aggregators.UnweightedAggregationFactory` responsible for summation
-        of ones to determine the cardinality of the `CLIENTS` placement. If not
-        specified, `tff.aggregators.SumFactory` is used.
 
     Raises:
-      TypeError: If provided `value_sum_factory` or `count_sum_factory` is not
-        an instance of `tff.aggregators.UnweightedAggregationFactory`.
+      TypeError: If provided `value_sum_factory` is not an instance of
+        `tff.aggregators.UnweightedAggregationFactory`.
     """
     if value_sum_factory is None:
       value_sum_factory = sum_factory.SumFactory()
     py_typecheck.check_type(value_sum_factory,
                             factory.UnweightedAggregationFactory)
     self._value_sum_factory = value_sum_factory
-    if count_sum_factory is None:
-      count_sum_factory = sum_factory.SumFactory()
-    py_typecheck.check_type(count_sum_factory,
-                            factory.UnweightedAggregationFactory)
-    self._count_sum_factory = count_sum_factory
 
   def create(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
     _check_value_type(value_type)
     value_sum_process = self._value_sum_factory.create(value_type)
-    count_sum_process = self._count_sum_factory.create(
-        computation_types.TensorType(tf.int32))
 
     @computations.federated_computation()
     def init_fn():
-      return intrinsics.federated_zip(
-          (value_sum_process.initialize(), count_sum_process.initialize()))
+      return value_sum_process.initialize()
 
     @computations.federated_computation(init_fn.type_signature.result,
                                         computation_types.FederatedType(
                                             value_type, placements.CLIENTS))
     def next_fn(state, value):
-      value_sum_state, count_sum_state = state
-      value_sum_output = value_sum_process.next(value_sum_state, value)
-      count_sum_output = count_sum_process.next(
-          count_sum_state, intrinsics.federated_value(1, placements.CLIENTS))
+      value_sum_output = value_sum_process.next(state, value)
+      count = intrinsics.federated_sum(
+          intrinsics.federated_value(1, placements.CLIENTS))
 
-      mean_value = intrinsics.federated_map(
-          _div, (value_sum_output.result, count_sum_output.result))
-      state = intrinsics.federated_zip(
-          (value_sum_output.state, count_sum_output.state))
+      mean_value = intrinsics.federated_map(_div,
+                                            (value_sum_output.result, count))
+      state = value_sum_output.state
       measurements = intrinsics.federated_zip(
-          collections.OrderedDict(
-              mean_value=value_sum_output.measurements,
-              mean_count=count_sum_output.measurements))
+          collections.OrderedDict(mean_value=value_sum_output.measurements))
 
       return measured_process.MeasuredProcessOutput(state, mean_value,
                                                     measurements)
