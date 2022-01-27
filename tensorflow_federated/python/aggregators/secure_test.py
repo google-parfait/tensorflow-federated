@@ -249,6 +249,54 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
       self.fail('Factory returned an AggregationProcess containing '
                 'non-secure aggregation.')
 
+  # TODO(b/216622916): the following should be merged above once the dtype
+  # mismatch is fixed.
+  @parameterized.named_parameters(
+      ('py_int_bounds_int64_value', tf.int64, 1, 0),
+      ('numpy_int32_bounds_int64_value', tf.int64, np.int32(1), np.int32(0)),
+      ('numpy_int64_bounds_int32_value', tf.int32, np.int64(1), np.int64(0)),
+      ('py_float_bounds_float64_value', tf.float64, 1.0, 0.0),
+      ('numpy_float32_bounds_float64_value', tf.float64, np.float32(1.0),
+       np.float32(0.0)),
+      ('numpy_float64_bounds_float32_value', tf.float32, np.float64(1.0),
+       np.float64(0.0)),
+  )
+  def test_different_dtypes_constant_bounds(self, value_type, upper_bound,
+                                            lower_bound):
+    self.skipTest('b/216622916: currently encounters a dtype mismatch in TF')
+    secure_sum_f = secure.SecureSumFactory(
+        upper_bound_threshold=upper_bound, lower_bound_threshold=lower_bound)
+    self.assertIsInstance(secure_sum_f, factory.UnweightedAggregationFactory)
+    value_type = computation_types.to_type(value_type)
+    process = secure_sum_f.create(value_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+
+    expected_state_type = computation_types.at_server(
+        computation_types.to_type(()))
+    expected_measurements_type = _measurements_type(tf.int32)
+
+    expected_initialize_type = computation_types.FunctionType(
+        parameter=None, result=expected_state_type)
+    self.assertTrue(
+        process.initialize.type_signature.is_equivalent_to(
+            expected_initialize_type))
+
+    expected_next_type = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            state=expected_state_type,
+            value=computation_types.at_clients(value_type)),
+        result=measured_process.MeasuredProcessOutput(
+            state=expected_state_type,
+            result=computation_types.at_server(value_type),
+            measurements=expected_measurements_type))
+    self.assertTrue(
+        process.next.type_signature.is_equivalent_to(expected_next_type))
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(process.next)
+    except:  # pylint: disable=bare-except
+      self.fail('Factory returned an AggregationProcess containing '
+                'non-secure aggregation.')
+
   @parameterized.named_parameters(
       ('float_scalar', tf.float32),
       ('float_struct', _test_struct_type(tf.float32)),
