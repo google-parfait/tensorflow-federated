@@ -1,40 +1,36 @@
 Before transformation:
 
-<
-  federated_aggregate(<
+(let
+  agg_0=federated_aggregate(<
     data,
     data,
     (a -> data),
     (b -> data),
     (c -> data)
   >),
-  federated_aggregate(<
+  agg_1=federated_aggregate(<
     data,
     data,
     (a -> data),
     (b -> data),
     (c -> data)
   >)
->
+ in <
+  agg_0,
+  agg_1
+>)
 
 After transformation:
 
 (let
-  _dep1=federated_aggregate,
-  _dep2=data,
-  _dep3=data,
-  _dep5=(_dep4 -> _dep3),
-  _dep7=(_dep6 -> _dep3),
-  _dep8=<
-    _dep2,
-    _dep3,
-    _dep5,
-    _dep5,
-    _dep7
-  >,
-  _dep9=_dep1(_dep8),
-  _dep10=<
-    _dep9,
-    _dep9
-  >
- in _dep10)
+  _lhn4=federated_aggregate(<
+    data,
+    data,
+    (_lhn1 -> data),
+    (_lhn2 -> data),
+    (_lhn3 -> data)
+  >)
+ in <
+  _lhn4,
+  _lhn4
+>)

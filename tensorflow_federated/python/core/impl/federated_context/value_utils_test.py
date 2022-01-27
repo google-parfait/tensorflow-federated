@@ -18,7 +18,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
@@ -46,11 +45,9 @@ class ValueUtilsTest(parameterized.TestCase):
 
     curried = value_utils.get_curried(add_numbers)
     self.assertEqual(str(curried.type_signature), '(int32 -> (int32 -> int32))')
-
-    comp, _ = tree_transformations.uniquify_compiled_computation_names(
-        curried.comp)
-    self.assertEqual(comp.compact_representation(),
-                     '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
+    self.assertRegex(
+        curried.comp.compact_representation(),
+        r'\(arg0 -> \(arg1 -> comp#[a-zA-Z0-9]*\(<arg0,arg1>\)\)\)')
 
   def test_ensure_federated_value(self):
 

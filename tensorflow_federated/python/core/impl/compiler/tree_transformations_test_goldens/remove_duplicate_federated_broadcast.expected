@@ -1,18 +1,18 @@
 Before transformation:
 
-<
-  federated_broadcast(data),
-  federated_broadcast(data)
->
+(let
+  broadcast_0=federated_broadcast(data),
+  broadcast_1=federated_broadcast(data)
+ in <
+  broadcast_0,
+  broadcast_1
+>)
 
 After transformation:
 
 (let
-  _lhn1=federated_broadcast,
-  _lhn2=data,
-  _lhn3=_lhn1(_lhn2),
-  _lhn4=<
-    _lhn3,
-    _lhn3
-  >
- in _lhn4)
+  _lhn1=federated_broadcast(data)
+ in <
+  _lhn1,
+  _lhn1
+>)

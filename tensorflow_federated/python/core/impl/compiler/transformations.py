@@ -35,31 +35,11 @@ from tensorflow_federated.python.core.impl.compiler import compiled_computation_
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.compiler.tree_transformations import extract_computations
-from tensorflow_federated.python.core.impl.compiler.tree_transformations import remove_duplicate_block_locals
-from tensorflow_federated.python.core.impl.compiler.tree_transformations import remove_mapped_or_applied_identity
-from tensorflow_federated.python.core.impl.compiler.tree_transformations import replace_called_lambda_with_block
-from tensorflow_federated.python.core.impl.compiler.tree_transformations import uniquify_reference_names
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
-
-
-def remove_duplicate_building_blocks(comp):
-  """Composite transformation to remove duplicated building blocks."""
-  mutated = False
-  for transform in [
-      replace_called_lambda_with_block,
-      remove_mapped_or_applied_identity,
-      uniquify_reference_names,
-      extract_computations,
-      remove_duplicate_block_locals,
-  ]:
-    comp, comp_mutated = transform(comp)
-    mutated = mutated or comp_mutated
-  return comp, mutated
 
 
 def prepare_for_rebinding(comp):
@@ -374,6 +354,7 @@ def _evaluate_to_tensorflow(
 
 def compile_local_computation_to_tensorflow(
     comp: building_blocks.ComputationBuildingBlock,
+    deduplicate: bool = True,
 ) -> building_blocks.ComputationBuildingBlock:
   """Compiles a fully specified local computation to TensorFlow.
 
@@ -383,6 +364,8 @@ def compile_local_computation_to_tensorflow(
       contain 1. References to values defined outside of comp, 2. `Data`,
       `Intrinsic`, or `Placement` blocks, or 3. Calls to intrinsics or
       non-TensorFlow computations.
+    deduplicate: Whether or not to deduplicate subcomputations of `comp` before
+      transforming to TensorFlow. Defaults to `True`.
 
   Returns:
     A `building_blocks.ComputationBuildingBlock` containing a TensorFlow-only
@@ -406,7 +389,10 @@ def compile_local_computation_to_tensorflow(
   # Ensure that calls are deduplicated, unused values are removed, and that
   # reference bindings have unique names.
   comp = unpack_compiled_computations(comp)
-  comp = to_deduped_call_dominant(comp)
+  if deduplicate:
+    comp = to_deduped_call_dominant(comp)
+  else:
+    comp = to_call_dominant(comp)
   name_generator = building_block_factory.unique_name_generator(comp)
 
   if parameter_type is None:
@@ -482,18 +468,6 @@ def to_deduped_call_dominant(
      particular that any intrinsic which is not depended upon by the output is
      removed.
   3. All reference bindings have unique names.
-
-  In an intermediate step, this function invokes
-  `tree_transformations.resolve_higher_order_functions` in order to ensure that
-  the function member of every `building_blocks.Call` must be either: a
-  `building_blocks.CompiledComputation`; a `building_blocks.Intrinsic`;
-  a `building_blocks.Lambda` with non-functional return type; a reference to
-  a function bound as parameter to an uncalled `building_blocks.Lambda`;
-  or a (possibly nested) selection from a reference to the parameter of
-  an such an uncalled `building_blocks.Lambda`.
-
-  Note that if no lambda takes a functional parameter, the final case in
-  the enumeration above is additionally disallowed.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` to transform.

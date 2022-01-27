@@ -21,32 +21,12 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
-from tensorflow_federated.python.core.impl.compiler import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
-
-
-class DeduplicateBuildingBlocksTest(test_case.TestCase):
-
-  def test_removes_multiple_selections(self):
-    id_lam = building_blocks.Lambda(
-        'x', [tf.int32, tf.float32],
-        building_blocks.Reference('x', [tf.int32, tf.float32]))
-    ref_to_a = building_blocks.Reference('a', [tf.int32, tf.float32])
-    called_id = building_blocks.Call(id_lam, ref_to_a)
-    sel_0 = building_blocks.Selection(called_id, index=0)
-    tup = building_blocks.Struct([sel_0, sel_0])
-    fake_lam = building_blocks.Lambda('a', [tf.int32, tf.float32], tup)
-    dups_removed, modified = transformations.remove_duplicate_building_blocks(
-        fake_lam)
-    self.assertTrue(modified)
-    self.assertEqual(
-        tree_analysis.count_types(dups_removed, building_blocks.Selection), 1)
 
 
 class ToCallDominantTest(test_case.TestCase):
@@ -310,38 +290,37 @@ class CompileLocalComputationToTensorFlow(test_case.TestCase):
       return building_blocks.Struct([call, call])
 
     def _count_ops_parameterized_by_layers(k):
-      inlined_tuple_with_k_layers = _construct_inlined_tuple(k)
-      tf_representing_block_with_k_layers = transformations.compile_local_computation_to_tensorflow(
-          inlined_tuple_with_k_layers)
-      block_ops_with_k_layers = tree_analysis.count_tensorflow_ops_under(
-          tf_representing_block_with_k_layers)
-      parser_callable = tree_to_cc_transformations.TFParser()
-      naively_generated_tf_with_k_layers, _ = transformation_utils.transform_postorder(
-          inlined_tuple_with_k_layers, parser_callable)
-      naive_ops_with_k_layers = tree_analysis.count_tensorflow_ops_under(
-          naively_generated_tf_with_k_layers)
-      return block_ops_with_k_layers, naive_ops_with_k_layers
+      inlined_tuple = _construct_inlined_tuple(k)
+      with_deduping = transformations.compile_local_computation_to_tensorflow(
+          inlined_tuple)
+      num_ops_with_deduping = tree_analysis.count_tensorflow_ops_under(
+          with_deduping)
+      without_deduping = transformations.compile_local_computation_to_tensorflow(
+          inlined_tuple, deduplicate=False)
+      num_ops_without_deduping = tree_analysis.count_tensorflow_ops_under(
+          without_deduping)
+      return num_ops_with_deduping, num_ops_without_deduping
 
-    block_ops_with_0_layers, tuple_ops_with_0_layers = _count_ops_parameterized_by_layers(
+    num_ops_deduped_0_layers, num_ops_0_layers = _count_ops_parameterized_by_layers(
         0)
-    block_ops_with_1_layers, tuple_ops_with_1_layers = _count_ops_parameterized_by_layers(
+    num_ops_deduped_1_layers, num_ops_1_layers = _count_ops_parameterized_by_layers(
         1)
-    block_ops_with_2_layers, tuple_ops_with_2_layers = _count_ops_parameterized_by_layers(
+    num_ops_deduped_2_layers, num_ops_2_layers = _count_ops_parameterized_by_layers(
         2)
-    block_ops_with_3_layers, tuple_ops_with_3_layers = _count_ops_parameterized_by_layers(
+    num_ops_deduped_3_layers, num_ops_3_layers = _count_ops_parameterized_by_layers(
         3)
 
     # asserting that block ops are linear in k.
-    self.assertEqual(block_ops_with_1_layers - block_ops_with_0_layers,
-                     block_ops_with_2_layers - block_ops_with_1_layers)
-    self.assertEqual(block_ops_with_3_layers - block_ops_with_2_layers,
-                     block_ops_with_2_layers - block_ops_with_1_layers)
+    self.assertEqual(num_ops_deduped_1_layers - num_ops_deduped_0_layers,
+                     num_ops_deduped_2_layers - num_ops_deduped_1_layers)
+    self.assertEqual(num_ops_deduped_3_layers - num_ops_deduped_2_layers,
+                     num_ops_deduped_2_layers - num_ops_deduped_1_layers)
 
     # asserting that tuple ops are exponential in k.
-    first_factor = (tuple_ops_with_2_layers - tuple_ops_with_1_layers) / (
-        tuple_ops_with_1_layers - tuple_ops_with_0_layers)
-    second_factor = (tuple_ops_with_3_layers - tuple_ops_with_2_layers) / (
-        tuple_ops_with_2_layers - tuple_ops_with_1_layers)
+    first_factor = (num_ops_2_layers - num_ops_1_layers) / (
+        num_ops_1_layers - num_ops_0_layers)
+    second_factor = (num_ops_3_layers - num_ops_2_layers) / (
+        num_ops_2_layers - num_ops_1_layers)
     self.assertEqual(first_factor, second_factor)
 
   def test_passes_on_tf(self):
@@ -437,57 +416,6 @@ class CompileLocalSubcomputationsToTensorFlowTest(test_case.TestCase):
         lambda_with_unbound_ref)
 
     self.assertEqual(transformed, lambda_with_unbound_ref)
-
-  def test_deduplicates_tensorflow_by_counting_ops(self):
-
-    def _construct_inlined_tuple(k):
-      constant_tuple_type = computation_types.TensorType(tf.int32)
-      concrete_int = building_block_factory.create_tensorflow_constant(
-          constant_tuple_type, 1)
-      first_tf_fn = building_block_factory.create_tensorflow_binary_operator(
-          tf.add, concrete_int.type_signature)
-      call = building_blocks.Call(
-          first_tf_fn, building_blocks.Struct([concrete_int, concrete_int]))
-      for _ in range(k):
-        # Simulating large TF computation
-        call = building_blocks.Call(first_tf_fn,
-                                    building_blocks.Struct([call, call]))
-      return building_blocks.Struct([call, call])
-
-    def _count_ops_parameterized_by_layers(k):
-      inlined_tuple_with_k_layers = _construct_inlined_tuple(k)
-      tf_representing_block_with_k_layers = transformations.compile_local_subcomputations_to_tensorflow(
-          inlined_tuple_with_k_layers)
-      block_ops_with_k_layers = tree_analysis.count_tensorflow_ops_under(
-          tf_representing_block_with_k_layers)
-      parser_callable = tree_to_cc_transformations.TFParser()
-      naively_generated_tf_with_k_layers, _ = transformation_utils.transform_postorder(
-          inlined_tuple_with_k_layers, parser_callable)
-      naive_ops_with_k_layers = tree_analysis.count_tensorflow_ops_under(
-          naively_generated_tf_with_k_layers)
-      return block_ops_with_k_layers, naive_ops_with_k_layers
-
-    block_ops_with_0_layers, tuple_ops_with_0_layers = _count_ops_parameterized_by_layers(
-        0)
-    block_ops_with_1_layers, tuple_ops_with_1_layers = _count_ops_parameterized_by_layers(
-        1)
-    block_ops_with_2_layers, tuple_ops_with_2_layers = _count_ops_parameterized_by_layers(
-        2)
-    block_ops_with_3_layers, tuple_ops_with_3_layers = _count_ops_parameterized_by_layers(
-        3)
-
-    # asserting that block ops are linear in k.
-    self.assertEqual(block_ops_with_1_layers - block_ops_with_0_layers,
-                     block_ops_with_2_layers - block_ops_with_1_layers)
-    self.assertEqual(block_ops_with_3_layers - block_ops_with_2_layers,
-                     block_ops_with_2_layers - block_ops_with_1_layers)
-
-    # asserting that tuple ops are exponential in k.
-    first_factor = (tuple_ops_with_2_layers - tuple_ops_with_1_layers) / (
-        tuple_ops_with_1_layers - tuple_ops_with_0_layers)
-    second_factor = (tuple_ops_with_3_layers - tuple_ops_with_2_layers) / (
-        tuple_ops_with_2_layers - tuple_ops_with_1_layers)
-    self.assertEqual(first_factor, second_factor)
 
 
 class ToDedupedCallDominantTest(test_case.TestCase):

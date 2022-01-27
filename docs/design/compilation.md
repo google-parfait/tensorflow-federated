@@ -84,11 +84,6 @@ module contains atomic and composite
 [Compiled Computation](#compiled-computation) transformations.
 
 The
-[tree_to_cc_transformations](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/tree_to_cc_transformations.py)
-module contains composite [building block](#building-block) transformations
-representing the syntax-directed definition (SDD) logic.
-
-The
 [transformation_utils](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/transformation_utils.py)
 module contains functions, traversal logic, and data structures used by other
 transformation modules.

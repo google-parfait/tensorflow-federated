@@ -22,7 +22,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 from tensorflow_federated.python.core.impl.federated_context import value_impl
@@ -327,9 +326,7 @@ class ValueTest(parameterized.TestCase):
       return value_impl.to_value(cbb, None)
 
     t = sequence_type(range(0, 50, 10))
-    comp, _ = tree_transformations.uniquify_compiled_computation_names(
-        _to_value(t).comp)
-    v = _to_value(comp)
+    v = _to_value(t)
 
     self.assertEqual((str(v.type_signature)), '<int32,int32,int32,int32,int32>')
     self.assertEqual(str(v[:]), str(v))
