@@ -149,6 +149,29 @@ def test_int64_sequence_struct_computation(a, dataset, b):
 
 
 @computations.federated_computation(
+    tf.int32,
+    computation_types.StructType([
+        tf.int64,
+        computation_types.at_clients(computation_types.SequenceType(tf.int64)),
+        tf.float64,
+    ]),
+    tf.float32,
+)
+def test_int64_sequence_nested_struct_computation(a, dataset, b):
+  return a, dataset, b
+
+
+@computations.federated_computation(
+    computation_types.StructType([
+        computation_types.at_clients(computation_types.SequenceType(tf.int64)),
+    ]),
+    computation_types.at_clients(computation_types.SequenceType(tf.int64)),
+)
+def test_int64_sequence_multiple_matching_federated_types_computation(a, b):
+  return a, b
+
+
+@computations.federated_computation(
     computation_types.FederatedType(
         computation_types.SequenceType(tf.int64), placements.CLIENTS))
 def test_int64_sequence_computation(dataset):
@@ -212,6 +235,30 @@ class ConstructDatasetsOnClientsComputationTest(absltest.TestCase):
                     placements.CLIENTS), tf.float32))
     new_comp = iterative_process_compositions.compose_dataset_computation_with_computation(
         int_dataset_computation, test_int64_sequence_struct_computation)
+    expected_new_next_type_signature.check_equivalent_to(
+        new_comp.type_signature)
+
+  def test_raises_computation_with_multiple_federated_types(self):
+    with self.assertRaises(
+        iterative_process_compositions.MultipleMatchingSequenceTypesError):
+      iterative_process_compositions.compose_dataset_computation_with_computation(
+          int_dataset_computation,
+          test_int64_sequence_multiple_matching_federated_types_computation)
+
+  def test_mutates_comp_accepting_deeply_nested_dataset(self):
+    expected_new_next_type_signature = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            a=tf.int32,
+            dataset=computation_types.StructType([
+                tf.int64,
+                computation_types.FederatedType(tf.string, placements.CLIENTS),
+                tf.float64,
+            ]),
+            b=tf.float32),
+        result=test_int64_sequence_nested_struct_computation.type_signature
+        .result)
+    new_comp = iterative_process_compositions.compose_dataset_computation_with_computation(
+        int_dataset_computation, test_int64_sequence_nested_struct_computation)
     expected_new_next_type_signature.check_equivalent_to(
         new_comp.type_signature)
 

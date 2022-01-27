@@ -32,6 +32,10 @@ class SequenceTypeNotFoundError(TypeError):
   pass
 
 
+class MultipleMatchingSequenceTypesError(TypeError):
+  pass
+
+
 def compose_dataset_computation_with_computation(
     dataset_computation: computation_base.Computation,
     computation_body: computation_base.Computation,
@@ -86,8 +90,10 @@ def compose_dataset_computation_with_computation(
     A new `tff.Computation` satisfying the specification above.
 
   Raises:
-    TypeError: If the arguments are of the wrong types, or their TFF type
-    signatures are incompatible with the specification of this function.
+    TypeError: If the arguments are of the wrong types, their TFF type
+    signatures are incompatible with the specification of this function, or if
+    `computation_body` declares more than one sequence parameter matching the
+    expected dataset type.
   """
   py_typecheck.check_type(dataset_computation, computation_base.Computation)
   py_typecheck.check_type(computation_body, computation_base.Computation)
@@ -121,34 +127,68 @@ def compose_dataset_computation_with_computation(
     return new_computation
   elif comp_body_param_type.is_struct():
     # If the computation has multiple arguments we need to search over them
-    # to find the one that matches the type signature of dataset_computation's
-    # result.
-    dataset_index = None
-    new_param_elements = []
+    # recursively to find the one that matches the type signature of
+    # dataset_computation's result.
+
+    # Tracks the path of the matching type in the computation arguments as a
+    # list of indices.
+    dataset_index_path = None
+    # Federated version of the dataset_computation's argument type signature to
+    # use in the final computation type.
     federated_param_type = computation_types.FederatedType(
         dataset_computation.type_signature.parameter, placements.CLIENTS)
+    # Tracks all sequence types encountered in the recursive search for the
+    # error message in case the desired argument is not found.
+    sequence_types = []
 
-    for idx, (elem_name, elem_type) in enumerate(
-        structure.iter_elements(comp_body_param_type)):
-      if is_desired_federated_sequence(elem_type):
-        if dataset_index is not None:
-          raise TypeError('Cannot accept a `computation_body` computation '
-                          'that declares more than one sequence parameter '
-                          'matching the expected dataset type; '
-                          'received a computation declaring parameter '
-                          '{}.'.format(comp_body_param_type))
-        dataset_index = idx
-        new_param_elements.append((elem_name, federated_param_type))
-      else:
-        new_param_elements.append((elem_name, elem_type))
-    if dataset_index is None:
-      # Raise more informative error message in the case that computation_body
-      # accepts sequences.
-      sequence_types = []
+    def build_new_param_type(struct_param_type, index_path):
+      """Builds a new struct parameter type.
+
+      By recursively finding the field that matches the type signature of
+      dataset_computation's result, and replacing it with the federated version.
+
+      Args:
+        struct_param_type: An instance of `tff.StructType` with a field that
+          matches the type signature of dataset_computation's result.
+        index_path: An accumulator of indices through nested `tff.StructType`s
+          for the location of the matching type signature.
+
+      Returns:
+        A new `tff.StructType` satisfying the specification above.
+
+      Raises:
+        MultipleMatchingSequenceTypesError: If more than one matching type
+          signature is found.
+      """
+      nonlocal dataset_index_path
+      new_param_elements = []
       for idx, (elem_name, elem_type) in enumerate(
-          structure.iter_elements(comp_body_param_type)):
+          structure.iter_elements(struct_param_type)):
         if elem_type.is_federated() and elem_type.member.is_sequence():
           sequence_types.append(elem_type.member)
+
+        if is_desired_federated_sequence(elem_type):
+          if dataset_index_path is not None:
+            raise MultipleMatchingSequenceTypesError(
+                'Cannot accept a `computation_body` computation '
+                'that declares more than one sequence parameter '
+                f'matching the expected dataset type {elem_type}; '
+                'received a computation declaring parameter '
+                f'{comp_body_param_type}.')
+          dataset_index_path = index_path + [idx]
+          new_param_elements.append((elem_name, federated_param_type))
+        elif elem_type.is_struct():
+          new_param_elements.append(
+              (elem_name, build_new_param_type(elem_type, index_path + [idx])))
+        else:
+          new_param_elements.append((elem_name, elem_type))
+      return computation_types.StructType(new_param_elements)
+
+    new_param_type = build_new_param_type(comp_body_param_type, [])
+
+    if dataset_index_path is None:
+      # Raise a more informative error message in the case that computation_body
+      # accepts sequences whose types are not compatible with `elem_type`.
       if sequence_types:
         raise SequenceTypeNotAssignableError(
             'No sequence parameter assignable from expected dataset '
@@ -161,19 +201,36 @@ def compose_dataset_computation_with_computation(
             'composition with a computation yielding sequences requested.'
             '\nArgument signature: {}\nExpected sequence type: {}'.format(
                 comp_body_param_type, dataset_return_type))
-    new_param_type = computation_types.StructType(new_param_elements)
+
+    def map_at_path(param, index_path, depth, computation):
+      """Builds a new parameter by inserting a `federated_map` computation.
+
+      Args:
+        param: An instance of `tff.StructType`.
+        index_path: A list of indices through nested `tff.StructType`s
+          specifying the location for the insert.
+        depth: Tracks index of `index_path` while recursively traversing the
+          nested structure of `param`.
+        computation: Computation to insert.
+
+      Returns:
+        A new `tff.StructType` satisfying the specification above.
+      """
+      ret_param = []
+      for idx, elem in enumerate(param):
+        if idx != index_path[depth]:
+          ret_param.append(elem)
+        elif depth == len(index_path) - 1:
+          ret_param.append(intrinsics.federated_map(computation, elem))
+        else:
+          ret_param.append(
+              map_at_path(elem, index_path, depth + 1, computation))
+      return ret_param
 
     @computations.federated_computation(new_param_type)
     def new_computation(param):
-      datasets_on_clients = intrinsics.federated_map(dataset_computation,
-                                                     param[dataset_index])
-      original_param = []
-      for idx, elem in enumerate(param):
-        if idx != dataset_index:
-          original_param.append(elem)
-        else:
-          original_param.append(datasets_on_clients)
-      return computation_body(original_param)
+      return computation_body(
+          map_at_path(param, dataset_index_path, 0, dataset_computation))
 
     return new_computation
   else:
