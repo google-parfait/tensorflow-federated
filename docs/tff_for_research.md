@@ -129,12 +129,12 @@ in the
 [README](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/README.md).
 
 A more general implementation of Federated Averaging can be found
-[here](https://github.com/google-research/federated/blob/master/optimization/fed_avg_schedule.py).
+[here](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/algorithms/fed_avg.py).
 This implementation allows for more sophisticated optimization techniques,
-including learning rate scheduling and the use of different optimizers on both
-the server and client. Code that applies this generalized Federated Averaging to
-various tasks and federated datasets can be found
-[here](https://github.com/google-research/federated/blob/master/optimization).
+including the use of different optimizers on both the server and client. Other
+federated learning algorithms, including federated k-means clustering, can be
+found
+[here](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/algorithms/).
 
 ### Model and update compression
 
