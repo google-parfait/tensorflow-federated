@@ -33,6 +33,7 @@ from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import encoding_utils
+from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 # Convenience aliases.
@@ -333,15 +334,10 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
             local_outputs=collections.OrderedDict(num_over=4.0),
             num_examples=6))
 
-  @parameterized.named_parameters(('use_metrics_aggregator', True),
-                                  ('not_use_metrics_aggregator', False))
-  @test_utils.skip_test_for_multi_gpu
-  def test_federated_evaluation(self, use_metrics_aggregator):
-    model_fn = lambda: TestModel(use_metrics_aggregator)
-    evaluate = federated_evaluation.build_federated_evaluation(model_fn)
-    model_weights_type = model_utils.weights_type_from_model(model_fn)
+  def run_test(self, evaluate_fn, model_weights_type):
+    """Tests the construction and execution of an evaluation function."""
     self.assert_types_equivalent(
-        evaluate.type_signature,
+        evaluate_fn.type_signature,
         FunctionType(
             parameter=StructType([
                 ('server_model_weights',
@@ -362,7 +358,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     def _temp_dict(temps):
       return {'temp': np.array(temps, dtype=np.float32)}
 
-    result = evaluate(
+    result = evaluate_fn(
         collections.OrderedDict(trainable=[5.0], non_trainable=[]), [
             [_temp_dict([1.0, 10.0, 2.0, 7.0]),
              _temp_dict([6.0, 11.0])],
@@ -375,6 +371,30 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
             eval=collections.OrderedDict(num_over=9.0),
             stat=collections.OrderedDict(num_examples=12),
         ))
+
+  @parameterized.named_parameters(
+      ('metrics_finalizers', False),
+      ('output_computation', True),
+  )
+  def test_default_federated_evaluation(self, has_output_computation):
+    model_fn = lambda: TestModel(has_output_computation)
+    evaluate = federated_evaluation.build_federated_evaluation(model_fn)
+    model_weights_type = model_utils.weights_type_from_model(model_fn)
+    self.run_test(evaluate, model_weights_type)
+
+  @parameterized.named_parameters(
+      ('simpleagg_metrics_aggregator', aggregator.sum_then_finalize),
+      ('secagg_metrics_aggregator', aggregator.secure_sum_then_finalize),
+      ('no_metrics_aggregator', None))
+  @test_utils.skip_test_for_multi_gpu
+  def test_federated_evaluation(self, metrics_aggregator):
+    if metrics_aggregator is aggregator.secure_sum_then_finalize:
+      self.skipTest('b/216622916')
+    model_fn = lambda: TestModel(metrics_aggregator is not None)
+    evaluate = federated_evaluation.build_federated_evaluation(
+        model_fn, metrics_aggregator=metrics_aggregator)
+    model_weights_type = model_utils.weights_type_from_model(model_fn)
+    self.run_test(evaluate, model_weights_type)
 
   @parameterized.named_parameters(('use_metrics_aggregator', True),
                                   ('not_use_metrics_aggregator', False))

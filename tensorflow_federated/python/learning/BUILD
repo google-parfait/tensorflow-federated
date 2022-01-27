@@ -163,6 +163,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/framework:encoding_utils",
+        "//tensorflow_federated/python/learning/metrics:aggregator",
     ],
 )
 

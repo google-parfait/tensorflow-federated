@@ -188,6 +188,16 @@ def build_federated_evaluation(
     # implement `report_local_outputs` and `federated_output_computation`.
     try:
       metrics_aggregation_computation = model.federated_output_computation
+      # Default to plain summation of `num_examples` if not using the
+      # metrics aggregator.
+      def sum_statistics(values):
+        return collections.OrderedDict(
+            num_examples=intrinsics.federated_sum(values['num_examples']))
+
+      statistics_aggregator = computations.federated_computation(
+          sum_statistics,
+          computation_types.at_clients(
+              collections.OrderedDict(num_examples=tf.int64)))
       logging.warning(
           'DeprecationWarning: `report_local_outputs` and '
           '`federated_output_computation` are deprecated and will be removed '
@@ -199,6 +209,13 @@ def build_federated_evaluation(
     except NotImplementedError:
       metrics_aggregation_computation = metrics_aggregator(
           model.metric_finalizers(), unfinalized_metrics_type)
+      # Create an sum + identity finalizer to sum the `num_examples` values
+      # across clients.
+      identity_fn = lambda x: x
+      statistics_aggregator = metrics_aggregator(
+          metric_finalizers=collections.OrderedDict(num_examples=identity_fn),
+          local_unfinalized_metrics_type=computation_types.to_type(
+              collections.OrderedDict(num_examples=tf.int64)))
 
   @computations.federated_computation(
       computation_types.at_server(model_weights_type),
@@ -222,8 +239,9 @@ def build_federated_evaluation(
       ])
     model_metrics = metrics_aggregation_computation(
         client_outputs.local_outputs)
-    statistics = collections.OrderedDict(
-        num_examples=intrinsics.federated_sum(client_outputs.num_examples))
+    statistics = statistics_aggregator(
+        intrinsics.federated_zip(
+            collections.OrderedDict(num_examples=client_outputs.num_examples)))
     return intrinsics.federated_zip(
         collections.OrderedDict(eval=model_metrics, stat=statistics))
 
