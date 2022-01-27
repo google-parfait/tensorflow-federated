@@ -22,6 +22,7 @@ import tensorflow as tf
 import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computations
@@ -50,7 +51,8 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
                target_quantile: float,
                learning_rate: float,
                multiplier: float = 1.0,
-               increment: float = 0.0):
+               increment: float = 0.0,
+               secure_estimation: bool = False):
     """No-noise estimator for affine function of value at quantile.
 
     Estimates value `C` at `q`'th quantile of input distribution and reports
@@ -69,6 +71,9 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
       learning_rate: The learning rate for the adaptive algorithm.
       multiplier: The multiplier `r` of the affine transform.
       increment: The increment `i` of the affine transform.
+      secure_estimation: Whether to perform the aggregation for estimation using
+        `tff.aggregators.SumFactory` (if `False`; default) or
+        `tff.aggregators.SecureSumFactory` (if `True`).
 
     Returns:
       An `EstimationProcess` whose `report` function returns `rC + i`.
@@ -79,12 +84,19 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
     _check_float_positive(multiplier, 'multiplier')
     _check_float_nonnegative(increment, 'increment')
 
+    if secure_estimation:
+      # NoPrivacyQuantileEstimatorQuery aggregates +/-0.5 values as the record,
+      # and a constant 1.0 as weights for the average, thus the bound of 1.0.
+      record_aggregation_factory = secure.SecureSumFactory(1.0)
+    else:
+      record_aggregation_factory = sum_factory.SumFactory()
+
     quantile = cls(
         tfp.NoPrivacyQuantileEstimatorQuery(
             initial_estimate=initial_estimate,
             target_quantile=target_quantile,
             learning_rate=learning_rate,
-            geometric_update=True))
+            geometric_update=True), record_aggregation_factory)
     if multiplier == 1.0 and increment == 0.0:
       return quantile
     else:

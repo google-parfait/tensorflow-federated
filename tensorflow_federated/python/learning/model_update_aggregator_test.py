@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model_update_aggregator
 
 _float_type = computation_types.TensorType(tf.float32)
@@ -115,6 +116,22 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     process = factory_.create(_float_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertFalse(process.is_weighted)
+
+  def test_weighted_secure_aggregator_only_contains_secure_aggregation(self):
+    aggregator = model_update_aggregator.secure_aggregator(
+        weighted=True).create(_float_matrix_type, _float_type)
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
+    except:  # pylint: disable=bare-except
+      self.fail('Secure aggregator contains non-secure aggregation.')
+
+  def test_unweighted_secure_aggregator_only_contains_secure_aggregation(self):
+    aggregator = model_update_aggregator.secure_aggregator(
+        weighted=False).create(_float_matrix_type)
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
+    except:  # pylint: disable=bare-except
+      self.fail('Secure aggregator contains non-secure aggregation.')
 
   @parameterized.named_parameters(
       ('simple', False, False, False),

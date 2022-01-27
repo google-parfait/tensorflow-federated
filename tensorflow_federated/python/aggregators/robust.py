@@ -20,7 +20,7 @@
 
 import collections
 import math
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -96,7 +96,9 @@ def _check_norm_process(norm_process: estimation_process.EstimationProcess,
 
 def clipping_factory(
     clipping_norm: Union[float, estimation_process.EstimationProcess],
-    inner_agg_factory: factory.AggregationFactory
+    inner_agg_factory: factory.AggregationFactory,
+    clipped_count_sum_factory: Optional[
+        factory.UnweightedAggregationFactory] = None,
 ) -> factory.AggregationFactory:
   """Creates an aggregation factory to perform L2 clipping.
 
@@ -115,6 +117,10 @@ def clipping_factory(
   used, the clip will be an estimate of a quantile of the norms of the values
   being aggregated.
 
+  The created process will report measurements
+  * `clipped_count`: The number of aggregands clipped.
+  * `clipping_norm`: The norm used to determine whether to clip an aggregand.
+
   The returned `AggregationFactory` takes its weightedness
   (`UnweightedAggregationFactory` vs. `WeightedAggregationFactory`) from
   `inner_agg_factory`.
@@ -125,10 +131,18 @@ def clipping_factory(
       be clipped.
     inner_agg_factory: A factory specifying the type of aggregation to be done
       after clipping.
+    clipped_count_sum_factory: A factory specifying the type of aggregation done
+      for `clipped_count` measurement. If `None`, `tff.aggregators.SumFactory`
+      will be used.
 
   Returns:
     An aggregation factory to perform L2 clipping.
   """
+
+  if clipped_count_sum_factory is None:
+    clipped_count_sum_factory = sum_factory.SumFactory()
+  py_typecheck.check_type(clipped_count_sum_factory,
+                          factory.UnweightedAggregationFactory)
 
   def make_clip_fn(value_type):
 
@@ -142,13 +156,17 @@ def clipping_factory(
 
     return clip_fn
 
-  return _make_wrapper(clipping_norm, inner_agg_factory, make_clip_fn, 'clipp')
+  return _make_wrapper(clipping_norm, inner_agg_factory,
+                       clipped_count_sum_factory, make_clip_fn, 'clipp')
 
 
-def zeroing_factory(zeroing_norm: Union[float,
-                                        estimation_process.EstimationProcess],
-                    inner_agg_factory: factory.AggregationFactory,
-                    norm_order: float = math.inf) -> factory.AggregationFactory:
+def zeroing_factory(
+    zeroing_norm: Union[float, estimation_process.EstimationProcess],
+    inner_agg_factory: factory.AggregationFactory,
+    norm_order: float = math.inf,
+    zeroed_count_sum_factory: Optional[
+        factory.UnweightedAggregationFactory] = None
+) -> factory.AggregationFactory:
   """Creates an aggregation factory to perform zeroing.
 
   The created `tff.templates.AggregationProcess` zeroes out any values whose
@@ -169,6 +187,10 @@ def zeroing_factory(zeroing_norm: Union[float,
   used, the zeroing norm will be an estimate of a quantile of the norms of the
   values being aggregated.
 
+  The created process will report measurements
+  * `zeroed_count`: The number of aggregands zeroed out.
+  * `zeroing_norm`: The norm used to determine whether to zero out an aggregand.
+
   The returned `AggregationFactory` takes its weightedness
   (`UnweightedAggregationFactory` vs. `WeightedAggregationFactory`) from
   `inner_agg_factory`.
@@ -180,11 +202,18 @@ def zeroing_factory(zeroing_norm: Union[float,
     inner_agg_factory: A factory specifying the type of aggregation to be done
       after zeroing.
     norm_order: A float for the order of the norm. Must be 1., 2., or infinity.
+    zeroed_count_sum_factory: A factory specifying the type of aggregation done
+      for `zeroed_count` measurement. If `None`, `tff.aggregators.SumFactory`
+      will be used.
 
   Returns:
     An aggregation factory to perform L2 clipping.
   """
 
+  if zeroed_count_sum_factory is None:
+    zeroed_count_sum_factory = sum_factory.SumFactory()
+  py_typecheck.check_type(zeroed_count_sum_factory,
+                          factory.UnweightedAggregationFactory)
   py_typecheck.check_type(norm_order, float)
   if not (norm_order in [1.0, 2.0] or math.isinf(norm_order)):
     raise ValueError('norm_order must be 1.0, 2.0 or infinity')
@@ -210,15 +239,16 @@ def zeroing_factory(zeroing_norm: Union[float,
 
     return zero_fn
 
-  return _make_wrapper(zeroing_norm, inner_agg_factory, make_zero_fn, 'zero')
+  return _make_wrapper(zeroing_norm, inner_agg_factory,
+                       zeroed_count_sum_factory, make_zero_fn, 'zero')
 
 
-def _make_wrapper(clipping_norm: Union[float,
-                                       estimation_process.EstimationProcess],
-                  inner_agg_factory: factory.AggregationFactory,
-                  make_clip_fn: Callable[[factory.ValueType],
-                                         computation_base.Computation],
-                  attribute_prefix: str) -> factory.AggregationFactory:
+def _make_wrapper(
+    clipping_norm: Union[float, estimation_process.EstimationProcess],
+    inner_agg_factory: factory.AggregationFactory,
+    clipped_count_sum_factory: factory.UnweightedAggregationFactory,
+    make_clip_fn: Callable[[factory.ValueType], computation_base.Computation],
+    attribute_prefix: str) -> factory.AggregationFactory:
   """Constructs an aggregation factory that applies clip_fn before aggregation.
 
   Args:
@@ -227,6 +257,8 @@ def _make_wrapper(clipping_norm: Union[float,
       be clipped.
     inner_agg_factory: A factory specifying the type of aggregation to be done
       after zeroing.
+    clipped_count_sum_factory: A factory specifying the type of aggregation done
+      for the `clipped_count` measurement.
     make_clip_fn: A callable that takes a value type and returns a
       tff.computation specifying the clip operation to apply before aggregation.
     attribute_prefix: A str for prefixing state and measurement names.
@@ -237,6 +269,8 @@ def _make_wrapper(clipping_norm: Union[float,
   py_typecheck.check_type(inner_agg_factory,
                           (factory.UnweightedAggregationFactory,
                            factory.WeightedAggregationFactory))
+  py_typecheck.check_type(clipped_count_sum_factory,
+                          factory.UnweightedAggregationFactory)
   py_typecheck.check_type(clipping_norm,
                           (float, estimation_process.EstimationProcess))
   if isinstance(clipping_norm, float):
@@ -245,12 +279,7 @@ def _make_wrapper(clipping_norm: Union[float,
     clipping_norm_process = clipping_norm
   _check_norm_process(clipping_norm_process, 'clipping_norm_process')
 
-  # The aggregation factory that will be used to count the number of clipped
-  # values at each iteration. For now we are just creating it here, but in
-  # the future we may make this customizable to allow DP measurements.
-  clipped_count_agg_factory = sum_factory.SumFactory()
-
-  clipped_count_agg_process = clipped_count_agg_factory.create(
+  clipped_count_agg_process = clipped_count_sum_factory.create(
       computation_types.to_type(COUNT_TF_TYPE))
 
   prefix = lambda s: attribute_prefix + s
@@ -269,9 +298,6 @@ def _make_wrapper(clipping_norm: Union[float,
     clipping_norm = clipping_norm_process.report(clipping_norm_state)
 
     clients_clipping_norm = intrinsics.federated_broadcast(clipping_norm)
-
-    # TODO(b/163880757): Remove this when server-only metrics are supported.
-    clipping_norm = intrinsics.federated_mean(clients_clipping_norm)
 
     clipped_value, global_norm, was_clipped = intrinsics.federated_map(
         clip_fn, (value, clients_clipping_norm))

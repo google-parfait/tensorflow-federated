@@ -21,11 +21,12 @@ import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import estimation_process
+from tensorflow_federated.python.core.test import static_assert
 
 QEProcess = quantile_estimation.PrivateQuantileEstimationProcess
 
@@ -148,7 +149,42 @@ class PrivateQEExecutionTest(test_case.TestCase, parameterized.TestCase):
     state = process.initialize()
     self.assertEqual(process.report(state), 3.0)
 
+  def test_no_noise_secure_true_false_equal_results(self):
+    simple_process = QEProcess.no_noise(
+        initial_estimate=1.0,
+        target_quantile=0.5,
+        learning_rate=1.0,
+        secure_estimation=False)
+    secure_process = QEProcess.no_noise(
+        initial_estimate=1.0,
+        target_quantile=0.5,
+        learning_rate=1.0,
+        secure_estimation=True)
+
+    data = [0.5, 1.5, 2.5]  # 2 bigger than the initial estimate 1.0, 1 smaller.
+
+    simple_state = simple_process.initialize()
+    secure_state = secure_process.initialize()
+    for _ in range(3):
+      simple_state = simple_process.next(simple_state, data)
+      secure_state = secure_process.next(secure_state, data)
+      self.assertAllClose(
+          simple_process.report(simple_state),
+          secure_process.report(secure_state))
+
+  def test_secure_estimation_true_only_contains_secure_aggregation(self):
+    secure_process = QEProcess.no_noise(
+        initial_estimate=1.0,
+        target_quantile=0.5,
+        learning_rate=1.0,
+        secure_estimation=True)
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(
+          secure_process.next)
+    except:  # pylint: disable=bare-except
+      self.fail('Computation contains non-secure aggregation.')
+
 
 if __name__ == '__main__':
-  execution_contexts.set_local_python_execution_context()
+  execution_contexts.set_test_execution_context()
   test_case.main()
