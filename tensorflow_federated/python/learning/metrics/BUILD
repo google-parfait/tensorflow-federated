@@ -14,41 +14,9 @@ py_library(
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
         ":aggregator",
+        ":counters",
         ":finalizer",
     ],
-)
-
-py_test(
-    name = "finalizer_test",
-    srcs = ["finalizer_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":finalizer",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-    ],
-)
-
-py_test(
-    name = "aggregator_test",
-    srcs = ["aggregator_test.py"],
-    deps = [
-        ":aggregator",
-        ":finalizer",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/test:static_assert",
-    ],
-)
-
-py_library(
-    name = "finalizer",
-    srcs = ["finalizer.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
 py_library(
@@ -68,5 +36,49 @@ py_library(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model",
+    ],
+)
+
+py_test(
+    name = "aggregator_test",
+    srcs = ["aggregator_test.py"],
+    deps = [
+        ":aggregator",
+        ":finalizer",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/test:static_assert",
+    ],
+)
+
+py_library(
+    name = "counters",
+    srcs = ["counters.py"],
+)
+
+py_test(
+    name = "counters_test",
+    srcs = ["counters_test.py"],
+    deps = [":counters"],
+)
+
+py_library(
+    name = "finalizer",
+    srcs = ["finalizer.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+)
+
+py_test(
+    name = "finalizer_test",
+    srcs = ["finalizer_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":finalizer",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )

@@ -35,16 +35,6 @@ def _get_keras_optimizer_fn(learning_rate=0.1):
   return lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
 
 
-class NumExamplesCounter(tf.keras.metrics.Sum):
-  """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
-
-  def __init__(self, name='num_examples', dtype=tf.int64):  # pylint: disable=useless-super-delegation
-    super().__init__(name, dtype)
-
-  def update_state(self, y_true, y_pred, sample_weight=None):
-    return super().update_state(tf.shape(y_pred)[0], sample_weight)
-
-
 class FederatedAveragingIntegrationTest(tff.test.TestCase,
                                         parameterized.TestCase):
 
@@ -124,7 +114,7 @@ class FederatedAveragingIntegrationTest(tff.test.TestCase,
           keras_model,
           loss=tf.keras.losses.MeanSquaredError(),
           input_spec=ds.element_spec,
-          metrics=[NumExamplesCounter()])
+          metrics=[tff.learning.metrics.NumExamplesCounter()])
 
     iterative_process = tff.learning.build_federated_averaging_process(
         model_fn=model_fn,
@@ -153,7 +143,7 @@ class FederatedAveragingIntegrationTest(tff.test.TestCase,
           keras_model,
           loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
           input_spec=dataset.element_spec,
-          metrics=[NumExamplesCounter()])
+          metrics=[tff.learning.metrics.NumExamplesCounter()])
 
     iterative_process = tff.learning.build_federated_averaging_process(
         model_fn=model_fn,
@@ -180,7 +170,7 @@ class FederatedAveragingIntegrationTest(tff.test.TestCase,
           keras_model,
           loss=tf.keras.losses.MeanSquaredError(),
           input_spec=ds.element_spec,
-          metrics=[NumExamplesCounter()])
+          metrics=[tff.learning.metrics.NumExamplesCounter()])
 
     iterative_process = tff.learning.build_federated_averaging_process(
         model_fn=model_fn, client_optimizer_fn=client_optimizer())

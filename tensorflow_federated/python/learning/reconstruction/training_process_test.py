@@ -40,6 +40,7 @@ from tensorflow_federated.python.core.templates import iterative_process as iter
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.reconstruction import keras_utils
 from tensorflow_federated.python.learning.reconstruction import model as model_lib
@@ -164,29 +165,6 @@ class MnistModel(model_lib.Model):
         predictions=y, labels=batch['y'], num_examples=tf.size(batch['y']))
 
 
-class NumExamplesCounter(tf.keras.metrics.Sum):
-  """A `tf.keras.metrics.Metric` that counts the number of examples seen.
-
-  This metric counts label examples.
-  """
-
-  def __init__(self, name: str = 'num_examples_total', dtype=tf.float32):  # pylint: disable=useless-super-delegation
-    super().__init__(name, dtype)
-
-  def update_state(self, y_true, y_pred, sample_weight=None):
-    return super().update_state(tf.shape(y_true)[0])
-
-
-class NumBatchesCounter(tf.keras.metrics.Sum):
-  """A `tf.keras.metrics.Metric` that counts the number of batches seen."""
-
-  def __init__(self, name: str = 'num_batches_total', dtype=tf.float32):  # pylint: disable=useless-super-delegation
-    super().__init__(name, dtype)
-
-  def update_state(self, y_true, y_pred, sample_weight=None):
-    return super().update_state(1)
-
-
 def create_emnist_client_data():
   np.random.seed(42)
   emnist_data = collections.OrderedDict([('x', [
@@ -274,8 +252,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -339,8 +317,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -373,17 +351,16 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertCountEqual(outputs[0].keys(), expected_keys)
 
     expected_train_keys = [
-        'sparse_categorical_accuracy', 'loss', 'num_examples_total',
-        'num_batches_total'
+        'sparse_categorical_accuracy', 'loss', 'num_examples', 'num_batches'
     ]
     self.assertCountEqual(outputs[0]['train'].keys(), expected_train_keys)
 
     # On both rounds, each client has 1 reconstruction batch with 2 examples,
     # and one post-reconstruction batch with 1 example.
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 2)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 2)
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 2)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 2)
+    self.assertEqual(outputs[0]['train']['num_examples'], 2)
+    self.assertEqual(outputs[1]['train']['num_batches'], 2)
+    self.assertEqual(outputs[0]['train']['num_examples'], 2)
+    self.assertEqual(outputs[1]['train']['num_batches'], 2)
 
   @parameterized.named_parameters([
       ('keras_opt', _get_keras_optimizer_fn),
@@ -397,8 +374,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -434,17 +411,16 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertCountEqual(outputs[0].keys(), expected_keys)
 
     expected_train_keys = [
-        'sparse_categorical_accuracy', 'loss', 'num_examples_total',
-        'num_batches_total'
+        'sparse_categorical_accuracy', 'loss', 'num_examples', 'num_batches'
     ]
     self.assertCountEqual(outputs[0]['train'].keys(), expected_train_keys)
 
     # On both rounds, each client has one post-reconstruction batch with 1
     # example.
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 2)
-    self.assertEqual(outputs[0]['train']['num_batches_total'], 2)
-    self.assertEqual(outputs[1]['train']['num_examples_total'], 2)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 2)
+    self.assertEqual(outputs[0]['train']['num_examples'], 2)
+    self.assertEqual(outputs[0]['train']['num_batches'], 2)
+    self.assertEqual(outputs[1]['train']['num_examples'], 2)
+    self.assertEqual(outputs[1]['train']['num_batches'], 2)
 
     expected_aggregation_keys = ['mean_weight', 'mean_value']
     self.assertCountEqual(output['aggregation'].keys(),
@@ -457,8 +433,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -481,14 +457,13 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertCountEqual(output.keys(), expected_keys)
 
     expected_train_keys = [
-        'sparse_categorical_accuracy', 'loss', 'num_examples_total',
-        'num_batches_total'
+        'sparse_categorical_accuracy', 'loss', 'num_examples', 'num_batches'
     ]
     self.assertCountEqual(output['train'].keys(), expected_train_keys)
 
     # Only one client has a post-reconstruction batch, with one example.
-    self.assertEqual(output['train']['num_examples_total'], 1)
-    self.assertEqual(output['train']['num_batches_total'], 1)
+    self.assertEqual(output['train']['num_examples'], 1)
+    self.assertEqual(output['train']['num_batches'], 1)
 
     # Ensure we are using a weighted aggregator.
     expected_aggregation_keys = ['mean_weight', 'mean_value']
@@ -502,8 +477,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -527,13 +502,12 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertCountEqual(output.keys(), expected_keys)
 
     expected_train_keys = [
-        'sparse_categorical_accuracy', 'loss', 'num_examples_total',
-        'num_batches_total'
+        'sparse_categorical_accuracy', 'loss', 'num_examples', 'num_batches'
     ]
     self.assertCountEqual(output['train'].keys(), expected_train_keys)
 
-    self.assertEqual(output['train']['num_examples_total'], 5)
-    self.assertEqual(output['train']['num_batches_total'], 3)
+    self.assertEqual(output['train']['num_examples'], 5)
+    self.assertEqual(output['train']['num_batches'], 3)
 
     # Ensure we are using a weighted aggregator.
     expected_aggregation_keys = ['mean_weight', 'mean_value']
@@ -605,8 +579,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -639,13 +613,13 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     # Expect 6 reconstruction examples, 6 training examples. Only training
     # included in metrics.
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 6.0)
-    self.assertEqual(outputs[1]['train']['num_examples_total'], 6.0)
+    self.assertEqual(outputs[0]['train']['num_examples'], 6.0)
+    self.assertEqual(outputs[1]['train']['num_examples'], 6.0)
 
     # Expect 4 reconstruction batches and 4 training batches. Only training
     # included in metrics.
-    self.assertEqual(outputs[0]['train']['num_batches_total'], 4.0)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 4.0)
+    self.assertEqual(outputs[0]['train']['num_batches'], 4.0)
+    self.assertEqual(outputs[1]['train']['num_batches'], 4.0)
 
   @parameterized.named_parameters([
       ('keras_opt', _get_keras_optimizer_fn),
@@ -660,8 +634,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -695,13 +669,13 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     # Expect 6 reconstruction examples, 6 training examples. Only training
     # included in metrics.
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 6.0)
-    self.assertEqual(outputs[1]['train']['num_examples_total'], 6.0)
+    self.assertEqual(outputs[0]['train']['num_examples'], 6.0)
+    self.assertEqual(outputs[1]['train']['num_examples'], 6.0)
 
     # Expect 4 reconstruction batches and 4 training batches. Only training
     # included in metrics.
-    self.assertEqual(outputs[0]['train']['num_batches_total'], 4.0)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 4.0)
+    self.assertEqual(outputs[0]['train']['num_batches'], 4.0)
+    self.assertEqual(outputs[1]['train']['num_batches'], 4.0)
 
   def test_custom_model_zeroing_clipping_aggregator_factory(self):
     client_data = create_emnist_client_data()
@@ -712,8 +686,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -751,13 +725,13 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     # Expect 6 reconstruction examples, 6 training examples. Only training
     # included in metrics.
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 6.0)
-    self.assertEqual(outputs[1]['train']['num_examples_total'], 6.0)
+    self.assertEqual(outputs[0]['train']['num_examples'], 6.0)
+    self.assertEqual(outputs[1]['train']['num_examples'], 6.0)
 
     # Expect 4 reconstruction batches and 4 training batches. Only training
     # included in metrics.
-    self.assertEqual(outputs[0]['train']['num_batches_total'], 4.0)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 4.0)
+    self.assertEqual(outputs[0]['train']['num_batches'], 4.0)
+    self.assertEqual(outputs[1]['train']['num_batches'], 4.0)
 
   def test_iterative_process_fails_with_dp_agg_and_client_weight_fn(self):
 
@@ -766,8 +740,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -803,8 +777,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -838,8 +812,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -884,13 +858,13 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     # Expect 6 reconstruction examples, 6 training examples. Only training
     # included in metrics.
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 6.0)
-    self.assertEqual(outputs[1]['train']['num_examples_total'], 6.0)
+    self.assertEqual(outputs[0]['train']['num_examples'], 6.0)
+    self.assertEqual(outputs[1]['train']['num_examples'], 6.0)
 
     # Expect 4 reconstruction batches and 4 training batches. Only training
     # included in metrics.
-    self.assertEqual(outputs[0]['train']['num_batches_total'], 4.0)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 4.0)
+    self.assertEqual(outputs[0]['train']['num_batches'], 4.0)
+    self.assertEqual(outputs[1]['train']['num_batches'], 4.0)
 
   def test_keras_local_layer_custom_broadcaster(self):
 
@@ -899,8 +873,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -954,8 +928,7 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertCountEqual(output.keys(), expected_keys)
 
     expected_train_keys = [
-        'sparse_categorical_accuracy', 'loss', 'num_examples_total',
-        'num_batches_total'
+        'sparse_categorical_accuracy', 'loss', 'num_examples', 'num_batches'
     ]
     self.assertCountEqual(output['train'].keys(), expected_train_keys)
 
@@ -974,8 +947,8 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
     def metrics_fn():
       return [
-          NumExamplesCounter(),
-          NumBatchesCounter(),
+          counters.NumExamplesCounter(),
+          counters.NumBatchesCounter(),
           tf.keras.metrics.SparseCategoricalAccuracy()
       ]
 
@@ -1000,10 +973,10 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
     self.assertLess(outputs[1]['train']['loss'], outputs[0]['train']['loss'])
     self.assertNotAllClose(states[0].model.trainable, states[1].model.trainable)
 
-    self.assertEqual(outputs[0]['train']['num_examples_total'], 10.0)
-    self.assertEqual(outputs[1]['train']['num_examples_total'], 10.0)
-    self.assertEqual(outputs[0]['train']['num_batches_total'], 6.0)
-    self.assertEqual(outputs[1]['train']['num_batches_total'], 6.0)
+    self.assertEqual(outputs[0]['train']['num_examples'], 10.0)
+    self.assertEqual(outputs[1]['train']['num_examples'], 10.0)
+    self.assertEqual(outputs[0]['train']['num_batches'], 6.0)
+    self.assertEqual(outputs[1]['train']['num_batches'], 6.0)
 
   def test_get_model_weights(self):
     client_data = create_emnist_client_data()

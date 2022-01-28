@@ -32,26 +32,7 @@ from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
-
-
-class NumBatchesCounter(tf.keras.metrics.Sum):
-  """A `tf.keras.metrics.Metric` that counts the number of batches seen."""
-
-  def __init__(self, name='num_batches', dtype=tf.int64):  # pylint: disable=useless-super-delegation
-    super().__init__(name, dtype)
-
-  def update_state(self, y_true, y_pred, sample_weight=None):
-    return super().update_state(1, sample_weight)
-
-
-class NumExamplesCounter(tf.keras.metrics.Sum):
-  """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
-
-  def __init__(self, name='num_examples', dtype=tf.int64):  # pylint: disable=useless-super-delegation
-    super().__init__(name, dtype)
-
-  def update_state(self, y_true, y_pred, sample_weight=None):
-    return super().update_state(tf.shape(y_pred)[0], sample_weight)
+from tensorflow_federated.python.learning.metrics import counters
 
 
 def _create_whimsy_types(feature_dims):
@@ -225,7 +206,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=_create_whimsy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+        metrics=[counters.NumBatchesCounter(),
+                 counters.NumExamplesCounter()])
     self.assertIsInstance(tff_model, model_lib.Model)
 
     # Metrics should be zero, though the model wrapper internally executes the
@@ -276,7 +258,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=_create_whimsy_types(3),
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+        metrics=[counters.NumBatchesCounter(),
+                 counters.NumExamplesCounter()])
     self.assertIsInstance(tff_model, model_lib.Model)
 
     # Metrics should be zero, though the model wrapper internally executes the
@@ -326,7 +309,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()],
+        metrics=[counters.NumBatchesCounter(),
+                 counters.NumExamplesCounter()],
         input_spec=_create_whimsy_types(feature_dims))
     self.assertIsInstance(tff_model, model_lib.Model)
 
@@ -440,7 +424,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=model,
         input_spec=input_spec,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+        metrics=[counters.NumBatchesCounter(),
+                 counters.NumExamplesCounter()])
 
     # Create a batch with the size of the vocab. These examples will attempt to
     # train the embedding so that the model produces
@@ -480,7 +465,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+        metrics=[counters.NumBatchesCounter(),
+                 counters.NumExamplesCounter()])
 
     batch_size = 2
     real_batch = collections.OrderedDict(
@@ -509,7 +495,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+        metrics=[counters.NumBatchesCounter(),
+                 counters.NumExamplesCounter()])
 
     orig_model_output = tff_model.forward_pass(real_batch)
     loaded_model_output = loaded_model.forward_pass(real_batch)
@@ -528,8 +515,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           keras_model=model,
           input_spec=input_spec,
           loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-          metrics=[NumBatchesCounter(),
-                   NumExamplesCounter()])
+          metrics=[counters.NumBatchesCounter(),
+                   counters.NumExamplesCounter()])
       # Ensure we can get warning of Batch Normalization.
       self.assertLen(warning, 1)
       self.assertIsSubClass(warning[-1].category, UserWarning)
@@ -583,8 +570,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           keras_model=_make_keras_model(),
           input_spec=_create_whimsy_types(feature_dims),
           loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[NumBatchesCounter(),
-                   NumExamplesCounter()])
+          metrics=[counters.NumBatchesCounter(),
+                   counters.NumExamplesCounter()])
 
     @computations.tf_computation()
     def _train():
@@ -635,8 +622,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         input_spec=_create_whimsy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[
-            NumBatchesCounter(),
-            NumExamplesCounter(),
+            counters.NumBatchesCounter(),
+            counters.NumExamplesCounter(),
             tf.keras.metrics.MeanAbsoluteError()
         ])
 
@@ -928,7 +915,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+        metrics=[counters.NumBatchesCounter(),
+                 counters.NumExamplesCounter()])
 
     batch_size = 3
     batch = collections.OrderedDict(
@@ -955,7 +943,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+        metrics=[counters.NumBatchesCounter(),
+                 counters.NumExamplesCounter()])
 
     orig_model_output = tff_model.forward_pass(batch)
     loaded_model_output = loaded_model.forward_pass(batch)
@@ -971,7 +960,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+        metrics=[counters.NumBatchesCounter(),
+                 counters.NumExamplesCounter()])
 
     batch_size = 3
     batch = collections.OrderedDict(
@@ -998,7 +988,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+        metrics=[counters.NumBatchesCounter(),
+                 counters.NumExamplesCounter()])
 
     orig_model_output = tff_model.forward_pass(batch)
     loaded_model_output = loaded_model.forward_pass(batch)
@@ -1016,8 +1007,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           keras_model=keras_model,
           input_spec=_create_whimsy_types(feature_dims),
           loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[NumBatchesCounter(),
-                   NumExamplesCounter()])
+          metrics=[counters.NumBatchesCounter(),
+                   counters.NumExamplesCounter()])
 
   def test_custom_keras_metric_with_extra_init_args_raises(self):
 
@@ -1079,7 +1070,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=_create_whimsy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[NumBatchesCounter, NumExamplesCounter])
+        metrics=[counters.NumBatchesCounter, counters.NumExamplesCounter])
     self.assertIsInstance(tff_model, model_lib.Model)
 
     # Metrics should be zero, though the model wrapper internally executes the
@@ -1175,7 +1166,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('both_metrics_and_constructors',
-       [NumExamplesCounter, NumBatchesCounter()], 'found both types'),
+       [counters.NumExamplesCounter,
+        counters.NumBatchesCounter()], 'found both types'),
       ('non_callable', [tf.constant(1.0)], 'found a non-callable'),
       ('non_keras_metric_constructor', [tf.keras.losses.MeanSquaredError
                                        ], 'not a no-arg callable'))

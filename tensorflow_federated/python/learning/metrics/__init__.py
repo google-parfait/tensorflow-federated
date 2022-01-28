@@ -16,4 +16,6 @@
 from tensorflow_federated.python.learning.metrics.aggregator import create_default_secure_sum_quantization_ranges
 from tensorflow_federated.python.learning.metrics.aggregator import secure_sum_then_finalize
 from tensorflow_federated.python.learning.metrics.aggregator import sum_then_finalize
+from tensorflow_federated.python.learning.metrics.counters import NumBatchesCounter
+from tensorflow_federated.python.learning.metrics.counters import NumExamplesCounter
 from tensorflow_federated.python.learning.metrics.finalizer import create_keras_metric_finalizer

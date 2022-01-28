@@ -40,4 +40,5 @@ py_library(
     name = "mnist",
     srcs = ["mnist.py"],
     srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/learning/metrics:counters"],
 )
