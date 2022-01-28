@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.emnist import char_recognition_tasks
+from tensorflow_federated.python.simulation.baselines.emnist import emnist_models
 
 
 class CreateCharacterRecognitionModelTest(tf.test.TestCase,
@@ -30,8 +31,7 @@ class CreateCharacterRecognitionModelTest(tf.test.TestCase,
       ('emnist_10', True),
       ('emnist_62', False),
   )
-  @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.emnist.emnist_models.create_conv_dropout_model')
+  @mock.patch.object(emnist_models, 'create_conv_dropout_model')
   def test_get_character_recognition_model_constructs_cnn_dropout(
       self, only_digits, mock_model_builder):
     char_recognition_tasks._get_character_recognition_model(
@@ -42,8 +42,7 @@ class CreateCharacterRecognitionModelTest(tf.test.TestCase,
       ('emnist_10', True),
       ('emnist_62', False),
   )
-  @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.emnist.emnist_models.create_original_fedavg_cnn_model')
+  @mock.patch.object(emnist_models, 'create_original_fedavg_cnn_model')
   def test_get_character_recognition_model_constructs_cnn(
       self, only_digits, mock_model_builder):
     char_recognition_tasks._get_character_recognition_model(
@@ -54,8 +53,7 @@ class CreateCharacterRecognitionModelTest(tf.test.TestCase,
       ('emnist_10', True),
       ('emnist_62', False),
   )
-  @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.emnist.emnist_models.create_two_hidden_layer_model')
+  @mock.patch.object(emnist_models, 'create_two_hidden_layer_model')
   def test_get_character_recognition_model_constructs_2nn(
       self, only_digits, mock_model_builder):
     char_recognition_tasks._get_character_recognition_model(

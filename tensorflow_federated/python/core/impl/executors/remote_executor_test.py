@@ -111,9 +111,7 @@ def _raise_non_retryable_grpc_error(*args):
   raise error
 
 
-@mock.patch(
-    'tensorflow_federated.proto.v0.executor_pb2_grpc.ExecutorStub'
-)
+@mock.patch.object(executor_pb2_grpc, 'ExecutorStub')
 class RemoteValueTest(absltest.TestCase):
 
   def test_compute_returns_result(self, mock_stub):
@@ -175,9 +173,7 @@ class RemoteValueTest(absltest.TestCase):
       loop.run_until_complete(comp.compute())
 
 
-@mock.patch(
-    'tensorflow_federated.proto.v0.executor_pb2_grpc.ExecutorStub'
-)
+@mock.patch.object(executor_pb2_grpc, 'ExecutorStub')
 class RemoteExecutorTest(absltest.TestCase):
 
   def test_set_cardinalities_returns_none(self, mock_stub):

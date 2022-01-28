@@ -89,6 +89,7 @@ py_cpu_gpu_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
+        ":aggregation",
         ":fed_avg",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
@@ -182,6 +183,7 @@ py_cpu_gpu_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
+        ":aggregation",
         ":fed_prox",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:type_conversions",

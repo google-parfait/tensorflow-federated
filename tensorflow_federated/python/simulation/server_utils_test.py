@@ -19,6 +19,7 @@ import portpicker
 
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.simulation import server_utils
 
@@ -33,7 +34,7 @@ class ServerUtilsTest(test_case.TestCase):
     ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
 
     with server_utils.server_context(ex_factory, 1,
-                                     portpicker.pick_unused_port()) as server:
+                                     portpicker.pick_unused_port()):
       time.sleep(1)
       raise KeyboardInterrupt
 
@@ -51,15 +52,14 @@ class ServerUtilsTest(test_case.TestCase):
 
     with self.assertRaises(TypeError):
       with server_utils.server_context(ex_factory, 1,
-                                       portpicker.pick_unused_port()) as server:
+                                       portpicker.pick_unused_port()):
         time.sleep(1)
         raise TypeError
 
     mock_logging_info.assert_called_once_with('Shutting down server.')
 
-  @mock.patch(
-      'tensorflow_federated.python.core.impl.executors.executor_service.ExecutorService',
-      side_effect=ValueError)
+  @mock.patch.object(
+      executor_service, 'ExecutorService', side_effect=ValueError)
   def test_failure_on_construction_fails_as_expected(self, mock_service):
 
     ex = eager_tf_executor.EagerTFExecutor()
