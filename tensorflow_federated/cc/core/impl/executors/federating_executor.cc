@@ -164,7 +164,10 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
   std::shared_ptr<Executor> child_;
   uint32_t num_clients_;
 
-  const char* ExecutorName() final { return "FederatingExecutor"; }
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName = "FederatingExecutor";
+    return kExecutorName;
+  }
 
   ExecutorValue ClientsAllEqualValue(
       const std::shared_ptr<OwnedValueId>& value) const {

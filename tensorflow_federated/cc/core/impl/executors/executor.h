@@ -285,7 +285,7 @@ class ExecutorBase : public Executor,
   }
 
   // Returns the string name of the current executor.
-  virtual const char* ExecutorName() = 0;
+  virtual absl::string_view ExecutorName() = 0;
   virtual absl::StatusOr<ExecutorValue> CreateExecutorValue(
       const v0::Value& value_pb) = 0;
   virtual absl::StatusOr<ExecutorValue> CreateCall(

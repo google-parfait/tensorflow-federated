@@ -358,7 +358,10 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
  protected:
-  const char* ExecutorName() final { return "ComposingExecutor"; }
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName = "ComposingExecutor";
+    return kExecutorName;
+  }
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {

@@ -52,7 +52,10 @@ class RemoteExecutor : public ExecutorBase<ValueFuture> {
       : stub_(std::move(stub)), cardinalities_(cardinalities) {}
   ~RemoteExecutor() {}
 
-  const char* ExecutorName() final { return "RemoteExecutor"; }
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName = "RemoteExecutor";
+    return kExecutorName;
+  }
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final;

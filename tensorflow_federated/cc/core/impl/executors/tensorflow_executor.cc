@@ -823,7 +823,10 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   }
 
  protected:
-  const char* ExecutorName() final { return "TensorFlowExecutor"; }
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName = "TensorFlowExecutor";
+    return kExecutorName;
+  }
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
     return ReadyFuture(TFF_TRY(CreateValueAny(value_pb)));

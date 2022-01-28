@@ -201,7 +201,11 @@ class ReferenceResolvingExecutor
       const std::shared_ptr<Scope>& scope) const;
 
  protected:
-  const char* ExecutorName() final { return "ReferenceResolvingExecutor"; }
+  absl::string_view ExecutorName() final {
+    static constexpr absl::string_view kExecutorName =
+        "ReferenceResolvingExecutor";
+    return kExecutorName;
+  }
 
   absl::StatusOr<std::shared_ptr<ExecutorValue>> CreateExecutorValue(
       const v0::Value& value_pb) final;
