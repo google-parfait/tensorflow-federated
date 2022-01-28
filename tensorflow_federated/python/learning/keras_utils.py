@@ -33,6 +33,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
+from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import finalizer
 
 Loss = Union[tf.keras.losses.Loss, List[tf.keras.losses.Loss]]
@@ -51,7 +52,8 @@ def from_keras_model(
   """Builds a `tff.learning.Model` from a `tf.keras.Model`.
 
   The `tff.learning.Model` returned by this function uses `keras_model` for
-  its forward pass and autodifferentiation steps.
+  its forward pass and autodifferentiation steps. The returned model will have
+  three additional metrics include: loss, num_examples, and num_batches.
 
   Notice that since TFF couples the `tf.keras.Model` and `loss`,
   TFF needs a slightly different notion of "fully specified type" than
@@ -349,9 +351,12 @@ class _KerasModel(model_lib.Model):
 
         return super().update_state(batch_loss, batch_size)
 
-    self._metrics.append(_WeightedMeanLossMetric())
+    extra_metrics_constructors = (_WeightedMeanLossMetric,
+                                  counters.NumExamplesCounter,
+                                  counters.NumBatchesCounter)
+    self._metrics.extend(m() for m in extra_metrics_constructors)
     if not metrics or self._metric_constructors:
-      self._metric_constructors.append(_WeightedMeanLossMetric)
+      self._metric_constructors.extend(extra_metrics_constructors)
 
     metric_variable_type_dict = tf.nest.map_structure(
         tf.TensorSpec.from_tensor, self.report_local_outputs())

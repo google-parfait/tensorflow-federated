@@ -179,6 +179,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/metrics:finalizer",
     ],
 )

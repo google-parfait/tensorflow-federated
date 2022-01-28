@@ -106,7 +106,9 @@ class BuildEvalWorkTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(eval_metrics['num_examples'], 3)
 
     local_outputs = eval_metrics['local_outputs']
-    self.assertCountEqual(local_outputs.keys(), ['loss', 'mean_squared_error'])
+    self.assertCountEqual(
+        local_outputs.keys(),
+        ['loss', 'mean_squared_error', 'num_examples', 'num_batches'])
     self.assertEqual(local_outputs['loss'], local_outputs['mean_squared_error'])
     expected_loss_sum = (3.0 - 2.0)**2 + (5.0 - 3.0)**2 + (7.0 - 4.0)**2
     self.assertAllClose(
@@ -131,7 +133,9 @@ class BuildEvalWorkTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(eval_metrics['num_examples'], 3)
 
     local_outputs = eval_metrics['local_outputs']
-    self.assertCountEqual(local_outputs.keys(), ['loss', 'mean_squared_error'])
+    self.assertCountEqual(
+        local_outputs.keys(),
+        ['loss', 'mean_squared_error', 'num_examples', 'num_batches'])
     self.assertEqual(local_outputs['loss'], local_outputs['mean_squared_error'])
     expected_loss_sum = 9.0 + 25.0 + 49.0
     self.assertAllClose(
@@ -147,6 +151,8 @@ class BuildModelMetricsAggregatorTest(tf.test.TestCase):
              ('mean_squared_error', (TensorType(tf.float32),
                                      TensorType(tf.float32))),
              ('loss', (TensorType(tf.float32), TensorType(tf.float32))),
+             ('num_examples', (TensorType(tf.int64),)),
+             ('num_batches', (TensorType(tf.int64),)),
          ])),
         ('num_examples', TensorType(tf.float32)),
     ])
@@ -157,6 +163,8 @@ class BuildModelMetricsAggregatorTest(tf.test.TestCase):
          StructType([
              ('mean_squared_error', TensorType(tf.float32)),
              ('loss', TensorType(tf.float32)),
+             ('num_examples', TensorType(tf.int64)),
+             ('num_batches', TensorType(tf.int64)),
          ])),
         ('stat', StructType([
             ('num_examples', TensorType(tf.float32)),
@@ -181,7 +189,10 @@ class BuildModelMetricsAggregatorTest(tf.test.TestCase):
   def test_metrics_aggregator_correctness_with_one_client(self):
     client_metrics = collections.OrderedDict(
         local_outputs=collections.OrderedDict(
-            mean_squared_error=(4.0, 2.0), loss=(5.0, 1.0)),
+            mean_squared_error=(4.0, 2.0),
+            loss=(5.0, 1.0),
+            num_examples=(10,),
+            num_batches=(2,)),
         num_examples=10.0)
 
     model = tff_model_builder()
@@ -191,22 +202,32 @@ class BuildModelMetricsAggregatorTest(tf.test.TestCase):
 
     aggregate_metrics = model_metrics_aggregator([client_metrics])
     expected_metrics = collections.OrderedDict(
-        eval=collections.OrderedDict(mean_squared_error=2.0, loss=5.0),
+        eval=collections.OrderedDict(
+            mean_squared_error=2.0, loss=5.0, num_examples=10, num_batches=2),
         stat=collections.OrderedDict(num_examples=10.0))
     self.assertAllClose(aggregate_metrics, expected_metrics, atol=1e-6)
 
   def test_metrics_aggregator_correctness_with_three_client(self):
     client_metrics1 = collections.OrderedDict(
         local_outputs=collections.OrderedDict(
-            mean_squared_error=(4.0, 2.0), loss=(5.0, 1.0)),
+            mean_squared_error=(4.0, 2.0),
+            loss=(5.0, 1.0),
+            num_examples=(3,),
+            num_batches=(3,)),
         num_examples=10.0)
     client_metrics2 = collections.OrderedDict(
         local_outputs=collections.OrderedDict(
-            mean_squared_error=(4.0, 4.0), loss=(1.0, 5.0)),
+            mean_squared_error=(4.0, 4.0),
+            loss=(1.0, 5.0),
+            num_examples=(2,),
+            num_batches=(1,)),
         num_examples=7.0)
     client_metrics3 = collections.OrderedDict(
         local_outputs=collections.OrderedDict(
-            mean_squared_error=(6.0, 2.0), loss=(5.0, 5.0)),
+            mean_squared_error=(6.0, 2.0),
+            loss=(5.0, 5.0),
+            num_examples=(5,),
+            num_batches=(2,)),
         num_examples=3.0)
 
     model = tff_model_builder()
@@ -218,7 +239,8 @@ class BuildModelMetricsAggregatorTest(tf.test.TestCase):
 
     aggregate_metrics = model_metrics_aggregator(federated_metrics)
     expected_metrics = collections.OrderedDict(
-        eval=collections.OrderedDict(mean_squared_error=1.75, loss=1.0),
+        eval=collections.OrderedDict(
+            mean_squared_error=1.75, loss=1.0, num_examples=10, num_batches=6),
         stat=collections.OrderedDict(num_examples=20.0))
     self.assertAllClose(aggregate_metrics, expected_metrics, atol=1e-6)
 

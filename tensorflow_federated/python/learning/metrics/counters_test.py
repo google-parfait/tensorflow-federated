@@ -12,12 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.metrics import counters
 
+NAMED_LABEL_TESTS = [
+    ('single_label', np.zeros([10]), np.zeros([5, 1])),
+    ('multi_label_list', [np.zeros([10])] * 2, [np.zeros([5, 1])] * 2),
+    ('multi_label_dict', {
+        'a': np.zeros([10]),
+        'b': np.zeros([10])
+    }, {
+        'a': np.zeros([5, 1]),
+        'b': np.zeros([5, 1])
+    }),
+]
 
-class NumExamplesCounterTest(tf.test.TestCase):
+
+class NumExamplesCounterTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_construct(self):
     m = counters.NumExamplesCounter()
@@ -29,20 +43,20 @@ class NumExamplesCounterTest(tf.test.TestCase):
     m = counters.NumExamplesCounter('num_examples2')
     self.assertEqual(m.name, 'num_examples2')
 
-  def test_update_without_sample_weight(self):
+  @parameterized.named_parameters(NAMED_LABEL_TESTS)
+  def test_update_without_sample_weight(self, a, b):
     m = counters.NumExamplesCounter()
-    self.assertEqual(m(tf.zeros([10, 1]), tf.zeros([10])), 10)
+    self.assertEqual(m(a, a), 10)
     self.assertEqual(m.total, 10)
-    self.assertEqual(m.update_state(tf.zeros([5, 1]), tf.zeros([5])), 15)
+    self.assertEqual(m.update_state(b, b), 15)
     self.assertEqual(m.total, 15)
 
-  def test_update_with_sample_weight(self):
+  @parameterized.named_parameters(NAMED_LABEL_TESTS)
+  def test_update_with_sample_weight(self, a, b):
     m = counters.NumExamplesCounter()
-    self.assertEqual(
-        m(tf.zeros([10, 1]), tf.zeros([10]), sample_weight=0.5), 10)
+    self.assertEqual(m(a, a), 10)
     self.assertEqual(m.total, 10)
-    self.assertEqual(
-        m.update_state(tf.zeros([5, 1]), tf.zeros([5]), sample_weight=2.0), 15)
+    self.assertEqual(m.update_state(b, b), 15)
     self.assertEqual(m.total, 15)
 
   def test_reset_to_zero(self):
@@ -53,7 +67,7 @@ class NumExamplesCounterTest(tf.test.TestCase):
     self.assertEqual(m.total, 0)
 
 
-class NumBatchesCounterTest(tf.test.TestCase):
+class NumBatchesCounterTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_construct(self):
     m = counters.NumBatchesCounter()
@@ -65,19 +79,20 @@ class NumBatchesCounterTest(tf.test.TestCase):
     m = counters.NumBatchesCounter('num_batches2')
     self.assertEqual(m.name, 'num_batches2')
 
-  def test_update_without_sample_weight(self):
+  @parameterized.named_parameters(NAMED_LABEL_TESTS)
+  def test_update_without_sample_weight(self, a, b):
     m = counters.NumBatchesCounter()
-    self.assertEqual(m(tf.zeros([10, 1]), tf.zeros([10])), 1)
+    self.assertEqual(m(a, a), 1)
     self.assertEqual(m.total, 1)
-    self.assertEqual(m.update_state(tf.zeros([5, 1]), tf.zeros([5])), 2)
+    self.assertEqual(m.update_state(b, b), 2)
     self.assertEqual(m.total, 2)
 
-  def test_update_with_sample_weight(self):
+  @parameterized.named_parameters(NAMED_LABEL_TESTS)
+  def test_update_with_sample_weight(self, a, b):
     m = counters.NumBatchesCounter()
-    self.assertEqual(m(tf.zeros([10, 1]), tf.zeros([10]), sample_weight=0.5), 1)
+    self.assertEqual(m(a, a), 1)
     self.assertEqual(m.total, 1)
-    self.assertEqual(
-        m.update_state(tf.zeros([5, 1]), tf.zeros([5]), sample_weight=2.0), 2)
+    self.assertEqual(m.update_state(b, b), 2)
     self.assertEqual(m.total, 2)
 
   def test_reset_to_zero(self):

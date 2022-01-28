@@ -19,6 +19,10 @@ import tensorflow as tf
 class NumExamplesCounter(tf.keras.metrics.Sum):
   """A `tf.keras.metrics.Metric` that counts the number of examples seen.
 
+  The number of examples is computed as the size of the first dimension of the
+  labels.  If the model using this metric contains multiple outputs/labesl, the
+  label structure is flattened and the first label is used.
+
   NOTE: This metric ignores sample weighting, counting each example uniformly.
   """
 
@@ -26,7 +30,10 @@ class NumExamplesCounter(tf.keras.metrics.Sum):
     super().__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
-    return super().update_state(tf.shape(y_pred)[0], sample_weight=None)
+    # In-case we have multiple labels, grab the first one and use it as the
+    # batch size.
+    y_true = tf.nest.flatten(y_true)[0]
+    return super().update_state(tf.shape(y_true)[0], sample_weight=None)
 
 
 class NumBatchesCounter(tf.keras.metrics.Sum):
