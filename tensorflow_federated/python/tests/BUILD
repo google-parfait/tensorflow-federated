@@ -67,39 +67,6 @@ py_test(
     ],
 )
 
-py_test(
-    name = "federated_sgd_e2e_convergence_test",
-    timeout = "eternal",
-    srcs = ["federated_sgd_e2e_convergence_test.py"],
-    python_version = "PY3",
-    shard_count = 5,
-    srcs_version = "PY3",
-    tags = [
-        "guitar",
-        "learning",
-        "manual",
-        "notap",
-    ],
-    deps = ["//tensorflow_federated"],
-)
-
-py_test(
-    name = "federated_sgd_integration_test",
-    size = "large",
-    srcs = ["federated_sgd_integration_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    tags = [
-        "guitar",
-        "learning",
-        "manual",
-    ],
-    deps = [
-        ":learning_test_models",
-        "//tensorflow_federated",
-    ],
-)
-
 py_library(
     name = "learning_test_models",
     testonly = True,

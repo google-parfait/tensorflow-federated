@@ -31,7 +31,6 @@ py_library(
         ":debug_measurements",
         ":federated_averaging",
         ":federated_evaluation",
-        ":federated_sgd",
         ":keras_utils",
         ":model",
         ":model_update_aggregator",
@@ -163,47 +162,6 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/framework:encoding_utils",
-    ],
-)
-
-py_library(
-    name = "federated_sgd",
-    srcs = ["federated_sgd.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":client_weight_lib",
-        ":model",
-        ":model_utils",
-        "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/templates:iterative_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/learning/framework:dataset_reduce",
-        "//tensorflow_federated/python/learning/framework:optimizer_utils",
-        "//tensorflow_federated/python/learning/metrics:aggregator",
-        "//tensorflow_federated/python/learning/optimizers:optimizer",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-    ],
-)
-
-py_cpu_gpu_test(
-    name = "federated_sgd_test",
-    size = "large",
-    srcs = ["federated_sgd_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":client_weight_lib",
-        ":federated_sgd",
-        ":model_examples",
-        ":model_update_aggregator",
-        ":model_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/learning/framework:dataset_reduce",
     ],
 )
 

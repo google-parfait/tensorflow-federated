@@ -11,12 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for local client training implemented in ClientSgd.
-
-Integration tests that include server averaging and alternative tff.aggregator
-factories are in found in
-tensorflow_federated/python/tests/federated_sgd_integration_test.py.
-"""
 
 import collections
 from unittest import mock
