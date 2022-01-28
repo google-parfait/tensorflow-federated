@@ -51,31 +51,6 @@ py_test(
 )
 
 py_test(
-    name = "federated_averaging_integration_test",
-    size = "large",
-    srcs = ["federated_averaging_integration_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    tags = [
-        "guitar",
-        "learning",
-        "manual",
-    ],
-    deps = [
-        ":learning_test_models",
-        "//tensorflow_federated",
-    ],
-)
-
-py_library(
-    name = "learning_test_models",
-    testonly = True,
-    srcs = ["learning_test_models.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
-)
-
-py_test(
     name = "map_reduce_form_test",
     size = "medium",
     srcs = ["map_reduce_form_test.py"],
