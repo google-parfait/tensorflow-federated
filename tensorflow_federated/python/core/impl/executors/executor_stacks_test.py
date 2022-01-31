@@ -28,6 +28,10 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.executors import federated_composing_strategy
+from tensorflow_federated.python.core.impl.executors import federating_executor
+from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
+from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -101,9 +105,8 @@ def _create_concurrent_maxthread_tuples():
 
 class ResourceManagingExecutorFactoryTest(absltest.TestCase):
 
-  @mock.patch(
-      'tensorflow_federated.python.core.impl.executors.eager_tf_executor.EagerTFExecutor',
-      return_value=ExecutorMock())
+  @mock.patch.object(
+      eager_tf_executor, 'EagerTFExecutor', return_value=ExecutorMock())
   def test_ensure_closed_closes_executor_passed_at_initialization(
       self, mock_ex):
 
@@ -360,8 +363,9 @@ class ExecutorStacksTest(parameterized.TestCase):
     # clients.
     self.assertLen(args_list, concurrency_level + 2)
 
-  @mock.patch(
-      'tensorflow_federated.python.core.impl.executors.reference_resolving_executor.ReferenceResolvingExecutor',
+  @mock.patch.object(
+      reference_resolving_executor,
+      'ReferenceResolvingExecutor',
       return_value=ExecutorMock())
   def test_thread_debugging_executor_constructs_exactly_one_reference_resolving_executor(
       self, executor_mock):
@@ -583,8 +587,9 @@ class ComposingExecutorFactoryTest(absltest.TestCase):
     ex = composing_ex_factory.create_executor({placements.CLIENTS: 10})
     self.assertIsInstance(ex, executor_base.Executor)
 
-  @mock.patch(
-      'tensorflow_federated.python.core.impl.executors.federated_composing_strategy.FederatedComposingStrategy.factory',
+  @mock.patch.object(
+      federated_composing_strategy.FederatedComposingStrategy,
+      'factory',
       return_value=ExecutorMock())
   def test_executor_with_small_fanout_calls_correct_number_of_composing_strategies(
       self, composing_strategy_mock):
@@ -620,12 +625,12 @@ class RemoteExecutorFactoryTest(absltest.TestCase):
   def setUp(self):
     super().setUp()
     self.coro_mock = mock.Mock()
-    self.cardinalities_patcher = mock.patch(
-        'tensorflow_federated.python.core.impl.executors.remote_executor.RemoteExecutor.set_cardinalities',
+    self.cardinalities_patcher = mock.patch.object(
+        remote_executor.RemoteExecutor,
+        'set_cardinalities',
         new=self._make_set_cardinalities_patch(self.coro_mock))
-    self.ready_patcher = mock.patch(
-        'tensorflow_federated.python.core.impl.executors.remote_executor.RemoteExecutor.is_ready',
-        new=lambda _: True)
+    self.ready_patcher = mock.patch.object(
+        remote_executor.RemoteExecutor, 'is_ready', new=lambda _: True)
     self.cardinalities_patcher.start()
     self.ready_patcher.start()
 
@@ -644,8 +649,9 @@ class RemoteExecutorFactoryTest(absltest.TestCase):
     self.assertLen(self.coro_mock.call_args_list, 1)
     self.coro_mock.assert_called_once_with({placements.CLIENTS: 1})
 
-  @mock.patch(
-      'tensorflow_federated.python.core.impl.executors.executor_stacks.ComposingExecutorFactory._aggregate_stacks',
+  @mock.patch.object(
+      executor_stacks.ComposingExecutorFactory,
+      '_aggregate_stacks',
       return_value=ExecutorMock())
   def test_fewer_clients_than_workers_returns_only_one_live_worker(
       self, mock_obj):
@@ -659,9 +665,8 @@ class RemoteExecutorFactoryTest(absltest.TestCase):
     # Assert that aggregate stacks was passed only one executor.
     mock_obj.assert_called_once_with([mock.ANY])
 
-  @mock.patch(
-      'tensorflow_federated.python.core.impl.executors.federating_executor.FederatingExecutor',
-      return_value=ExecutorMock())
+  @mock.patch.object(
+      federating_executor, 'FederatingExecutor', return_value=ExecutorMock())
   def test_single_worker_construction_invokes_federating_executor(
       self, mock_obj):
     channels = [

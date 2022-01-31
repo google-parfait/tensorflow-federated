@@ -11,14 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tensorflow_federated.python.simulation.datasets.download."""
 
 import os
 from unittest import mock
+import urllib
 
 from absl import flags
 from absl.testing import absltest
-import lzma
+import tensorflow as tf
+import lzma  # pylint: disable=g-bad-import-order
 
 from tensorflow_federated.python.simulation.datasets import download
 
@@ -27,15 +28,15 @@ FLAGS = flags.FLAGS
 
 class DownloadTest(absltest.TestCase):
 
-  @mock.patch('tensorflow.io.gfile.exists', side_effect=[True, False])
-  @mock.patch('tensorflow.io.gfile.makedirs')
+  @mock.patch.object(tf.io.gfile, 'exists', side_effect=[True, False])
+  @mock.patch.object(tf.io.gfile, 'makedirs')
   def test_uncache_file_is_fetched_with_content_length(self, mock_makedirs,
                                                        mock_exists):
     test_data = b'data'
     test_url = 'http://www.test.org/my/test/file.lzma'
     mock_urlopen = mock.mock_open(read_data=lzma.compress(test_data))
     mock_urlopen.return_value.headers = {'context-length': str(len(test_data))}
-    with mock.patch('urllib.request.urlopen', mock_urlopen):
+    with mock.patch.object(urllib.request, 'urlopen', mock_urlopen):
       path = download.get_compressed_file(test_url, cache_dir=FLAGS.test_tmpdir)
     expected_output_path = os.path.join(FLAGS.test_tmpdir, 'file')
     self.assertEqual(path, expected_output_path)
@@ -48,8 +49,8 @@ class DownloadTest(absltest.TestCase):
     with open(expected_output_path, 'rb') as test_file:
       self.assertEqual(test_file.read(), test_data)
 
-  @mock.patch('tensorflow.io.gfile.exists', side_effect=[True, False])
-  @mock.patch('tensorflow.io.gfile.makedirs')
+  @mock.patch.object(tf.io.gfile, 'exists', side_effect=[True, False])
+  @mock.patch.object(tf.io.gfile, 'makedirs')
   def test_uncache_file_is_fetched_without_content_length(
       self, mock_makedirs, mock_exists):
     test_data = b'data'
@@ -58,7 +59,7 @@ class DownloadTest(absltest.TestCase):
     # Do not add content-length headers, ensuring that the python code
     # doesn't error if the HTTP header was missing.
     mock_urlopen.return_value.headers = {}
-    with mock.patch('urllib.request.urlopen', mock_urlopen):
+    with mock.patch.object(urllib.request, 'urlopen', mock_urlopen):
       path = download.get_compressed_file(test_url, cache_dir=FLAGS.test_tmpdir)
     expected_output_path = os.path.join(FLAGS.test_tmpdir, 'file')
     self.assertEqual(path, expected_output_path)
@@ -71,12 +72,12 @@ class DownloadTest(absltest.TestCase):
     with open(expected_output_path, 'rb') as test_file:
       self.assertEqual(test_file.read(), test_data)
 
-  @mock.patch('tensorflow.io.gfile.exists', return_value=True)
-  @mock.patch('tensorflow.io.gfile.makedirs')
+  @mock.patch.object(tf.io.gfile, 'exists', return_value=True)
+  @mock.patch.object(tf.io.gfile, 'makedirs')
   def test_cached_file_is_not_fetched(self, mock_makedirs, mock_exists):
     mock_urlopen = mock.mock_open(read_data=lzma.compress(b'test'))
     mock_urlopen.return_value.headers = {}
-    with mock.patch('urllib.request.urlopen', mock_urlopen):
+    with mock.patch.object(urllib.request, 'urlopen', mock_urlopen):
       download.get_compressed_file(
           'http://www.test.org/my/test/file.lzma', cache_dir=FLAGS.test_tmpdir)
     mock_exists.assert_has_calls([
@@ -90,8 +91,8 @@ class DownloadTest(absltest.TestCase):
     with self.assertRaises(ValueError):
       download.get_compressed_file('http://www.test.org/my/test/file.bz2')
 
-  @mock.patch('tensorflow.io.gfile.exists', side_effect=[False, True])
-  @mock.patch('tensorflow.io.gfile.makedirs')
+  @mock.patch.object(tf.io.gfile, 'exists', side_effect=[False, True])
+  @mock.patch.object(tf.io.gfile, 'makedirs')
   def test_cache_dir_not_exists_creates_dirs(self, mock_makedirs, mock_exists):
     cache_subdir = os.path.join(FLAGS.test_tmpdir, 'test_subdir')
     download.get_compressed_file('http://www.test.org/my/test/file.lzma',

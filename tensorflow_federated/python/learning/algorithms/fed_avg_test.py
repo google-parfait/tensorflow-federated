@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.algorithms import aggregation
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.optimizers import sgdm
@@ -81,8 +82,7 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
     else:
       mock_method.assert_called()
 
-  @mock.patch('tensorflow_federated.python.learning.'
-              'algorithms.fed_avg.build_weighted_fed_avg')
+  @mock.patch.object(fed_avg, 'build_weighted_fed_avg')
   def test_build_weighted_fed_avg_called_by_unweighted_fed_avg(
       self, mock_fed_avg):
     fed_avg.build_unweighted_fed_avg(
@@ -90,10 +90,8 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
         client_optimizer_fn=sgdm.build_sgdm(1.0))
     self.assertEqual(mock_fed_avg.call_count, 1)
 
-  @mock.patch('tensorflow_federated.python.learning.'
-              'algorithms.fed_avg.build_weighted_fed_avg')
-  @mock.patch('tensorflow_federated.python.learning.'
-              'algorithms.aggregation.as_weighted_aggregator')
+  @mock.patch.object(fed_avg, 'build_weighted_fed_avg')
+  @mock.patch.object(aggregation, 'as_weighted_aggregator')
   def test_aggregation_wrapper_called_by_unweighted(self, _, mock_as_weighted):
     fed_avg.build_unweighted_fed_avg(
         model_fn=model_examples.LinearRegression,

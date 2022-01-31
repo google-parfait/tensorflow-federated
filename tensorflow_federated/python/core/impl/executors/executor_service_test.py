@@ -303,9 +303,8 @@ class ExecutorServiceTest(absltest.TestCase):
 
     del env
 
-  @mock.patch(
-      'tensorflow_federated.python.core.impl.executors.executor_stacks.ResourceManagingExecutorFactory.clean_up_executors'
-  )
+  @mock.patch.object(executor_stacks.ResourceManagingExecutorFactory,
+                     'clean_up_executors')
   def test_clear_executor_calls_cleanup(self, mock_cleanup):
     ex_factory = executor_stacks.ResourceManagingExecutorFactory(
         lambda _: eager_tf_executor.EagerTFExecutor())

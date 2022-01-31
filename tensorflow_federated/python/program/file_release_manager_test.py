@@ -427,7 +427,7 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.APPEND)
 
-    with mock.patch('csv.DictWriter.writerow') as mock_writerow:
+    with mock.patch.object(csv.DictWriter, 'writerow') as mock_writerow:
       mock_writerow.side_effect = csv.Error()
 
       with self.assertRaises(

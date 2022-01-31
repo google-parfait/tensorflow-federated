@@ -21,12 +21,12 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.cifar100 import image_classification_tasks
+from tensorflow_federated.python.simulation.baselines.cifar100 import resnet_models
 
 
 class CreateResnetModelTest(tf.test.TestCase, parameterized.TestCase):
 
-  @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.cifar100.resnet_models.create_resnet18')
+  @mock.patch.object(resnet_models, 'create_resnet18')
   def test_get_resnet18_model(self, mock_model_builder):
     input_shape = (32, 32, 3)
     image_classification_tasks._get_resnet_model(
@@ -35,8 +35,7 @@ class CreateResnetModelTest(tf.test.TestCase, parameterized.TestCase):
         input_shape=input_shape,
         num_classes=image_classification_tasks._NUM_CLASSES)
 
-  @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.cifar100.resnet_models.create_resnet34')
+  @mock.patch.object(resnet_models, 'create_resnet34')
   def test_get_resnet34_model(self, mock_model_builder):
     input_shape = (24, 24, 3)
     image_classification_tasks._get_resnet_model(
@@ -45,8 +44,7 @@ class CreateResnetModelTest(tf.test.TestCase, parameterized.TestCase):
         input_shape=input_shape,
         num_classes=image_classification_tasks._NUM_CLASSES)
 
-  @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.cifar100.resnet_models.create_resnet50')
+  @mock.patch.object(resnet_models, 'create_resnet50')
   def test_get_resnet50_model(self, mock_model_builder):
     input_shape = (24, 1, 3)
     image_classification_tasks._get_resnet_model(
@@ -55,8 +53,7 @@ class CreateResnetModelTest(tf.test.TestCase, parameterized.TestCase):
         input_shape=input_shape,
         num_classes=image_classification_tasks._NUM_CLASSES)
 
-  @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.cifar100.resnet_models.create_resnet101')
+  @mock.patch.object(resnet_models, 'create_resnet101')
   def test_get_resnet101_model(self, mock_model_builder):
     input_shape = (1, 32, 3)
     image_classification_tasks._get_resnet_model(
@@ -65,8 +62,7 @@ class CreateResnetModelTest(tf.test.TestCase, parameterized.TestCase):
         input_shape=input_shape,
         num_classes=image_classification_tasks._NUM_CLASSES)
 
-  @mock.patch('tensorflow_federated.python.simulation.'
-              'baselines.cifar100.resnet_models.create_resnet152')
+  @mock.patch.object(resnet_models, 'create_resnet152')
   def test_get_resnet152_model(self, mock_model_builder):
     input_shape = (2, 5, 3)
     image_classification_tasks._get_resnet_model(

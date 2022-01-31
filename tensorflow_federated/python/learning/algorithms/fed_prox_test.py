@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.algorithms import aggregation
 from tensorflow_federated.python.learning.algorithms import fed_prox
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.optimizers import sgdm
@@ -83,8 +84,7 @@ class FedProxConstructionTest(test_case.TestCase, parameterized.TestCase):
     else:
       mock_method.assert_called()
 
-  @mock.patch('tensorflow_federated.python.learning.'
-              'algorithms.fed_prox.build_weighted_fed_prox')
+  @mock.patch.object(fed_prox, 'build_weighted_fed_prox')
   def test_build_weighted_fed_prox_called_by_unweighted_fed_prox(
       self, mock_fed_avg):
     fed_prox.build_unweighted_fed_prox(
@@ -93,10 +93,8 @@ class FedProxConstructionTest(test_case.TestCase, parameterized.TestCase):
         client_optimizer_fn=sgdm.build_sgdm(1.0))
     self.assertEqual(mock_fed_avg.call_count, 1)
 
-  @mock.patch('tensorflow_federated.python.learning.'
-              'algorithms.fed_prox.build_weighted_fed_prox')
-  @mock.patch('tensorflow_federated.python.learning.'
-              'algorithms.aggregation.as_weighted_aggregator')
+  @mock.patch.object(fed_prox, 'build_weighted_fed_prox')
+  @mock.patch.object(aggregation, 'as_weighted_aggregator')
   def test_aggregation_wrapper_called_by_unweighted(self, _, mock_as_weighted):
     fed_prox.build_unweighted_fed_prox(
         model_fn=model_examples.LinearRegression,

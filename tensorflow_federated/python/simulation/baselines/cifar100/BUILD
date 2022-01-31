@@ -64,6 +64,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":image_classification_tasks",
+        ":resnet_models",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
