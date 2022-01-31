@@ -229,7 +229,8 @@ def build_iblt_computation(
     return heavy_hitters, heavy_hitters_counts, num_not_decoded
 
   def secure_sum(x):
-    return intrinsics.federated_secure_sum_bitwidth(x, secure_sum_bitwidth)
+    return intrinsics.federated_secure_sum(
+        x, max_input=2**secure_sum_bitwidth - 1)
 
   @computations.federated_computation(
       computation_types.at_clients(dataset_type))
