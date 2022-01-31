@@ -206,13 +206,21 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
 
   @parameterized.named_parameters(
       ('float_scalar', tf.float32, 1.0, -1.0, tf.float32),
-      ('float_np', tf.float32, np.array(
-          1.0, np.float32), np.array(-1.0, np.float32), tf.float32),
+      ('float_np', tf.float32, np.float32(1.0), np.float32(-1.0), tf.float32),
       ('float_struct', _test_struct_type(tf.float32), 1.0, -1.0, tf.float32),
       ('int_scalar', tf.int32, 1, -1, tf.int32),
-      ('int_np', tf.int32, np.array(1, np.int32), np.array(-1,
-                                                           np.int32), tf.int32),
+      ('int_np', tf.int32, np.int32(1), np.int32(-1), tf.int32),
       ('int_struct', _test_struct_type(tf.int32), 1, -1, tf.int32),
+      ('py_int_bounds_int64_value', tf.int64, 1, 0, tf.int64),
+      ('numpy_int32_bounds_int64_value', tf.int64, np.int32(1), np.int32(0),
+       tf.int64),
+      ('numpy_int64_bounds_int32_value', tf.int32, np.int64(1), np.int64(0),
+       tf.int32),
+      ('py_float_bounds_float64_value', tf.float64, 1.0, 0.0, tf.float64),
+      ('numpy_float32_bounds_float64_value', tf.float64, np.float32(1.0),
+       np.float32(0.0), tf.float64),
+      ('numpy_float64_bounds_float32_value', tf.float32, np.float64(1.0),
+       np.float64(0.0), tf.float32),
   )
   def test_type_properties_constant_bounds(self, value_type, upper_bound,
                                            lower_bound, measurements_dtype):
@@ -249,59 +257,13 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
       self.fail('Factory returned an AggregationProcess containing '
                 'non-secure aggregation.')
 
-  # TODO(b/216622916): the following should be merged above once the dtype
-  # mismatch is fixed.
   @parameterized.named_parameters(
-      ('py_int_bounds_int64_value', tf.int64, 1, 0),
-      ('numpy_int32_bounds_int64_value', tf.int64, np.int32(1), np.int32(0)),
-      ('numpy_int64_bounds_int32_value', tf.int32, np.int64(1), np.int64(0)),
-      ('py_float_bounds_float64_value', tf.float64, 1.0, 0.0),
-      ('numpy_float32_bounds_float64_value', tf.float64, np.float32(1.0),
-       np.float32(0.0)),
-      ('numpy_float64_bounds_float32_value', tf.float32, np.float64(1.0),
-       np.float64(0.0)),
+      ('float32_scalar', tf.float32, tf.float32),
+      ('float64_scalar', tf.float64, tf.float64),
+      ('float32_struct', _test_struct_type(tf.float32), tf.float32),
+      ('float64_struct', _test_struct_type(tf.float64), tf.float64),
   )
-  def test_different_dtypes_constant_bounds(self, value_type, upper_bound,
-                                            lower_bound):
-    self.skipTest('b/216622916: currently encounters a dtype mismatch in TF')
-    secure_sum_f = secure.SecureSumFactory(
-        upper_bound_threshold=upper_bound, lower_bound_threshold=lower_bound)
-    self.assertIsInstance(secure_sum_f, factory.UnweightedAggregationFactory)
-    value_type = computation_types.to_type(value_type)
-    process = secure_sum_f.create(value_type)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
-
-    expected_state_type = computation_types.at_server(
-        computation_types.to_type(()))
-    expected_measurements_type = _measurements_type(tf.int32)
-
-    expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
-    self.assertTrue(
-        process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
-
-    expected_next_type = computation_types.FunctionType(
-        parameter=collections.OrderedDict(
-            state=expected_state_type,
-            value=computation_types.at_clients(value_type)),
-        result=measured_process.MeasuredProcessOutput(
-            state=expected_state_type,
-            result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
-    self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
-    try:
-      static_assert.assert_not_contains_unsecure_aggregation(process.next)
-    except:  # pylint: disable=bare-except
-      self.fail('Factory returned an AggregationProcess containing '
-                'non-secure aggregation.')
-
-  @parameterized.named_parameters(
-      ('float_scalar', tf.float32),
-      ('float_struct', _test_struct_type(tf.float32)),
-  )
-  def test_type_properties_single_bound(self, value_type):
+  def test_type_properties_single_bound(self, value_type, dtype):
     upper_bound_process = _test_estimation_process(1)
     secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=upper_bound_process)
@@ -313,7 +275,7 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
     threshold_type = upper_bound_process.report.type_signature.result.member
     expected_state_type = computation_types.at_server(
         computation_types.to_type(threshold_type))
-    expected_measurements_type = _measurements_type(threshold_type)
+    expected_measurements_type = _measurements_type(dtype)
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type)
@@ -338,10 +300,12 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
                 'non-secure aggregation.')
 
   @parameterized.named_parameters(
-      ('float_scalar', tf.float32),
-      ('float_struct', _test_struct_type(tf.float32)),
+      ('float32_scalar', tf.float32, tf.float32),
+      ('float64_scalar', tf.float64, tf.float64),
+      ('float32_struct', _test_struct_type(tf.float32), tf.float32),
+      ('float64_struct', _test_struct_type(tf.float64), tf.float64),
   )
-  def test_type_properties_adaptive_bounds(self, value_type):
+  def test_type_properties_adaptive_bounds(self, value_type, dtype):
     upper_bound_process = _test_estimation_process(1)
     lower_bound_process = _test_estimation_process(-1)
     secure_sum_f = secure.SecureSumFactory(
@@ -355,7 +319,7 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
     threshold_type = upper_bound_process.report.type_signature.result.member
     expected_state_type = computation_types.at_server(
         computation_types.to_type((threshold_type, threshold_type)))
-    expected_measurements_type = _measurements_type(threshold_type)
+    expected_measurements_type = _measurements_type(dtype)
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type)
@@ -393,17 +357,16 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
     self.assertEqual(process.next.type_signature.result.result.member.dtype,
                      tf.int64)
 
-  @parameterized.named_parameters(
-      ('py', 1, -1), ('np', np.array(1, np.int32), np.array(-1, np.int32)))
+  @parameterized.named_parameters(('py', 1, -1),
+                                  ('np', np.int32(1), np.int32(-1)))
   def test_value_type_incompatible_with_config_mode_raises_int(
       self, upper, lower):
     secure_sum_f = secure.SecureSumFactory(upper, lower)
     with self.assertRaises(TypeError):
       secure_sum_f.create(computation_types.TensorType(tf.float32))
 
-  @parameterized.named_parameters(
-      ('py', 1.0, -1.0),
-      ('np', np.array(1.0, np.float32), np.array(-1.0, np.float32)))
+  @parameterized.named_parameters(('py', 1.0, -1.0),
+                                  ('np', np.float32(1.0), np.float32(-1.0)))
   def test_value_type_incompatible_with_config_mode_raises_float(
       self, upper, lower):
     secure_sum_f = secure.SecureSumFactory(upper, lower)
@@ -551,13 +514,9 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
 
   def test_float_64_larger_than_2_pow_64(self):
     secure_sum_f = secure.SecureSumFactory(
-        upper_bound_threshold=np.array(2**66, dtype=np.float64))
+        upper_bound_threshold=np.float64(2**66))
     process = secure_sum_f.create(computation_types.to_type(tf.float64))
-    client_data = [
-        np.array(2**65, np.float64),
-        np.array(2**65, np.float64),
-        np.array(2**66, np.float64)
-    ]
+    client_data = [np.float64(2**65), np.float64(2**65), np.float64(2**66)]
 
     state = process.initialize()
     output = process.next(state, client_data)
@@ -566,8 +525,8 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
         output.measurements,
         expected_secure_upper_clipped_count=0,
         expected_secure_lower_clipped_count=0,
-        expected_secure_upper_threshold=np.array(2**66, np.float64),
-        expected_secure_lower_threshold=np.array(-2**66, np.float64))
+        expected_secure_upper_threshold=np.float64(2**66),
+        expected_secure_lower_threshold=np.float64(-2**66))
 
   def _check_measurements(self, measurements,
                           expected_secure_upper_clipped_count,
@@ -582,6 +541,46 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
                         measurements['secure_upper_threshold'])
     self.assertAllClose(expected_secure_lower_threshold,
                         measurements['secure_lower_threshold'])
+
+
+class IsStructureOfSingleDtypeTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('bool', computation_types.TensorType(tf.bool)),
+      ('int', computation_types.TensorType(tf.int32)),
+      ('ints', computation_types.StructType([tf.int32, tf.int32])),
+      ('floats', computation_types.StructType([tf.float32, tf.float32])),
+      ('nested_struct',
+       computation_types.StructType([
+           computation_types.TensorType(tf.int32),
+           computation_types.StructType([tf.int32, tf.int32])
+       ])),
+      ('federated_floats_at_clients',
+       computation_types.FederatedType(
+           computation_types.StructType([tf.float32, tf.float32]),
+           placements.CLIENTS)),
+  )
+  def test_returns_true(self, type_spec):
+    self.assertTrue(secure._is_structure_of_single_dtype(type_spec))
+
+  @parameterized.named_parameters(
+      ('empty_struct', computation_types.StructType([])),
+      ('int_and_float', computation_types.StructType([tf.int32, tf.float32])),
+      ('int32_and_int64', computation_types.StructType([tf.int32, tf.int64])),
+      ('float32_and_float64',
+       computation_types.StructType([tf.float32, tf.float64])),
+      ('nested_struct',
+       computation_types.StructType([
+           computation_types.TensorType(tf.int32),
+           computation_types.StructType([tf.float32, tf.float32])
+       ])),
+      ('sequence_of_ints', computation_types.SequenceType(tf.int32)),
+      ('placement', computation_types.PlacementType()),
+      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
+      ('abstract', computation_types.AbstractType('T')),
+  )
+  def test_returns_false(self, type_spec):
+    self.assertFalse(secure._is_structure_of_single_dtype(type_spec))
 
 
 if __name__ == '__main__':
