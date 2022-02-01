@@ -23,15 +23,17 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
 
 
@@ -243,13 +245,20 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # Total loss: 1.0
     # Batch average loss: 0.5
     self.assertEqual(output.loss, 0.5)
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [1])
     self.assertEqual(metrics['num_examples'], [2])
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2)
+
+    # TODO(b/202027089): Remove these checks when removing the two attributes:
+    # `report_local_outptus` and `federated_output_computation`.
+    # Ensure that `report_local_outptus` and `federated_output_computation`
+    # raise a NotImplementedError.
+    with self.assertRaisesRegex(NotImplementedError, 'Do not implement'):
+      tff_model.report_local_outputs()
+    with self.assertRaisesRegex(NotImplementedError, 'Do not implement'):
+      tff_model.federated_output_computation()
 
   def test_tff_model_from_keras_model_regularization(self):
     keras_model = model_examples.build_linear_regression_ones_regularized_keras_sequential_model(
@@ -295,8 +304,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # Batch average loss: 5.0
     # Total batch loss with regularization: 5.04
     self.assertAlmostEqual(output.loss, 5.04)
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [1])
     self.assertEqual(metrics['num_examples'], [2])
@@ -345,8 +352,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # Total loss: 1.0
     # Batch average loss: 0.5
     self.assertEqual(output.loss, 0.5)
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [1])
     self.assertEqual(metrics['num_examples'], [2])
@@ -446,8 +451,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
       batch_output = tff_model.forward_pass(batch)
       self.assertGreater(batch_output.loss, 0.0)
 
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     m = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(m['num_batches'], [num_train_steps])
     self.assertEqual(m['num_examples'], [input_vocab_size * num_train_steps])
@@ -479,8 +482,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     for _ in range(num_train_steps):
       tff_model.forward_pass(real_batch)
 
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     m = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(m['num_batches'], [num_train_steps])
     self.assertEqual(m['num_examples'], [batch_size * num_train_steps])
@@ -533,8 +534,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     for _ in range(num_train_steps):
       tff_model.forward_pass(batch)
 
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     m = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(m['num_batches'], [num_train_steps])
     self.assertEqual(m['num_examples'], [batch_size * num_train_steps])
@@ -556,7 +555,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     assert_all_weights_close(keras_model.non_trainable_weights,
                              tff_weights.non_trainable)
 
-  def test_keras_model_federated_output_computation(self):
+  def test_keras_model_aggregated_metrics(self):
     feature_dims = 3
     num_train_steps = 3
 
@@ -592,20 +591,24 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           optimizer.apply_gradients(
               zip(gradients, tff_model.trainable_variables))
         return (tff_model.report_local_unfinalized_metrics(),
-                tff_model.report_local_outputs(),
                 model_utils.ModelWeights.from_model(tff_model))
 
       return _train_loop()
 
     # Simulate 'CLIENT' local training.
-    client_unfinalized_metrics, client_local_outputs, tff_weights = _train()
-    self.assertAllEqual(client_unfinalized_metrics, client_local_outputs)
+    client_unfinalized_metrics, tff_weights = _train()
 
     # Simulate entering the 'SERVER' context.
     tf.keras.backend.clear_session()
 
-    aggregated_outputs = _model_fn().federated_output_computation(
-        [client_local_outputs])
+    tff_model = _model_fn()
+    metrics_aggregator = aggregator.sum_then_finalize
+    unfinalized_metrics_type = type_conversions.type_from_tensors(
+        tff_model.report_local_unfinalized_metrics())
+    metrics_aggregation_computation = metrics_aggregator(
+        tff_model.metric_finalizers(), unfinalized_metrics_type)
+    aggregated_outputs = metrics_aggregation_computation(
+        [client_unfinalized_metrics])
     self.assertEqual(aggregated_outputs['num_batches'], num_train_steps)
     self.assertEqual(aggregated_outputs['num_examples'], 2 * num_train_steps)
     self.assertGreater(aggregated_outputs['loss'], 0.0)
@@ -927,8 +930,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     for _ in range(num_train_steps):
       tff_model.forward_pass(batch)
 
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [num_train_steps])
     self.assertEqual(metrics['num_examples'], [batch_size * num_train_steps])
@@ -972,8 +973,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     for _ in range(num_train_steps):
       tff_model.forward_pass(batch)
 
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [num_train_steps])
     self.assertEqual(metrics['num_examples'], [batch_size * num_train_steps])
@@ -1025,13 +1024,18 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     feature_dims = 3
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims)
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=_create_whimsy_types(feature_dims),
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[CustomCounter(arg1=1)])
+    metrics_aggregator = aggregator.sum_then_finalize
+    unfinalized_metrics_type = type_conversions.type_from_tensors(
+        tff_model.report_local_unfinalized_metrics())
 
     with self.assertRaisesRegex(TypeError, 'extra arguments'):
-      keras_utils.from_keras_model(
-          keras_model=keras_model,
-          input_spec=_create_whimsy_types(feature_dims),
-          loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[CustomCounter(arg1=1)])
+      metrics_aggregator(tff_model.metric_finalizers(),
+                         unfinalized_metrics_type)
 
   def test_custom_keras_metric_no_extra_init_args_builds(self):
 
@@ -1058,8 +1062,14 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         input_spec=_create_whimsy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[CustomCounter(arg1=1)])
+    metrics_aggregator = aggregator.sum_then_finalize
+    unfinalized_metrics_type = type_conversions.type_from_tensors(
+        tff_model.report_local_unfinalized_metrics())
+    federated_metrics_aggregation = metrics_aggregator(
+        tff_model.metric_finalizers(), unfinalized_metrics_type)
 
-    self.assertIsInstance(tff_model, model_lib.Model)
+    self.assertIsInstance(federated_metrics_aggregation,
+                          computation_base.Computation)
 
   @parameterized.named_parameters(
       # Test cases for the cartesian product of all parameter values.
@@ -1106,8 +1116,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # Total loss: 1.0
     # Batch average loss: 0.5
     self.assertEqual(output.loss, 0.5)
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertEqual(metrics['num_batches'], [1])
     self.assertEqual(metrics['num_examples'], [2])
@@ -1158,8 +1166,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # Total loss: 1.0
     # Batch average loss: 0.5
     self.assertEqual(output.loss, 0.5)
-    self.assertAllEqual(tff_model.report_local_outputs(),
-                        tff_model.report_local_unfinalized_metrics())
     metrics = tff_model.report_local_unfinalized_metrics()
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2)
