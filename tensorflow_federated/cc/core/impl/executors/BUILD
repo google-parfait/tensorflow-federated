@@ -88,6 +88,7 @@ tff_cc_library_with_tf_deps(
 tff_cc_library_with_tf_deps(
     name = "data_backend",
     hdrs = ["data_backend.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":status_macros",
         "//tensorflow_federated/proto/v0:computation_cc_proto",
