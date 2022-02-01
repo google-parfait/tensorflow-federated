@@ -376,6 +376,28 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
             stat=collections.OrderedDict(num_examples=12),
         ))
 
+  # TODO(b/202027089): Remove this test once the try/except logic is gone.
+  @test_utils.skip_test_for_multi_gpu
+  def test_custom_metrics_aggregator_does_not_get_ignored(self):
+
+    def aggregate_nothing(metric_finaliers, local_unfinalized_metrics_type):
+      del metric_finaliers  # Unused.
+
+      @computations.federated_computation(
+          computation_types.at_clients(local_unfinalized_metrics_type))
+      def aggregator_computation(client_local_unfinalized_metrics):
+        del client_local_unfinalized_metrics  # Unused.
+        return collections.OrderedDict()
+
+      return aggregator_computation
+
+    # Constructs a model that implements the two old attributes.
+    model_fn = lambda: TestModel(use_metrics_aggregator=False)
+    evaluate = federated_evaluation.build_federated_evaluation(
+        model_fn, metrics_aggregator=aggregate_nothing)
+    self.assertEqual(evaluate.type_signature.result.member.eval,
+                     computation_types.to_type(collections.OrderedDict()))
+
   @parameterized.named_parameters(('use_metrics_aggregator', True),
                                   ('not_use_metrics_aggregator', False))
   @test_utils.skip_test_for_multi_gpu

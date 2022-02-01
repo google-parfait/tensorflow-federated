@@ -51,7 +51,6 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import optimizer_utils
-from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -69,32 +68,30 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
                        Callable[[], tf.keras.optimizers.Optimizer]],
       client_weighting: client_weight_lib.ClientWeightType = client_weight_lib
       .ClientWeighting.NUM_EXAMPLES,
-      use_experimental_simulation_loop: bool = False):
+      use_experimental_simulation_loop: bool = False,
+      user_provide_metrics_aggregator: bool = False):
     """Creates the client computation for Federated Averaging.
 
     Note: All variable creation required for the client computation (e.g. model
     variable creation) must occur in during construction, and not during
     `__call__`.
 
-    If `model.report_local_outputs` is implemented (this method is deprecated
-    and will be removed in 2022Q1), then in the returned
-    `tff.learning.framework.ClientOutput`, the `model_output` field will be a
-    strcuture matching `model.report_local_outputs`. Otherwise, if calling
-    `model.report_local_outputs` throws a `NotImplementedError`, then it will be
-    a structure matching `model.report_local_unfinalized_metrics`.
-
     Args:
       model: A `tff.learning.Model` instance.
       optimizer: A `optimizer_base.Optimizer` instance, or a no-arg callable
         that returns a `tf.keras.Optimizer` instance..
-      client_weighting: A value of `tff.learning.ClientWeighting` that
-        specifies a built-in weighting method, or a callable that takes the
-        output of `model.report_local_outputs` (or
-        `model.report_local_unfinalized_metrics` if `model.report_local_outputs`
-        throws a `NotImplementedError`) and returns a tensor that provides the
-        weight in the federated average of model deltas.
+      client_weighting: A value of `tff.learning.ClientWeighting` that specifies
+        a built-in weighting method, or a callable that takes the model output
+        and returns a tensor that provides the weight in the federated average
+        of model deltas.
       use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
+      user_provide_metrics_aggregator: If True, the model output is given by
+        `model.report_local_unfinalized_metrics()`. If False, and if
+        `model.report_local_outputs` is implemented (this method is deprecated
+        and will be removed in 2022Q1), the model output is given by
+        `model.report_local_outputs()`; otherwise, the model output is given by
+        `model.report_local_unfinalized_metrics()`.
     """
     py_typecheck.check_type(model, model_lib.Model)
     self._model = model
@@ -106,6 +103,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     self._client_weighting = client_weighting
     self._dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
         use_experimental_simulation_loop)
+    self._user_provide_metrics_aggregator = user_provide_metrics_aggregator
 
   @property
   def variables(self):
@@ -156,18 +154,20 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
                                           initial_weights.trainable)
     # TODO(b/202027089): Remove this try/except logic once all models do not
     # implement `report_local_outputs` and `federated_output_computation`.
-    try:
-      model_output = model.report_local_outputs()
-      logging.warning(
-          'DeprecationWarning: `report_local_outputs` and '
-          '`federated_output_computation` are deprecated and will be removed '
-          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers` instead. The cross-client metrics aggregation '
-          'should be specified as the `metrics_aggregator` argument when you '
-          'build a training process or evaluation computation using this model.'
-      )
-    except NotImplementedError:
+    if self._user_provide_metrics_aggregator:
       model_output = model.report_local_unfinalized_metrics()
+    else:
+      try:
+        model_output = model.report_local_outputs()
+        logging.warning(
+            'DeprecationWarning: `report_local_outputs` and '
+            '`federated_output_computation` are deprecated and will be removed '
+            'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+            '`metric_finalizers` instead. The cross-client metrics aggregation '
+            'should be specified as the `metrics_aggregator` argument when you '
+            'build a training process or evaluation computation.')
+      except NotImplementedError:
+        model_output = model.report_local_unfinalized_metrics()
 
     # TODO(b/122071074): Consider moving this functionality into
     # tff.federated_mean?
@@ -205,9 +205,9 @@ def build_federated_averaging_process(
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
         factory.AggregationFactory] = None,
-    metrics_aggregator: Callable[[
+    metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation] = aggregator.sum_then_finalize,
+    ], computation_base.Computation]] = None,
     use_experimental_simulation_loop: bool = False
 ) -> iterative_process.IterativeProcess:
   """Builds an iterative process that performs federated averaging.
@@ -226,16 +226,7 @@ def build_federated_averaging_process(
       `B` is the type of a single batch. This computation returns a
       `tff.learning.framework.ServerState` representing the updated server state
       and aggregated metrics at the server, including client training metrics
-      and any other metrics from broadcast and aggregation processes. Note that
-      if `federated_output_computation` and `report_local_outputs` are
-      implemented in `model_fn()` (these two methods are deprecated and will be
-      removed in 2022Q1), then the `metrics_aggregator` argument is ignored, and
-      the aggregated training metrics are the result of applying
-      `federated_output_computation` on the clients' local outputs. Otherwise,
-      if calling `federated_output_computation` and `report_local_outputs` on
-      the `model_fn()` throw `NotImplementedError`, then `metrics_aggregator`
-      argument will be used to generate the metrics aggregation computation,
-      which is then applied to the clients' local unfinalized metrics.
+      and any other metrics from broadcast and aggregation processes.
 
   The iterative process also has the following method not inherited from
   `tff.templates.IterativeProcess`:
@@ -272,9 +263,8 @@ def build_federated_averaging_process(
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`.
     server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      callable that returns a `tf.keras.Optimizer`.
-      By default, this uses `tf.keras.optimizers.SGD` with a learning rate of
-      1.0.
+      callable that returns a `tf.keras.Optimizer`. By default, this uses
+      `tf.keras.optimizers.SGD` with a learning rate of 1.0.
     client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
       built-in weighting method, or a callable that takes the output of
       `model.report_local_outputs` and returns a tensor that provides the weight
@@ -290,19 +280,25 @@ def build_federated_averaging_process(
       `tff.aggregators.UnweightedAggregationFactory` that constructs
       `tff.templates.AggregationProcess` for aggregating the client model
       updates on the server. If `None`, uses `tff.aggregators.MeanFactory`.
-    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
+    metrics_aggregator: An optional function that takes in the metric finalizers
+      (i.e., `tff.learning.Model.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
       type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
       returns a federated TFF computation of the following type signature
-      `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. Default
-      is `tff.learning.metrics.sum_then_finalize`, which returns a federated TFF
-      computation that sums the unfinalized metrics from `CLIENTS`, and then
-      applies the corresponding metric finalizers at `SERVER`.
+      `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. If set,
+      use the provided `metrics_aggregator`. If `None` and `model_fn` implements
+      `federated_output_computation` and `report_local_outputs` (these two
+      methods are deprecated and will be removed in 2022Q1), then
+      `federated_output_computation` is used to aggregate the metrics. If `None`
+      and `model_fn` does not implement `federated_output_computation` and
+      `report_local_outputs`, uses `tff.learning.metrics.sum_then_finalize`,
+      which returns a federated TFF computation that sums the unfinalized
+      metrics from `CLIENTS`, and then applies the corresponding metric
+      finalizers at `SERVER`.
     use_experimental_simulation_loop: Controls the reduce loop function for
-        input dataset. An experimental reduce loop is used for simulation.
-        It is currently necessary to set this flag to True for performant GPU
-        simulations.
+      input dataset. An experimental reduce loop is used for simulation. It is
+      currently necessary to set this flag to True for performant GPU
+      simulations.
 
   Returns:
     A `tff.templates.IterativeProcess`.
@@ -318,9 +314,12 @@ def build_federated_averaging_process(
   elif client_weighting is None:
     client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
 
+  user_provide_metrics_aggregator = metrics_aggregator is not None
+
   def client_fed_avg(model_fn: Callable[[], model_lib.Model]) -> ClientFedAvg:
     return ClientFedAvg(model_fn(), client_optimizer_fn, client_weighting,
-                        use_experimental_simulation_loop)
+                        use_experimental_simulation_loop,
+                        user_provide_metrics_aggregator)
 
   iter_proc = optimizer_utils.build_model_delta_optimizer_process(
       model_fn,

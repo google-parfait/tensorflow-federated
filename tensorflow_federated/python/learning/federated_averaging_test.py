@@ -26,7 +26,10 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
@@ -184,6 +187,30 @@ class FederatedAveragingTest(test_case.TestCase, parameterized.TestCase):
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 
+  # TODO(b/202027089): Remove this test once the try/except logic is gone.
+  @test_utils.skip_test_for_multi_gpu
+  def test_custom_metrics_aggregator_does_not_get_ignored(self):
+
+    def aggregate_nothing(metric_finaliers, local_unfinalized_metrics_type):
+      del metric_finaliers  # Unused.
+
+      @computations.federated_computation(
+          computation_types.at_clients(local_unfinalized_metrics_type))
+      def aggregator_computation(client_local_unfinalized_metrics):
+        del client_local_unfinalized_metrics  # Unused.
+        return collections.OrderedDict()
+
+      return aggregator_computation
+
+    # Constructs a model that implements the two old attributes.
+    model_fn = lambda: model_examples.LinearRegression(  # pylint: disable=g-long-lambda
+        use_metrics_aggregator=False)
+    fed_avg = federated_averaging.build_federated_averaging_process(
+        model_fn,
+        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
+        metrics_aggregator=aggregate_nothing)
+    self.assertEqual(fed_avg.next.type_signature.result[1].member.train,
+                     computation_types.to_type(collections.OrderedDict()))
 
 if __name__ == '__main__':
   test_case.main()
