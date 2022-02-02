@@ -25,7 +25,7 @@ implementation of the generalized FedAvg algorithm implemented in
 """
 
 import collections
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import tensorflow as tf
 
@@ -240,9 +240,9 @@ def build_model_delta_client_work(
                      Callable[[], tf.keras.optimizers.Optimizer]],
     client_weighting: client_weight_lib.ClientWeighting,
     delta_l2_regularizer: float = 0.0,
-    metrics_aggregator: Callable[[
+    metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation] = aggregator.sum_then_finalize,
+    ], computation_base.Computation]] = None,
     *,
     use_experimental_simulation_loop: bool = False
 ) -> client_works.ClientWorkProcess:
@@ -275,7 +275,8 @@ def build_model_delta_client_work(
       `tff.learning.Model.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
       type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics.
+      returns a `tff.Computation` for aggregating the unfinalized metrics. If
+      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -295,6 +296,9 @@ def build_model_delta_client_work(
     raise TypeError(
         'Provided optimizer must a either a tff.learning.optimziers.Optimizer '
         'or a no-arg callable returning an tf.keras.optimziers.Optimizer.')
+
+  if metrics_aggregator is None:
+    metrics_aggregator = aggregator.sum_then_finalize
 
   with tf.Graph().as_default():
     # Wrap model construction in a graph to avoid polluting the global context
