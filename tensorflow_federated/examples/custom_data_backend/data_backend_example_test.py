@@ -46,20 +46,21 @@ class DataBackendExampleTest(tff.test.TestCase, parameterized.TestCase):
     backend = data_backend_example.DataBackendExample()
     value = asyncio.run(
         backend.materialize(
-            tff_computation_proto.Data(uri=uri), type_signature))
+            tff_computation_proto.Data(uri=uri), tff.to_type(type_signature)))
     self.assertEqual(value, expected_value)
 
   def test_raises_no_uri(self):
     backend = data_backend_example.DataBackendExample()
     with self.assertRaisesRegex(status.StatusNotOk, 'non-URI data blocks'):
-      asyncio.run(backend.materialize(tff_computation_proto.Data(), ()))
+      asyncio.run(
+          backend.materialize(tff_computation_proto.Data(), tff.to_type(())))
 
   def test_raises_unknown_uri(self):
     backend = data_backend_example.DataBackendExample()
     with self.assertRaisesRegex(status.StatusNotOk, 'Unknown URI'):
       asyncio.run(
           backend.materialize(
-              tff_computation_proto.Data(uri='unknown_uri'), ()))
+              tff_computation_proto.Data(uri='unknown_uri'), tff.to_type(())))
 
 
 if __name__ == '__main__':

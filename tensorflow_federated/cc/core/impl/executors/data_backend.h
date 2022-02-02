@@ -33,14 +33,16 @@ class DataBackend {
   //
   // This function must be safe to call concurrently from multiple threads.
   virtual absl::Status ResolveToValue(const v0::Data& data_reference,
+                                      const v0::Type& data_type,
                                       v0::Value& value_out) = 0;
 
   // Resolves a `tensorflow_federated::v0::Data` object to a concrete
   // `tensorflow_federated::v0::Value` proto, returning the result as a new
   // proto object.
-  absl::StatusOr<v0::Value> ResolveToValue(const v0::Data& data_reference) {
+  absl::StatusOr<v0::Value> ResolveToValue(const v0::Data& data_reference,
+                                           const v0::Type& data_type) {
     v0::Value out;
-    TFF_TRY(ResolveToValue(data_reference, out));
+    TFF_TRY(ResolveToValue(data_reference, data_type, out));
     return out;
   }
 

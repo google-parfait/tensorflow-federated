@@ -52,10 +52,18 @@ class DataExecutorTest : public ExecutorTestBase {
 
 TEST_F(DataExecutorTest, CreateValueResolvesData) {
   std::string uri = "some_data_uri";
+  v0::Type data_type;
+  v0::TensorType* tensor_type = data_type.mutable_tensor();
+  tensor_type->set_dtype(v0::TensorType::DT_INT32);
+  tensor_type->mutable_dims()->Add(1);
+  tensor_type->set_unknown_rank(false);
   v0::Value resolved_data_value = TensorV(22);
-  mock_data_backend_->ExpectResolveToValue(uri, resolved_data_value);
+  mock_data_backend_->ExpectResolveToValue(uri, data_type, resolved_data_value);
   v0::Value unresolved_data_value;
-  unresolved_data_value.mutable_computation()->mutable_data()->set_uri(uri);
+  v0::Computation* unresolved_data_computation =
+      unresolved_data_value.mutable_computation();
+  unresolved_data_computation->mutable_data()->set_uri(uri);
+  *unresolved_data_computation->mutable_type() = data_type;
   mock_executor_child_->ExpectCreateMaterialize(resolved_data_value);
   OwnedValueId value_id =
       TFF_ASSERT_OK(test_executor_->CreateValue(unresolved_data_value));

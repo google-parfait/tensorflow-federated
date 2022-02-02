@@ -38,14 +38,18 @@ class MockDataBackend : public DataBackend {
  public:
   ~MockDataBackend() override {}
   MOCK_METHOD(absl::Status, ResolveToValue,
-              (const v0::Data& data_reference, v0::Value& data_out),
+              (const v0::Data& data_reference, const v0::Type& type_reference,
+               v0::Value& data_out),
               (override));
 
-  inline void ExpectResolveToValue(std::string uri, v0::Value to_return) {
+  inline void ExpectResolveToValue(std::string expected_uri,
+                                   v0::Type expected_type,
+                                   v0::Value to_return) {
     v0::Data data;
-    data.set_uri(std::move(uri));
-    EXPECT_CALL(*this, ResolveToValue(EqualsProto(data), ::testing::_))
-        .WillOnce(DoAll(SetArgReferee<1>(std::move(to_return)),
+    data.set_uri(std::move(expected_uri));
+    EXPECT_CALL(*this, ResolveToValue(EqualsProto(data),
+                                      EqualsProto(expected_type), ::testing::_))
+        .WillOnce(DoAll(SetArgReferee<2>(std::move(to_return)),
                         Return(absl::OkStatus())));
   }
 };

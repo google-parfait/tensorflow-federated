@@ -37,6 +37,7 @@ namespace {
 using pybind11_protobuf::WithWrappedProtos;
 using tensorflow_federated::DataBackend;
 using tensorflow_federated::v0::Data;
+using tensorflow_federated::v0::Type;
 using tensorflow_federated::v0::Value;
 namespace py = ::pybind11;
 
@@ -46,8 +47,8 @@ PYBIND11_MODULE(data_backend_example_bindings, m) {
 
   // Select the particular overload of `resolve_to_value` which returns
   // an `absl::StatusOr<Value>` rather than mutating the argument.
-  absl::StatusOr<Value> (DataBackendExample::*resolve_to_value)(const Data&) =
-      &DataBackend::ResolveToValue;
+  absl::StatusOr<Value> (DataBackendExample::*resolve_to_value)(
+      const Data&, const Type&) = &DataBackend::ResolveToValue;
 
   py::class_<DataBackendExample>(m, "DataBackendExample")
       .def(py::init())

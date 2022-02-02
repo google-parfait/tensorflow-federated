@@ -50,11 +50,13 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
       // available for the lifetime of the resolving thread. However, it should
       // be relatively small and inexpensive (currently just a URI).
       v0::Data data = value_pb.computation().data();
+      v0::Type data_type = value_pb.computation().type();
       return ThreadRun([this, data = std::move(data),
+                        data_type = std::move(data_type),
                         this_keepalive =
                             shared_from_this()]() -> absl::StatusOr<SharedId> {
         v0::Value resolved_value;
-        TFF_TRY(data_backend_->ResolveToValue(data, resolved_value));
+        TFF_TRY(data_backend_->ResolveToValue(data, data_type, resolved_value));
         OwnedValueId child_value = TFF_TRY(child_->CreateValue(resolved_value));
         return std::make_shared<OwnedValueId>(std::move(child_value));
       });

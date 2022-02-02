@@ -26,6 +26,7 @@ namespace tensorflow_federated_examples {
 namespace {
 
 using ::tensorflow_federated::v0::Data;
+using ::tensorflow_federated::v0::Type;
 using ::tensorflow_federated::v0::Value;
 
 // Constant URIs and values resolved by `DataBackendExample`.
@@ -45,6 +46,7 @@ void PackTensorInto(const tensorflow::Tensor& tensor, Value& value_out) {
 }  // namespace
 
 absl::Status DataBackendExample::ResolveToValue(const Data& data_reference,
+                                                const Type& data_type,
                                                 Value& value_out) {
   if (!data_reference.has_uri()) {
     return absl::UnimplementedError(

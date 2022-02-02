@@ -28,6 +28,7 @@ class DataBackendExample : public tensorflow_federated::DataBackend {
  public:
   absl::Status ResolveToValue(
       const tensorflow_federated::v0::Data& data_reference,
+      const tensorflow_federated::v0::Type& data_type,
       tensorflow_federated::v0::Value& value_out) final;
 };
 
