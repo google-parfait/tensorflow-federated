@@ -56,14 +56,14 @@ import setuptools
 DOCLINES = __doc__.split('\n')
 
 REQUIRED_PACKAGES = [
-    'absl-py~=0.15.0',
+    'absl-py~=1.0.0',
     'attrs~=21.2.0',
     'cachetools~=3.1.1',
     'dm-tree~=0.1.1',
     'farmhashpy~=0.4.0',
     'grpcio~=1.34.0',
-    'jax~=0.2.8',
-    'jaxlib~=0.1.55',
+    'jax~=0.2.27',
+    'jaxlib~=0.1.76',
     'numpy~=1.21.4',
     'portpicker~=1.3.1',
     'semantic-version~=2.8.5',
