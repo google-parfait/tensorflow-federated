@@ -23,7 +23,6 @@ import os
 import os.path
 import tempfile
 
-from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
@@ -122,7 +121,7 @@ class FakeUserData(object):
     return self._client_data_file_dict
 
 
-class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
+class FilePerUserClientDataTest(tf.test.TestCase):
 
   @classmethod
   def setUpClass(cls):
@@ -272,7 +271,7 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
       self.fail(e)
 
 
-class PreprocessFilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
+class PreprocessFilePerUserClientDataTest(tf.test.TestCase):
 
   @classmethod
   def setUpClass(cls):

@@ -325,7 +325,6 @@ py_test(
         ":file_per_user_client_data",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

@@ -63,6 +63,32 @@ py_test(
 )
 
 py_library(
+    name = "cpp_async_execution_context",
+    srcs = ["cpp_async_execution_context.py"],
+    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
+    srcs_version = "PY3",
+    deps = [
+        ":async_execution_context",
+        "//tensorflow_federated/python/common_libs:retrying",
+        "//tensorflow_federated/python/core/impl/compiler:compiler_pipeline",
+        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
+        "//tensorflow_federated/python/core/impl/executors:value_serialization",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "@absl_py//absl/logging",
+    ],
+)
+
+py_library(
+    name = "cpp_sync_execution_context",
+    srcs = ["cpp_sync_execution_context.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":cpp_async_execution_context",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+    ],
+)
+
+py_library(
     name = "sync_execution_context",
     srcs = ["sync_execution_context.py"],
     srcs_version = "PY3",

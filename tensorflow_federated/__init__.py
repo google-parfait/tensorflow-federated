@@ -78,5 +78,5 @@ backends.native.set_local_python_execution_context()
 # Remove packages that are not part of the public API but are picked up due to
 # the directory structure. The python import statements above implicitly add
 # these to locals().
-del python  # pylint:disable=undefined-variable
-del proto  # pylint:disable=undefined-variable
+del python  # pylint: disable=undefined-variable
+del proto  # pylint: disable=undefined-variable

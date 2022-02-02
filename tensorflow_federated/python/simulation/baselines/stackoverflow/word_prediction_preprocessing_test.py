@@ -143,6 +143,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
                                   ('negative_value2', -2))
   def test_nonpositive_sequence_length_raises(self, sequence_length):
+    del sequence_length  # Unused.
     preprocess_spec = client_spec.ClientSpec(num_epochs=1, batch_size=1)
     with self.assertRaisesRegex(ValueError,
                                 'sequence_length must be a positive integer'):
