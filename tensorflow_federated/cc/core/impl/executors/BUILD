@@ -593,6 +593,11 @@ py_binary(
     testonly = True,
     srcs = ["make_structural_reduce_test_graph.py"],
     python_version = "PY3",
+    deps = [
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 genrule(
@@ -701,6 +706,11 @@ py_binary(
     testonly = True,
     srcs = ["make_reduce_lambda_test_graph.py"],
     python_version = "PY3",
+    deps = [
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 genrule(

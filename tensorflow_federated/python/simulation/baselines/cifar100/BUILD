@@ -24,7 +24,10 @@ py_library(
     name = "image_classification_preprocessing",
     srcs = ["image_classification_preprocessing.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
+    deps = [
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -37,6 +40,8 @@ py_test(
         ":image_classification_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -54,6 +59,7 @@ py_library(
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:cifar100",
         "//tensorflow_federated/python/simulation/datasets:client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -68,6 +74,8 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -75,7 +83,10 @@ py_library(
     name = "resnet_models",
     srcs = ["resnet_models.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation/models:group_norm"],
+    deps = [
+        "//tensorflow_federated/python/simulation/models:group_norm",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -83,5 +94,8 @@ py_test(
     srcs = ["resnet_models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":resnet_models"],
+    deps = [
+        ":resnet_models",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )

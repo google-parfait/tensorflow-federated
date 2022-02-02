@@ -56,5 +56,7 @@ py_test(
         ":data_backend_example_py",
         "//tensorflow_federated",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

@@ -35,6 +35,7 @@ py_library(
     name = "data_processing",
     srcs = ["data_processing.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
@@ -45,6 +46,8 @@ py_test(
     deps = [
         ":data_processing",
         ":histogram_test_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -53,12 +56,14 @@ py_library(
     testonly = True,
     srcs = ["histogram_test_utils.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_library(
     name = "histogram_processing",
     srcs = ["histogram_processing.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
@@ -69,5 +74,7 @@ py_test(
     deps = [
         ":histogram_processing",
         ":histogram_test_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
