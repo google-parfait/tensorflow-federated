@@ -77,15 +77,9 @@ def transform_to_native_form(
         call_dominant_form, _ = transformations.optimize_tensorflow_graphs(
             call_dominant_form, grappler_config)
     with tracing.span(
-        'transform_to_native_form',
-        'transform_tf_call_ops_disable_grappler',
-        span=True):
-      disabled_grapler_form, _ = tree_transformations.transform_tf_call_ops_to_disable_grappler(
-          call_dominant_form)
-    with tracing.span(
         'transform_to_native_form', 'transform_tf_add_ids', span=True):
       form_with_ids, _ = tree_transformations.transform_tf_add_ids(
-          disabled_grapler_form)
+          call_dominant_form)
     return computation_wrapper_instances.building_block_to_computation(
         form_with_ids)
   except ValueError as e:

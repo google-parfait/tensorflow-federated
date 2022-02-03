@@ -24,7 +24,6 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_transformations
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_optimizations
@@ -118,30 +117,6 @@ class TensorFlowOptimizer(transformation_utils.TransformSpec):
     if not self.should_transform(comp):
       return comp, False
     return optimize_tensorflow_comp(comp, self._config_proto), True
-
-
-class DisableCallOpGrappler(transformation_utils.TransformSpec):
-  """Disables grappler in Call ops in `building_blocks.CompiledComputation`s.
-
-  This overwrites the `config_proto` key of the `NodeDef.attr` field of nodes
-  in a `tf.compat.v1.GraphDef` to ensure that Grappler is disabled at runtime.
-
-  This `transformation_utils.TransformSpec` does not alter the TFF structure of
-  the computations on which it is called.
-  """
-
-  def should_transform(self, comp):
-    return (comp.is_compiled_computation() and
-            comp.proto.WhichOneof('computation') == 'tensorflow')
-
-  def transform(self, comp):
-    if not self.should_transform(comp):
-      return comp, False
-    py_typecheck.check_type(comp, building_blocks.CompiledComputation)
-    new_comp_proto = tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
-        comp.proto)
-    return building_blocks.CompiledComputation(
-        new_comp_proto, type_signature=comp.type_signature), True
 
 
 class AddUniqueIDs(transformation_utils.TransformSpec):
