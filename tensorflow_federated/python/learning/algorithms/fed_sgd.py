@@ -130,7 +130,7 @@ def _build_fed_sgd_client_work(
     model_fn: Callable[[], model_lib.Model],
     metrics_aggregator: Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
+    ], computation_base.Computation],
     use_experimental_simulation_loop: bool = False
 ) -> client_works.ClientWorkProcess:
   """Creates a `tff.learning.templates.ClientWorkProcess` for federated SGD.
@@ -199,9 +199,9 @@ def build_fed_sgd(
         [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Callable[[
+    metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
+    ], computation_base.Computation]] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated SGD.
@@ -278,6 +278,8 @@ def build_fed_sgd(
   aggregator = model_aggregator.create(model_weights_type.trainable,
                                        computation_types.TensorType(tf.float32))
 
+  if metrics_aggregator is None:
+    metrics_aggregator = metric_aggregator.sum_then_finalize
   client_work = _build_fed_sgd_client_work(
       model_fn,
       metrics_aggregator,

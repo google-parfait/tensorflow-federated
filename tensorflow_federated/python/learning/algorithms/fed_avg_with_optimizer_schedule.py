@@ -56,7 +56,7 @@ def build_scheduled_client_work(
     optimizer_fn: Callable[[float], TFFOrKerasOptimizer],
     metrics_aggregator: Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
+    ], computation_base.Computation],
     use_experimental_simulation_loop: bool = False
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
@@ -153,9 +153,9 @@ def build_weighted_fed_avg_with_optimizer_schedule(
         tf.keras.optimizers.Optimizer]] = fed_avg.DEFAULT_SERVER_OPTIMIZER_FN,
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
-    metrics_aggregator: Callable[[
+    metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
+    ], computation_base.Computation]] = None,
     use_experimental_simulation_loop: bool = False
 ) -> learning_process.LearningProcess:
   """Builds a learning process for FedAvg with client optimizer scheduling.
@@ -230,7 +230,8 @@ def build_weighted_fed_avg_with_optimizer_schedule(
       `tff.learning.Model.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
       type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics.
+      returns a `tff.Computation` for aggregating the unfinalized metrics. If
+      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
@@ -265,6 +266,8 @@ def build_weighted_fed_avg_with_optimizer_schedule(
                     f'server, but got {input_client_value_type.member} != '
                     f'{result_server_value_type.member}.')
 
+  if metrics_aggregator is None:
+    metrics_aggregator = metric_aggregator.sum_then_finalize
   client_work = build_scheduled_client_work(model_fn, client_learning_rate_fn,
                                             client_optimizer_fn,
                                             metrics_aggregator,
