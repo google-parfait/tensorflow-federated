@@ -20,6 +20,7 @@
 
 import itertools
 from typing import Any, Iterable, MutableMapping, Optional
+import uuid
 
 from absl import logging
 import cachetools
@@ -41,7 +42,6 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import typed_object
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
-from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 # Cache size here is simply heuristic, no formal analysis.
 _TF_FUNCTION_CACHE_SIZE = 100
@@ -66,6 +66,19 @@ def _check_dataset_reduce_for_multi_gpu(
         '`for ... in iter(dataset)` for your own dataset iterations. See '
         'https://www.tensorflow.org/federated/tutorials/simulations_with_accelerators'
         ' for examples.')
+
+
+def _uniquify_shared_names(graph_def):
+  """Appends unique identifier to any shared names present in `graph`."""
+  # TODO(b/117428091): Upgrade our TF serialization mechanisms in order to
+  # unblock using more modern TF compositional constructs, and avoid direct
+  # proto manipulation as is happening here.
+  for x in graph_def.node:
+    shared_name = x.attr.get('shared_name')
+    if shared_name is not None:
+      uid = str(uuid.uuid1())[:8].encode('utf-8')
+      shared_name.s += uid
+  return graph_def
 
 
 def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
@@ -102,7 +115,7 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
 
     def _import_fn():
       return tf.graph_util.import_graph_def(
-          graph_merge.uniquify_shared_names(graph_def), name='')
+          _uniquify_shared_names(graph_def), name='')
 
     if must_pin_function_to_cpu:
       with tf.device('cpu'):

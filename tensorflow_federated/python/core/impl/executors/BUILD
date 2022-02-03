@@ -175,7 +175,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:typed_object",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-        "//tensorflow_federated/python/tensorflow_libs:graph_merge",
         "@absl_py//absl/logging",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

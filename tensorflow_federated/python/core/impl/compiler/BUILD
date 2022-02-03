@@ -392,7 +392,6 @@ py_library(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -404,11 +403,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":building_block_analysis",
         ":building_block_factory",
-        ":building_blocks",
         ":tensorflow_computation_transformations",
-        ":test_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",

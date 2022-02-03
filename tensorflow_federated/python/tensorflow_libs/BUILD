@@ -37,29 +37,6 @@ py_test(
 )
 
 py_library(
-    name = "graph_merge",
-    srcs = ["graph_merge.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":graph_spec",
-        ":graph_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_test(
-    name = "graph_merge_test",
-    srcs = ["graph_merge_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":graph_merge",
-        ":graph_spec",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
     name = "graph_optimizations",
     srcs = ["graph_optimizations.py"],
     srcs_version = "PY3",
