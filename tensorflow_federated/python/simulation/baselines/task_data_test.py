@@ -38,7 +38,7 @@ class GetElementSpecTest(tf.test.TestCase, parameterized.TestCase):
       ('centralized_no_preprocess', 'Centralized', False),
       ('centralized_preprocess', 'Centralized', True),
   )
-  def get_element_spec(self, dataset_type, preprocess):
+  def test_get_element_spec(self, dataset_type, preprocess):
     data = create_client_data(10)
     if dataset_type == 'Centralized':
       data = data.create_tf_dataset_from_all_clients()
