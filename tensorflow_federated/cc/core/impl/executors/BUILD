@@ -511,6 +511,43 @@ tff_cc_library_with_tf_deps(
 )
 
 tff_cc_library_with_tf_deps(
+    name = "sequence_executor",
+    srcs = ["sequence_executor.cc"],
+    hdrs = ["sequence_executor.h"],
+    deps = [
+        ":dataset_conversions",
+        ":executor",
+        ":sequence_intrinsics",
+        ":tensor_serialization",
+        ":threading",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/status",
+        "@org_tensorflow//tensorflow/core/platform:macros",
+    ],
+)
+
+tff_cc_test_with_tf_deps(
+    name = "sequence_executor_test",
+    timeout = "short",
+    srcs = ["sequence_executor_test.cc"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:tensorflow",
+    ],
+    deps = [
+        ":executor",
+        ":executor_test_base",
+        ":mock_executor",
+        ":sequence_executor",
+        ":sequence_intrinsics",
+        ":status_matchers",
+        ":value_test_utils",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+tff_cc_library_with_tf_deps(
     name = "status_conversion",
     srcs = ["status_conversion.cc"],
     hdrs = ["status_conversion.h"],
@@ -795,7 +832,10 @@ tff_cc_library_with_tf_deps(
         "@org_tensorflow//tensorflow/cc:dataset_ops_internal",
         "@org_tensorflow//tensorflow/cc:ops",
         "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:core_cpu",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
         "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:lib",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/platform:tstring",
     ],
