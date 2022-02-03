@@ -72,6 +72,18 @@ def _create_input_spec_multiple_inputs_outputs():
       ])
 
 
+def _create_test_batch(feature_dims):
+  return collections.OrderedDict(
+      x=np.stack([
+          np.zeros(feature_dims, np.float32),
+          np.ones(feature_dims, np.float32)
+      ]),
+      y=np.stack([
+          np.zeros([1], np.float32),
+          np.ones([1], np.float32),
+      ]))
+
+
 class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
 
   def setUp(self):
@@ -216,12 +228,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # forward pass once.
     self.assertSequenceEqual(tff_model.local_variables, [0, 0, 0.0, 0.0])
 
-    batch = collections.OrderedDict(
-        x=np.stack([
-            np.zeros(feature_dims, np.float32),
-            np.ones(feature_dims, np.float32)
-        ]),
-        y=[[0.0], [1.0]])
+    batch = _create_test_batch(feature_dims)
     # from_model() was called without an optimizer which creates a tff.Model.
     # There is no train_on_batch() method available in tff.Model.
     with self.assertRaisesRegex(AttributeError,
@@ -275,10 +282,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # forward pass once.
     self.assertSequenceEqual(tff_model.local_variables, [0, 0, 0.0, 0.0])
 
-    batch = collections.OrderedDict(
-        x=np.stack([np.zeros(3, np.float32),
-                    np.ones(3, np.float32)]),
-        y=[[0.0], [1.0]])
+    batch = _create_test_batch(feature_dims=3)
     # from_model() was called without an optimizer which creates a tff.Model.
     # There is no train_on_batch() method available in tff.Model.
     with self.assertRaisesRegex(AttributeError,
@@ -325,12 +329,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # forward pass once.
     self.assertSequenceEqual(tff_model.local_variables, [0, 0, 0.0, 0.0])
 
-    batch = collections.OrderedDict(
-        x=np.stack([
-            np.zeros(feature_dims, np.float32),
-            np.ones(feature_dims, np.float32)
-        ]),
-        y=[[0.0], [1.0]])
+    batch = _create_test_batch(feature_dims)
     # from_model() was called without an optimizer which creates a tff.Model.
     # There is no train_on_batch() method available in tff.Model.
     with self.assertRaisesRegex(AttributeError,
@@ -408,14 +407,14 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertIsInstance(tff_model, model_lib.Model)
     self.assertEqual(tff_model.input_spec, input_spec)
 
-    batch = collections.OrderedDict(x=np.ones([2, 5], np.int64), y=[0.0, 1.0])
+    batch = _create_test_batch(feature_dims=5)
     output = tff_model.forward_pass(batch)
 
     self.assertAllEqual(output.predictions.shape, [2, 1])
 
     # A batch with different sequence length should be processed in a similar
     # way
-    batch = collections.OrderedDict(x=np.ones([2, 10], np.int64), y=[0.0, 1.0])
+    batch = _create_test_batch(feature_dims=10)
     output = tff_model.forward_pass(batch)
 
     self.assertAllEqual(output.predictions.shape, [2, 1])
@@ -1087,12 +1086,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # forward pass once.
     self.assertSequenceEqual(tff_model.local_variables, [0, 0, 0.0, 0.0])
 
-    batch = collections.OrderedDict(
-        x=np.stack([
-            np.zeros(feature_dims, np.float32),
-            np.ones(feature_dims, np.float32)
-        ]),
-        y=[[0.0], [1.0]])
+    batch = _create_test_batch(feature_dims)
     # from_model() was called without an optimizer which creates a tff.Model.
     # There is no train_on_batch() method available in tff.Model.
     with self.assertRaisesRegex(AttributeError,
@@ -1137,12 +1131,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # forward pass once.
     self.assertSequenceEqual(tff_model.local_variables, [0, 0])
 
-    batch = collections.OrderedDict(
-        x=np.stack([
-            np.zeros(feature_dims, np.float32),
-            np.ones(feature_dims, np.float32)
-        ]),
-        y=[[0.0], [1.0]])
+    batch = _create_test_batch(feature_dims)
     # from_model() was called without an optimizer which creates a tff.Model.
     # There is no train_on_batch() method available in tff.Model.
     with self.assertRaisesRegex(AttributeError,

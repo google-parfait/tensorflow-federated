@@ -13,17 +13,24 @@
 # limitations under the License.
 """A library of `tf.keras.metrics.Metrics` for learning."""
 
+import numpy as np
 import tensorflow as tf
 
 
 class NumExamplesCounter(tf.keras.metrics.Sum):
   """A `tf.keras.metrics.Metric` that counts the number of examples seen.
 
+  This metric expects `np.ndarray` or `tf.Tensor` values. To work with
+  multi-output models it will raise an error if the inputs are Python structures
+  of Python `int` or `float` values. Please use `tf.convert_to_tensor` or
+  `np.asarray`.
+
   Note: The number of examples is computed as the size of the first dimension of
   the labels. If the batch dimension is not the first dimension, or there are
   multiple labels per example, then this metric may be unsuitable.
 
-  NOTE: This metric ignores sample weighting, counting each example uniformly.
+  IMPORTANT: This metric ignores sample weighting, counting each example
+  uniformly.
   """
 
   def __init__(self, name='num_examples', dtype=tf.int64):  # pylint: disable=useless-super-delegation
@@ -32,7 +39,13 @@ class NumExamplesCounter(tf.keras.metrics.Sum):
   def update_state(self, y_true, y_pred, sample_weight=None):
     # In case we have multiple labels, we use the first dimension of the first
     # label to compute the batch size.
-    return super().update_state(tf.shape(y_true)[0], sample_weight=None)
+    labels = tf.nest.flatten(y_true)
+    if not all(tf.is_tensor(l) or isinstance(l, np.ndarray) for l in labels):
+      raise ValueError('NumExamplesCounter only works with `numpy.ndarray` or '
+                       '`tensorflow.Tensor` types. Received a structure with '
+                       'other values; consider using `np.asarray` or '
+                       '`tf.convert_to_tensor`.')
+    return super().update_state(tf.shape(labels[0])[0], sample_weight=None)
 
 
 class NumBatchesCounter(tf.keras.metrics.Sum):

@@ -66,6 +66,7 @@ py_test(
     srcs = ["counters_test.py"],
     deps = [
         ":counters",
+        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
