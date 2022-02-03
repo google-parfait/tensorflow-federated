@@ -30,7 +30,7 @@ def main(argv):
     raise app.UsageError('Too many command-line arguments.')
 
   channel = grpc.insecure_channel('{}:{}'.format(FLAGS.host, FLAGS.port))
-  context = tff.backends.native.create_remote_execution_context(  # pytype: disable=module-attr  # gen-stub-imports
+  context = tff.backends.native.create_remote_python_execution_context(
       channels=[channel])
   tff.framework.set_default_context(context)
 
