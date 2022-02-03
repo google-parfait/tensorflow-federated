@@ -49,6 +49,17 @@ const tensorflow::SessionOptions& get_session_options() {
   // future calls.
   static tensorflow::SessionOptions* session_options = []() {
     tensorflow::SessionOptions* options_pb = new tensorflow::SessionOptions();
+    tensorflow::GraphOptions* graph_options_pb =
+        options_pb->config.mutable_graph_options();
+    // Disable JIT/runtime Grappler. TFF typically has short lived sessions,
+    // meaning that the benefit from running grappler is generally not realized
+    // and can be very expensive (anecdotally ~30% of CPU time).
+    graph_options_pb->mutable_rewrite_options()->set_disable_meta_optimizer(
+        true);
+    graph_options_pb->mutable_optimizer_options()->set_opt_level(
+        tensorflow::OptimizerOptions::L0);
+    graph_options_pb->mutable_optimizer_options()->set_global_jit_level(
+        tensorflow::OptimizerOptions::OFF);
     // Don't eagerly allocate all GPU memory in each session.
     options_pb->config.mutable_gpu_options()->set_allow_growth(true);
     // Let the session know the graph will not change.

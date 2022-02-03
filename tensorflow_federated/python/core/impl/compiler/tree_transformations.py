@@ -688,6 +688,12 @@ def strip_placement(comp):
   return transformation_utils.transform_postorder(comp, _transform)
 
 
+def transform_tf_call_ops_to_disable_grappler(comp):
+  """Performs grappler disabling on TensorFlow subcomputations."""
+  return _apply_transforms(
+      comp, compiled_computation_transforms.DisableCallOpGrappler())
+
+
 def transform_tf_add_ids(comp):
   """Adds unique IDs to each TensorFlow subcomputations."""
   return _apply_transforms(comp, compiled_computation_transforms.AddUniqueIDs())
