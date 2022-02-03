@@ -1157,7 +1157,7 @@ class TensorFlowDeserializationTest(test_case.TestCase):
         type=serialized_type, tensorflow=tensorflow_proto)
     init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
         computation_proto, tf.constant(10), tf.compat.v1.get_default_graph(),
-        '')
+        '', tf.constant('bogus_token'))
     self.assertTrue(tf.is_tensor(result))
     with tf.compat.v1.Session() as sess:
       if init_op:
@@ -1192,13 +1192,40 @@ class TensorFlowDeserializationTest(test_case.TestCase):
         type=serialized_type, tensorflow=tensorflow_proto)
     init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
         computation_proto, (tf.constant(10), tf.constant(20)),
-        tf.compat.v1.get_default_graph(), '')
+        tf.compat.v1.get_default_graph(), '', tf.constant('bogus_token'))
     self.assertTrue(tf.is_tensor(result))
     with tf.compat.v1.Session() as sess:
       if init_op:
         sess.run(init_op)
       result_val = sess.run(result)
     self.assertEqual(result_val, 10)
+
+  @test_utils.graph_mode_test
+  def test_deserialize_and_call_tf_computation_returning_session_token(self):
+    with tf.Graph().as_default() as graph:
+      session_token_placeholder = tf.compat.v1.placeholder(tf.string, shape=())
+      result = tf.identity(session_token_placeholder)
+      result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+          result, graph)
+    parameter_type = None
+    type_signature = computation_types.FunctionType(parameter_type, result_type)
+    tensorflow_proto = pb.TensorFlow(
+        graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+        parameter=None,
+        session_token_tensor_name=session_token_placeholder.name,
+        result=result_binding)
+    serialized_type = type_serialization.serialize_type(type_signature)
+    computation_proto = pb.Computation(
+        type=serialized_type, tensorflow=tensorflow_proto)
+    init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
+        computation_proto, None, tf.compat.v1.get_default_graph(), '',
+        tf.constant('bogus_token'))
+    self.assertTrue(tf.is_tensor(result))
+    with tf.compat.v1.Session() as sess:
+      if init_op:
+        sess.run(init_op)
+      result_val = sess.run(result)
+    self.assertEqual(result_val, b'bogus_token')
 
 
 if __name__ == '__main__':

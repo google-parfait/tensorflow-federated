@@ -69,13 +69,16 @@ def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
     py_typecheck.check_type(parameter_type, computation_types.Type)
 
   with tf.Graph().as_default() as graph:
+    session_token_tensor = tf.compat.v1.placeholder(
+        tf.string, shape=(), name='session_token_tensor')
     if parameter_type is not None:
       parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
           'arg', parameter_type, graph)
     else:
       parameter_value = None
       parameter_binding = None
-    context = tensorflow_computation_context.TensorFlowComputationContext(graph)
+    context = tensorflow_computation_context.TensorFlowComputationContext(
+        graph, session_token_tensor)
     with context_stack.install(context):
       with variable_utils.record_variable_creation_scope() as all_variables:
         result = yield parameter_value
@@ -114,6 +117,7 @@ def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding,
+      session_token_tensor_name=session_token_tensor.name,
       initialize_op=init_op_name)
   yield pb.Computation(
       type=type_serialization.serialize_type(type_signature),

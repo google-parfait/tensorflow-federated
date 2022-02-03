@@ -522,7 +522,7 @@ def run_tensorflow(computation_proto, arg=None):
     else:
       stamped_arg = None
     init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
-        computation_proto, stamped_arg, graph, '')
+        computation_proto, stamped_arg, graph, '', tf.constant('bogus_token'))
   with tf.compat.v1.Session(graph=graph) as sess:
     if init_op:
       sess.run(init_op)

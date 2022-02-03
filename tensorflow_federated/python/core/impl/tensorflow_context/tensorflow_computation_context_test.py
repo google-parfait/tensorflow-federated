@@ -36,7 +36,7 @@ class TensorFlowComputationContextTest(test_case.TestCase):
         bogus_proto, context_stack_impl.context_stack)
 
     context = tensorflow_computation_context.TensorFlowComputationContext(
-        tf.compat.v1.get_default_graph())
+        tf.compat.v1.get_default_graph(), tf.constant('bogus_token'))
 
     with self.assertRaisesRegex(
         ValueError, 'Can only invoke TensorFlow in the body of '
@@ -64,8 +64,9 @@ class TensorFlowComputationContextTest(test_case.TestCase):
       return (add_one_with_v2(add_one_with_v1(add_one(make_10()))) + zero +
               ten - ten)
 
-    graph = tf.compat.v1.Graph()
-    context = tensorflow_computation_context.TensorFlowComputationContext(graph)
+    with tf.compat.v1.Graph().as_default() as graph:
+      context = tensorflow_computation_context.TensorFlowComputationContext(
+          graph, tf.constant('bogus_token'))
 
     self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
     x = context.invoke(foo, None)
@@ -75,6 +76,40 @@ class TensorFlowComputationContextTest(test_case.TestCase):
         sess.run(context.init_ops)
       result = sess.run(x)
     self.assertEqual(result, 13)
+
+  def test_get_session_token(self):
+
+    @computations.tf_computation
+    def get_the_token():
+      return tensorflow_computation_context.get_session_token()
+
+    with tf.compat.v1.Graph().as_default() as graph:
+      context = tensorflow_computation_context.TensorFlowComputationContext(
+          graph, tf.constant('test_token'))
+
+    x = context.invoke(get_the_token, None)
+    with tf.compat.v1.Session(graph=graph) as sess:
+      result = sess.run(x)
+    self.assertEqual(result, b'test_token')
+
+  def test_get_session_token_nested(self):
+
+    @computations.tf_computation
+    def get_the_token_nested():
+      return tensorflow_computation_context.get_session_token()
+
+    @computations.tf_computation
+    def get_the_token():
+      return get_the_token_nested()
+
+    with tf.compat.v1.Graph().as_default() as graph:
+      context = tensorflow_computation_context.TensorFlowComputationContext(
+          graph, tf.constant('test_token_nested'))
+
+    x = context.invoke(get_the_token, None)
+    with tf.compat.v1.Session(graph=graph) as sess:
+      result = sess.run(x)
+    self.assertEqual(result, b'test_token_nested')
 
 
 if __name__ == '__main__':

@@ -1079,7 +1079,8 @@ def uniquify_shared_names_with_suffix(graph_def: tf.compat.v1.GraphDef,
 
 def deserialize_and_call_tf_computation(
     computation_proto: pb.Computation, arg: Any, graph: tf.Graph,
-    shared_names_suffix: str) -> Tuple[str, Any]:
+    shared_names_suffix: str,
+    session_token_tensor: tf.Tensor) -> Tuple[str, Any]:
   """Deserializes a TF computation and inserts it into `graph`.
 
   This method performs an action that can be considered roughly the opposite of
@@ -1101,6 +1102,8 @@ def deserialize_and_call_tf_computation(
     shared_names_suffix: A string suffix to append to shared names within the
       graph. This must be unique for each call to
       `deserialize_and_call_tf_computation` for a given `graph`.
+    session_token_tensor: A string tensor containing a token which has been fed
+      a unique identifier for the current TensorFlow session.
 
   Returns:
     A tuple (init_op, result) where:
@@ -1124,7 +1127,7 @@ def deserialize_and_call_tf_computation(
     type_spec = type_serialization.deserialize_type(computation_proto.type)
     if type_spec.parameter is None:
       if arg is None:
-        input_map = None
+        input_map = {}
       else:
         raise TypeError(
             'The computation declared no parameters; encountered an unexpected '
@@ -1147,8 +1150,11 @@ def deserialize_and_call_tf_computation(
                 computation_proto.tensorflow.parameter, arg_binding).items()
         }
     # Add potential control dep remappings.
-    if input_map is not None:
+    if input_map:
       input_map = graph_utils.add_control_dep_mappings(input_map)
+    session_token_tensor_name = computation_proto.tensorflow.session_token_tensor_name
+    if session_token_tensor_name:
+      input_map[session_token_tensor_name] = session_token_tensor
     return_elements = extract_tensor_names_from_binding(
         computation_proto.tensorflow.result)
     orig_init_op_name = computation_proto.tensorflow.initialize_op

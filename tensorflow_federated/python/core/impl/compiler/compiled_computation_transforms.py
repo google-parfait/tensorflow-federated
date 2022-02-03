@@ -87,6 +87,9 @@ def optimize_tensorflow_comp(tf_computation, config_proto):
       graph_def=graph_def,
       initialize_op=(original_tf.initialize_op
                      if original_tf.initialize_op else None),
+      session_token_tensor_name=(original_tf.session_token_tensor_name
+                                 if original_tf.session_token_tensor_name else
+                                 None),
       parameter=(original_tf.parameter
                  if original_tf.HasField('parameter') else None),
       result=original_tf.result)

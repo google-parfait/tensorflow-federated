@@ -57,7 +57,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     # Expect 4 ops: two constants, one addition, and an identity on the result.
     self.assertEqual(tf_ops_in_graph, 4)
 
-  def test_counts_correct_number_of_ops_swith_function(self):
+  def test_counts_correct_number_of_ops_with_function(self):
 
     @computations.tf_computation(
         computation_types.TensorType(tf.int32, shape=[]))
@@ -72,16 +72,16 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     building_block = foo.to_building_block()
     tf_ops_in_graph = building_block_analysis.count_tensorflow_ops_in(
         building_block)
-    # Exepect 7 ops:
+    # Expect 8 ops:
     #    Inside the tf.function:
     #      - one constant
     #      - one addition
     #      - one identity on the result
     #    Inside the tff_computation:
-    #      - one placeholder
+    #      - two placeholders (one for the argument, one for the session token)
     #      - two partition calls
     #      - one identity on the tff_computation result
-    self.assertEqual(tf_ops_in_graph, 7)
+    self.assertEqual(tf_ops_in_graph, 8)
 
 
 class CountTensorFlowVariablesTest(absltest.TestCase):

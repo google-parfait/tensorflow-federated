@@ -563,6 +563,11 @@ message TensorFlow {
   // initializers.
   string initialize_op = 4;
 
+  // String name of a tensor which may be fed a unique identifier token for the
+  // current session. This allows TensorFlow custom ops to refer to
+  // session-global values created by the runner of the current session.
+  string session_token_tensor_name = 6;
+
   // A pair of bindings for the parameter and the result. The parameter binding
   // can be omitted if the computation does not declare a parameter. The result
   // binding is mandatory, as all TensorFlow computations must declare results.

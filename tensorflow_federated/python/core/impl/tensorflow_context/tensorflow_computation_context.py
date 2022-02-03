@@ -23,24 +23,42 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
+def get_session_token() -> tf.Tensor:
+  """Returns a string tensor identifying the current session."""
+  context = context_stack_impl.context_stack.current
+  if not isinstance(context, TensorFlowComputationContext):
+    raise context_base.ContextError(
+        'Session tokens can only be retrieved from within the '
+        '`TensorFlowComputationContext (in a `@tff.tf_computation`). '
+        f'Instead, the context {context} of type {type(context)} was found.')
+  return context.session_token
+
+
 class TensorFlowComputationContext(context_base.Context):
   """The context for building TensorFlow computations."""
 
-  def __init__(self, graph):
+  def __init__(self, graph, session_token):
     py_typecheck.check_type(graph, tf.Graph)
     self._graph = graph
     self._init_ops = []
     self._shared_name_index = 0
+    self._session_token = session_token
 
   @property
   def init_ops(self):
     """Returns a list of init ops for computations invoked in this context."""
     return list(self._init_ops)
+
+  @property
+  def session_token(self):
+    """Returns a string tensor which uniquely identifies the current session."""
+    return self._session_token
 
   def ingest(self, val, type_spec):
     type_analysis.check_type(val, type_spec)
@@ -60,7 +78,8 @@ class TensorFlowComputationContext(context_base.Context):
     self._shared_name_index += 1
     init_op, result = (
         tensorflow_utils.deserialize_and_call_tf_computation(
-            computation_proto, arg, self._graph, shared_name_suffix))
+            computation_proto, arg, self._graph, shared_name_suffix,
+            self.session_token))
     if init_op:
       self._init_ops.append(init_op)
     return type_conversions.type_to_py_container(result,
