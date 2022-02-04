@@ -82,7 +82,8 @@ class _Adam(optimizer.Optimizer):
         lambda s, g: s + (tf.math.square(g) - s) * (1 - beta_2), preconditioner,
         gradients)
     normalized_lr = lr * tf.math.sqrt(
-        (1 - tf.math.pow(beta_2, step))) / (1 - tf.math.pow(beta_1, step))
+        (1 - tf.math.pow(beta_2, tf.cast(step, tf.float32)))) / (
+            1 - tf.math.pow(beta_1, tf.cast(step, tf.float32)))
     updated_weights = tf.nest.map_structure(
         lambda w, g, a, s: w - normalized_lr * a / (tf.math.sqrt(s) + epsilon),
         weights, gradients, updated_accumulator, updated_preconditioner)
