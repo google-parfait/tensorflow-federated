@@ -27,12 +27,14 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 
@@ -89,7 +91,6 @@ class FederatedAveragingClientTest(test_case.TestCase, parameterized.TestCase):
         np.linalg.norm(client_outputs.weights_delta, axis=-1), expected_norm)
     if weighted:
       self.assertEqual(client_outputs.weights_delta_weight, 8.0)
-    self.assertEqual(client_outputs.optimizer_output['num_examples'], 8)
     self.assertDictContainsSubset({'num_examples': 8},
                                   client_outputs.model_output)
     self.assertBetween(client_outputs.model_output['loss'][0],
@@ -169,6 +170,14 @@ class FederatedAveragingTest(test_case.TestCase, parameterized.TestCase):
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 
+  def test_no_unsecure_aggregation_with_secure_aggregator(self):
+    fed_avg = federated_averaging.build_federated_averaging_process(
+        model_examples.LinearRegression,
+        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
+        model_update_aggregation_factory=model_update_aggregator
+        .secure_aggregator(),
+        metrics_aggregator=aggregator.secure_sum_then_finalize)
+    static_assert.assert_not_contains_unsecure_aggregation(fed_avg.next)
 
 if __name__ == '__main__':
   test_case.main()
