@@ -61,11 +61,14 @@ class P13nUtilsTest(tf.test.TestCase):
     metrics = p13n_utils.evaluate_fn(model=self.model, dataset=self.dataset)
 
     # Model weights are zeros, so MeanSquaredError and MeanAbsoluteError are 1.
-    self.assertDictEqual(metrics, {
-        'num_test_examples': 3,
-        'mean_absolute_error': 1.0,
-        'loss': 1.0
-    })
+    self.assertDictEqual(
+        metrics, {
+            'num_test_examples': 3,
+            'mean_absolute_error': 1.0,
+            'loss': 1.0,
+            'num_examples': 3,
+            'num_batches': 3,
+        })
 
   def test_build_and_run_personalize_fn_succeeds_with_valid_args(self):
     p13n_fn = p13n_utils.build_personalize_fn(
@@ -85,7 +88,9 @@ class P13nUtilsTest(tf.test.TestCase):
             'epoch_1': {
                 'num_test_examples': 3,
                 'mean_absolute_error': 0.0,
-                'loss': 0.0
+                'loss': 0.0,
+                'num_examples': 3,
+                'num_batches': 3,
             },
             'num_train_examples': 3  # Same dataset is used for train and test.
         })

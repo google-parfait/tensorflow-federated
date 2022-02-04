@@ -220,13 +220,13 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=_create_whimsy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[counters.NumBatchesCounter(),
-                 counters.NumExamplesCounter()])
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
     self.assertIsInstance(tff_model, model_lib.Model)
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
-    self.assertSequenceEqual(tff_model.local_variables, [0, 0, 0.0, 0.0])
+    self.assertSequenceEqual(tff_model.local_variables,
+                             [0.0, 0.0, 0.0, 0.0, 0, 0])
 
     batch = _create_test_batch(feature_dims)
     # from_model() was called without an optimizer which creates a tff.Model.
@@ -257,6 +257,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['num_examples'], [2])
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2)
+    self.assertGreater(metrics['mean_absolute_error'][0], 0)
+    self.assertEqual(metrics['mean_absolute_error'][1], 2)
 
     # TODO(b/202027089): Remove these checks when removing the two attributes:
     # `report_local_outptus` and `federated_output_computation`.
@@ -274,13 +276,13 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=_create_whimsy_types(3),
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[counters.NumBatchesCounter(),
-                 counters.NumExamplesCounter()])
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
     self.assertIsInstance(tff_model, model_lib.Model)
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
-    self.assertSequenceEqual(tff_model.local_variables, [0, 0, 0.0, 0.0])
+    self.assertSequenceEqual(tff_model.local_variables,
+                             [0.0, 0.0, 0.0, 0.0, 0, 0])
 
     batch = _create_test_batch(feature_dims=3)
     # from_model() was called without an optimizer which creates a tff.Model.
@@ -313,6 +315,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['num_examples'], [2])
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2)
+    self.assertGreater(metrics['mean_absolute_error'][0], 0)
+    self.assertEqual(metrics['mean_absolute_error'][1], 2)
 
   @parameterized.named_parameters(*_create_tff_model_from_keras_model_tuples())
   def test_tff_model_from_keras_model_input_spec(self, feature_dims, model_fn):
@@ -320,14 +324,14 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[counters.NumBatchesCounter(),
-                 counters.NumExamplesCounter()],
+        metrics=[tf.keras.metrics.MeanAbsoluteError()],
         input_spec=_create_whimsy_types(feature_dims))
     self.assertIsInstance(tff_model, model_lib.Model)
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
-    self.assertSequenceEqual(tff_model.local_variables, [0, 0, 0.0, 0.0])
+    self.assertSequenceEqual(tff_model.local_variables,
+                             [0.0, 0.0, 0.0, 0.0, 0, 0])
 
     batch = _create_test_batch(feature_dims)
     # from_model() was called without an optimizer which creates a tff.Model.
@@ -356,6 +360,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['num_examples'], [2])
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2)
+    self.assertGreater(metrics['mean_absolute_error'][0], 0)
+    self.assertEqual(metrics['mean_absolute_error'][1], 2)
 
   def test_tff_model_from_keras_model_with_custom_loss_with_integer_label(self):
 
@@ -428,8 +434,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=model,
         input_spec=input_spec,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[counters.NumBatchesCounter(),
-                 counters.NumExamplesCounter()])
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
 
     # Create a batch with the size of the vocab. These examples will attempt to
     # train the embedding so that the model produces
@@ -455,6 +460,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(m['num_examples'], [input_vocab_size * num_train_steps])
     self.assertGreater(m['loss'][0], 0.0)
     self.assertEqual(m['loss'][1], input_vocab_size * num_train_steps)
+    self.assertGreater(m['mean_absolute_error'][0], 0)
+    self.assertEqual(m['mean_absolute_error'][1], 300)
 
   def test_keras_model_multiple_inputs(self):
     input_spec = collections.OrderedDict(
@@ -467,8 +474,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[counters.NumBatchesCounter(),
-                 counters.NumExamplesCounter()])
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
 
     batch_size = 2
     real_batch = collections.OrderedDict(
@@ -486,6 +492,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(m['num_examples'], [batch_size * num_train_steps])
     self.assertGreater(m['loss'][0], 0.0)
     self.assertEqual(m['loss'][1], batch_size * num_train_steps)
+    self.assertGreater(m['mean_absolute_error'][0], 0)
+    self.assertEqual(m['mean_absolute_error'][1], 4)
 
     # Ensure we can assign the FL trained model weights to a new model.
     tff_weights = model_utils.ModelWeights.from_model(tff_model)
@@ -495,8 +503,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[counters.NumBatchesCounter(),
-                 counters.NumExamplesCounter()])
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
 
     orig_model_output = tff_model.forward_pass(real_batch)
     loaded_model_output = loaded_model.forward_pass(real_batch)
@@ -515,8 +522,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           keras_model=model,
           input_spec=input_spec,
           loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-          metrics=[counters.NumBatchesCounter(),
-                   counters.NumExamplesCounter()])
+          metrics=[tf.keras.metrics.MeanAbsoluteError()])
       # Ensure we can get warning of Batch Normalization.
       self.assertLen(warning, 1)
       self.assertIsSubClass(warning[-1].category, UserWarning)
@@ -538,6 +544,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(m['num_examples'], [batch_size * num_train_steps])
     self.assertGreater(m['loss'][0], 0.0)
     self.assertEqual(m['loss'][1], batch_size * num_train_steps)
+    self.assertGreater(m['mean_absolute_error'][0], 0)
+    self.assertEqual(m['mean_absolute_error'][1], 4)
 
     # Ensure we can assign the FL trained model weights to a new model.
     tff_weights = model_utils.ModelWeights.from_model(tff_model)
@@ -568,8 +576,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           keras_model=_make_keras_model(),
           input_spec=_create_whimsy_types(feature_dims),
           loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[counters.NumBatchesCounter(),
-                   counters.NumExamplesCounter()])
+          metrics=[tf.keras.metrics.MeanAbsoluteError()])
 
     @computations.tf_computation()
     def _train():
@@ -611,6 +618,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(aggregated_outputs['num_batches'], num_train_steps)
     self.assertEqual(aggregated_outputs['num_examples'], 2 * num_train_steps)
     self.assertGreater(aggregated_outputs['loss'], 0.0)
+    self.assertGreater(aggregated_outputs['mean_absolute_error'], 0)
 
     keras_model = _make_keras_model()
     tff_weights.assign_weights_to(keras_model)
@@ -917,8 +925,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[counters.NumBatchesCounter(),
-                 counters.NumExamplesCounter()])
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
 
     batch_size = 3
     batch = collections.OrderedDict(
@@ -934,6 +941,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['num_examples'], [batch_size * num_train_steps])
     self.assertGreater(metrics['loss'][0], 0.0)
     self.assertEqual(metrics['loss'][1], batch_size * num_train_steps)
+    self.assertGreater(metrics['mean_absolute_error'][0], 0)
+    self.assertEqual(metrics['mean_absolute_error'][1], 6)
 
     # Ensure we can assign the FL trained model weights to a new model.
     tff_weights = model_utils.ModelWeights.from_model(tff_model)
@@ -943,8 +952,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[counters.NumBatchesCounter(),
-                 counters.NumExamplesCounter()])
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
 
     orig_model_output = tff_model.forward_pass(batch)
     loaded_model_output = loaded_model.forward_pass(batch)
@@ -960,8 +968,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[counters.NumBatchesCounter(),
-                 counters.NumExamplesCounter()])
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
 
     batch_size = 3
     batch = collections.OrderedDict(
@@ -977,6 +984,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['num_examples'], [batch_size * num_train_steps])
     self.assertGreater(metrics['loss'][0], 0.0)
     self.assertEqual(metrics['loss'][1], batch_size * num_train_steps)
+    self.assertGreater(metrics['mean_absolute_error'][0], 0)
+    self.assertEqual(metrics['mean_absolute_error'][1], 2)
 
     # Ensure we can assign the FL trained model weights to a new model.
     tff_weights = model_utils.ModelWeights.from_model(tff_model)
@@ -986,8 +995,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[counters.NumBatchesCounter(),
-                 counters.NumExamplesCounter()])
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
 
     orig_model_output = tff_model.forward_pass(batch)
     loaded_model_output = loaded_model.forward_pass(batch)
@@ -1005,8 +1013,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           keras_model=keras_model,
           input_spec=_create_whimsy_types(feature_dims),
           loss=tf.keras.losses.MeanSquaredError(),
-          metrics=[counters.NumBatchesCounter(),
-                   counters.NumExamplesCounter()])
+          metrics=[tf.keras.metrics.MeanAbsoluteError()])
 
   def test_custom_keras_metric_with_extra_init_args_raises(self):
 
@@ -1079,12 +1086,13 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=_create_whimsy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[counters.NumBatchesCounter, counters.NumExamplesCounter])
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
     self.assertIsInstance(tff_model, model_lib.Model)
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
-    self.assertSequenceEqual(tff_model.local_variables, [0, 0, 0.0, 0.0])
+    self.assertSequenceEqual(tff_model.local_variables,
+                             [0.0, 0.0, 0.0, 0.0, 0, 0])
 
     batch = _create_test_batch(feature_dims)
     # from_model() was called without an optimizer which creates a tff.Model.
@@ -1115,6 +1123,8 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['num_examples'], [2])
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2)
+    self.assertGreater(metrics['mean_absolute_error'][0], 0)
+    self.assertEqual(metrics['mean_absolute_error'][1], 2)
 
   @parameterized.named_parameters(
       # Test cases for the cartesian product of all parameter values.
@@ -1129,7 +1139,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
-    self.assertSequenceEqual(tff_model.local_variables, [0, 0])
+    self.assertSequenceEqual(tff_model.local_variables, [0.0, 0.0, 0, 0])
 
     batch = _create_test_batch(feature_dims)
     # from_model() was called without an optimizer which creates a tff.Model.
@@ -1178,6 +1188,27 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           input_spec=_create_whimsy_types(feature_dims),
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=metrics)
+
+  # The metric names are senseical normally, but we just want to assert that
+  # our explicit metrics override the defaults.
+  @parameterized.named_parameters(
+      ('num_examples', tf.keras.metrics.MeanSquaredError('num_examples')),
+      ('num_batches', tf.keras.metrics.MeanSquaredError('num_batches')),
+  )
+  def test_custom_metrics_override_defaults(self, metric):
+    feature_dims = 3
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims)
+
+    model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=_create_whimsy_types(feature_dims),
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[metric])
+
+    # By default the metrics have a single sum of count, but the test metrics
+    # we add above have two values because they are a mean.
+    self.assertLen(model.report_local_unfinalized_metrics()[metric.name], 2)
 
 
 if __name__ == '__main__':

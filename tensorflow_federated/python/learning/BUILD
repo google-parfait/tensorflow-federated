@@ -192,7 +192,9 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/metrics:finalizer",
+        "@absl_py//absl/logging",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

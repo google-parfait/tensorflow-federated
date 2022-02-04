@@ -549,7 +549,8 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     self.assertDictEqual(
         result,
         collections.OrderedDict(
-            eval=collections.OrderedDict(accuracy=1.0, loss=0.0),
+            eval=collections.OrderedDict(
+                accuracy=1.0, loss=0.0, num_examples=12, num_batches=5),
             stat=collections.OrderedDict(num_examples=12)))
 
   @mock.patch.object(

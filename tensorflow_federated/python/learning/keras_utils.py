@@ -22,6 +22,7 @@ import collections
 from typing import Callable, List, Optional, OrderedDict, Sequence, Union
 import warnings
 
+from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -32,6 +33,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
+from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import finalizer
 
 Loss = Union[tf.keras.losses.Loss, List[tf.keras.losses.Loss]]
@@ -50,7 +52,8 @@ def from_keras_model(
   """Builds a `tff.learning.Model` from a `tf.keras.Model`.
 
   The `tff.learning.Model` returned by this function uses `keras_model` for
-  its forward pass and autodifferentiation steps.
+  its forward pass and autodifferentiation steps. The returned model will have
+  three additional metrics including: loss, num_examples, and num_batches.
 
   Notice that since TFF couples the `tf.keras.Model` and `loss`,
   TFF needs a slightly different notion of "fully specified type" than
@@ -92,7 +95,11 @@ def from_keras_model(
       contribution of each model output (when providing a list of losses for the
       `loss` argument).
     metrics: (Optional) a list of `tf.keras.metrics.Metric` objects or a list of
-      no-arg callables that each constructs a `tf.keras.metrics.Metric`.
+      no-arg callables that each constructs a `tf.keras.metrics.Metric`. Note:
+      if metrics with names `num_examples` or `num_batches` are found, they will
+      be used as-is. If they are not found in the `metrics` argument list, they
+      will be added by default using `tff.learning.metrics.NumExamplesCounter`
+      and `tff.learning.metrics.NumBatchesCounter` respectively.
 
   Returns:
     A `tff.learning.Model` object.
@@ -292,6 +299,8 @@ class _KerasModel(model_lib.Model):
 
     self._metrics = []
     self._metric_constructors = []
+
+    metric_names = set([])
     if metrics:
       has_keras_metric = False
       has_keras_metric_constructor = False
@@ -299,13 +308,16 @@ class _KerasModel(model_lib.Model):
       for metric in metrics:
         if isinstance(metric, tf.keras.metrics.Metric):
           self._metrics.append(metric)
+          metric_names.add(metric.name)
           has_keras_metric = True
         elif callable(metric):
           constructed_metric = metric()
           if not isinstance(constructed_metric, tf.keras.metrics.Metric):
             raise TypeError(
                 f'Metric constructor {metric} is not a no-arg callable that '
-                'creates a `tf.keras.metrics.Metric`.')
+                'creates a `tf.keras.metrics.Metric`, it created a '
+                f'{type(constructed_metric).__name__}.')
+          metric_names.add(constructed_metric.name)
           self._metric_constructors.append(metric)
           self._metrics.append(constructed_metric)
           has_keras_metric_constructor = True
@@ -348,9 +360,16 @@ class _KerasModel(model_lib.Model):
 
         return super().update_state(batch_loss, batch_size)
 
-    self._metrics.append(_WeightedMeanLossMetric())
+    extra_metrics_constructors = [_WeightedMeanLossMetric]
+    if 'num_examples' not in metric_names:
+      logging.info('Adding default num_examples metric to model')
+      extra_metrics_constructors.append(counters.NumExamplesCounter)
+    if 'num_batches' not in metric_names:
+      logging.info('Adding default num_batches metric to model')
+      extra_metrics_constructors.append(counters.NumBatchesCounter)
+    self._metrics.extend(m() for m in extra_metrics_constructors)
     if not metrics or self._metric_constructors:
-      self._metric_constructors.append(_WeightedMeanLossMetric)
+      self._metric_constructors.extend(extra_metrics_constructors)
 
   @property
   def trainable_variables(self):
