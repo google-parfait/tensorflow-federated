@@ -962,3 +962,10 @@ py_test(
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
+
+py_library(
+    name = "remote_executor_stub",
+    srcs = ["remote_executor_stub.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/proto/v0:executor_py_pb2"],
+)
