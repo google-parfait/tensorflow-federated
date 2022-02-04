@@ -223,13 +223,17 @@ def zeroing_factory(
 
     @computations.tf_computation(value_type, NORM_TF_TYPE)
     def zero_fn(value, zeroing_norm):
+      flattened_value = [
+          tf.cast(d, tf.float32) if d.dtype != tf.float32 else d
+          for d in tf.nest.flatten(value)
+      ]
       if norm_order == 1.0:
-        global_norm = _global_l1_norm(value)
+        global_norm = _global_l1_norm(flattened_value)
       elif norm_order == 2.0:
-        global_norm = tf.linalg.global_norm(tf.nest.flatten(value))
+        global_norm = tf.linalg.global_norm(flattened_value)
       else:
         assert math.isinf(norm_order)
-        global_norm = _global_inf_norm(value)
+        global_norm = _global_inf_norm(flattened_value)
       should_zero = (global_norm > zeroing_norm)
       zeroed_value = tf.cond(
           should_zero, lambda: tf.nest.map_structure(tf.zeros_like, value),
@@ -394,11 +398,11 @@ def _check_value_type(value_type):
 
 @tf.function
 def _global_inf_norm(l):
-  norms = [tf.norm(a, ord=np.inf) for a in tf.nest.flatten(l)]
+  norms = [tf.norm(a, ord=np.inf) for a in l]
   return tf.reduce_max(tf.stack(norms))
 
 
 @tf.function
 def _global_l1_norm(l):
-  norms = [tf.norm(a, ord=1) for a in tf.nest.flatten(l)]
+  norms = [tf.norm(a, ord=1) for a in l]
   return tf.reduce_sum(tf.stack(norms))

@@ -384,7 +384,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
       make_factory(norm)
 
 
-class ClippingFactoryExecutionTest(test_case.TestCase):
+class ClippingFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
 
   def _check_result(self, expected, result):
     for exp, res in zip(_make_test_struct_value(expected), result):
@@ -642,7 +642,11 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     self.assertAllClose(3.0, output.measurements['zeroing_norm'])
     self.assertEqual(0, output.measurements['zeroed_count'])
 
-  def test_increasing_zero_clip_sum(self):
+  @parameterized.named_parameters(
+      ('quantized_int', [1, 2, 3]),
+      ('default_float', [1.0, 2.0, 3.0]),
+  )
+  def test_increasing_zero_clip_sum(self, client_data):
     # Tests when zeroing and clipping are performed with non-integer clips.
     # Zeroing norm grows by 0.75 each time, clipping norm grows by 0.25.
 
@@ -671,7 +675,6 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
 
     state = process.initialize()
 
-    client_data = [1.0, 2.0, 3.0]
     output = process.next(state, client_data)
     self.assertAllClose(1.0, output.measurements['zeroing_norm'])
     self.assertAllClose(1.0, output.measurements['zeroing']['clipping_norm'])
@@ -714,8 +717,10 @@ class NormTest(test_case.TestCase):
     values = [1.0, -2.0, 3.0, -4.0]
     for l in itertools.permutations(values):
       v = [tf.constant(l[0]), (tf.constant([l[1], l[2]]), tf.constant([l[3]]))]
-      self.assertAllClose(4.0, robust._global_inf_norm(v).numpy())
-      self.assertAllClose(10.0, robust._global_l1_norm(v).numpy())
+      self.assertAllClose(4.0,
+                          robust._global_inf_norm(tf.nest.flatten(v)).numpy())
+      self.assertAllClose(10.0,
+                          robust._global_l1_norm(tf.nest.flatten(v)).numpy())
 
 
 if __name__ == '__main__':
