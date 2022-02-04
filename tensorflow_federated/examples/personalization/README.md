@@ -39,7 +39,7 @@ A personalization strategy is a `tf.function`-decorated function that takes a
 model, and returns the evaluation metrics. Users can define whatever
 personalization strategies they like. An example of fine-tuning based
 personalization strategy is given by `build_personalize_fn` in
-[`p13n_utils`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/personalization/p13n_utils.py).
+[`p13n_utils`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/personalization/p13n_utils.py).
 
 The
 [`tff.learning.build_personalization_eval`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval)
@@ -49,7 +49,7 @@ time, starting from the same global model. Specifically, users define a
 and then pass it to the API as the `personalize_fn_dict` argument.
 
 In
-[our experiment](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/personalization/emnist_p13n_main.py),
+[our experiment](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/personalization/emnist_p13n_main.py),
 we define and evaluate two fine-tuning based personalization strategies: one
 uses SGD and other other uses Adam optimizer.
 
@@ -60,7 +60,7 @@ The
 API has an argument `max_num_samples` with a default value 100. Metrics from at
 most `max_num_samples` clients (the clients are sampled without replacement)
 will be collected and returned. In
-[our experiment](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/personalization/emnist_p13n_main.py),
+[our experiment](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/personalization/emnist_p13n_main.py),
 we set this value to be larger than the number of clients in the federated
 dataset, which means that metrics from all clients will be returned.
 
@@ -70,7 +70,7 @@ strategy names to the evaluation metrics of the corresponding personalization
 strategies. Each returned metric contains a list of scalars (each scalar comes
 from one sampled client). Metric values at the same position, e.g.,
 `metric_1[i]`, `metric_2[i]`, ..., corresponds to the same client. In
-[our experiment](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/personalization/emnist_p13n_main.py),
+[our experiment](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/personalization/emnist_p13n_main.py),
 the baseline evaluation function is given by `evaluate_fn` in
-[`p13n_utils`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/personalization/p13n_utils.py),
+[`p13n_utils`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/personalization/p13n_utils.py),
 which is the same evaluation function used by the personalization strategies.

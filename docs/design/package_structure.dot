@@ -10,7 +10,7 @@ digraph {
   tests -> tff
 
   research [href="https://github.com/google-research/federated/blob/master" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
-  examples [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+  examples [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
   tests [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/tests" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
 
   // TFF

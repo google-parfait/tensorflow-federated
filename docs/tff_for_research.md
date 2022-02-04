@@ -21,7 +21,7 @@ types of logic.
     encapsulate logic that runs in a single location (e.g., on clients or on a
     server). This code is typically written and tested without any `tff.*`
     references, and can be re-used outside of TFF. For example, the
-    [client training loop in Federated Averaging](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/simple_fedavg_tf.py#L184-L222)
+    [client training loop in Federated Averaging](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/simple_fedavg/simple_fedavg_tf.py#L184-L222)
     is implemented at this level.
 
 1.  TensorFlow Federated orchestration logic, which binds together the
@@ -29,12 +29,12 @@ types of logic.
     and then orchestrating them using abstractions like
     `tff.federated_broadcast` and `tff.federated_mean` inside a
     `tff.federated_computation`. See, for example, this
-    [orchestration for Federated Averaging](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/simple_fedavg_tff.py#L112-L140).
+    [orchestration for Federated Averaging](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/simple_fedavg/simple_fedavg_tff.py#L112-L140).
 
 1.  An outer driver script that simulates the control logic of a production FL
     system, selecting simulated clients from a dataset and then executing
     federated computations defined in 2. on those clients. For example,
-    [a Federated EMNIST experiment driver](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/emnist_fedavg_main.py).
+    [a Federated EMNIST experiment driver](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/simple_fedavg/emnist_fedavg_main.py).
 
 ## Federated learning datasets
 
@@ -116,17 +116,17 @@ TFF, depending on the desired level of customization.
 
 A minimal stand-alone implementation of the
 [Federated Averaging](https://arxiv.org/abs/1602.05629) algorithm is provided
-[here](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg).
+[here](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/simple_fedavg).
 The code includes
-[TF functions](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/simple_fedavg_tf.py)
+[TF functions](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/simple_fedavg/simple_fedavg_tf.py)
 for local computation,
-[TFF computations](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/simple_fedavg_tff.py)
+[TFF computations](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/simple_fedavg/simple_fedavg_tff.py)
 for orchestration, and a
-[driver script](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/emnist_fedavg_main.py)
+[driver script](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/simple_fedavg/emnist_fedavg_main.py)
 on the EMNIST dataset as an example. These files can easily be adapted for
 customized applciations and algorithmic changes following detailed instructions
 in the
-[README](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/simple_fedavg/README.md).
+[README](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/simple_fedavg/README.md).
 
 A more general implementation of Federated Averaging can be found
 [here](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/algorithms/fed_avg.py).
@@ -236,13 +236,13 @@ One approach is to let each client fine-tune a single global model (trained
 using federated learning) with their local data. This approach has connections
 to meta-learning, see, e.g., [this paper](https://arxiv.org/abs/1909.12488). An
 example of this approach is given in
-[`emnist_p13n_main.py`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/personalization/emnist_p13n_main.py).
+[`emnist_p13n_main.py`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/personalization/emnist_p13n_main.py).
 To explore and compare different personalization strategies, you can:
 
 *   Define a personalization strategy by implementing a `tf.function` that
     starts from an initial model, trains and evaluates a personalized model
     using each client's local datasets. An example is given by
-    [`build_personalize_fn`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/examples/personalization/p13n_utils.py).
+    [`build_personalize_fn`](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/personalization/p13n_utils.py).
 
 *   Define an `OrderedDict` that maps strategy names to the corresponding
     personalization strategies, and use it as the `personalize_fn_dict` argument

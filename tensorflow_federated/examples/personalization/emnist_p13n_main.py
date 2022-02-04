@@ -22,8 +22,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.examples.personalization.p13n_utils import build_personalize_fn
-from tensorflow_federated.python.examples.personalization.p13n_utils import evaluate_fn
+from tensorflow_federated.examples.personalization.p13n_utils import build_personalize_fn
+from tensorflow_federated.examples.personalization.p13n_utils import evaluate_fn
 
 
 def _get_emnist_datasets(

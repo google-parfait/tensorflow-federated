@@ -19,7 +19,6 @@ package_group(
         # The examples and tests in TFF should depend on the public API.
         "-//tensorflow_federated/examples/...",
         "-//tensorflow_federated/experimental/python/examples/...",
-        "-//tensorflow_federated/python/examples/...",
         "-//tensorflow_federated/python/tests/...",
     ],
 )
