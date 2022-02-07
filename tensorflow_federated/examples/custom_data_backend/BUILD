@@ -13,6 +13,8 @@ tff_cc_library_with_tf_deps(
     ],
     deps = [
         "//tensorflow_federated/cc/core/impl/executors:data_backend",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
     ],
 )
