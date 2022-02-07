@@ -16,7 +16,6 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""Tests for data_backend_example_bindings."""
 
 import asyncio
 
