@@ -63,12 +63,14 @@ const tensorflow::SessionOptions& get_session_options() {
 
 struct AcceleratorDevices {
   const int16_t num_gpus = 0;
+  const int16_t num_tpus = 0;
 };
 
 const AcceleratorDevices& GetAcceleratorDevices() {
   static const AcceleratorDevices* accelerator_devices =
       []() -> AcceleratorDevices* {
     int16_t num_gpus = 0;
+    int16_t num_tpus = 0;
     std::vector<std::string> devices;
     tensorflow::Status s =
         tensorflow::DeviceFactory::ListAllPhysicalDevices(&devices);
@@ -89,23 +91,26 @@ const AcceleratorDevices& GetAcceleratorDevices() {
       if (device_type == tensorflow::DEVICE_GPU) {
         LOG_FIRST_N(INFO, 1) << "Found GPU device: [" << device << "]";
         ++num_gpus;
+      } else if (device_type == tensorflow::DEVICE_TPU) {
+        LOG_FIRST_N(INFO, 1) << "Found TPU device: [" << device << "]";
+        ++num_tpus;
       } else {
         LOG_FIRST_N(INFO, 1) << "Skipping device: [" << device << "]";
       }
     }
-    return new AcceleratorDevices{num_gpus};
+    return new AcceleratorDevices{num_gpus, num_tpus};
   }();
   return *accelerator_devices;
 }
 
-void SetDevice(absl::string_view device, tensorflow::GraphDef* graph_def) {
+void SetDevice(absl::string_view device, tensorflow::GraphDef* graph_def,
+               const char* device_type) {
   for (tensorflow::NodeDef& node_pb : *graph_def->mutable_node()) {
     if (!node_pb.device().empty()) {
       VLOG(5) << "Skipping already placed node [" << node_pb.name() << "] ("
               << node_pb.op() << ") on " << node_pb.device();
       continue;
-    } else if (tensorflow::KernelDefAvailable(tensorflow::DEVICE_GPU,
-                                              node_pb)) {
+    } else if (tensorflow::KernelDefAvailable(device_type, node_pb)) {
       VLOG(5) << "Placing node [" << node_pb.name() << "] (" << node_pb.op()
               << ") on device [" << device << "]";
       node_pb.set_device(device.data(), device.size());
@@ -187,6 +192,13 @@ SessionProvider::CreateSession(const uint16_t session_id) {
   }
   tensorflow::GraphDef graph_def = ReplaceContainers(graph_, container);
   const AcceleratorDevices& devices = GetAcceleratorDevices();
+
+  if (devices.num_gpus > 0 && devices.num_tpus > 0) {
+    return absl::UnimplementedError(
+        "Can't create a TensorFlow session for hardware with both GPUs and "
+        "TPUs.");
+  }
+
   if (devices.num_gpus > 0) {
     // If we have GPUs, round robin the session by explicitly setting the
     // `device` attr of the GPU-capable kernels.
@@ -195,7 +207,17 @@ SessionProvider::CreateSession(const uint16_t session_id) {
         absl::StrCat("/device:", tensorflow::DEVICE_GPU, ":", device_id);
     VLOG(2) << "Pinning function [" << function_id_ << "] session ["
             << session_id << "] to device [" << device << "]";
-    SetDevice(device, &graph_def);
+    SetDevice(device, &graph_def, tensorflow::DEVICE_GPU);
+  }
+  if (devices.num_tpus > 0) {
+    // If we have TPUs, round robin the session by explicitly setting the
+    // `device` attr of the TPU-capable kernels.
+    const uint16_t device_id = session_id % devices.num_tpus;
+    const std::string& device =
+        absl::StrCat("/device:", tensorflow::DEVICE_TPU, ":", device_id);
+    VLOG(2) << "Pinning function [" << function_id_ << "] session ["
+            << session_id << "] to device [" << device << "]";
+    SetDevice(device, &graph_def, tensorflow::DEVICE_TPU);
   }
   auto status = session->Create(graph_def);
   if (!status.ok()) {
