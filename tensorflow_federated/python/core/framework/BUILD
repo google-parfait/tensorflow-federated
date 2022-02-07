@@ -44,6 +44,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:ingestable_base",
         "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
         "//tensorflow_federated/python/core/impl/executors:remote_executor",
+        "//tensorflow_federated/python/core/impl/executors:remote_executor_stub",
         "//tensorflow_federated/python/core/impl/executors:thread_delegating_executor",
         "//tensorflow_federated/python/core/impl/executors:transforming_executor",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
