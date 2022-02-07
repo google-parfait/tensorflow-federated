@@ -342,7 +342,6 @@ py_test(
     deps = [
         ":model",
         ":model_utils",
-        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",

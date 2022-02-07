@@ -20,9 +20,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning/metrics:finalizer",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
@@ -38,7 +35,9 @@ py_test(
     deps = [
         ":functional",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

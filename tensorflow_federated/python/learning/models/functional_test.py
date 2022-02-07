@@ -18,7 +18,9 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
+from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
@@ -273,8 +275,6 @@ class FunctionalTest(tf.test.TestCase):
     self.assertLess(loss, 0.1)
     self.assertAllClose(
         tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
-    self.assertAllClose(tff_model.report_local_outputs(),
-                        collections.OrderedDict(loss=[1066.19628, 1250.0]))
     self.assertAllClose(tff_model.report_local_unfinalized_metrics(),
                         collections.OrderedDict(loss=[1066.19628, 1250.0]))
 
@@ -317,16 +317,6 @@ class FunctionalTest(tf.test.TestCase):
     self.assertLess(loss, 0.1)
     self.assertAllClose(
         tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
-    local_outputs = tff_model.report_local_outputs()
-    self.assertAllClose(
-        local_outputs,
-        collections.OrderedDict(
-            # The model uses mean squred error as `loss`, so the other two
-            # metrics (`mean_squared_error` and `root_mean_squared_error`)
-            # should have the same state as `loss`.
-            loss=[1066.19628, 1250.0],
-            mean_squared_error=[1066.19628, 1250.0],
-            root_mean_squared_error=[1066.19628, 1250.0]))
     self.assertAllClose(
         tff_model.report_local_unfinalized_metrics(),
         collections.OrderedDict(
@@ -353,7 +343,12 @@ class FunctionalTest(tf.test.TestCase):
         loss=[1.0, 2.0], mse=[1.0, 2.0], mae=[1.0, 2.0])
     client_2_local_outputs = collections.OrderedDict(
         loss=[2.0, 4.0], mse=[2.0, 2.0], mae=[1.0, 6.0])
-    aggregated_metrics = tff_model.federated_output_computation(
+    metrics_aggregator = aggregator.sum_then_finalize
+    unfinalized_metrics_type = type_conversions.type_from_tensors(
+        tff_model.report_local_unfinalized_metrics())
+    metrics_aggregation_computation = metrics_aggregator(
+        tff_model.metric_finalizers(), unfinalized_metrics_type)
+    aggregated_metrics = metrics_aggregation_computation(
         [client_1_local_outputs, client_2_local_outputs])
     self.assertAllClose(
         aggregated_metrics,

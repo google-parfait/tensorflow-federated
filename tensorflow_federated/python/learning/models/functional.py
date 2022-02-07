@@ -35,9 +35,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import finalizer
 from tensorflow_federated.python.tensorflow_libs import variable_utils
@@ -203,23 +200,6 @@ class _ModelFromFunctional(model_lib.Model):
         raise ValueError(
             f'{duplicates} appeared in the metric names more than once, '
             'each metric should have a unique name.')
-    # Construct the `federated_output_computation` property.
-    local_outputs_type = tf.nest.map_structure(tf.TensorSpec.from_tensor,
-                                               self.report_local_outputs())
-
-    @computations.federated_computation(
-        computation_types.at_clients(local_outputs_type))
-    def sum_then_finalize(local_outputs):
-      sum_outputs = intrinsics.federated_sum(local_outputs)
-      finalized_values = collections.OrderedDict()
-      for metric_name, metric_finalizer in self.metric_finalizers().items():
-        finalizer_computation = computations.tf_computation(
-            metric_finalizer, local_outputs_type[metric_name])
-        finalized_values[metric_name] = intrinsics.federated_map(
-            finalizer_computation, sum_outputs[metric_name])
-      return intrinsics.federated_zip(finalized_values)
-
-    self._federated_output_computation = sum_then_finalize
 
   @property
   def trainable_variables(self) -> Tuple[tf.Variable, ...]:
@@ -268,7 +248,13 @@ class _ModelFromFunctional(model_lib.Model):
 
   @tf.function
   def report_local_outputs(self):
-    return self.report_local_unfinalized_metrics()
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` are deprecated and will be removed '
+        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers` instead. The cross-client metrics aggregation '
+        'should be specified as the `metrics_aggregator` argument when you '
+        'build a training process or evaluation computation using this model.')
 
   @tf.function
   def report_local_unfinalized_metrics(
@@ -293,7 +279,13 @@ class _ModelFromFunctional(model_lib.Model):
 
   @property
   def federated_output_computation(self) -> computation_base.Computation:
-    return self._federated_output_computation
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` are deprecated and will be removed '
+        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers` instead. The cross-client metrics aggregation '
+        'should be specified as the `metrics_aggregator` argument when you '
+        'build a training process or evaluation computation using this model.')
 
 
 def model_from_functional(
