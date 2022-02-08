@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import collections
+import dataclasses
+from typing import Any
 
 import attr
 import numpy as np
@@ -368,6 +370,20 @@ class GraphUtilsTest(test_case.TestCase):
     class TestFoo(object):
       x = attr.ib()
       y = attr.ib()
+
+    graph = tf.compat.v1.get_default_graph()
+    type_spec, _ = tensorflow_utils.capture_result_from_graph(
+        TestFoo(tf.constant(1), tf.constant(True)), graph)
+    self.assertEqual(str(type_spec), '<x=int32,y=bool>')
+    self.assertIs(type_spec.python_container, TestFoo)
+
+  @test_utils.graph_mode_test
+  def test_capture_result_with_dataclass_of_constants(self):
+
+    @dataclasses.dataclass
+    class TestFoo(object):
+      x: Any
+      y: Any
 
     graph = tf.compat.v1.get_default_graph()
     type_spec, _ = tensorflow_utils.capture_result_from_graph(

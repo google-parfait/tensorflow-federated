@@ -15,6 +15,7 @@
 
 import builtins
 import collections
+import dataclasses
 
 import attr
 
@@ -135,6 +136,26 @@ def type_string(type_spec):
 def is_attrs(value):
   """Determines whether `value` is an attrs decorated class or instance of."""
   return attr.has(value)
+
+
+def check_attrs(value):
+  """Checks that `value` is an attrs decorated class or an instance thereof."""
+  if not is_attrs(value):
+    raise TypeError('Expected an instance of an attrs decorated class, or an '
+                    'attrs-decorated class type; found a value of type '
+                    f'{type(value)}')
+
+
+def is_dataclass(value):
+  """Determines whether `value` is a Python dataclass or instance thereof."""
+  return dataclasses.is_dataclass(value)
+
+
+def check_dataclass(value):
+  """Checks that `value` is a Python dataclass or an instance thereof."""
+  if not is_dataclass(value):
+    raise TypeError('Expected an instance of a Python dataclass, or a '
+                    f'dataclass type; found a value of type {type(value)}')
 
 
 def is_named_tuple(value):

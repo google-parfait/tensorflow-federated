@@ -23,6 +23,26 @@ py_library(
 )
 
 py_library(
+    name = "named_containers",
+    srcs = ["named_containers.py"],
+    srcs_version = "PY3",
+    deps = [":py_typecheck"],
+)
+
+py_test(
+    name = "named_containers_test",
+    size = "small",
+    srcs = ["named_containers_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":named_containers",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+    ],
+)
+
+py_library(
     name = "golden",
     testonly = True,
     srcs = ["golden.py"],

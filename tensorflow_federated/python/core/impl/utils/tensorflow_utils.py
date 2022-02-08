@@ -23,11 +23,11 @@ import itertools
 import typing
 from typing import Any, Iterable, Optional, Tuple, Type
 
-import attr
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import named_containers
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
@@ -269,10 +269,11 @@ def capture_result_from_graph(
     # pylint: enable=protected-access
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif py_typecheck.is_attrs(result):
-    name_value_pairs = attr.asdict(
-        result, dict_factory=collections.OrderedDict, recurse=False)
-    return _get_bindings_for_elements(name_value_pairs.items(), graph,
-                                      type(result))
+    name_value_pairs = named_containers.attrs_class_to_odict(result).items()
+    return _get_bindings_for_elements(name_value_pairs, graph, type(result))
+  elif py_typecheck.is_dataclass(result):
+    name_value_pairs = named_containers.dataclass_to_odict(result).items()
+    return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif isinstance(result, structure.Struct):
     return _get_bindings_for_elements(
         structure.to_elements(result), graph, None)
