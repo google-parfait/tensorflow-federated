@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import itertools
 from unittest import mock
 
@@ -151,8 +150,7 @@ class FedProxConstructionTest(test_case.TestCase, parameterized.TestCase):
           model_aggregator=model_aggregator)
 
   def test_weighted_fed_prox_with_only_secure_aggregation(self):
-    model_fn = functools.partial(
-        model_examples.LinearRegression, use_metrics_aggregator=True)
+    model_fn = model_examples.LinearRegression
     learning_process = fed_prox.build_weighted_fed_prox(
         model_fn,
         proximal_strength=1.0,
@@ -164,8 +162,7 @@ class FedProxConstructionTest(test_case.TestCase, parameterized.TestCase):
         learning_process.next)
 
   def test_unweighted_fed_prox_with_only_secure_aggregation(self):
-    model_fn = functools.partial(
-        model_examples.LinearRegression, use_metrics_aggregator=True)
+    model_fn = model_examples.LinearRegression
     learning_process = fed_prox.build_unweighted_fed_prox(
         model_fn,
         proximal_strength=1.0,

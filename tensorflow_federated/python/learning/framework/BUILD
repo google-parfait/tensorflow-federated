@@ -111,7 +111,6 @@ py_library(
         "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@absl_py//absl/logging",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

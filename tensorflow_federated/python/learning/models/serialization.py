@@ -68,21 +68,12 @@ class _LoadedSavedModel(model_lib.Model):
           'build a training process or evaluation computation using this model.'
       )
 
-    if hasattr(loaded_module, 'report_local_outputs'):
-      self._report_local_outputs = loaded_module.report_local_outputs
-    else:
-      self._report_local_outputs = raise_not_implemented_error
+    self._report_local_outputs = raise_not_implemented_error
 
     self._input_spec = _deserialize_type_spec(
         loaded_module.serialized_input_spec)
 
-    if hasattr(loaded_module, 'serialized_federated_output_computation'):
-      self._federated_output_computation = computation_serialization.deserialize_computation(
-          computation_pb2.Computation.FromString(
-              loaded_module.serialized_federated_output_computation.read_value(
-              ).numpy()))
-    else:
-      self._federated_output_computation = raise_not_implemented_error
+    self._federated_output_computation = raise_not_implemented_error
 
     self._report_local_unfinalized_metrics = loaded_module.report_local_unfinalized_metrics
     self._serialized_metric_finalizers = loaded_module.serialized_metric_finalizers
@@ -223,8 +214,6 @@ def _unflatten_fn(fn, serialized_type_variable, python_container=None):
   return tf.function(structured_output_fn)
 
 
-# TODO(b/202027089): Remove this try/except logic once all models do not
-# implement `report_local_outputs` and `federated_output_computation`.
 def save(model: model_lib.Model, path: str, input_type=None) -> None:
   """Serializes `model` as a TensorFlow SavedModel to `path`.
 
@@ -306,11 +295,6 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
   m.predict_on_batch_inference_type_spec = tf.Variable(
       predict_on_batch_inference[1].SerializeToString(deterministic=True),
       trainable=False)
-  # Serialize the report_local_outputs tf.function.
-  try:
-    m.report_local_outputs = model.report_local_outputs.get_concrete_function()
-  except NotImplementedError:
-    m.report_local_outputs = None
 
   # Serialize the report_local_unfinalized_metrics tf.function.
   m.report_local_unfinalized_metrics = (
@@ -339,14 +323,6 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
           computation_types.to_type(
               model.input_spec)).SerializeToString(deterministic=True),
       trainable=False)
-  try:
-    m.serialized_federated_output_computation = tf.Variable(
-        computation_serialization.serialize_computation(
-            model.federated_output_computation).SerializeToString(
-                deterministic=True),
-        trainable=False)
-  except NotImplementedError:
-    m.serialized_federated_output_computation = None
 
   _save_tensorflow_module(m, path)
 

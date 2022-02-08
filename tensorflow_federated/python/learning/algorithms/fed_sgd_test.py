@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import functools
 from unittest import mock
 
 from absl.testing import parameterized
@@ -131,8 +130,7 @@ class FederatedSGDTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(mock_model_fn.call_count, 3)
 
   def test_no_unsecure_aggregation_with_secure_aggregator(self):
-    model_fn = functools.partial(
-        model_examples.LinearRegression, use_metrics_aggregator=True)
+    model_fn = model_examples.LinearRegression
     learning_process = fed_sgd.build_fed_sgd(
         model_fn,
         model_aggregator=model_update_aggregator.secure_aggregator(),
