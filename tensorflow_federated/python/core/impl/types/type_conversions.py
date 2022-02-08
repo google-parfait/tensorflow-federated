@@ -20,10 +20,10 @@
 import collections
 from typing import Any, Callable, Optional, Type
 
-import attr
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import named_containers
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -87,12 +87,15 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
         for k, v in structure.iter_elements(arg)
     ])
   elif py_typecheck.is_attrs(arg):
-    items = attr.asdict(
-        arg, dict_factory=collections.OrderedDict, recurse=False)
+    items = named_containers.attrs_class_to_odict(arg).items()
     return computation_types.StructWithPythonType(
-        [(k, infer_type(v)) for k, v in items.items()], type(arg))
+        [(k, infer_type(v)) for k, v in items], type(arg))
+  elif py_typecheck.is_dataclass(arg):
+    items = named_containers.dataclass_to_odict(arg).items()
+    return computation_types.StructWithPythonType(
+        [(k, infer_type(v)) for k, v in items], type(arg))
   elif py_typecheck.is_named_tuple(arg):
-    # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather a
+    # In Python 3.8 and later `_asdict` no longer return OrderedDict, rather a
     # regular `dict`.
     items = collections.OrderedDict(arg._asdict())
     return computation_types.StructWithPythonType(
@@ -482,6 +485,7 @@ def type_to_py_container(value, type_spec):
 
   if (py_typecheck.is_named_tuple(container_type) or
       py_typecheck.is_attrs(container_type) or
+      py_typecheck.is_dataclass(container_type) or
       container_type is tf.SparseTensor):
     # The namedtuple and attr.s class constructors cannot interpret a list of
     # (name, value) tuples; instead call constructor using kwargs. Note that
