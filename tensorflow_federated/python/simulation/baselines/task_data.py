@@ -76,10 +76,10 @@ class BaselineTaskDatasets(object):
 
     Args:
       train_data: A `tff.simulation.datasets.ClientData` for training.
-      test_data: An optional `tff.simulation.datasets.ClientData` for computing
-        test metrics.
-      validation_data: A `tff.simulation.datasets.ClientData` for computing
-        validation metrics.
+      test_data: A `tff.simulation.datasets.ClientData` or a `tf.data.Dataset`
+        for computing test metrics.
+      validation_data: An optional `tff.simulation.datasets.ClientData` or a
+        `tf.data.Dataset` for computing validation metrics.
       train_preprocess_fn: An optional callable accepting and returning a
         `tf.data.Dataset`, used to perform dataset preprocessing for training.
         If set to `None`, we use the identity map for all train preprocessing.
