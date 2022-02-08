@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import collections
+import dataclasses
+from typing import Any, OrderedDict
 
 from absl.testing import parameterized
 import attr
@@ -208,6 +210,20 @@ class InferTypeTest(parameterized.TestCase, test_case.TestCase):
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, collections.OrderedDict)
 
+  def test_with_nested_dataclass(self):
+
+    @dataclasses.dataclass
+    class TestDataclass(object):
+      a: int
+      b: OrderedDict[str, Any]
+
+    t = type_conversions.infer_type(
+        TestDataclass(a=0, b=collections.OrderedDict(x=True, y=0.0)))
+    self.assertEqual(str(t), '<a=int32,b=<x=bool,y=float32>>')
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
+    self.assertIs(t.python_container, TestDataclass)
+    self.assertIs(t.b.python_container, collections.OrderedDict)
+
   def test_with_nested_attrs_class(self):
 
     @attr.s
@@ -215,11 +231,12 @@ class InferTypeTest(parameterized.TestCase, test_case.TestCase):
       a = attr.ib()
       b = attr.ib()
 
-    t = type_conversions.infer_type(TestAttrClass(a=0, b={'x': True, 'y': 0.0}))
+    t = type_conversions.infer_type(
+        TestAttrClass(a=0, b=collections.OrderedDict(x=True, y=0.0)))
     self.assertEqual(str(t), '<a=int32,b=<x=bool,y=float32>>')
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, TestAttrClass)
-    self.assertIs(t.b.python_container, dict)
+    self.assertIs(t.b.python_container, collections.OrderedDict)
 
   def test_with_dataset_list(self):
     t = type_conversions.infer_type(

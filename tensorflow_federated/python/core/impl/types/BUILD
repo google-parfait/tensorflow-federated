@@ -134,6 +134,7 @@ py_library(
     deps = [
         ":computation_types",
         ":typed_object",
+        "//tensorflow_federated/python/common_libs:named_containers",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "@org_tensorflow//tensorflow:tensorflow_py",
