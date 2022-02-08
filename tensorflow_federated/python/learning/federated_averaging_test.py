@@ -26,10 +26,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
@@ -54,9 +51,8 @@ class FederatedAveragingClientTest(test_case.TestCase, parameterized.TestCase):
     # as it adds the batch dimension which is expected by the model.
     return dataset.repeat(2).batch(3)
 
-  def create_model(self, use_metrics_aggregator=False):
-    return model_examples.LinearRegression(
-        feature_dim=2, use_metrics_aggregator=use_metrics_aggregator)
+  def create_model(self):
+    return model_examples.LinearRegression(feature_dim=2)
 
   def initial_weights(self):
     return model_utils.ModelWeights(
@@ -64,22 +60,18 @@ class FederatedAveragingClientTest(test_case.TestCase, parameterized.TestCase):
         non_trainable=[0.0],
     )
 
-  @parameterized.named_parameters((  # pylint: disable=g-complex-comprehension
-      named_params[0][0] + '_' + named_params[1][0], *named_params[0][1:],
-      named_params[1][1]) for named_params in itertools.product(
-          [('non-simulation_noclip', True, False, {},
-            0.1), ('unweighted_non-simulation_noclip', False, False, {},
-                   0.1), ('simulation_noclip', True, True, {}, 0.1),
-           ('non-simulation_clipnorm', True, False, {
-               'clipnorm': 0.2
-           }, 0.05
-           ), ('non-simulation_clipvalue', True, False, {
-               'clipvalue': 0.1
-           }, 0.02)], [('use_metrics_aggregator',
-                        True), ('not_use_metrics_aggregator', False)]))
+  @parameterized.named_parameters(
+      ('non-simulation_noclip', True, False, {}, 0.1),
+      ('unweighted_non-simulation_noclip', False, False, {}, 0.1),
+      ('simulation_noclip', True, True, {}, 0.1),
+      ('non-simulation_clipnorm', True, False, {
+          'clipnorm': 0.2
+      }, 0.05), ('non-simulation_clipvalue', True, False, {
+          'clipvalue': 0.1
+      }, 0.02))
   def test_client_tf(self, weighted, simulation, optimizer_kwargs,
-                     expected_norm, use_metrics_aggregator):
-    model = self.create_model(use_metrics_aggregator=use_metrics_aggregator)
+                     expected_norm):
+    model = self.create_model()
     dataset = self.create_dataset()
     if weighted:
       client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
@@ -98,21 +90,11 @@ class FederatedAveragingClientTest(test_case.TestCase, parameterized.TestCase):
     if weighted:
       self.assertEqual(client_outputs.weights_delta_weight, 8.0)
     self.assertEqual(client_outputs.optimizer_output['num_examples'], 8)
-    if use_metrics_aggregator:
-      self.assertDictContainsSubset({'num_examples': 8},
-                                    client_outputs.model_output)
-      self.assertBetween(client_outputs.model_output['loss'][0],
-                         np.finfo(np.float32).eps, 10.0)
-      self.assertEqual(client_outputs.model_output['loss'][1], 8.0)
-    else:
-      self.assertDictContainsSubset(
-          {
-              'num_examples': 8,
-              'num_examples_float': 8.0,
-              'num_batches': 3,
-          }, client_outputs.model_output)
-      self.assertBetween(client_outputs.model_output['loss'],
-                         np.finfo(np.float32).eps, 10.0)
+    self.assertDictContainsSubset({'num_examples': 8},
+                                  client_outputs.model_output)
+    self.assertBetween(client_outputs.model_output['loss'][0],
+                       np.finfo(np.float32).eps, 10.0)
+    self.assertEqual(client_outputs.model_output['loss'][1], 8.0)
 
   def test_client_tf_custom_delta_weight(self):
     model = self.create_model()
@@ -187,30 +169,6 @@ class FederatedAveragingTest(test_case.TestCase, parameterized.TestCase):
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 
-  # TODO(b/202027089): Remove this test once the try/except logic is gone.
-  @test_utils.skip_test_for_multi_gpu
-  def test_custom_metrics_aggregator_does_not_get_ignored(self):
-
-    def aggregate_nothing(metric_finaliers, local_unfinalized_metrics_type):
-      del metric_finaliers  # Unused.
-
-      @computations.federated_computation(
-          computation_types.at_clients(local_unfinalized_metrics_type))
-      def aggregator_computation(client_local_unfinalized_metrics):
-        del client_local_unfinalized_metrics  # Unused.
-        return collections.OrderedDict()
-
-      return aggregator_computation
-
-    # Constructs a model that implements the two old attributes.
-    model_fn = lambda: model_examples.LinearRegression(  # pylint: disable=g-long-lambda
-        use_metrics_aggregator=False)
-    fed_avg = federated_averaging.build_federated_averaging_process(
-        model_fn,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
-        metrics_aggregator=aggregate_nothing)
-    self.assertEqual(fed_avg.next.type_signature.result[1].member.train,
-                     computation_types.to_type(collections.OrderedDict()))
 
 if __name__ == '__main__':
   test_case.main()

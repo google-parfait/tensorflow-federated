@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import itertools
 from unittest import mock
 
@@ -147,8 +146,7 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
           client_optimizer_fn=tf.keras.optimizers.SGD)
 
   def test_construction_with_only_secure_aggregation(self):
-    model_fn = functools.partial(
-        model_examples.LinearRegression, use_metrics_aggregator=True)
+    model_fn = model_examples.LinearRegression
     learning_process = fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
         model_fn,
         client_learning_rate_fn=lambda x: 0.5,

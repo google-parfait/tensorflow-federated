@@ -33,15 +33,10 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
         y=tf.constant([[0.0], [1.0]]))
 
     output = model.forward_pass(batch)
-    metrics = model.report_local_outputs()
 
     self.assertAllEqual(output.predictions, [[0.0], [0.0]])
     # The residuals are (0., 1.), so average loss is 0.5 * 0.5 * 1.
     self.assertEqual(output.loss, 0.25)
-    self.assertEqual(
-        metrics,
-        collections.OrderedDict(
-            num_examples=2, num_examples_float=2.0, num_batches=1, loss=0.25))
     unfinalized_metrics = model.report_local_unfinalized_metrics()
     self.assertEqual(unfinalized_metrics,
                      collections.OrderedDict(loss=[0.5, 2.0], num_examples=2))
@@ -61,22 +56,17 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
       @tf.function
       def _train(batch):
         batch_output = model.forward_pass(batch)
-        local_output = model.report_local_outputs()
         unfinalized_metrics = model.report_local_unfinalized_metrics()
-        return batch_output, local_output, unfinalized_metrics
+        return batch_output, unfinalized_metrics
 
       return _train(
           batch=collections.OrderedDict(
               x=tf.constant([[0.0, 0.0], [1.0, 1.0]]),
               y=tf.constant([[0.0], [1.0]])))
 
-    batch_output, local_output, unfinalized_metrics = forward_pass_and_output()
+    batch_output, unfinalized_metrics = forward_pass_and_output()
     self.assertAllEqual(batch_output.predictions, [[0.0], [0.0]])
     self.assertEqual(batch_output.loss, 0.25)
-    self.assertEqual(
-        local_output,
-        collections.OrderedDict(
-            num_examples=2, num_examples_float=2.0, num_batches=1, loss=0.25))
     self.assertEqual(unfinalized_metrics,
                      collections.OrderedDict(loss=[0.5, 2.0], num_examples=2))
     model = model_examples.LinearRegression(feature_dim)
@@ -89,7 +79,7 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
     # TODO(b/122114585): Add tests for model.federated_output_computation.
 
   def test_raise_not_implemented_error(self):
-    model = model_examples.LinearRegression(use_metrics_aggregator=True)
+    model = model_examples.LinearRegression()
     with self.assertRaisesRegex(NotImplementedError, 'Do not implement'):
       model.report_local_outputs()
     with self.assertRaisesRegex(NotImplementedError, 'Do not implement'):
