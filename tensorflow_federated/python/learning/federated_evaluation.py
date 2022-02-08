@@ -234,9 +234,6 @@ def build_federated_evaluation(
       ])
     model_metrics = metrics_aggregation_computation(
         client_outputs.local_outputs)
-    statistics = collections.OrderedDict(
-        num_examples=intrinsics.federated_sum(client_outputs.num_examples))
-    return intrinsics.federated_zip(
-        collections.OrderedDict(eval=model_metrics, stat=statistics))
+    return intrinsics.federated_zip(collections.OrderedDict(eval=model_metrics))
 
   return server_eval
