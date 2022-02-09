@@ -104,7 +104,6 @@ py_library(
         "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@absl_py//absl/logging",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -122,10 +121,7 @@ py_cpu_gpu_test(
         ":model_examples",
         ":model_update_aggregator",
         ":model_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
-        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "@absl_py//absl/testing:parameterized",
@@ -149,7 +145,6 @@ py_library(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/metrics:aggregator",
-        "@absl_py//absl/logging",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -240,9 +235,6 @@ py_library(
     deps = [
         ":model",
         "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

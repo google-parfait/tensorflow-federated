@@ -24,9 +24,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.learning import federated_averaging
@@ -161,13 +159,12 @@ def _test_model_fn(keras_model_fn, loss_fn, test_input_spec):
 class _TestModel(model_lib.Model):
   """Test model that returns different signatures when `training` value changes."""
 
-  def __init__(self, use_metrics_aggregator=False):
+  def __init__(self):
     input_tensor = tf.keras.layers.Input(shape=(3,))
     logits = tf.keras.layers.Dense(5,)(input_tensor)
     predictions = tf.keras.layers.Softmax()(logits)
     self._model = tf.keras.Model(
         inputs=[input_tensor], outputs=[logits, predictions])
-    self._use_metrics_aggregator = use_metrics_aggregator
 
   @tf.function
   def predict_on_batch(self, x, training=True):
@@ -212,17 +209,13 @@ class _TestModel(model_lib.Model):
 
   @tf.function
   def report_local_outputs(self):
-    if self._use_metrics_aggregator:
-      raise NotImplementedError(
-          'Do not implement. `report_local_outputs` and '
-          '`federated_output_computation` are deprecated and will be removed '
-          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers` instead. The cross-client metrics aggregation '
-          'should be specified as the `metrics_aggregator` argument when you '
-          'build a training process or evaluation computation using this model.'
-      )
-    else:
-      return collections.OrderedDict()
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` are deprecated and will be removed '
+        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers` instead. The cross-client metrics aggregation '
+        'should be specified as the `metrics_aggregator` argument when you '
+        'build a training process or evaluation computation using this model.')
 
   @tf.function
   def report_local_unfinalized_metrics(self):
@@ -233,30 +226,18 @@ class _TestModel(model_lib.Model):
 
   @property
   def federated_output_computation(self):
-    if self._use_metrics_aggregator:
-      raise NotImplementedError(
-          'Do not implement. `report_local_outputs` and '
-          '`federated_output_computation` are deprecated and will be removed '
-          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers` instead. The cross-client metrics aggregation '
-          'should be specified as the `metrics_aggregator` argument when you '
-          'build a training process or evaluation computation using this model.'
-      )
-    else:
-
-      @computations.federated_computation(computation_types.at_clients(()))
-      def noop(empty_tuple):
-        del empty_tuple  # Unused.
-        return intrinsics.federated_value((), placements.SERVER)
-
-      return noop
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` are deprecated and will be removed '
+        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers` instead. The cross-client metrics aggregation '
+        'should be specified as the `metrics_aggregator` argument when you '
+        'build a training process or evaluation computation using this model.')
 
 
 _TEST_MODEL_FNS = [
     ('linear_regression', model_examples.LinearRegression),
-    ('inference_training_diff_not_use_metrics_aggregator', _TestModel),
-    ('inference_training_diff_use_metrics_aggregator',
-     lambda: _TestModel(use_metrics_aggregator=True)),
+    ('inference_training_diff', _TestModel),
     ('keras_linear_regression_tuple_input',
      _test_model_fn(
          model_examples.build_linear_regression_keras_sequential_model,

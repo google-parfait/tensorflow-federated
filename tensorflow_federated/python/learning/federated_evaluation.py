@@ -21,7 +21,6 @@
 import collections
 from typing import Callable, Optional
 
-from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
@@ -44,8 +43,7 @@ def build_local_evaluation(
     model_fn: Callable[[], model_lib.Model],
     model_weights_type: computation_types.StructType,
     batch_type: computation_types.Type,
-    use_experimental_simulation_loop: bool = False,
-    user_provide_metrics_aggregator: bool = False
+    use_experimental_simulation_loop: bool = False
 ) -> computation_base.Computation:
   """Builds the local TFF computation for evaluation of the given model.
 
@@ -69,12 +67,6 @@ def build_local_evaluation(
     batch_type: The type of one entry in the dataset.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation.
-    user_provide_metrics_aggregator: If True, the model output is given by
-      `model.report_local_unfinalized_metrics()`. If False, and if
-      `model.report_local_outputs` is implemented (this method is deprecated and
-      will be removed in 2022Q1), the model output is given by
-      `model.report_local_outputs()`; otherwise, the model output is given by
-      `model.report_local_unfinalized_metrics()`.
 
   Returns:
     A federated computation (an instance of `tff.Computation`) that accepts
@@ -105,30 +97,13 @@ def build_local_evaluation(
         use_experimental_simulation_loop)
     num_examples = dataset_reduce_fn(reduce_fn, dataset,
                                      lambda: tf.zeros([], dtype=tf.int64))
-    # TODO(b/202027089): Remove this try/except logic once all models do not
-    # implement `report_local_outputs` and `federated_output_computation`.
-    if user_provide_metrics_aggregator:
-      model_output = model.report_local_unfinalized_metrics()
-    else:
-      try:
-        model_output = model.report_local_outputs()
-        logging.warning(
-            'DeprecationWarning: `report_local_outputs` and '
-            '`federated_output_computation` are deprecated and will be removed '
-            'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-            '`metric_finalizers` instead. The cross-client metrics aggregation '
-            'should be specified as the `metrics_aggregator` argument when you '
-            'build a training process or evaluation computation.')
-      except NotImplementedError:
-        model_output = model.report_local_unfinalized_metrics()
+    model_output = model.report_local_unfinalized_metrics()
     return collections.OrderedDict(
         local_outputs=model_output, num_examples=num_examples)
 
   return client_eval
 
 
-# TODO(b/202027089): Remove the note on `metrics_aggregator` once all models do
-# not implement `report_local_outputs` and `federated_output_computation`.
 def build_federated_evaluation(
     model_fn: Callable[[], model_lib.Model],
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
@@ -155,15 +130,7 @@ def build_federated_evaluation(
       type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
       returns a federated TFF computation of the following type signature
       `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. If set,
-      use the provided `metrics_aggregator`. If `None` and `model_fn` implements
-      `federated_output_computation` and `report_local_outputs` (these two
-      methods are deprecated and will be removed in 2022Q1), then
-      `federated_output_computation` is used to aggregate the metrics. If `None`
-      and `model_fn` does not implement `federated_output_computation` and
-      `report_local_outputs`, uses `tff.learning.metrics.sum_then_finalize`,
-      which returns a federated TFF computation that sums the unfinalized
-      metrics from `CLIENTS`, and then applies the corresponding metric
-      finalizers at `SERVER`.
+      use the provided `metrics_aggregator`.
     use_experimental_simulation_loop: Controls the reduce loop function for
       input dataset. An experimental reduce loop is used for simulation.
 
@@ -190,26 +157,12 @@ def build_federated_evaluation(
     batch_type = computation_types.to_type(model.input_spec)
     unfinalized_metrics_type = type_conversions.type_from_tensors(
         model.report_local_unfinalized_metrics())
-    # TODO(b/202027089): Remove this try/except logic once all models do not
-    # implement `report_local_outputs` and `federated_output_computation`.
     if metrics_aggregator is not None:
       metrics_aggregation_computation = metrics_aggregator(
           model.metric_finalizers(), unfinalized_metrics_type)
     else:
-      try:
-        metrics_aggregation_computation = model.federated_output_computation
-        logging.warning(
-            'DeprecationWarning: `report_local_outputs` and '
-            '`federated_output_computation` are deprecated and will be removed '
-            'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-            '`metric_finalizers` instead. The cross-client metrics aggregation '
-            'should be specified as the `metrics_aggregator` argument when you '
-            'build a training process or evaluation computation.')
-      except NotImplementedError:
-        metrics_aggregation_computation = aggregator.sum_then_finalize(
-            model.metric_finalizers(), unfinalized_metrics_type)
-
-  user_provide_metrics_aggregator = metrics_aggregator is not None
+      metrics_aggregation_computation = aggregator.sum_then_finalize(
+          model.metric_finalizers(), unfinalized_metrics_type)
 
   @computations.federated_computation(
       computation_types.at_server(model_weights_type),
@@ -217,8 +170,7 @@ def build_federated_evaluation(
   def server_eval(server_model_weights, federated_dataset):
     client_eval = build_local_evaluation(model_fn, model_weights_type,
                                          batch_type,
-                                         use_experimental_simulation_loop,
-                                         user_provide_metrics_aggregator)
+                                         use_experimental_simulation_loop)
     if broadcast_process is not None:
       # TODO(b/179091838): Zip the measurements from the broadcast_process with
       # the result of `model.federated_output_computation` below to avoid

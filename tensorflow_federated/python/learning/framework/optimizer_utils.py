@@ -22,7 +22,6 @@ import abc
 import collections
 from typing import Callable, List, Optional, Tuple, Union
 
-from absl import logging
 import attr
 import numpy as np
 import tensorflow as tf
@@ -249,8 +248,6 @@ def _build_initialize_computation(
   return initialize_computation
 
 
-# TODO(b/202027089): Remove the note on `metrics_aggregator` once all models do
-# not implement `report_local_outputs` and `federated_output_computation`.
 def _build_one_round_computation(
     *,
     model_fn: _ModelConstructor,
@@ -287,15 +284,7 @@ def _build_one_round_computation(
       type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
       returns a federated TFF computation of the following type signature
       `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. If set,
-      use the provided `metrics_aggregator`. If `None` and `model_fn` implements
-      `federated_output_computation` and `report_local_outputs` (these two
-      methods are deprecated and will be removed in 2022Q1), then
-      `federated_output_computation` is used to aggregate the metrics. If `None`
-      and `model_fn` does not implement `federated_output_computation` and
-      `report_local_outputs`, uses `tff.learning.metrics.sum_then_finalize`,
-      which returns a federated TFF computation that sums the unfinalized
-      metrics from `CLIENTS`, and then applies the corresponding metric
-      finalizers at `SERVER`.
+      use the provided `metrics_aggregator`.
 
   Returns:
     A `tff.Computation` that initializes the process. The computation takes
@@ -321,8 +310,6 @@ def _build_one_round_computation(
         lambda v: tf.TensorSpec(v.shape, v.dtype), model_weights.trainable)
     optimizer_state_type = type_conversions.type_from_tensors(
         optimizer.initialize(trainable_tensor_specs))
-    # TODO(b/202027089): Remove this try/except logic once all models do not
-    # implement `report_local_outputs` and `federated_output_computation`.
     unfinalized_metrics_type = type_conversions.type_from_tensors(
         whimsy_model_for_metadata.report_local_unfinalized_metrics())
 
@@ -331,20 +318,9 @@ def _build_one_round_computation(
           whimsy_model_for_metadata.metric_finalizers(),
           unfinalized_metrics_type)
     else:
-      try:
-        metrics_aggregation_computation = (
-            whimsy_model_for_metadata.federated_output_computation)
-        logging.warning(
-            'DeprecationWarning: `report_local_outputs` and '
-            '`federated_output_computation` are deprecated and will be removed '
-            'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-            '`metric_finalizers` instead. The cross-client metrics aggregation '
-            'should be specified as the `metrics_aggregator` argument when you '
-            'build a training process or evaluation computation.')
-      except NotImplementedError:
-        metrics_aggregation_computation = aggregator.sum_then_finalize(
-            whimsy_model_for_metadata.metric_finalizers(),
-            unfinalized_metrics_type)
+      metrics_aggregation_computation = aggregator.sum_then_finalize(
+          whimsy_model_for_metadata.metric_finalizers(),
+          unfinalized_metrics_type)
 
   @computations.tf_computation(model_weights_type, model_weights_type.trainable,
                                optimizer_state_type)

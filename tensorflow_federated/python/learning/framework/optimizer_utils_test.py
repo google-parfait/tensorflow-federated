@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import functools
 from unittest import mock
 
 from absl.testing import parameterized
@@ -68,12 +67,7 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
     trainable_weights_delta = tf.nest.map_structure(lambda x: -tf.ones_like(x),
                                                     initial_weights.trainable)
     client_weight = tf.constant(1.0)
-    # TODO(b/202027089): Remove this try/except logic once all models do not
-    # implement `report_local_outputs` and `federated_output_computation`.
-    try:
-      model_output = self._model.report_local_outputs()
-    except NotImplementedError:
-      model_output = self._model.report_local_unfinalized_metrics()
+    model_output = self._model.report_local_unfinalized_metrics()
     return optimizer_utils.ClientOutput(
         weights_delta=trainable_weights_delta,
         weights_delta_weight=client_weight,
@@ -273,19 +267,12 @@ def _keras_optimizer_fn(learning_rate=0.1):
 
 class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      ('weighted_use_metrics_aggregator', True, True),
-      ('unweighted_use_metrics_aggregator', False, True),
-      ('weighted_do_not_use_metrics_aggregator', True, False),
-      ('unweighted_do_not_use_metrics_aggregator', False, False),
-  )
-  def test_construction(self, weighted, use_metrics_aggregator):
+  @parameterized.named_parameters(('weighted', True), ('unweighted', False))
+  def test_construction(self, weighted):
     aggregation_factory = (
         mean.MeanFactory() if weighted else sum_factory.SumFactory())
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=functools.partial(
-            model_examples.LinearRegression,
-            use_metrics_aggregator=use_metrics_aggregator),
+        model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=tf.keras.optimizers.SGD,
         model_update_aggregation_factory=aggregation_factory)
@@ -339,22 +326,13 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             result=(server_state_type, metrics_type)),
         iterative_process.next.type_signature)
 
-  @parameterized.named_parameters([
-      ('tff_optimizer_use_metrics_aggregator', _tff_optimizer, True),
-      ('keras_optimizer_use_metrics_aggregator', _keras_optimizer_fn, True),
-      ('tff_optimizer_do_not_use_metrics_aggregator', _tff_optimizer, False),
-      ('keras_optimizer_do_not_use_metrics_aggregator', _keras_optimizer_fn,
-       False)
-  ])
-  def test_construction_calls_model_fn(self, server_optimzier,
-                                       use_metrics_aggregator):
+  @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
+                                   ('keras_optimizer', _keras_optimizer_fn)])
+  def test_construction_calls_model_fn(self, server_optimzier):
     # Assert that the the process building does not call `model_fn` too many
     # times. `model_fn` can potentially be expensive (loading weights,
     # processing, etc).
-    mock_model_fn = mock.Mock(
-        side_effect=functools.partial(
-            model_examples.LinearRegression,
-            use_metrics_aggregator=use_metrics_aggregator))
+    mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
     optimizer_utils.build_model_delta_optimizer_process(
         model_fn=mock_model_fn,
         model_to_client_delta_fn=DummyClientDeltaFn,
@@ -362,21 +340,14 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
 
-  @parameterized.named_parameters([
-      ('tff_optimizer_use_metrics_aggregator', _tff_optimizer, True),
-      ('keras_optimizer_use_metrics_aggregator', _keras_optimizer_fn, True),
-      ('tff_optimizer_do_not_use_metrics_aggregator', _tff_optimizer, False),
-      ('keras_optimizer_do_not_use_metrics_aggregator', _keras_optimizer_fn,
-       False)
-  ])
-  def test_initial_weights_pulled_from_model(self, server_optimizer,
-                                             use_metrics_aggregator):
+  @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
+                                   ('keras_optimizer', _keras_optimizer_fn)])
+  def test_initial_weights_pulled_from_model(self, server_optimizer):
 
     self.skipTest('b/184855264')
 
     def _model_fn_with_zero_weights():
-      linear_regression_model = model_examples.LinearRegression(
-          use_metrics_aggregator=use_metrics_aggregator)
+      linear_regression_model = model_examples.LinearRegression
       weights = model_utils.ModelWeights.from_model(linear_regression_model)
       zero_trainable = [tf.zeros_like(x) for x in weights.trainable]
       zero_non_trainable = [tf.zeros_like(x) for x in weights.non_trainable]
@@ -386,8 +357,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
       return linear_regression_model
 
     def _model_fn_with_one_weights():
-      linear_regression_model = model_examples.LinearRegression(
-          use_metrics_aggregator=use_metrics_aggregator)
+      linear_regression_model = model_examples.LinearRegression
       weights = model_utils.ModelWeights.from_model(linear_regression_model)
       ones_trainable = [tf.ones_like(x) for x in weights.trainable]
       ones_non_trainable = [tf.ones_like(x) for x in weights.non_trainable]
@@ -420,33 +390,24 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             .member.model)['parameters'])
 
   @parameterized.named_parameters([
-      ('tff_optimizer_use_metrics_aggregator', _tff_optimizer, True),
-      ('keras_optimizer_use_metrics_aggregator', _keras_optimizer_fn, True),
-      ('tff_optimizer_do_not_use_metrics_aggregator', _tff_optimizer, False),
-      ('keras_optimizer_do_not_use_metrics_aggregator', _keras_optimizer_fn,
-       False)
+      ('tff_optimizer', _tff_optimizer),
+      ('keras_optimizer', _keras_optimizer_fn),
   ])
   def test_construction_fails_with_invalid_aggregation_factory(
-      self, server_optimizer, use_metrics_aggregator):
+      self, server_optimizer):
     aggregation_factory = sampling.UnweightedReservoirSamplingFactory(
         sample_size=1)
     with self.assertRaisesRegex(
         TypeError, 'does not produce a compatible `AggregationProcess`'):
       optimizer_utils.build_model_delta_optimizer_process(
-          model_fn=functools.partial(
-              model_examples.LinearRegression,
-              use_metrics_aggregator=use_metrics_aggregator),
+          model_fn=model_examples.LinearRegression,
           model_to_client_delta_fn=DummyClientDeltaFn,
           server_optimizer_fn=server_optimizer(),
           model_update_aggregation_factory=aggregation_factory)
 
-  @parameterized.named_parameters([('use_metrics_aggregator', True),
-                                   ('do_not_use_metrics_aggregator', False)])
-  def test_construction_with_adam_optimizer(self, use_metrics_aggregator):
+  def test_construction_with_adam_optimizer(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=functools.partial(
-            model_examples.LinearRegression,
-            use_metrics_aggregator=use_metrics_aggregator),
+        model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=tf.keras.optimizers.Adam)
     # Assert that the optimizer_state includes the 5 variables (scalar for
@@ -459,17 +420,12 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     self.assertLen(next_type.result[0].member.optimizer_state, 5)
 
   @parameterized.named_parameters([
-      ('no_momentum_use_metrics_aggregator', None, 1, True),
-      ('momentum_use_metrics_aggregator', 0.9, 3, True),
-      ('no_momentum_do_not_use_metrics_aggregator', None, 1, False),
-      ('momentum_do_not_use_metrics_aggregator', 0.9, 3, False)
+      ('no_momentum', None, 1),
+      ('momentum', 0.9, 3),
   ])
-  def test_construction_with_tff_sgdm_optimizer(self, momentum, state_len,
-                                                use_metrics_aggregator):
+  def test_construction_with_tff_sgdm_optimizer(self, momentum, state_len):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=functools.partial(
-            model_examples.LinearRegression,
-            use_metrics_aggregator=use_metrics_aggregator),
+        model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=sgdm.build_sgdm(
             learning_rate=0.1, momentum=momentum))
@@ -483,21 +439,15 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     self.assertLen(next_type.result[0].member.optimizer_state, state_len)
 
   @parameterized.named_parameters([
-      ('tff_optimizer_use_metrics_aggregator', _tff_optimizer, True),
-      ('keras_optimizer_use_metrics_aggregator', _keras_optimizer_fn, True),
-      ('tff_optimizer_do_not_use_metrics_aggregator', _tff_optimizer, False),
-      ('keras_optimizer_do_not_use_metrics_aggregator', _keras_optimizer_fn,
-       False)
+      ('tff_optimizer', _tff_optimizer),
+      ('keras_optimizer', _keras_optimizer_fn),
   ])
-  def test_construction_with_aggregation_process(self, server_optimizer,
-                                                 use_metrics_aggregator):
+  def test_construction_with_aggregation_process(self, server_optimizer):
     model_update_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression).trainable
     model_update_aggregator = TestMeasuredMeanFactory()
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=functools.partial(
-            model_examples.LinearRegression,
-            use_metrics_aggregator=use_metrics_aggregator),
+        model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=server_optimizer(),
         model_update_aggregation_factory=model_update_aggregator)
@@ -527,22 +477,14 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
         computation_types.FederatedType(next_type.result[1].member.aggregation,
                                         placements.SERVER), agg_metrics_type)
 
-  @parameterized.named_parameters([
-      ('tff_optimizer_use_metrics_aggregator', _tff_optimizer, True),
-      ('keras_optimizer_use_metrics_aggregator', _keras_optimizer_fn, True),
-      ('tff_optimizer_do_not_use_metrics_aggregator', _tff_optimizer, False),
-      ('keras_optimizer_do_not_use_metrics_aggregator', _keras_optimizer_fn,
-       False)
-  ])
-  def test_construction_with_broadcast_process(self, server_optimizer,
-                                               use_metrics_aggregator):
+  @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
+                                   ('keras_optimizer', _keras_optimizer_fn)])
+  def test_construction_with_broadcast_process(self, server_optimizer):
     model_weights_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression)
     broadcast_process = _build_test_measured_broadcast(model_weights_type)
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=functools.partial(
-            model_examples.LinearRegression,
-            use_metrics_aggregator=use_metrics_aggregator),
+        model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=server_optimizer(),
         broadcast_process=broadcast_process)
@@ -564,24 +506,16 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             next_type.result[0].member.model_broadcast_state,
             placements.SERVER), expected_broadcast_state_type)
 
-  @parameterized.named_parameters([
-      ('tff_optimizer_use_metrics_aggregator', _tff_optimizer, True),
-      ('keras_optimizer_use_metrics_aggregator', _keras_optimizer_fn, True),
-      ('tff_optimizer_do_not_use_metrics_aggregator', _tff_optimizer, False),
-      ('keras_optimizer_do_not_use_metrics_aggregator', _keras_optimizer_fn,
-       False)
-  ])
+  @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
+                                   ('keras_optimizer', _keras_optimizer_fn)])
   @test_utils.skip_test_for_multi_gpu
-  def test_orchestration_execute_measured_process(self, server_optimizer,
-                                                  use_metrics_aggregator):
+  def test_orchestration_execute_measured_process(self, server_optimizer):
     model_weights_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression)
     learning_rate = 1.0
     server_optimizer_fn = server_optimizer(learning_rate)
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=functools.partial(
-            model_examples.LinearRegression,
-            use_metrics_aggregator=use_metrics_aggregator),
+        model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=server_optimizer_fn,
         broadcast_process=_build_test_measured_broadcast(model_weights_type),
@@ -677,8 +611,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
       return aggregator_computation
 
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=functools.partial(
-            model_examples.LinearRegression, use_metrics_aggregator=True),
+        model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=server_optimizer_fn,
         broadcast_process=_build_test_measured_broadcast(model_weights_type),

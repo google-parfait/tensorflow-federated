@@ -45,16 +45,13 @@ TensorType = computation_types.TensorType
 
 class TestModel(model.Model):
 
-  # TODO(b/202027089): Remove the `use_metrics_aggregator` argument once we do
-  # not need it to test both ways of defining cross-client metrics aggregation.
-  def __init__(self, use_metrics_aggregator=False):
+  def __init__(self):
     self._variables = collections.namedtuple('Vars', 'max_temp num_over')(
         max_temp=tf.Variable(
             lambda: tf.zeros(dtype=tf.float32, shape=[]),
             name='max_temp',
             trainable=True),
         num_over=tf.Variable(0.0, name='num_over', trainable=False))
-    self._use_metrics_aggregator = use_metrics_aggregator
 
   @property
   def trainable_variables(self):
@@ -93,36 +90,23 @@ class TestModel(model.Model):
 
   @tf.function
   def report_local_outputs(self):
-    if self._use_metrics_aggregator:
-      raise NotImplementedError(
-          'Do not implement. `report_local_outputs` and '
-          '`federated_output_computation` are deprecated and will be removed '
-          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers` instead. The cross-client metrics aggregation '
-          'should be specified as the `metrics_aggregator` argument when you '
-          'build a training process or evaluation computation using this model.'
-      )
-    else:
-      return collections.OrderedDict(num_over=self._variables.num_over)
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` are deprecated and will be removed '
+        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers` instead. The cross-client metrics aggregation '
+        'should be specified as the `metrics_aggregator` argument when you '
+        'build a training process or evaluation computation using this model.')
 
   @property
   def federated_output_computation(self):
-    if self._use_metrics_aggregator:
-      raise NotImplementedError(
-          'Do not implement. `report_local_outputs` and '
-          '`federated_output_computation` are deprecated and will be removed '
-          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers` instead. The cross-client metrics aggregation '
-          'should be specified as the `metrics_aggregator` argument when you '
-          'build a training process or evaluation computation using this model.'
-      )
-    else:
-
-      def aggregate_metrics(client_metrics):
-        return collections.OrderedDict(
-            num_over=intrinsics.federated_sum(client_metrics.num_over))
-
-      return computations.federated_computation(aggregate_metrics)
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` are deprecated and will be removed '
+        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers` instead. The cross-client metrics aggregation '
+        'should be specified as the `metrics_aggregator` argument when you '
+        'build a training process or evaluation computation using this model.')
 
   @tf.function
   def report_local_unfinalized_metrics(self):
@@ -135,16 +119,13 @@ class TestModel(model.Model):
 class TestModelQuant(model.Model):
   """This model stores how much client data matches the input (num_same)."""
 
-  # TODO(b/202027089): Remove the `use_metrics_aggregator` argument once we do
-  # not need it to test both ways of defining cross-client metrics aggregation.
-  def __init__(self, use_metrics_aggregator=False):
+  def __init__(self):
     self._variables = collections.namedtuple('Vars', 'given_nums num_same')(
         given_nums=tf.Variable(
             lambda: tf.zeros(dtype=tf.float32, shape=(4,)),
             name='given_nums',
             trainable=True),
         num_same=tf.Variable(0.0, name='num_same', trainable=False))
-    self._use_metrics_aggregator = use_metrics_aggregator
 
   @property
   def trainable_variables(self):
@@ -186,34 +167,23 @@ class TestModelQuant(model.Model):
 
   @tf.function
   def report_local_outputs(self):
-    if self._use_metrics_aggregator:
-      raise NotImplementedError(
-          'Do not implement. `report_local_outputs` and '
-          '`federated_output_computation` will be deprecated soon. Instead, '
-          'you should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers`. Cross-client metrics aggregation should be '
-          'specified as the `metrics_aggregator` argument when you create a '
-          'training process or evaluation computation using this model.')
-    else:
-      return collections.OrderedDict(num_same=self._variables.num_same)
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` will be deprecated soon. Instead, '
+        'you should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers`. Cross-client metrics aggregation should be '
+        'specified as the `metrics_aggregator` argument when you create a '
+        'training process or evaluation computation using this model.')
 
   @property
   def federated_output_computation(self):
-    if self._use_metrics_aggregator:
-      raise NotImplementedError(
-          'Do not implement. `report_local_outputs` and '
-          '`federated_output_computation` will be deprecated soon. Instead, '
-          'you should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers`. Cross-client metrics aggregation should be '
-          'specified as the `metrics_aggregator` argument when you create a '
-          'training process or evaluation computation using this model.')
-    else:
-
-      def aggregate_metrics(client_metrics):
-        return collections.OrderedDict(
-            num_same=intrinsics.federated_sum(client_metrics.num_same))
-
-      return computations.federated_computation(aggregate_metrics)
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` will be deprecated soon. Instead, '
+        'you should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers`. Cross-client metrics aggregation should be '
+        'specified as the `metrics_aggregator` argument when you create a '
+        'training process or evaluation computation using this model.')
 
   @tf.function
   def report_local_unfinalized_metrics(self):
@@ -296,15 +266,12 @@ def _build_expected_test_quant_model_eval_signature():
 
 class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(('use_metrics_aggregator', True),
-                                  ('not_use_metrics_aggregator', False))
   @test_utils.skip_test_for_multi_gpu
-  def test_local_evaluation(self, use_metrics_aggregator):
-    model_fn = lambda: TestModel(use_metrics_aggregator)
-    model_weights_type = model_utils.weights_type_from_model(model_fn)
-    batch_type = computation_types.to_type(model_fn().input_spec)
+  def test_local_evaluation(self):
+    model_weights_type = model_utils.weights_type_from_model(TestModel)
+    batch_type = computation_types.to_type(TestModel().input_spec)
     client_evaluate = federated_evaluation.build_local_evaluation(
-        model_fn, model_weights_type, batch_type)
+        TestModel, model_weights_type, batch_type)
     self.assert_types_equivalent(
         client_evaluate.type_signature,
         FunctionType(
@@ -333,13 +300,10 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
             local_outputs=collections.OrderedDict(num_over=4.0),
             num_examples=6))
 
-  @parameterized.named_parameters(('use_metrics_aggregator', True),
-                                  ('not_use_metrics_aggregator', False))
   @test_utils.skip_test_for_multi_gpu
-  def test_federated_evaluation(self, use_metrics_aggregator):
-    model_fn = lambda: TestModel(use_metrics_aggregator)
-    evaluate = federated_evaluation.build_federated_evaluation(model_fn)
-    model_weights_type = model_utils.weights_type_from_model(model_fn)
+  def test_federated_evaluation(self):
+    evaluate = federated_evaluation.build_federated_evaluation(TestModel)
+    model_weights_type = model_utils.weights_type_from_model(TestModel)
     self.assert_types_equivalent(
         evaluate.type_signature,
         FunctionType(
@@ -376,42 +340,16 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
             stat=collections.OrderedDict(num_examples=12),
         ))
 
-  # TODO(b/202027089): Remove this test once the try/except logic is gone.
   @test_utils.skip_test_for_multi_gpu
-  def test_custom_metrics_aggregator_does_not_get_ignored(self):
-
-    def aggregate_nothing(metric_finaliers, local_unfinalized_metrics_type):
-      del metric_finaliers  # Unused.
-
-      @computations.federated_computation(
-          computation_types.at_clients(local_unfinalized_metrics_type))
-      def aggregator_computation(client_local_unfinalized_metrics):
-        del client_local_unfinalized_metrics  # Unused.
-        return collections.OrderedDict()
-
-      return aggregator_computation
-
-    # Constructs a model that implements the two old attributes.
-    model_fn = lambda: TestModel(use_metrics_aggregator=False)
-    evaluate = federated_evaluation.build_federated_evaluation(
-        model_fn, metrics_aggregator=aggregate_nothing)
-    self.assertEqual(evaluate.type_signature.result.member.eval,
-                     computation_types.to_type(collections.OrderedDict()))
-
-  @parameterized.named_parameters(('use_metrics_aggregator', True),
-                                  ('not_use_metrics_aggregator', False))
-  @test_utils.skip_test_for_multi_gpu
-  def test_federated_evaluation_quantized_conservatively(
-      self, use_metrics_aggregator):
-    model_fn = lambda: TestModelQuant(use_metrics_aggregator)
+  def test_federated_evaluation_quantized_conservatively(self):
     # Set up a uniform quantization encoder as the broadcaster.
     broadcaster = (
         encoding_utils.build_encoded_broadcast_process_from_model(
-            model_fn, _build_simple_quant_encoder(12)))
+            TestModelQuant, _build_simple_quant_encoder(12)))
     self.assert_types_equivalent(broadcaster.next.type_signature,
                                  _build_expected_broadcaster_next_signature())
     evaluate = federated_evaluation.build_federated_evaluation(
-        model_fn, broadcast_process=broadcaster)
+        TestModelQuant, broadcast_process=broadcaster)
     # Confirm that the type signature matches what is expected.
     self.assert_types_identical(
         evaluate.type_signature,
@@ -442,20 +380,16 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
             eval=collections.OrderedDict(num_same=8.0),
             stat=collections.OrderedDict(num_examples=20)))
 
-  @parameterized.named_parameters(('use_metrics_aggregator', True),
-                                  ('not_use_metrics_aggregator', False))
   @test_utils.skip_test_for_multi_gpu
-  def test_federated_evaluation_quantized_aggressively(self,
-                                                       use_metrics_aggregator):
-    model_fn = lambda: TestModelQuant(use_metrics_aggregator)
+  def test_federated_evaluation_quantized_aggressively(self):
     # Set up a uniform quantization encoder as the broadcaster.
     broadcaster = (
         encoding_utils.build_encoded_broadcast_process_from_model(
-            model_fn, _build_simple_quant_encoder(2)))
+            TestModelQuant, _build_simple_quant_encoder(2)))
     self.assert_types_equivalent(broadcaster.next.type_signature,
                                  _build_expected_broadcaster_next_signature())
     evaluate = federated_evaluation.build_federated_evaluation(
-        model_fn, broadcast_process=broadcaster)
+        TestModelQuant, broadcast_process=broadcaster)
     # Confirm that the type signature matches what is expected.
     self.assert_types_identical(
         evaluate.type_signature,
@@ -487,11 +421,8 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     self.assertContainsSubset(result['stat'].keys(), ['num_examples'])
     self.assertEqual(result['stat']['num_examples'], 20)
 
-  @parameterized.named_parameters(('use_metrics_aggregator', True),
-                                  ('not_use_metrics_aggregator', False))
   @test_utils.skip_test_for_multi_gpu
-  def test_federated_evaluation_fails_stateful_broadcast(
-      self, use_metrics_aggregator):
+  def test_federated_evaluation_fails_stateful_broadcast(self):
     # Create a test stateful measured process that doesn't do anything useful.
 
     @computations.federated_computation
@@ -509,19 +440,14 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     broadcaster = measured_process.MeasuredProcess(init_fn, next_fn)
     with self.assertRaisesRegex(ValueError, 'stateful broadcast'):
       federated_evaluation.build_federated_evaluation(
-          lambda: TestModelQuant(use_metrics_aggregator),
-          broadcast_process=broadcaster)
+          TestModelQuant, broadcast_process=broadcaster)
 
-  @parameterized.named_parameters(('use_metrics_aggregator', True),
-                                  ('not_use_metrics_aggregator', False))
   @test_utils.skip_test_for_multi_gpu
-  def test_federated_evaluation_fails_non_measured_process_broadcast(
-      self, use_metrics_aggregator):
+  def test_federated_evaluation_fails_non_measured_process_broadcast(self):
     broadcaster = computations.tf_computation(lambda x: x)
     with self.assertRaisesRegex(ValueError, '`MeasuredProcess`'):
       federated_evaluation.build_federated_evaluation(
-          lambda: TestModelQuant(use_metrics_aggregator),
-          broadcast_process=broadcaster)
+          TestModelQuant, broadcast_process=broadcaster)
 
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))
