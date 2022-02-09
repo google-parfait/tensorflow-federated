@@ -33,6 +33,8 @@ limitations under the License
 
 namespace tensorflow_federated {
 
+namespace {
+
 using Embedded = std::shared_ptr<OwnedValueId>;
 
 Embedded ShareValueId(OwnedValueId id) {
@@ -258,6 +260,8 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
   }
   std::shared_ptr<Executor> target_executor_;
 };
+
+}  // namespace
 
 std::shared_ptr<Executor> CreateSequenceExecutor(
     std::shared_ptr<Executor> target_executor) {
