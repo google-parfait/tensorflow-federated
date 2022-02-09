@@ -117,6 +117,10 @@ def clipping_factory(
   used, the clip will be an estimate of a quantile of the norms of the values
   being aggregated.
 
+  The `value_type` provided to the `create` method must be a structure of
+  floats, but they do not all need to be the same, e.g. a mix of `tf.float32`
+  and `tf.float16` dtypes is allowed.
+
   The created process will report measurements
   * `clipped_count`: The number of aggregands clipped.
   * `clipping_norm`: The norm used to determine whether to clip an aggregand.
@@ -148,9 +152,7 @@ def clipping_factory(
 
     @computations.tf_computation(value_type, NORM_TF_TYPE)
     def clip_fn(value, clipping_norm):
-      clipped_value_as_list, global_norm = tf.clip_by_global_norm(
-          tf.nest.flatten(value), clipping_norm)
-      clipped_value = tf.nest.pack_sequence_as(value, clipped_value_as_list)
+      clipped_value, global_norm = _clip_by_global_l2_norm(value, clipping_norm)
       was_clipped = tf.cast((global_norm > clipping_norm), COUNT_TF_TYPE)
       return clipped_value, global_norm, was_clipped
 
@@ -186,6 +188,10 @@ def zeroing_factory(
   values. For example if a `tff.aggregators.PrivateQuantileEstimationProcess` is
   used, the zeroing norm will be an estimate of a quantile of the norms of the
   values being aggregated.
+
+  The `value_type` provided to the `create` method must be a structure of
+  floats, but they do not all need to be the same, e.g. a mix of `tf.float32`
+  and `tf.float16` dtypes is allowed.
 
   The created process will report measurements
   * `zeroed_count`: The number of aggregands zeroed out.
@@ -226,7 +232,7 @@ def zeroing_factory(
       if norm_order == 1.0:
         global_norm = _global_l1_norm(value)
       elif norm_order == 2.0:
-        global_norm = tf.linalg.global_norm(tf.nest.flatten(value))
+        global_norm = _global_l2_norm(value)
       else:
         assert math.isinf(norm_order)
         global_norm = _global_inf_norm(value)
@@ -392,13 +398,35 @@ def _check_value_type(value_type):
                     f'dtype. Provided value_type: {value_type}')
 
 
-@tf.function
 def _global_inf_norm(l):
-  norms = [tf.norm(a, ord=np.inf) for a in tf.nest.flatten(l)]
+  norms = [
+      tf.cast(tf.norm(a, ord=np.inf), tf.float32) for a in tf.nest.flatten(l)
+  ]
   return tf.reduce_max(tf.stack(norms))
 
 
-@tf.function
+def _global_l2_norm(l):
+  norms_squared = [
+      tf.cast(tf.norm(a, ord=2)**2, tf.float32) for a in tf.nest.flatten(l)
+  ]
+  return tf.math.sqrt(tf.reduce_sum(tf.stack(norms_squared)))
+
+
 def _global_l1_norm(l):
-  norms = [tf.norm(a, ord=1) for a in tf.nest.flatten(l)]
+  norms = [tf.cast(tf.norm(a, ord=1), tf.float32) for a in tf.nest.flatten(l)]
   return tf.reduce_sum(tf.stack(norms))
+
+
+def _clip_by_global_l2_norm(value, clip_norm):
+  """Same as `tf.clip_by_global_norm`, but supports mixed float dtypes."""
+  global_norm = _global_l2_norm(value)
+  clipped_value = tf.cond(
+      tf.math.greater(global_norm, clip_norm),
+      lambda: _do_clip_by_global_l2_norm(value, clip_norm, global_norm),
+      lambda: value)
+  return clipped_value, global_norm
+
+
+def _do_clip_by_global_l2_norm(value, clip_norm, global_norm):
+  divisor = global_norm / clip_norm
+  return tf.nest.map_structure(lambda x: x / tf.cast(divisor, x.dtype), value)

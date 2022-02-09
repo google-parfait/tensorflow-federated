@@ -316,6 +316,35 @@ class ClippingFactoryComputationTest(test_case.TestCase,
         process.next.type_signature.is_equivalent_to(expected_next_type))
 
   @parameterized.named_parameters(
+      ('struct', (tf.float16, tf.float32)),
+      ('nested', (tf.float16, [tf.float32, (tf.float64, [3])])))
+  def test_clip_preserves_aggregated_dtype_with_mixed_float(self, type_spec):
+    factory = _clipped_sum()
+    mixed_float = computation_types.to_type(type_spec)
+    process = factory.create(mixed_float)
+    self.assert_types_identical(
+        mixed_float, process.next.type_signature.result.result.member)
+
+  @parameterized.named_parameters(
+      ('norm_order_1_struct', 1.0, (tf.float16, tf.float32)),
+      ('norm_order_2_struct', 2.0, (tf.float16, tf.float32)),
+      ('norm_order_inf_struct', float('inf'), (tf.float16, tf.float32)),
+      ('norm_order_1_nested', 1.0, (tf.float16, [tf.float32,
+                                                 (tf.float64, [3])])),
+      ('norm_order_2_nested', 2.0, (tf.float16, [tf.float32,
+                                                 (tf.float64, [3])])),
+      ('norm_order_inf_nested', float('inf'),
+       (tf.float16, [tf.float32, (tf.float64, [3])])),
+  )
+  def test_zero_preserves_aggregated_dtype_with_mixed_float(
+      self, norm_order, type_spec):
+    factory = _zeroed_sum(norm_order=norm_order)
+    mixed_float = computation_types.to_type(type_spec)
+    process = factory.create(mixed_float)
+    self.assert_types_identical(
+        mixed_float, process.next.type_signature.result.result.member)
+
+  @parameterized.named_parameters(
       ('clip_float_on_clients', 1.0, placements.CLIENTS, _clipped_mean),
       ('clip_string_on_server', 'bad', placements.SERVER, _clipped_mean),
       ('zero_float_on_clients', 1.0, placements.CLIENTS, _zeroed_mean),
@@ -384,7 +413,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
       make_factory(norm)
 
 
-class ClippingFactoryExecutionTest(test_case.TestCase):
+class ClippingFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
 
   def _check_result(self, expected, result):
     for exp, res in zip(_make_test_struct_value(expected), result):
@@ -501,6 +530,21 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     self.assertAllClose(10 / 4, output.result)
     self.assertAllClose(3.0, output.measurements['clipping_norm'])
     self.assertEqual(1, output.measurements['clipped_count'])
+
+  def test_clip_mixed_float_dtype(self):
+    factory = _clipped_sum(clip=3.0)
+    mixed_float = computation_types.to_type((tf.float16, tf.float32))
+    process = factory.create(mixed_float)
+
+    # Should not clip anything.
+    output = process.next(process.initialize(), [(1.0, 1.0), (0.5, 0.5)])
+    self.assertAllClose([1.5, 1.5], output.result)
+
+    # Should clip 2nd client contribution by factor of 3/5 (reduced precision).
+    output = process.next(process.initialize(), [(1.0, 1.0), (3.0, 4.0)])
+    self.assertAllClose([2.8, 3.4], output.result, atol=1e-3, rtol=1e-3)
+    output = process.next(process.initialize(), [(1.0, 1.0), (4.0, 3.0)])
+    self.assertAllClose([3.4, 2.8], output.result, atol=1e-3, rtol=1e-3)
 
   def test_fixed_zero_sum(self):
     factory = _zeroed_sum()
@@ -707,15 +751,50 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(1, output.measurements['zeroing']['clipped_count'])
     self.assertAllClose(5.0, output.result)
 
+  @parameterized.named_parameters(
+      ('norm_order_1', 1.0),
+      ('norm_order_2', 2.0),
+      ('norm_order_inf', float('inf')),
+  )
+  def test_zero_mixed_float_dtype(self, norm_order):
+    factory = _zeroed_sum(clip=3.0, norm_order=norm_order)
+    mixed_float = computation_types.to_type((tf.float16, tf.float32))
+    process = factory.create(mixed_float)
+
+    # Should not zero-out anything.
+    output = process.next(process.initialize(), [(1.0, 1.0), (0.5, 0.5)])
+    self.assertAllClose([1.5, 1.5], output.result)
+
+    # Should zero-out 2nd client contribution.
+    output = process.next(process.initialize(), [(1.0, 1.0), (10.0, 1.0)])
+    self.assertAllClose([1.0, 1.0], output.result)
+    output = process.next(process.initialize(), [(1.0, 1.0), (1.0, 10.0)])
+    self.assertAllClose([1.0, 1.0], output.result)
+    output = process.next(process.initialize(), [(1.0, 1.0), (10.0, 10.0)])
+    self.assertAllClose([1.0, 1.0], output.result)
+
 
 class NormTest(test_case.TestCase):
 
   def test_norms(self):
-    values = [1.0, -2.0, 3.0, -4.0]
+    values = [1.0, -2.0, 2.0, -4.0]
     for l in itertools.permutations(values):
       v = [tf.constant(l[0]), (tf.constant([l[1], l[2]]), tf.constant([l[3]]))]
       self.assertAllClose(4.0, robust._global_inf_norm(v).numpy())
-      self.assertAllClose(10.0, robust._global_l1_norm(v).numpy())
+      self.assertAllClose(5.0, robust._global_l2_norm(v).numpy())
+      self.assertAllClose(9.0, robust._global_l1_norm(v).numpy())
+
+  def test_clip_by_global_l2_norm(self):
+    """Test `_clip_by_global_l2_norm` equivalent to `tf.clip_by_global_norm`."""
+    value = [
+        tf.constant([1.2]),
+        tf.constant([3.5, -9.1]),
+        tf.constant([[1.1, -1.1], [0.0, 4.2]]),
+    ]
+    for clip_norm in [0.0, 1.0, 100.0]:
+      self.assertAllClose(
+          robust._clip_by_global_l2_norm(value, clip_norm),
+          tf.clip_by_global_norm(value, clip_norm))
 
 
 if __name__ == '__main__':
