@@ -67,8 +67,7 @@ class ModelDeltaClientWorkComputationTest(test_case.TestCase,
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             train=collections.OrderedDict(
-                loss=tf.float32, num_examples=tf.int32),
-            stat=collections.OrderedDict(num_examples=tf.int64)))
+                loss=tf.float32, num_examples=tf.int32)))
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type)
@@ -151,7 +150,6 @@ class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
     self.assertAllClose(keras_result[0].update, tff_result[0].update)
     self.assertEqual(keras_result[0].update_weight, tff_result[0].update_weight)
     self.assertAllClose(keras_result[1], tff_result[1])
-    self.assertDictEqual(keras_result[2], tff_result[2])
 
   @parameterized.named_parameters(
       ('non-simulation_noclip_uniform', False, {}, 0.1,
@@ -177,7 +175,7 @@ class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
         use_experimental_simulation_loop=simulation)
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs)
     dataset = self.create_dataset()
-    client_result, model_output, stat_output = self.evaluate(
+    client_result, model_output = self.evaluate(
         client_tf(optimizer, self.initial_weights(), dataset))
     # Both trainable parameters should have been updated, and we don't return
     # the non-trainable variable.
@@ -187,7 +185,6 @@ class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
       self.assertEqual(client_result.update_weight, 1.0)
     else:
       self.assertEqual(client_result.update_weight, 8.0)
-    self.assertEqual(stat_output['num_examples'], 8)
     self.assertDictContainsSubset(
         {
             'num_examples': 8,
@@ -241,7 +238,6 @@ class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
     client_data = [self.create_dataset()]
     output = process.next(process.initialize(), client_model_weights,
                           client_data)
-    self.assertEqual(output.measurements['stat']['num_examples'], 8)
     # Train metrics should be multiplied by two by the custom aggregator.
     self.assertEqual(output.measurements['train']['num_examples'], 16)
 
@@ -292,8 +288,8 @@ class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
         tf.nest.flatten(proximal_output.result[0].update))
     self.assertGreater(simple_update_norm, proximal_update_norm)
 
-    self.assertEqual(simple_output.measurements['stat']['num_examples'],
-                     proximal_output.measurements['stat']['num_examples'])
+    self.assertEqual(simple_output.measurements['train']['num_examples'],
+                     proximal_output.measurements['train']['num_examples'])
 
   @parameterized.named_parameters(
       ('tff_simple', sgdm.build_sgdm(1.0)),
@@ -311,7 +307,7 @@ class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
     state = client_work_process.initialize()
     output = client_work_process.next(state, client_model_weights, client_data)
 
-    self.assertEqual(8, output.measurements['stat']['num_examples'])
+    self.assertCountEqual(output.measurements.keys(), ['train'])
 
 
 if __name__ == '__main__':

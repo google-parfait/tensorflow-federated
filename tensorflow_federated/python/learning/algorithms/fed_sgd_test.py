@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import functools
 from unittest import mock
 
 from absl.testing import parameterized
@@ -21,11 +22,13 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_sgd
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.metrics import aggregator
 
 
 class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
@@ -62,14 +65,12 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
     dataset = self.dataset()
     client_update = fed_sgd._build_client_update(
         self.model_fn(), use_experimental_simulation_loop=simulation)
-    client_result, model_output, stat_output = client_update(
-        self.initial_weights(), dataset)
+    client_result, model_output = client_update(self.initial_weights(), dataset)
 
     # Both trainable parameters should have gradients, and we don't return the
     # non-trainable 'c'. Model deltas for squared error:
     self.assertAllClose(client_result.update, [[[-1.0], [0.0]], -1.0])
     self.assertAllClose(client_result.update_weight, 8.0)
-    self.assertEqual(stat_output['num_examples'], 8.0)
     self.assertDictContainsSubset({
         'num_examples': 8,
     }, model_output)
@@ -80,7 +81,7 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
     client_update = fed_sgd._build_client_update(self.model_fn())
     init_weights = self.initial_weights()
     init_weights.trainable[1] = bad_value
-    client_outputs, _, _ = client_update(init_weights, dataset)
+    client_outputs, _ = client_update(init_weights, dataset)
     self.assertEqual(self.evaluate(client_outputs.update_weight), 0.0)
     self.assertAllClose(
         self.evaluate(client_outputs.update), [[[0.0], [0.0]], 0.0])
@@ -128,6 +129,16 @@ class FederatedSGDTest(test_case.TestCase, parameterized.TestCase):
         model_fn=mock_model_fn, model_aggregator=aggregation_factory())
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 3)
+
+  def test_no_unsecure_aggregation_with_secure_aggregator(self):
+    model_fn = functools.partial(
+        model_examples.LinearRegression, use_metrics_aggregator=True)
+    learning_process = fed_sgd.build_fed_sgd(
+        model_fn,
+        model_aggregator=model_update_aggregator.secure_aggregator(),
+        metrics_aggregator=aggregator.secure_sum_then_finalize)
+    static_assert.assert_not_contains_unsecure_aggregation(
+        learning_process.next)
 
 
 if __name__ == '__main__':

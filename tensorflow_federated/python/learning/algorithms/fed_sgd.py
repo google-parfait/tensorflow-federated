@@ -110,8 +110,6 @@ def _build_client_update(model: model_lib.Model,
         lambda gradient: gradient / num_examples_sum, gradient_sums)
 
     model_output = model.report_local_unfinalized_metrics()
-    stat_output = collections.OrderedDict(num_examples=num_examples_sum)
-
     average_gradient, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(average_gradient))
     if has_non_finite_delta > 0:
@@ -120,8 +118,7 @@ def _build_client_update(model: model_lib.Model,
       client_weight = num_examples_sum
 
     return client_works.ClientResult(
-        update=average_gradient,
-        update_weight=client_weight), model_output, stat_output
+        update=average_gradient, update_weight=client_weight), model_output
 
   return client_update
 
@@ -178,12 +175,11 @@ def _build_fed_sgd_client_work(
       init_fn.type_signature.result, computation_types.at_clients(weights_type),
       computation_types.at_clients(data_type))
   def next_fn(state, model_weights, client_data):
-    client_result, model_outputs, stat_output = intrinsics.federated_map(
+    client_result, model_outputs = intrinsics.federated_map(
         client_update_computation, (model_weights, client_data))
     train_metrics = metrics_aggregation_fn(model_outputs)
-    stat_metrics = intrinsics.federated_sum(stat_output)
     measurements = intrinsics.federated_zip(
-        collections.OrderedDict(train=train_metrics, stat=stat_metrics))
+        collections.OrderedDict(train=train_metrics))
     return measured_process.MeasuredProcessOutput(state, client_result,
                                                   measurements)
 

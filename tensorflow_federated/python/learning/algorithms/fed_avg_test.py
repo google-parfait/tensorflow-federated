@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import itertools
 from unittest import mock
 
@@ -21,12 +22,14 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import aggregation
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import distributors
 
@@ -124,20 +127,44 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
           model_distributor=invalid_distributor)
 
   def test_weighted_fed_avg_raises_on_unweighted_aggregator(self):
-    aggregator = model_update_aggregator.robust_aggregator(weighted=False)
+    model_aggregator = model_update_aggregator.robust_aggregator(weighted=False)
     with self.assertRaisesRegex(TypeError, 'WeightedAggregationFactory'):
       fed_avg.build_weighted_fed_avg(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=sgdm.build_sgdm(1.0),
-          model_aggregator=aggregator)
+          model_aggregator=model_aggregator)
 
   def test_unweighted_fed_avg_raises_on_weighted_aggregator(self):
-    aggregator = model_update_aggregator.robust_aggregator(weighted=True)
+    model_aggregator = model_update_aggregator.robust_aggregator(weighted=True)
     with self.assertRaisesRegex(TypeError, 'UnweightedAggregationFactory'):
       fed_avg.build_unweighted_fed_avg(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=sgdm.build_sgdm(1.0),
-          model_aggregator=aggregator)
+          model_aggregator=model_aggregator)
+
+  def test_weighted_fed_avg_with_only_secure_aggregation(self):
+    model_fn = functools.partial(
+        model_examples.LinearRegression, use_metrics_aggregator=True)
+    learning_process = fed_avg.build_weighted_fed_avg(
+        model_fn,
+        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
+        model_aggregator=model_update_aggregator.secure_aggregator(
+            weighted=True),
+        metrics_aggregator=aggregator.secure_sum_then_finalize)
+    static_assert.assert_not_contains_unsecure_aggregation(
+        learning_process.next)
+
+  def test_unweighted_fed_avg_with_only_secure_aggregation(self):
+    model_fn = functools.partial(
+        model_examples.LinearRegression, use_metrics_aggregator=True)
+    learning_process = fed_avg.build_unweighted_fed_avg(
+        model_fn,
+        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
+        model_aggregator=model_update_aggregator.secure_aggregator(
+            weighted=False),
+        metrics_aggregator=aggregator.secure_sum_then_finalize)
+    static_assert.assert_not_contains_unsecure_aggregation(
+        learning_process.next)
 
 
 if __name__ == '__main__':

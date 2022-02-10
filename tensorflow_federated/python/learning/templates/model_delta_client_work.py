@@ -125,7 +125,6 @@ def build_model_delta_update_with_tff_optimizer(
                                           initial_weights.trainable,
                                           model_weights.trainable)
     model_output = model.report_local_unfinalized_metrics()
-    stat_output = collections.OrderedDict(num_examples=num_examples)
 
     # TODO(b/122071074): Consider moving this functionality into
     # tff.federated_mean?
@@ -135,8 +134,7 @@ def build_model_delta_update_with_tff_optimizer(
                                           num_examples)
 
     return client_works.ClientResult(
-        update=client_update,
-        update_weight=client_weight), model_output, stat_output
+        update=client_update, update_weight=client_weight), model_output
 
   return client_update
 
@@ -207,7 +205,6 @@ def build_model_delta_update_with_keras_optimizer(
                                           initial_weights.trainable,
                                           model_weights.trainable)
     model_output = model.report_local_unfinalized_metrics()
-    stat_output = collections.OrderedDict(num_examples=num_examples)
 
     # TODO(b/122071074): Consider moving this functionality into
     # tff.federated_mean?
@@ -216,8 +213,7 @@ def build_model_delta_update_with_keras_optimizer(
     client_weight = _choose_client_weight(weighting, has_non_finite_delta,
                                           num_examples)
     return client_works.ClientResult(
-        update=client_update,
-        update_weight=client_weight), model_output, stat_output
+        update=client_update, update_weight=client_weight), model_output
 
   return client_update
 
@@ -342,12 +338,11 @@ def build_model_delta_client_work(
       init_fn.type_signature.result, computation_types.at_clients(weights_type),
       computation_types.at_clients(data_type))
   def next_fn(state, weights, client_data):
-    client_result, model_outputs, stat_output = intrinsics.federated_map(
+    client_result, model_outputs = intrinsics.federated_map(
         client_update_computation, (weights, client_data))
     train_metrics = metrics_aggregation_fn(model_outputs)
-    stat_metrics = intrinsics.federated_sum(stat_output)
     measurements = intrinsics.federated_zip(
-        collections.OrderedDict(train=train_metrics, stat=stat_metrics))
+        collections.OrderedDict(train=train_metrics))
     return measured_process.MeasuredProcessOutput(state, client_result,
                                                   measurements)
 

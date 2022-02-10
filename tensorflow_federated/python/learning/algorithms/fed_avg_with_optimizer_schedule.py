@@ -131,13 +131,12 @@ def build_scheduled_client_work(
       computation_types.at_clients(data_type))
   def next_fn(state, weights, client_data):
     round_num_at_clients = intrinsics.federated_broadcast(state)
-    client_result, model_outputs, stat_output = intrinsics.federated_map(
+    client_result, model_outputs = intrinsics.federated_map(
         client_update_computation, (weights, client_data, round_num_at_clients))
     updated_state = intrinsics.federated_map(add_one, state)
     train_metrics = metrics_aggregation_fn(model_outputs)
-    stat_metrics = intrinsics.federated_sum(stat_output)
     measurements = intrinsics.federated_zip(
-        collections.OrderedDict(train=train_metrics, stat=stat_metrics))
+        collections.OrderedDict(train=train_metrics))
     return measured_process.MeasuredProcessOutput(updated_state, client_result,
                                                   measurements)
 

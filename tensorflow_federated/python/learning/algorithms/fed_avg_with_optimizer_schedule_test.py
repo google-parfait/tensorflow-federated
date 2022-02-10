@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import itertools
 from unittest import mock
 
@@ -19,10 +20,12 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_avg_with_optimizer_schedule
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 
@@ -142,6 +145,19 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
           model_fn=model_examples.LinearRegression(),
           client_learning_rate_fn=lambda x: 0.1,
           client_optimizer_fn=tf.keras.optimizers.SGD)
+
+  def test_construction_with_only_secure_aggregation(self):
+    model_fn = functools.partial(
+        model_examples.LinearRegression, use_metrics_aggregator=True)
+    learning_process = fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
+        model_fn,
+        client_learning_rate_fn=lambda x: 0.5,
+        client_optimizer_fn=tf.keras.optimizers.SGD,
+        model_aggregator=model_update_aggregator.secure_aggregator(
+            weighted=True),
+        metrics_aggregator=aggregator.secure_sum_then_finalize)
+    static_assert.assert_not_contains_unsecure_aggregation(
+        learning_process.next)
 
 
 if __name__ == '__main__':
