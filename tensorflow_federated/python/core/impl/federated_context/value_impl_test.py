@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import collections
+import dataclasses
+from typing import Any
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import attr
 import numpy as np
 import tensorflow as tf
 
@@ -27,6 +30,18 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+
+
+@dataclasses.dataclass
+class TestDataclass:
+  x: Any
+  y: Any
+
+
+@attr.s(auto_attribs=True)
+class TestAttrClass:
+  x: Any
+  y: Any
 
 
 class ValueTest(parameterized.TestCase):
@@ -160,6 +175,36 @@ class ValueTest(parameterized.TestCase):
     v = value_impl.to_value((x, y), None)
     self.assertIsInstance(v, value_impl.Value)
     self.assertEqual(str(v), '<foo,bar>')
+
+  def test_to_value_for_dataclass(self):
+    x = value_impl.Value(building_blocks.Reference('foo', tf.int32))
+    y = value_impl.Value(building_blocks.Reference('bar', tf.int32))
+    v = value_impl.to_value(TestDataclass(x, y), None)
+    self.assertIsInstance(v, value_impl.Value)
+    self.assertEqual(str(v), '<x=foo,y=bar>')
+
+  def test_to_value_for_attrs_class(self):
+    x = value_impl.Value(building_blocks.Reference('foo', tf.int32))
+    y = value_impl.Value(building_blocks.Reference('bar', tf.int32))
+    v = value_impl.to_value(TestAttrClass(x, y), None)
+    self.assertIsInstance(v, value_impl.Value)
+    self.assertEqual(str(v), '<x=foo,y=bar>')
+
+  def test_to_value_for_nested_dataclass(self):
+    x = value_impl.Value(building_blocks.Reference('foo', tf.int32))
+    y = value_impl.Value(building_blocks.Reference('bar', tf.int32))
+    v = value_impl.to_value(
+        TestDataclass(TestDataclass(x, y), TestDataclass(x, y)), None)
+    self.assertIsInstance(v, value_impl.Value)
+    self.assertEqual(str(v), '<x=<x=foo,y=bar>,y=<x=foo,y=bar>>')
+
+  def test_to_value_for_nested_attrs_class(self):
+    x = value_impl.Value(building_blocks.Reference('foo', tf.int32))
+    y = value_impl.Value(building_blocks.Reference('bar', tf.int32))
+    v = value_impl.to_value(
+        TestAttrClass(TestAttrClass(x, y), TestAttrClass(x, y)), None)
+    self.assertIsInstance(v, value_impl.Value)
+    self.assertEqual(str(v), '<x=<x=foo,y=bar>,y=<x=foo,y=bar>>')
 
   def test_to_value_for_list(self):
     x = value_impl.Value(building_blocks.Reference('foo', tf.int32))
