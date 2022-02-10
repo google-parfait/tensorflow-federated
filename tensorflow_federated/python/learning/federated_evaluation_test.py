@@ -27,12 +27,14 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import federated_evaluation
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import encoding_utils
+from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 # Convenience aliases.
@@ -285,8 +287,7 @@ def _build_expected_test_quant_model_eval_signature():
                   shape=(None,), dtype=tf.float32))))
   return_type = computation_types.at_server(
       collections.OrderedDict(
-          eval=collections.OrderedDict(num_same=tf.float32),
-          stat=collections.OrderedDict(num_examples=tf.int64)))
+          eval=collections.OrderedDict(num_same=tf.float32)))
   return computation_types.FunctionType(
       parameter=collections.OrderedDict(
           server_model_weights=weights_parameter_type,
@@ -356,8 +357,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
             ]),
             result=computation_types.at_server(
                 collections.OrderedDict(
-                    eval=collections.OrderedDict(num_over=tf.float32),
-                    stat=collections.OrderedDict(num_examples=tf.int64)))))
+                    eval=collections.OrderedDict(num_over=tf.float32)))))
 
     def _temp_dict(temps):
       return {'temp': np.array(temps, dtype=np.float32)}
@@ -373,7 +373,6 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
         result,
         collections.OrderedDict(
             eval=collections.OrderedDict(num_over=9.0),
-            stat=collections.OrderedDict(num_examples=12),
         ))
 
   # TODO(b/202027089): Remove this test once the try/except logic is gone.
@@ -387,7 +386,8 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
           computation_types.at_clients(local_unfinalized_metrics_type))
       def aggregator_computation(client_local_unfinalized_metrics):
         del client_local_unfinalized_metrics  # Unused.
-        return collections.OrderedDict()
+        return intrinsics.federated_value(
+            collections.OrderedDict(foo_metric=1), placements.SERVER)
 
       return aggregator_computation
 
@@ -395,8 +395,9 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     model_fn = lambda: TestModel(use_metrics_aggregator=False)
     evaluate = federated_evaluation.build_federated_evaluation(
         model_fn, metrics_aggregator=aggregate_nothing)
-    self.assertEqual(evaluate.type_signature.result.member.eval,
-                     computation_types.to_type(collections.OrderedDict()))
+    self.assertEqual(
+        evaluate.type_signature.result.member.eval,
+        computation_types.to_type(collections.OrderedDict(foo_metric=tf.int32)))
 
   @parameterized.named_parameters(('use_metrics_aggregator', True),
                                   ('not_use_metrics_aggregator', False))
@@ -438,9 +439,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     # where the index and value match.
     self.assertEqual(
         result,
-        collections.OrderedDict(
-            eval=collections.OrderedDict(num_same=8.0),
-            stat=collections.OrderedDict(num_examples=20)))
+        collections.OrderedDict(eval=collections.OrderedDict(num_same=8.0)))
 
   @parameterized.named_parameters(('use_metrics_aggregator', True),
                                   ('not_use_metrics_aggregator', False))
@@ -481,11 +480,9 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     # data is changed during encoding so the number that are equal between
     # the original and the final result should not be 8 as it is in the
     # conservative quantization test above.
-    self.assertContainsSubset(result.keys(), ['eval', 'stat'])
+    self.assertEqual(list(result.keys()), ['eval'])
     self.assertContainsSubset(result['eval'].keys(), ['num_same'])
     self.assertLess(result['eval']['num_same'], 8.0)
-    self.assertContainsSubset(result['stat'].keys(), ['num_examples'])
-    self.assertEqual(result['stat']['num_examples'], 20)
 
   @parameterized.named_parameters(('use_metrics_aggregator', True),
                                   ('not_use_metrics_aggregator', False))
@@ -550,8 +547,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
         result,
         collections.OrderedDict(
             eval=collections.OrderedDict(
-                accuracy=1.0, loss=0.0, num_examples=12, num_batches=5),
-            stat=collections.OrderedDict(num_examples=12)))
+                accuracy=1.0, loss=0.0, num_examples=12, num_batches=5)))
 
   @mock.patch.object(
       dataset_reduce,
@@ -610,6 +606,12 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     federated_evaluation.build_federated_evaluation(mock_model_fn)
     # TODO(b/186451541): reduce the number of calls to model_fn.
     self.assertEqual(mock_model_fn.call_count, 2)
+
+  def test_no_unsecure_aggregation_with_secure_metrics_finalizer(self):
+    evaluate_comp = federated_evaluation.build_federated_evaluation(
+        _model_fn_from_keras,
+        metrics_aggregator=aggregator.secure_sum_then_finalize)
+    static_assert.assert_not_contains_unsecure_aggregation(evaluate_comp)
 
 
 if __name__ == '__main__':
