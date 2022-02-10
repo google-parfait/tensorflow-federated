@@ -41,6 +41,7 @@ from tensorflow_federated.python.core.impl.executors import federated_resolving_
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor
+from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.executors import sequence_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
@@ -974,9 +975,10 @@ def remote_executor_factory(
 
   remote_executors = []
   for channel in channels:
+    stub = remote_executor_grpc_stub.RemoteExecutorGrpcStub(channel)
     remote_executors.append(
         remote_executor.RemoteExecutor(
-            channel=channel,
+            stub=stub,
             thread_pool_executor=thread_pool_executor,
             dispose_batch_size=dispose_batch_size))
 
