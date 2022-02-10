@@ -25,6 +25,10 @@ upper_tabs:
       - title: "Federated Reconstruction for Matrix Factorization"
         path: /federated/tutorials/federated_reconstruction_for_matrix_factorization
 
+      - heading: Federated analytics
+      - title: "Private Heavy Hitters"
+        path: /federated/tutorials/private_heavy_hitters
+
       - heading: Custom computations
       - title: "Building Your Own Federated Learning Algorithm"
         path: /federated/tutorials/building_your_own_federated_learning_algorithm

@@ -23,6 +23,12 @@ documentation can be found in the [TFF guides](../get_started.md).
     Federated Learning API to train a partially local matrix factorization
     model.
 
+**Getting started with federated analytics**
+
+*   [Private Heavy Hitters](private_heavy_hitters.ipynb) shows how to use
+    `tff.analytics.heavy_hitters` to build a federated analytics computation to
+    discover private heavy hitters.
+
 **Writing custom federated computations**
 
 *   [Building Your Own Federated Learning Algorithm](building_your_own_federated_learning_algorithm.ipynb)
