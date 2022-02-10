@@ -42,6 +42,8 @@ from tensorflow_federated.python.core.impl.types import placements
 def create_remote_executor():
   port = portpicker.pick_unused_port()
   channel = grpc.insecure_channel('localhost:{}'.format(port))
+  # Creating a diff to run internal infra
+  print('Hello! This better be running!')
   return remote_executor.RemoteExecutor(channel)
 
 
