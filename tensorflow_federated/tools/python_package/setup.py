@@ -67,9 +67,9 @@ REQUIRED_PACKAGES = [
     'numpy~=1.21.4',
     'portpicker~=1.3.1',
     'semantic-version~=2.8.5',
-    'tensorflow-model-optimization~=0.7.0',
+    'tensorflow-model-optimization~=0.7.1',
     'tensorflow-privacy~=0.7.3',
-    'tensorflow~=2.6.0',
+    'tensorflow~=2.8.0',
     'tqdm~=4.28.1',
 ]
 
