@@ -19,11 +19,11 @@ git_repository(
     tag = "1.0.3",
 )
 
-git_repository(
-    name = "com_google_absl",
-    remote = "https://github.com/abseil/abseil-cpp.git",
-    tag = "20210324.2",
-)
+# git_repository(
+#     name = "com_google_absl",
+#     remote = "https://github.com/abseil/abseil-cpp.git",
+#     tag = "20211102.0",
+# )
 
 git_repository(
     name = "com_google_googletest",
@@ -47,9 +47,9 @@ git_repository(
 
 git_repository(
     name = "org_tensorflow",
-    commit = "7059eeb4b55ba316d959e923e51be3403a2924a8",
     patches = ["//third_party/tensorflow:internal_visibility.patch"],
     remote = "https://github.com/tensorflow/tensorflow.git",
+    tag = "v2.8.0",
 )
 
 git_repository(
