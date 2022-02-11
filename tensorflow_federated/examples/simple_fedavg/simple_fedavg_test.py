@@ -113,21 +113,6 @@ def _mnist_forward_pass(variables, batch):
       loss=loss, predictions=predictions, num_examples=num_examples)
 
 
-def _get_local_mnist_metrics(variables):
-  return collections.OrderedDict(
-      num_examples=variables.num_examples,
-      loss=variables.loss_sum / variables.num_examples,
-      accuracy=variables.accuracy_sum / variables.num_examples)
-
-
-@tff.federated_computation
-def _aggregate_mnist_metrics_across_clients(metrics):
-  return collections.OrderedDict(
-      num_examples=tff.federated_sum(metrics.num_examples),
-      loss=tff.federated_mean(metrics.loss, metrics.num_examples),
-      accuracy=tff.federated_mean(metrics.accuracy, metrics.num_examples))
-
-
 class MnistModel(tff.learning.Model):
 
   def __init__(self):
@@ -172,11 +157,23 @@ class MnistModel(tff.learning.Model):
 
   @tf.function
   def report_local_outputs(self):
-    return _get_local_mnist_metrics(self._variables)
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` are deprecated and will be removed '
+        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers` instead. The cross-client metrics aggregation '
+        'should be specified as the `metrics_aggregator` argument when you '
+        'build a training process or evaluation computation using this model.')
 
   @property
   def federated_output_computation(self):
-    return _aggregate_mnist_metrics_across_clients
+    raise NotImplementedError(
+        'Do not implement. `report_local_outputs` and '
+        '`federated_output_computation` are deprecated and will be removed '
+        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
+        '`metric_finalizers` instead. The cross-client metrics aggregation '
+        'should be specified as the `metrics_aggregator` argument when you '
+        'build a training process or evaluation computation using this model.')
 
   @tf.function
   def report_local_unfinalized_metrics(
