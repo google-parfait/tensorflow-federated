@@ -90,8 +90,8 @@ def build_weighted_fed_prox(
       metrics from distribution and aggregation processes.
   *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
       where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
-      matchs the output of `initialize` and `M` represents the type of the model
-      weights used during training.
+      matches the output of `initialize` and `M` represents the type of the
+      model weights used during training.
 
   Each time the `next` method is called, the server model is communicated to
   each client using the provided `model_distributor`. For each client, local
@@ -123,9 +123,9 @@ def build_weighted_fed_prox(
     server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`. By default, this uses
       `tf.keras.optimizers.SGD` with a learning rate of 1.0.
-    client_weighting: A member `tff.learning.ClientWeighting` that specifies a
-      built-in weighting method. By default, weighting by number of examples is
-      used.
+    client_weighting: A member of `tff.learning.ClientWeighting` that specifies
+      a built-in weighting method. By default, weighting by number of examples
+      is used.
     model_distributor: An optional `DistributionProcess` that broadcasts the
       model weights on the server to the clients. If set to `None`, the
       distributor is constructed via `distributors.build_broadcast_process`.
@@ -233,7 +233,7 @@ def build_unweighted_fed_prox(
       metrics from distribution and aggregation processes.
   *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
       where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
-      matchs the output of `initialize` and `next` and `M` represents the type
+      matches the output of `initialize` and `next` and `M` represents the type
       of the model weights used during training.
 
   Each time the `next` method is called, the server model is communicated to
