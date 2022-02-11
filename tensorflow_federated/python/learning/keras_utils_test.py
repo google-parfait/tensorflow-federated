@@ -260,7 +260,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertGreater(metrics['mean_absolute_error'][0], 0)
     self.assertEqual(metrics['mean_absolute_error'][1], 2)
 
-    # TODO(b/202027089): Remove these checks when removing the two attributes:
+    # TODO(b/202027329): Remove these checks when removing the two attributes:
     # `report_local_outptus` and `federated_output_computation`.
     # Ensure that `report_local_outptus` and `federated_output_computation`
     # raise a NotImplementedError.
