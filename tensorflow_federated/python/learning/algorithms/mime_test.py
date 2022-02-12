@@ -324,7 +324,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
   def test_weighted_mime_lite_with_only_secure_aggregation(self):
     aggregator = model_update_aggregator.secure_aggregator(weighted=True)
     learning_process = mime.build_weighted_mime_lite(
-        lambda: model_examples.LinearRegression(use_metrics_aggregator=True),
+        model_examples.LinearRegression,
         optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
         model_aggregator=aggregator,
         full_gradient_aggregator=aggregator,
@@ -335,7 +335,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
   def test_unweighted_mime_lite_with_only_secure_aggregation(self):
     aggregator = model_update_aggregator.secure_aggregator(weighted=False)
     learning_process = mime.build_unweighted_mime_lite(
-        lambda: model_examples.LinearRegression(use_metrics_aggregator=True),
+        model_examples.LinearRegression,
         optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
         model_aggregator=aggregator,
         full_gradient_aggregator=aggregator,
