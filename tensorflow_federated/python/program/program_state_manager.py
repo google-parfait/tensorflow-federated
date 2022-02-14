@@ -59,6 +59,8 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     Raises:
       ProgramStateManagerStateNotFoundError: If there is no program state for
         the given `version`.
+      ProgramStateManagerStructureError: If `structure` does not match the value
+        loaded for the given `version`.
     """
     raise NotImplementedError
 
