@@ -55,8 +55,6 @@ from tensorflow_federated.python.learning.optimizers import optimizer as optimiz
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-# TODO(b/202027089): Revise the following docstring once all models do not
-# implement `report_local_outputs` and `federated_output_computation`.
 class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated Averaging."""
 
@@ -241,9 +239,9 @@ def build_federated_averaging_process(
       `tf.keras.optimizers.SGD` with a learning rate of 1.0.
     client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
       built-in weighting method, or a callable that takes the output of
-      `model.report_local_outputs` and returns a tensor that provides the weight
-      in the federated average of model deltas. If None, defaults to weighting
-      by number of examples.
+      `model.report_local_unfinalized_metrics` and returns a tensor that
+      provides the weight in the federated average of model deltas. If None,
+      defaults to weighting by number of examples.
     broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`. If set to default None,

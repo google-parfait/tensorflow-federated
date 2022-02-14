@@ -40,8 +40,8 @@ class ClientOutput(object):
     client_weight: Weight to be used in a weighted mean when aggregating
       `weights_delta`.
     model_output: A structure matching
-      `tff.learning.Model.report_local_outputs`, reflecting the results of
-      training on the input dataset.
+      `tff.learning.Model.report_local_unfinalized_metrics`, reflecting the
+      results of training on the input dataset.
   """
   weights_delta = attr.ib()
   client_weight = attr.ib()

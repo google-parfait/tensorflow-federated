@@ -55,8 +55,6 @@ class ProcessTypeError(Exception):
   pass
 
 
-# TODO(b/202027089): Revise this docstring once all models do not implement
-# `report_local_outputs` and `federated_output_computation`.
 @attr.s(eq=False, frozen=True)
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
@@ -65,10 +63,9 @@ class ClientOutput(object):
     weights_delta: A dictionary of updates to the model's trainable variables.
     weights_delta_weight: Weight to use in a weighted mean when aggregating
       `weights_delta`.
-    model_output: A structure matching `tff.learning.Model.report_local_outputs`
-      (or `tff.learning.Model.report_local_unfinalized_metrics` if
-      `report_local_outputs` is not implemented), reflecting the results of
-      training on the input dataset.
+    model_output: A structure matching
+    `tff.learning.Model.report_local_unfinalized_metrics`, reflecting the
+    results of training on the input dataset.
     optimizer_output: Additional metrics or other outputs defined by the
       optimizer.
   """
@@ -406,8 +403,7 @@ def _build_one_round_computation(
 
     Returns:
       A tuple of updated `tff.learning.framework.ServerState` and the result of
-      `tff.learning.Model.federated_output_computation`, both having
-      `tff.SERVER` placement.
+      aggregated metrics, both having `tff.SERVER` placement.
     """
     broadcast_output = broadcast_process.next(
         server_state.model_broadcast_state, server_state.model)
@@ -513,8 +509,6 @@ def build_stateless_broadcaster(
       initialize_fn=_empty_server_initialization, next_fn=stateless_broadcast)
 
 
-# TODO(b/202027089): Remove the note on `metrics_aggregator` once all models do
-# not implement `report_local_outputs` and `federated_output_computation`.
 def build_model_delta_optimizer_process(
     model_fn: _ModelConstructor,
     model_to_client_delta_fn: Callable[[Callable[[], model_lib.Model]],
@@ -557,16 +551,11 @@ def build_model_delta_optimizer_process(
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
       type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
       returns a federated TFF computation of the following type signature
-      `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. If set,
-      use the provided `metrics_aggregator`. If `None` and `model_fn` implements
-      `federated_output_computation` and `report_local_outputs` (these two
-      methods are deprecated and will be removed in 2022Q1), then
-      `federated_output_computation` is used to aggregate the metrics. If `None`
-      and `model_fn` does not implement `federated_output_computation` and
-      `report_local_outputs`, uses `tff.learning.metrics.sum_then_finalize`,
-      which returns a federated TFF computation that sums the unfinalized
-      metrics from `CLIENTS`, and then applies the corresponding metric
-      finalizers at `SERVER`.
+      `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. If
+      `None`, uses `tff.learning.metrics.sum_then_finalize`, which returns a
+      federated TFF computation that sums the unfinalized metrics from
+      `CLIENTS`, and then applies the corresponding metric finalizers at
+      `SERVER`.
 
   Returns:
     A `tff.templates.IterativeProcess`.
