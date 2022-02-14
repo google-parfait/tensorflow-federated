@@ -33,13 +33,16 @@ from tensorflow_federated.python.core.impl.executors.executor_factory import Exe
 from tensorflow_federated.python.core.impl.executors.executor_serialization import deserialize_value
 from tensorflow_federated.python.core.impl.executors.executor_serialization import serialize_value
 from tensorflow_federated.python.core.impl.executors.executor_service import ExecutorService
+from tensorflow_federated.python.core.impl.executors.executor_stacks import ComposingExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import local_executor_factory
+from tensorflow_federated.python.core.impl.executors.executor_stacks import ReconstructOnChangeExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import remote_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import ResourceManagingExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import SizeInfo
 from tensorflow_federated.python.core.impl.executors.executor_stacks import sizing_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import SizingExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import thread_debugging_executor_factory
+from tensorflow_federated.python.core.impl.executors.executor_stacks import UnplacedExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.executors.federated_composing_strategy import FederatedComposingStrategy
 from tensorflow_federated.python.core.impl.executors.federated_resolving_strategy import FederatedResolvingStrategy
