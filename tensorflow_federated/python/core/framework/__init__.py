@@ -48,6 +48,7 @@ from tensorflow_federated.python.core.impl.executors.federating_executor import 
 from tensorflow_federated.python.core.impl.executors.ingestable_base import Ingestable
 from tensorflow_federated.python.core.impl.executors.reference_resolving_executor import ReferenceResolvingExecutor
 from tensorflow_federated.python.core.impl.executors.remote_executor import RemoteExecutor
+from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
 from tensorflow_federated.python.core.impl.executors.thread_delegating_executor import ThreadDelegatingExecutor
 from tensorflow_federated.python.core.impl.executors.transforming_executor import TransformingExecutor
 from tensorflow_federated.python.core.impl.types.type_analysis import contains as type_contains
