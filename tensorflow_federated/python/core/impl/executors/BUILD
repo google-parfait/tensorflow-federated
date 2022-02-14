@@ -969,6 +969,13 @@ py_library(
     name = "remote_executor_stub",
     srcs = ["remote_executor_stub.py"],
     srcs_version = "PY3",
+    visibility = [
+        ":executors_packages",
+        "//tensorflow_federated/python/cloud/gcp/core/executors:__pkg__",
+        "//tensorflow_federated/python/core/impl:impl_visibility",
+        "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+        "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    ],
     deps = ["//tensorflow_federated/proto/v0:executor_py_pb2"],
 )
 
