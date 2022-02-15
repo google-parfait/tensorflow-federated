@@ -141,6 +141,14 @@ def create_compiled_empty_tuple() -> building_blocks.Call:
 
 
 @functools.lru_cache()
+def create_identity(
+    type_signature: computation_types.Type) -> building_blocks.Lambda:
+  return building_blocks.Lambda(
+      'id_arg', type_signature,
+      building_blocks.Reference('id_arg', type_signature))
+
+
+@functools.lru_cache()
 def create_compiled_identity(
     type_signature: computation_types.Type,
     name: Optional[str] = None) -> building_blocks.CompiledComputation:
