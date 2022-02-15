@@ -133,6 +133,32 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     except:  # pylint: disable=bare-except
       self.fail('Secure aggregator contains non-secure aggregation.')
 
+  def test_ddp_secure_aggregator_only_contains_secure_aggregation(self):
+    aggregator = model_update_aggregator.ddp_secure_aggregator(
+        noise_multiplier=1e-2,
+        expected_clients_per_round=10).create(_float_matrix_type)
+    try:
+      static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
+    except:  # pylint: disable=bare-except
+      self.fail('Secure aggregator contains non-secure aggregation.')
+
+  @parameterized.named_parameters(
+      ('zeroing_float', True, _float_type),
+      ('zeroing_float_matrix', True, _float_matrix_type),
+      ('no_zeroing_float', False, _float_type),
+      ('no_zeroing_float_matrix', False, _float_matrix_type))
+  def test_ddp_secure_aggregator_unweighted(self, zeroing, dtype):
+    aggregator = model_update_aggregator.ddp_secure_aggregator(
+        noise_multiplier=1e-2,
+        expected_clients_per_round=10,
+        bits=16,
+        zeroing=zeroing)
+
+    self.assertIsInstance(aggregator, factory.UnweightedAggregationFactory)
+    process = aggregator.create(dtype)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertFalse(process.is_weighted)
+
   @parameterized.named_parameters(
       ('simple', False, False, False),
       ('zeroing', True, False, False),
@@ -218,6 +244,16 @@ class CompilerIntegrationTest(test_case.TestCase, parameterized.TestCase):
         _float_matrix_type, _float_type)
     # Default compression should reduce the size aggregated by more than 60%.
     self._check_aggregated_scalar_count(aggregator, 60000 * 0.4)
+
+  def test_ddp_secure_aggregator(self):
+    aggregator = model_update_aggregator.ddp_secure_aggregator(
+        noise_multiplier=1e-2,
+        expected_clients_per_round=10).create(_float_matrix_type)
+    # The Hadmard transform requires padding to next power of 2
+    mrf = self._check_aggregated_scalar_count(aggregator, 2**16 * 1.01, 60000)
+
+    # The MapReduceForm should be using secure aggregation.
+    self.assertTrue(mrf.securely_aggregates_tensors)
 
 
 def _mrfify_aggregator(aggregator):
