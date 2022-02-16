@@ -82,8 +82,13 @@ def select_output_from_lambda(
     return result
 
   if isinstance(paths, list):
-    elements = [_select_path(comp.result, path) for path in paths]
-    result = building_blocks.Struct(elements)
+    # Avoid duplicating `comp.result` by binding it to a local.
+    result_name = next(unique_name_generator(comp))
+    result_ref = building_blocks.Reference(result_name,
+                                           comp.result.type_signature)
+    elements = [_select_path(result_ref, path) for path in paths]
+    result = building_blocks.Block([(result_name, comp.result)],
+                                   building_blocks.Struct(elements))
   else:
     result = _select_path(comp.result, paths)
   return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,

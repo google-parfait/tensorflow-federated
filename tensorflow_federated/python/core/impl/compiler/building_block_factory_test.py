@@ -1562,7 +1562,8 @@ class SelectOutputFromLambdaTest(test_case.TestCase):
         tuple_selected.type_signature.result,
         computation_types.StructType(
             [lam.type_signature.result[0], lam.type_signature.result[1]]))
-    self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
+    self.assertEqual(
+        str(tuple_selected), '(x -> (let _var1=x in <_var1[0],_var1[1]>))')
 
   def test_selects_struct_of_outputs_by_str_name(self):
     input_type = computation_types.StructType([('a', tf.int32), ('b', tf.int64),
@@ -1590,7 +1591,8 @@ class SelectOutputFromLambdaTest(test_case.TestCase):
         tuple_selected.type_signature.result,
         computation_types.StructType(
             [lam.type_signature.result.a.inner, lam.type_signature.result.b]))
-    self.assertEqual(str(tuple_selected), '(x -> <x.a.inner,x.b>)')
+    self.assertEqual(
+        str(tuple_selected), '(x -> (let _var1=x in <_var1.a.inner,_var1.b>))')
 
 
 class ZipUpToTest(test_case.TestCase):
