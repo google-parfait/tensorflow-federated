@@ -30,7 +30,9 @@ drive changes in specific areas.
 
 Current list of participants:
 
-*   (to be added shortly)
+*   Google (Krzysztof Ostrowski, Alex Ingerman, DeWitt Clinton)
+
+*   LinkedIn (Souvik Ghosh, Zheng Li, Boyi Chen)
 
 Shared goals:
 
