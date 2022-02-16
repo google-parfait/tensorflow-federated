@@ -47,7 +47,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:remote_executor_stub",
         "//tensorflow_federated/python/core/impl/executors:thread_delegating_executor",
         "//tensorflow_federated/python/core/impl/executors:transforming_executor",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
