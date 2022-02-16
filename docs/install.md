@@ -17,20 +17,9 @@ There are a few ways to set up your environment to use TensorFlow Federated
 
 ### 1. Install the Python development environment.
 
-On Ubuntu:
-
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">sudo apt update</code>
 <code class="devsite-terminal">sudo apt install python3-dev python3-pip  # Python 3</code>
-</pre>
-
-On macOS:
-
-<pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"</code>
-<code class="devsite-terminal">export PATH="/usr/local/bin:/usr/local/sbin:$PATH"</code>
-<code class="devsite-terminal">brew update</code>
-<code class="devsite-terminal">brew install python  # Python 3</code>
 </pre>
 
 ### 2. Create a virtual environment.
@@ -80,20 +69,9 @@ might be pip installing the
 
 ### 1. Install the Python development environment.
 
-On Ubuntu:
-
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">sudo apt update</code>
 <code class="devsite-terminal">sudo apt install python3-dev python3-pip  # Python 3</code>
-</pre>
-
-On macOS:
-
-<pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"</code>
-<code class="devsite-terminal">export PATH="/usr/local/bin:/usr/local/sbin:$PATH"</code>
-<code class="devsite-terminal">brew update</code>
-<code class="devsite-terminal">brew install python  # Python 3</code>
 </pre>
 
 ### 2. Install Bazel.

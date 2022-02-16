@@ -16,33 +16,28 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
-# Include specific extra dependencies when building statically, or another set
-# of dependencies otherwise. If "macos" is provided, that dependency list is
-# used when using the framework_shared_object config on MacOS platforms. If
-# "macos" is not provided, the "otherwise" list is used for all
-# framework_shared_object platforms including MacOS.
-# This is implemented via 3 macros: "if_static", "if_static_oss", and
-# "if_static_google". In Google internal builds we only use the "extra_deps",
-# that is, we use the "if_static_google" macro. In OSS, we use all arguments
-# via "if_static_oss". We convert between the two macros in the "if_static"
-# macro using the OSS export automation.
-def if_static_oss(extra_deps, otherwise = [], macos = []):
+# Include specific extra deps or srcs when building statically. The
+# "framework_shared_object" list is used for additional deps or srcs on
+# framework_shared_object platforms. This is implemented via 3 macros:
+# "if_static", "if_static_oss", and "if_static_google". In Google internal
+# builds we only use "extra", that is, we use the "if_static_google"
+# macro. In OSS, we use all arguments via "if_static_oss". We convert between
+# the two macros in the "if_static" macro using the OSS export automation.
+def if_static_oss(extra, framework_shared_object = []):
     return_value = {
-        str(Label("@org_tensorflow//tensorflow:framework_shared_object")): otherwise,
-        "//conditions:default": extra_deps,
-    }
-    if macos:
-        return_value[str(Label("@org_tensorflow//tensorflow:macos_with_framework_shared_object"))] = macos
-    return select(return_value)
-
-def if_static_google(extra_deps, otherwise = [], macos = []):
-    return_value = {
-        "//conditions:default": extra_deps,
+        str(Label("@org_tensorflow//tensorflow:framework_shared_object")): framework_shared_object,
+        "//conditions:default": extra,
     }
     return select(return_value)
 
-def if_static(extra_deps, otherwise = [], macos = []):
-    return if_static_oss(extra_deps, otherwise, macos)
+def if_static_google(extra, framework_shared_object = []):  # buildifier: disable=unused-variable
+    return_value = {
+        "//conditions:default": extra,
+    }
+    return select(return_value)
+
+def if_static(extra, framework_shared_object = []):
+    return if_static_oss(extra, framework_shared_object)
 
 def py_cpu_gpu_test(name, main = None, tags = [], **kwargs):
     """A version of `py_test` that tests both cpu and gpu.
@@ -92,22 +87,14 @@ def tff_cc_test_with_tf_deps(name, tf_deps = [], **kwargs):
         name = name,
         srcs = srcs + if_static(
             [],
-            macos = [
-                "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
-                "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
-            ],
-            otherwise = [
+            framework_shared_object = [
                 "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
                 "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
             ],
         ),
         deps = deps + if_static(
             tf_deps,
-            macos = [
-                "@org_tensorflow//tensorflow:libtensorflow_framework.2.8.0.dylib",
-                "@org_tensorflow//tensorflow:libtensorflow_cc.2.8.0.dylib",
-            ],
-            otherwise = [
+            framework_shared_object = [
                 "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
                 "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
             ],
@@ -128,8 +115,7 @@ def tff_cc_library_with_tf_deps(name, tf_deps = [], **kwargs):
         name = name,
         deps = deps + if_static(
             tf_deps,
-            macos = ["@org_tensorflow//tensorflow:libtensorflow_framework.2.8.0.dylib"],
-            otherwise = ["@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0"],
+            framework_shared_object = ["@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0"],
         ),
         **kwargs
     )
@@ -154,22 +140,14 @@ def tff_cc_library_with_tf_runtime_deps(name, tf_deps = [], **kwargs):
         name = name,
         srcs = srcs + if_static(
             [],
-            macos = [
-                "@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib",
-                "@org_tensorflow//tensorflow:libtensorflow_cc.2.dylib",
-            ],
-            otherwise = [
+            framework_shared_object = [
                 "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
                 "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
             ],
         ),
         deps = deps + if_static(
             tf_deps,
-            macos = [
-                "@org_tensorflow//tensorflow:libtensorflow_framework.2.8.0.dylib",
-                "@org_tensorflow//tensorflow:libtensorflow_cc.2.8.0.dylib",
-            ],
-            otherwise = [
+            framework_shared_object = [
                 "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0",
                 "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.8.0",
             ],
@@ -204,13 +182,11 @@ def tff_pybind_extension_with_tf_deps(name, tf_deps = [], tf_python_dependency =
         name = name,
         srcs = srcs + if_static(
             [],
-            macos = ["@org_tensorflow//tensorflow:libtensorflow_framework.2.dylib"],
-            otherwise = ["@org_tensorflow//tensorflow:libtensorflow_framework.so.2"],
+            framework_shared_object = ["@org_tensorflow//tensorflow:libtensorflow_framework.so.2"],
         ) + extra_tf_dyn_srcs,
         deps = deps + if_static(
             tf_deps,
-            macos = ["@org_tensorflow//tensorflow:libtensorflow_framework.2.8.0.dylib"],
-            otherwise = ["@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0"],
+            framework_shared_object = ["@org_tensorflow//tensorflow:libtensorflow_framework.so.2.8.0"],
         ) + extra_tf_dyn_deps,
         **kwargs
     )

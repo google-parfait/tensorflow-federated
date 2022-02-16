@@ -36,15 +36,6 @@ build --copt=-O3
 # Suppress C++ compiler warnings.
 build:linux --copt=-w
 build:linux --host_copt=-w
-build:macos --copt=-w
-
-# gRPC on MacOS requires this define, see
-# https://github.com/bazelbuild/bazel/issues/4341#issuecomment-572050759 for
-# more information.
-build:macos --copt=-DGRPC_BAZEL_BUILD
-
-# Sets the default Apple platform to macOS.
-build:macos --apple_platform_type=macos
 
 #
 # Remote execution capabilities
@@ -118,16 +109,10 @@ build:linux --define=PREFIX=/usr
 build:linux --define=LIBDIR=$(PREFIX)/lib
 build:linux --define=INCLUDEDIR=$(PREFIX)/include
 build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
-build:macos --define=PREFIX=/usr
-build:macos --define=LIBDIR=$(PREFIX)/lib
-build:macos --define=INCLUDEDIR=$(PREFIX)/include
-build:macos --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
 
 # By default, build TF in C++ 14 mode.
 build:linux --cxxopt=-std=c++14
 build:linux --host_cxxopt=-std=c++14
-build:macos --cxxopt=-std=c++14
-build:macos --host_cxxopt=-std=c++14
 
 # On linux, we dynamically link small amount of kernels
 build:linux --config=dynamic_kernels

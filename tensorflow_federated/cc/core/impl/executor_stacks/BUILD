@@ -81,7 +81,6 @@ cc_library(
 tff_cc_test_with_tf_deps(
     name = "remote_stacks_test",
     srcs = ["remote_stacks_test.cc"],
-    tags = ["nomacos"],
     deps = [
         ":remote_stacks",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
