@@ -42,54 +42,6 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
-def prepare_for_rebinding(comp):
-  """Prepares `comp` for extracting rebound variables.
-
-  Currently, this means replacing all called lambdas and inlining all blocks.
-  This does not necessarly guarantee that the resulting computation has no
-  called lambdas, it merely reduces a level of indirection here. This reduction
-  has proved sufficient for identifying variables which are about to be rebound
-  in the top-level lambda, necessarily when compiler components factor work out
-  from a single function into multiple functions. Since this function makes no
-  guarantees about sufficiency, it is the responsibility of the caller to
-  ensure that no unbound variables are introduced during the rebinding.
-
-  Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` from which all
-      occurrences of a given variable need to be extracted and rebound.
-
-  Returns:
-    Another instance of `building_blocks.ComputationBuildingBlock` which has
-    had all called lambdas replaced by blocks, all blocks inlined and all
-    selections from tuples collapsed.
-  """
-  # TODO(b/146430051): Follow up here and consider removing or enforcing more
-  # strict output invariants when `remove_called_lambdas_and_blocks` is moved
-  # in here.
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  comp, _ = tree_transformations.uniquify_reference_names(comp)
-  comp, _ = tree_transformations.replace_called_lambda_with_block(comp)
-  block_inliner = tree_transformations.InlineBlock(comp)
-  selection_replacer = tree_transformations.ReplaceSelectionFromTuple()
-  transforms = [block_inliner, selection_replacer]
-  symbol_tree = transformation_utils.SymbolTree(
-      transformation_utils.ReferenceCounter)
-
-  def _transform_fn(comp, symbol_tree):
-    """Transform function chaining inlining and collapsing selections."""
-    modified = False
-    for transform in transforms:
-      if transform.global_transform:
-        comp, transform_modified = transform.transform(comp, symbol_tree)
-      else:
-        comp, transform_modified = transform.transform(comp)
-      modified = modified or transform_modified
-    return comp, modified
-
-  return transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, _transform_fn, symbol_tree)
-
-
 def to_call_dominant(
     comp: building_blocks.ComputationBuildingBlock
 ) -> building_blocks.ComputationBuildingBlock:

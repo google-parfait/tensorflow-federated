@@ -360,12 +360,11 @@ def _split_ast_on_aggregate(bb):
 
 def _prepare_for_rebinding(bb):
   """Replaces `bb` with semantically equivalent version for rebinding."""
-  all_equal_normalized = transformations.normalize_all_equal_bit(bb)
-  identities_removed, _ = tree_transformations.remove_mapped_or_applied_identity(
-      all_equal_normalized)
-  for_rebind, _ = compiler_transformations.prepare_for_rebinding(
-      identities_removed)
-  return for_rebind
+  bb = transformations.normalize_all_equal_bit(bb)
+  bb, _ = tree_transformations.remove_mapped_or_applied_identity(bb)
+  bb = compiler_transformations.to_call_dominant(bb)
+  bb, _ = tree_transformations.remove_unused_block_locals(bb)
+  return bb
 
 
 def _construct_selection_from_federated_tuple(

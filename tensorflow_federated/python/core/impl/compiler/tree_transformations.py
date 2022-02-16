@@ -18,11 +18,9 @@
 # information.
 """A library of transformation functions for ASTs."""
 
-import typing
 from typing import Tuple
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -72,81 +70,6 @@ def _apply_transforms(comp, transforms):
     return comp, modified
 
   return transformation_utils.transform_postorder(comp, _transform)
-
-
-class InlineBlock(transformation_utils.TransformSpec):
-  """Inlines the block variables in `comp` specified by `variable_names`.
-
-  Each invocation of the `transform` method checks for presence of a
-  block-bound `building_blocks.Reference`, and inlines this
-  reference with its appropriate value.
-  """
-
-  def __init__(self, comp, variable_names=None):
-    """Initializes the block inliner.
-
-    Checks that `comp` has unique names, and that `variable_names` is an
-    iterable of string types.
-
-    Args:
-      comp: The top-level computation to inline.
-      variable_names: The variable names to inline. If `None`, inlines all
-        variables.
-
-    Raises:
-      ValueError: If `comp` contains variables with non-unique names.
-      TypeError: If `variable_names` is a non-`list`, `set` or `tuple`, or
-        contains anything other than strings.
-    """
-    super().__init__(global_transform=True)
-    py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-    tree_analysis.check_has_unique_names(comp)
-    if variable_names is not None:
-      py_typecheck.check_type(variable_names, (list, tuple, set))
-      for name in variable_names:
-        py_typecheck.check_type(name, str)
-    self._variable_names = variable_names
-
-  def _should_inline_variable(self, name):
-    return self._variable_names is None or name in self._variable_names
-
-  def should_transform(self, comp):
-    return ((comp.is_reference() and self._should_inline_variable(comp.name)) or
-            (comp.is_block() and any(
-                self._should_inline_variable(name) for name, _ in comp.locals)))
-
-  def transform(self, comp, symbol_tree):
-    if not self.should_transform(comp):
-      return comp, False
-    if comp.is_reference():
-      payload = symbol_tree.get_payload_with_name(comp.name)
-      if payload is None:
-        value = None
-      else:
-        value = payload.value
-      # This identifies a variable bound by a Block as opposed to a Lambda.
-      if value is not None:
-        return value, True
-      return comp, False
-    elif comp.is_block():
-      variables = [(name, value)
-                   for name, value in comp.locals
-                   if not self._should_inline_variable(name)]
-      if not variables:
-        comp = comp.result
-      else:
-        comp = building_blocks.Block(variables, comp.result)
-      return comp, True
-    return comp, False
-
-
-def inline_block_locals(comp, variable_names=None):
-  """Inlines the block variables in `comp` specified by `variable_names`."""
-  symbol_tree = transformation_utils.SymbolTree(
-      transformation_utils.ReferenceCounter)
-  transform_spec = InlineBlock(comp, variable_names)
-  return transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, transform_spec.transform, symbol_tree)
 
 
 def remove_duplicate_block_locals(comp):
@@ -335,133 +258,6 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
 
 def remove_unused_block_locals(comp):
   return _apply_transforms(comp, RemoveUnusedBlockLocals())
-
-
-class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
-  r"""Replaces all the called lambdas in `comp` with a block.
-
-  This transform replaces the following computation containing a called lambda:
-
-            Call
-           /    \
-  Lambda(x)      Comp(y)
-           \
-            Comp(z)
-
-  (x -> z)(y)
-
-  with the following computation containing a block:
-
-             Block
-            /     \
-  [x=Comp(y)]       Comp(z)
-
-  let x=y in z
-  """
-
-  def __init__(self):
-    super().__init__(global_transform=True)
-
-  def should_transform(self, comp, referred):
-    if comp.is_call():
-      return (comp.function.is_lambda() or
-              (referred is not None and referred.is_lambda()))
-    return comp.is_block()
-
-  def _resolve_reference_to_concrete_value(self, ref, symbol_tree):
-    while ref.is_reference():
-      referred_payload = symbol_tree.get_payload_with_name(ref.name)
-      ref = referred_payload.value
-    return ref
-
-  def transform(self, comp, symbol_tree):
-    referred: typing.Optional[building_blocks.ComputationBuildingBlock] = None
-    if comp.is_call() and comp.function.is_reference():
-      node = symbol_tree.get_payload_with_name(comp.function.name)
-      if node is not None:
-        referred = node.value
-        if referred is not None and referred.is_reference():
-          referred = self._resolve_reference_to_concrete_value(
-              referred, symbol_tree)
-    if not self.should_transform(comp, referred):
-      return comp, False
-    if comp.is_block():
-      new_locals = []
-      for name, value in comp.locals:
-        symbol_tree.walk_down_one_variable_binding()
-        if not symbol_tree.get_payload_with_name(name).removed:
-          new_locals.append((name, value))
-      if not new_locals:
-        return comp.result, True
-      elif len(new_locals) == len(comp.locals):
-        return comp, False
-      return building_blocks.Block(new_locals, comp.result), True
-    elif referred is not None and referred.is_lambda():
-      referred = typing.cast(building_blocks.Lambda, referred)
-      if referred.parameter_type is not None:
-        transformed_comp = building_blocks.Block(
-            [(referred.parameter_name, comp.argument)], referred.result)
-      else:
-        transformed_comp = referred.result
-      symbol_tree.update_payload_with_name(comp.function.name)
-    else:
-      if comp.function.parameter_type is not None:
-        transformed_comp = building_blocks.Block(
-            [(comp.function.parameter_name, comp.argument)],
-            comp.function.result)
-      else:
-        transformed_comp = comp.function.result
-    return transformed_comp, True
-
-
-def replace_called_lambda_with_block(comp):
-  """Replaces all the called lambdas in `comp` with a block."""
-  lambda_replacer = ReplaceCalledLambdaWithBlock()
-
-  def _transform_fn(comp, symbol_tree):
-    return lambda_replacer.transform(comp, symbol_tree)
-
-  symbol_tree = transformation_utils.SymbolTree(
-      transformation_utils.TrackRemovedReferences)
-  return transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, _transform_fn, symbol_tree)
-
-
-class ReplaceSelectionFromTuple(transformation_utils.TransformSpec):
-  r"""Replaces any selection from a tuple with the underlying tuple element.
-
-  Invocations of `transform` replace any occurences of:
-
-  Selection
-           \
-            Tuple
-            |
-            [Comp, Comp, ...]
-
-  with the appropriate Comp, as determined by the `index` or `name` of the
-  `Selection`.
-  """
-
-  def should_transform(self, comp):
-    return comp.is_selection() and comp.source.is_struct()
-
-  def _get_index_from_name(self, selection_name, tuple_type_signature):
-    named_type_signatures = structure.to_elements(tuple_type_signature)
-    return [x[0] for x in named_type_signatures].index(selection_name)
-
-  def transform(self, comp):
-    if not self.should_transform(comp):
-      return comp, False
-    if comp.name is not None:
-      index = self._get_index_from_name(comp.name, comp.source.type_signature)
-    else:
-      index = comp.index
-    return comp.source[index], True
-
-
-def replace_selection_from_tuple_with_element(comp):
-  """Replaces any selection from a tuple with the underlying tuple element."""
-  return _apply_transforms(comp, ReplaceSelectionFromTuple())
 
 
 def uniquify_reference_names(comp, name_generator=None):
