@@ -45,8 +45,9 @@ calling `sess.run` on the output tensor repeatedly within the same session.
 
 ## How can I contribute?
 
-See the [README](../README.md) and
-[guidelines for contributors](../CONTRIBUTING.md).
+See the [README](../README.md),
+[guidelines for contributors](../CONTRIBUTING.md), and
+[collaborations](collaborations/README.md).
 
 ## What is the relationship between FedJAX and TensorFlow Federated?
 
