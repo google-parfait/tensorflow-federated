@@ -59,6 +59,7 @@ def build_iblt_computation(
     secure_sum_bitwidth: Optional[int] = None,
     batch_size: int = 1,
     multi_contribution: bool = True,
+    string_postprocessor: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
     decode_iblt_fn: Optional[Callable[..., Tuple[tf.Tensor, tf.Tensor,
                                                  tf.Tensor]]] = None,
 ) -> computation_base.Computation:
@@ -89,6 +90,10 @@ def build_iblt_computation(
       `tf.data.Dataset.batch(1)`.  Must be a positive.
     multi_contribution: Whether each client is allowed to contribute multiple
       counts or only a count of one for each unique word. Defaults to `True`.
+    string_postprocessor: A callable function that is run after strings are
+      decoded from the IBLT in order to postprocess them. It should accept a
+      single string tensor and output a single string tensor of the same shape.
+      If `None`, no postprocessing is done.
     decode_iblt_fn: A function to decode key-value pairs from an IBLT sketch.
       Defaults to `None`, in this case `decode_iblt_fn` will be set to
       `iblt.decode_iblt_tf`.
@@ -226,6 +231,10 @@ def build_iblt_computation(
       _, top_indices = tf.math.top_k(heavy_hitters_counts, max_heavy_hitters)
       heavy_hitters = tf.gather(heavy_hitters, top_indices)
       heavy_hitters_counts = tf.gather(heavy_hitters_counts, top_indices)
+
+    if string_postprocessor is not None:
+      heavy_hitters = string_postprocessor(heavy_hitters)
+
     return heavy_hitters, heavy_hitters_counts, num_not_decoded
 
   def secure_sum(x):

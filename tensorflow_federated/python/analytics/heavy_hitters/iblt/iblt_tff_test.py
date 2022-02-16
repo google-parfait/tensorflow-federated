@@ -15,7 +15,7 @@
 import collections
 import itertools
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable
 from absl.testing import parameterized
 
 import tensorflow as tf
@@ -57,6 +57,17 @@ def _iblt_test_data_sampler(data: List[List[str]],
   ]
 
 
+class SamplePostProcessor:
+  """A class for simulating postprocessing of decoded IBLT strings."""
+
+  def __init__(self):
+    self.suffix = 'abcdefg'
+
+  def postprocess(self, encoded_input):
+    suffixes = tf.fill(tf.shape(encoded_input), self.suffix)
+    return encoded_input + suffixes
+
+
 def _execute_computation(
     data: List[List[str]],
     *,
@@ -70,6 +81,7 @@ def _execute_computation(
     k_anonymity: int = 1,
     secure_sum_bitwidth: Optional[int] = None,
     multi_contribution: bool = True,
+    string_postprocessor: Optional[Callable[[tf.Tensor], tf.Tensor]] = None
 ) -> Dict[str, tf.Tensor]:
   """Executes one round of IBLT computation over the given datasets.
 
@@ -99,6 +111,10 @@ def _execute_computation(
       `[1,62]`. See `tff.federated_secure_sum_bitwidth`.
     multi_contribution: Whether each client is allowed to contribute multiple
       counts or only a count of one for each unique word. Defaults to `True`.
+    string_postprocessor: A callable function that is run after strings are
+      decoded from the IBLT in order to postprocess them. It should accept a
+      single string tensor and output a single string tensor of the same shape.
+      If `None`, no postprocessing is done.
 
   Returns:
     A dictionary containing the heavy hitter results.
@@ -113,7 +129,8 @@ def _execute_computation(
       k_anonymity=k_anonymity,
       secure_sum_bitwidth=secure_sum_bitwidth,
       batch_size=batch_size,
-      multi_contribution=multi_contribution)
+      multi_contribution=multi_contribution,
+      string_postprocessor=string_postprocessor)
   datasets = _iblt_test_data_sampler(data, batch_size)
 
   output = one_round_computation(datasets)
@@ -425,6 +442,26 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
         multi_contribution=False)
 
     self.assertEqual(results, expected_results)
+
+  def test_computation_with_string_postprocessor(self):
+
+    string_postprocessor = SamplePostProcessor()
+    capacity = 10
+    max_string_length = 20
+    results = _execute_computation(
+        DATA,
+        capacity=capacity,
+        max_string_length=max_string_length,
+        multi_contribution=False,
+        string_postprocessor=string_postprocessor.postprocess)
+
+    unique_data = [list(set(client_data)) for client_data in DATA]
+    all_strings = list(itertools.chain.from_iterable(unique_data))
+    ground_truth = dict(
+        collections.Counter(
+            [s + string_postprocessor.suffix for s in all_strings]))
+
+    self.assertEqual(results, ground_truth)
 
   @parameterized.named_parameters(('batch_size_1', 1), ('batch_size_5', 5))
   def test_computation_with_max_heavy_hitters(self, batch_size):
