@@ -878,10 +878,13 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
                  return ExecutorValue(value.elements()[index]);
                });
   }
-  absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) {
+  absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) final {
     ExecutorValue value = TFF_TRY(Wait(std::move(value_fut)));
     ParallelTasks tasks;
-    TFF_TRY(MaterializeValue(value, value_pb, tasks));
+    absl::Status status = MaterializeValue(value, value_pb, tasks);
+    // Don't early-return: since `tasks` reference `value_pb`, returning early
+    // could result in a use-after-free.
+    status.Update(tasks.WaitAll());
     TFF_TRY(tasks.WaitAll());
     return absl::OkStatus();
   }
