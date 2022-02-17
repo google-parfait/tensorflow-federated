@@ -255,7 +255,6 @@ TEST_F(TensorFlowExecutorTest, CallReduceOnSequence) {
   int64_t step = 2;
   int64_t expected_sum = 0 + 2 + 4 + 6 + 8;
   auto sequence = SequenceV(start, stop, step);
-  auto sequence2 = SequenceV(4, 5, 1);
   CheckCallEqualsProto(CreateDatasetReduceComputationV(), sequence,
                        TensorV(expected_sum));
 }
