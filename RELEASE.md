@@ -1,3 +1,115 @@
+# Release 0.20.0
+
+## Major Features and Improvements
+
+*   Added `tff.program` API; this API is still in active development but can be
+    used to compose shared and platform specific: program logic, components, and
+    privacy concepts to create federated programs.
+*   Added support for Python 3.9.
+*   Added CelebA and iNaturalist datasets to `tff.simulation.datasets`.
+*   Added `tff.analytics` API for federated analytics, including private heavy
+    hitters algorithms.
+*   Added `tff.learning.algorithms` API, including TFF implementations of
+    FedProx, FedAvg with learning rate scheduling, federated k-Means, and
+    MimeLite.
+*   Added `tff.learning.metrics` API to support easy configuration of
+    cross-client metrics aggregation via the new `metrics_aggregator` argument.
+*   Added `metrics_aggregator` argument to
+    `tff.learning.build_federated_averaging_process` and
+    `tff.learning.build_federated_evaluation`.
+*   Added `report_local_unfinalized_metrics` and `metric_finalizers` methods to
+    `tff.learning.Model` and deprecated `report_local_outputs` and
+    `federated_output_computation`.
+*   Added `tff.learning.optimizers` API for building purely functional
+    optimizers and implementations of SGD, Adagrad, Rmsprop, Adam, Yogi,
+*   Added `tff.learning.reconstruction` API for building partially local
+    federated learning algorithms, including Federated Reconstruction.
+*   Added `tff.learning.templates` API to support building learning algorithms
+    in a modular fashion.
+*   Added `tff.simulation.baselines` API to support evaluating learning
+    algorithms on a suite of representative tasks.
+*   Added `tff.aggregators.DifferentiallyPrivateFactory.tree_aggregation` to
+    support the [DP-FTRL algorithm](https://arxiv.org/abs/2103.00039).
+*   Added `tff.aggrgators.SecureModularSumFactory`
+*   Added `tff.aggregators.DiscreteFourierTransformFactory` and
+    `tff.aggregators.HadamardTransformFactory` to support rotation-based
+    aggregators.
+*   Added `tff.aggregators.concat_factory` for aggregating structures as a
+    single tensor.
+*   Added `tff.backends.native.create_mergeable_comp_execution_context`,
+    `tff.backends.native.set_mergeable_comp_execution_context`; these can be
+    used with a distributed runtime to scale to tens of thousands of clients.
+*   Improved performance of many `tff.simulation.datasets.ClientData`
+    subclasses.
+*   Added `tff.simulation.datasets.ClientData.serializable_dataset_fn`
+    attribute, enabling dataset creation within TF/TFF computations.
+*   Added `debug_measurements` option to aggregators in `tff.learning`.
+*   Added support for unambiguous zero-client aggregations.
+*   Added support for Python dataclasses as function parameters and return
+    values for TFF computations.
+*   Added automatic insertion of `tff.federated_zip` to invocation of
+    user-defined TFF federated computations.
+*   Added utilities to `tff.simulation.datasets` for saving federated datasets
+    to a SQL database compatible with `tff.simulation.datasets.SqlClientData`.
+*   Added `tff.learning.models.FunctionalModel` and
+    `tff.learning.models.functional_model_from_keras`.
+*   Increased max flow of tensors. Tensors now flow here, there, and everywhere.
+*   Updated the Python dependencies:
+*   Updated `absl-py` to version `1.0.0`.
+*   Updated `attrs` to version `21.2.0`.
+*   Added `farmhashpy` version `0.4.0`.
+*   Updated `jax` to version `0.2.27`.
+*   Updated `jaxlib` to version `0.1.76`.
+*   Updated `numpy` to version `1.21.4`.
+*   Removed `retrying`.
+*   Updated `tensorflow-model-optimization` to version `0.7.1`.
+*   Updated `tensorflow-model-optimization` to version `0.7.3`.
+*   Updated `tensorflow` to version `2.8.0`.
+*   Added support for building many dependencies including `tensorflow` using
+    Bazel.
+*   Updated the Bazel dependencies:
+*   Updated `rules_python` to version `0.5.0`.
+*   Updated `com_google_protobuf` to version `v3.18.0-rc1`.
+*   Added `absl_py` version `1.0.0`.
+*   Added `com_google_googletest` version `release-1.11.0`.
+*   Added `io_bazel_rules_go` version `v0.29.0`.
+*   Added `bazel_skylib` version `1.0.3`.
+*   Added `pybind11_abseil`.
+*   Added `pybind11_bazel`.
+*   Added `pybind11_protobuf`.
+*   Added `com_google_absl` version `20211102.0`.
+*   Added `tensorflow_org` version `v2.8.0`.
+
+## Breaking Changes
+
+*   Removed support for building source on MacOS.
+*   Removed support for Python 3.6.
+*   Removed symbol `tff.framework.type_contains`, use `tff.types.contains`
+    instead.
+*   Removed many symbols from `tff.simulation`, these can be found in
+    `tff.program` instead.
+*   Removed support for converting non-OrderedDict mapping types to
+    `tff.Value`s.
+*   Removed `tff.simulation.datasets.ClientData.from_clients_and_fn` in favor of
+    `tff.simulation.datasets.ClientData.from_clients_and_tf_fn`.
+*   Restricted `tff.simulation.datasets.ClientData.preprocess` to only support
+    TF-serializable functions.
+*   Removed `tff.backends.reference`, and the reference context it contained.
+*   Removed `tff.learning.build_federated_sgd_process` in favor of
+    `tff.learning.algorithms.build_fed_sgd`.
+*   Removed `tff.simulation.run_simulation` in favor of
+    `tff.simulation.run_training_process`.
+*   Removed `tff.learning.framework.EnhancedModel`.
+*   Removed `tff.learning.framework.build_stateless_mean`.
+
+## Bug Fixes
+
+*   Fixed broken links in documentation.
+*   Fixed many pytype errors.
+*   Fixed some inconsistencies in Bazel visibility.
+*   Fixed bug where `tff.simulation.datasets.gldv2.load_data()` would result in
+    an error.
+
 # Release 0.19.0
 
 ## Major Features and Improvements
