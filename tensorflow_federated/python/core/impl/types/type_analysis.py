@@ -33,10 +33,11 @@ from tensorflow_federated.python.core.impl.types import type_transformations
 _TypePredicate = Callable[[computation_types.Type], bool]
 
 
-def _preorder_types(type_signature: computation_types.Type):
+def preorder_types(type_signature: computation_types.Type):
+  """Yields each type in `type_signature` in a preorder fashion."""
   yield type_signature
   for child in type_signature.children():
-    yield from _preorder_types(child)
+    yield from preorder_types(child)
 
 
 def count(type_signature: computation_types.Type,
@@ -49,13 +50,13 @@ def count(type_signature: computation_types.Type,
       boolean value.
   """
   one_or_zero = lambda t: 1 if predicate(t) else 0
-  return sum(map(one_or_zero, _preorder_types(type_signature)))
+  return sum(map(one_or_zero, preorder_types(type_signature)))
 
 
 def contains(type_signature: computation_types.Type,
              predicate: _TypePredicate) -> bool:
   """Checks if `type_signature` contains any types that pass `predicate`."""
-  for t in _preorder_types(type_signature):
+  for t in preorder_types(type_signature):
     if predicate(t):
       return True
   return False
@@ -580,7 +581,7 @@ def check_concrete_instance_of(concrete_type: computation_types.Type,
   py_typecheck.check_type(concrete_type, computation_types.Type)
   py_typecheck.check_type(generic_type, computation_types.Type)
 
-  for t in _preorder_types(concrete_type):
+  for t in preorder_types(concrete_type):
     if t.is_abstract():
       raise NotConcreteTypeError(concrete_type, t)
 

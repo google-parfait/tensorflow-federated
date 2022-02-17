@@ -16,7 +16,7 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""A library of contruction functions for building block structures."""
+"""A library of construction functions for building block structures."""
 
 import functools
 import random

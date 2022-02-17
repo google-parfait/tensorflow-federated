@@ -568,6 +568,8 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
         secure,
         expected_type=expected_max_key_type)
   server_val = value_impl.to_value(server_val, None)
+  server_val = value_utils.ensure_federated_value(
+      server_val, label='server_val')
   expected_server_val_type = computation_types.at_server(
       computation_types.AbstractType('T'))
   if (not server_val.type_signature.is_federated() or

@@ -362,6 +362,43 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
   @parameterized.named_parameters(
       ('non_secure', intrinsics.federated_select),
       ('secure', intrinsics.federated_secure_select))
+  def test_federated_select_server_val_must_be_server_placed(
+      self, federated_select):
+    client_keys, max_key, server_val, select_fn = (
+        self.basic_federated_select_args())
+    del server_val
+
+    bad_server_val = computations.tf_computation(
+        lambda: tf.constant(['first', 'second', 'third']))()
+
+    with self.assertRaisesRegex(TypeError,
+                                'server_val must be a FederatedType'):
+      federated_select(client_keys, max_key, bad_server_val, select_fn)
+
+  @parameterized.named_parameters(
+      ('non_secure', intrinsics.federated_select),
+      ('secure', intrinsics.federated_secure_select))
+  def test_federated_select_autozips_server_val(self, federated_select):
+    client_keys, max_key, server_val, select_fn = (
+        self.basic_federated_select_args())
+    del server_val, select_fn
+
+    values = ['first', 'second', 'third']
+    server_val_element = intrinsics.federated_value(values, placements.SERVER)
+    server_val_dict = collections.OrderedDict(
+        e1=server_val_element, e2=server_val_element)
+
+    @computations.tf_computation
+    def select_fn_dict(state, key):
+      return (tf.gather(state['e1'], key), tf.gather(state['e2'], key))
+
+    result = federated_select(client_keys, max_key, server_val_dict,
+                              select_fn_dict)
+    self.assert_value(result, '{<string,string>*}@CLIENTS')
+
+  @parameterized.named_parameters(
+      ('non_secure', intrinsics.federated_select),
+      ('secure', intrinsics.federated_secure_select))
   def test_federated_select_keys_must_be_client_placed(self, federated_select):
     client_keys, max_key, server_val, select_fn = (
         self.basic_federated_select_args())
