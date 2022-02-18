@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
 import math
+import random
 from unittest import mock
 
 from absl.testing import absltest
@@ -613,7 +615,19 @@ class ComposingExecutorFactoryTest(absltest.TestCase):
     self.assertLen(args_list, 6)
 
 
-def _construct_remote_ex_from_stubs(channels):
+def _construct_channels(count):
+  channels = [
+      grpc.insecure_channel(f'localhost:{port}')
+      for port in random.sample(range(1024, 65536), count)
+  ]
+  return executor_stacks.remote_executor_factory(channels)
+
+
+def _construct_grpc_remote_ex_from_stubs(count):
+  channels = [
+      grpc.insecure_channel(f'localhost:{port}')
+      for port in random.sample(range(1024, 65536), count)
+  ]
   stubs = [
       remote_executor_grpc_stub.RemoteExecutorGrpcStub(ch) for ch in channels
   ]
@@ -621,8 +635,8 @@ def _construct_remote_ex_from_stubs(channels):
 
 
 @parameterized.named_parameters(
-    ('channel_construction', executor_stacks.remote_executor_factory),
-    ('stub_construction', _construct_remote_ex_from_stubs))
+    ('channel_construction', _construct_channels),
+    ('grpc_stub_construction', _construct_grpc_remote_ex_from_stubs))
 class RemoteExecutorFactoryTest(parameterized.TestCase):
 
   def _make_set_cardinalities_patch(self, mock_obj):
@@ -652,11 +666,7 @@ class RemoteExecutorFactoryTest(parameterized.TestCase):
 
   def test_fewer_clients_than_workers_only_passes_one_client(
       self, remote_ex_fn):
-    channels = [
-        grpc.insecure_channel('localhost:1'),
-        grpc.insecure_channel('localhost:2')
-    ]
-    remote_ex_factory = remote_ex_fn(channels)
+    remote_ex_factory = remote_ex_fn(count=2)
     remote_ex_factory.create_executor({placements.CLIENTS: 1})
     self.assertLen(self.coro_mock.call_args_list, 1)
     self.coro_mock.assert_called_once_with({placements.CLIENTS: 1})
@@ -667,11 +677,7 @@ class RemoteExecutorFactoryTest(parameterized.TestCase):
       return_value=ExecutorMock())
   def test_fewer_clients_than_workers_returns_only_one_live_worker(
       self, remote_ex_fn, mock_obj):
-    channels = [
-        grpc.insecure_channel('localhost:1'),
-        grpc.insecure_channel('localhost:2')
-    ]
-    remote_ex_factory = remote_ex_fn(channels)
+    remote_ex_factory = remote_ex_fn(count=2)
     remote_ex_factory.create_executor({placements.CLIENTS: 1})
     self.assertLen(mock_obj.call_args_list, 1)
     # Assert that aggregate stacks was passed only one executor.
@@ -681,22 +687,15 @@ class RemoteExecutorFactoryTest(parameterized.TestCase):
       federating_executor, 'FederatingExecutor', return_value=ExecutorMock())
   def test_single_worker_construction_invokes_federating_executor(
       self, remote_ex_fn, mock_obj):
-    channels = [
-        grpc.insecure_channel('localhost:1'),
-    ]
-    remote_ex_factory = remote_ex_fn(channels)
+    remote_ex_factory = remote_ex_fn(count=1)
     remote_ex_factory.create_executor({placements.CLIENTS: 10})
     mock_obj.assert_called_once()
 
   def test_configuration_succeeds_while_event_loop_is_running(
       self, remote_ex_fn):
-    channels = [
-        grpc.insecure_channel('localhost:1'),
-        grpc.insecure_channel('localhost:2')
-    ]
 
     async def coro_func():
-      remote_ex_factory = remote_ex_fn(channels)
+      remote_ex_factory = remote_ex_fn(count=2)
       remote_ex_factory.create_executor({placements.CLIENTS: 1})
 
     loop = asyncio.new_event_loop()
