@@ -40,5 +40,6 @@ from tensorflow_federated.python.aggregators.robust import zeroing_factory
 from tensorflow_federated.python.aggregators.rotation import DiscreteFourierTransformFactory
 from tensorflow_federated.python.aggregators.rotation import HadamardTransformFactory
 from tensorflow_federated.python.aggregators.sampling import UnweightedReservoirSamplingFactory
+from tensorflow_federated.python.aggregators.secure import SecureModularSumFactory
 from tensorflow_federated.python.aggregators.secure import SecureSumFactory
 from tensorflow_federated.python.aggregators.sum_factory import SumFactory
