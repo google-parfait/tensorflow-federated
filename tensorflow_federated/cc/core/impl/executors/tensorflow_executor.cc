@@ -106,6 +106,99 @@ NamesForBindingRewrite GetVariantTensorNodeNameAndReplacement(
   return names;
 }
 
+#ifdef SHARED_TF_FRAMEWORK_OBJECT
+// If building with dynamically linked TensorFlow we use the runtime reflection
+// of protocol buffers to access fields. Otherwise we have issues with
+// interopability between libprotobuf in TFF and libprotobuf in TF.
+void AddDatasetFromGraphOp(tensorflow::GraphDef& graphdef_pb,
+                           const NamesForBindingRewrite& graph_names,
+                           const std::string& dataset_placeholder_node_name) {
+  auto* graphdef_reflection = graphdef_pb.GetReflection();
+  auto repeated_nodes =
+      graphdef_reflection->GetMutableRepeatedFieldRef<::google::protobuf::Message>(
+          &graphdef_pb, graphdef_pb.GetDescriptor()->FindFieldByName("node"));
+  std::unique_ptr<::google::protobuf::Message> graph_from_dataset_node(
+      repeated_nodes.NewMessage());
+  auto* node_reflection = graph_from_dataset_node->GetReflection();
+  auto* node_descriptor = graph_from_dataset_node->GetDescriptor();
+  node_reflection->SetString(graph_from_dataset_node.get(),
+                             node_descriptor->FindFieldByName("name"),
+                             std::string(graph_names.graph_def_node_name));
+  node_reflection->SetString(graph_from_dataset_node.get(),
+                             node_descriptor->FindFieldByName("op"),
+                             std::string(kDatasetFromGraphOp));
+  node_reflection
+      ->GetMutableRepeatedFieldRef<std::string>(
+          graph_from_dataset_node.get(),
+          node_descriptor->FindFieldByName("input"))
+      .Add(std::string(dataset_placeholder_node_name));
+  repeated_nodes.Add(*graph_from_dataset_node);
+}
+
+void AddDatasetToGraphOp(tensorflow::GraphDef& graphdef_pb,
+                         const NamesForBindingRewrite& graph_names,
+                         const std::string& variant_tensor_name) {
+  auto* graphdef_reflection = graphdef_pb.GetReflection();
+  auto repeated_nodes =
+      graphdef_reflection->GetMutableRepeatedFieldRef<::google::protobuf::Message>(
+          &graphdef_pb, graphdef_pb.GetDescriptor()->FindFieldByName("node"));
+  std::unique_ptr<::google::protobuf::Message> graph_to_dataset_node(
+      repeated_nodes.NewMessage());
+  auto* node_reflection = graph_to_dataset_node->GetReflection();
+  auto* node_descriptor = graph_to_dataset_node->GetDescriptor();
+  node_reflection->SetString(graph_to_dataset_node.get(),
+                             node_descriptor->FindFieldByName("name"),
+                             std::string(graph_names.graph_def_node_name));
+  node_reflection->SetString(graph_to_dataset_node.get(),
+                             node_descriptor->FindFieldByName("op"),
+                             std::string(kDatasetToGraphOp));
+  node_reflection
+      ->GetMutableRepeatedFieldRef<std::string>(
+          graph_to_dataset_node.get(),
+          node_descriptor->FindFieldByName("input"))
+      .Add(std::string(variant_tensor_name));
+  // TODO(b/220195980): Explicitly set the default ATTRS we get from the Python
+  // API.
+  //
+  // external_state_policy == 0 warns when state will be lost. We expect
+  // the state (shuffle buffers, etc) to be lost, but it's nice to continue
+  // logging when such an event occurs.
+  //
+  // With strip_device_assignment == true, we strip the device placement, we
+  // want the session we're about to enter to provide the device placement.
+  repeated_nodes.Add(*graph_to_dataset_node);
+}
+
+#else   // Building with staticly linked TensorFlow.
+
+void AddDatasetFromGraphOp(tensorflow::GraphDef& graphdef_pb,
+                           const NamesForBindingRewrite& graph_names,
+                           const std::string& dataset_placeholder_node_name) {
+  tensorflow::NodeDef* graph_from_dataset_node = graphdef_pb.add_node();
+  graph_from_dataset_node->set_name(graph_names.graph_def_node_name);
+  graph_from_dataset_node->set_op(kDatasetFromGraphOp);
+  graph_from_dataset_node->add_input()->assign(dataset_placeholder_node_name);
+}
+
+void AddDatasetToGraphOp(tensorflow::GraphDef& graphdef_pb,
+                         const NamesForBindingRewrite& graph_names,
+                         const std::string& variant_tensor_name) {
+  tensorflow::NodeDef* graph_from_dataset_node = graphdef_pb.add_node();
+  graph_from_dataset_node->set_name(graph_names.graph_def_node_name);
+  graph_from_dataset_node->set_op(kDatasetToGraphOp);
+  graph_from_dataset_node->add_input()->assign(variant_tensor_name);
+  // Explicitly set the default ATTRS used in the Python API.
+  // external_state_policy == 0 warns when state will be lost. We expect
+  // the state (shuffle buffers, etc) to be lost, but it's nice to continue
+  // logging when such an event occurs.
+  (*graph_from_dataset_node->mutable_attr())["external_state_policy"].set_i(0);
+  // We strip the device placement, we want the session we're about to enter
+  // to provide the device placement.
+  (*graph_from_dataset_node->mutable_attr())["strip_device_assignment"].set_b(
+      true);
+}
+#endif  // SHARED_TF_FRAMEWORK_OBJECT
+
 // Given a GraphDef and a tensor binding, replace sequence bindings that use the
 // variant_tensor_name binding with a new binding that uses `DatasetFromGraph`
 // ops to deserialize a serialized GraphDef proto into the Dataset's variant
@@ -179,13 +272,8 @@ absl::Status AddDeserializationOpsForParameters(
               }
             });
       }
-      tensorflow::NodeDef* graph_from_dataset_node = graphdef_pb.add_node();
-      graph_from_dataset_node->set_name(graph_names.graph_def_node_name);
-      graph_from_dataset_node->set_op(kDatasetFromGraphOp);
-      graph_from_dataset_node->add_input()->assign(
-          dataset_placeholder_node_name);
-      graph_from_dataset_node->set_device(
-          absl::StrCat("/device:", tensorflow::DEVICE_CPU, ":0"));
+      AddDatasetFromGraphOp(graphdef_pb, graph_names,
+                            dataset_placeholder_node_name);
       // Update the binding to inform the new format, but continue to use the
       // placeholder node that was originally created.
       binding.mutable_sequence()->set_graph_def_tensor_name(
@@ -256,24 +344,10 @@ absl::Status AddSerializationOpsForResults(tensorflow::GraphDef& graphdef_pb,
       binding.mutable_sequence()->Clear();
       auto graph_names = GetVariantTensorNodeNameAndReplacement(
           variant_tensor_name, kDatasetToGraphOp, prefix);
-      // We only need to add a new node to the graph and update the binding,
-      // since we'll depend on what is already in the graph.
-      tensorflow::NodeDef* graph_from_dataset_node = graphdef_pb.add_node();
-      graph_from_dataset_node->set_name(graph_names.graph_def_node_name);
-      graph_from_dataset_node->set_op(kDatasetToGraphOp);
-      graph_from_dataset_node->add_input()->assign(variant_tensor_name);
-      graph_from_dataset_node->set_device(
-          absl::StrCat("/device:", tensorflow::DEVICE_CPU, ":0"));
-      // Set the default ATTRS.
-      // external_state_policy == 0 warns when state will be lost. We expect
-      // the state (shuffle buffers, etc) to be lost, but it's nice to continue
-      // logging when such an event occurs.
-      (*graph_from_dataset_node->mutable_attr())["external_state_policy"].set_i(
-          0);
-      // We strip the device placement, we want the session we're about to enter
-      // to provide the device placement.
-      (*graph_from_dataset_node->mutable_attr())["strip_device_assignment"]
-          .set_b(true);
+      // We only need to add one  new node to the graph and update the binding,
+      // since we'll depend on the placeholder already in the graph to feed us
+      // the serialized GraphDef bytes.
+      AddDatasetToGraphOp(graphdef_pb, graph_names, variant_tensor_name);
       // Update the binding to inform the new format.
       binding.mutable_sequence()->set_graph_def_tensor_name(
           graph_names.graph_def_tensor_name);

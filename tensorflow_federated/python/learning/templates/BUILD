@@ -257,6 +257,7 @@ py_library(
 py_test(
     name = "model_delta_client_work_test",
     size = "small",
+    timeout = "moderate",
     srcs = ["model_delta_client_work_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

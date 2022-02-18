@@ -20,6 +20,9 @@
 
 from typing import Mapping
 
+# Required to load TF Python extension.
+import tensorflow as tf  # pylint: disable=unused-import
+
 from tensorflow_federated.cc.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import data_conversions
 from tensorflow_federated.python.core.impl.types import placements
