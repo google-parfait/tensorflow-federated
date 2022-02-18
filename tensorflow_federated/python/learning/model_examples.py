@@ -24,7 +24,6 @@ from typing import Callable, List, OrderedDict, Union
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.learning import model
 
 
@@ -92,26 +91,6 @@ class LinearRegression(model.Model):
     average_loss = total_loss / tf.cast(num_examples, tf.float32)
     return model.BatchOutput(
         loss=average_loss, predictions=predictions, num_examples=num_examples)
-
-  @tf.function
-  def report_local_outputs(self):
-    raise NotImplementedError(
-        'Do not implement. `report_local_outputs` and '
-        '`federated_output_computation` are deprecated and will be removed '
-        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-        '`metric_finalizers` instead. The cross-client metrics aggregation '
-        'should be specified as the `metrics_aggregator` argument when you '
-        'build a training process or evaluation computation using this model.')
-
-  @property
-  def federated_output_computation(self) -> computation_base.Computation:
-    raise NotImplementedError(
-        'Do not implement. `report_local_outputs` and '
-        '`federated_output_computation` are deprecated and will be removed '
-        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-        '`metric_finalizers` instead. The cross-client metrics aggregation '
-        'should be specified as the `metrics_aggregator` argument when you '
-        'build a training process or evaluation computation using this model.')
 
   @tf.function
   def report_local_unfinalized_metrics(
