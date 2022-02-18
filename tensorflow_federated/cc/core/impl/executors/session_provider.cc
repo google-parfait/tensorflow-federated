@@ -185,10 +185,16 @@ SessionProvider::SessionProvider(tensorflow::GraphDef&& graph,
 absl::StatusOr<std::unique_ptr<tensorflow::Session>>
 SessionProvider::CreateSession(const uint16_t session_id) {
   const std::string container = absl::StrCat(function_id_, "/", session_id);
-  std::unique_ptr<tensorflow::Session> session(
-      tensorflow::NewSession(get_session_options()));
-  if (session == nullptr) {
-    return absl::InternalError("Failed to create TensorFlow session.");
+  std::unique_ptr<tensorflow::Session> session;
+  {
+    tensorflow::Session* raw_session;
+    tensorflow::Status status =
+        tensorflow::NewSession(get_session_options(), &raw_session);
+    if (!status.ok()) {
+      return absl::InternalError(absl::StrCat(
+          "Failed to create TensorFlow session: ", status.error_message()));
+    }
+    session.reset(raw_session);
   }
   tensorflow::GraphDef graph_def = ReplaceContainers(graph_, container);
   const AcceleratorDevices& devices = GetAcceleratorDevices();
