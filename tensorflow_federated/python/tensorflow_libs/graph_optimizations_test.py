@@ -113,10 +113,19 @@ class GraphOptTest(tf.test.TestCase):
     in_names = []
     out_names = [out_name]
     gs = graph_spec.GraphSpec(graph_def, init_op, in_names, out_names)
+
+    config_proto = tf.compat.v1.ConfigProto()
+    no_optimization = tf.compat.v1.OptimizerOptions.Level.L0
+    config_proto.graph_options.optimizer_options.opt_level = no_optimization
+    config_proto.graph_options.rewrite_options.disable_meta_optimizer = True
+    raw_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
+
     config_proto = tf.compat.v1.ConfigProto()
     opt_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
+
     self.assertIsInstance(opt_graph_spec, graph_spec.GraphSpec)
-    self.assertLess(opt_graph_spec.graph_def.ByteSize(), graph_def.ByteSize())
+    self.assertLess(opt_graph_spec.graph_def.ByteSize(),
+                    raw_graph_spec.graph_def.ByteSize())
 
   def test_semantic_equivalence_for_reduction(self):
     ds_graph, _, out = _make_dataset_constructing_graph()
