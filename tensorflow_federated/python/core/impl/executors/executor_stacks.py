@@ -20,7 +20,7 @@
 
 from concurrent import futures
 import math
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 import warnings
 
 from absl import logging
@@ -42,6 +42,7 @@ from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
+from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 from tensorflow_federated.python.core.impl.executors import sequence_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
@@ -973,9 +974,60 @@ def remote_executor_factory(
   py_typecheck.check_type(max_fanout, int)
   py_typecheck.check_type(default_num_clients, int)
 
+  stubs = [
+      remote_executor_grpc_stub.RemoteExecutorGrpcStub(channel)
+      for channel in channels
+  ]
+  return remote_executor_factory_from_stubs(stubs, thread_pool_executor,
+                                            dispose_batch_size, max_fanout,
+                                            default_num_clients)
+
+
+def remote_executor_factory_from_stubs(
+    stubs: List[Union[remote_executor_grpc_stub.RemoteExecutorGrpcStub,
+                      remote_executor_stub.RemoteExecutorStub]],
+    thread_pool_executor: Optional[futures.Executor] = None,
+    dispose_batch_size: int = 20,
+    max_fanout: int = 100,
+    default_num_clients: int = 0,
+) -> executor_factory.ExecutorFactory:
+  """Create an executor backed by remote workers.
+
+  Args:
+    stubs: A list stubs to the TFF executor service, running on remote machines.
+    thread_pool_executor: Optional concurrent.futures.Executor used to wait for
+      the reply to a streaming RPC message. Uses the default Executor if not
+      specified.
+    dispose_batch_size: The batch size for requests to dispose of remote worker
+      values. Lower values will result in more requests to the remote worker,
+      but will result in values being cleaned up sooner and therefore may result
+      in lower memory usage on the remote worker.
+    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
+      `num_clients > max_fanout`, the constructed executor stack will consist of
+      multiple levels of aggregators. The height of the stack will be on the
+      order of `log(default_num_clients) / log(max_fanout)`.
+    default_num_clients: The number of clients to use for simulations where the
+      number of clients cannot be inferred. Usually the number of clients will
+      be inferred from the number of values passed to computations which accept
+      client-placed values. However, when this inference isn't possible (such as
+      in the case of a no-argument or non-federated computation) this default
+      will be used instead.
+
+  Returns:
+    An instance of `executor_factory.ExecutorFactory` encapsulating the
+    executor construction logic specified above.
+  """
+  py_typecheck.check_type(stubs, list)
+  if not stubs:
+    raise ValueError('The list of stubs cannot be empty.')
+  if thread_pool_executor is not None:
+    py_typecheck.check_type(thread_pool_executor, futures.Executor)
+  py_typecheck.check_type(dispose_batch_size, int)
+  py_typecheck.check_type(max_fanout, int)
+  py_typecheck.check_type(default_num_clients, int)
+
   remote_executors = []
-  for channel in channels:
-    stub = remote_executor_grpc_stub.RemoteExecutorGrpcStub(channel)
+  for stub in stubs:
     remote_executors.append(
         remote_executor.RemoteExecutor(
             stub=stub,
