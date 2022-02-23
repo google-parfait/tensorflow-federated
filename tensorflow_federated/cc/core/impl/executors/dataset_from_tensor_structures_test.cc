@@ -28,6 +28,7 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+#include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 
 ABSL_FLAG(std::string, reduce_graph_path, "",
           "Path to a serialized GraphDef containing a dataset reduce.");
@@ -37,7 +38,10 @@ namespace tensorflow_federated {
 namespace {
 
 using ::absl::StatusCode;
+using ::tensorflow_federated::testing::SequenceValueToList;
+using ::tensorflow_federated::testing::TensorsProtoEqual;
 using ::testing::HasSubstr;
+using ::testing::Pointwise;
 
 namespace tf = ::tensorflow;
 
@@ -84,6 +88,28 @@ std::vector<std::vector<tf::Tensor>> ValueStructuresToTensorStructures(
     tensor_structures.push_back(std::move(structure));
   }
   return tensor_structures;
+}
+
+TEST(DatasetFromTensorStructuresTest, ReturnsDatasetWithElements) {
+  std::vector<std::vector<int64_t>> input_values({
+      {1, 2, 3},
+      {10, 20, 30},
+      {100, 200, 300},
+  });
+  std::vector<std::vector<tf::Tensor>> input_tensors =
+      ValueStructuresToTensorStructures(input_values);
+  tf::Tensor serialized_dataset =
+      TFF_ASSERT_OK(DatasetFromTensorStructures(input_tensors));
+  v0::Value::Sequence sequence;
+  *sequence.mutable_serialized_graph_def() =
+      serialized_dataset.scalar<tf::tstring>()();
+  std::vector<std::vector<tf::Tensor>> output_tensors =
+      TFF_ASSERT_OK(SequenceValueToList(sequence));
+  ASSERT_EQ(input_tensors.size(), output_tensors.size());
+  for (size_t i = 0; i < input_tensors.size(); i++) {
+    EXPECT_THAT(output_tensors[i],
+                Pointwise(TensorsProtoEqual(), input_tensors[i]));
+  }
 }
 
 TEST(DatasetFromTensorStructuresTest, ReturnsReducibleDataset) {

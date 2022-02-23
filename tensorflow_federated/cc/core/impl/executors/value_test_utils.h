@@ -24,6 +24,7 @@ limitations under the License
 #include <vector>
 
 #include "google/protobuf/any.pb.h"
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "absl/types/span.h"
@@ -38,7 +39,9 @@ limitations under the License
 #include "tensorflow/core/framework/tensor_types.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/tstring.h"
+#include "tensorflow_federated/cc/core/impl/executors/dataset_conversions.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -143,6 +146,49 @@ inline v0::Value SequenceV(int64_t start, int64_t stop, int64_t step) {
   *sequence_pb->mutable_serialized_graph_def() =
       std::string(sequence_graph.data(), sequence_graph.size());
   return value_proto;
+}
+
+inline absl::StatusOr<std::vector<std::vector<tensorflow::Tensor>>>
+SequenceValueToList(const v0::Value::Sequence& sequence) {
+  std::unique_ptr<tensorflow::data::standalone::Dataset> dataset =
+      TFF_TRY(SequenceValueToDataset(sequence));
+  std::unique_ptr<tensorflow::data::standalone::Iterator> iterator;
+  tensorflow::Status status = dataset->MakeIterator(&iterator);
+  if (!status.ok()) {
+    return absl::InternalError(
+        absl::StrCat("Unable to make iterator from sequence dataset: ",
+                     status.error_message()));
+  }
+  std::vector<std::vector<tensorflow::Tensor>> outputs;
+  while (true) {
+    bool end_of_input;
+    std::vector<tensorflow::Tensor> output;
+    status = iterator->GetNext(&output, &end_of_input);
+    if (!status.ok()) {
+      return absl::InternalError(
+          absl::StrCat("Failed to get the ", outputs.size(),
+                       "th element of the sequence: ", status.error_message()));
+    }
+    if (end_of_input) {
+      break;
+    }
+    outputs.push_back(std::move(output));
+  }
+  return outputs;
+}
+
+MATCHER(TensorsProtoEqual,
+        absl::StrCat(negation ? "aren't" : "are",
+                     " tensors equal under proto comparison")) {
+  const tensorflow::Tensor& first = std::get<0>(arg);
+  const tensorflow::Tensor& second = std::get<1>(arg);
+  tensorflow::TensorProto first_proto;
+  first.AsProtoTensorContent(&first_proto);
+  tensorflow::TensorProto second_proto;
+  second.AsProtoTensorContent(&second_proto);
+  return testing::EqualsProto(second_proto)
+      .impl()
+      .MatchAndExplain(first_proto, result_listener);
 }
 
 namespace intrinsic {
