@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.impl.executors import federated_composing_
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor
+from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -612,7 +613,17 @@ class ComposingExecutorFactoryTest(absltest.TestCase):
     self.assertLen(args_list, 6)
 
 
-class RemoteExecutorFactoryTest(absltest.TestCase):
+def _construct_remote_ex_from_stubs(channels):
+  stubs = [
+      remote_executor_grpc_stub.RemoteExecutorGrpcStub(ch) for ch in channels
+  ]
+  return executor_stacks.remote_executor_factory_from_stubs(stubs=stubs)
+
+
+@parameterized.named_parameters(
+    ('channel_construction', executor_stacks.remote_executor_factory),
+    ('stub_construction', _construct_remote_ex_from_stubs))
+class RemoteExecutorFactoryTest(parameterized.TestCase):
 
   def _make_set_cardinalities_patch(self, mock_obj):
 
@@ -639,12 +650,13 @@ class RemoteExecutorFactoryTest(absltest.TestCase):
     self.ready_patcher.stop()
     super().tearDown()
 
-  def test_fewer_clients_than_workers_only_passes_one_client(self):
+  def test_fewer_clients_than_workers_only_passes_one_client(
+      self, remote_ex_fn):
     channels = [
         grpc.insecure_channel('localhost:1'),
         grpc.insecure_channel('localhost:2')
     ]
-    remote_ex_factory = executor_stacks.remote_executor_factory(channels)
+    remote_ex_factory = remote_ex_fn(channels)
     remote_ex_factory.create_executor({placements.CLIENTS: 1})
     self.assertLen(self.coro_mock.call_args_list, 1)
     self.coro_mock.assert_called_once_with({placements.CLIENTS: 1})
@@ -654,12 +666,12 @@ class RemoteExecutorFactoryTest(absltest.TestCase):
       '_aggregate_stacks',
       return_value=ExecutorMock())
   def test_fewer_clients_than_workers_returns_only_one_live_worker(
-      self, mock_obj):
+      self, remote_ex_fn, mock_obj):
     channels = [
         grpc.insecure_channel('localhost:1'),
         grpc.insecure_channel('localhost:2')
     ]
-    remote_ex_factory = executor_stacks.remote_executor_factory(channels)
+    remote_ex_factory = remote_ex_fn(channels)
     remote_ex_factory.create_executor({placements.CLIENTS: 1})
     self.assertLen(mock_obj.call_args_list, 1)
     # Assert that aggregate stacks was passed only one executor.
@@ -668,25 +680,26 @@ class RemoteExecutorFactoryTest(absltest.TestCase):
   @mock.patch.object(
       federating_executor, 'FederatingExecutor', return_value=ExecutorMock())
   def test_single_worker_construction_invokes_federating_executor(
-      self, mock_obj):
+      self, remote_ex_fn, mock_obj):
     channels = [
         grpc.insecure_channel('localhost:1'),
     ]
-    remote_ex_factory = executor_stacks.remote_executor_factory(channels)
+    remote_ex_factory = remote_ex_fn(channels)
     remote_ex_factory.create_executor({placements.CLIENTS: 10})
     mock_obj.assert_called_once()
 
-  def test_configuration_succeeds_while_event_loop_is_running(self):
-    loop = asyncio.get_event_loop()
+  def test_configuration_succeeds_while_event_loop_is_running(
+      self, remote_ex_fn):
     channels = [
         grpc.insecure_channel('localhost:1'),
         grpc.insecure_channel('localhost:2')
     ]
 
     async def coro_func():
-      remote_ex_factory = executor_stacks.remote_executor_factory(channels)
+      remote_ex_factory = remote_ex_fn(channels)
       remote_ex_factory.create_executor({placements.CLIENTS: 1})
 
+    loop = asyncio.new_event_loop()
     loop.run_until_complete(coro_func())
     loop.stop()
     loop.close()
