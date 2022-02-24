@@ -11,8 +11,8 @@ Before transformation:
 After transformation:
 
 (let
-  _lhn1=federated_broadcast(data)
+  broadcast_0=federated_broadcast(data)
  in <
-  _lhn1,
-  _lhn1
+  broadcast_0,
+  broadcast_0
 >)

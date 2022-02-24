@@ -20,14 +20,14 @@ Before transformation:
 
 After transformation:
 
-(_lhn1 -> (let
-  _lhn2=federated_broadcast(_lhn1),
-  _lhn3=federated_map(<
+(arg -> (let
+  broadcast_0=federated_broadcast(arg),
+  map_0=federated_map(<
     comp#a,
-    _lhn2
+    broadcast_0
   >),
-  _lhn4=federated_mean(_lhn3)
+  mean_0=federated_mean(map_0)
  in <
-  _lhn4,
-  _lhn4
+  mean_0,
+  mean_0
 >))

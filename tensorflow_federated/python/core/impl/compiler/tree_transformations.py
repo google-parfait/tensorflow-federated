@@ -268,7 +268,8 @@ def uniquify_reference_names(comp, name_generator=None):
 
   Args:
     comp: The computation building block in which to perform the replacements.
-    name_generator: An optional generator to use for creating unique names.
+    name_generator: An optional generator to use for creating unique names. If
+      `name_generator` is not None, all existing bindings will be replaced.
 
   Returns:
     Returns a transformed version of comp inside of which all variable names
@@ -281,6 +282,12 @@ def uniquify_reference_names(comp, name_generator=None):
   # references in `comp`.
   if name_generator is None:
     name_generator = building_block_factory.unique_name_generator(comp)
+    rename_all = False
+  else:
+    # If a `name_generator` was passed in, all bindings must be renamed since
+    # we need to avoid duplication with an outer scope.
+    rename_all = True
+  used_names = set()
 
   class _RenameNode(transformation_utils.BoundVariableTracker):
     """transformation_utils.SymbolTree node for renaming References in ASTs."""
@@ -288,7 +295,11 @@ def uniquify_reference_names(comp, name_generator=None):
     def __init__(self, name, value):
       super().__init__(name, value)
       py_typecheck.check_type(name, str)
-      self.new_name = next(name_generator)
+      if rename_all or name in used_names:
+        self.new_name = next(name_generator)
+      else:
+        self.new_name = name
+      used_names.add(self.new_name)
 
     def __str__(self):
       return 'Value: {}, name: {}, new_name: {}'.format(self.value, self.name,
@@ -301,21 +312,27 @@ def uniquify_reference_names(comp, name_generator=None):
       if payload is None:
         return comp, False
       new_name = payload.new_name
+      if new_name is comp.name:
+        return comp, False
       return building_blocks.Reference(new_name, comp.type_signature,
                                        comp.context), True
     elif comp.is_block():
       new_locals = []
+      modified = False
       for name, val in comp.locals:
         context_tree.walk_down_one_variable_binding()
         new_name = context_tree.get_payload_with_name(name).new_name
+        modified = modified or (new_name is not name)
         new_locals.append((new_name, val))
-      return building_blocks.Block(new_locals, comp.result), True
+      return building_blocks.Block(new_locals, comp.result), modified
     elif comp.is_lambda():
       if comp.parameter_type is None:
         return comp, False
       context_tree.walk_down_one_variable_binding()
       new_name = context_tree.get_payload_with_name(
           comp.parameter_name).new_name
+      if new_name is comp.parameter_name:
+        return comp, False
       return building_blocks.Lambda(new_name, comp.parameter_type,
                                     comp.result), True
     return comp, False

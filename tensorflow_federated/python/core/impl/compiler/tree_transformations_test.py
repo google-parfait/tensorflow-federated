@@ -42,6 +42,7 @@ class TransformTestBase(test_case.TestCase):
       self.assertFalse(modified)
     else:
       self.assertTrue(modified)
+    return after
 
 
 def _create_chained_whimsy_federated_maps(functions, arg):
@@ -431,18 +432,24 @@ class RemoveUnusedBlockLocalsTest(test_case.TestCase):
     self.assertEqual(transformed_blk.compact_representation(), '(let y=b in y)')
 
 
-class UniquifyReferenceNamesTest(test_case.TestCase):
+class UniquifyReferenceNamesTest(TransformTestBase):
+
+  def transform(self, comp):
+    return tree_transformations.uniquify_reference_names(comp)
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
       tree_transformations.uniquify_reference_names(None)
 
-  def test_renames_lambda_but_not_unbound_reference(self):
+  def test_renames_lambda_but_not_unbound_reference_when_given_name_generator(
+      self):
     ref = building_blocks.Reference('x', tf.int32)
     lambda_binding_y = building_blocks.Lambda('y', tf.float32, ref)
 
-    transformed_comp, modified = tree_transformations.uniquify_reference_names(
+    name_generator = building_block_factory.unique_name_generator(
         lambda_binding_y)
+    transformed_comp, modified = tree_transformations.uniquify_reference_names(
+        lambda_binding_y, name_generator)
 
     self.assertEqual(lambda_binding_y.compact_representation(), '(y -> x)')
     self.assertEqual(transformed_comp.compact_representation(), '(_var1 -> x)')
@@ -461,7 +468,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
     self.assertEqual(block.compact_representation(),
                      '(let a=data,a=a,a=a in a)')
     self.assertEqual(transformed_comp.compact_representation(),
-                     '(let _var1=data,_var2=_var1,_var3=_var2 in _var3)')
+                     '(let a=data,_var1=a,_var2=_var1 in _var2)')
     tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
@@ -478,7 +485,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
                      '(let a=data,a=a in (let a=data,a=a in a))')
     self.assertEqual(
         transformed_comp.compact_representation(),
-        '(let _var1=data,_var2=_var1 in (let _var3=data,_var4=_var3 in _var4))')
+        '(let a=data,_var1=a in (let _var2=data,_var3=_var2 in _var3))')
     tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
 
@@ -496,9 +503,9 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
         second_level_call)
 
     self.assertEqual(transformed_comp.compact_representation(),
-                     '(_var1 -> _var1)((_var2 -> _var2)(data))')
+                     '(b -> b)((a -> a)(data))')
     tree_analysis.check_has_unique_names(transformed_comp)
-    self.assertTrue(modified)
+    self.assertFalse(modified)
 
   def test_block_lambda_block_lambda(self):
     x_ref = building_blocks.Reference('a', tf.int32)
@@ -519,7 +526,7 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
         '(let a=data,a=a in (a -> (let a=a,a=a in (a -> a)(a)))(a))')
     self.assertEqual(
         transformed_comp.compact_representation(),
-        '(let _var1=data,_var2=_var1 in (_var3 -> (let _var4=_var3,_var5=_var4 in (_var6 -> _var6)(_var5)))(_var2))'
+        '(let a=data,_var1=a in (_var2 -> (let _var3=_var2,_var4=_var3 in (_var5 -> _var5)(_var4)))(_var1))'
     )
     tree_analysis.check_has_unique_names(transformed_comp)
     self.assertTrue(modified)
@@ -539,28 +546,12 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
         [('a', higher_block),
          ('a', higher_block_with_y_ref)], higher_block_with_y_ref)
 
-    transformed_comp, modified = tree_transformations.uniquify_reference_names(
-        multiple_bindings_highest_block)
-
-    self.assertEqual(higher_block.compact_representation(),
-                     '(let a=(let a=(let a=data in data) in data) in data)')
-    self.assertEqual(higher_block_with_y_ref.compact_representation(),
-                     '(let a=(let a=(let a=a in data) in data) in data)')
-    self.assertEqual(transformed_comp.locals[0][0], '_var4')
-    self.assertEqual(
-        transformed_comp.locals[0][1].compact_representation(),
-        '(let _var3=(let _var2=(let _var1=data in data) in data) in data)')
-    self.assertEqual(transformed_comp.locals[1][0], '_var8')
-    self.assertEqual(
-        transformed_comp.locals[1][1].compact_representation(),
-        '(let _var7=(let _var6=(let _var5=_var4 in data) in data) in data)')
-    self.assertEqual(
-        transformed_comp.result.compact_representation(),
-        '(let _var11=(let _var10=(let _var9=_var8 in data) in data) in data)')
+    transformed_comp = self.assert_transforms(
+        multiple_bindings_highest_block,
+        'uniquify_names_blocks_nested_inside_of_locals.expected')
     tree_analysis.check_has_unique_names(transformed_comp)
-    self.assertTrue(modified)
 
-  def test_renames_names_ignores_existing_names(self):
+  def test_keeps_existing_nonoverlapping_names(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('a', data), ('b', data)], data)
     comp = block
@@ -571,15 +562,8 @@ class UniquifyReferenceNamesTest(test_case.TestCase):
     self.assertEqual(block.compact_representation(),
                      '(let a=data,b=data in data)')
     self.assertEqual(transformed_comp.compact_representation(),
-                     '(let _var1=data,_var2=data in data)')
-    self.assertTrue(modified)
-
-    transformed_comp, modified = tree_transformations.uniquify_reference_names(
-        comp)
-
-    self.assertEqual(transformed_comp.compact_representation(),
-                     '(let _var1=data,_var2=data in data)')
-    self.assertTrue(modified)
+                     '(let a=data,b=data in data)')
+    self.assertFalse(modified)
 
 
 def _is_called_graph_pattern(comp):

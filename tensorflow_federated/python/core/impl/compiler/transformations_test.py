@@ -429,8 +429,8 @@ class ToDedupedCallDominantTest(test_case.TestCase):
     call_dominant_rep = transformations.to_deduped_call_dominant(
         higher_level_lambda)
 
-    self.assertRegexMatch(call_dominant_rep.compact_representation(),
-                          [r'\(_([a-z]{3})1 -> \(_(\1)2 -> _(\1)2\)\)'])
+    self.assertEqual(call_dominant_rep.compact_representation(),
+                     '(y -> (x -> x))')
 
   def test_handles_block_returning_function(self):
     lower_level_lambda = building_blocks.Lambda(
@@ -438,8 +438,7 @@ class ToDedupedCallDominantTest(test_case.TestCase):
     blk = building_blocks.Block([], lower_level_lambda)
 
     call_dominant_rep = transformations.to_deduped_call_dominant(blk)
-    self.assertRegexMatch(call_dominant_rep.compact_representation(),
-                          [r'\(_([a-z]{3})1 -> _(\1)1\)'])
+    self.assertEqual(call_dominant_rep.compact_representation(), '(x -> x)')
 
   def test_merges_nested_blocks(self):
     data = building_blocks.Data('a', tf.int32)

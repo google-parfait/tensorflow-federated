@@ -286,7 +286,7 @@ class ConcatenateFunctionOutputsTest(test_case.TestCase):
     y_lambda = building_blocks.Lambda('y', tf.int32, y_reference)
     concatenated = transformations.concatenate_function_outputs(
         x_lambda, y_lambda)
-    self.assertEqual(str(concatenated), '(_var1 -> <_var1,_var1>)')
+    self.assertEqual(str(concatenated), '(y -> <y,y>)')
 
 
 class NormalizedBitTest(test_case.TestCase):

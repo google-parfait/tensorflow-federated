@@ -70,7 +70,7 @@ class TransformingExecutorTest(absltest.TestCase):
       return x
 
     self.assertEqual(
-        _test_create_value(comp, transformation_fn), '(_var1 -> _var1)')
+        _test_create_value(comp, transformation_fn), '(comp_arg -> comp_arg)')
 
   def test_with_inlining_of_blocks(self):
 

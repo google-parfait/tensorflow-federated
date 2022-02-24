@@ -23,14 +23,14 @@ Before transformation:
 After transformation:
 
 (let
-  _lhn4=federated_aggregate(<
+  agg_0=federated_aggregate(<
     data,
     data,
-    (_lhn1 -> data),
-    (_lhn2 -> data),
-    (_lhn3 -> data)
+    (a -> data),
+    (b -> data),
+    (c -> data)
   >)
  in <
-  _lhn4,
-  _lhn4
+  agg_0,
+  agg_0
 >)
