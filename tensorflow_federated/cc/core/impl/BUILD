@@ -8,6 +8,9 @@ package_group(
     ],
 )
 
-package_group(name = "impl_visibility")
+package_group(
+    name = "impl_visibility",
+    packages = ["//quality/moana/asteria/spanner/..."],
+)
 
 licenses(["notice"])
