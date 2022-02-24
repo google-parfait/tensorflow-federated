@@ -455,26 +455,6 @@ class _KerasModel(model_lib.Model):
     return self._forward_pass(batch_input, training=training)
 
   @tf.function
-  def report_local_outputs(self):
-    raise NotImplementedError(
-        'Do not implement. `report_local_outputs` and '
-        '`federated_output_computation` are deprecated and will be removed '
-        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-        '`metric_finalizers` instead. The cross-client metrics aggregation '
-        'should be specified as the `metrics_aggregator` argument when you '
-        'build a training process or evaluation computation using this model.')
-
-  @property
-  def federated_output_computation(self):
-    raise NotImplementedError(
-        'Do not implement. `report_local_outputs` and '
-        '`federated_output_computation` are deprecated and will be removed '
-        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-        '`metric_finalizers` instead. The cross-client metrics aggregation '
-        'should be specified as the `metrics_aggregator` argument when you '
-        'build a training process or evaluation computation using this model.')
-
-  @tf.function
   def report_local_unfinalized_metrics(
       self) -> OrderedDict[str, List[tf.Tensor]]:
     """Creates an `OrderedDict` of metric names to unfinalized values.

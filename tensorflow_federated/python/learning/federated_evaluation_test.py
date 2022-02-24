@@ -91,26 +91,6 @@ class TestModel(model.Model):
         num_examples=tf.shape(predictions)[0])
 
   @tf.function
-  def report_local_outputs(self):
-    raise NotImplementedError(
-        'Do not implement. `report_local_outputs` and '
-        '`federated_output_computation` are deprecated and will be removed '
-        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-        '`metric_finalizers` instead. The cross-client metrics aggregation '
-        'should be specified as the `metrics_aggregator` argument when you '
-        'build a training process or evaluation computation using this model.')
-
-  @property
-  def federated_output_computation(self):
-    raise NotImplementedError(
-        'Do not implement. `report_local_outputs` and '
-        '`federated_output_computation` are deprecated and will be removed '
-        'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-        '`metric_finalizers` instead. The cross-client metrics aggregation '
-        'should be specified as the `metrics_aggregator` argument when you '
-        'build a training process or evaluation computation using this model.')
-
-  @tf.function
   def report_local_unfinalized_metrics(self):
     return collections.OrderedDict(num_over=self._variables.num_over)
 

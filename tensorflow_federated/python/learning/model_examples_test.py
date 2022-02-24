@@ -76,15 +76,6 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(finalized_metrics,
                      collections.OrderedDict(loss=0.25, num_examples=2))
 
-    # TODO(b/122114585): Add tests for model.federated_output_computation.
-
-  def test_raise_not_implemented_error(self):
-    model = model_examples.LinearRegression()
-    with self.assertRaisesRegex(NotImplementedError, 'Do not implement'):
-      model.report_local_outputs()
-    with self.assertRaisesRegex(NotImplementedError, 'Do not implement'):
-      model.federated_output_computation  # pylint: disable=pointless-statement
-
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()

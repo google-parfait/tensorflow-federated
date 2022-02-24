@@ -58,22 +58,8 @@ class _LoadedSavedModel(model_lib.Model):
         loaded_module.predict_on_batch_inference,
         loaded_module.predict_on_batch_inference_type_spec, tuple)
 
-    def raise_not_implemented_error():
-      raise NotImplementedError(
-          'Do not implement. `report_local_outputs` and '
-          '`federated_output_computation` are deprecated and will be removed '
-          'in 2022Q1. You should use `report_local_unfinalized_metrics` and '
-          '`metric_finalizers` instead. The cross-client metrics aggregation '
-          'should be specified as the `metrics_aggregator` argument when you '
-          'build a training process or evaluation computation using this model.'
-      )
-
-    self._report_local_outputs = raise_not_implemented_error
-
     self._input_spec = _deserialize_type_spec(
         loaded_module.serialized_input_spec)
-
-    self._federated_output_computation = raise_not_implemented_error
 
     self._report_local_unfinalized_metrics = loaded_module.report_local_unfinalized_metrics
     self._serialized_metric_finalizers = loaded_module.serialized_metric_finalizers
@@ -109,10 +95,6 @@ class _LoadedSavedModel(model_lib.Model):
     return self._local_variables
 
   @tf.function
-  def report_local_outputs(self):
-    return self._report_local_outputs()
-
-  @tf.function
   def report_local_unfinalized_metrics(self):
     return self._report_local_unfinalized_metrics()
 
@@ -126,10 +108,6 @@ class _LoadedSavedModel(model_lib.Model):
     return collections.OrderedDict(
         (metric_name, deserialize_metric_finalizer(finalizer)) for metric_name,
         finalizer in self._serialized_metric_finalizers.items())
-
-  @property
-  def federated_output_computation(self):
-    return self._federated_output_computation
 
 
 def _save_tensorflow_module(tf_module: tf.Module, path: str) -> None:

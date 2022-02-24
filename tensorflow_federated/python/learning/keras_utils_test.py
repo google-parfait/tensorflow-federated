@@ -260,15 +260,6 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertGreater(metrics['mean_absolute_error'][0], 0)
     self.assertEqual(metrics['mean_absolute_error'][1], 2)
 
-    # TODO(b/202027329): Remove these checks when removing the two attributes:
-    # `report_local_outptus` and `federated_output_computation`.
-    # Ensure that `report_local_outptus` and `federated_output_computation`
-    # raise a NotImplementedError.
-    with self.assertRaisesRegex(NotImplementedError, 'Do not implement'):
-      tff_model.report_local_outputs()
-    with self.assertRaisesRegex(NotImplementedError, 'Do not implement'):
-      tff_model.federated_output_computation()
-
   def test_tff_model_from_keras_model_regularization(self):
     keras_model = model_examples.build_linear_regression_ones_regularized_keras_sequential_model(
         3)
