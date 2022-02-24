@@ -37,6 +37,7 @@ from tensorflow_federated.python.core.impl.executors.executor_stacks import Comp
 from tensorflow_federated.python.core.impl.executors.executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import ReconstructOnChangeExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import remote_executor_factory
+from tensorflow_federated.python.core.impl.executors.executor_stacks import remote_executor_factory_from_stubs
 from tensorflow_federated.python.core.impl.executors.executor_stacks import ResourceManagingExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import SizeInfo
 from tensorflow_federated.python.core.impl.executors.executor_stacks import sizing_executor_factory
