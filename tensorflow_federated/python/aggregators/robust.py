@@ -213,7 +213,7 @@ def zeroing_factory(
       will be used.
 
   Returns:
-    An aggregation factory to perform L2 clipping.
+    An aggregation factory to perform zeroing.
   """
 
   if zeroed_count_sum_factory is None:
