@@ -40,11 +40,14 @@ class ServerOutput():
     heavy_hitters: A 1-d tensor of decoded heavy hitters.
     heavy_hitters_counts: A 1-d tensor of the counts for decoded heavy hitters.
     num_not_decoded: An int32 scalar number of strings that are not decoded.
+    round_timestamp: An int64 scalar of the timestamp of the beginning of the
+      round. The value is in seconds since the epoch, in UTC.
   """
   clients = attr.ib()
   heavy_hitters = attr.ib()
   heavy_hitters_counts = attr.ib()
   num_not_decoded = attr.ib()
+  round_timestamp = attr.ib()
 
 
 def build_iblt_computation(
@@ -249,6 +252,9 @@ def build_iblt_computation(
       sum_fn = secure_sum
     else:
       sum_fn = intrinsics.federated_sum
+    round_timestamp = intrinsics.federated_eval(
+        computations.tf_computation(lambda: tf.cast(tf.timestamp(), tf.int64)),
+        placements.SERVER)
     clients = sum_fn(intrinsics.federated_value(1, placements.CLIENTS))
     sketch = sum_fn(intrinsics.federated_map(compute_sketch, examples))
     unique_sketch = sum_fn(
@@ -260,7 +266,8 @@ def build_iblt_computation(
             clients=clients,
             heavy_hitters=heavy_hitters,
             heavy_hitters_counts=heavy_hitters_counts,
-            num_not_decoded=num_not_decoded))
+            num_not_decoded=num_not_decoded,
+            round_timestamp=round_timestamp))
     return server_output
 
   return one_round_computation

@@ -145,7 +145,7 @@ def _execute_computation(
   for index in range(total_num_heavy_hitters):
     iteration_results[heavy_hitters[index]] += heavy_hitters_counts[index]
 
-  return dict(iteration_results)
+  return dict(iteration_results), output.num_not_decoded, output.round_timestamp
 
 
 class IbltTffConstructionTest(test_case.TestCase):
@@ -169,6 +169,7 @@ class IbltTffConstructionTest(test_case.TestCase):
                     heavy_hitters_counts=computation_types.TensorType(
                         shape=[None], dtype=tf.int64),
                     num_not_decoded=tf.int64,
+                    round_timestamp=tf.int64,
                 ))))
 
   def test_max_string_length_validation(self):
@@ -247,7 +248,7 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
   )
   def test_computation(self, capacity: int, max_string_length: int,
                        repetitions: int, seed: int, batch_size: int):
-    results = _execute_computation(
+    results, num_not_decoded, _ = _execute_computation(
         DATA,
         capacity=capacity,
         max_string_length=max_string_length,
@@ -256,13 +257,15 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
         max_words_per_user=10,
         batch_size=batch_size)
 
+    self.assertEqual(num_not_decoded, 0)
+
     all_strings = list(itertools.chain.from_iterable(DATA))
     ground_truth = dict(collections.Counter(all_strings))
 
     self.assertEqual(results, ground_truth)
 
   def test_computation_with_max_string_length(self):
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=100,
         max_string_length=5,
@@ -273,7 +276,7 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
 
   def test_computation_with_max_string_length_multibyte(self):
     client_data = [['七転び八起き', '取らぬ狸の皮算用', '一石二鳥'] for _ in range(10)]
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         client_data,
         capacity=100,
         max_string_length=3,
@@ -284,7 +287,7 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('batch_1', 1), ('batch_5', 5))
   def test_computation_with_max_heavy_hitters(self, batch_size):
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=100,
         max_string_length=30,
@@ -303,7 +306,7 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
       ('batch_size_5', 5),
   )
   def test_computation_with_k_anonymity(self, batch_size):
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=100,
         max_string_length=30,
@@ -338,7 +341,7 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
   )
   def test_computation_with_k_anonymity_and_max_string_length(
       self, batch_size, k_anonymity, max_string_length, expected_result):
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=100,
         max_string_length=max_string_length,
@@ -354,7 +357,7 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
     max_words_per_user = 10
     secure_sum_bitwidth = 32
 
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=capacity,
         max_string_length=max_string_length,
@@ -378,7 +381,7 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
                                   ('batch_size_5', 20, 30, 6, 1, 5))
   def test_computation(self, capacity, max_string_length, repetitions, seed,
                        batch_size):
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=capacity,
         max_string_length=max_string_length,
@@ -431,7 +434,7 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
   def test_computation_with_max_string_length(self, capacity, max_string_length,
                                               repetitions, seed, batch_size,
                                               expected_results):
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=capacity,
         max_string_length=max_string_length,
@@ -448,7 +451,7 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
     string_postprocessor = SamplePostProcessor()
     capacity = 10
     max_string_length = 20
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=capacity,
         max_string_length=max_string_length,
@@ -465,7 +468,7 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('batch_size_1', 1), ('batch_size_5', 5))
   def test_computation_with_max_heavy_hitters(self, batch_size):
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=100,
         max_string_length=30,
@@ -477,7 +480,7 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('batch_size_1', 1), ('batch_size_5', 5))
   def test_computation_with_k_anonymity(self, batch_size):
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=100,
         max_string_length=30,
@@ -513,7 +516,7 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_computation_with_k_anonymity_and_max_string_length(
       self, batch_size, k_anonymity, max_string_length, expected_result):
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=100,
         max_string_length=max_string_length,
@@ -525,7 +528,7 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('batch_size_1', 1), ('batch_size_5', 5))
   def test_computation_with_secure_sum_bitwidth(self, batch_size):
-    results = _execute_computation(
+    results, _, _ = _execute_computation(
         DATA,
         capacity=100,
         max_string_length=30,
