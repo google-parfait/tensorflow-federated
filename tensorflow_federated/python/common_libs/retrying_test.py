@@ -30,6 +30,10 @@ class RetryingArgValidationtest(absltest.TestCase):
     with self.assertRaises(TypeError):
       retrying.retry(fn=lambda x: x, retry_on_exception_filter=0)
 
+  def test_raises_non_function_result_filter(self):
+    with self.assertRaises(TypeError):
+      retrying.retry(fn=lambda x: x, retry_on_result_filter=0)
+
   def test_raises_complex_wait_multiplier(self):
     with self.assertRaises(TypeError):
       retrying.retry(fn=lambda x: x, wait_multiplier=1j)
@@ -120,6 +124,86 @@ class RetryingFunctionTest(absltest.TestCase):
     self.assertEqual(result, expected_result)
     mock_callable.assert_called_once_with(error)
 
+  def test_result_filter_not_incur_retry(self):
+    expected_return_val = 0
+    expected_num_invocations = 3
+    count_invocations_callable = CountInvocations(expected_num_invocations,
+                                                  TypeError('Error'),
+                                                  expected_return_val)
+    mock_callable = mock.MagicMock(return_value=False)
+
+    def result_filter(*args):
+      return mock_callable(*args)
+
+    @retrying.retry(retry_on_result_filter=result_filter)
+    def invoke_callable(*args, **kwargs):
+      return count_invocations_callable(*args, **kwargs)
+
+    return_val = invoke_callable()
+
+    self.assertEqual(return_val, expected_return_val)
+    # Final call succeeds
+    self.assertEqual(count_invocations_callable.n_invocations,
+                     expected_num_invocations + 1)
+
+  def test_result_filter_incur_retry(self):
+
+    expected_return_val = 0
+    expected_num_invocations = 3
+    count_invocations_callable = CountInvocations(expected_num_invocations,
+                                                  TypeError('Error'),
+                                                  expected_return_val)
+    mock_callable = mock.Mock()
+    mock_callable.side_effect = [True, False]
+
+    def result_filter(*args):
+      return mock_callable(*args)
+
+    @retrying.retry(retry_on_result_filter=result_filter)
+    def invoke_callable(*args, **kwargs):
+      return count_invocations_callable(*args, **kwargs)
+
+    return_val = invoke_callable()
+
+    self.assertEqual(return_val, expected_return_val)
+    # Final call succeeds
+    self.assertEqual(count_invocations_callable.n_invocations,
+                     expected_num_invocations + 2)
+
+  def test_standalone_decorator_retries_without_timeout(self):
+
+    expected_return_val = 0
+    expected_num_invocations = 3
+    count_invocations_callable = CountInvocations(expected_num_invocations,
+                                                  TypeError('Error'),
+                                                  expected_return_val)
+    expected_wait_timeout_ms = 2 + 4 + 8 + 16
+
+    @retrying.retry(wait_timeout_ms=expected_wait_timeout_ms)
+    def invoke_callable(*args, **kwargs):
+      return count_invocations_callable(*args, **kwargs)
+
+    return_val = invoke_callable()
+
+    self.assertEqual(return_val, expected_return_val)
+    # Final call succeeds
+    self.assertEqual(count_invocations_callable.n_invocations,
+                     expected_num_invocations + 1)
+
+  def test_timeout(self):
+    expected_return_val = 0
+    num_invocations = 5
+    count_invocations_callable = CountInvocations(num_invocations,
+                                                  TypeError('Error'),
+                                                  expected_return_val)
+
+    @retrying.retry(wait_timeout_ms=1)
+    def invoke_callable(*args, **kwargs):
+      return count_invocations_callable(*args, **kwargs)
+
+    with self.assertRaises(StopIteration):
+      invoke_callable()
+
 
 class RetryingCoroFunctionTest(absltest.TestCase):
 
@@ -179,6 +263,86 @@ class RetryingCoroFunctionTest(absltest.TestCase):
     result = self._run_sync(invoke_callable)
     self.assertEqual(result, expected_result)
     mock_callable.assert_called_once_with(error)
+
+  def test_result_filter_not_incur_retry(self):
+    expected_result = 0
+    expected_num_invocations = 3
+    count_invocations_callable = CountInvocations(expected_num_invocations,
+                                                  TypeError('Error'),
+                                                  expected_result)
+    mock_callable = mock.MagicMock(return_value=False)
+
+    def result_filter(*args):
+      return mock_callable(*args)
+
+    @retrying.retry(retry_on_result_filter=result_filter)
+    async def invoke_callable(*args, **kwargs):
+      return count_invocations_callable(*args, **kwargs)
+
+    result = self._run_sync(invoke_callable)
+
+    self.assertEqual(result, expected_result)
+    # Final call succeeds
+    self.assertEqual(count_invocations_callable.n_invocations,
+                     expected_num_invocations + 1)
+
+  def test_result_filter_incur_retry(self):
+
+    expected_result = 0
+    expected_num_invocations = 3
+    count_invocations_callable = CountInvocations(expected_num_invocations,
+                                                  TypeError('Error'),
+                                                  expected_result)
+    mock_callable = mock.Mock()
+    mock_callable.side_effect = [True, False]
+
+    def result_filter(*args):
+      return mock_callable(*args)
+
+    @retrying.retry(retry_on_result_filter=result_filter)
+    async def invoke_callable(*args, **kwargs):
+      return count_invocations_callable(*args, **kwargs)
+
+    result = self._run_sync(invoke_callable)
+
+    self.assertEqual(result, expected_result)
+    # Final call succeeds
+    self.assertEqual(count_invocations_callable.n_invocations,
+                     expected_num_invocations + 2)
+
+  def test_timeout(self):
+    expected_return_val = 0
+    num_invocations = 5
+    count_invocations_callable = CountInvocations(num_invocations,
+                                                  TypeError('Error'),
+                                                  expected_return_val)
+
+    @retrying.retry(wait_timeout_ms=1)
+    async def invoke_callable(*args, **kwargs):
+      return count_invocations_callable(*args, **kwargs)
+
+    with self.assertRaises(StopAsyncIteration):
+      self._run_sync(invoke_callable)
+
+  def test_standalone_decorator_retries_without_timeout(self):
+
+    expected_return_val = 0
+    expected_num_invocations = 3
+    count_invocations_callable = CountInvocations(expected_num_invocations,
+                                                  TypeError('Error'),
+                                                  expected_return_val)
+    expected_wait_timeout_ms = 2 + 4 + 8 + 16
+
+    @retrying.retry(wait_timeout_ms=expected_wait_timeout_ms)
+    async def invoke_callable(*args, **kwargs):
+      return count_invocations_callable(*args, **kwargs)
+
+    return_val = self._run_sync(invoke_callable)
+
+    self.assertEqual(return_val, expected_return_val)
+    # Final call succeeds
+    self.assertEqual(count_invocations_callable.n_invocations,
+                     expected_num_invocations + 1)
 
 
 if __name__ == '__main__':
