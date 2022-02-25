@@ -289,7 +289,8 @@ def _build_mime_lite_client_work(
 
 def build_weighted_mime_lite(
     model_fn: Callable[[], model_lib.Model],
-    optimizer: optimizer_base.Optimizer,
+    base_optimizer: optimizer_base.Optimizer,
+    server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
     client_weighting: Optional[
         client_weight_lib
         .ClientWeighting] = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
@@ -354,9 +355,12 @@ def build_weighted_mime_lite(
       must *not* capture TensorFlow tensors or variables and use them. The model
       must be constructed entirely from scratch on each invocation, returning
       the same pre-constructed model each call will result in an error.
-    optimizer: A `tff.learning.optimizers.Optimizer` which will be used for both
-      creating and updating a global optimizer state, as well as optimization at
-      clients given the global state, which is fixed during the optimization.
+    base_optimizer: A `tff.learning.optimizers.Optimizer` which will be used for
+      both creating and updating a global optimizer state, as well as
+      optimization at clients given the global state, which is fixed during the
+      optimization.
+    server_optimizer: A `tff.learning.optimizers.Optimizer` which will be used
+      for applying the aggregate model update to the global model weights.
     client_weighting: A member of `tff.learning.ClientWeighting` that specifies
       a built-in weighting method. By default, weighting by number of examples
       is used.
@@ -385,7 +389,8 @@ def build_weighted_mime_lite(
     A `tff.learning.templates.LearningProcess`.
   """
   py_typecheck.check_callable(model_fn)
-  py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
+  py_typecheck.check_type(base_optimizer, optimizer_base.Optimizer)
+  py_typecheck.check_type(server_optimizer, optimizer_base.Optimizer)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
 
   @computations.tf_computation()
@@ -407,13 +412,13 @@ def build_weighted_mime_lite(
 
   client_work = _build_mime_lite_client_work(
       model_fn=model_fn,
-      optimizer=optimizer,
+      optimizer=base_optimizer,
       client_weighting=client_weighting,
       full_gradient_aggregator=full_gradient_aggregator,
       metrics_aggregator=metrics_aggregator,
       use_experimental_simulation_loop=use_experimental_simulation_loop)
   finalizer = finalizers.build_apply_optimizer_finalizer(
-      sgdm.build_sgdm(1.0), model_weights_type)
+      server_optimizer, model_weights_type)
   return composers.compose_learning_process(initial_model_weights_fn,
                                             model_distributor, client_work,
                                             model_aggregator, finalizer)
@@ -421,7 +426,8 @@ def build_weighted_mime_lite(
 
 def build_unweighted_mime_lite(
     model_fn: Callable[[], model_lib.Model],
-    optimizer: optimizer_base.Optimizer,
+    base_optimizer: optimizer_base.Optimizer,
+    server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
     model_distributor: Optional[distributors.DistributionProcess] = None,
     model_aggregator: Optional[factory.UnweightedAggregationFactory] = None,
     full_gradient_aggregator: Optional[
@@ -482,9 +488,12 @@ def build_unweighted_mime_lite(
       must *not* capture TensorFlow tensors or variables and use them. The model
       must be constructed entirely from scratch on each invocation, returning
       the same pre-constructed model each call will result in an error.
-    optimizer: A `tff.learning.optimizers.Optimizer` which will be used for both
-      creating and updating a global optimizer state, as well as optimization at
-      clients given the global state, which is fixed during the optimization.
+    base_optimizer: A `tff.learning.optimizers.Optimizer` which will be used for
+      both creating and updating a global optimizer state, as well as
+      optimization at clients given the global state, which is fixed during the
+      optimization.
+    server_optimizer: A `tff.learning.optimizers.Optimizer` which will be used
+      for applying the aggregate model update to the global model weights.
     model_distributor: An optional `DistributionProcess` that distributes the
       model weights on the server to the clients. If set to `None`, the
       distributor is constructed via `distributors.build_broadcast_process`.
@@ -520,7 +529,8 @@ def build_unweighted_mime_lite(
 
   return build_weighted_mime_lite(
       model_fn=model_fn,
-      optimizer=optimizer,
+      base_optimizer=base_optimizer,
+      server_optimizer=server_optimizer,
       client_weighting=client_weight_lib.ClientWeighting.UNIFORM,
       model_distributor=model_distributor,
       model_aggregator=aggregation.as_weighted_aggregator(model_aggregator),

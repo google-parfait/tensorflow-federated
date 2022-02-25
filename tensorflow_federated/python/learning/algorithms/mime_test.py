@@ -233,7 +233,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
     mime.build_weighted_mime_lite(
         model_fn=mock_model_fn,
-        optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9))
+        base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9))
     self.assertEqual(mock_model_fn.call_count, 3)
 
   @parameterized.named_parameters(
@@ -247,7 +247,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     mime.build_weighted_mime_lite(
         model_fn=model_examples.LinearRegression,
-        optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+        base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
         use_experimental_simulation_loop=simulation)
     if simulation:
       mock_method.assert_not_called()
@@ -259,7 +259,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
       self, mock_mime_lite):
     mime.build_unweighted_mime_lite(
         model_fn=model_examples.LinearRegression,
-        optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9))
+        base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9))
     self.assertEqual(mock_mime_lite.call_count, 1)
 
   @mock.patch.object(mime, 'build_weighted_mime_lite')
@@ -267,20 +267,20 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
   def test_aggregation_wrapper_called_by_unweighted(self, _, mock_as_weighted):
     mime.build_unweighted_mime_lite(
         model_fn=model_examples.LinearRegression,
-        optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9))
+        base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9))
     self.assertEqual(mock_as_weighted.call_count, 1)
 
   def test_raises_on_non_callable_model_fn(self):
     with self.assertRaises(TypeError):
       mime.build_weighted_mime_lite(
           model_fn=model_examples.LinearRegression(),
-          optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9))
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9))
 
   def test_raises_on_invalid_client_weighting(self):
     with self.assertRaises(TypeError):
       mime.build_weighted_mime_lite(
           model_fn=model_examples.LinearRegression,
-          optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
           client_weighting='uniform')
 
   def test_raises_on_invalid_distributor(self):
@@ -292,7 +292,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       mime.build_weighted_mime_lite(
           model_fn=model_examples.LinearRegression,
-          optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
           model_distributor=invalid_distributor)
 
   def test_weighted_mime_lite_raises_on_unweighted_aggregator(self):
@@ -300,12 +300,12 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(TypeError, 'WeightedAggregationFactory'):
       mime.build_weighted_mime_lite(
           model_fn=model_examples.LinearRegression,
-          optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
           model_aggregator=aggregator)
     with self.assertRaisesRegex(TypeError, 'WeightedAggregationFactory'):
       mime.build_weighted_mime_lite(
           model_fn=model_examples.LinearRegression,
-          optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
           full_gradient_aggregator=aggregator)
 
   def test_unweighted_mime_lite_raises_on_weighted_aggregator(self):
@@ -313,19 +313,19 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(TypeError, 'UnweightedAggregationFactory'):
       mime.build_unweighted_mime_lite(
           model_fn=model_examples.LinearRegression,
-          optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
           model_aggregator=aggregator)
     with self.assertRaisesRegex(TypeError, 'UnweightedAggregationFactory'):
       mime.build_unweighted_mime_lite(
           model_fn=model_examples.LinearRegression,
-          optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
           full_gradient_aggregator=aggregator)
 
   def test_weighted_mime_lite_with_only_secure_aggregation(self):
     aggregator = model_update_aggregator.secure_aggregator(weighted=True)
     learning_process = mime.build_weighted_mime_lite(
         model_examples.LinearRegression,
-        optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+        base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
         model_aggregator=aggregator,
         full_gradient_aggregator=aggregator,
         metrics_aggregator=metrics_aggregator.secure_sum_then_finalize)
@@ -336,7 +336,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
     aggregator = model_update_aggregator.secure_aggregator(weighted=False)
     learning_process = mime.build_unweighted_mime_lite(
         model_examples.LinearRegression,
-        optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+        base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
         model_aggregator=aggregator,
         full_gradient_aggregator=aggregator,
         metrics_aggregator=metrics_aggregator.secure_sum_then_finalize)
@@ -347,7 +347,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
   def test_equivalent_to_vanilla_fed_avg(self):
     # Mime Lite with no-momentum SGD should reduce to FedAvg.
     mime_process = mime.build_weighted_mime_lite(
-        model_fn=_create_model, optimizer=sgdm.build_sgdm(0.1))
+        model_fn=_create_model, base_optimizer=sgdm.build_sgdm(0.1))
     fed_avg_process = fed_avg.build_weighted_fed_avg(
         model_fn=_create_model, client_optimizer_fn=sgdm.build_sgdm(0.1))
 
@@ -370,6 +370,28 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
       self.assertAllClose(
           mime_metrics['client_work']['train']['num_examples'],
           fed_avg_metrics['client_work']['train']['num_examples'])
+
+  @parameterized.named_parameters(
+      ('sgdm_sgd', sgdm.build_sgdm(0.1, 0.9), sgdm.build_sgdm(1.0)),
+      ('sgdm_sgdm', sgdm.build_sgdm(0.1, 0.9), sgdm.build_sgdm(1.0, 0.9)),
+      ('sgdm_adam', sgdm.build_sgdm(0.1, 0.9), adam.build_adam(1.0)),
+      ('adagrad_sgdm', adagrad.build_adagrad(0.1), sgdm.build_sgdm(1.0, 0.9)),
+  )
+  @test_utils.skip_test_for_multi_gpu
+  def test_execution_with_optimizers(self, base_optimizer, server_optimizer):
+    learning_process = mime.build_weighted_mime_lite(
+        model_fn=_create_model,
+        base_optimizer=base_optimizer,
+        server_optimizer=server_optimizer)
+
+    client_data = [_create_dataset()]
+    state = learning_process.initialize()
+
+    for _ in range(3):
+      output = learning_process.next(state, client_data)
+      state = output.state
+      metrics = output.metrics
+      self.assertEqual(8, metrics['client_work']['train']['num_examples'])
 
 
 if __name__ == '__main__':
