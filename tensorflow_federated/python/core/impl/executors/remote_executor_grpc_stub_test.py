@@ -115,7 +115,7 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     self.assertEqual(result, response)
 
   def test_create_value_returns_value(self, mock_executor_grpc_stub):
-    response = executor_pb2.CreateValueRequest()
+    response = executor_pb2.CreateValueResponse()
     instance = mock_executor_grpc_stub.return_value
     instance.CreateValue = mock.Mock(side_effect=[response])
     stub = create_stub()
