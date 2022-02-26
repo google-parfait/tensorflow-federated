@@ -13,6 +13,8 @@
 # limitations under the License.
 """Libraries for extending the TensorFlow Federated core library."""
 
+from tensorflow_federated.python.cloud.gcp.backends.cloud_aggregator_execution_context import create_cloud_execution_factory
+from tensorflow_federated.python.cloud.gcp.backends.cloud_aggregator_execution_context import set_cloud_execution_context
 from tensorflow_federated.python.core.impl.compiler.building_blocks import ComputationBuildingBlock
 from tensorflow_federated.python.core.impl.compiler.intrinsic_reductions import replace_intrinsics_with_bodies
 from tensorflow_federated.python.core.impl.computation.computation_impl import ConcreteComputation

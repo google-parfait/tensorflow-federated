@@ -18,6 +18,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        "//tensorflow_federated/python/cloud/gcp/backends:cloud_aggregator_execution_context",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_reductions",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
