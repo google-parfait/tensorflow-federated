@@ -31,6 +31,8 @@ enum class SequenceIntrinsic {
 absl::StatusOr<SequenceIntrinsic> SequenceIntrinsicFromUri(
     const absl::string_view uri);
 
+absl::string_view SequenceIntrinsicToUri(const SequenceIntrinsic& intrinsic);
+
 }  // namespace tensorflow_federated
 
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_SEQUENCE_INTRINSICS_H_

@@ -48,10 +48,12 @@ limitations under the License
 namespace tensorflow_federated {
 namespace testing {
 
-inline v0::Value IntrinsicV(std::string uri) {
+inline v0::Value IntrinsicV(absl::string_view uri) {
   v0::Value value_proto;
+  // Construct an explicit string from this string-view; this silent conversion
+  // is not present in OSS.
   *value_proto.mutable_computation()->mutable_intrinsic()->mutable_uri() =
-      std::move(uri);
+      std::string(uri);
   return value_proto;
 }
 
@@ -145,6 +147,12 @@ inline v0::Value SequenceV(int64_t start, int64_t stop, int64_t step) {
   v0::Value::Sequence* sequence_pb = value_proto.mutable_sequence();
   *sequence_pb->mutable_serialized_graph_def() =
       std::string(sequence_graph.data(), sequence_graph.size());
+
+  v0::TensorType tensor_type;
+  tensor_type.set_dtype(v0::TensorType::DT_INT64);
+  tensor_type.add_dims(1);
+  *sequence_pb->mutable_element_type()->mutable_tensor() = tensor_type;
+
   return value_proto;
 }
 

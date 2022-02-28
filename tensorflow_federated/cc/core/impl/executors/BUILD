@@ -522,6 +522,7 @@ tff_cc_library_with_tf_deps(
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/synchronization",
         "@org_tensorflow//tensorflow/core/platform:macros",
     ],
 )
@@ -542,6 +543,7 @@ tff_cc_test_with_tf_deps(
         ":status_matchers",
         ":value_test_utils",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
         "@com_google_absl//absl/status",
     ],
 )
