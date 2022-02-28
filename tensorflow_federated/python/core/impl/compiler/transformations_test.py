@@ -16,10 +16,8 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
@@ -273,56 +271,6 @@ class CompileLocalComputationToTensorFlow(test_case.TestCase):
     tup = building_blocks.Struct([sel, sel, sel])
     self.assert_compiles_to_tensorflow(tup)
 
-  def test_deduplicates_by_counting_ops(self):
-
-    def _construct_inlined_tuple(k):
-      constant_tuple_type = computation_types.TensorType(tf.int32)
-      concrete_int = building_block_factory.create_tensorflow_constant(
-          constant_tuple_type, 1)
-      first_tf_fn = building_block_factory.create_tensorflow_binary_operator(
-          tf.add, concrete_int.type_signature)
-      call = building_blocks.Call(
-          first_tf_fn, building_blocks.Struct([concrete_int, concrete_int]))
-      for _ in range(k):
-        # Simulating large TF computation
-        call = building_blocks.Call(first_tf_fn,
-                                    building_blocks.Struct([call, call]))
-      return building_blocks.Struct([call, call])
-
-    def _count_ops_parameterized_by_layers(k):
-      inlined_tuple = _construct_inlined_tuple(k)
-      with_deduping = transformations.compile_local_computation_to_tensorflow(
-          inlined_tuple)
-      num_ops_with_deduping = tree_analysis.count_tensorflow_ops_under(
-          with_deduping)
-      without_deduping = transformations.compile_local_computation_to_tensorflow(
-          inlined_tuple, deduplicate=False)
-      num_ops_without_deduping = tree_analysis.count_tensorflow_ops_under(
-          without_deduping)
-      return num_ops_with_deduping, num_ops_without_deduping
-
-    num_ops_deduped_0_layers, num_ops_0_layers = _count_ops_parameterized_by_layers(
-        0)
-    num_ops_deduped_1_layers, num_ops_1_layers = _count_ops_parameterized_by_layers(
-        1)
-    num_ops_deduped_2_layers, num_ops_2_layers = _count_ops_parameterized_by_layers(
-        2)
-    num_ops_deduped_3_layers, num_ops_3_layers = _count_ops_parameterized_by_layers(
-        3)
-
-    # asserting that block ops are linear in k.
-    self.assertEqual(num_ops_deduped_1_layers - num_ops_deduped_0_layers,
-                     num_ops_deduped_2_layers - num_ops_deduped_1_layers)
-    self.assertEqual(num_ops_deduped_3_layers - num_ops_deduped_2_layers,
-                     num_ops_deduped_2_layers - num_ops_deduped_1_layers)
-
-    # asserting that tuple ops are exponential in k.
-    first_factor = (num_ops_2_layers - num_ops_1_layers) / (
-        num_ops_1_layers - num_ops_0_layers)
-    second_factor = (num_ops_3_layers - num_ops_2_layers) / (
-        num_ops_2_layers - num_ops_1_layers)
-    self.assertEqual(first_factor, second_factor)
-
   def test_passes_on_tf(self):
     tf_comp = building_block_factory.create_compiled_identity(
         computation_types.TensorType(tf.int32))
@@ -416,146 +364,6 @@ class CompileLocalSubcomputationsToTensorFlowTest(test_case.TestCase):
         lambda_with_unbound_ref)
 
     self.assertEqual(transformed, lambda_with_unbound_ref)
-
-
-class ToDedupedCallDominantTest(test_case.TestCase):
-
-  def test_handles_called_lambda_returning_function(self):
-    lower_level_lambda = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32))
-    higher_level_lambda = building_blocks.Lambda('y', tf.int32,
-                                                 lower_level_lambda)
-
-    call_dominant_rep = transformations.to_deduped_call_dominant(
-        higher_level_lambda)
-
-    self.assertEqual(call_dominant_rep.compact_representation(),
-                     '(y -> (x -> x))')
-
-  def test_handles_block_returning_function(self):
-    lower_level_lambda = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32))
-    blk = building_blocks.Block([], lower_level_lambda)
-
-    call_dominant_rep = transformations.to_deduped_call_dominant(blk)
-    self.assertEqual(call_dominant_rep.compact_representation(), '(x -> x)')
-
-  def test_merges_nested_blocks(self):
-    data = building_blocks.Data('a', tf.int32)
-    ref_to_x = building_blocks.Reference('x', tf.int32)
-    blk1 = building_blocks.Block([('x', data)], ref_to_x)
-    blk2 = building_blocks.Block([('x', blk1)], ref_to_x)
-
-    call_dominant_rep = transformations.to_deduped_call_dominant(blk2)
-
-    self.assertEqual(call_dominant_rep.formatted_representation(),
-                     data.formatted_representation())
-
-  def test_extracts_called_intrinsics_to_block(self):
-    called_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
-        accumulate_parameter_name='a',
-        merge_parameter_name='b',
-        report_parameter_name='c')
-    tuple_holding_aggregate = building_blocks.Struct([called_aggregate])
-    sel_from_tuple = building_blocks.Selection(
-        source=tuple_holding_aggregate, index=0)
-    lambda_to_sel = building_blocks.Lambda('x', tf.int32, sel_from_tuple)
-
-    call_dominant_rep = transformations.to_deduped_call_dominant(lambda_to_sel)
-
-    call_dominant_rep.check_lambda()
-    call_dominant_rep.result.check_block()
-    self.assertLen(call_dominant_rep.result.locals, 1)
-    self.assertTrue(
-        building_block_analysis.is_called_intrinsic(
-            call_dominant_rep.result.locals[0][1],
-            intrinsic_defs.FEDERATED_AGGREGATE.uri))
-
-  def test_deduplicates_called_intrinsics(self):
-    called_aggregate1 = compiler_test_utils.create_whimsy_called_federated_aggregate(
-        accumulate_parameter_name='a',
-        merge_parameter_name='b',
-        report_parameter_name='c')
-    called_aggregate2 = compiler_test_utils.create_whimsy_called_federated_aggregate(
-        accumulate_parameter_name='a',
-        merge_parameter_name='b',
-        report_parameter_name='c')
-    tuple_holding_aggregates = building_blocks.Struct(
-        [called_aggregate1, called_aggregate2])
-    lambda_to_tup = building_blocks.Lambda('x', tf.int32,
-                                           tuple_holding_aggregates)
-
-    call_dominant_rep = transformations.to_deduped_call_dominant(lambda_to_tup)
-
-    call_dominant_rep.check_lambda()
-    call_dominant_rep.result.check_block()
-    self.assertLen(call_dominant_rep.result.locals, 1)
-    self.assertTrue(
-        building_block_analysis.is_called_intrinsic(
-            call_dominant_rep.result.locals[0][1],
-            intrinsic_defs.FEDERATED_AGGREGATE.uri))
-
-  def test_hoists_aggregations_packed_in_tuple(self):
-    called_aggregate1 = compiler_test_utils.create_whimsy_called_federated_aggregate(
-        accumulate_parameter_name='a',
-        merge_parameter_name='b',
-        report_parameter_name='c',
-        value_type=tf.int32)
-    called_aggregate2 = compiler_test_utils.create_whimsy_called_federated_aggregate(
-        accumulate_parameter_name='a',
-        merge_parameter_name='b',
-        report_parameter_name='c',
-        value_type=tf.float32)
-    tuple_holding_aggregates = building_blocks.Struct(
-        [called_aggregate1, called_aggregate2])
-    lambda_to_tuple = building_blocks.Lambda('x', tf.int32,
-                                             tuple_holding_aggregates)
-
-    call_dominant_rep = transformations.to_deduped_call_dominant(
-        lambda_to_tuple)
-
-    call_dominant_rep.check_lambda()
-    call_dominant_rep.result.check_block()
-    self.assertLen(call_dominant_rep.result.locals, 2)
-    self.assertTrue(
-        building_block_analysis.is_called_intrinsic(
-            call_dominant_rep.result.locals[0][1],
-            intrinsic_defs.FEDERATED_AGGREGATE.uri))
-    self.assertTrue(
-        building_block_analysis.is_called_intrinsic(
-            call_dominant_rep.result.locals[1][1],
-            intrinsic_defs.FEDERATED_AGGREGATE.uri))
-
-  def test_handles_lambda_with_lambda_parameter(self):
-    int_identity_lambda = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32))
-    ref_to_fn_and_int = building_blocks.Reference(
-        'y',
-        computation_types.StructType([
-            int_identity_lambda.type_signature,
-            computation_types.TensorType(tf.int32)
-        ]))
-    fn = building_blocks.Selection(ref_to_fn_and_int, index=0)
-    arg = building_blocks.Selection(ref_to_fn_and_int, index=1)
-    called_fn = building_blocks.Call(fn, arg)
-    lambda_accepting_fn = building_blocks.Lambda(
-        ref_to_fn_and_int.name, ref_to_fn_and_int.type_signature, called_fn)
-    ref_to_int = building_blocks.Reference('z', tf.int32)
-    arg_tuple = building_blocks.Struct([int_identity_lambda, ref_to_int])
-    called_lambda_with_fn = building_blocks.Call(lambda_accepting_fn, arg_tuple)
-    lambda_accepting_int = building_blocks.Lambda(ref_to_int.name,
-                                                  ref_to_int.type_signature,
-                                                  called_lambda_with_fn)
-
-    call_dominant_rep = transformations.to_deduped_call_dominant(
-        lambda_accepting_int)
-
-    call_dominant_rep.check_lambda()
-    param_name = call_dominant_rep.parameter_name
-    expected = building_blocks.Lambda(
-        param_name, tf.int32, building_blocks.Reference(param_name, tf.int32))
-    self.assertEqual(call_dominant_rep.formatted_representation(),
-                     expected.formatted_representation())
 
 
 class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
@@ -655,7 +463,7 @@ class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
     ])
     sel = building_blocks.Selection(packed_broadcast, index=0)
     second_broadcast = building_block_factory.create_federated_broadcast(sel)
-    result = transformations.to_deduped_call_dominant(second_broadcast)
+    result = transformations.to_call_dominant(second_broadcast)
     comp = building_blocks.Lambda('a', tf.int32, result)
     call = building_block_factory.create_null_federated_broadcast()
     self.assert_splits_on(comp, call)

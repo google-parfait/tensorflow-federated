@@ -802,7 +802,7 @@ def _replace_lambda_body_with_call_dominant_form(
     A transformed version of `comp`, whose body is call-dominant.
   """
   comp.check_lambda()
-  transformed = compiler_transformations.to_deduped_call_dominant(comp)
+  transformed = compiler_transformations.to_call_dominant(comp)
   transformed.check_lambda()
   return transformed
 

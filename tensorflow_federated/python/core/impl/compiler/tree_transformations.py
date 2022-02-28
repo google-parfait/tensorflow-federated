@@ -27,7 +27,6 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import compiled_computation_transforms
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.types import type_transformations
 
 TransformReturnType = Tuple[building_blocks.ComputationBuildingBlock, bool]
@@ -70,107 +69,6 @@ def _apply_transforms(comp, transforms):
     return comp, modified
 
   return transformation_utils.transform_postorder(comp, _transform)
-
-
-def remove_duplicate_block_locals(comp):
-  r"""Removes duplicated computations from Block locals in `comp`.
-
-  This transform traverses `comp` postorder and removes duplicated computation
-  building blocks from Block locals in `comp`. Additionally, Blocks variables
-  whose value is a Reference and References pointing to References are removed.
-
-  Args:
-    comp: The computation building block in which to perform the removals.
-
-  Returns:
-    A new computation with the transformation applied or the original `comp`.
-
-  Raises:
-    TypeError: If types do not match.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  tree_analysis.check_has_unique_names(comp)
-
-  def _should_transform(comp):
-    """Returns `True` if `comp` should be transformed."""
-    return comp.is_block() or comp.is_reference()
-
-  def _resolve_reference_to_concrete(
-      ref: building_blocks.Reference,
-      symbol_tree: transformation_utils.SymbolTree
-  ) -> building_blocks.ComputationBuildingBlock:
-    """Resolves `value` to a concrete building block, as far as possible.
-
-    Args:
-      ref: Instance of `building_blocks.Reference` to resolve in `symbol_tree`.
-      symbol_tree: Instance of `transformation_utils.SymbolTree` which contains
-        variable bindings to be used when resolving `value`.
-
-    Returns:
-      The resolution of `value` in symbol tree. If this resolution is
-      itself a reference, this indicates that the reference chain terminates in
-      either an unbound reference or a parameter binding, and thus cannot be
-      resolved any further.
-    """
-    comp = ref
-    while comp.is_reference():
-      payload = symbol_tree.get_payload_with_name(comp.name)
-      if payload is None:
-        # We've resolved this reference to an unbound comp; we cannot alter the
-        # unbound comp, so return it in place of `ref`.
-        return comp
-      new_comp = payload.value
-      if new_comp is None:
-        # `comp` is bound by a lambda; we cannot alter this either.
-        return comp
-      else:
-        comp = new_comp
-    return comp
-
-  def _remove_reference_chain(ref, symbol_tree):
-    value = _resolve_reference_to_concrete(ref, symbol_tree)
-    if value.is_reference():
-      return value, True
-    payloads_with_value = symbol_tree.get_higher_payloads_with_value(
-        value, tree_analysis.trees_equal)
-    if not payloads_with_value:
-      # In this case, the current binding is the only visible binding with value
-      # `value`. We don't need to update anything, or replace the current
-      # reference.
-      return ref, False
-    else:
-      highest_payload = payloads_with_value[-1]
-      lower_payloads = payloads_with_value[:-1]
-      for payload in lower_payloads:
-        symbol_tree.update_payload_with_name(payload.name)
-      highest_building_block = building_blocks.Reference(
-          highest_payload.name, highest_payload.value.type_signature)
-      return highest_building_block, True
-
-  def _transform(comp, symbol_tree):
-    """Returns a new transformed computation or `comp`."""
-    if not _should_transform(comp):
-      return comp, False
-    if comp.is_block():
-      variables = []
-      for name, value in comp.locals:
-        symbol_tree.walk_down_one_variable_binding()
-        payload = symbol_tree.get_payload_with_name(name)
-        if (not payload.removed) and (not value.is_reference()):
-          variables.append((name, value))
-      if not variables:
-        comp = comp.result
-      else:
-        comp = building_blocks.Block(variables, comp.result)
-      return comp, True
-    elif comp.is_reference():
-      return _remove_reference_chain(comp, symbol_tree)
-    return comp, False
-
-  symbol_tree = transformation_utils.SymbolTree(
-      transformation_utils.TrackRemovedReferences)
-  return transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, _transform, symbol_tree)
 
 
 def remove_mapped_or_applied_identity(comp):

@@ -43,7 +43,7 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 
 
 def to_call_dominant(
-    comp: building_blocks.ComputationBuildingBlock
+    comp: building_blocks.ComputationBuildingBlock,
 ) -> building_blocks.ComputationBuildingBlock:
   """Transforms local (non-federated) computations into call-dominant form.
 
@@ -189,7 +189,13 @@ def to_call_dominant(
 
   scope = _Scope()
   result = _build(comp, scope)
-  return scope.bindings_to_block_with_result(result)
+  comp = scope.bindings_to_block_with_result(result)
+  for transform in [
+      tree_transformations.uniquify_reference_names,
+      tree_transformations.remove_unused_block_locals,
+  ]:
+    comp, _ = transform(comp)
+  return comp
 
 
 def optimize_tensorflow_graphs(comp, grappler_config_proto):
@@ -306,7 +312,6 @@ def _evaluate_to_tensorflow(
 
 def compile_local_computation_to_tensorflow(
     comp: building_blocks.ComputationBuildingBlock,
-    deduplicate: bool = True,
 ) -> building_blocks.ComputationBuildingBlock:
   """Compiles a fully specified local computation to TensorFlow.
 
@@ -316,8 +321,6 @@ def compile_local_computation_to_tensorflow(
       contain 1. References to values defined outside of comp, 2. `Data`,
       `Intrinsic`, or `Placement` blocks, or 3. Calls to intrinsics or
       non-TensorFlow computations.
-    deduplicate: Whether or not to deduplicate subcomputations of `comp` before
-      transforming to TensorFlow. Defaults to `True`.
 
   Returns:
     A `building_blocks.ComputationBuildingBlock` containing a TensorFlow-only
@@ -338,14 +341,10 @@ def compile_local_computation_to_tensorflow(
       comp.proto.WhichOneof('computation') == 'tensorflow'):
     return comp
 
-  # Ensure that calls are deduplicated, unused values are removed, and that
-  # reference bindings have unique names.
+  # Ensure that unused values are removed and that reference bindings have
+  # unique names.
   comp = unpack_compiled_computations(comp)
-  if deduplicate:
-    comp = to_deduped_call_dominant(comp)
-  else:
-    comp = to_call_dominant(comp)
-  name_generator = building_block_factory.unique_name_generator(comp)
+  comp = to_call_dominant(comp)
 
   if parameter_type is None:
     to_evaluate = building_blocks.Call(comp)
@@ -354,6 +353,7 @@ def compile_local_computation_to_tensorflow(
     def result_computation():
       return _evaluate_to_tensorflow(to_evaluate, {})
   else:
+    name_generator = building_block_factory.unique_name_generator(comp)
     parameter_name = next(name_generator)
     to_evaluate = building_blocks.Call(
         comp, building_blocks.Reference(parameter_name, parameter_type))
@@ -404,128 +404,6 @@ def compile_local_subcomputations_to_tensorflow(
   # which could have instead been transformed into a larger single block of
   # TensorFlow.
   comp, _ = transformation_utils.transform_preorder(comp, _compile_if_local)
-  return comp
-
-
-def to_deduped_call_dominant(
-    comp: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.ComputationBuildingBlock:
-  """Normalizes computations into Call-Dominant Form.
-
-  A computation is in call-dominant form if the following conditions are true:
-
-  1. Every intrinsic which will be invoked to execute the computation appears
-     as a top-level let binding (modulo an encapsulating global lambda).
-  2. Each of these intrinsics is depended upon by the output. This implies in
-     particular that any intrinsic which is not depended upon by the output is
-     removed.
-  3. All reference bindings have unique names.
-
-  Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` to transform.
-
-  Returns:
-    A transformed `comp` in call-dominant form, with values deduplicated.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-
-  def _check_calls_are_concrete(comp):
-    """Encodes condition for completeness of direct extraction of calls.
-
-    After checking this condition, all functions which are semantically called
-    (IE, functions which will be invoked eventually by running the computation)
-    are called directly, and we can simply extract them by pattern-matching on
-    `building_blocks.Call`.
-
-    Args:
-      comp: Instance of `building_blocks.ComputationBuildingBlock` to check for
-        condition that functional argument of `Call` constructs contains only
-        the enumeration in the top-level docstring.
-
-    Raises:
-      ValueError: If `comp` fails this condition.
-    """
-    symbol_tree = transformation_utils.SymbolTree(
-        transformation_utils.ReferenceCounter)
-
-    def _check_for_call_arguments(comp_to_check, symbol_tree):
-      if not comp_to_check.is_call():
-        return comp_to_check, False
-      functional_arg = comp_to_check.function
-      if functional_arg.is_compiled_computation(
-      ) or functional_arg.is_intrinsic():
-        return comp_to_check, False
-      elif functional_arg.is_lambda():
-        if type_analysis.contains(functional_arg.type_signature.result,
-                                  lambda x: x.is_function()):
-          raise ValueError('Called higher-order functions are disallowed in '
-                           'transforming to call-dominant form, as they may '
-                           'break the reliance on pattern-matching to extract '
-                           'called intrinsics. Encountered a call to the'
-                           'lambda {l} with type signature {t}.'.format(
-                               l=functional_arg,
-                               t=functional_arg.type_signature))
-        return comp_to_check, False
-      elif functional_arg.is_reference():
-        # This case and the following handle the possibility that a lambda
-        # declares a functional parameter, and this parameter is invoked in its
-        # body.
-        payload = symbol_tree.get_payload_with_name(functional_arg.name)
-        if payload is None:
-          return comp, False
-        if payload.value is not None:
-          raise ValueError('Called references which are not bound to lambda '
-                           'parameters are disallowed in transforming to '
-                           'call-dominant form, as they may break the reliance '
-                           'on pattern-matching to extract called intrinsics. '
-                           'Encountered a call to the reference {r}, which is '
-                           'bound to the value {v} in this computation.'.format(
-                               r=functional_arg, v=payload.value))
-      elif functional_arg.is_selection():
-        concrete_source = functional_arg.source
-        while concrete_source.is_selection():
-          concrete_source = concrete_source.source
-        if concrete_source.is_reference():
-          payload = symbol_tree.get_payload_with_name(concrete_source.name)
-          if payload is None:
-            return comp, False
-          if payload.value is not None:
-            raise ValueError('Called selections from references which are not '
-                             'bound to lambda parameters are disallowed in '
-                             'transforming to call-dominant form, as they may '
-                             'break the reliance on pattern-matching to '
-                             'extract called intrinsics. Encountered a call to '
-                             'the reference {r}, which is bound to the value '
-                             '{v} in this computation.'.format(
-                                 r=functional_arg, v=payload.value))
-          return comp, False
-        else:
-          raise ValueError('Called selections are only permitted in '
-                           'transforming to call-comiunant form the case that '
-                           'they select from lambda parameters; encountered a '
-                           'call to selection {s}.'.format(s=functional_arg))
-      else:
-        raise ValueError('During transformation to call-dominant form, we rely '
-                         'on the assumption that all called functions are '
-                         'either: compiled computations; intrinsics; lambdas '
-                         'with nonfuntional return types; or selections from '
-                         'lambda parameters. Encountered the called function '
-                         '{f} of type {t}.'.format(
-                             f=functional_arg, t=type(functional_arg)))
-
-    transformation_utils.transform_postorder_with_symbol_bindings(
-        comp, _check_for_call_arguments, symbol_tree)
-
-  comp = to_call_dominant(comp)
-  _check_calls_are_concrete(comp)
-
-  for transform in [
-      tree_transformations.uniquify_reference_names,
-      tree_transformations.remove_duplicate_block_locals,
-      tree_transformations.remove_unused_block_locals,
-      tree_transformations.uniquify_reference_names,
-  ]:
-    comp, _ = transform(comp)
   return comp
 
 
@@ -873,7 +751,7 @@ def force_align_and_split_by_intrinsics(
   # Flatten `comp` to call-dominant form so that we're working with just a
   # linear list of intrinsic calls with no indirection via tupling, selection,
   # blocks, called lambdas, or references.
-  comp = to_deduped_call_dominant(comp)
+  comp = to_call_dominant(comp)
 
   # CDF can potentially return blocks if there are variables not dependent on
   # the top-level parameter. We normalize these away.
@@ -887,7 +765,7 @@ def force_align_and_split_by_intrinsics(
       additional_locals = []
       result = comp.result.result
     # Note: without uniqueness, a local in `comp.locals` could potentially
-    # shadow `comp.result.parameter_name`. However, `to_deduped_call_dominant`
+    # shadow `comp.result.parameter_name`. However, `to_call_dominant`
     # above ensure that names are unique, as it ends in a call to
     # `uniquify_reference_names`.
     comp = building_blocks.Lambda(
