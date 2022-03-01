@@ -31,7 +31,7 @@ from tensorflow_federated.python.simulation.datasets import shakespeare
 # Vocabulary with out-of-vocabulary, padding, beginning-of-sentence, and
 # end-of-sentence tokens.
 VOCAB_LENGTH = len(char_prediction_preprocessing.CHAR_VOCAB) + 4
-DEFAULT_SEQUENCE_LENGTH = 20
+DEFAULT_SEQUENCE_LENGTH = 80
 
 
 def create_character_prediction_task_from_datasets(
