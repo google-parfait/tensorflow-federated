@@ -488,10 +488,6 @@ class NonDeterministicTest(parameterized.TestCase):
 
   @test_contexts.with_contexts
   def test_computation_called_twice_is_invoked_twice(self):
-    self.skipTest(
-        'b/139135080: Recognize distinct instantiations of the same TF code as '
-        '(potentially) distinct at construction time.')
-
     @tff.tf_computation
     def get_random():
       return tf.random.normal([])
