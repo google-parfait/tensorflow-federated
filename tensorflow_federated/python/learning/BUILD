@@ -277,6 +277,7 @@ py_library(
     deps = [
         ":debug_measurements",
         "//tensorflow_federated/python/aggregators:differential_privacy",
+        "//tensorflow_federated/python/aggregators:distributed_dp",
         "//tensorflow_federated/python/aggregators:encoded",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",

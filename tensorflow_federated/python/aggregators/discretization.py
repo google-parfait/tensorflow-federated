@@ -242,7 +242,7 @@ def _undiscretize_struct(struct, scale_factor, tf_dtype_struct):
   return tf.nest.map_structure(undiscretize_tensor, struct, tf_dtype_struct)
 
 
-def _inflated_l2_norm_bound(l2_norm_bound, gamma, beta, dim):
+def inflated_l2_norm_bound(l2_norm_bound, gamma, beta, dim):
   """Computes the probabilistic L2 norm bound after stochastic quantization.
 
   The procedure of stochastic quantization can increase the norm of the vector.
@@ -309,7 +309,7 @@ def _stochastic_rounding(x, l2_norm_bound=None, scale=1.0, beta=0.0):
   # Compute norm inflation in the unscaled domain to improve stability.
   gamma = 1.0 / scale  # Equivalent rounding granularity.
   unscaled_bound = l2_norm_bound / scale
-  threshold = _inflated_l2_norm_bound(unscaled_bound, gamma, beta, tf.size(x))
+  threshold = inflated_l2_norm_bound(unscaled_bound, gamma, beta, tf.size(x))
   threshold *= scale
 
   floored_x = tf.floor(x)

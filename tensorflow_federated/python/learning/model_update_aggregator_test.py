@@ -219,6 +219,23 @@ class CompilerIntegrationTest(test_case.TestCase, parameterized.TestCase):
     # Default compression should reduce the size aggregated by more than 60%.
     self._check_aggregated_scalar_count(aggregator, 60000 * 0.4)
 
+  @parameterized.named_parameters(
+      ('zeroing_float', True, _float_type),
+      ('zeroing_float_matrix', True, _float_matrix_type),
+      ('no_zeroing_float', False, _float_type),
+      ('no_zeroing_float_matrix', False, _float_matrix_type))
+  def test_ddp_secure_aggregator(self, zeroing, dtype):
+    factory_ = model_update_aggregator.ddp_secure_aggregator(
+        noise_multiplier=1e-2,
+        expected_clients_per_round=10,
+        bits=16,
+        zeroing=zeroing)
+
+    self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
+    process = factory_.create(dtype)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertFalse(process.is_weighted)
+
 
 def _mrfify_aggregator(aggregator):
   """Makes aggregator compatible with MapReduceForm."""
