@@ -25,7 +25,6 @@ from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import finalizer
 
-
 # Convenience aliases.
 TensorType = computation_types.TensorType
 
@@ -106,6 +105,28 @@ _TEST_ARGUMENTS_NON_KERAS_METRICS = {
     ],
     'expected_aggregated_metrics':
         collections.OrderedDict(divide=(1.0 + 3.0) / (2.0 + 6.0), sum=4)
+}
+
+_TEST_METRICS_MIXED_DTYPES = {
+    'testcase_name':
+        'metrics_mixed_dtypes',
+    # This is similar to the `non_keras_metrics` above, except that each metric
+    # contains values with two different dtyes (`tf.float32` and `tf.int32`).
+    'metric_finalizers':
+        collections.OrderedDict(
+            divide=tf.function(func=lambda x: x[0] / tf.cast(x[1], tf.float32)),
+            sum=tf.function(func=lambda x: tf.cast(x['count_1'], tf.float32) +  # pylint:disable=g-long-lambda
+                            x['count_2'])),
+    'local_unfinalized_metrics_at_clients': [
+        collections.OrderedDict(
+            divide=[tf.constant(1.0), tf.constant(2)],
+            sum=collections.OrderedDict(count_1=1, count_2=1.0)),
+        collections.OrderedDict(
+            divide=[tf.constant(3.0), tf.constant(6)],
+            sum=collections.OrderedDict(count_1=1, count_2=1.0))
+    ],
+    'expected_aggregated_metrics':
+        collections.OrderedDict(divide=(1.0 + 3.0) / (2.0 + 6.0), sum=4.0)
 }
 
 _TEST_ARGUMENTS_INVALID_INPUTS = [{
@@ -269,7 +290,8 @@ class CreateDefaultSecureSumQuantizationRangesTest(parameterized.TestCase,
 class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(_TEST_ARGUMENTS_KERAS_METRICS,
-                                  _TEST_ARGUMENTS_NON_KERAS_METRICS)
+                                  _TEST_ARGUMENTS_NON_KERAS_METRICS,
+                                  _TEST_METRICS_MIXED_DTYPES)
   def test_default_value_ranges_returns_correct_results(
       self, metric_finalizers, local_unfinalized_metrics_at_clients,
       expected_aggregated_metrics):
@@ -286,19 +308,42 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     aggregated_metrics = aggregator_computation(
         local_unfinalized_metrics_at_clients)
 
-    def no_clipped_values(*unused_args):
-      return collections.OrderedDict(
-          secure_upper_clipped_count=0,
-          secure_lower_clipped_count=0,
-          secure_upper_threshold=aggregator.DEFAULT_SECURE_UPPER_BOUND,
-          secure_lower_threshold=aggregator.DEFAULT_SECURE_LOWER_BOUND)
+    no_clipped_values = collections.OrderedDict(
+        secure_upper_clipped_count=0,
+        secure_lower_clipped_count=0,
+        secure_upper_threshold=aggregator.DEFAULT_SECURE_UPPER_BOUND,
+        secure_lower_threshold=aggregator.DEFAULT_SECURE_LOWER_BOUND)
 
-    expected_measurements = tf.nest.map_structure(
-        no_clipped_values, local_unfinalized_metrics_at_clients[0])
+    factory_keys = collections.OrderedDict()
+    for value in tf.nest.flatten(local_unfinalized_metrics_at_clients[0]):
+      tensor = tf.constant(value)
+      if tensor.dtype.is_floating:
+        lower = float(aggregator.DEFAULT_SECURE_LOWER_BOUND)
+        upper = float(aggregator.DEFAULT_SECURE_UPPER_BOUND)
+      elif tensor.dtype.is_integer:
+        lower = int(aggregator.DEFAULT_SECURE_LOWER_BOUND)
+        upper = int(aggregator.DEFAULT_SECURE_UPPER_BOUND)
+      else:
+        raise TypeError(
+            f'Expected float or int, found tensors of dtype {tensor.dtype}.')
+      factory_key = aggregator._create_factory_key(lower, upper, tensor.dtype)
+      factory_keys[factory_key] = 1
+
+    expected_measurements = collections.OrderedDict(
+        (factory_key, no_clipped_values) for factory_key in factory_keys)
     secure_sum_measurements = aggregated_metrics.pop('secure_sum_measurements')
     self.assertAllClose(secure_sum_measurements, expected_measurements)
     self.assertAllClose(
         aggregated_metrics, expected_aggregated_metrics, rtol=1e-5, atol=1e-5)
+
+  def _clipped_values(self,
+                      clipped_count,
+                      threshold=aggregator.DEFAULT_SECURE_UPPER_BOUND):
+    return collections.OrderedDict(
+        secure_upper_clipped_count=clipped_count,
+        secure_lower_clipped_count=0,
+        secure_upper_threshold=threshold,
+        secure_lower_threshold=0.0)
 
   def test_user_value_ranges_returns_correct_results(self):
     metric_finalizers = collections.OrderedDict(
@@ -333,23 +378,19 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
     aggregated_metrics = aggregator_computation(
         local_unfinalized_metrics_at_clients)
 
-    def clipped_values(clipped_count,
-                       threshold=aggregator.DEFAULT_SECURE_UPPER_BOUND):
-      return collections.OrderedDict(
-          secure_upper_clipped_count=clipped_count,
-          secure_lower_clipped_count=0,
-          secure_upper_threshold=threshold,
-          secure_lower_threshold=0.0)
-
-    expected_secure_sum_measurements = collections.OrderedDict(
-        accuracy=[
-            clipped_values(0),
-            # Denominator of accuracy is clipped.
-            clipped_values(2, threshold=1.0)
-        ],
-        custom_sum=[clipped_values(0),
-                    clipped_values(0),
-                    clipped_values(0)])
+    expected_secure_sum_measurements = collections.OrderedDict()
+    # The metric values are grouped into three `factory_key`s. The first group
+    # only has `accoracy/0`.
+    factory_key = aggregator._create_factory_key(
+        0.0, float(aggregator.DEFAULT_SECURE_UPPER_BOUND), tf.float32)
+    expected_secure_sum_measurements[factory_key] = self._clipped_values(0)
+    # The second `factory_key` only has `accuracy/1`. Both clients get clipped.
+    factory_key = aggregator._create_factory_key(0.0, 1.0, tf.float32)
+    expected_secure_sum_measurements[factory_key] = self._clipped_values(2, 1.0)
+    # The third `factory_key` covers 3 values in `custom_sum`.
+    factory_key = aggregator._create_factory_key(
+        0, int(aggregator.DEFAULT_SECURE_UPPER_BOUND), tf.int32)
+    expected_secure_sum_measurements[factory_key] = self._clipped_values(0)
     secure_sum_measurements = aggregated_metrics.pop('secure_sum_measurements')
     self.assertAllEqual(secure_sum_measurements,
                         expected_secure_sum_measurements)
@@ -359,6 +400,64 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
         # The accuracy denominator is clipped to the range [0.0, 1.0]
         (1.0 + 1.0),
         custom_sum=8.0)
+    self.assertAllClose(
+        aggregated_metrics, expected_aggregated_metrics, rtol=1e-5, atol=1e-5)
+
+  def test_user_value_ranges_mixed_dtypes_returns_correct_results(self):
+    metric_finalizers = collections.OrderedDict(
+        divide=tf.function(func=lambda x: x[0] / tf.cast(x[1], tf.float32)),
+        sum=tf.function(func=lambda x: tf.cast(x['count_1'], tf.float32) +  # pylint:disable=g-long-lambda
+                        x['count_2']))
+    local_unfinalized_metrics_at_clients = [
+        collections.OrderedDict(
+            divide=[tf.constant(1.0), tf.constant(2)],
+            sum=collections.OrderedDict(count_1=2, count_2=1.0)),
+        collections.OrderedDict(
+            divide=[tf.constant(3.0), tf.constant(1)],
+            sum=collections.OrderedDict(count_1=3, count_2=3.0))
+    ]
+    aggregator_computation = aggregator.secure_sum_then_finalize(
+        metric_finalizers=metric_finalizers,
+        local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+            local_unfinalized_metrics_at_clients[0]),
+        # Note: Partial specification, `divide/1` and `sum/count_1` gets the
+        # same range (0, 1); `sum/count_2` gets range (0.0, 2.0); and `divide/0`
+        # gets the default range.
+        metric_value_ranges=collections.OrderedDict(
+            divide=[
+                None,
+                (0, 1),
+            ],
+            sum=collections.OrderedDict(count_1=(0, 1), count_2=(0.0, 2.0))))
+    aggregated_metrics = aggregator_computation(
+        local_unfinalized_metrics_at_clients)
+
+    expected_secure_sum_measurements = collections.OrderedDict()
+    # The metric values are grouped into three `factory_key`s. The first group
+    # only has `divide/0`.
+    factory_key = aggregator._create_factory_key(
+        0.0, float(aggregator.DEFAULT_SECURE_UPPER_BOUND), tf.float32)
+    expected_secure_sum_measurements[factory_key] = self._clipped_values(0)
+    # The second `factory_key` has `divide/1` and `sum/count_1`. For the first
+    # client, both `divide/1` and `sum/count_1` get clipped; for the second
+    # client, `sum/count_1` gets clipped. As a result, the number of clipped
+    # clients for this group is 2.
+    factory_key = aggregator._create_factory_key(0, 1, tf.int32)
+    expected_secure_sum_measurements[factory_key] = self._clipped_values(2, 1)
+    # The third `factory_key` has `sum/count_2`. One client gets clipped.
+    factory_key = aggregator._create_factory_key(0.0, 2.0, tf.float32)
+    expected_secure_sum_measurements[factory_key] = self._clipped_values(1, 2.0)
+    secure_sum_measurements = aggregated_metrics.pop('secure_sum_measurements')
+    self.assertAllEqual(secure_sum_measurements,
+                        expected_secure_sum_measurements)
+
+    expected_aggregated_metrics = collections.OrderedDict(
+        divide=(1.0 + 3.0) /
+        # `divide/1` is clipped to the range [0, 1]
+        (1.0 + 1.0),
+        # `sum/count_1` is clipped to the range [0, 1],
+        # `sum/count_2` is clipped to the range [0.0, 2.0].
+        sum=(1.0 + 1.0 + 1.0 + 2.0))
     self.assertAllClose(
         aggregated_metrics, expected_aggregated_metrics, rtol=1e-5, atol=1e-5)
 

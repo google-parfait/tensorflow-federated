@@ -21,8 +21,9 @@
 import collections
 import dataclasses
 import math
-from typing import Any, Callable, Optional, OrderedDict, Tuple, Union
+from typing import Optional, OrderedDict, Tuple, Union
 
+import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.aggregators import secure
@@ -34,9 +35,6 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.templates import aggregation_process
-from tensorflow_federated.python.core.templates import iterative_process
-from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
 
 
@@ -283,7 +281,7 @@ def create_default_secure_sum_quantization_ranges(
   integer_range_width = math.floor(upper_bound) - math.ceil(lower_bound)
 
   def create_default_range(
-      type_spec: computation_types.TensorType) -> _MetricRange:
+      type_spec: computation_types.TensorType) -> MetricValueRange:
     if type_spec.dtype.is_floating:
       return float(lower_bound), float(upper_bound)
     elif type_spec.dtype.is_integer:
@@ -300,6 +298,21 @@ def create_default_secure_sum_quantization_ranges(
 
   return type_conversions.structure_from_tensor_type_tree(
       create_default_range, local_unfinalized_metrics_type)
+
+
+# Helper functions for factory keys used in `secure_sum_then_finalize`.
+# A factory key is uniquely defined by three values: lower bound, upper bound,
+# and tensor dtype. In `secure_sum_then_finalize`, we will create a aggregation
+# process for each factory key. Metric values sharing the same factory key will
+# be aggregated together.
+_DELIMITER = '/'
+
+
+# TODO(b/222112465): Avoid converting floats to strings as it may cause problem.
+def _create_factory_key(lower: Union[int, float], upper: Union[int, float],
+                        tensor_dtype: tf.dtypes.DType) -> str:
+  return _DELIMITER.join(
+      str(item) for item in [lower, upper, tensor_dtype.as_datatype_enum])
 
 
 def secure_sum_then_finalize(
@@ -320,10 +333,13 @@ def secure_sum_then_finalize(
   `tff.learning.Model.report_local_unfinalized_metrics()` at `CLIENTS`, and the
   first output (`aggregated_metrics`) is computed by first securely summing the
   unfinalized metrics from `CLIENTS`, followed by applying the finalizers at
-  `SERVER`. The second output (`secure_sum_measurements`) is a nested structure
-  of the same form as `local_unfinalized_metrics` with metrics of the secure
-  summation process (e.g. whether a value at that position in the structure
-  was clipped. See `tff.aggregators.SecureSumFactory` for details).
+  `SERVER`. The second output (`secure_sum_measurements`) is an `OrderedDict`
+  that maps from `factory_key`s to the secure summation measurements (e.g. the
+  number of clients gets clipped. See `tff.aggregators.SecureSumFactory` for
+  details). A `factory_key` is uniquely defined by three scalars: lower bound,
+  upper bound, and tensor dtype (denoted as datatype enum). Metric values of the
+  same `factory_key` are grouped and aggegrated together (and hence, the
+  `secure_sum_measurements` are also computed at a group level).
 
   Since secure summation works in fixed-point arithmetic space, floating point
   numbers must be encoding using integer quantization. By default, each tensor
@@ -433,77 +449,97 @@ def secure_sum_then_finalize(
   structure_of_tensor_types = type_conversions.structure_from_tensor_type_tree(
       lambda t: t, local_unfinalized_metrics_type)
 
-  def create_stateless_aggregator(value_range, tensor_type):
-    process = aggregator_factories.get(value_range).create(tensor_type)
-    # TODO(b/192499783): replace this condition with a library function once its
-    # moved and renamed.
-    if iterative_process.is_stateful(process):
-      # Single we hardcode the SecureSumFactory construction above, this error
-      # is only hit if someone changes the SecureSumFactory implementation to
-      # include state. Such a change should be rolled back.
-      raise InternalError('Created a stateful secure sum aggregation despite '
-                          'supplying a fixed range. This will not be usable '
-                          'as a stateless metric aggregation.')
-    return process
+  # We will construct groups of tensors with the same dtype and quantization
+  # value range so that we can construct fewer aggregations-of-structures,
+  # rather than a large structure-of-aggregations. Without this, the TFF
+  # compiler pipeline results in large slow downs (see b/218312198).
+  factory_key_by_path = collections.OrderedDict()
+  value_range_by_factory_key = collections.OrderedDict()
+  path_list_by_factory_key = collections.defaultdict(list)
+  # Maintain a flattened list of paths. This is useful to flatten the aggregated
+  # values, which will then be used by `tf.nest.pack_sequence_as`.
+  flattened_path_list = []
+  for (path, tensor_spec), (_, value_range) in zip(
+      tree.flatten_with_path(structure_of_tensor_types),
+      tree.flatten_with_path(metric_value_ranges)):
+    factory_key = _create_factory_key(value_range.lower, value_range.upper,
+                                      tensor_spec.dtype)
+    factory_key_by_path[path] = factory_key
+    value_range_by_factory_key[factory_key] = value_range
+    path_list_by_factory_key[factory_key].append(path)
+    flattened_path_list.append(path)
 
-  aggregation_processes = tree.map_structure(create_stateless_aggregator,
-                                             metric_value_ranges,
-                                             structure_of_tensor_types)
+  @computations.tf_computation(local_unfinalized_metrics_type)
+  def group_value_by_factory_key(local_unfinalized_metrics):
+    """Groups client local metrics into a map of `factory_key` to value list."""
+    # We cannot use `collections.defaultdict(list)` here because its result is
+    # incompatible with `structure_from_tensor_type_tree`.
+    value_list_by_factory_key = collections.OrderedDict()
+    for path, value in tree.flatten_with_path(local_unfinalized_metrics):
+      factory_key = factory_key_by_path[path]
+      if factory_key in value_list_by_factory_key:
+        value_list_by_factory_key[factory_key].append(value)
+      else:
+        value_list_by_factory_key[factory_key] = [value]
+    return value_list_by_factory_key
+
+  def flatten_grouped_values(value_list_by_factory_key):
+    """Flatten the values in the same order as in `flattened_path_list`."""
+    value_by_path = collections.OrderedDict()
+    for factory_key in value_list_by_factory_key:
+      path_list = path_list_by_factory_key[factory_key]
+      value_list = value_list_by_factory_key[factory_key]
+      for path, value in zip(path_list, value_list):
+        value_by_path[path] = value
+    flattened_value_list = [value_by_path[path] for path in flattened_path_list]
+    return flattened_value_list
+
+  # Create a aggregation process for each factory key.
+  aggregation_process_by_factory_key = collections.OrderedDict()
+  # Construct a python container of `tff.TensorType` so we can traverse it and
+  # create aggregation processes from the factories.
+  tensor_type_list_by_factory_key = (
+      type_conversions.structure_from_tensor_type_tree(
+          lambda t: t, group_value_by_factory_key.type_signature.result))
+  for factory_key, tensor_type_list in tensor_type_list_by_factory_key.items():
+    value_range = value_range_by_factory_key[factory_key]
+    aggregation_process_by_factory_key[factory_key] = aggregator_factories.get(
+        value_range).create(computation_types.to_type(tensor_type_list))
 
   @computations.federated_computation(
       computation_types.at_clients(local_unfinalized_metrics_type))
   def aggregator_computation(client_local_unfinalized_metrics):
     unused_state = intrinsics.federated_value((), placements.SERVER)
 
-    # Since `client_local_unfinalized_metrics` is a `tff.Value`, it is not
-    # supported by `tf.nest` or `tff.structure`. We must perform our own
-    # recursion.
-    def apply_aggregations(aggregation_processes, values):
-      if isinstance(aggregation_processes, collections.abc.Mapping):
-        return type(aggregation_processes)(
-            (name, apply_aggregations(aggregator, values[name]))
-            for name, aggregator in aggregation_processes.items())
-      elif isinstance(aggregation_processes, collections.abc.Sequence):
-        return type(aggregation_processes)(
-            apply_aggregations(p, v)
-            for p, v in zip(aggregation_processes, values))
-      elif isinstance(aggregation_processes,
-                      aggregation_process.AggregationProcess):
-        return aggregation_processes.next(unused_state, values)
-      else:
-        raise InternalError(
-            '`aggregation_processes` was not a Mapping, Sequence, or '
-            'AggregationProcess. This was previously validated and occured '
-            'because of a code change, revert and fix.')
+    client_local_grouped_unfinalized_metrics = intrinsics.federated_map(
+        group_value_by_factory_key, client_local_unfinalized_metrics)
+    metrics_aggregation_output = collections.OrderedDict()
+    for factory_key, process in aggregation_process_by_factory_key.items():
+      metrics_aggregation_output[factory_key] = process.next(
+          unused_state, client_local_grouped_unfinalized_metrics[factory_key])
 
     metrics_aggregation_output = intrinsics.federated_zip(
-        apply_aggregations(aggregation_processes,
-                           client_local_unfinalized_metrics))
+        metrics_aggregation_output)
 
     @computations.tf_computation(
         metrics_aggregation_output.type_signature.member)
-    def finalizer_computation(aggregation_output):
+    def finalizer_computation(grouped_aggregation_output):
 
-      def extract(fn: Callable[[measured_process.MeasuredProcessOutput], Any],
-                  struct) -> Any:
-        if isinstance(struct, collections.abc.Mapping):
-          return type(struct)(
-              (name, extract(fn, value)) for name, value in struct.items())
-        elif isinstance(struct, collections.abc.Sequence):
-          return type(struct)(extract(fn, value) for value in struct)
-        elif isinstance(struct, measured_process.MeasuredProcessOutput):
-          return fn(struct)
-        else:
-          raise InternalError(
-              '`struct` was not a Mapping, Sequence, or MessuredProcessOutput. '
-              'This was previously validated and occured because of a code '
-              'change, revert and fix.')
-
-      secure_sum_measurements = extract(lambda o: o.measurements,
-                                        aggregation_output)
+      # One minor downside of grouping the aggregation processes is that the
+      # SecAgg measurements (e.g., clipped_count) are computed at a group level
+      # (a group means all metric values belonging to the same `factory_key`).
+      secure_sum_measurements = collections.OrderedDict(
+          (factory_key, output.measurements)
+          for factory_key, output in grouped_aggregation_output.items())
       finalized_metrics = collections.OrderedDict(
           secure_sum_measurements=secure_sum_measurements)
-      unfinalized_metrics = extract(lambda o: o.result, aggregation_output)
+      grouped_unfinalized_metrics = collections.OrderedDict(
+          (factory_key, output.result)
+          for factory_key, output in grouped_aggregation_output.items())
+      flattened_unfinalized_metrics_list = flatten_grouped_values(
+          grouped_unfinalized_metrics)
+      unfinalized_metrics = tf.nest.pack_sequence_as(
+          structure_of_tensor_types, flattened_unfinalized_metrics_list)
       for metric_name, metric_finalizer in metric_finalizers.items():
         finalized_metrics[metric_name] = metric_finalizer(
             unfinalized_metrics[metric_name])
