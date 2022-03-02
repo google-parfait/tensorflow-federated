@@ -119,9 +119,10 @@ def robust_aggregator(
   return factory_
 
 
-def dp_aggregator(noise_multiplier: float,
-                  clients_per_round: float,
-                  zeroing: bool = True) -> factory.UnweightedAggregationFactory:
+def dp_aggregator(
+    noise_multiplier: float,
+    clients_per_round: float,
+    zeroing: bool = False) -> factory.UnweightedAggregationFactory:
   """Creates aggregator with adaptive zeroing and differential privacy.
 
   Zeroes out extremely large values for robustness to data corruption on
