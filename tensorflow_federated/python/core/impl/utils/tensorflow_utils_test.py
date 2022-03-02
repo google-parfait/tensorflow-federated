@@ -61,7 +61,7 @@ class GraphUtilsTest(test_case.TestCase):
       variant_tensor = graph.get_tensor_by_name(
           binding.sequence.variant_tensor_name)
       op = str(variant_tensor.op.type)
-      self.assertTrue((op == 'Placeholder') or ('Dataset' in op))
+      self.assertTrue((op == 'Placeholder') or (op == 'Identity'))
       self.assertEqual(variant_tensor.dtype, tf.variant)
       self.assertIsInstance(type_spec, computation_types.SequenceType)
       self.assertEqual(

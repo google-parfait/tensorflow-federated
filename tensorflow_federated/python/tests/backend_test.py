@@ -74,11 +74,21 @@ class NoClientAggregationsTest(parameterized.TestCase):
       fed_mean([])
 
 
-class DatasetConcatAggregationTest(parameterized.TestCase):
+class DatasetManipulationTest(parameterized.TestCase):
+
+  @test_contexts.with_contexts
+  def test_executes_passthru_dataset(self):
+
+    @tff.tf_computation(tff.SequenceType(tf.int64))
+    def passthru_dataset(ds):
+      return ds
+
+    input_data = tf.data.Dataset.range(10)
+    ds = passthru_dataset(input_data)
+    self.assertIsInstance(ds, tf.data.Dataset)
 
   @test_contexts.with_contexts
   def test_executes_dataset_concat_aggregation(self):
-    self.skipTest('b/209050033')
 
     tensor_spec = tf.TensorSpec(shape=[2], dtype=tf.float32)
 

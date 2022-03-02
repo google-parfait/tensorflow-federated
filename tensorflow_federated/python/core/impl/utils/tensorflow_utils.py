@@ -299,7 +299,10 @@ def capture_result_from_graph(
                 struct=pb.TensorFlow.StructBinding(
                     element=[e[1] for e in element_type_binding_pairs])))
   elif isinstance(result, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
-    variant_tensor = tf.data.experimental.to_variant(result)
+    # This variant tensor needs an identity added to ensure that parameter and
+    # result bindings in our graphdefs are distinct. A similar operation is
+    # performed in generation of tf.function.
+    variant_tensor = tf.identity(tf.data.experimental.to_variant(result))
     element_structure = result.element_spec
     try:
       element_type = computation_types.to_type(element_structure)
