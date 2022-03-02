@@ -20,6 +20,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -93,3 +94,29 @@ def transform_to_native_form(
     logging.debug('computation: %s',
                   computation_building_block.compact_representation())
     return comp
+
+
+def desugar_and_transform_to_native(comp):
+  """Transform to native form and replace intrinsics with TensorFlow."""
+  # Turn on static grappler. The function inlining is critical for GPU support,
+  # otherwise variant placeholders that received datasets will be placed on GPUs
+  # which don't have kernels for datastes, causing TF to error.
+  grappler_config = tf.compat.v1.ConfigProto()
+  aggressive = grappler_config.graph_options.rewrite_options.AGGRESSIVE
+  rewrite_options = grappler_config.graph_options.rewrite_options
+  rewrite_options.memory_optimization = aggressive
+  rewrite_options.constant_folding = aggressive
+  rewrite_options.arithmetic_optimization = aggressive
+  rewrite_options.loop_optimization = aggressive
+  rewrite_options.function_optimization = aggressive
+
+  intrinsics_desugared_bb, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
+      comp.to_building_block())
+  # Desugaring intrinsics injects TF computations; transforming to native form
+  # adds TF cache IDs to them. It is crucial that these transformations execute
+  # in this order.
+  native_form = transform_to_native_form(
+      computation_wrapper_instances.building_block_to_computation(
+          intrinsics_desugared_bb),
+      grappler_config=grappler_config)
+  return native_form

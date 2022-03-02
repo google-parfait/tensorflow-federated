@@ -15,8 +15,8 @@
 
 import os
 
-from absl import flags
 import sqlite3
+from absl import flags
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
