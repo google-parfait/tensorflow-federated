@@ -15,9 +15,12 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
+#include <numeric>
 #include <string>
 #include <utility>
 
@@ -28,8 +31,10 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/dataset_conversions.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/sequence_intrinsics.h"
+#include "tensorflow_federated/cc/core/impl/executors/struct_traversal_order.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
 namespace tensorflow_federated {
@@ -52,11 +57,31 @@ class SequenceIterator {
   virtual ~SequenceIterator() {}
 };
 
+// Computes the number of tensors in a nested tensor type, returning an error
+// status if a type other than tensor or structure is encountered.
+absl::StatusOr<uint32_t> NumTensorsInType(const v0::Type& type) {
+  switch (type.type_case()) {
+    case v0::Type::kTensor: {
+      return 1;
+    }
+    case v0::Type::kStruct: {
+      uint32_t total_count = 0;
+      for (const auto& el_type : type.struct_().element()) {
+        total_count += TFF_TRY(NumTensorsInType(el_type.value()));
+      }
+      return total_count;
+    }
+    default:
+      return absl::UnimplementedError(
+          absl::StrCat("Encountered unexpected type while counting tensors: ",
+                       type.Utf8DebugString(),
+                       ". Only nested structures of tensors are supported."));
+  }
+}
+
 absl::StatusOr<Embedded> EmbedTensorsAsType(
     const absl::Span<const tensorflow::Tensor> tensors,
     Executor& target_executor, const v0::Type& type) {
-  // TODO(b/217763470): implement handling of structures, structures of
-  // structures, etc.
   switch (type.type_case()) {
     case v0::Type::kTensor: {
       if (tensors.size() != 1) {
@@ -70,11 +95,30 @@ absl::StatusOr<Embedded> EmbedTensorsAsType(
       TFF_TRY(SerializeTensorValue(tensors.at(0), &tensor_value));
       return ShareValueId(TFF_TRY(target_executor.CreateValue(tensor_value)));
     }
+    case v0::Type::kStruct: {
+      std::vector<uint32_t> traversal_order =
+          TFF_TRY(TFNestTraversalOrderFromStruct(type.struct_()));
+      uint32_t next_element_index = 0;
+      std::vector<Embedded> owned_elements;
+      std::vector<ValueId> unowned_elements;
+      for (const uint32_t idx : traversal_order) {
+        auto el_type = type.struct_().element().at(idx);
+        uint32_t num_tensors = TFF_TRY(NumTensorsInType(el_type.value()));
+        absl::Span<const tensorflow::Tensor> subsampled_tensors =
+            tensors.subspan(next_element_index, num_tensors);
+        Embedded owned_element = TFF_TRY(EmbedTensorsAsType(
+            subsampled_tensors, target_executor, el_type.value()));
+        owned_elements.emplace_back(owned_element);
+        unowned_elements.emplace_back(owned_element->ref());
+        next_element_index += num_tensors;
+      }
+      return ShareValueId(
+          TFF_TRY(target_executor.CreateStruct(unowned_elements)));
+    }
     default:
-      return absl::UnimplementedError(
-          absl::StrCat("Embedding tensors as structure not yet "
-                       "supported. Attempted to serialize as type: ",
-                       type.Utf8DebugString()));
+      return absl::InvalidArgumentError(
+          absl::StrCat("Attempted to embed as type: ", type.Utf8DebugString(),
+                       ". Only nested structures of tensors are supported."));
   }
 }
 
