@@ -176,8 +176,7 @@ def build_federated_evaluation(
                                          use_experimental_simulation_loop)
     if broadcast_process is not None:
       # TODO(b/179091838): Zip the measurements from the broadcast_process with
-      # the result of `model.federated_output_computation` below to avoid
-      # dropping these metrics.
+      # the result of `model_metrics` below to avoid dropping these metrics.
       broadcast_output = broadcast_process.next(broadcast_process.initialize(),
                                                 server_model_weights)
       client_outputs = intrinsics.federated_map(
