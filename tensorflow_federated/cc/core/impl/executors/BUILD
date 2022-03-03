@@ -517,8 +517,10 @@ tff_cc_library_with_tf_deps(
         ":dataset_conversions",
         ":executor",
         ":sequence_intrinsics",
+        ":struct_traversal_order",
         ":tensor_serialization",
         ":threading",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",
@@ -759,6 +761,25 @@ genrule(
     outs = ["reduce_lambda_test.pbtxt"],
     cmd = "$(location :make_reduce_lambda_test_graph) --output \"$@\"",
     exec_tools = [":make_reduce_lambda_test_graph"],
+)
+
+cc_library(
+    name = "struct_traversal_order",
+    hdrs = ["struct_traversal_order.h"],
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_test(
+    name = "struct_traversal_order_test",
+    srcs = ["struct_traversal_order_test.cc"],
+    deps = [
+        ":status_matchers",
+        ":struct_traversal_order",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+    ],
 )
 
 tff_cc_cpu_gpu_test_with_tf_deps(
