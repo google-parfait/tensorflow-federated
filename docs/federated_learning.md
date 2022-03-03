@@ -114,11 +114,11 @@ on-device aggregation, and cross-device (or federated) aggregation:
         sequentially over subsequent batches of client data, which allows you to
         update the variables holding various aggregates as a side effect.
 
-    *   Finally, TFF invokes the `report_local_outputs` method on your Model to
-        allow your model to compile all the summary statistics it collected into
-        a compact set of metrics to be exported by the client. This is where
-        your model code may, for example, divide the sum of losses by the number
-        of examples processed to export the average loss, etc.
+    *   Finally, TFF invokes the `report_local_unfinalized_metrics` method on
+        your Model to allow your model to compile all the summary statistics it
+        collected into a compact set of metrics to be exported by the client.
+        This is where your model code may, for example, divide the sum of losses
+        by the number of examples processed to export the average loss, etc.
 
 *   **Federated aggregation**. This level of aggregation refers to aggregation
     across multiple clients (devices) in the system. Again, it applies to both
@@ -142,8 +142,7 @@ on-device aggregation, and cross-device (or federated) aggregation:
     *   TFF runs a distributed aggregation protocol to accumulate and aggregate
         the model parameters and locally exported metrics across the system.
         This logic is expressed in a declarative manner using TFF's own
-        *federated computation* language (not in TensorFlow), in the Model's
-        `federated_output_computation.` See the
+        *federated computation* language (not in TensorFlow). See the
         [custom algorithms](tutorials/custom_federated_algorithms_1.ipynb)
         tutorial for more on the aggregation API.
 
@@ -152,10 +151,10 @@ on-device aggregation, and cross-device (or federated) aggregation:
 This basic *constructor* + *metadata* interface is represented by the interface
 `tff.learning.Model`, as follows:
 
-*   The constructor, `forward_pass`, and `report_local_outputs` methods should
-    construct model variables, forward pass, and statistics you wish to report,
-    correspondingly. The TensorFlow constructed by those methods must be
-    serializable, as discussed above.
+*   The constructor, `forward_pass`, and `report_local_unfinalized_metrics`
+    methods should construct model variables, forward pass, and statistics you
+    wish to report, correspondingly. The TensorFlow constructed by those methods
+    must be serializable, as discussed above.
 
 *   The `input_spec` property, as well as the 3 properties that return subsets
     of your trainable, non-trainable, and local variables represent the
@@ -166,9 +165,13 @@ This basic *constructor* + *metadata* interface is represented by the interface
     match what the model is designed to consume).
 
 In addition, the abstract interface `tff.learning.Model` exposes a property
-`federated_output_computation` that, together with the `report_local_outputs`
-property mentioned earlier, allows you to control the process of aggregating
-summary statistics.
+`metric_finalizers` that takes in a metric's unfinalized values (returned by
+`report_local_unfinalized_metrics()`) and returns the finalized metric values.
+The `metric_finalizers` and `report_local_unfinalized_metrics()` method will be
+used together to build a cross-client metrics aggregator when defining the
+federated training processes or evaluation computations. For example, a simple
+"sum_then_finalize" aggregator will first sum the unfinalized metric values from
+clients, and then call the finalizer functions at the server.
 
 You can find examples of how to define your own custom `tff.learning.Model` in
 the second part of our
