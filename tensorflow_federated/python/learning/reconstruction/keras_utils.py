@@ -230,6 +230,8 @@ def read_metric_variables(
   return metric_variables
 
 
+# TODO(b/219753531): Revisit the `federated_output_computation` when rewriting
+# the FedRecon to use the new composable APIs.
 def federated_output_computation_from_metrics(
     metrics: List[tf.keras.metrics.Metric]
 ) -> computations.federated_computation:
