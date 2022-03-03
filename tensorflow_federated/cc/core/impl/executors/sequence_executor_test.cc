@@ -35,8 +35,11 @@ namespace {
 using ::absl::StatusCode;
 using ::tensorflow_federated::testing::ComputationV;
 using ::tensorflow_federated::testing::CreateSerializedRangeDatasetGraphDef;
+using ::tensorflow_federated::testing::
+    CreateSerializedZippedRangeDatasetGraphDef;
 using ::tensorflow_federated::testing::IntrinsicV;
 using ::tensorflow_federated::testing::LambdaComputation;
+using ::tensorflow_federated::testing::MakeInt64ScalarType;
 using ::tensorflow_federated::testing::ReferenceComputation;
 using ::tensorflow_federated::testing::SequenceV;
 using ::tensorflow_federated::testing::StructV;
@@ -57,6 +60,17 @@ class SequenceExecutorTest : public ExecutorTestBase {
 TEST_F(SequenceExecutorTest, CreateMaterializeTFFSequence) {
   tensorflow::tstring graph_def =
       CreateSerializedRangeDatasetGraphDef(0, 10, 1);
+  v0::Value value_pb;
+  v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
+  *sequence_pb->mutable_serialized_graph_def() =
+      std::string(graph_def.data(), graph_def.size());
+  mock_executor_->ExpectCreateMaterialize(value_pb);
+  ExpectCreateMaterialize(value_pb);
+}
+
+TEST_F(SequenceExecutorTest, CreateMaterializeTFFSequenceYieldingStructures) {
+  tensorflow::tstring graph_def =
+      CreateSerializedZippedRangeDatasetGraphDef(0, 10, 1, 2);
   v0::Value value_pb;
   v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
   *sequence_pb->mutable_serialized_graph_def() =
@@ -216,6 +230,174 @@ TEST_F(SequenceExecutorTest, CallSequenceReduceNoargFails) {
       test_executor_->CreateCall(sequence_reduce_id, absl::nullopt));
   EXPECT_THAT(test_executor_->Materialize(reduce_call_id),
               StatusIs(StatusCode::kInvalidArgument));
+}
+
+TEST_F(SequenceExecutorTest, EmbedFailsWithBadType) {
+  int dataset_len = 10;
+
+  v0::Value expected_sum_result = TensorV(45l);
+  v0::Value sequence_pb = SequenceV(1, dataset_len, 1);
+  // We mutate the element type of this Sequence value to a non-embeddable type.
+
+  v0::Type function_type;
+  *function_type.mutable_function()->mutable_result() =
+      sequence_pb.sequence().element_type();
+
+  *sequence_pb.mutable_sequence()->mutable_element_type() = function_type;
+
+  v0::Value zero = TensorV(static_cast<int64_t>(0));
+  v0::Value reduce_fn = IntrinsicV("some_passthru_intrinsic");
+
+  mock_executor_->ExpectCreateValue(zero);
+  mock_executor_->ExpectCreateValue(reduce_fn);
+
+  // None of the elements will be embedded, we should err out trying to embed
+  // them
+
+  auto sequence_reduce_id = TFF_ASSERT_OK(
+      test_executor_->CreateValue(IntrinsicV(kSequenceReduceUri)));
+  auto sequence_id = TFF_ASSERT_OK(test_executor_->CreateValue(sequence_pb));
+  auto fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(reduce_fn));
+  auto zero_id = TFF_ASSERT_OK(test_executor_->CreateValue(zero));
+  auto struct_id = TFF_ASSERT_OK(
+      test_executor_->CreateStruct({sequence_id, zero_id, fn_id}));
+  auto call_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(sequence_reduce_id, struct_id));
+  EXPECT_THAT(test_executor_->Materialize(call_id),
+              StatusIs(StatusCode::kInvalidArgument));
+}
+
+TEST_F(SequenceExecutorTest, CreateCallStructureSequenceReduce) {
+  int dataset_len = 10;
+  int num_struct_elements = 2;
+  v0::Value expected_sum_result = TensorV(45l);
+  tensorflow::tstring graph_def = CreateSerializedZippedRangeDatasetGraphDef(
+      1, dataset_len, 1, num_struct_elements);
+  v0::Value sequence_value_pb;
+  *sequence_value_pb.mutable_sequence()->mutable_serialized_graph_def() =
+      std::string(graph_def.data(), graph_def.size());
+
+  v0::Type sequence_element_type;
+  for (int i = 0; i < num_struct_elements; i++) {
+    *sequence_element_type.mutable_struct_()->add_element()->mutable_value() =
+        MakeInt64ScalarType();
+  }
+
+  *sequence_value_pb.mutable_sequence()->mutable_element_type() =
+      sequence_element_type;
+
+  v0::Value zero = TensorV(static_cast<int64_t>(0));
+  v0::Value reduce_fn = IntrinsicV("some_passthru_intrinsic");
+
+  auto embedded_accumulator_id = mock_executor_->ExpectCreateValue(zero);
+  auto embedded_reduce_fn_id = mock_executor_->ExpectCreateValue(reduce_fn);
+
+  for (int i = 1; i < dataset_len; i++) {
+    auto embedded_dataset_first_element =
+        mock_executor_->ExpectCreateValue(TensorV(static_cast<int64_t>(i)));
+    auto embedded_dataset_second_element = mock_executor_->ExpectCreateValue(
+        TensorV(static_cast<int64_t>(i + dataset_len)));
+    auto embedded_dataset_element = mock_executor_->ExpectCreateStruct(
+        {embedded_dataset_first_element, embedded_dataset_second_element});
+    auto embedded_arg_struct = mock_executor_->ExpectCreateStruct(
+        {embedded_accumulator_id, embedded_dataset_element});
+    embedded_accumulator_id = mock_executor_->ExpectCreateCall(
+        embedded_reduce_fn_id, embedded_arg_struct);
+  }
+  mock_executor_->ExpectMaterialize(embedded_accumulator_id,
+                                    expected_sum_result);
+
+  auto sequence_reduce_id = TFF_ASSERT_OK(
+      test_executor_->CreateValue(IntrinsicV(kSequenceReduceUri)));
+  auto sequence_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(sequence_value_pb));
+  auto fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(reduce_fn));
+  auto zero_id = TFF_ASSERT_OK(test_executor_->CreateValue(zero));
+  auto struct_id = TFF_ASSERT_OK(
+      test_executor_->CreateStruct({sequence_id, zero_id, fn_id}));
+  auto call_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(sequence_reduce_id, struct_id));
+  ExpectMaterialize(call_id, expected_sum_result);
+}
+
+TEST_F(SequenceExecutorTest, CreateCallNestedStructureSequenceReduce) {
+  int dataset_len = 10;
+  int num_struct_elements = 3;
+  v0::Value expected_sum_result = TensorV(45l);
+
+  tensorflow::tstring graph_def = CreateSerializedZippedRangeDatasetGraphDef(
+      1, dataset_len, 1, num_struct_elements);
+  v0::Value sequence_value_pb;
+  *sequence_value_pb.mutable_sequence()->mutable_serialized_graph_def() =
+      std::string(graph_def.data(), graph_def.size());
+
+  // We make a nested type corresponding to <int,<y=int,x=int>>
+  // Notice that the names appear in non-sorted order in the TFF type signature;
+  // we explicitly test this case to ensure that our traversal corresponds to
+  // tf.nest's traversal order, where the keys of ordered dicts are sorted.
+  v0::Type sequence_element_type;
+  *sequence_element_type.mutable_struct_()->add_element()->mutable_value() =
+      MakeInt64ScalarType();
+  v0::Type* nested_struct_type =
+      sequence_element_type.mutable_struct_()->add_element()->mutable_value();
+  for (int i = 0; i < 2; i++) {
+    v0::StructType_Element* struct_elem =
+        nested_struct_type->mutable_struct_()->add_element();
+    *struct_elem->mutable_value() = MakeInt64ScalarType();
+    if (i == 0) {
+      *struct_elem->mutable_name() = "y";
+    } else {
+      *struct_elem->mutable_name() = "x";
+    }
+  }
+
+  *sequence_value_pb.mutable_sequence()->mutable_element_type() =
+      sequence_element_type;
+
+  v0::Value zero = TensorV(static_cast<int64_t>(0));
+  v0::Value reduce_fn = IntrinsicV("some_passthru_intrinsic");
+
+  // Since we pull elements out of the sequence in the sequence
+  // executor, we never create the sequence in the target.
+  auto embedded_accumulator_id = mock_executor_->ExpectCreateValue(zero);
+  auto embedded_reduce_fn_id = mock_executor_->ExpectCreateValue(reduce_fn);
+
+  for (int i = 1; i < dataset_len; i++) {
+    // Each of the tensors above will be embedded
+    auto embedded_dataset_top_level_element =
+        mock_executor_->ExpectCreateValue(TensorV(static_cast<int64_t>(i)));
+    // Notice that the 'x' element should be embedded first, since this is the
+    // way TF.data will yield the tensors (with sorted keys).
+    auto embedded_dataset_struct_x_element = mock_executor_->ExpectCreateValue(
+        TensorV(static_cast<int64_t>(i + 2 * dataset_len)));
+    auto embedded_dataset_struct_y_element = mock_executor_->ExpectCreateValue(
+        TensorV(static_cast<int64_t>(i + dataset_len)));
+    // Two of them will be tupled together, back in the order corresponding to
+    // the TFF type.
+    auto embedded_nested_struct = mock_executor_->ExpectCreateStruct(
+        {embedded_dataset_struct_y_element, embedded_dataset_struct_x_element});
+    // Then tupled with the final, top-level tensor in the expected type.
+    auto embedded_dataset_element = mock_executor_->ExpectCreateStruct(
+        {embedded_dataset_top_level_element, embedded_nested_struct});
+    auto embedded_arg_struct = mock_executor_->ExpectCreateStruct(
+        {embedded_accumulator_id, embedded_dataset_element});
+    embedded_accumulator_id = mock_executor_->ExpectCreateCall(
+        embedded_reduce_fn_id, embedded_arg_struct);
+  }
+  mock_executor_->ExpectMaterialize(embedded_accumulator_id,
+                                    expected_sum_result);
+
+  auto sequence_reduce_id = TFF_ASSERT_OK(
+      test_executor_->CreateValue(IntrinsicV(kSequenceReduceUri)));
+  auto sequence_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(sequence_value_pb));
+  auto fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(reduce_fn));
+  auto zero_id = TFF_ASSERT_OK(test_executor_->CreateValue(zero));
+  auto struct_id = TFF_ASSERT_OK(
+      test_executor_->CreateStruct({sequence_id, zero_id, fn_id}));
+  auto call_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(sequence_reduce_id, struct_id));
+  ExpectMaterialize(call_id, expected_sum_result);
 }
 
 TEST_F(SequenceExecutorTest, CreateCreateCallTensorSequenceReduce) {

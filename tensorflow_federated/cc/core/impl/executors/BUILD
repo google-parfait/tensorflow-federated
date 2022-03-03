@@ -519,6 +519,7 @@ tff_cc_library_with_tf_deps(
         ":sequence_intrinsics",
         ":tensor_serialization",
         ":threading",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
         "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/status",
