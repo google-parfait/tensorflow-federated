@@ -156,6 +156,59 @@ py_test(
 )
 
 py_library(
+    name = "distributed_dp",
+    srcs = ["distributed_dp.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":concat",
+        ":differential_privacy",
+        ":discretization",
+        ":factory",
+        ":quantile_estimation",
+        ":robust",
+        ":rotation",
+        ":secure",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "distributed_dp_test",
+    timeout = "long",
+    srcs = ["distributed_dp_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":concat",
+        ":differential_privacy",
+        ":discretization",
+        ":distributed_dp",
+        ":factory",
+        ":robust",
+        ":rotation",
+        ":secure",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:estimation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/core/test:static_assert",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "encoded",
     srcs = ["encoded.py"],
     srcs_version = "PY3",

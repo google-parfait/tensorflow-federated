@@ -320,6 +320,27 @@ class StochasticRoundingTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(rounded_x.dtype, dtype)
 
 
+class InflatedNormTest(test_case.TestCase, parameterized.TestCase):
+
+  # The expected inflated norm bounds for these test are computed independently
+  # in Python using Equations (18) and (19) in Section 4.1 of
+  # https://arxiv.org/pdf/2102.06387.pdf.
+  @parameterized.named_parameters(
+      ('zero_beta_small_gamma', 1.0, 1e-9, 0, 1e9, 1.0000316227766017),
+      ('zero_beta_large_gamma', 1.0, 1e-2, 0, 1e9, 317.2277660168379),
+      ('small_beta_small_gamma', 1.0, 1e-9, 0.01, 1e9, 1.000000001642451),
+      ('small_beta_large_gamma', 1.0, 1e-2, 0.01, 1e9, 158.13231445360802),
+      ('large_beta_small_gamma', 1.0, 1e-9, 0.5, 1e9, 1.0000000007137142),
+      ('large_beta_large_gamma', 1.0, 1e-2, 0.5, 1e9, 158.12296930808552),
+      ('one_beta_small_gamma', 1.0, 1e-9, 1, 1e9, 1.000000000125),
+      ('one_beta_large_gamma', 1.0, 1e-2, 1, 1e9, 158.11704525445697))
+  def test_inflated_l2_norm_bound(self, l2_norm_bound, gamma, beta, dim,
+                                  expected_inflated_norm_bound):
+    inflated_norm_bound = discretization.inflated_l2_norm_bound(
+        l2_norm_bound, gamma, beta, dim)
+    self.assertAllClose(inflated_norm_bound, expected_inflated_norm_bound)
+
+
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
   test_case.main()
