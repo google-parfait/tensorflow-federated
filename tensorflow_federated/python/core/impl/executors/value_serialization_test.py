@@ -149,6 +149,14 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
       _ = value_serialization.serialize_value(
           x, computation_types.SequenceType(tf.float32))
 
+  def test_serialize_sequence_bad_container_type(self):
+    # A Python non-ODict container whose names are not in alphabetical order.
+    bad_container = collections.namedtuple('BadContainer', 'y x')
+    x = tf.data.Dataset.range(5).map(lambda x: bad_container(x, x * 2))
+    with self.assertRaisesRegex(ValueError, r'non-OrderedDict container'):
+      _ = value_serialization.serialize_value(
+          x, computation_types.SequenceType(bad_container(tf.int64, tf.int64)))
+
   def test_serialize_sequence_not_a_dataset(self):
     with self.assertRaisesRegex(
         TypeError, r'Cannot serialize Python type int as .* float32\*'):
@@ -169,6 +177,34 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     self.assert_types_identical(type_spec,
                                 computation_types.SequenceType(tf.int64))
     self.assertAllEqual(list(y), [x * 2 for x in range(5)])
+
+  @parameterized.named_parameters(('as_dataset', lambda x: x),
+                                  ('as_list', list))
+  def test_serialize_deserialize_sequence_of_namedtuples_alphabetical_order(
+      self, ds_repr_fn):
+    test_tuple_type = collections.namedtuple('TestTuple', ['a', 'b', 'c'])
+
+    def make_test_tuple(x):
+      return test_tuple_type(
+          a=x * 2, b=tf.cast(x, tf.int32), c=tf.cast(x - 1, tf.float32))
+
+    ds = tf.data.Dataset.range(5).map(make_test_tuple)
+    ds_repr = ds_repr_fn(ds)
+    element_type = computation_types.to_type(
+        test_tuple_type(tf.int64, tf.int32, tf.float32))
+    sequence_type = computation_types.SequenceType(element=element_type)
+    value_proto, value_type = value_serialization.serialize_value(
+        ds_repr, sequence_type)
+    self.assertIsInstance(value_proto, executor_pb2.Value)
+    self.assertEqual(value_type, sequence_type)
+    y, type_spec = value_serialization.deserialize_value(value_proto)
+    self.assert_types_equivalent(type_spec, sequence_type)
+    actual_values = list(y)
+    expected_values = [
+        test_tuple_type(a=x * 2, b=x, c=x - 1.) for x in range(5)
+    ]
+    for actual, expected in zip(actual_values, expected_values):
+      self.assertAllClose(actual, expected)
 
   def test_serialize_deserialize_sequence_of_scalars_graph_mode(self):
     with tf.Graph().as_default():
@@ -205,43 +241,15 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('as_dataset', lambda x: x),
                                   ('as_list', list))
-  def test_serialize_deserialize_sequence_of_namedtuples(self, ds_repr_fn):
-    test_tuple_type = collections.namedtuple('TestTuple', ['a', 'b', 'c'])
-
-    def make_test_tuple(x):
-      return test_tuple_type(
-          a=x * 2, b=tf.cast(x, tf.int32), c=tf.cast(x - 1, tf.float32))
-
-    ds = tf.data.Dataset.range(5).map(make_test_tuple)
-    ds_repr = ds_repr_fn(ds)
-    element_type = computation_types.to_type(
-        test_tuple_type(tf.int64, tf.int32, tf.float32))
-    sequence_type = computation_types.SequenceType(element=element_type)
-    value_proto, value_type = value_serialization.serialize_value(
-        ds_repr, sequence_type)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assertEqual(value_type, sequence_type)
-    y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_equivalent(type_spec, sequence_type)
-    actual_values = list(y)
-    expected_values = [
-        test_tuple_type(a=x * 2, b=x, c=x - 1.) for x in range(5)
-    ]
-    for actual, expected in zip(actual_values, expected_values):
-      self.assertAllClose(actual, expected)
-
-  @parameterized.named_parameters(('as_dataset', lambda x: x),
-                                  ('as_list', list))
   def test_serialize_deserialize_sequence_of_nested_structures(
       self, ds_repr_fn):
-    test_tuple_type = collections.namedtuple('TestTuple', ['u', 'v'])
 
     def _make_nested_tf_structure(x):
       return collections.OrderedDict(
           b=tf.cast(x, tf.int32),
           a=tuple([
               x,
-              test_tuple_type(x * 2, x * 3),
+              collections.OrderedDict(u=x * 2, v=x * 3),
               collections.OrderedDict(x=x**2, y=x**3)
           ]))
 
@@ -252,7 +260,7 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
             b=tf.int32,
             a=tuple([
                 tf.int64,
-                test_tuple_type(tf.int64, tf.int64),
+                collections.OrderedDict(u=tf.int64, v=tf.int64),
                 collections.OrderedDict(x=tf.int64, y=tf.int64),
             ])))
     sequence_type = computation_types.SequenceType(element=element_type)
@@ -269,7 +277,7 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
           b=x,
           a=tuple([
               x,
-              test_tuple_type(x * 2, x * 3),
+              collections.OrderedDict(u=x * 2, v=x * 3),
               collections.OrderedDict(x=x**2, y=x**3)
           ]))
 
