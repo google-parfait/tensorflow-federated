@@ -22,7 +22,7 @@ import collections
 import os
 import os.path
 import tempfile
-from typing import Any, Collection, List, Mapping, Optional, Tuple, Union
+from typing import Any, Collection, List, Mapping, Optional, Sequence, Tuple, Union
 import warnings
 import zipfile
 
@@ -158,6 +158,53 @@ def _serialize_dataset(
   return dataset_graph_def_bytes
 
 
+def _check_container_compat_with_tf_nest(type_spec: computation_types.Type):
+  """Asserts that all `StructTypes` with names have OrderedDict containers."""
+
+  def _names_are_in_sorted_order(name_sequence: Sequence[str]) -> bool:
+    return sorted(name_sequence) == name_sequence
+
+  def _check_ordereddict_container_for_struct(type_to_check):
+    if not type_to_check.is_struct():
+      return type_to_check, False
+    # We can't use `dir` here, since it sorts the names before returning. We
+    # also must filter to names which are actually present.
+    names_in_sequence_order = structure.name_list(type_to_check)
+    names_are_sorted = _names_are_in_sorted_order(names_in_sequence_order)
+    has_no_names = not bool(names_in_sequence_order)
+    if has_no_names or (names_in_sequence_order and names_are_sorted):
+      # If alphabetical order matches sequence order, TFF's deserialization will
+      # traverse the structure correctly; there is no ambiguity here. On the
+      # other hand, if there are no names, sequence order is the only method of
+      # traversal, so there is no ambiguity here either.
+      return type_to_check, False
+    elif not type_to_check.is_struct_with_python():
+      raise ValueError('Attempting to serialize a named struct type with '
+                       'ambiguous traversal order (sequence order distinct '
+                       'from alphabetical order) without a Python container; '
+                       'this is an unsafe operation, as TFF cannot determine '
+                       'the intended traversal order after deserializing the '
+                       'proto due to inconsistent behavior of tf.nest.')
+
+    container_type = computation_types.StructWithPythonType.get_container_type(
+        type_to_check)
+    if (not names_are_sorted) and container_type is not collections.OrderedDict:
+      raise ValueError('Attempted to serialize a dataset yielding named '
+                       'elements in non-sorted sequence order with '
+                       f'non-OrderedDict container (type {container_type}). '
+                       'This is an ambiguous operation; `tf.nest` behaves in '
+                       'a manner which depends on the Python type of this '
+                       'container, so coercing the dataset reconstructed '
+                       'from the resulting Value proto depends on assuming a '
+                       'single Python type here. Please prefer to use '
+                       '`collections.OrderedDict` containers for the elements '
+                       'your dataset yields.')
+    return type_to_check, False
+
+  type_transformations.transform_type_postorder(
+      type_spec, _check_ordereddict_container_for_struct)
+
+
 @tracing.trace
 def _serialize_sequence_value(
     value: Union[Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES],
@@ -185,6 +232,7 @@ def _serialize_sequence_value(
             py_typecheck.type_string(type(value)),
             type_spec if type_spec is not None else 'unknown'))
   element_type = computation_types.to_type(value.element_spec)
+  _check_container_compat_with_tf_nest(element_type)
   value_type = computation_types.SequenceType(element_type)
   if not type_spec.is_assignable_from(value_type):
     raise TypeError(
@@ -412,7 +460,7 @@ def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
     return type_spec, False
 
   if element_type.is_struct():
-    # TF doesn't suppor `structure.Strut` types, so we must transform the
+    # TF doesn't support `structure.Struct` types, so we must transform the
     # `StructType` into a `StructWithPythonType` for use as the
     # `tf.data.Dataset.element_spec` later.
     tf_compatible_type, _ = type_transformations.transform_type_postorder(
