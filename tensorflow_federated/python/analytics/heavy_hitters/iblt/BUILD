@@ -101,7 +101,6 @@ py_library(
     srcs = ["iblt_tff.py"],
     srcs_version = "PY3",
     deps = [
-        ":chunkers",
         ":iblt_lib",
         "//tensorflow_federated/python/analytics:data_processing",
         "//tensorflow_federated/python/analytics:histogram_processing",

@@ -20,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.analytics import data_processing
 from tensorflow_federated.python.analytics import histogram_processing
-from tensorflow_federated.python.analytics.heavy_hitters.iblt import chunkers
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_lib
 
 from tensorflow_federated.python.core.api import computation_base
@@ -193,17 +192,8 @@ def build_iblt_computation(
         fn_output_signature=tf.bool)
     return heavy_hitters_mask
 
-  num_chunks = chunkers.UTF8Chunker(
-      max_string_length,
-      max_chunk_value=iblt_lib.DEFAULT_FIELD_SIZE).get_num_chunks()
-  num_chunks_for_hash_check = 1
-  num_chunks_for_value = 1
-  sketch_shape = (repetitions, None,
-                  num_chunks + num_chunks_for_hash_check + num_chunks_for_value)
-
-  @computations.tf_computation(
-      computation_types.TensorType(dtype=tf.int64, shape=sketch_shape),
-      computation_types.TensorType(dtype=tf.int64, shape=sketch_shape))
+  @computations.tf_computation(compute_sketch.type_signature.result,
+                               compute_unique_sketch.type_signature.result)
   @tf.function
   def decode_heavy_hitters(sketch, unique_sketch):
     """The TF computation to decode the heavy hitters."""
