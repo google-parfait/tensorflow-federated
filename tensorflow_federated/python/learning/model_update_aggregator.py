@@ -21,6 +21,7 @@
 import math
 
 from tensorflow_federated.python.aggregators import differential_privacy
+from tensorflow_federated.python.aggregators import distributed_dp
 from tensorflow_federated.python.aggregators import encoded
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
@@ -260,3 +261,62 @@ def secure_aggregator(
     factory_ = _default_zeroing(factory_, secure_estimation=True)
 
   return factory_
+
+
+def ddp_secure_aggregator(
+    noise_multiplier: float,
+    expected_clients_per_round: int,
+    bits: int = 20,
+    zeroing: bool = True,
+    rotation_type: str = 'hd') -> factory.UnweightedAggregationFactory:
+  """Creates aggregator with adaptive zeroing and distributed DP.
+
+  Zeroes out extremely large values for robustness to data corruption on
+  clients, and performs distributed DP (compression, discrete noising, and
+  SecAgg) with adaptive clipping for differentially private learning. For
+  details of the two main distributed DP algorithms see
+  https://arxiv.org/pdf/2102.06387
+  or https://arxiv.org/pdf/2110.04995.pdf. The adaptive clipping uses the
+  geometric method described in https://arxiv.org/abs/1905.03871.
+
+  Args:
+    noise_multiplier: A float specifying the noise multiplier (with respect to
+      the initial L2 cipping) for the distributed DP mechanism for model
+      updates. A value of 1.0 or higher may be needed for meaningful privacy.
+    expected_clients_per_round: An integer specifying the expected number of
+      clients per round. Must be positive.
+    bits: An integer specifying the bit-width for the aggregation. Note that
+      this is for the noisy, quantized aggregate at the server and thus should
+      account for the `expected_clients_per_round`. Must be in the inclusive
+      range of [1, 22]. This is set to 20 bits by default, and it dictates the
+      computational and communication efficiency of Secure Aggregation. Setting
+      it to less than 20 bits should work fine for most cases. For instance, for
+      an expected number of securely aggregated client updates of 100, 12 bits
+      should be enough, and for an expected number of securely aggregated client
+      updates of 1000, 16 bits should be enough.
+    zeroing: A bool indicating whether to enable adaptive zeroing for data
+      corruption mitigation. Defaults to `True`.
+    rotation_type: A string indicating what rotation to use for distributed DP.
+      Valid options are 'hd' (Hadamard transform) and 'dft' (discrete Fourier
+      transform). Defaults to `hd`.
+
+  Returns:
+    A `tff.aggregators.UnweightedAggregationFactory`.
+  """
+  agg_factory = distributed_dp.DistributedDpSumFactory(
+      noise_multiplier=noise_multiplier,
+      expected_clients_per_round=expected_clients_per_round,
+      bits=bits,
+      l2_clip=0.1,
+      mechanism='distributed_skellam',
+      rotation_type=rotation_type,
+      auto_l2_clip=True)
+  agg_factory = mean.UnweightedMeanFactory(
+      value_sum_factory=agg_factory,
+      count_sum_factory=secure.SecureSumFactory(
+          upper_bound_threshold=1, lower_bound_threshold=0))
+
+  if zeroing:
+    agg_factory = _default_zeroing(agg_factory, secure_estimation=True)
+
+  return agg_factory
