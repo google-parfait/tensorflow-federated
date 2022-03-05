@@ -52,6 +52,7 @@ from tensorflow_federated.python.learning.framework.optimizer_utils import state
 from tensorflow_federated.python.learning.keras_utils import federated_aggregate_keras_metric
 from tensorflow_federated.python.learning.keras_utils import from_keras_model
 from tensorflow_federated.python.learning.model import BatchOutput
+from tensorflow_federated.python.learning.model import MetricFinalizersType
 from tensorflow_federated.python.learning.model import Model
 from tensorflow_federated.python.learning.model_update_aggregator import compression_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import ddp_secure_aggregator
