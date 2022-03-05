@@ -70,7 +70,10 @@ class ComputationCallable(typed_object.TypedObject):
     py_typecheck.check_type(module, computation_module.ComputationModule)
     py_typecheck.check_type(backend, backend_info.BackendInfo)
     flatbuffer_blob = iree.compiler.compile_str(
-        module.compiler_module, target_backends=[backend.target_name])
+        module.compiler_module,
+        target_backends=[backend.target_name],
+        input_type="mhlo",
+    )
     # TODO(b/153499219): Find a way to name the modules somehow differently
     # for debugging. Right now, module names come from the implicit "module {}"
     # that wraps anything parsed from ASM that lacks an explicit module
