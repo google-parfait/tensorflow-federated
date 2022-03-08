@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import collections
 
 from absl.testing import absltest
@@ -30,6 +31,10 @@ class DatasetsTest(parameterized.TestCase):
   These tests ensure that `tf.data.Datasets`s are passed through to TF without
   TFF mutating or changing the data.
   """
+
+  def setUp(self):
+    super().setUp()
+    execution_contexts.set_local_python_execution_context()
 
   @common_libs_test_utils.skip_test_for_gpu
   def test_takes_dataset(self):
@@ -137,6 +142,38 @@ class DatasetsTest(parameterized.TestCase):
         list(expected_result.as_numpy_iterator()))
 
 
+class AsyncLocalExecutionContextTest(absltest.TestCase):
+  """Ensures that the context in the tested file integrates with asyncio."""
+
+  def setUp(self):
+    super().setUp()
+    execution_contexts.set_local_async_python_execution_context()
+
+  def test_single_coro_invocation(self):
+
+    @computations.tf_computation
+    def return_one():
+      return 1
+
+    result = asyncio.run(return_one())
+    self.assertEqual(result, 1)
+
+  def test_asyncio_gather(self):
+
+    @computations.tf_computation
+    def return_one():
+      return 1
+
+    @computations.tf_computation
+    def return_two():
+      return 2
+
+    async def await_comps():
+      return await asyncio.gather(return_one(), return_two())
+
+    result = asyncio.run(await_comps())
+    self.assertEqual(result, [1, 2])
+
+
 if __name__ == '__main__':
-  execution_contexts.set_local_python_execution_context()
   absltest.main()
