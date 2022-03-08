@@ -148,8 +148,12 @@ def main(argv):
     """Constructs a fully initialized model for use in federated averaging."""
     keras_model = create_original_fedavg_cnn_model(only_digits=True)
     loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
     return tff.learning.from_keras_model(
-        keras_model, loss=loss, input_spec=train_data.element_type_structure)
+        keras_model,
+        loss=loss,
+        metrics=metrics,
+        input_spec=train_data.element_type_structure)
 
   iterative_process = simple_fedavg_tff.build_federated_averaging_process(
       tff_model_fn, server_optimizer_fn, client_optimizer_fn)
@@ -168,7 +172,7 @@ def main(argv):
     server_state, train_metrics = iterative_process.next(
         server_state, sampled_train_data)
     print(f'Round {round_num}')
-    print(f'\tTraining loss: {train_metrics:.4f}')
+    print(f'\tTraining metrics: {train_metrics}')
     if round_num % FLAGS.rounds_per_eval == 0:
       server_state.model.assign_weights_to(keras_model)
       accuracy = evaluate(keras_model, test_data)

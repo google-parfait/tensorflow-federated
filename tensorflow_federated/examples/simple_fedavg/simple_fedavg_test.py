@@ -63,11 +63,15 @@ def _tff_learning_model_fn():
   """Constructs a test `tff.learning.Model`."""
   keras_model = _create_test_cnn_model()
   loss = tf.keras.losses.SparseCategoricalCrossentropy()
+  metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
   input_spec = collections.OrderedDict(
       x=tf.TensorSpec([None, 28, 28, 1], tf.float32),
       y=tf.TensorSpec([None], tf.int32))
   return tff.learning.from_keras_model(
-      keras_model=keras_model, input_spec=input_spec, loss=loss)
+      keras_model=keras_model,
+      input_spec=input_spec,
+      loss=loss,
+      metrics=metrics)
 
 
 @attr.s
@@ -216,9 +220,10 @@ class SimpleFedAvgTest(tff.test.TestCase, parameterized.TestCase):
 
     previous_loss = None
     for _ in range(10):
-      server_state, loss = it_process.next(server_state, federated_data)
+      server_state, outputs = it_process.next(server_state, federated_data)
+      loss = outputs['loss']
       if previous_loss is not None:
-        self.assertLess(loss, previous_loss)
+        self.assertLessEqual(loss, previous_loss)
       previous_loss = loss
     self.assertLess(loss, 0.1)
 
@@ -230,7 +235,8 @@ class SimpleFedAvgTest(tff.test.TestCase, parameterized.TestCase):
     state = trainer.initialize()
     previous_loss = None
     for _ in range(10):
-      state, loss = trainer.next(state, train_data)
+      state, outputs = trainer.next(state, train_data)
+      loss = outputs['loss']
       if previous_loss is not None:
         self.assertLess(loss, previous_loss)
       previous_loss = loss
@@ -283,7 +289,7 @@ class ClientTest(tf.test.TestCase):
   def test_self_contained_example(self):
     client_data = _create_client_data()
     model = MnistModel()
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
+    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.01)
     losses = []
     for r in range(2):
       optimizer = optimizer_fn()
@@ -292,9 +298,10 @@ class ClientTest(tf.test.TestCase):
           model_weights=model.weights, round_num=r)
       outputs = simple_fedavg_tf.client_update(model, client_data(),
                                                server_message, optimizer)
-      losses.append(outputs.model_output.numpy())
-
-    self.assertAllEqual(int(outputs.client_weight.numpy()), 2)
+      losses.append(
+          tf.math.divide_no_nan(outputs.model_output['loss'][0],
+                                outputs.model_output['loss'][1]))
+      self.assertEqual(int(outputs.client_weight.numpy()), 2)
     self.assertLess(losses[1], losses[0])
 
 
@@ -369,8 +376,8 @@ class RNNTest(tff.test.TestCase, parameterized.TestCase):
 
     loss_list = []
     for _ in range(3):
-      server_state, loss = it_process.next(server_state, federated_data)
-      loss_list.append(loss)
+      server_state, outputs = it_process.next(server_state, federated_data)
+      loss_list.append(outputs['loss'])
 
     self.assertLess(np.mean(loss_list[1:]), loss_list[0])
 

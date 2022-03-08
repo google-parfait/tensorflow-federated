@@ -67,6 +67,10 @@ def build_federated_averaging_process(
   """
 
   whimsy_model = model_fn()
+  unfinalized_metrics_type = tff.framework.type_from_tensors(
+      whimsy_model.report_local_unfinalized_metrics())
+  metrics_aggregation_computation = tff.learning.metrics.sum_then_finalize(
+      whimsy_model.metric_finalizers(), unfinalized_metrics_type)
 
   @tff.tf_computation
   def server_init_tf():
@@ -131,10 +135,9 @@ def build_federated_averaging_process(
 
     server_state = tff.federated_map(server_update_fn,
                                      (server_state, round_model_delta))
-    round_loss_metric = tff.federated_mean(
-        client_outputs.model_output, weight=weight_denom)
-
-    return server_state, round_loss_metric
+    aggregated_outputs = metrics_aggregation_computation(
+        client_outputs.model_output)
+    return server_state, aggregated_outputs
 
   @tff.federated_computation
   def server_init_tff():
