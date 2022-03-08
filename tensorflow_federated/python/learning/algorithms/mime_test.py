@@ -18,6 +18,7 @@ from unittest import mock
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
@@ -33,7 +34,6 @@ from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
-from tensorflow_federated.python.learning.algorithms import aggregation
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.algorithms import mime
 from tensorflow_federated.python.learning.framework import dataset_reduce
@@ -263,7 +263,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(mock_mime_lite.call_count, 1)
 
   @mock.patch.object(mime, 'build_weighted_mime_lite')
-  @mock.patch.object(aggregation, 'as_weighted_aggregator')
+  @mock.patch.object(factory_utils, 'as_weighted_aggregator')
   def test_aggregation_wrapper_called_by_unweighted(self, _, mock_as_weighted):
     mime.build_unweighted_mime_lite(
         model_fn=model_examples.LinearRegression,

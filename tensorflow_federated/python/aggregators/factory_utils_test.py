@@ -15,12 +15,12 @@
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.learning.algorithms import aggregation
 
 _TEST_VALUE_TYPE = computation_types.TensorType(tf.float32, (2,))
 _TEST_WEIGHT_TYPE = computation_types.TensorType(tf.float32)
@@ -29,13 +29,13 @@ _TEST_WEIGHT_TYPE = computation_types.TensorType(tf.float32)
 class UnweightedAsWeightedAggregationTest(test_case.TestCase):
 
   def test_returns_weighted_factory(self):
-    wrapped_factory = aggregation.as_weighted_aggregator(
+    wrapped_factory = factory_utils.as_weighted_aggregator(
         sum_factory.SumFactory())
     self.assertIsInstance(wrapped_factory, factory.WeightedAggregationFactory)
 
   def test_wrapped_aggregator_same_as_unweighted_aggregator(self):
     unweighted_factory = sum_factory.SumFactory()
-    wrapped_factory = aggregation.as_weighted_aggregator(unweighted_factory)
+    wrapped_factory = factory_utils.as_weighted_aggregator(unweighted_factory)
 
     unweighted_aggregator = unweighted_factory.create(_TEST_VALUE_TYPE)
     weighted_aggregator = wrapped_factory.create(_TEST_VALUE_TYPE,
@@ -55,7 +55,7 @@ class UnweightedAsWeightedAggregationTest(test_case.TestCase):
                         weighted_output.measurements)
 
   def test_wrapped_aggregator_independent_of_weights(self):
-    aggregator = aggregation.as_weighted_aggregator(
+    aggregator = factory_utils.as_weighted_aggregator(
         sum_factory.SumFactory()).create(_TEST_VALUE_TYPE, _TEST_WEIGHT_TYPE)
 
     test_data = [(1.0, 2.0), (3.0, 4.0), (0.0, 5.0)]
@@ -76,7 +76,7 @@ class UnweightedAsWeightedAggregationTest(test_case.TestCase):
 
   def test_as_weighted_raises(self):
     with self.assertRaises(TypeError):
-      aggregation.as_weighted_aggregator(mean.MeanFactory())
+      factory_utils.as_weighted_aggregator(mean.MeanFactory())
 
 
 if __name__ == '__main__':

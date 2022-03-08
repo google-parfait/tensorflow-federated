@@ -33,6 +33,7 @@ from typing import Callable, Optional
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
@@ -45,7 +46,6 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
-from tensorflow_federated.python.learning.algorithms import aggregation
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
@@ -533,8 +533,8 @@ def build_unweighted_mime_lite(
       server_optimizer=server_optimizer,
       client_weighting=client_weight_lib.ClientWeighting.UNIFORM,
       model_distributor=model_distributor,
-      model_aggregator=aggregation.as_weighted_aggregator(model_aggregator),
-      full_gradient_aggregator=aggregation.as_weighted_aggregator(
+      model_aggregator=factory_utils.as_weighted_aggregator(model_aggregator),
+      full_gradient_aggregator=factory_utils.as_weighted_aggregator(
           full_gradient_aggregator),
       metrics_aggregator=metrics_aggregator,
       use_experimental_simulation_loop=use_experimental_simulation_loop)

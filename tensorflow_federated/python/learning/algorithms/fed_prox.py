@@ -30,6 +30,7 @@ from typing import Callable, Optional, Union
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
@@ -38,7 +39,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
-from tensorflow_federated.python.learning.algorithms import aggregation
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import composers
@@ -301,6 +301,6 @@ def build_unweighted_fed_prox(
       server_optimizer_fn=server_optimizer_fn,
       client_weighting=client_weight_lib.ClientWeighting.UNIFORM,
       model_distributor=model_distributor,
-      model_aggregator=aggregation.as_weighted_aggregator(model_aggregator),
+      model_aggregator=factory_utils.as_weighted_aggregator(model_aggregator),
       metrics_aggregator=metrics_aggregator,
       use_experimental_simulation_loop=use_experimental_simulation_loop)

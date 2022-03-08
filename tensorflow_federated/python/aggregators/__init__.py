@@ -27,6 +27,7 @@ from tensorflow_federated.python.aggregators.encoded import EncodedSumFactory
 from tensorflow_federated.python.aggregators.factory import AggregationFactory
 from tensorflow_federated.python.aggregators.factory import UnweightedAggregationFactory
 from tensorflow_federated.python.aggregators.factory import WeightedAggregationFactory
+from tensorflow_federated.python.aggregators.factory_utils import as_weighted_aggregator
 from tensorflow_federated.python.aggregators.mean import MeanFactory
 from tensorflow_federated.python.aggregators.mean import UnweightedMeanFactory
 from tensorflow_federated.python.aggregators.measurements import add_measurements

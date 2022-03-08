@@ -29,42 +29,12 @@ py_library(
 )
 
 py_library(
-    name = "aggregation",
-    srcs = ["aggregation.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/templates:aggregation_process",
-    ],
-)
-
-py_test(
-    name = "aggregation_test",
-    srcs = ["aggregation_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":aggregation",
-        "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/aggregators:mean",
-        "//tensorflow_federated/python/aggregators:sum_factory",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
     name = "fed_avg",
     srcs = ["fed_avg.py"],
     srcs_version = "PY3",
     deps = [
-        ":aggregation",
         "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
@@ -92,8 +62,8 @@ py_cpu_gpu_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
-        ":aggregation",
         ":fed_avg",
+        "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:iterative_process",
@@ -167,8 +137,8 @@ py_library(
     srcs = ["fed_prox.py"],
     srcs_version = "PY3",
     deps = [
-        ":aggregation",
         "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
@@ -196,8 +166,8 @@ py_cpu_gpu_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
-        ":aggregation",
         ":fed_prox",
+        "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:iterative_process",
@@ -271,8 +241,8 @@ py_library(
     srcs = ["kmeans_clustering.py"],
     srcs_version = "PY3",
     deps = [
-        ":aggregation",
         "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
@@ -308,8 +278,8 @@ py_library(
     srcs = ["mime.py"],
     srcs_version = "PY3",
     deps = [
-        ":aggregation",
         "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
@@ -343,9 +313,9 @@ py_cpu_gpu_test(
     shard_count = 10,
     srcs_version = "PY3",
     deps = [
-        ":aggregation",
         ":fed_avg",
         ":mime",
+        "//tensorflow_federated/python/aggregators:factory_utils",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computations",

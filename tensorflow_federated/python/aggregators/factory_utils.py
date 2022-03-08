@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Aggregation helpers for building learning algorithms."""
+"""Utilities for building aggregation factories."""
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -23,15 +23,15 @@ from tensorflow_federated.python.core.templates import aggregation_process
 def as_weighted_aggregator(
     unweighted_aggregator: factory.UnweightedAggregationFactory
 ) -> factory.WeightedAggregationFactory:
-  """Weighted wrapper for an unweighted aggregation factory.
+  """Constructs a weighted wrapper for an unweighted aggregation factory.
 
   The returned `tff.aggregators.WeightedAggregationFactory` has the same
   functionality as the provided `unweighted_aggregator`, ignoring the provided
-  weights. This is useful when converting unweighted aggregator to a uniformly
-  weighted aggregator.
+  weights. This is useful when converting unweighted aggregator to a weighted
+  aggregator which is "always uniformly weighted".
 
   Args:
-    unweighted_aggregator: A `tff.aggregators.UnweightedAggregationFactory`
+    unweighted_aggregator: A `tff.aggregators.UnweightedAggregationFactory`.
 
   Returns:
     A `tff.aggregators.WeightedAggregationFactory`.

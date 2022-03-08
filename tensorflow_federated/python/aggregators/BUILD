@@ -30,6 +30,7 @@ py_library(
         ":differential_privacy",
         ":encoded",
         ":factory",
+        ":factory_utils",
         ":mean",
         ":measurements",
         ":primitives",
@@ -253,6 +254,36 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/templates:aggregation_process",
+    ],
+)
+
+py_library(
+    name = "factory_utils",
+    srcs = ["factory_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+    ],
+)
+
+py_test(
+    name = "factory_utils_test",
+    srcs = ["factory_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":factory_utils",
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:mean",
+        "//tensorflow_federated/python/aggregators:sum_factory",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 

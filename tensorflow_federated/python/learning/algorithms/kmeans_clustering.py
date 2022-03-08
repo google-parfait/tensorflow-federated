@@ -30,13 +30,13 @@ from typing import Optional, Tuple
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning.algorithms import aggregation
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
@@ -315,7 +315,7 @@ def build_fed_kmeans(
     sum_aggregator = sum_factory.SumFactory()
   # We wrap the sum factory as a weighted aggregator for compatibility with
   # the learning process composer.
-  weighted_aggregator = aggregation.as_weighted_aggregator(sum_aggregator)
+  weighted_aggregator = factory_utils.as_weighted_aggregator(sum_aggregator)
   value_type = computation_types.to_type((centroids_type, weights_type))
   aggregator = weighted_aggregator.create(value_type,
                                           computation_types.to_type(()))
