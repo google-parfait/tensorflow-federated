@@ -55,6 +55,21 @@ ROTATION_TYPES = [
     'dft',  # Randomized Discrete Fourier Transform.
 ]
 
+# The maximum possible scaling factor before rounding is applied. This is needed
+# because when the number of clients per round is small (<10) and/or the noise
+# multiplier is very small (say < 0.001) and/or the number of bits is large (say
+# > 18), the scale factor computed by `_heuristic_scale_factor(...)` becomes
+# very large. For example, for a noise multiplier = 0, number of bits = 20, and
+# 10 clients per round, the scaling factor is on the order of 1e8. Such a large
+# scaling factor leads to overflows when computing the inflated and scaled l1/l2
+# norm bounds using int32 bit representations. In practice, however, such very
+# scaling factors do not offer any added value (in minimizing rounding errors
+# and/or minimizing the inflation of the l1/l2 norms upon rounding). Capping the
+# scaling factor to 1e6 avoids these overflow issues without compromising
+# utility.
+# TODO(b/223427213): Adapt the bitwidth whenever the scale is too high.
+MAX_SCALE_FACTOR = 1e6
+
 
 class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
   """An `UnweightedAggregationFactory` for distributed DP with SecAgg.
@@ -279,6 +294,11 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     scale = _heuristic_scale_factor(local_stddev, self._initial_l2_clip,
                                     self._bits, self._num_clients,
                                     self._padded_dim, self._k_stddevs).numpy()
+
+    # Very large scales could lead to overflows and are not as helpful for
+    # utility. See comment above for more details.
+    scale = min(scale, MAX_SCALE_FACTOR)
+
     if scale <= 1:
       warnings.warn(f'The selected scale_factor {scale} <= 1. This may lead to'
                     f'substantial quantization errors. Consider increasing'
@@ -396,6 +416,12 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       new_scale = _heuristic_scale_factor(new_local_stddev, new_l2_clip,
                                           self._bits, self._num_clients,
                                           self._padded_dim, self._k_stddevs)
+
+      # Very large scales could lead to overflows and are not as helpful for
+      # utility. See comment above for more details.
+      new_scale = tf.math.minimum(
+          new_scale, tf.constant(MAX_SCALE_FACTOR, dtype=tf.float64))
+
       discrete_state['scale_factor'] = tf.cast(new_scale, tf.float32)
       return agg_state
 
