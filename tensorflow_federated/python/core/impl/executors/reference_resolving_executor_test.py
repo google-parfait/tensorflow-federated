@@ -42,21 +42,19 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
   def test_with_no_arg_tf_comp_in_no_arg_fed_comp(self):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
-    loop = asyncio.get_event_loop()
 
     @computations.federated_computation
     def comp():
       return 10
 
-    v1 = loop.run_until_complete(ex.create_value(comp))
-    v2 = loop.run_until_complete(ex.create_call(v1))
-    result = loop.run_until_complete(v2.compute())
+    v1 = asyncio.run(ex.create_value(comp))
+    v2 = asyncio.run(ex.create_call(v1))
+    result = asyncio.run(v2.compute())
     self.assertEqual(result.numpy(), 10)
 
   def test_with_one_arg_tf_comp_in_no_arg_fed_comp(self):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
-    loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
     def add_one(x):
@@ -66,29 +64,27 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     def comp():
       return add_one(10)
 
-    v1 = loop.run_until_complete(ex.create_value(comp))
-    v2 = loop.run_until_complete(ex.create_call(v1))
-    result = loop.run_until_complete(v2.compute())
+    v1 = asyncio.run(ex.create_value(comp))
+    v2 = asyncio.run(ex.create_call(v1))
+    result = asyncio.run(v2.compute())
     self.assertEqual(result.numpy(), 11)
 
   def test_clear_failure_with_mismatched_types_in_create_call(self):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
-    loop = asyncio.get_event_loop()
 
     @computations.federated_computation(tf.float32)
     def comp(x):
       return x
 
-    v1 = loop.run_until_complete(ex.create_value(comp))
-    v2 = loop.run_until_complete(ex.create_value(10, tf.int32))
+    v1 = asyncio.run(ex.create_value(comp))
+    v2 = asyncio.run(ex.create_value(10, tf.int32))
     with self.assertRaisesRegex(TypeError, 'incompatible'):
-      loop.run_until_complete(ex.create_call(v1, v2))
+      asyncio.run(ex.create_call(v1, v2))
 
   def test_with_one_arg_tf_comp_in_one_arg_fed_comp(self):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
-    loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
     def add_one(x):
@@ -98,16 +94,15 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     def comp(x):
       return add_one(add_one(x))
 
-    v1 = loop.run_until_complete(ex.create_value(comp))
-    v2 = loop.run_until_complete(ex.create_value(10, tf.int32))
-    v3 = loop.run_until_complete(ex.create_call(v1, v2))
-    result = loop.run_until_complete(v3.compute())
+    v1 = asyncio.run(ex.create_value(comp))
+    v2 = asyncio.run(ex.create_value(10, tf.int32))
+    v3 = asyncio.run(ex.create_call(v1, v2))
+    result = asyncio.run(v3.compute())
     self.assertEqual(result.numpy(), 12)
 
   def test_with_one_arg_tf_comp_in_two_arg_fed_comp(self):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
-    loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32, tf.int32)
     def add_numbers(x, y):
@@ -117,20 +112,18 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     def comp(x, y):
       return add_numbers(x, x), add_numbers(x, y), add_numbers(y, y)
 
-    v1 = loop.run_until_complete(ex.create_value(comp))
-    v2 = loop.run_until_complete(ex.create_value(10, tf.int32))
-    v3 = loop.run_until_complete(ex.create_value(20, tf.int32))
-    v4 = loop.run_until_complete(
-        ex.create_struct(structure.Struct([('x', v2), ('y', v3)])))
-    v5 = loop.run_until_complete(ex.create_call(v1, v4))
-    result = loop.run_until_complete(v5.compute())
+    v1 = asyncio.run(ex.create_value(comp))
+    v2 = asyncio.run(ex.create_value(10, tf.int32))
+    v3 = asyncio.run(ex.create_value(20, tf.int32))
+    v4 = asyncio.run(ex.create_struct(structure.Struct([('x', v2), ('y', v3)])))
+    v5 = asyncio.run(ex.create_call(v1, v4))
+    result = asyncio.run(v5.compute())
     self.assertEqual(
         str(structure.map_structure(lambda x: x.numpy(), result)), '<20,30,40>')
 
   def test_with_functional_parameter(self):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
-    loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
     def add_one(x):
@@ -141,19 +134,17 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     def comp(f, x):
       return f(f(x))
 
-    v1 = loop.run_until_complete(ex.create_value(comp))
-    v2 = loop.run_until_complete(ex.create_value(add_one))
-    v3 = loop.run_until_complete(ex.create_value(10, tf.int32))
-    v4 = loop.run_until_complete(
-        ex.create_struct(structure.Struct([('f', v2), ('x', v3)])))
-    v5 = loop.run_until_complete(ex.create_call(v1, v4))
-    result = loop.run_until_complete(v5.compute())
+    v1 = asyncio.run(ex.create_value(comp))
+    v2 = asyncio.run(ex.create_value(add_one))
+    v3 = asyncio.run(ex.create_value(10, tf.int32))
+    v4 = asyncio.run(ex.create_struct(structure.Struct([('f', v2), ('x', v3)])))
+    v5 = asyncio.run(ex.create_call(v1, v4))
+    result = asyncio.run(v5.compute())
     self.assertEqual(result.numpy(), 12)
 
   def test_with_tuples(self):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
-    loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32, tf.int32)
     def add_numbers(x, y):
@@ -163,31 +154,29 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     def comp():
       return add_numbers(10, 20)
 
-    v1 = loop.run_until_complete(ex.create_value(comp))
-    v2 = loop.run_until_complete(ex.create_call(v1))
-    result = loop.run_until_complete(v2.compute())
+    v1 = asyncio.run(ex.create_value(comp))
+    v2 = asyncio.run(ex.create_call(v1))
+    result = asyncio.run(v2.compute())
     self.assertEqual(result.numpy(), 30)
 
   def test_create_selection_with_tuples(self):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
-    loop = asyncio.get_event_loop()
 
-    v1 = loop.run_until_complete(ex.create_value(10, tf.int32))
-    v2 = loop.run_until_complete(ex.create_value(20, tf.int32))
-    v3 = loop.run_until_complete(
+    v1 = asyncio.run(ex.create_value(10, tf.int32))
+    v2 = asyncio.run(ex.create_value(20, tf.int32))
+    v3 = asyncio.run(
         ex.create_struct(structure.Struct([(None, v1), (None, v2)])))
-    v4 = loop.run_until_complete(ex.create_selection(v3, 0))
-    v5 = loop.run_until_complete(ex.create_selection(v3, 1))
-    result0 = loop.run_until_complete(v4.compute())
-    result1 = loop.run_until_complete(v5.compute())
+    v4 = asyncio.run(ex.create_selection(v3, 0))
+    v5 = asyncio.run(ex.create_selection(v3, 1))
+    result0 = asyncio.run(v4.compute())
+    result1 = asyncio.run(v5.compute())
     self.assertEqual(result0.numpy(), 10)
     self.assertEqual(result1.numpy(), 20)
 
   def test_with_nested_lambdas(self):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
-    loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32, tf.int32)
     def add_numbers(x, y):
@@ -202,16 +191,15 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
       return nested_comp(1)
 
-    v1 = loop.run_until_complete(ex.create_value(comp))
-    v2 = loop.run_until_complete(ex.create_value(10, tf.int32))
-    v3 = loop.run_until_complete(ex.create_call(v1, v2))
-    result = loop.run_until_complete(v3.compute())
+    v1 = asyncio.run(ex.create_value(comp))
+    v2 = asyncio.run(ex.create_value(10, tf.int32))
+    v3 = asyncio.run(ex.create_call(v1, v2))
+    result = asyncio.run(v3.compute())
     self.assertEqual(result.numpy(), 11)
 
   def test_with_block(self):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
-    loop = asyncio.get_event_loop()
 
     f_type = computation_types.FunctionType(tf.int32, tf.int32)
     a = building_blocks.Reference(
@@ -230,14 +218,12 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     def add_one(x):
       return x + 1
 
-    v1 = loop.run_until_complete(
-        ex.create_value(comp.proto, comp.type_signature))
-    v2 = loop.run_until_complete(ex.create_value(add_one))
-    v3 = loop.run_until_complete(ex.create_value(10, tf.int32))
-    v4 = loop.run_until_complete(
-        ex.create_struct(structure.Struct([('f', v2), ('x', v3)])))
-    v5 = loop.run_until_complete(ex.create_call(v1, v4))
-    result = loop.run_until_complete(v5.compute())
+    v1 = asyncio.run(ex.create_value(comp.proto, comp.type_signature))
+    v2 = asyncio.run(ex.create_value(add_one))
+    v3 = asyncio.run(ex.create_value(10, tf.int32))
+    v4 = asyncio.run(ex.create_struct(structure.Struct([('f', v2), ('x', v3)])))
+    v5 = asyncio.run(ex.create_call(v1, v4))
+    result = asyncio.run(v5.compute())
     self.assertEqual(result.numpy(), 12)
 
   def test_with_federated_map(self):
@@ -246,7 +232,6 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
         {placements.SERVER: eager_ex})
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
-    loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
     def add_one(x):
@@ -256,11 +241,10 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     def comp(x):
       return intrinsics.federated_map(add_one, x)
 
-    v1 = loop.run_until_complete(ex.create_value(comp))
-    v2 = loop.run_until_complete(
-        ex.create_value(10, computation_types.at_server(tf.int32)))
-    v3 = loop.run_until_complete(ex.create_call(v1, v2))
-    result = loop.run_until_complete(v3.compute())
+    v1 = asyncio.run(ex.create_value(comp))
+    v2 = asyncio.run(ex.create_value(10, computation_types.at_server(tf.int32)))
+    v3 = asyncio.run(ex.create_call(v1, v2))
+    result = asyncio.run(v3.compute())
     self.assertEqual(result.numpy(), 11)
 
   def test_with_federated_map_and_broadcast(self):
@@ -271,7 +255,6 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     })
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
-    loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
     def add_one(x):
@@ -282,11 +265,10 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
       return intrinsics.federated_map(add_one,
                                       intrinsics.federated_broadcast(x))
 
-    v1 = loop.run_until_complete(ex.create_value(comp))
-    v2 = loop.run_until_complete(
-        ex.create_value(10, computation_types.at_server(tf.int32)))
-    v3 = loop.run_until_complete(ex.create_call(v1, v2))
-    result = loop.run_until_complete(v3.compute())
+    v1 = asyncio.run(ex.create_value(comp))
+    v2 = asyncio.run(ex.create_value(10, computation_types.at_server(tf.int32)))
+    v3 = asyncio.run(ex.create_call(v1, v2))
+    result = asyncio.run(v3.compute())
     self.assertCountEqual([x.numpy() for x in result], [11, 11, 11])
 
   def test_raises_with_closure(self):
@@ -296,7 +278,6 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     })
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
-    loop = asyncio.get_event_loop()
 
     @computations.federated_computation(tf.int32,
                                         computation_types.at_server(tf.int32))
@@ -309,15 +290,15 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
       return intrinsics.federated_map(bar, y)
 
-    v1 = loop.run_until_complete(ex.create_value(foo))
-    v2 = loop.run_until_complete(
+    v1 = asyncio.run(ex.create_value(foo))
+    v2 = asyncio.run(
         ex.create_value(
             structure.Struct([('x', 0), ('y', 0)]),
             [tf.int32, computation_types.at_server(tf.int32)]))
     with self.assertRaisesRegex(
         RuntimeError,
         'lambda passed to intrinsic contains references to captured variables'):
-      loop.run_until_complete(ex.create_call(v1, v2))
+      asyncio.run(ex.create_call(v1, v2))
 
   def test_execution_of_tensorflow(self):
 

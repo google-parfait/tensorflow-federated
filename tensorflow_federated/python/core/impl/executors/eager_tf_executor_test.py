@@ -425,8 +425,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
   def test_executor_create_value_int(self):
     ex = eager_tf_executor.EagerTFExecutor()
-    val = asyncio.get_event_loop().run_until_complete(
-        ex.create_value(10, tf.int32))
+    val = asyncio.run(ex.create_value(10, tf.int32))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertIsInstance(val.internal_representation, tf.Tensor)
     self.assertEqual(str(val.type_signature), 'int32')
@@ -440,20 +439,20 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
       return x
 
     with self.assertRaisesRegex(ValueError, 'computation of type lambda'):
-      asyncio.get_event_loop().run_until_complete(
+      asyncio.run(
           ex.create_value(comp.to_building_block().proto, comp.type_signature))
 
   def test_executor_create_value_struct_mismatched_type(self):
     ex = eager_tf_executor.EagerTFExecutor()
     with self.assertRaises(TypeError):
-      asyncio.get_event_loop().run_until_complete(
+      asyncio.run(
           ex.create_value([10],
                           computation_types.StructType([(None, tf.int32),
                                                         (None, tf.float32)])))
 
   def test_executor_create_value_unnamed_int_pair(self):
     ex = eager_tf_executor.EagerTFExecutor()
-    val = asyncio.get_event_loop().run_until_complete(
+    val = asyncio.run(
         ex.create_value([10, {
             'a': 20
         }], [tf.int32, collections.OrderedDict([('a', tf.int32)])]))
@@ -471,7 +470,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
   def test_executor_create_value_named_type_unnamed_value(self):
     ex = eager_tf_executor.EagerTFExecutor()
-    val = asyncio.get_event_loop().run_until_complete(
+    val = asyncio.run(
         ex.create_value([10, 20],
                         collections.OrderedDict(a=tf.int32, b=tf.int32)))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
@@ -491,7 +490,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
       return 1000
 
     comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
-    val = asyncio.get_event_loop().run_until_complete(
+    val = asyncio.run(
         ex.create_value(comp_proto,
                         computation_types.FunctionType(None, tf.int32)))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
@@ -509,7 +508,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
       return a + b
 
     comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
-    val = asyncio.get_event_loop().run_until_complete(
+    val = asyncio.run(
         ex.create_value(
             comp_proto,
             computation_types.FunctionType(
@@ -530,13 +529,12 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
       return a + b
 
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
-    comp = loop.run_until_complete(ex.create_value(comp))
-    arg = loop.run_until_complete(
+    comp = asyncio.run(ex.create_value(comp))
+    arg = asyncio.run(
         ex.create_value(
             structure.Struct([('a', 10), ('b', 20)]),
             comp.type_signature.parameter))
-    result = loop.run_until_complete(ex.create_call(comp, arg))
+    result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32')
     self.assertIsInstance(result.internal_representation, tf.Tensor)
@@ -554,20 +552,19 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
       return table.lookup(to_lookup)
 
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
-    comp = loop.run_until_complete(ex.create_value(comp))
-    arg_1 = loop.run_until_complete(
+    comp = asyncio.run(ex.create_value(comp))
+    arg_1 = asyncio.run(
         ex.create_value(
             structure.Struct([('table_args', tf.constant(['a', 'b', 'c'])),
                               ('to_lookup', tf.constant('a'))]),
             comp.type_signature.parameter))
-    arg_2 = loop.run_until_complete(
+    arg_2 = asyncio.run(
         ex.create_value(
             structure.Struct([('table_args', tf.constant(['a', 'b', 'c', 'd'])),
                               ('to_lookup', tf.constant('d'))]),
             comp.type_signature.parameter))
-    result_1 = loop.run_until_complete(ex.create_call(comp, arg_1))
-    result_2 = loop.run_until_complete(ex.create_call(comp, arg_2))
+    result_1 = asyncio.run(ex.create_call(comp, arg_1))
+    result_2 = asyncio.run(ex.create_call(comp, arg_2))
 
     self.assertEqual(self.evaluate(result_1.internal_representation), 0)
     self.assertEqual(self.evaluate(result_2.internal_representation), 3)
@@ -582,11 +579,9 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
     ds = tf.data.Dataset.from_tensor_slices([10, 20, 30, 40, 50])
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
-    comp = loop.run_until_complete(ex.create_value(comp))
-    arg = loop.run_until_complete(
-        ex.create_value(ds, comp.type_signature.parameter))
-    result = loop.run_until_complete(ex.create_call(comp, arg))
+    comp = asyncio.run(ex.create_value(comp))
+    arg = asyncio.run(ex.create_value(ds, comp.type_signature.parameter))
+    result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32*')
     self.assertIn('Dataset', type(result.internal_representation).__name__)
@@ -610,11 +605,9 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
     ds = tf.data.Dataset.from_tensor_slices(vocab)
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
-    comp = loop.run_until_complete(ex.create_value(comp))
-    arg = loop.run_until_complete(
-        ex.create_value(ds, comp.type_signature.parameter))
-    result = loop.run_until_complete(ex.create_call(comp, arg))
+    comp = asyncio.run(ex.create_value(comp))
+    arg = asyncio.run(ex.create_value(ds, comp.type_signature.parameter))
+    result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int64*')
     self.assertIn('Dataset', type(result.internal_representation).__name__)
@@ -631,11 +624,9 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
     ds = tf.data.Dataset.from_tensor_slices([10]).repeat()
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
-    comp = loop.run_until_complete(ex.create_value(comp))
-    arg = loop.run_until_complete(
-        ex.create_value(ds, comp.type_signature.parameter))
-    result = loop.run_until_complete(ex.create_call(comp, arg))
+    comp = asyncio.run(ex.create_value(comp))
+    arg = asyncio.run(ex.create_value(ds, comp.type_signature.parameter))
+    result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32*')
     self.assertIn('Dataset', type(result.internal_representation).__name__)
@@ -652,11 +643,9 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
     ds = tf.data.Dataset.from_tensor_slices([10, 20, 30]).repeat()
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
-    comp = loop.run_until_complete(ex.create_value(comp))
-    arg = loop.run_until_complete(
-        ex.create_value(ds, comp.type_signature.parameter))
-    result = loop.run_until_complete(ex.create_call(comp, arg))
+    comp = asyncio.run(ex.create_value(comp))
+    arg = asyncio.run(ex.create_value(ds, comp.type_signature.parameter))
+    result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32')
     self.assertIsInstance(result.internal_representation, tf.Tensor)
@@ -677,11 +666,9 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
     ds = tf.data.Dataset.from_tensor_slices(element([10, 20, 30], [4, 5, 6]))
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
-    comp = loop.run_until_complete(ex.create_value(comp))
-    arg = loop.run_until_complete(
-        ex.create_value(ds, comp.type_signature.parameter))
-    result = loop.run_until_complete(ex.create_call(comp, arg))
+    comp = asyncio.run(ex.create_value(comp))
+    arg = asyncio.run(ex.create_value(ds, comp.type_signature.parameter))
+    result = asyncio.run(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), '<a=int32,b=int32>')
     self.assertIsInstance(result.internal_representation, structure.Struct)
@@ -693,11 +680,13 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
   def test_executor_create_struct_and_selection(self):
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
-    v1, v2 = tuple(
-        loop.run_until_complete(
-            asyncio.gather(*[ex.create_value(x, tf.int32) for x in [10, 20]])))
-    v3 = loop.run_until_complete(
+
+    async def gather_values(values):
+      return tuple(await asyncio.gather(*values))
+
+    v1, v2 = asyncio.run(
+        gather_values([ex.create_value(x, tf.int32) for x in [10, 20]]))
+    v3 = asyncio.run(
         ex.create_struct(collections.OrderedDict([('a', v1), ('b', v2)])))
     self.assertIsInstance(v3, eager_tf_executor.EagerValue)
     self.assertIsInstance(v3.internal_representation, structure.Struct)
@@ -708,12 +697,12 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(str(v3.type_signature), '<a=int32,b=int32>')
     self.assertEqual(v3.internal_representation[0], 10)
     self.assertEqual(v3.internal_representation[1], 20)
-    v4 = loop.run_until_complete(ex.create_selection(v3, 0))
+    v4 = asyncio.run(ex.create_selection(v3, 0))
     self.assertIsInstance(v4, eager_tf_executor.EagerValue)
     self.assertIsInstance(v4.internal_representation, tf.Tensor)
     self.assertEqual(str(v4.type_signature), 'int32')
     self.assertEqual(v4.internal_representation, 10)
-    v5 = loop.run_until_complete(ex.create_selection(v3, 1))
+    v5 = asyncio.run(ex.create_selection(v3, 1))
     self.assertIsInstance(v5, eager_tf_executor.EagerValue)
     self.assertIsInstance(v5.internal_representation, tf.Tensor)
     self.assertEqual(str(v5.type_signature), 'int32')
@@ -721,16 +710,14 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
   def test_executor_compute(self):
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
-    val = loop.run_until_complete(ex.create_value(10, tf.int32))
+    val = asyncio.run(ex.create_value(10, tf.int32))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
-    val = loop.run_until_complete(val.compute())
+    val = asyncio.run(val.compute())
     self.assertIsInstance(val, tf.Tensor)
     self.assertEqual(val, 10)
 
   def test_with_repeated_variable_assignment(self):
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
 
     @computations.tf_computation(tf.int32)
     def comp(x):
@@ -740,11 +727,11 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
           with tf.control_dependencies([v.assign_add(10)]):
             return tf.identity(v)
 
-    fn = loop.run_until_complete(ex.create_value(comp))
-    arg = loop.run_until_complete(ex.create_value(10, tf.int32))
+    fn = asyncio.run(ex.create_value(comp))
+    arg = asyncio.run(ex.create_value(10, tf.int32))
     for n in range(10):
-      arg = loop.run_until_complete(ex.create_call(fn, arg))
-      val = loop.run_until_complete(arg.compute())
+      arg = asyncio.run(ex.create_call(fn, arg))
+      val = asyncio.run(arg.compute())
       self.assertEqual(val, 10 * (n + 2))
 
   def test_execution_of_tensorflow(self):
@@ -769,9 +756,8 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
       return
 
     ex = eager_tf_executor.EagerTFExecutor()
-    loop = asyncio.get_event_loop()
     type_spec = computation_types.SequenceType(tf.int32)
-    val = loop.run_until_complete(ex.create_value(_generate_items, type_spec))
+    val = asyncio.run(ex.create_value(_generate_items, type_spec))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
     self.assertIn('Dataset', type(val.internal_representation).__name__)

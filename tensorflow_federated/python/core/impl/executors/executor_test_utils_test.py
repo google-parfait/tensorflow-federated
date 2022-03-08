@@ -94,7 +94,7 @@ class TracingExecutorTest(absltest.TestCase):
       v5 = await ex.create_selection(v4, 0)
       return await v5.compute()
 
-    result = asyncio.get_event_loop().run_until_complete(_make())
+    result = asyncio.run(_make())
     self.assertEqual(result.numpy(), 11)
 
     expected_trace = [('create_value', add_one, 1),

@@ -168,7 +168,7 @@ class AsyncCppContextInstallationTest(tf.test.TestCase):
     with get_context_stack.get_context_stack().install(context):
       val_coro = add_one(1)
       self.assertTrue(asyncio.iscoroutine(val_coro))
-      self.assertEqual(asyncio.get_event_loop().run_until_complete(val_coro), 2)
+      self.assertEqual(asyncio.run(val_coro), 2)
 
   def test_install_and_execute_computations_with_different_cardinalities(self):
     context = cpp_execution_contexts.create_local_async_cpp_execution_context()
@@ -184,9 +184,8 @@ class AsyncCppContextInstallationTest(tf.test.TestCase):
       self.assertTrue(asyncio.iscoroutine(single_val_coro))
       self.assertTrue(asyncio.iscoroutine(second_val_coro))
       self.assertEqual(
-          asyncio.get_event_loop().run_until_complete(
-              asyncio.gather(single_val_coro, second_val_coro)),
-          [[[1], [1]], [[1, 2], [1, 2]]])
+          [asyncio.run(single_val_coro),
+           asyncio.run(second_val_coro)], [[[1], [1]], [[1, 2], [1, 2]]])
 
 
 if __name__ == '__main__':

@@ -58,11 +58,9 @@ async def wait(shutdown_event):
   logging.info('**** Exiting server...')
 
 
-def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
-
-  event_loop = asyncio.get_event_loop()
+async def run_aggregator():
+  """Runs the remote aggregation service asynchronously."""
+  event_loop = asyncio.get_running_loop()
 
   # Catch SIGINT, which the test framework will raise.
   shutdown_event = asyncio.Event()
@@ -80,8 +78,14 @@ def main(argv):
       num_threads=1,
       port=FLAGS.aggregator_port,
       options=GRPC_CHANNEL_OPTIONS):
-    event_loop.run_until_complete(wait(shutdown_event))
+    await wait(shutdown_event)
   logging.info('Exiting process')
+
+
+def main(argv):
+  if len(argv) > 1:
+    raise app.UsageError('Too many command-line arguments.')
+  asyncio.run(run_aggregator())
 
 
 if __name__ == '__main__':

@@ -47,7 +47,7 @@ class FakeEx(executor_base.Executor):
 
 def _test_create_value(val, transform_fn):
   ex = transforming_executor.TransformingExecutor(transform_fn, FakeEx())
-  return asyncio.get_event_loop().run_until_complete(ex.create_value(val))
+  return asyncio.run(ex.create_value(val))
 
 
 @computations.federated_computation(tf.int32)

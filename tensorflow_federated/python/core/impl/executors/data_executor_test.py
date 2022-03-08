@@ -50,10 +50,6 @@ class TestDataBackend(data_backend_base.DataBackend):
 
 class DataExecutorTest(absltest.TestCase):
 
-  def setUp(self):
-    super().setUp()
-    self._loop = asyncio.get_event_loop()
-
   def test_data_proto_tensor(self):
     ex = data_executor.DataExecutor(
         eager_tf_executor.EagerTFExecutor(),
@@ -62,10 +58,10 @@ class DataExecutorTest(absltest.TestCase):
         data=pb.Data(uri='foo://bar'),
         type=type_serialization.serialize_type(
             computation_types.TensorType(tf.int32)))
-    val = self._loop.run_until_complete(ex.create_value(proto))
+    val = asyncio.run(ex.create_value(proto))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), 'int32')
-    self.assertEqual(self._loop.run_until_complete(val.compute()), 10)
+    self.assertEqual(asyncio.run(val.compute()), 10)
     ex.close()
 
   def test_data_proto_dataset(self):
@@ -76,21 +72,20 @@ class DataExecutorTest(absltest.TestCase):
     proto = pb.Computation(
         data=pb.Data(uri='foo://bar'),
         type=type_serialization.serialize_type(type_spec))
-    val = self._loop.run_until_complete(ex.create_value(proto))
+    val = asyncio.run(ex.create_value(proto))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), 'int64*')
-    self.assertCountEqual(
-        [x.numpy() for x in iter(self._loop.run_until_complete(val.compute()))],
-        [0, 1, 2])
+    self.assertCountEqual([x.numpy() for x in iter(asyncio.run(val.compute()))],
+                          [0, 1, 2])
     ex.close()
 
   def test_pass_through_tensor(self):
     ex = data_executor.DataExecutor(eager_tf_executor.EagerTFExecutor(),
                                     TestDataBackend(self, 'none', None, None))
-    val = self._loop.run_until_complete(ex.create_value(10, tf.int32))
+    val = asyncio.run(ex.create_value(10, tf.int32))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), 'int32')
-    self.assertEqual(self._loop.run_until_complete(val.compute()), 10)
+    self.assertEqual(asyncio.run(val.compute()), 10)
     ex.close()
 
   def test_pass_through_comp(self):
@@ -101,12 +96,12 @@ class DataExecutorTest(absltest.TestCase):
     def comp():
       return tf.constant(10, tf.int32)
 
-    val = self._loop.run_until_complete(ex.create_value(comp))
+    val = asyncio.run(ex.create_value(comp))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '( -> int32)')
-    val2 = self._loop.run_until_complete(ex.create_call(val))
+    val2 = asyncio.run(ex.create_call(val))
     self.assertEqual(str(val2.type_signature), 'int32')
-    self.assertEqual(self._loop.run_until_complete(val2.compute()), 10)
+    self.assertEqual(asyncio.run(val2.compute()), 10)
     ex.close()
 
   def test_combo_data_with_comp_and_tensor(self):
@@ -117,7 +112,7 @@ class DataExecutorTest(absltest.TestCase):
     proto = pb.Computation(
         data=pb.Data(uri='foo://bar'),
         type=type_serialization.serialize_type(type_spec))
-    arg_val = self._loop.run_until_complete(
+    arg_val = asyncio.run(
         ex.create_value(
             collections.OrderedDict([('x', proto), ('y', 10)]),
             computation_types.StructType([('x', type_spec), ('y', tf.int32)])))
@@ -126,11 +121,11 @@ class DataExecutorTest(absltest.TestCase):
     def comp(x, y):
       return tf.cast(x.reduce(np.int64(0), lambda p, q: p + q), tf.int32) + y
 
-    comp_val = self._loop.run_until_complete(ex.create_value(comp))
-    ret_val = self._loop.run_until_complete(ex.create_call(comp_val, arg_val))
+    comp_val = asyncio.run(ex.create_value(comp))
+    ret_val = asyncio.run(ex.create_call(comp_val, arg_val))
     self.assertIsInstance(ret_val, eager_tf_executor.EagerValue)
     self.assertEqual(str(ret_val.type_signature), 'int32')
-    self.assertEqual(self._loop.run_until_complete(ret_val.compute()), 13)
+    self.assertEqual(asyncio.run(ret_val.compute()), 13)
     ex.close()
 
   def test_in_executor_stack(self):

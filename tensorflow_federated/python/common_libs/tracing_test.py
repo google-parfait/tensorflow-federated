@@ -44,15 +44,14 @@ class DebugLoggingTest(absltest.TestCase):
 
   def _test_debug_logging_with_async_function(self, async_fn, test_regex, *args,
                                               **kwargs):
-    loop = asyncio.get_event_loop()
     try:
       logging.set_verbosity(1)
-      retval = loop.run_until_complete(async_fn(*args, **kwargs))
+      retval = asyncio.run(async_fn(*args, **kwargs))
     finally:
       logging.set_verbosity(0)
     self.assertRegexMatch(''.join(self.log.getvalue()), [test_regex])
     self.log.truncate(0)
-    loop.run_until_complete(async_fn(*args, **kwargs))
+    asyncio.run(async_fn(*args, **kwargs))
     self.assertEmpty(''.join(self.log.getvalue()))
     return retval
 

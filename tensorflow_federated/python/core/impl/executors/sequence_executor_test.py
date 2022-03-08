@@ -31,10 +31,6 @@ from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-def _run_sync(coroutine):
-  return asyncio.get_event_loop().run_until_complete(coroutine)
-
-
 def _make_sequence_reduce_type(element_type, accumulator_type):
   return computation_types.FunctionType(
       parameter=[
@@ -59,7 +55,7 @@ def _make_sequence_reduce_value(executor, element_type, accumulator_type):
   comp_pb = pb.Computation(
       type=type_serialization.serialize_type(type_spec),
       intrinsic=intrinsic_spec)
-  return _run_sync(executor.create_value(comp_pb, type_spec))
+  return asyncio.run(executor.create_value(comp_pb, type_spec))
 
 
 def _make_sequence_map_value(executor, source_type, target_type):
@@ -68,7 +64,7 @@ def _make_sequence_map_value(executor, source_type, target_type):
   comp_pb = pb.Computation(
       type=type_serialization.serialize_type(type_spec),
       intrinsic=intrinsic_spec)
-  return _run_sync(executor.create_value(comp_pb, type_spec))
+  return asyncio.run(executor.create_value(comp_pb, type_spec))
 
 
 class SequenceExecutorTest(absltest.TestCase):
@@ -82,21 +78,23 @@ class SequenceExecutorTest(absltest.TestCase):
   def test_create_value_and_compute_with_int_const(self):
     int_const = 10
     type_spec = computation_types.TensorType(tf.int32)
-    val = _run_sync(self._sequence_executor.create_value(int_const, type_spec))
+    val = asyncio.run(
+        self._sequence_executor.create_value(int_const, type_spec))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
     self.assertIsInstance(val.internal_representation,
                           eager_tf_executor.EagerValue)
     self.assertEqual(val.internal_representation.internal_representation,
                      int_const)
-    result = _run_sync(val.compute())
+    result = asyncio.run(val.compute())
     self.assertEqual(result, 10)
 
   def test_create_value_and_compute_with_struct(self):
     my_struct = collections.OrderedDict([('a', 10), ('b', 20)])
     type_spec = computation_types.StructType(
         collections.OrderedDict([('a', tf.int32), ('b', tf.int32)]))
-    val = _run_sync(self._sequence_executor.create_value(my_struct, type_spec))
+    val = asyncio.run(
+        self._sequence_executor.create_value(my_struct, type_spec))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
     self.assertIsInstance(val.internal_representation, structure.Struct)
@@ -104,18 +102,18 @@ class SequenceExecutorTest(absltest.TestCase):
                           eager_tf_executor.EagerValue)
     self.assertIsInstance(val.internal_representation.b,
                           eager_tf_executor.EagerValue)
-    result = _run_sync(val.compute())
+    result = asyncio.run(val.compute())
     self.assertEqual(str(result), '<a=10,b=20>')
 
   def test_create_struct(self):
     elements = []
     for x in [10, 20]:
       elements.append(('v{}'.format(x),
-                       _run_sync(
+                       asyncio.run(
                            self._sequence_executor.create_value(
                                x, computation_types.TensorType(tf.int32)))))
     elements = structure.Struct(elements)
-    val = _run_sync(self._sequence_executor.create_struct(elements))
+    val = asyncio.run(self._sequence_executor.create_struct(elements))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), '<v10=int32,v20=int32>')
     self.assertIsInstance(val.internal_representation, structure.Struct)
@@ -125,25 +123,25 @@ class SequenceExecutorTest(absltest.TestCase):
                           eager_tf_executor.EagerValue)
     self.assertIsInstance(val.internal_representation.v20,
                           eager_tf_executor.EagerValue)
-    self.assertEqual(_run_sync(val.internal_representation.v10.compute()), 10)
-    self.assertEqual(_run_sync(val.internal_representation.v20.compute()), 20)
+    self.assertEqual(asyncio.run(val.internal_representation.v10.compute()), 10)
+    self.assertEqual(asyncio.run(val.internal_representation.v20.compute()), 20)
 
   def test_create_selection(self):
     my_struct = collections.OrderedDict([('a', 10), ('b', 20)])
     type_spec = computation_types.StructType(
         collections.OrderedDict([('a', tf.int32), ('b', tf.int32)]))
-    struct_val = _run_sync(
+    struct_val = asyncio.run(
         self._sequence_executor.create_value(my_struct, type_spec))
-    el_0 = _run_sync(self._sequence_executor.create_selection(struct_val, 0))
-    self.assertEqual(_run_sync(el_0.compute()), 10)
-    el_b = _run_sync(self._sequence_executor.create_selection(struct_val, 1))
-    self.assertEqual(_run_sync(el_b.compute()), 20)
+    el_0 = asyncio.run(self._sequence_executor.create_selection(struct_val, 0))
+    self.assertEqual(asyncio.run(el_0.compute()), 10)
+    el_b = asyncio.run(self._sequence_executor.create_selection(struct_val, 1))
+    self.assertEqual(asyncio.run(el_b.compute()), 20)
 
   def test_create_value_with_tf_computation(self):
     comp = computations.tf_computation(lambda x: x + 1, tf.int32)
     comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     type_spec = comp.type_signature
-    val = _run_sync(self._sequence_executor.create_value(comp_pb, type_spec))
+    val = asyncio.run(self._sequence_executor.create_value(comp_pb, type_spec))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
     self.assertIsInstance(val.internal_representation,
@@ -155,49 +153,49 @@ class SequenceExecutorTest(absltest.TestCase):
       result = await self._target_executor.create_call(fn, arg)
       return await result.compute()
 
-    self.assertEqual(_run_sync(_fn()), 11)
+    self.assertEqual(asyncio.run(_fn()), 11)
 
   def test_call_tf_comp_with_int(self):
     comp = computations.tf_computation(lambda x: x + 1, tf.int32)
     comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     comp_type = comp.type_signature
-    comp_val = _run_sync(
+    comp_val = asyncio.run(
         self._sequence_executor.create_value(comp_pb, comp_type))
     arg = 10
     arg_type = tf.int32
-    arg_val = _run_sync(self._sequence_executor.create_value(arg, arg_type))
-    result_val = _run_sync(
+    arg_val = asyncio.run(self._sequence_executor.create_value(arg, arg_type))
+    result_val = asyncio.run(
         self._sequence_executor.create_call(comp_val, arg_val))
     self.assertIsInstance(result_val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(result_val.type_signature), 'int32')
-    self.assertEqual(_run_sync(result_val.compute()), 11)
+    self.assertEqual(asyncio.run(result_val.compute()), 11)
 
   def test_call_tf_comp_with_int_tuple(self):
     comp = computations.tf_computation(lambda x, y: x + y, tf.int32, tf.int32)
     comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     comp_type = comp.type_signature
-    comp_val = _run_sync(
+    comp_val = asyncio.run(
         self._sequence_executor.create_value(comp_pb, comp_type))
     arg = collections.OrderedDict([('a', 10), ('b', 20)])
     arg_type = computation_types.StructType(
         collections.OrderedDict([('a', tf.int32), ('b', tf.int32)]))
-    arg_val = _run_sync(self._sequence_executor.create_value(arg, arg_type))
-    result_val = _run_sync(
+    arg_val = asyncio.run(self._sequence_executor.create_value(arg, arg_type))
+    result_val = asyncio.run(
         self._sequence_executor.create_call(comp_val, arg_val))
     self.assertIsInstance(result_val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(result_val.type_signature), 'int32')
-    self.assertEqual(_run_sync(result_val.compute()), 30)
+    self.assertEqual(asyncio.run(result_val.compute()), 30)
 
   def test_create_value_with_eager_tf_dataset(self):
     ds = tf.data.Dataset.range(5)
     type_spec = computation_types.SequenceType(tf.int64)
-    val = _run_sync(self._sequence_executor.create_value(ds, type_spec))
+    val = asyncio.run(self._sequence_executor.create_value(ds, type_spec))
     self.assertIsInstance(val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(val.type_signature), str(type_spec))
     self.assertIsInstance(val.internal_representation,
                           sequence_executor._Sequence)
-    self.assertIs(_run_sync(val.internal_representation.compute()), ds)
-    result = list(_run_sync(val.compute()))
+    self.assertIs(asyncio.run(val.internal_representation.compute()), ds)
+    result = list(asyncio.run(val.compute()))
     self.assertListEqual(result, list(range(5)))
 
   def test_call_tf_comp_with_eager_tf_dataset(self):
@@ -206,16 +204,16 @@ class SequenceExecutorTest(absltest.TestCase):
         computation_types.SequenceType(tf.int64))
     comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     comp_type = comp.type_signature
-    comp_val = _run_sync(
+    comp_val = asyncio.run(
         self._sequence_executor.create_value(comp_pb, comp_type))
     arg = tf.data.Dataset.range(5)
     arg_type = computation_types.SequenceType(tf.int64)
-    arg_val = _run_sync(self._sequence_executor.create_value(arg, arg_type))
-    result_val = _run_sync(
+    arg_val = asyncio.run(self._sequence_executor.create_value(arg, arg_type))
+    result_val = asyncio.run(
         self._sequence_executor.create_call(comp_val, arg_val))
     self.assertIsInstance(result_val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(result_val.type_signature), 'int64')
-    self.assertEqual(_run_sync(result_val.compute()), 10)
+    self.assertEqual(asyncio.run(result_val.compute()), 10)
 
   def test_create_value_with_sequence_reduce_intrinsic_spec(self):
     type_spec = _make_sequence_reduce_type(tf.int32, tf.int32)
@@ -231,40 +229,40 @@ class SequenceExecutorTest(absltest.TestCase):
     op = computations.tf_computation(lambda x, y: x + y, tf.int64, tf.int64)
     sequence_reduce_val = _make_sequence_reduce_value(self._sequence_executor,
                                                       tf.int64, tf.int64)
-    ds_val = _run_sync(
+    ds_val = asyncio.run(
         self._sequence_executor.create_value(
             ds, computation_types.SequenceType(tf.int64)))
-    zero_val = _run_sync(self._sequence_executor.create_value(0, tf.int64))
-    op_val = _run_sync(
+    zero_val = asyncio.run(self._sequence_executor.create_value(0, tf.int64))
+    op_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(op),
             op.type_signature))
-    arg_val = _run_sync(
+    arg_val = asyncio.run(
         self._sequence_executor.create_struct([ds_val, zero_val, op_val]))
-    result_val = _run_sync(
+    result_val = asyncio.run(
         self._sequence_executor.create_call(sequence_reduce_val, arg_val))
     self.assertEqual(str(result_val.type_signature), 'int64')
-    self.assertEqual(_run_sync(result_val.compute()), 10)
+    self.assertEqual(asyncio.run(result_val.compute()), 10)
 
   def test_sequence_reduce_list(self):
     ds = list(range(5))
     op = computations.tf_computation(lambda x, y: x + y, tf.int64, tf.int64)
     sequence_reduce_val = _make_sequence_reduce_value(self._sequence_executor,
                                                       tf.int64, tf.int64)
-    ds_val = _run_sync(
+    ds_val = asyncio.run(
         self._sequence_executor.create_value(
             ds, computation_types.SequenceType(tf.int64)))
-    zero_val = _run_sync(self._sequence_executor.create_value(0, tf.int64))
-    op_val = _run_sync(
+    zero_val = asyncio.run(self._sequence_executor.create_value(0, tf.int64))
+    op_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(op),
             op.type_signature))
-    arg_val = _run_sync(
+    arg_val = asyncio.run(
         self._sequence_executor.create_struct([ds_val, zero_val, op_val]))
-    result_val = _run_sync(
+    result_val = asyncio.run(
         self._sequence_executor.create_call(sequence_reduce_val, arg_val))
     self.assertEqual(str(result_val.type_signature), 'int64')
-    self.assertEqual(_run_sync(result_val.compute()), 10)
+    self.assertEqual(asyncio.run(result_val.compute()), 10)
 
   def test_create_value_with_sequence_map_intrinsic_spec(self):
     type_spec = _make_sequence_map_type(tf.int32, tf.int32)
@@ -279,27 +277,27 @@ class SequenceExecutorTest(absltest.TestCase):
     map_fn = computations.tf_computation(lambda x: x + 2, tf.int64)
     sequence_map_val = _make_sequence_map_value(self._sequence_executor,
                                                 tf.int64, tf.int64)
-    ds_val = _run_sync(
+    ds_val = asyncio.run(
         self._sequence_executor.create_value(
             ds, computation_types.SequenceType(tf.int64)))
-    map_fn_val = _run_sync(
+    map_fn_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(map_fn),
             map_fn.type_signature))
-    arg_val = _run_sync(
+    arg_val = asyncio.run(
         self._sequence_executor.create_struct([map_fn_val, ds_val]))
-    result_val = _run_sync(
+    result_val = asyncio.run(
         self._sequence_executor.create_call(sequence_map_val, arg_val))
     self.assertIsInstance(result_val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(result_val.type_signature), 'int64*')
     self.assertIsInstance(result_val.internal_representation,
                           sequence_executor._SequenceFromMap)
-    result = list(_run_sync(result_val.compute()))
+    result = list(asyncio.run(result_val.compute()))
     self.assertListEqual(result, [2, 3, 4])
 
   def test_cascading_sequence_map_tf_dataset(self):
     ds = tf.data.Dataset.range(3)
-    ds_val = _run_sync(
+    ds_val = asyncio.run(
         self._sequence_executor.create_value(
             ds, computation_types.SequenceType(tf.int64)))
 
@@ -312,11 +310,11 @@ class SequenceExecutorTest(absltest.TestCase):
     def map_fn_2(a, b):
       return a + b
 
-    map_fn_1_val = _run_sync(
+    map_fn_1_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(map_fn_1),
             map_fn_1.type_signature))
-    map_fn_2_val = _run_sync(
+    map_fn_2_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(map_fn_2),
             map_fn_2.type_signature))
@@ -326,81 +324,81 @@ class SequenceExecutorTest(absltest.TestCase):
     sequence_map_2_val = _make_sequence_map_value(
         self._sequence_executor, map_fn_2.type_signature.parameter,
         map_fn_2.type_signature.result)
-    arg_1_val = _run_sync(
+    arg_1_val = asyncio.run(
         self._sequence_executor.create_struct([map_fn_1_val, ds_val]))
-    result_1_val = _run_sync(
+    result_1_val = asyncio.run(
         self._sequence_executor.create_call(sequence_map_1_val, arg_1_val))
-    arg_2_val = _run_sync(
+    arg_2_val = asyncio.run(
         self._sequence_executor.create_struct([map_fn_2_val, result_1_val]))
-    result_2_val = _run_sync(
+    result_2_val = asyncio.run(
         self._sequence_executor.create_call(sequence_map_2_val, arg_2_val))
     self.assertIsInstance(result_2_val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(result_2_val.type_signature), 'int64*')
     self.assertIsInstance(result_2_val.internal_representation,
                           sequence_executor._SequenceFromMap)
-    result = list(_run_sync(result_2_val.compute()))
+    result = list(asyncio.run(result_2_val.compute()))
     self.assertListEqual(result, [5, 7, 9])
 
   def test_sequence_map_reduce_tf_dataset(self):
     ds = tf.data.Dataset.range(3)
-    ds_val = _run_sync(
+    ds_val = asyncio.run(
         self._sequence_executor.create_value(
             ds, computation_types.SequenceType(tf.int64)))
     map_fn = computations.tf_computation(lambda x: x + 2, tf.int64)
-    map_fn_val = _run_sync(
+    map_fn_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(map_fn),
             map_fn.type_signature))
     sequence_map_val = _make_sequence_map_value(self._sequence_executor,
                                                 tf.int64, tf.int64)
-    arg_1_val = _run_sync(
+    arg_1_val = asyncio.run(
         self._sequence_executor.create_struct([map_fn_val, ds_val]))
-    result_1_val = _run_sync(
+    result_1_val = asyncio.run(
         self._sequence_executor.create_call(sequence_map_val, arg_1_val))
-    zero_val = _run_sync(self._sequence_executor.create_value(0, tf.int64))
+    zero_val = asyncio.run(self._sequence_executor.create_value(0, tf.int64))
     op = computations.tf_computation(lambda x, y: x + y, tf.int64, tf.int64)
-    op_val = _run_sync(
+    op_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(op),
             op.type_signature))
     sequence_reduce_val = _make_sequence_reduce_value(self._sequence_executor,
                                                       tf.int64, tf.int64)
-    arg_2_val = _run_sync(
+    arg_2_val = asyncio.run(
         self._sequence_executor.create_struct([result_1_val, zero_val, op_val]))
-    result_2_val = _run_sync(
+    result_2_val = asyncio.run(
         self._sequence_executor.create_call(sequence_reduce_val, arg_2_val))
     self.assertIsInstance(result_2_val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(result_2_val.type_signature), 'int64')
-    self.assertEqual(_run_sync(result_2_val.compute()), 9)
+    self.assertEqual(asyncio.run(result_2_val.compute()), 9)
 
   def test_sequence_map_tf_reduce_tf_dataset(self):
     ds = tf.data.Dataset.range(3)
-    ds_val = _run_sync(
+    ds_val = asyncio.run(
         self._sequence_executor.create_value(
             ds, computation_types.SequenceType(tf.int64)))
     map_fn = computations.tf_computation(lambda x: x + 2, tf.int64)
-    map_fn_val = _run_sync(
+    map_fn_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(map_fn),
             map_fn.type_signature))
     sequence_map_val = _make_sequence_map_value(self._sequence_executor,
                                                 tf.int64, tf.int64)
-    arg_1_val = _run_sync(
+    arg_1_val = asyncio.run(
         self._sequence_executor.create_struct([map_fn_val, ds_val]))
-    result_1_val = _run_sync(
+    result_1_val = asyncio.run(
         self._sequence_executor.create_call(sequence_map_val, arg_1_val))
     comp = computations.tf_computation(
         (lambda x: x.reduce(np.int64(0), lambda x, y: x + y)),
         computation_types.SequenceType(tf.int64))
     comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     comp_type = comp.type_signature
-    comp_val = _run_sync(
+    comp_val = asyncio.run(
         self._sequence_executor.create_value(comp_pb, comp_type))
-    result_2_val = _run_sync(
+    result_2_val = asyncio.run(
         self._sequence_executor.create_call(comp_val, result_1_val))
     self.assertIsInstance(result_2_val, sequence_executor.SequenceExecutorValue)
     self.assertEqual(str(result_2_val.type_signature), 'int64')
-    self.assertEqual(_run_sync(result_2_val.compute()), 9)
+    self.assertEqual(asyncio.run(result_2_val.compute()), 9)
 
 
 if __name__ == '__main__':

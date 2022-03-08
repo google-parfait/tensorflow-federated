@@ -66,15 +66,14 @@ def _create_test_executor():
 
 
 def _invoke(ex, comp, arg=None):
-  loop = asyncio.get_event_loop()
-  v1 = loop.run_until_complete(ex.create_value(comp))
+  v1 = asyncio.run(ex.create_value(comp))
   if arg is not None:
     type_spec = v1.type_signature.parameter
-    v2 = loop.run_until_complete(ex.create_value(arg, type_spec))
+    v2 = asyncio.run(ex.create_value(arg, type_spec))
   else:
     v2 = None
-  v3 = loop.run_until_complete(ex.create_call(v1, v2))
-  return loop.run_until_complete(v3.compute())
+  v3 = asyncio.run(ex.create_call(v1, v2))
+  return asyncio.run(v3.compute())
 
 
 class FederatedComposingStrategyTest(parameterized.TestCase):
@@ -472,15 +471,14 @@ class FederatedComposingStrategyTest(parameterized.TestCase):
         intrinsic=pb.Intrinsic(uri='whimsy_intrinsic'))
     del whimsy_intrinsic
 
-    loop = asyncio.get_event_loop()
     factory = federated_composing_strategy.FederatedComposingStrategy.factory(
         _create_bottom_stack(), [_create_worker_stack()])
     executor = federating_executor.FederatingExecutor(factory,
                                                       _create_bottom_stack())
 
-    v1 = loop.run_until_complete(executor.create_value(comp))
+    v1 = asyncio.run(executor.create_value(comp))
     with self.assertRaises(NotImplementedError):
-      loop.run_until_complete(executor.create_call(v1))
+      asyncio.run(executor.create_call(v1))
 
 
 if __name__ == '__main__':
