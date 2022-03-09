@@ -13,17 +13,33 @@
 # limitations under the License.
 """The functions for creating the federated computation for hierarchical histogram aggregation."""
 import math
-import numpy as np
 
+import attr
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.hierarchical_histogram import clipping_factory
-from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory as hihi_factory
+from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
+
+
+@attr.s(eq=False, frozen=True)
+class ServerOutput():
+  """The container of results.
+
+  Attributes:
+    aggregated_hierarchical_histogram: A `tf.RaggedTensor` of the aggregated
+      hierarchical histogram this round.
+    round_timestamp: An int64 scalar timestamp of the beginning of the round.
+      The value is expressed as seconds since the Unix epoch (1970-01-01
+      00:00:00 UTC).
+  """
+  aggregated_hierarchical_histogram = attr.ib()
+  round_timestamp = attr.ib()
 
 
 def _discretized_histogram_counts(client_data: tf.data.Dataset,
@@ -154,7 +170,8 @@ def build_hierarchical_histogram_computation(
                     'clip_mechanism')
   _check_greater_than_equal_thres(max_records_per_user, 1,
                                   'max_records_per_user')
-  _check_membership(dp_mechanism, hihi_factory.DP_MECHANISMS, 'dp_mechanism')
+  _check_membership(dp_mechanism, hierarchical_histogram_factory.DP_MECHANISMS,
+                    'dp_mechanism')
   _check_greater_than_equal_thres(noise_multiplier, 0., noise_multiplier)
   _check_positive(expected_clients_per_round, 'expected_clients_per_round')
   _check_in_range(bits, 'bits', 1, 22)
@@ -166,7 +183,7 @@ def build_hierarchical_histogram_computation(
     return _discretized_histogram_counts(client_data, lower_bound, upper_bound,
                                          num_bins)
 
-  agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
+  agg_factory = hierarchical_histogram_factory.create_hierarchical_histogram_aggregation_factory(
       num_bins, arity, clip_mechanism, max_records_per_user, dp_mechanism,
       noise_multiplier, expected_clients_per_round, bits)
   process = agg_factory.create(client_work.type_signature.result)
@@ -174,9 +191,17 @@ def build_hierarchical_histogram_computation(
   @computations.federated_computation(
       computation_types.at_clients(client_work.type_signature.parameter))
   def hierarchical_histogram_computation(federated_client_data):
+    round_timestamp = intrinsics.federated_eval(
+        computations.tf_computation(lambda: tf.cast(tf.timestamp(), tf.int64)),
+        placements.SERVER)
     client_histogram = intrinsics.federated_map(client_work,
                                                 federated_client_data)
-    return process.next(process.initialize(), client_histogram).result
+
+    server_output = intrinsics.federated_zip(
+        ServerOutput(
+            process.next(process.initialize(), client_histogram).result,
+            round_timestamp))
+    return server_output
 
   return hierarchical_histogram_computation
 
@@ -247,7 +272,8 @@ def build_hierarchical_histogram_process(
                     'clip_mechanism')
   _check_greater_than_equal_thres(max_records_per_user, 1,
                                   'max_records_per_user')
-  _check_membership(dp_mechanism, hihi_factory.DP_MECHANISMS, 'dp_mechanism')
+  _check_membership(dp_mechanism, hierarchical_histogram_factory.DP_MECHANISMS,
+                    'dp_mechanism')
   _check_greater_than_equal_thres(noise_multiplier, 0., noise_multiplier)
   _check_positive(expected_clients_per_round, 'expected_clients_per_round')
   _check_in_range(bits, 'bits', 1, 22)
@@ -271,20 +297,23 @@ def build_hierarchical_histogram_process(
 
   @computations.tf_computation
   def initialize():
+    value_type, _ = result_type_signature.member
     # Creates a `tf.RaggedTensor` that has the same `type_signature` as the
     # result returned by `one_round_computation`. This is to make sure the
     # generated IterativeProcess is compatible with
     # `tff.backends.mapreduce.MapReduceForm`.
-    flat_values_shape = result_type_signature.member[0].shape
-    flat_values_dtype = result_type_signature.member[0].dtype
-    nested_row_splits = np.zeros(shape=result_type_signature.member[1][0].shape)
+    flat_values_shape = value_type[0].shape
+    flat_values_dtype = value_type[0].dtype
+    nested_row_splits = np.zeros(shape=value_type[1][0].shape)
     # To generated a valid `tf.RaggedTensor`, the first element in
     # `nested_row_splits` must be 0, and the last element in `nested_row_splits`
     # must be the length of `flat_values`.
     nested_row_splits[-1] = flat_values_shape[0]
-    return tf.RaggedTensor.from_nested_row_splits(
+    initial_hierarchical_histogram = tf.RaggedTensor.from_nested_row_splits(
         flat_values=tf.zeros(shape=flat_values_shape, dtype=flat_values_dtype),
         nested_row_splits=[nested_row_splits])
+    initial_timestamp = tf.constant(0, dtype=tf.int64)
+    return ServerOutput(initial_hierarchical_histogram, initial_timestamp)
 
   @computations.federated_computation
   def init_fn():

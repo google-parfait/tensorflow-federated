@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for hierarchical_histogram."""
-
 from typing import Tuple
+import unittest
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -143,7 +144,7 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
     init_state = hihi_process.initialize()
     hihi_process_result, _ = hihi_process.next(init_state, client_data)
 
-    return hihi_computation_result, hihi_process_result
+    return hihi_computation_result.aggregated_hierarchical_histogram, hihi_process_result.aggregated_hierarchical_histogram
 
   @parameterized.named_parameters(
       ('data_range_error', [2, 1], 1, 2, 'sub-sampling', 1, 'central-gaussian',
@@ -472,6 +473,36 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
           tf.math.reduce_sum(hihi_process_result[layer]),
           reference_layer_l1_norm,
           atol=600. * noise_multiplier)
+
+
+@parameterized.named_parameters(
+    ('round_timestamp_1', 1646787625.492365, 1646787625),
+    ('round_timestamp_2', 1.952365, 2),
+)
+def test_round_timestamp(self, mock_time, expected_time):
+  client_data = [
+      tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
+      tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
+  ]
+  data_range = [1, 5]
+  num_bins = 4
+
+  mock_timestamp = tf.constant(mock_time, dtype=tf.float64)
+  expected_timestamp = tf.constant(expected_time, dtype=tf.int64)
+  with unittest.mock.patch.object(tf, 'timestamp') as mock_func:
+    mock_func.return_value = mock_timestamp
+    hihi_computation = hihi.build_hierarchical_histogram_computation(
+        lower_bound=data_range[0], upper_bound=data_range[1], num_bins=num_bins)
+    hihi_computation_result = hihi_computation(client_data)
+
+    hihi_process = hihi.build_hierarchical_histogram_process(
+        lower_bound=data_range[0], upper_bound=data_range[1], num_bins=num_bins)
+
+    initial_state = hihi_process.initialize()
+    hihi_process_result, _ = hihi_process.next(initial_state, client_data)
+    self.assertEqual(expected_timestamp,
+                     hihi_computation_result.round_timestamp)
+    self.assertEqual(expected_timestamp, hihi_process_result.round_timestamp)
 
 
 if __name__ == '__main__':
