@@ -21,6 +21,7 @@ py_library(
         ":chunkers",
         ":hyperedge_hashers",
         ":iblt_lib",
+        ":iblt_tensor",
         ":iblt_tff",
     ],
 )
@@ -126,6 +127,29 @@ py_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "iblt_tensor",
+    srcs = ["iblt_tensor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":iblt_lib",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "iblt_tensor_test",
+    srcs = ["iblt_tensor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":iblt_lib",
+        ":iblt_tensor",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

@@ -19,4 +19,7 @@ from tensorflow_federated.python.analytics.heavy_hitters.iblt.hyperedge_hashers 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_lib import decode_iblt_tf
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_lib import IbltDecoder
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_lib import IbltEncoder
+from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_tensor import decode_iblt_tensor_tf
+from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_tensor import IbltTensorDecoder
+from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_tensor import IbltTensorEncoder
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_tff import build_iblt_computation
