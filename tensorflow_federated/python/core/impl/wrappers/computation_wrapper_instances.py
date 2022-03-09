@@ -46,7 +46,6 @@ def _tf_wrapper_fn(parameter_type, name):
   This function is passed through `computation_wrapper.ComputationWrapper`.
   Documentation its arguments can be found inside the definition of that class.
   """
-  del name  # Unused.
   if not type_analysis.is_tensorflow_compatible_type(parameter_type):
     raise TypeError('`tf_computation`s can accept only parameter types with '
                     'constituents `SequenceType`, `StructType` '
@@ -54,7 +53,7 @@ def _tf_wrapper_fn(parameter_type, name):
                     'with the type {}.'.format(parameter_type))
   ctx_stack = context_stack_impl.context_stack
   tf_serializer = tensorflow_serialization.tf_computation_serializer(
-      parameter_type, ctx_stack)
+      name, parameter_type, ctx_stack)
   arg = next(tf_serializer)
   try:
     result = yield arg

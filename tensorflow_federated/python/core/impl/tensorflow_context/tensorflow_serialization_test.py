@@ -30,7 +30,7 @@ class TensorFlowSerializationTest(test_case.TestCase):
 
   def assert_serializes(self, fn, parameter_type, expected_fn_type_str):
     serializer = tensorflow_serialization.tf_computation_serializer(
-        parameter_type, context_stack_impl.context_stack)
+        'test', parameter_type, context_stack_impl.context_stack)
     arg_to_fn = next(serializer)
     result = fn(arg_to_fn)
     comp, extra_type_spec = serializer.send(result)
