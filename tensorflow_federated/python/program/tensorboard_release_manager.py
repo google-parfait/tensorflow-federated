@@ -79,11 +79,18 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
     materialized_value = value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
+    def _normalize(value):
+      if isinstance(value, tf.data.Dataset):
+        value = list(value)
+      return value
+
     with self._summary_writer.as_default():
-      for name, value in flattened_value.items():
-        value_array = np.array(value)
+      for name, value in flattened_value:
+        value = _normalize(value)
+
         # Summary data can only contain booleans, integers, unsigned integers,
         # and floats, releasing any other values will be silently ignored.
+        value_array = np.array(value)
         if value_array.dtype.kind in ('b', 'i', 'u', 'f'):
           if value_array.shape:
             tf.summary.histogram(name, value, step=key)

@@ -62,6 +62,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":file_program_state_manager",
+        ":file_utils",
         ":program_state_manager",
         ":test_utils",
         "@absl_py//absl/testing:absltest",
@@ -91,6 +92,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":file_release_manager",
+        ":file_utils",
         ":test_utils",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
@@ -286,6 +288,7 @@ py_library(
     deps = [
         ":value_reference",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -293,7 +296,10 @@ py_library(
     name = "value_reference",
     srcs = ["value_reference.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
+    deps = [
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:typed_object",
+    ],
 )
 
 py_test(

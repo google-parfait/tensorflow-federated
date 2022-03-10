@@ -67,7 +67,8 @@ class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
       tensorboard_release_manager.TensorBoardReleaseManager(summary_dir='')
 
 
-class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase):
+class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
+                                           tf.test.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -96,16 +97,17 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase):
       ('numpy_nested',
        {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
        [('a/0', True), ('a/1', 1)]),
-      ('server_array_reference',
-       test_utils.TestServerArrayReference(1),
+      ('materializable_value_reference_tensor',
+       test_utils.TestMaterializableValueReference(1),
        [('', 1)]),
-      ('server_array_reference_nested',
-       {'a': [test_utils.TestServerArrayReference(True),
-              test_utils.TestServerArrayReference(1)],
-        'b': [test_utils.TestServerArrayReference('a')]},
+      ('materializable_value_reference_nested',
+       {'a': [test_utils.TestMaterializableValueReference(True),
+              test_utils.TestMaterializableValueReference(1)],
+        'b': [test_utils.TestMaterializableValueReference('a')]
+        },
        [('a/0', True), ('a/1', 1)]),
-      ('materialized_values_and_value_references',
-       [1, test_utils.TestServerArrayReference(2)],
+      ('materializable_value_reference_and_materialized_value',
+       [1, test_utils.TestMaterializableValueReference(2)],
        [('0', 1), ('1', 2)]),
   )
   # pyformat: enable
@@ -117,16 +119,23 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase):
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
       release_mngr.release(value, 1)
 
-      calls = []
-      for name, value in expected_names_and_values:
-        call = mock.call(name, value, step=1)
-        calls.append(call)
-      mock_scalar.assert_has_calls(calls)
+      iterator = zip(mock_scalar.mock_calls, expected_names_and_values)
+      for call, (expected_name, expected_value) in iterator:
+        _, args, _ = call
+        actual_name, actual_value = args
+        self.assertEqual(actual_name, expected_name)
+        self.assertEqual(actual_value, expected_value)
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('tensor_2d', tf.ones((2, 3)), [('', tf.ones((2, 3)))]),
       ('numpy_2d', np.ones((2, 3)), [('', np.ones((2, 3)))]),
+      ('materializable_value_reference_sequence',
+       test_utils.TestMaterializableValueReference(
+           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       [('', [1, 2, 3])]),
   )
+  # pyformat: enable
   def test_writes_value_histogram(self, value, expected_names_and_values):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
@@ -135,10 +144,14 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase):
     with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
       release_mngr.release(value, 1)
 
-      calls = []
-      for name, value in expected_names_and_values:
-        mock.call(name, value, step=1)
-      mock_histogram.assert_has_calls(calls)
+      self.assertEqual(
+          len(mock_histogram.mock_calls), len(expected_names_and_values))
+      iterator = zip(mock_histogram.mock_calls, expected_names_and_values)
+      for call, (expected_name, expected_value) in iterator:
+        _, args, _ = call
+        actual_name, actual_value = args
+        self.assertEqual(actual_name, expected_name)
+        self.assertAllEqual(actual_value, expected_value)
 
   def test_writes_value_scalar_and_histogram(self):
     temp_dir = self.create_tempdir()
