@@ -80,7 +80,7 @@ main() {
   # Build pip package
   pip install --upgrade setuptools wheel
   python "tensorflow_federated/tools/python_package/setup.py" bdist_wheel \
-      --universal \
+      --universal
   cp "${temp_dir}/dist/"* "${output_dir}"
 
   # Cleanup
