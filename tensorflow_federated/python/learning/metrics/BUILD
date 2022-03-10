@@ -22,6 +22,7 @@ py_library(
 py_library(
     name = "aggregator",
     srcs = ["aggregator.py"],
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -40,6 +41,8 @@ py_library(
 py_test(
     name = "aggregator_test",
     srcs = ["aggregator_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":aggregator",
         ":finalizer",
@@ -55,12 +58,15 @@ py_test(
 py_library(
     name = "counters",
     srcs = ["counters.py"],
+    srcs_version = "PY3",
     deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
     name = "counters_test",
     srcs = ["counters_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":counters",
         "@absl_py//absl/testing:parameterized",

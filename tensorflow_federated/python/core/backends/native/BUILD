@@ -64,6 +64,7 @@ py_test(
 py_library(
     name = "cpp_execution_contexts",
     srcs = ["cpp_execution_contexts.py"],
+    srcs_version = "PY3",
     deps = [
         ":compiler",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
@@ -77,6 +78,7 @@ py_library(
 py_library(
     name = "cpp_execution_contexts_test",
     srcs = ["cpp_execution_contexts_test.py"],
+    srcs_version = "PY3",
     deps = [
         ":cpp_execution_contexts",
         "//tensorflow_federated/python/core/api:computations",

@@ -72,6 +72,7 @@ py_test(
 py_library(
     name = "file_release_manager",
     srcs = ["file_release_manager.py"],
+    srcs_version = "PY3",
     deps = [
         ":file_utils",
         ":release_manager",
@@ -85,6 +86,8 @@ py_library(
 py_test(
     name = "file_release_manager_test",
     srcs = ["file_release_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":file_release_manager",
         ":test_utils",
@@ -97,6 +100,7 @@ py_test(
 py_library(
     name = "file_utils",
     srcs = ["file_utils.py"],
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -106,6 +110,8 @@ py_library(
 py_test(
     name = "file_utils_test",
     srcs = ["file_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":file_utils",
         "@absl_py//absl/testing:absltest",
@@ -142,6 +148,7 @@ py_test(
 py_library(
     name = "memory_release_manager",
     srcs = ["memory_release_manager.py"],
+    srcs_version = "PY3",
     deps = [
         ":release_manager",
         ":value_reference",
@@ -151,6 +158,8 @@ py_library(
 py_test(
     name = "memory_release_manager_test",
     srcs = ["memory_release_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":memory_release_manager",
         ":test_utils",
@@ -186,11 +195,14 @@ py_library(
 py_library(
     name = "structure_utils",
     srcs = ["structure_utils.py"],
+    srcs_version = "PY3",
 )
 
 py_test(
     name = "structure_utils_test",
     srcs = ["structure_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":structure_utils",
         ":test_utils",
@@ -231,6 +243,7 @@ py_library(
     name = "test_utils",
     testonly = True,
     srcs = ["test_utils.py"],
+    srcs_version = "PY3",
     deps = [
         ":value_reference",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -240,12 +253,15 @@ py_library(
 py_library(
     name = "value_reference",
     srcs = ["value_reference.py"],
+    srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
 )
 
 py_test(
     name = "value_reference_test",
     srcs = ["value_reference_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         ":test_utils",
         ":value_reference",
