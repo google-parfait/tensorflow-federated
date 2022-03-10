@@ -49,12 +49,10 @@ tutorials and try it out yourself!
 """
 # TODO(b/124800187): Keep in sync with the contents of README.
 
-import datetime
-import sys
 import setuptools
 
 DOCLINES = __doc__.split('\n')
-
+PROJECT_NAME = 'tensorflow_federated'
 REQUIRED_PACKAGES = [
     'absl-py~=1.0.0',
     'attrs~=21.2.0',
@@ -88,20 +86,6 @@ def get_package_name(requirement: str) -> str:
   name, _ = requirement.split(separator, maxsplit=1)
   return name
 
-
-if '--nightly' in sys.argv:
-  sys.argv.remove('--nightly')
-  PROJECT_NAME = 'tensorflow_federated_nightly'
-  date = datetime.date.today().strftime('%Y%m%d')
-  VERSION = '{}.dev{}'.format(VERSION, date)
-  for index, required_package in enumerate(REQUIRED_PACKAGES):
-    package_name = get_package_name(required_package)
-    if package_name == 'grpcio':
-      REQUIRED_PACKAGES[index] = 'grpcio~=1.37.0'
-    elif package_name == 'tensorflow':
-      REQUIRED_PACKAGES[index] = 'tf-nightly'
-else:
-  PROJECT_NAME = 'tensorflow_federated'
 
 setuptools.setup(
     name=PROJECT_NAME,

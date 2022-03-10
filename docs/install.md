@@ -38,12 +38,6 @@ Note: To exit the virtual environment, run `deactivate`.
 <code class="devsite-terminal tfo-terminal-venv">pip install --upgrade tensorflow-federated</code>
 </pre>
 
-### 3 (alternative). Install the nightly TensorFlow Federated Python package.
-
-<pre class="prettyprint lang-bsh">
-<code class="devsite-terminal tfo-terminal-venv">pip install --upgrade tensorflow-federated-nightly</code>
-</pre>
-
 ### 4. Test Tensorflow Federated.
 
 <pre class="prettyprint lang-bsh">
@@ -62,10 +56,6 @@ want to:
     released.
 *   Use changes that have been submitted to TensorFlow Federated but have not
     been released.
-
-Note: an easier approach to use the new feature not in the released package
-might be pip installing the
-[nightly package](#3-alternative-install-the-nightly-tensorflow-federated-python-package)
 
 ### 1. Install the Python development environment.
 
@@ -91,7 +81,6 @@ build tool used to compile Tensorflow Federated.
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">mkdir "/tmp/tensorflow_federated"</code>
 <code class="devsite-terminal">bazel run //tensorflow_federated/tools/python_package:build_python_package -- \
-    --nightly \
     --output_dir="/tmp/tensorflow_federated"</code>
 </pre>
 

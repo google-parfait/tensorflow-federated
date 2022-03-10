@@ -23,13 +23,10 @@ source "${script_dir}/common.sh"
 usage() {
   local script_name=$(basename "${0}")
   local options=(
-      "--latest|--nightly"
       "--python=python3"
       "--output_dir=<path>"
   )
   echo "usage: ${script_name} ${options[@]}"
-  echo "  --latest|--nightly   Flags indicating whether to build the latest or"
-  echo "                       nightly version of the TFF Python package."
   echo "  --python=python3     The Python version used by the environment to"
   echo "                       build the Python package."
   echo "  --output_dir=<path>  An output directory."
@@ -38,22 +35,12 @@ usage() {
 
 main() {
   # Parse arguments
-  local latest=0
-  local nightly=0
   local python="python3"
   local output_dir=""
 
   while [[ "$#" -gt 0 ]]; do
     option="$1"
     case "${option}" in
-      --latest)
-        latest=1
-        shift
-        ;;
-      --nightly)
-        nightly=1
-        shift
-        ;;
       --python=*)
         python="${option#*=}"
         shift
@@ -68,14 +55,6 @@ main() {
         ;;
     esac
   done
-
-  if [[ "${latest}" == "1" ]] && [[ "${nightly}" == "1" ]]; then
-    error_exclusive "--latest" "--nightly"
-    usage
-  elif [[ "${latest}" == "0" ]] && [[ "${nightly}" == "0" ]]; then
-    error_required "--latest" "--nightly"
-    usage
-  fi
 
   if [[ -z "${output_dir}" ]]; then
     error_required "--output_dir"
@@ -100,15 +79,8 @@ main() {
 
   # Build pip package
   pip install --upgrade setuptools wheel
-  flags=()
-  if [[ "${latest}" == "1" ]]; then
-    :  # pass
-  elif [[ "${nightly}" == "1" ]]; then
-    flags+=("--nightly")
-  fi
   python "tensorflow_federated/tools/python_package/setup.py" bdist_wheel \
       --universal \
-      "${flags[@]}"
   cp "${temp_dir}/dist/"* "${output_dir}"
 
   # Cleanup
