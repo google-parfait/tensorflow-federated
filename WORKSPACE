@@ -56,6 +56,12 @@ git_repository(
 )
 
 git_repository(
+    name = "tensorflow_compression",
+    remote = "https://github.com/tensorflow/compression.git",
+    tag = "v2.8.0",
+)
+
+git_repository(
     name = "pybind11_abseil",
     commit = "d9614e4ea46b411d02674305245cba75cd91c1c6",
     remote = "https://github.com/pybind/pybind11_abseil.git",
