@@ -170,8 +170,9 @@ In addition, the abstract interface `tff.learning.Model` exposes a property
 The `metric_finalizers` and `report_local_unfinalized_metrics()` method will be
 used together to build a cross-client metrics aggregator when defining the
 federated training processes or evaluation computations. For example, a simple
-"sum_then_finalize" aggregator will first sum the unfinalized metric values from
-clients, and then call the finalizer functions at the server.
+`tff.learning.metrics.sum_then_finalize` aggregator will first sum the
+unfinalized metric values from clients, and then call the finalizer functions at
+the server.
 
 You can find examples of how to define your own custom `tff.learning.Model` in
 the second part of our
