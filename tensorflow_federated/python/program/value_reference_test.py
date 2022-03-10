@@ -16,6 +16,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.program import test_utils
 from tensorflow_federated.python.program import value_reference
@@ -78,6 +79,38 @@ class MaterializeValueTest(parameterized.TestCase, tf.test.TestCase):
       self.assertAllEqual(actual_value, expected_value)
     else:
       self.assertEqual(actual_value, expected_value)
+
+  def test_returns_value_datasets(self):
+    value = tf.data.Dataset.from_tensor_slices([1, 2, 3])
+
+    actual_value = value_reference.materialize_value(value)
+
+    expected_value = tf.data.Dataset.from_tensor_slices([1, 2, 3])
+    self.assertEqual(type(actual_value), type(expected_value))
+    self.assertEqual(list(actual_value), list(expected_value))
+
+  def test_returns_value_datasets_nested(self):
+    value = {
+        'a': [
+            tf.data.Dataset.from_tensor_slices([True, False]),
+            tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+        ],
+        'b': [tf.data.Dataset.from_tensor_slices(['a', 'b', 'c'])],
+    }
+
+    actual_value = value_reference.materialize_value(value)
+
+    expected_value = {
+        'a': [
+            tf.data.Dataset.from_tensor_slices([True, False]),
+            tf.data.Dataset.from_tensor_slices([1, 2, 3]),
+        ],
+        'b': [tf.data.Dataset.from_tensor_slices(['a', 'b', 'c'])],
+    }
+    self.assertEqual(type(actual_value), type(expected_value))
+    actual_value = tree.map_structure(list, actual_value)
+    expected_value = tree.map_structure(list, expected_value)
+    self.assertEqual(actual_value, expected_value)
 
 
 if __name__ == '__main__':
