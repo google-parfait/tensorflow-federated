@@ -101,7 +101,8 @@ def _check_keras_metric_config_constructable(metric: tf.keras.metrics.Metric):
   metric_type_str = type(metric).__name__
 
   if not hasattr(tf.keras.metrics, metric_type_str):
-    init_args = inspect.getfullargspec(metric.__init__).args
+    _, init_fn = tf.__internal__.decorator.unwrap(metric.__init__)
+    init_args = inspect.getfullargspec(init_fn).args
     init_args.remove('self')
     get_config_args = metric.get_config().keys()
     extra_args = [arg for arg in init_args if arg not in get_config_args]
