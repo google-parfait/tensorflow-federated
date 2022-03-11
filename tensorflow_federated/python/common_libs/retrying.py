@@ -27,8 +27,7 @@ def retry(fn=None,
                                               bool] = lambda x: True,
           retry_on_result_filter: Callable[[Any], bool] = lambda x: False,
           wait_max_ms: Union[float, int] = 30000,
-          wait_multiplier: Union[float, int] = 2,
-          wait_timeout_ms: Union[float, int] = 33 * 1000):
+          wait_multiplier: Union[float, int] = 2):
   """Pure Python decorator that retries functions or coroutine functions.
 
   `retry` starts at some delay between function invocations, and backs
@@ -49,8 +48,6 @@ def retry(fn=None,
       `fn`, in milliseconds. Must be positive.
     wait_multiplier: Number determining the exponential backoff multiplier to
       use. Must be positive.
-    wait_timeout_ms: The total accumulative wait time in milliseconds before
-      timeout. Must be positive.
 
   Returns:
     In the case that `fn` is provided, a decorated version of `fn` respecting
@@ -76,10 +73,6 @@ def retry(fn=None,
     raise ValueError(
         'wait_multiplier required to be positive; encountered value {}.'.format(
             wait_multiplier))
-  if wait_timeout_ms <= 0:
-    raise ValueError(
-        'wait_timeout required to be positive; encountered value {}.'.format(
-            wait_timeout_ms))
 
   if fn is None:
     # Called with arguments; delay decoration until `fn` is passed in.
@@ -88,8 +81,7 @@ def retry(fn=None,
         retry_on_exception_filter=retry_on_exception_filter,
         retry_on_result_filter=retry_on_result_filter,
         wait_max_ms=wait_max_ms,
-        wait_multiplier=wait_multiplier,
-        wait_timeout_ms=wait_timeout_ms)
+        wait_multiplier=wait_multiplier)
 
   if inspect.iscoroutinefunction(fn):
     # Similar to the logic in tracing.py, we case on corofunction versus vanilla
@@ -99,18 +91,12 @@ def retry(fn=None,
     async def retry_coro_fn(*args, **kwargs):
 
       retry_wait_ms = 1.
-      total_wait_time_ms = 0.
 
       while True:
         try:
           result = await fn(*args, **kwargs)
           if retry_on_result_filter(result):
             retry_wait_ms = min(wait_max_ms, retry_wait_ms * wait_multiplier)
-            total_wait_time_ms += retry_wait_ms
-            if total_wait_time_ms > wait_timeout_ms:
-              raise StopIteration('Timed-out coroutine function {}; Exceeded '
-                                  'max cumulative wait time {}.'.format(
-                                      fn, wait_timeout_ms))
             # time.sleep takes arguments in seconds.
             await asyncio.sleep(retry_wait_ms / 1000)
             continue
@@ -120,11 +106,6 @@ def retry(fn=None,
           if not retry_on_exception_filter(e):
             raise e
           retry_wait_ms = min(wait_max_ms, retry_wait_ms * wait_multiplier)
-          total_wait_time_ms += retry_wait_ms
-          if total_wait_time_ms > wait_timeout_ms:
-            raise StopAsyncIteration('Timed-out coroutine function {}; Exceeded'
-                                     ' max cumulative wait time {}.'.format(
-                                         fn, wait_timeout_ms)) from e
           # asyncio.sleep takes arguments in seconds.
           await asyncio.sleep(retry_wait_ms / 1000)
 
@@ -137,18 +118,12 @@ def retry(fn=None,
     def retry_fn(*args, **kwargs):
 
       retry_wait_ms = 1.
-      total_wait_time_ms = 0.
 
       while True:
         try:
           result = fn(*args, **kwargs)
           if retry_on_result_filter(result):
             retry_wait_ms = min(wait_max_ms, retry_wait_ms * wait_multiplier)
-            total_wait_time_ms += retry_wait_ms
-            if total_wait_time_ms > wait_timeout_ms:
-              raise StopIteration('Timed-out coroutine function {}; Exceeded '
-                                  'max cumulative wait time {}.'.format(
-                                      fn, wait_timeout_ms))
             # time.sleep takes arguments in seconds.
             time.sleep(retry_wait_ms / 1000)
             continue
@@ -158,11 +133,6 @@ def retry(fn=None,
           if not retry_on_exception_filter(e):
             raise e
           retry_wait_ms = min(wait_max_ms, retry_wait_ms * wait_multiplier)
-          total_wait_time_ms += retry_wait_ms
-          if total_wait_time_ms > wait_timeout_ms:
-            raise StopIteration('Timed-out coroutine function {}; Exceeded '
-                                'max cumulative wait time {}.'.format(
-                                    fn, wait_timeout_ms)) from e
           # time.sleep takes arguments in seconds.
           time.sleep(retry_wait_ms / 1000)
 
