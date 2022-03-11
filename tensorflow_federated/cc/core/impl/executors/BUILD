@@ -633,6 +633,7 @@ py_binary(
     testonly = True,
     srcs = ["make_structural_reduce_test_graph.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         "@absl_py//absl:app",
         "@absl_py//absl/flags",
@@ -747,6 +748,7 @@ py_binary(
     testonly = True,
     srcs = ["make_reduce_lambda_test_graph.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
     deps = [
         "@absl_py//absl:app",
         "@absl_py//absl/flags",

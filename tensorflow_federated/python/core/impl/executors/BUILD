@@ -994,6 +994,7 @@ py_library(
 py_test(
     name = "remote_executor_grpc_stub_test",
     srcs = ["remote_executor_grpc_stub_test.py"],
+    python_version = "PY3",
     srcs_version = "PY3",
     deps = [
         ":executor_serialization",
