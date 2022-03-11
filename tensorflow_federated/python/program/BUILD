@@ -26,6 +26,7 @@ py_library(
         ":file_release_manager",
         ":logging_release_manager",
         ":memory_release_manager",
+        ":native_platform",
         ":program_state_manager",
         ":release_manager",
         ":tensorboard_release_manager",
@@ -163,6 +164,44 @@ py_test(
     deps = [
         ":memory_release_manager",
         ":test_utils",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "native_platform",
+    srcs = ["native_platform.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":data_source",
+        ":value_reference",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "native_platform_test",
+    srcs = ["native_platform_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":native_platform",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
