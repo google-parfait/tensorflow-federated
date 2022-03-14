@@ -36,6 +36,8 @@ def _is_retryable_absl_status(exception):
           exception.status.code() in [absl_status.StatusCode.UNAVAILABLE])
 
 
+# TODO(b/223898183): Inherit directly from Context when remote workers support
+# hosting several executors concurrently.
 class AsyncSerializeAndExecuteCPPContext(
     async_execution_context.SingleCardinalityAsyncContext):
   """An async execution context delegating to CPP Executor bindings."""

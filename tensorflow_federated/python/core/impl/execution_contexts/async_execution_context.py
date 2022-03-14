@@ -156,6 +156,9 @@ def _unwrap_execution_context_value(val):
     return val
 
 
+# TODO(b/223898183): If we implement support for multiple concurrent executors
+# in Python as well as C++, this locking context will have no use and can be
+# deleted.
 class SingleCardinalityAsyncContext(context_base.Context):
   """Implements shared logic to ensure instance-consistent cardinalities.
 
