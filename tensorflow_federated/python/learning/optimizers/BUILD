@@ -81,6 +81,7 @@ py_library(
         ":adam",
         ":optimizer",
         ":rmsprop",
+        ":scheduling",
         ":sgdm",
         ":yogi",
     ],
@@ -123,6 +124,7 @@ py_test(
         ":adagrad",
         ":adam",
         ":rmsprop",
+        ":scheduling",
         ":sgdm",
         ":yogi",
         "//tensorflow_federated/python/core/api:computations",
@@ -200,6 +202,35 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":rmsprop",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "scheduling",
+    srcs = ["scheduling.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":optimizer",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "scheduling_test",
+    srcs = ["scheduling_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":adagrad",
+        ":adam",
+        ":optimizer",
+        ":rmsprop",
+        ":scheduling",
+        ":sgdm",
+        ":yogi",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

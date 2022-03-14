@@ -19,7 +19,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning.optimizers import optimizer
 
-_LEARNING_RATE_KEY = 'learning_rate'
 _DECAY_KEY = 'decay'
 _PRECONDITIONER_KEY = 'preconditioner'
 _EPSILON_KEY = 'epsilon'
@@ -44,7 +43,7 @@ class _RmsProp(optimizer.Optimizer):
     initial_preconditioner = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype), specs)
     state = collections.OrderedDict([
-        (_LEARNING_RATE_KEY, self._lr),
+        (optimizer.LEARNING_RATE_KEY, self._lr),
         (_DECAY_KEY, self._decay),
         (_EPSILON_KEY, self._epsilon),
         (_PRECONDITIONER_KEY, initial_preconditioner),
@@ -54,7 +53,7 @@ class _RmsProp(optimizer.Optimizer):
   def next(self, state, weights, gradients):
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
-    lr = state[_LEARNING_RATE_KEY]
+    lr = state[optimizer.LEARNING_RATE_KEY]
     decay = state[_DECAY_KEY]
     epsilon = state[_EPSILON_KEY]
     preconditioner = state[_PRECONDITIONER_KEY]
@@ -69,7 +68,7 @@ class _RmsProp(optimizer.Optimizer):
         gradients, updated_preconditioner)
 
     updated_state = collections.OrderedDict([
-        (_LEARNING_RATE_KEY, lr),
+        (optimizer.LEARNING_RATE_KEY, lr),
         (_DECAY_KEY, decay),
         (_EPSILON_KEY, epsilon),
         (_PRECONDITIONER_KEY, updated_preconditioner),

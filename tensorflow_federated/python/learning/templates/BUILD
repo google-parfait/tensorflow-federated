@@ -191,6 +191,7 @@ py_test(
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",

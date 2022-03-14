@@ -37,6 +37,7 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
+from tensorflow_federated.python.learning.optimizers import optimizer
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 
@@ -533,7 +534,8 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
       # TFF SGD stores learning rate in state.
       self.assertAllClose(
           state.optimizer_state,
-          collections.OrderedDict([(sgdm._LEARNING_RATE_KEY, learning_rate)]))
+          collections.OrderedDict([(optimizer.LEARNING_RATE_KEY, learning_rate)
+                                  ]))
     self.assertAllClose(list(state.model.trainable), [np.zeros((2, 1)), 0.0])
     self.assertAllClose(list(state.model.non_trainable), [0.0])
     self.assertEqual(state.delta_aggregate_state, 0)
@@ -633,7 +635,8 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
       # TFF SGD stores learning rate in state.
       self.assertAllClose(
           state.optimizer_state,
-          collections.OrderedDict([(sgdm._LEARNING_RATE_KEY, learning_rate)]))
+          collections.OrderedDict([(optimizer.LEARNING_RATE_KEY, learning_rate)
+                                  ]))
     self.assertAllClose(list(state.model.trainable), [np.zeros((2, 1)), 0.0])
     self.assertAllClose(list(state.model.non_trainable), [0.0])
     self.assertEqual(state.delta_aggregate_state, 0)

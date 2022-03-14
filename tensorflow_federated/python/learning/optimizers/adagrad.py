@@ -19,7 +19,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning.optimizers import optimizer
 
-_LEARNING_RATE_KEY = 'learning_rate'
 _PRECONDITIONER_KEY = 'preconditioner'
 _EPSILON_KEY = 'epsilon'
 
@@ -44,7 +43,7 @@ class _Adagrad(optimizer.Optimizer):
     initial_preconditioner = tf.nest.map_structure(
         lambda s: tf.ones(s.shape, s.dtype) * self._initial_precond, specs)
     state = collections.OrderedDict([
-        (_LEARNING_RATE_KEY, self._lr),
+        (optimizer.LEARNING_RATE_KEY, self._lr),
         (_EPSILON_KEY, self._epsilon),
         (_PRECONDITIONER_KEY, initial_preconditioner),
     ])
@@ -53,7 +52,7 @@ class _Adagrad(optimizer.Optimizer):
   def next(self, state, weights, gradients):
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
-    lr = state[_LEARNING_RATE_KEY]
+    lr = state[optimizer.LEARNING_RATE_KEY]
     epsilon = state[_EPSILON_KEY]
     preconditioner = state[_PRECONDITIONER_KEY]
     optimizer.check_weights_state_match(weights, preconditioner,
@@ -66,7 +65,7 @@ class _Adagrad(optimizer.Optimizer):
         gradients, updated_preconditioner)
 
     updated_state = collections.OrderedDict([
-        (_LEARNING_RATE_KEY, lr),
+        (optimizer.LEARNING_RATE_KEY, lr),
         (_EPSILON_KEY, epsilon),
         (_PRECONDITIONER_KEY, updated_preconditioner),
     ])

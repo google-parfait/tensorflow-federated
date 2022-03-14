@@ -33,7 +33,7 @@ class AdamTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     optimizer = adam.build_adam(0.01)
     state = optimizer.initialize(_SCALAR_SPEC)
     self.assertLen(state, 7)
-    self.assertIn(adam._LEARNING_RATE_KEY, state)
+    self.assertIn(optimizer_base.LEARNING_RATE_KEY, state)
     self.assertIn(adam._BETA_1_KEY, state)
     self.assertIn(adam._BETA_2_KEY, state)
     self.assertIn(adam._EPSILON_KEY, state)

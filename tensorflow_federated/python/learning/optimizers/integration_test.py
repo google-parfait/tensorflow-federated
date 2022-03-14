@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.optimizers import adagrad
 from tensorflow_federated.python.learning.optimizers import adam
 from tensorflow_federated.python.learning.optimizers import rmsprop
+from tensorflow_federated.python.learning.optimizers import scheduling
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.optimizers import yogi
 
@@ -34,6 +35,18 @@ _NESTED_SPEC = [
     tf.TensorSpec([10], tf.float32),
     [tf.TensorSpec([20], tf.float32), [tf.TensorSpec([30], tf.float32)]]
 ]
+
+
+@tf.function
+def _example_schedule_fn(round_num):
+  if round_num < 2:
+    return 0.1
+  return 0.01
+
+
+def _scheduled_sgd():
+  return scheduling.schedule_learning_rate(
+      sgdm.build_sgdm(0.1), _example_schedule_fn)
 
 
 def _run_in_eager_mode(optimizer, spec):
@@ -110,6 +123,9 @@ class IntegrationTest(test_case.TestCase, parameterized.TestCase):
       ('rmsprop_scalar', rmsprop.build_rmsprop(0.1), _SCALAR_SPEC),
       ('rmsprop_struct', rmsprop.build_rmsprop(0.1), _STRUCT_SPEC),
       ('rmsprop_nested', rmsprop.build_rmsprop(0.1), _NESTED_SPEC),
+      ('scheduled_sgd_scalar', _scheduled_sgd(), _SCALAR_SPEC),
+      ('scheduled_sgd_struct', _scheduled_sgd(), _STRUCT_SPEC),
+      ('scheduled_sgd_nested', _scheduled_sgd(), _NESTED_SPEC),
       ('sgd_scalar', sgdm.build_sgdm(0.1), _SCALAR_SPEC),
       ('sgd_struct', sgdm.build_sgdm(0.1), _STRUCT_SPEC),
       ('sgd_nested', sgdm.build_sgdm(0.1), _NESTED_SPEC),

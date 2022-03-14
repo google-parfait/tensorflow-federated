@@ -33,7 +33,7 @@ class RmsPropTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     optimizer = rmsprop.build_rmsprop(0.01)
     state = optimizer.initialize(_SCALAR_SPEC)
     self.assertLen(state, 4)
-    self.assertIn(rmsprop._LEARNING_RATE_KEY, state)
+    self.assertIn(optimizer_base.LEARNING_RATE_KEY, state)
     self.assertIn(rmsprop._DECAY_KEY, state)
     self.assertIn(rmsprop._EPSILON_KEY, state)
     self.assertIn(rmsprop._PRECONDITIONER_KEY, state)

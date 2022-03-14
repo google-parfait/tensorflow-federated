@@ -17,6 +17,9 @@ import abc
 import tensorflow as tf
 
 
+LEARNING_RATE_KEY = 'learning_rate'
+
+
 class Optimizer(abc.ABC):
   """Represents an optimizer for use in TensorFlow Federated.
 
@@ -33,6 +36,9 @@ class Optimizer(abc.ABC):
   as tensors in a state. For instance, a momentum term for momentum SGD is
   created in the `initialize` method as all-zeros tensor, which is then both
   an input and an output of the `next` method.
+
+  As a best practice, any implementation using learning rate, should store it in
+  its state under the key `tff.learning.optimizers.LEARNING_RATE_KEY`.
   """
 
   @abc.abstractmethod

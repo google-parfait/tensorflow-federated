@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import finalizers
 
@@ -318,7 +319,8 @@ class ApplyOptimizerFinalizerComputationTest(test_case.TestCase,
     expected_result_type = computation_types.at_server(mw_type)
     expected_state_type = computation_types.at_server(
         computation_types.to_type(
-            collections.OrderedDict([(sgdm._LEARNING_RATE_KEY, tf.float32)])))
+            collections.OrderedDict([(optimizer_base.LEARNING_RATE_KEY,
+                                      tf.float32)])))
     expected_measurements_type = computation_types.at_server(())
 
     expected_initialize_type = computation_types.FunctionType(
@@ -371,7 +373,7 @@ class ApplyOptimizerFinalizerExecutionTest(test_case.TestCase):
       output = finalizer.next(optimizer_state, weights, update)
       optimizer_state = output.state
       weights = output.result
-      self.assertEqual(1.0, optimizer_state[sgdm._LEARNING_RATE_KEY])
+      self.assertEqual(1.0, optimizer_state[optimizer_base.LEARNING_RATE_KEY])
       self.assertAllClose(1.0 - 0.1 * (i + 1), weights.trainable)
       self.assertEqual((), output.measurements)
 

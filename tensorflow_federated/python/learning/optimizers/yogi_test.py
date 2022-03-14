@@ -33,7 +33,7 @@ class YogiTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     optimizer = yogi.build_yogi(0.01)
     state = optimizer.initialize(_SCALAR_SPEC)
     self.assertLen(state, 7)
-    self.assertIn(yogi._LEARNING_RATE_KEY, state)
+    self.assertIn(optimizer_base.LEARNING_RATE_KEY, state)
     self.assertIn(yogi._BETA_1_KEY, state)
     self.assertIn(yogi._BETA_2_KEY, state)
     self.assertIn(yogi._EPSILON_KEY, state)
