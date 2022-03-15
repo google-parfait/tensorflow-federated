@@ -299,10 +299,6 @@ def capture_result_from_graph(
                 struct=pb.TensorFlow.StructBinding(
                     element=[e[1] for e in element_type_binding_pairs])))
   elif isinstance(result, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
-    # This variant tensor needs an identity added to ensure that parameter and
-    # result bindings in our graphdefs are distinct. A similar operation is
-    # performed in generation of tf.function.
-    variant_tensor = tf.identity(tf.data.experimental.to_variant(result))
     element_structure = result.element_spec
     try:
       element_type = computation_types.to_type(element_structure)
@@ -311,6 +307,16 @@ def capture_result_from_graph(
           'Dataset has `element_spec` which is not a valid TFF type.\n'
           f'Found `element_spec`: {element_structure}\n'
           f'which is not a valid TFF type: {str(e)}') from None
+
+    # This variant tensor needs an identity added to ensure that parameter and
+    # result bindings in our graphdefs are distinct. A similar operation is
+    # performed in generation of tf.function.
+    # We additionally pin this return dataset to CPU to prevent placer from
+    # attempting to copy the identity operation with dataset input (CPU only) to
+    # GPU.
+    with graph.as_default():
+      with tf.device('/device:cpu:0'):
+        variant_tensor = tf.identity(tf.data.experimental.to_variant(result))
     return (computation_types.SequenceType(element_type),
             pb.TensorFlow.Binding(
                 sequence=pb.TensorFlow.SequenceBinding(
