@@ -22,11 +22,11 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
 
-
 from tensorflow_federated.python.aggregators import concat
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import discretization
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import modular_clipping
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import rotation
@@ -332,8 +332,38 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
                           min(math.sqrt(self._padded_dim), scaled_inflated_l2))
 
     # Build nested aggregtion factory.
-    # 1. Secure Modular Aggregation.
-    nested_factory = secure.SecureModularSumFactory(2**(self._bits - 1), True)
+    # 1. Secure Aggregation. In particular, we have 4 modular clips from
+    #    nesting two modular clip aggregators:
+    #    #1. outer-client: clips to [-2^(b-1), 2^(b-1)]
+    #        Bounds the client values (with limited effect as scaling was
+    #        chosen such that `num_clients` is taken into account).
+    #    #2. inner-client: clips to [0, 2^b]
+    #        Similar to applying a two's complement to the values such that
+    #        frequent values (post-rotation) are now near 0 (representing small
+    #        positives) and 2^b (small negatives). 0 also always map to 0, and
+    #        we do not require another explicit value range shift from
+    #        [-2^(b-1), 2^(b-1)] to [0, 2^b] to make sure that values are
+    #        compatible with SecAgg's mod m = 2^b. This can be reverted at #4.
+    #    #3. inner-server: clips to [0, 2^b]
+    #        Ensures the aggregated value range does not grow by log_2(n).
+    #        NOTE: If underlying SecAgg is implemented using the new
+    #        `tff.federated_secure_modular_sum()` operator with the same
+    #        modular clipping range, then this would correspond to a no-op.
+    #    #4. outer-server: clips to [-2^(b-1), 2^(b-1)]
+    #        Keeps aggregated values centered near 0 out of the logical SecAgg
+    #        black box for outer aggregators.
+    #    Note that the scaling factor and the bit-width are chosen such that
+    #    the number of clients to aggregate is taken into account.
+    nested_factory = secure.SecureSumFactory(
+        upper_bound_threshold=2**self._bits - 1, lower_bound_threshold=0)
+    nested_factory = modular_clipping.ModularClippingSumFactory(
+        clip_range_lower=0,
+        clip_range_upper=2**self._bits,
+        inner_agg_factory=nested_factory)
+    nested_factory = modular_clipping.ModularClippingSumFactory(
+        clip_range_lower=-(2**(self._bits - 1)),
+        clip_range_upper=2**(self._bits - 1),
+        inner_agg_factory=nested_factory)
 
     # 2. DP operations. DP params are in the scaled domain (post-quantization).
     if self._mechanism == 'distributed_dgauss':
