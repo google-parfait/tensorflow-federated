@@ -46,7 +46,8 @@ def create_hierarchical_histogram_aggregation_factory(
     dp_mechanism: str = 'no-noise',
     noise_multiplier: float = 0.0,
     expected_clients_per_round: int = 10,
-    bits: int = 22):
+    bits: int = 22,
+    enable_secure_sum: bool = True):
   """Creates hierarchical histogram aggregation factory.
 
   Hierarchical histogram factory is constructed by composing 3 aggregation
@@ -90,15 +91,16 @@ def create_hierarchical_histogram_aggregation_factory(
       2**B will be the field size for SecAgg operations). Only needed when
       `dp_mechanism` is 'distributed-discrete-gaussian'. Please read the below
       precautions carefully and set `bits` accordingly. Otherwise, unexpected
-      overflow or accuracy degradation might happen.
-      (1) Should be in the inclusive range [1, 22] to avoid overflow inside
-      secure aggregation;
-      (2) Should be at least as large as
-      `log2(4 * sqrt(expected_clients_per_round)* noise_multiplier *
-      l2_norm_bound + expected_clients_per_round * max_records_per_user) + 1`
-      to avoid accuracy degradation caused by frequent modular clipping;
-      (3) If the number of clients exceed `expected_clients_per_round`, overflow
-      might happen.
+      overflow or accuracy degradation might happen. (1) Should be in the
+      inclusive range [1, 22] to avoid overflow inside secure aggregation; (2)
+      Should be at least as large as `log2(4 * sqrt(expected_clients_per_round)*
+      noise_multiplier * l2_norm_bound + expected_clients_per_round *
+      max_records_per_user) + 1` to avoid accuracy degradation caused by
+      frequent modular clipping; (3) If the number of clients exceed
+      `expected_clients_per_round`, overflow might happen.
+    enable_secure_sum: Whether to aggregate client's update by secure sum or
+      not. Defaults to `True`. When `dp_mechanism` is set to
+      `'distributed-discrete-gaussian'`, `enable_secure_sum` must be `True`.
 
   Returns:
     `tff.aggregators.UnweightedAggregationFactory`.
@@ -139,64 +141,80 @@ def create_hierarchical_histogram_aggregation_factory(
         square_layer_l2_norm_bound *= arity
       l2_norm_bound = math.sqrt(square_l2_norm_bound)
 
+  if not enable_secure_sum and dp_mechanism in DISTRIBUTED_DP_MECHANISMS:
+    raise ValueError(f'When dp_mechanism is {DISTRIBUTED_DP_MECHANISMS}, '
+                     'enable_secure_sum must be set to True to preserve '
+                     'distributed DP.')
+
   # Build nested aggregtion factory from innermost to outermost.
   # 1. Sum factory. The most inner factory that sums the preprocessed records.
-  # (1) If `dp_mechanism` is in `CENTRAL_DP_MECHANISMS` or
-  #     `NO_NOISE_MECHANISMS`, should be `SumFactory`.
-  if dp_mechanism in CENTRAL_DP_MECHANISMS + NO_NOISE_MECHANISMS:
+  # (1) If  `enable_secure_sum` is `False`, should be `SumFactory`.
+  if not enable_secure_sum:
     nested_factory = sum_factory.SumFactory()
-  # (2) If `dp_mechanism` is in `DISTRIBUTED_DP_MECHANISMS`, should be
-  #     `SecureSumFactory`. To preserve DP and avoid overflow, we have 4 modular
-  #     clips from nesting two modular clip aggregators:
-  #    #1. outer-client: clips to [-2**(bits-1), 2**(bits-1))
-  #        Bounds the client values.
-  #    #2. inner-client: clips to [0, 2**bits)
-  #        Similar to applying a two's complement to the values such that
-  #        frequent values (post-rotation) are now near 0 (representing small
-  #        positives) and 2**bits (small negatives). 0 also always map to 0, and
-  #        we do not require another explicit value range shift from
-  #        [-2**(bits-1), 2**(bits-1)] to [0, 2**bits] to make sure that values
-  #        are compatible with SecAgg's mod m = 2**bits. This can be reverted at
-  #        #4.
-  #    #3. inner-server: clips to [0, 2**bits)
-  #        Ensures the aggregated value range does not grow by
-  #        `log2(expected_clients_per_round)`.
-  #        NOTE: If underlying SecAgg is implemented using the new
-  #        `tff.federated_secure_modular_sum()` operator with the same
-  #        modular clipping range, then this would correspond to a no-op.
-  #    #4. outer-server: clips to [-2**(bits-1), 2**(bits-1))
-  #        Keeps aggregated values centered near 0 out of the logical SecAgg
-  #        black box for outer aggregators.
-  elif dp_mechanism in DISTRIBUTED_DP_MECHANISMS:
-    # TODO(b/196312838): Please add scaling to the distributed case once we have
-    # a stable guideline for setting scaling factor to improve performance and
-    # avoid overflow. The below test is to make sure that modular clipping
-    # happens with small probability so the accuracy of the result won't be
-    # harmed. However, if the number of clients exceeds
-    # `expected_clients_per_round`, overflow still might happen. It is the
-    # caller's responsibility to carefully choose `bits` according to system
-    # details to avoid overflow or performance degradation.
-    if bits < math.log2(4 * math.sqrt(expected_clients_per_round) *
-                        noise_multiplier * l2_norm_bound +
-                        expected_clients_per_round * max_records_per_user) + 1:
-      raise ValueError(f'The selected bit-width ({bits}) is too small for the '
-                       f'given parameters (expected_clients_per_round = '
-                       f'{expected_clients_per_round}, max_records_per_user = '
-                       f'{max_records_per_user}, noise_multiplier = '
-                       f'{noise_multiplier}) and will harm the accuracy of the '
-                       f'result. Please decrease the '
-                       f'`expected_clients_per_round` / `max_records_per_user` '
-                       f'/ `noise_multiplier`, or increase `bits`.')
-    nested_factory = secure.SecureSumFactory(
-        upper_bound_threshold=2**bits - 1, lower_bound_threshold=0)
-    nested_factory = modular_clipping_factory.ModularClippingSumFactory(
-        clip_range_lower=0,
-        clip_range_upper=2**bits,
-        inner_agg_factory=nested_factory)
-    nested_factory = modular_clipping_factory.ModularClippingSumFactory(
-        clip_range_lower=-2**(bits - 1),
-        clip_range_upper=2**(bits - 1),
-        inner_agg_factory=nested_factory)
+  else:
+    # (2) If  `enable_secure_sum` is `True`, and `dp_mechanism` is 'no-noise' or
+    # 'central-gaussian', the sum factory should be `SecureSumFactory`, with
+    # a `upper_bound_threshold` of `max_records_per_user`. When `dp_mechanism`
+    # is 'central-gaussian', use a float `SecureSumFactory` to be compatible
+    # with `GaussianSumQuery`.
+    if dp_mechanism in ['no-noise']:
+      nested_factory = secure.SecureSumFactory(max_records_per_user)
+    elif dp_mechanism in ['central-gaussian']:
+      nested_factory = secure.SecureSumFactory(float(max_records_per_user))
+    # (3) If `dp_mechanism` is in `DISTRIBUTED_DP_MECHANISMS`, should be
+    #     `SecureSumFactory`. To preserve DP and avoid overflow, we have 4
+    #    modular clips from nesting two modular clip aggregators:
+    #    #1. outer-client: clips to [-2**(bits-1), 2**(bits-1))
+    #        Bounds the client values.
+    #    #2. inner-client: clips to [0, 2**bits)
+    #        Similar to applying a two's complement to the values such that
+    #        frequent values (post-rotation) are now near 0 (representing small
+    #        positives) and 2**bits (small negatives). 0 also always map to 0,
+    #        and we do not require another explicit value range shift from
+    #        [-2**(bits-1), 2**(bits-1)] to [0, 2**bits] to make sure that
+    #        values are compatible with SecAgg's mod m = 2**bits. This can be
+    #        reverted at #4.
+    #    #3. inner-server: clips to [0, 2**bits)
+    #        Ensures the aggregated value range does not grow by
+    #        `log2(expected_clients_per_round)`.
+    #        NOTE: If underlying SecAgg is implemented using the new
+    #        `tff.federated_secure_modular_sum()` operator with the same
+    #        modular clipping range, then this would correspond to a no-op.
+    #    #4. outer-server: clips to [-2**(bits-1), 2**(bits-1))
+    #        Keeps aggregated values centered near 0 out of the logical SecAgg
+    #        black box for outer aggregators.
+    elif dp_mechanism in ['distributed-discrete-gaussian']:
+      # TODO(b/196312838): Please add scaling to the distributed case once we
+      # have a stable guideline for setting scaling factor to improve
+      # performance and avoid overflow. The below test is to make sure that
+      # modular clipping happens with small probability so the accuracy of the
+      # result won't be harmed. However, if the number of clients exceeds
+      # `expected_clients_per_round`, overflow still might happen. It is the
+      # caller's responsibility to carefully choose `bits` according to system
+      # details to avoid overflow or performance degradation.
+      if bits < math.log2(4 * math.sqrt(expected_clients_per_round) *
+                          noise_multiplier * l2_norm_bound +
+                          expected_clients_per_round *
+                          max_records_per_user) + 1:
+        raise ValueError(
+            f'The selected bit-width ({bits}) is too small for the '
+            f'given parameters (expected_clients_per_round = '
+            f'{expected_clients_per_round}, max_records_per_user = '
+            f'{max_records_per_user}, noise_multiplier = '
+            f'{noise_multiplier}) and will harm the accuracy of the '
+            f'result. Please decrease the '
+            f'`expected_clients_per_round` / `max_records_per_user` '
+            f'/ `noise_multiplier`, or increase `bits`.')
+      nested_factory = secure.SecureSumFactory(
+          upper_bound_threshold=2**bits - 1, lower_bound_threshold=0)
+      nested_factory = modular_clipping_factory.ModularClippingSumFactory(
+          clip_range_lower=0,
+          clip_range_upper=2**bits,
+          inner_agg_factory=nested_factory)
+      nested_factory = modular_clipping_factory.ModularClippingSumFactory(
+          clip_range_lower=-2**(bits - 1),
+          clip_range_upper=2**(bits - 1),
+          inner_agg_factory=nested_factory)
 
   # 2. DP operations.
   # Constructs `DifferentiallyPrivateFactory` according to the chosen

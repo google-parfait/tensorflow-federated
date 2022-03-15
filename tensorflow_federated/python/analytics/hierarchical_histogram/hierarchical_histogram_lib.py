@@ -118,7 +118,8 @@ def build_hierarchical_histogram_computation(
     dp_mechanism: str = 'no-noise',
     noise_multiplier: float = 0.0,
     expected_clients_per_round: int = 10,
-    bits: int = 22):
+    bits: int = 22,
+    enable_secure_sum: bool = True):
   """Creates the TFF computation for hierarchical histogram aggregation.
 
   Args:
@@ -158,6 +159,9 @@ def build_hierarchical_histogram_computation(
       max_records_per_user) + 1` to avoid accuracy degradation caused by
       frequent modular clipping; (3) If the number of clients exceed
       `expected_clients_per_round`, overflow might happen.
+    enable_secure_sum: Whether to aggregate client's update by secure sum or
+      not. Defaults to `True`. When `dp_mechanism` is set to
+      `'distributed-discrete-gaussian'`, `enable_secure_sum` must be `True`.
 
   Returns:
     A federated computation that performs hierarchical histogram aggregation.
@@ -177,6 +181,12 @@ def build_hierarchical_histogram_computation(
   _check_in_range(bits, 'bits', 1, 22)
   _check_greater_than_equal_thres(bits, math.log2(expected_clients_per_round),
                                   'bits')
+  if (not enable_secure_sum and
+      dp_mechanism in hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS):
+    raise ValueError(
+        'When dp_mechanism is '
+        f'{hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS}, '
+        'enable_secure_sum must be set to True to preserve distributed DP.')
 
   @computations.tf_computation(computation_types.SequenceType(tf.float32))
   def client_work(client_data):
@@ -184,8 +194,16 @@ def build_hierarchical_histogram_computation(
                                          num_bins)
 
   agg_factory = hierarchical_histogram_factory.create_hierarchical_histogram_aggregation_factory(
-      num_bins, arity, clip_mechanism, max_records_per_user, dp_mechanism,
-      noise_multiplier, expected_clients_per_round, bits)
+      num_bins=num_bins,
+      arity=arity,
+      clip_mechanism=clip_mechanism,
+      max_records_per_user=max_records_per_user,
+      dp_mechanism=dp_mechanism,
+      noise_multiplier=noise_multiplier,
+      expected_clients_per_round=expected_clients_per_round,
+      bits=bits,
+      enable_secure_sum=enable_secure_sum)
+
   process = agg_factory.create(client_work.type_signature.result)
 
   @computations.federated_computation(
@@ -216,7 +234,9 @@ def build_hierarchical_histogram_process(
     dp_mechanism: str = 'no-noise',
     noise_multiplier: float = 0.0,
     expected_clients_per_round: int = 10,
-    bits: int = 22) -> iterative_process.IterativeProcess:
+    bits: int = 22,
+    enable_secure_sum: bool = True,
+) -> iterative_process.IterativeProcess:
   """Creates an IterativeProcess for hierarchical histogram aggregation.
 
   This function wraps the `tff.computation` created by the
@@ -260,6 +280,9 @@ def build_hierarchical_histogram_process(
       max_records_per_user) + 1` to avoid accuracy degradation caused by
       frequent modular clipping; (3) If the number of clients exceed
       `expected_clients_per_round`, overflow might happen.
+    enable_secure_sum: Whether to aggregate client's update by secure sum or
+      not. Defaults to `True`. When `dp_mechanism` is set to
+      `'distributed-discrete-gaussian'`, `enable_secure_sum` must be `True`.
 
   Returns:
     A federated computation that performs hierarchical histogram aggregation.
@@ -279,7 +302,12 @@ def build_hierarchical_histogram_process(
   _check_in_range(bits, 'bits', 1, 22)
   _check_greater_than_equal_thres(bits, math.log2(expected_clients_per_round),
                                   'bits')
-
+  if (not enable_secure_sum and
+      dp_mechanism in hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS):
+    raise ValueError(
+        'When dp_mechanism is '
+        f'{hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS}, '
+        'enable_secure_sum must be set to True to preserve distributed DP.')
   one_round_computation = build_hierarchical_histogram_computation(
       lower_bound=lower_bound,
       upper_bound=upper_bound,
@@ -290,7 +318,8 @@ def build_hierarchical_histogram_process(
       dp_mechanism=dp_mechanism,
       noise_multiplier=noise_multiplier,
       expected_clients_per_round=expected_clients_per_round,
-      bits=bits)
+      bits=bits,
+      enable_secure_sum=enable_secure_sum)
 
   parameter_type_signature = one_round_computation.type_signature.parameter
   result_type_signature = one_round_computation.type_signature.result

@@ -22,6 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_lib as hihi
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.test import static_assert
 
 
 class ClientWorkTest(test_case.TestCase, parameterized.TestCase):
@@ -65,6 +66,7 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
       noise_multiplier: float = 0.0,
       expected_clients_per_round: int = 10,
       bits: int = 22,
+      enable_secure_sum: bool = False,
   ) -> Tuple[tf.RaggedTensor, tf.RaggedTensor]:
     """Runs the Hierarchical Histogram computation and returns the results.
 
@@ -110,6 +112,9 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
         max_records_per_user) + 1` to avoid accuracy degradation caused by
         frequent modular clipping; (3) If the number of clients exceed
         `expected_clients_per_round`, overflow might happen.
+      enable_secure_sum: Whether to aggregate client's update by secure sum or
+      not. Defaults to `False`. When `dp_mechanism` is set to
+      `'distributed-discrete-gaussian'`, `enable_secure_sum` must be `True`.
 
     Returns:
       A `Tuple` of two `tf.RaggedTenor`, which contain the hierarchical
@@ -126,7 +131,8 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
         dp_mechanism=dp_mechanism,
         noise_multiplier=noise_multiplier,
         expected_clients_per_round=expected_clients_per_round,
-        bits=bits)
+        bits=bits,
+        enable_secure_sum=enable_secure_sum)
     hihi_computation_result = hihi_computation(client_data)
 
     hihi_process = hihi.build_hierarchical_histogram_process(
@@ -139,7 +145,8 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
         dp_mechanism=dp_mechanism,
         noise_multiplier=noise_multiplier,
         expected_clients_per_round=expected_clients_per_round,
-        bits=bits)
+        bits=bits,
+        enable_secure_sum=enable_secure_sum)
 
     init_state = hihi_process.initialize()
     hihi_process_result, _ = hihi_process.next(init_state, client_data)
@@ -232,22 +239,23 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
       ('test_binary_1', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
           tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, [[8], [4, 4], [3, 1, 3, 1]]),
+      ], [1, 5], 4, 2, [[8], [4, 4], [3, 1, 3, 1]], True),
       ('test_binary_2', [
           tf.data.Dataset.from_tensor_slices([2., 2., 2., 2.]),
           tf.data.Dataset.from_tensor_slices([3., 3., 3., 3.])
-      ], [1, 5], 4, 2, [[8], [4, 4], [0, 4, 4, 0]]),
+      ], [1, 5], 4, 2, [[8], [4, 4], [0, 4, 4, 0]], False),
       ('test_ternary_1', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
           tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, [[8], [3, 3, 2]]),
+      ], [1, 4], 3, 3, [[8], [3, 3, 2]], True),
       ('test_ternary_2', [
           tf.data.Dataset.from_tensor_slices([2., 2., 2., 2.]),
           tf.data.Dataset.from_tensor_slices([3., 3., 3., 3.])
-      ], [1, 4], 3, 3, [[8], [0, 4, 4]]),
+      ], [1, 4], 3, 3, [[8], [0, 4, 4]], False),
   )
   def test_central_no_noise_hierarchical_histogram_wo_clip(
-      self, client_data, data_range, num_bins, arity, reference_hi_hist):
+      self, client_data, data_range, num_bins, arity, reference_hi_hist,
+      enable_secure_sum):
     (hihi_computation_result,
      hihi_process_result) = self._get_hierarchical_histogram_results(
          client_data=client_data,
@@ -256,7 +264,8 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
          num_bins=num_bins,
          arity=arity,
          max_records_per_user=4,
-         dp_mechanism='no-noise')
+         dp_mechanism='no-noise',
+         enable_secure_sum=enable_secure_sum)
 
     self.assertAllClose(hihi_computation_result, reference_hi_hist)
     self.assertAllClose(hihi_process_result, reference_hi_hist)
@@ -265,23 +274,23 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
       ('test_binary_sub_sampling', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
           tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, 'sub-sampling', 3, 6.),
+      ], [1, 5], 4, 2, 'sub-sampling', 3, 6., True),
       ('test_binary_distinct', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
           tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, 'distinct', 3, 5.),
+      ], [1, 5], 4, 2, 'distinct', 3, 5., False),
       ('test_ternary_sub_sampling', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
           tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, 'sub-sampling', 3, 6.),
+      ], [1, 4], 3, 3, 'sub-sampling', 3, 6., True),
       ('test_ternary_distinct', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
           tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, 'distinct', 3, 6.),
+      ], [1, 4], 3, 3, 'distinct', 3, 6., False),
   )
   def test_central_no_noise_hierarchical_histogram_w_clip(
       self, client_data, data_range, num_bins, arity, clip_mechanism,
-      max_records_per_user, reference_layer_l1_norm):
+      max_records_per_user, reference_layer_l1_norm, enable_secure_sum):
     (hihi_computation_result,
      hihi_process_result) = self._get_hierarchical_histogram_results(
          client_data=client_data,
@@ -291,7 +300,8 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
          arity=arity,
          clip_mechanism=clip_mechanism,
          max_records_per_user=max_records_per_user,
-         dp_mechanism='no-noise')
+         dp_mechanism='no-noise',
+         enable_secure_sum=enable_secure_sum)
 
     for layer in range(hihi_computation_result.shape[0]):
       self.assertAllClose(
@@ -306,23 +316,23 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
       ('test_binary_1', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
           tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, [[8.], [4., 4.], [3., 1., 3., 1.]], 5.0),
+      ], [1, 5], 4, 2, [[8.], [4., 4.], [3., 1., 3., 1.]], 5.0, True),
       ('test_binary_2', [
           tf.data.Dataset.from_tensor_slices([2., 2., 2., 2.]),
           tf.data.Dataset.from_tensor_slices([3., 3., 3., 3.])
-      ], [1, 5], 4, 2, [[8.], [4., 4.], [0., 4., 4., 0.]], 1.0),
+      ], [1, 5], 4, 2, [[8.], [4., 4.], [0., 4., 4., 0.]], 1.0, False),
       ('test_ternary_1', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
           tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, [[8.], [3., 3., 2.]], 5.0),
+      ], [1, 4], 3, 3, [[8.], [3., 3., 2.]], 5.0, True),
       ('test_ternary_2', [
           tf.data.Dataset.from_tensor_slices([2., 2., 2., 2.]),
           tf.data.Dataset.from_tensor_slices([3., 3., 3., 3.])
-      ], [1, 4], 3, 3, [[8.], [0., 4., 4.]], 1.0),
+      ], [1, 4], 3, 3, [[8.], [0., 4., 4.]], 1.0, False),
   )
   def test_central_gaussian_hierarchical_histogram_wo_clip(
       self, client_data, data_range, num_bins, arity, reference_hi_hist,
-      noise_multiplier):
+      noise_multiplier, enable_secure_sum):
     (hihi_computation_result,
      hihi_process_result) = self._get_hierarchical_histogram_results(
          client_data=client_data,
@@ -332,7 +342,8 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
          arity=arity,
          max_records_per_user=4,
          dp_mechanism='central-gaussian',
-         noise_multiplier=noise_multiplier)
+         noise_multiplier=noise_multiplier,
+         enable_secure_sum=enable_secure_sum)
 
     # 300 is a rough estimation of six-sigma considering the effect of the L2
     # norm bound and the privacy composition.
@@ -347,23 +358,24 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
       ('test_binary_sub_sampling', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
           tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, 'sub-sampling', 3, 6., 1.),
+      ], [1, 5], 4, 2, 'sub-sampling', 3, 6., 1., True),
       ('test_binary_distinct', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
           tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-      ], [1, 5], 4, 2, 'distinct', 3, 5., 5.),
+      ], [1, 5], 4, 2, 'distinct', 3, 5., 5., False),
       ('test_ternary_sub_sampling', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
           tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, 'sub-sampling', 3, 6., 1.),
+      ], [1, 4], 3, 3, 'sub-sampling', 3, 6., 1., True),
       ('test_ternary_distinct', [
           tf.data.Dataset.from_tensor_slices([1., 2., 3., 1.]),
           tf.data.Dataset.from_tensor_slices([2., 3., 1., 2.])
-      ], [1, 4], 3, 3, 'distinct', 3, 6., 5.),
+      ], [1, 4], 3, 3, 'distinct', 3, 6., 5., False),
   )
   def test_central_gaussian_hierarchical_histogram_w_clip(
       self, client_data, data_range, num_bins, arity, clip_mechanism,
-      max_records_per_user, reference_layer_l1_norm, noise_multiplier):
+      max_records_per_user, reference_layer_l1_norm, noise_multiplier,
+      enable_secure_sum):
     (hihi_computation_result,
      hihi_process_result) = self._get_hierarchical_histogram_results(
          client_data=client_data,
@@ -373,7 +385,8 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
          arity=arity,
          clip_mechanism=clip_mechanism,
          max_records_per_user=max_records_per_user,
-         dp_mechanism='central-gaussian')
+         dp_mechanism='central-gaussian',
+         enable_secure_sum=enable_secure_sum)
 
     # 600 is a rough estimation of six-sigma considering the effect of the L2
     # norm bound, the privacy composition and noise accumulation via sum.
@@ -418,7 +431,8 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
          arity=arity,
          max_records_per_user=4,
          dp_mechanism='distributed-discrete-gaussian',
-         noise_multiplier=noise_multiplier)
+         noise_multiplier=noise_multiplier,
+         enable_secure_sum=True)
 
     # 300 is a rough estimation of six-sigma considering the effect of the L2
     # norm bound and the privacy composition.
@@ -459,7 +473,8 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
          arity=arity,
          clip_mechanism=clip_mechanism,
          max_records_per_user=max_records_per_user,
-         dp_mechanism='distributed-discrete-gaussian')
+         dp_mechanism='distributed-discrete-gaussian',
+         enable_secure_sum=True)
 
     # 600 is a rough estimation of six-sigma considering the effect of the L2
     # norm bound, the privacy composition and noise accumulation via sum.
@@ -473,6 +488,18 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
           tf.math.reduce_sum(hihi_process_result[layer]),
           reference_layer_l1_norm,
           atol=600. * noise_multiplier)
+
+  @parameterized.named_parameters(('no_noise', 'no-noise'),
+                                  ('central_dp', 'central-gaussian'),
+                                  ('ddp', 'distributed-discrete-gaussian'))
+  def test_secure_sum(self, dp_mechanism):
+    hihi_computation = hihi.build_hierarchical_histogram_computation(
+        lower_bound=0,
+        upper_bound=10,
+        num_bins=5,
+        dp_mechanism=dp_mechanism,
+        enable_secure_sum=True)
+    static_assert.assert_not_contains_unsecure_aggregation(hihi_computation)
 
 
 @parameterized.named_parameters(

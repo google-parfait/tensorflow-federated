@@ -35,18 +35,20 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
                                             parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('test_1_2_sub_sampling', 1, 2, 'sub-sampling'),
-      ('test_5_3_sub_sampling', 5, 3, 'sub-sampling'),
-      ('test_3_2_distinct', 3, 2, 'distinct'),
-      ('test_2_3_distinct', 2, 3, 'distinct'),
+      ('test_1_2_sub_sampling', 1, 2, 'sub-sampling', True),
+      ('test_5_3_sub_sampling', 5, 3, 'sub-sampling', False),
+      ('test_3_2_distinct', 3, 2, 'distinct', True),
+      ('test_2_3_distinct', 2, 3, 'distinct', False),
   )
-  def test_no_noise_tree_aggregation(self, value_shape, arity, clip_mechanism):
+  def test_no_noise_tree_aggregation(self, value_shape, arity, clip_mechanism,
+                                     enable_secure_sum):
 
     agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
         num_bins=value_shape,
         arity=arity,
         clip_mechanism=clip_mechanism,
         dp_mechanism='no-noise',
+        enable_secure_sum=enable_secure_sum,
     )
     self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
     value_type = computation_types.to_type((tf.int32, (value_shape,)))
@@ -67,8 +69,17 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
         process.initialize.type_signature.is_equivalent_to(
             expected_initialize_type))
 
+    if enable_secure_sum:
+      expected_measurements_dp = collections.OrderedDict(
+          secure_upper_clipped_count=tf.int32,
+          secure_lower_clipped_count=tf.int32,
+          secure_upper_threshold=tf.int32,
+          secure_lower_threshold=tf.int32)
+    else:
+      expected_measurements_dp = ()
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(dp_query_metrics=query_metrics_type, dp=()))
+        collections.OrderedDict(
+            dp_query_metrics=query_metrics_type, dp=expected_measurements_dp))
 
     tree_depth = hihi_factory._tree_depth(value_shape, arity)
     flat_tree_shape = (arity**tree_depth - 1) // (arity - 1)
@@ -91,19 +102,20 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
         process.next.type_signature.is_equivalent_to(expected_next_type))
 
   @parameterized.named_parameters(
-      ('test_1_2_sub_sampling', 1, 2, 'sub-sampling'),
-      ('test_5_3_sub_sampling', 5, 3, 'sub-sampling'),
-      ('test_3_2_distinct', 3, 2, 'distinct'),
-      ('test_2_3_distinct', 2, 3, 'distinct'),
+      ('test_1_2_sub_sampling', 1, 2, 'sub-sampling', True),
+      ('test_5_3_sub_sampling', 5, 3, 'sub-sampling', False),
+      ('test_3_2_distinct', 3, 2, 'distinct', True),
+      ('test_2_3_distinct', 2, 3, 'distinct', False),
   )
   def test_central_gaussian_tree_aggregation(self, value_shape, arity,
-                                             clip_mechanism):
+                                             clip_mechanism, enable_secure_sum):
 
     agg_factory = hihi_factory.create_hierarchical_histogram_aggregation_factory(
         num_bins=value_shape,
         arity=arity,
         clip_mechanism=clip_mechanism,
         dp_mechanism='central-gaussian',
+        enable_secure_sum=enable_secure_sum,
     )
     self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
     value_type = computation_types.to_type((tf.int32, (value_shape,)))
@@ -124,8 +136,18 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
         process.initialize.type_signature.is_equivalent_to(
             expected_initialize_type))
 
+    if enable_secure_sum:
+      expected_measurements_dp = collections.OrderedDict(
+          secure_upper_clipped_count=tf.int32,
+          secure_lower_clipped_count=tf.int32,
+          secure_upper_threshold=tf.float32,
+          secure_lower_threshold=tf.float32)
+    else:
+      expected_measurements_dp = ()
+
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(dp_query_metrics=query_metrics_type, dp=()))
+        collections.OrderedDict(
+            dp_query_metrics=query_metrics_type, dp=expected_measurements_dp))
     tree_depth = hihi_factory._tree_depth(value_shape, arity)
     flat_tree_shape = (arity**tree_depth - 1) // (arity - 1)
     result_value_type = computation_types.to_type(
@@ -160,6 +182,7 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
         arity=arity,
         clip_mechanism=clip_mechanism,
         dp_mechanism='distributed-discrete-gaussian',
+        enable_secure_sum=True,
     )
     self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
     value_type = computation_types.to_type((tf.int32, (value_shape,)))
@@ -219,40 +242,46 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
 
   @parameterized.named_parameters(
       ('non_positive_value_shape', 0, 2, 'sub-sampling', 1, 'central-gaussian',
-       1., 1, 1),
-      ('invalid_arity', 1, 1, 'sub-sampling', 1, 'central-gaussian', 1., 1, 1),
+       1., 1, 1, False),
+      ('invalid_arity', 1, 1, 'sub-sampling', 1, 'central-gaussian', 1., 1, 1,
+       False),
       ('invalid_clip_mechanism', 1, 2, 'invalid', 1, 'central-gaussian', 1., 1,
-       1),
+       1, False),
       ('non_positive_max_records_per_user', 1, 2, 'sub-sampling', 0,
-       'central-gaussian', 1., 1, 1),
-      ('invalid_dp_mechanism', 1, 2, 'sub-sampling', 1, 'invalid', 1., 1, 1),
+       'central-gaussian', 1., 1, 1, False),
+      ('invalid_dp_mechanism', 1, 2, 'sub-sampling', 1, 'invalid', 1., 1, 1,
+       False),
       ('negative_noise_multiplier', 1, 2, 'sub-sampling', 1, 'central-gaussian',
-       -1., 1, 1),
+       -1., 1, 1, False),
       ('non_positive_expected_clients_per_round', 1, 2, 'sub-sampling', 1,
-       'central-gaussian', 1., 0, 1),
+       'central-gaussian', 1., 0, 1, False),
       ('bits_less_than_1', 1, 2, 'sub-sampling', 1, 'central-gaussian', 1., 1,
-       0),
+       0, False),
       ('bits_greater_than_22', 1, 2, 'sub-sampling', 1, 'central-gaussian', 1.,
-       1, 23),
+       1, 23, False),
       ('bits_less_than_lower_bound', 1, 2, 'sub-sampling', 1,
-       'distributed-discrete-gaussian', 4., 8, 4),
+       'distributed-discrete-gaussian', 4., 8, 4, True),
+      ('ddp_without_secure_sum', 1, 2, 'sub-sampling', 1,
+       'distributed-discrete-gaussian', 4., 8, 4, False),
   )
   def test_raises_error(self, value_shape, arity, clip_mechanism,
                         max_records_per_user, dp_mechanism, noise_multiplier,
-                        expected_clients_per_round, bits):
+                        expected_clients_per_round, bits, enable_secure_sum):
     with self.assertRaises(ValueError):
       hihi_factory.create_hierarchical_histogram_aggregation_factory(
           value_shape, arity, clip_mechanism, max_records_per_user,
-          dp_mechanism, noise_multiplier, expected_clients_per_round, bits)
+          dp_mechanism, noise_multiplier, expected_clients_per_round, bits,
+          enable_secure_sum)
 
   @parameterized.named_parameters(
-      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling'),
-      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling'),
-      ('test_3_5_2_distinct', 3, 5, 2, 'distinct'),
-      ('test_5_3_3_distinct', 5, 3, 3, 'distinct'),
+      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', True),
+      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', False),
+      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', True),
+      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', False),
   )
   def test_no_noise_tree_aggregation_wo_clip(self, value_shape, num_clients,
-                                             arity, clip_mechanism):
+                                             arity, clip_mechanism,
+                                             enable_secure_sum):
     client_records = []
     for _ in range(num_clients):
       client_records.append(np.arange(value_shape, dtype=int).tolist())
@@ -262,7 +291,8 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
         arity=arity,
         clip_mechanism=clip_mechanism,
         max_records_per_user=5,
-        dp_mechanism='no-noise')
+        dp_mechanism='no-noise',
+        enable_secure_sum=enable_secure_sum)
     value_type = computation_types.to_type((tf.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
@@ -280,14 +310,15 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
     self.assertAllClose(output, reference_aggregated_record)
 
   @parameterized.named_parameters(
-      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 1),
-      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 2),
-      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 3),
-      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 2),
+      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 1, True),
+      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 2, False),
+      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 3, True),
+      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 2, False),
   )
   def test_no_noise_tree_aggregation_w_clip(self, value_shape, num_clients,
                                             arity, clip_mechanism,
-                                            max_records_per_user):
+                                            max_records_per_user,
+                                            enable_secure_sum):
     client_records = []
     for _ in range(num_clients):
       client_records.append(np.arange(value_shape, dtype=int).tolist())
@@ -297,7 +328,8 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
         arity=arity,
         clip_mechanism=clip_mechanism,
         max_records_per_user=max_records_per_user,
-        dp_mechanism='no-noise')
+        dp_mechanism='no-noise',
+        enable_secure_sum=enable_secure_sum)
     value_type = computation_types.to_type((tf.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
@@ -319,15 +351,16 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
       self.assertAllClose(tf.math.reduce_sum(output[layer]), expected_l1_norm)
 
   @parameterized.named_parameters(
-      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 0.1),
-      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 1.0),
-      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 5.0),
-      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 10.0),
+      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 0.1, True),
+      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 1.0, False),
+      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 5.0, True),
+      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 10.0, False),
   )
   def test_central_gaussian_tree_aggregation_wo_clip(self, value_shape,
                                                      num_clients, arity,
                                                      clip_mechanism,
-                                                     noise_multiplier):
+                                                     noise_multiplier,
+                                                     enable_secure_sum):
     client_records = []
     for _ in range(num_clients):
       client_records.append(np.arange(value_shape, dtype=int).tolist())
@@ -338,7 +371,8 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
         clip_mechanism=clip_mechanism,
         max_records_per_user=5,
         dp_mechanism='central-gaussian',
-        noise_multiplier=noise_multiplier)
+        noise_multiplier=noise_multiplier,
+        enable_secure_sum=enable_secure_sum)
     value_type = computation_types.to_type((tf.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
@@ -359,16 +393,14 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
         output, reference_aggregated_record, atol=300. * noise_multiplier)
 
   @parameterized.named_parameters(
-      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 1, 0.1),
-      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 2, 1.0),
-      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 3, 5.0),
-      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 2, 10.0),
+      ('test_1_1_2_sub_sampling', 1, 1, 2, 'sub-sampling', 1, 0.1, True),
+      ('test_2_3_3_sub_sampling', 2, 3, 3, 'sub-sampling', 2, 1.0, False),
+      ('test_3_5_2_distinct', 3, 5, 2, 'distinct', 3, 5.0, True),
+      ('test_5_3_3_distinct', 5, 3, 3, 'distinct', 2, 10.0, False),
   )
-  def test_central_gaussian_tree_aggregation_w_clip(self, value_shape,
-                                                    num_clients, arity,
-                                                    clip_mechanism,
-                                                    max_records_per_user,
-                                                    noise_multiplier):
+  def test_central_gaussian_tree_aggregation_w_clip(
+      self, value_shape, num_clients, arity, clip_mechanism,
+      max_records_per_user, noise_multiplier, enable_secure_sum):
     client_records = []
     for _ in range(num_clients):
       client_records.append(np.arange(value_shape, dtype=int).tolist())
@@ -379,7 +411,8 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
         clip_mechanism=clip_mechanism,
         max_records_per_user=max_records_per_user,
         dp_mechanism='central-gaussian',
-        noise_multiplier=noise_multiplier)
+        noise_multiplier=noise_multiplier,
+        enable_secure_sum=enable_secure_sum)
     value_type = computation_types.to_type((tf.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
@@ -423,7 +456,8 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
         clip_mechanism=clip_mechanism,
         max_records_per_user=5,
         dp_mechanism='distributed-discrete-gaussian',
-        noise_multiplier=noise_multiplier)
+        noise_multiplier=noise_multiplier,
+        enable_secure_sum=True)
     value_type = computation_types.to_type((tf.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
@@ -462,7 +496,8 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
         clip_mechanism=clip_mechanism,
         max_records_per_user=max_records_per_user,
         dp_mechanism='distributed-discrete-gaussian',
-        noise_multiplier=noise_multiplier)
+        noise_multiplier=noise_multiplier,
+        enable_secure_sum=True)
     value_type = computation_types.to_type((tf.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
@@ -504,7 +539,8 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
         clip_mechanism='sub-sampling',
         max_records_per_user=1,
         dp_mechanism='distributed-discrete-gaussian',
-        noise_multiplier=0)
+        noise_multiplier=0,
+        enable_secure_sum=True)
     value_type = computation_types.to_type((tf.int32, (value_shape,)))
     process = agg_factory.create(value_type)
 
