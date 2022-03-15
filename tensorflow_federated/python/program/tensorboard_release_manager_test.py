@@ -24,21 +24,21 @@ from tensorflow_federated.python.program import tensorboard_release_manager
 from tensorflow_federated.python.program import test_utils
 
 
-class TensorboardReleaseManagerInitTest(parameterized.TestCase):
+class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
 
   def test_creates_summary_dir(self):
     temp_dir = self.create_tempdir()
     summary_dir = os.path.join(temp_dir, 'test')
     self.assertFalse(os.path.exists(summary_dir))
 
-    tensorboard_release_manager.TensorboardReleaseManager(
+    tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=summary_dir)
 
     self.assertTrue(os.path.exists(summary_dir))
 
   def test_does_not_raise_type_error_with_root_dir_str(self):
     try:
-      tensorboard_release_manager.TensorboardReleaseManager(summary_dir='/tmp')
+      tensorboard_release_manager.TensorBoardReleaseManager(summary_dir='/tmp')
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -46,7 +46,7 @@ class TensorboardReleaseManagerInitTest(parameterized.TestCase):
     temp_dir = self.create_tempdir()
 
     try:
-      tensorboard_release_manager.TensorboardReleaseManager(
+      tensorboard_release_manager.TensorBoardReleaseManager(
           summary_dir=temp_dir)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
@@ -59,15 +59,15 @@ class TensorboardReleaseManagerInitTest(parameterized.TestCase):
   )
   def test_raises_type_error_with_summary_dir(self, summary_dir):
     with self.assertRaises(TypeError):
-      tensorboard_release_manager.TensorboardReleaseManager(
+      tensorboard_release_manager.TensorBoardReleaseManager(
           summary_dir=summary_dir)
 
   def test_raises_value_error_with_summary_dir_empty(self):
     with self.assertRaises(ValueError):
-      tensorboard_release_manager.TensorboardReleaseManager(summary_dir='')
+      tensorboard_release_manager.TensorBoardReleaseManager(summary_dir='')
 
 
-class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
+class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -111,7 +111,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
   # pyformat: enable
   def test_writes_value_scalar(self, value, expected_names_and_values):
     temp_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
@@ -129,7 +129,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
   )
   def test_writes_value_histogram(self, value, expected_names_and_values):
     temp_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
@@ -142,7 +142,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
 
   def test_writes_value_scalar_and_histogram(self):
     temp_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
     patch_scalar = mock.patch.object(tf.summary, 'scalar')
@@ -161,7 +161,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
   )
   def test_does_not_write_value(self, value):
     temp_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
     patch_scalar = mock.patch.object(tf.summary, 'scalar')
@@ -178,7 +178,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
   )
   def test_does_not_raise_with_key(self, key):
     temp_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
     try:
@@ -193,7 +193,7 @@ class TensorboardReleaseManagerReleaseTest(parameterized.TestCase):
   )
   def test_raises_type_error_with_key(self, key):
     temp_dir = self.create_tempdir()
-    release_mngr = tensorboard_release_manager.TensorboardReleaseManager(
+    release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
     with self.assertRaises(TypeError):

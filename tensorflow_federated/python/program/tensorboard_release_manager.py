@@ -25,10 +25,10 @@ from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
-class TensorboardReleaseManager(release_manager.ReleaseManager):
+class TensorBoardReleaseManager(release_manager.ReleaseManager):
   """A `tff.program.ReleaseManager` that releases values to TensorBoard.
 
-  A `tff.program.TensorboardReleaseManager` is a utility for releasing values
+  A `tff.program.TensorBoardReleaseManager` is a utility for releasing values
   from a federated program to TensorBoard and is used to release values from
   platform storage to customer storage in a federated program.
 
@@ -47,7 +47,7 @@ class TensorboardReleaseManager(release_manager.ReleaseManager):
   """
 
   def __init__(self, summary_dir: Union[str, os.PathLike]):
-    """Returns an initialized `tff.program.TensorboardReleaseManager`.
+    """Returns an initialized `tff.program.TensorBoardReleaseManager`.
 
     Args:
       summary_dir: A path on the file system to save release values. If this
