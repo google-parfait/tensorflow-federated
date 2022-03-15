@@ -41,24 +41,29 @@ def create_sequence_op_supporting_context():
 
 def _get_all_contexts():
   """Returns a list containing a (name, context_fn) tuple for each context."""
+  # pylint: disable=unnecessary-lambda
   # pyformat: disable
   return [
-      # pylint: disable=unnecessary-lambda
       # native_local_cpp removed by copybara
-      ('native_local', lambda: tff.backends.native.create_local_python_execution_context()),
-      ('native_mergeable', lambda: _create_local_mergeable_comp_context()),
+      ('native_local_python',
+       lambda: tff.backends.native.create_local_python_execution_context()),
+      ('native_mergeable',
+       lambda: _create_local_mergeable_comp_context()),
       ('native_remote',
        lambda: remote_runtime_test_utils.create_localhost_remote_context(WORKER_PORTS),
        lambda: remote_runtime_test_utils.create_inprocess_worker_contexts(WORKER_PORTS)),
       ('native_remote_intermediate_aggregator',
        lambda: remote_runtime_test_utils.create_localhost_remote_context(AGGREGATOR_PORTS),
        lambda: remote_runtime_test_utils.create_inprocess_aggregator_contexts(WORKER_PORTS, AGGREGATOR_PORTS)),
-      ('native_sizing', lambda: tff.backends.native.create_sizing_execution_context()),
+      ('native_sizing',
+       lambda: tff.backends.native.create_sizing_execution_context()),
       ('native_thread_debug',
        lambda: tff.backends.native.create_thread_debugging_execution_context()),
-      ('test', lambda: tff.backends.test.create_test_execution_context()),
+      ('test',
+       lambda: tff.backends.test.create_test_execution_context()),
   ]
   # pyformat: enable
+  # pylint: enable=unnecessary-lambda
 
 
 def with_context(context_fn):
