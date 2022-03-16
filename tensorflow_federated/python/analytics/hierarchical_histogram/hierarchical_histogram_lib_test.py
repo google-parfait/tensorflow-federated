@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for hierarchical_histogram."""
 from typing import Tuple
-import unittest
+from unittest import mock
 
 from absl.testing import parameterized
 import numpy as np
@@ -23,6 +23,13 @@ from tensorflow_federated.python.analytics.hierarchical_histogram import hierarc
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.test import static_assert
+
+MOCK_TIME_SECONDS = 314159.2653
+EXPECTED_ROUND_TIMESTAMP = 314159
+
+
+def get_mock_timestamp():
+  return tf.constant(MOCK_TIME_SECONDS, dtype=tf.float64)
 
 
 class ClientWorkTest(test_case.TestCase, parameterized.TestCase):
@@ -501,23 +508,16 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
         enable_secure_sum=True)
     static_assert.assert_not_contains_unsecure_aggregation(hihi_computation)
 
+  @mock.patch('tensorflow.timestamp')
+  def test_round_timestamp(self, timestamp_mock):
+    timestamp_mock.side_effect = get_mock_timestamp
+    client_data = [
+        tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
+        tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
+    ]
+    data_range = [1, 5]
+    num_bins = 4
 
-@parameterized.named_parameters(
-    ('round_timestamp_1', 1646787625.492365, 1646787625),
-    ('round_timestamp_2', 1.952365, 2),
-)
-def test_round_timestamp(self, mock_time, expected_time):
-  client_data = [
-      tf.data.Dataset.from_tensor_slices([1., 2., 3., 4.]),
-      tf.data.Dataset.from_tensor_slices([1., 1., 3., 3.])
-  ]
-  data_range = [1, 5]
-  num_bins = 4
-
-  mock_timestamp = tf.constant(mock_time, dtype=tf.float64)
-  expected_timestamp = tf.constant(expected_time, dtype=tf.int64)
-  with unittest.mock.patch.object(tf, 'timestamp') as mock_func:
-    mock_func.return_value = mock_timestamp
     hihi_computation = hihi.build_hierarchical_histogram_computation(
         lower_bound=data_range[0], upper_bound=data_range[1], num_bins=num_bins)
     hihi_computation_result = hihi_computation(client_data)
@@ -527,9 +527,10 @@ def test_round_timestamp(self, mock_time, expected_time):
 
     initial_state = hihi_process.initialize()
     hihi_process_result, _ = hihi_process.next(initial_state, client_data)
-    self.assertEqual(expected_timestamp,
+    self.assertEqual(EXPECTED_ROUND_TIMESTAMP,
                      hihi_computation_result.round_timestamp)
-    self.assertEqual(expected_timestamp, hihi_process_result.round_timestamp)
+    self.assertEqual(EXPECTED_ROUND_TIMESTAMP,
+                     hihi_process_result.round_timestamp)
 
 
 if __name__ == '__main__':
