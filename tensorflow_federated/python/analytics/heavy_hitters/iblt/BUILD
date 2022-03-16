@@ -102,9 +102,8 @@ py_library(
     srcs = ["iblt_tff.py"],
     srcs_version = "PY3",
     deps = [
-        ":iblt_lib",
+        ":iblt_tensor",
         "//tensorflow_federated/python/analytics:data_processing",
-        "//tensorflow_federated/python/analytics:histogram_processing",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
