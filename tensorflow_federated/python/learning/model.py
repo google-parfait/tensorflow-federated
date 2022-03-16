@@ -247,8 +247,8 @@ class Model(object, metaclass=abc.ABCMeta):
     returns the finalized metric values.
 
     This method and the `report_local_unfinalized_metrics()` method will be used
-    together to build a cross-client metrics aggregator. See the documentaion of
-    `report_local_unfinalized_metrics()` for more information.
+    together to build a cross-client metrics aggregator. See the documentation
+    of `report_local_unfinalized_metrics()` for more information.
 
     Returns:
       An `OrderedDict` of metric names to finalizers. The metric names must be
