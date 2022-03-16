@@ -16,5 +16,6 @@
 from tensorflow_federated.python.analytics import data_processing
 from tensorflow_federated.python.analytics import heavy_hitters
 from tensorflow_federated.python.analytics import histogram_processing
+from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_factory import IbltFactory
 from tensorflow_federated.python.analytics.hierarchical_histogram.hierarchical_histogram_decoder import HierarchicalHistogramDecoder
 from tensorflow_federated.python.analytics.hierarchical_histogram.hierarchical_histogram_lib import build_hierarchical_histogram_process

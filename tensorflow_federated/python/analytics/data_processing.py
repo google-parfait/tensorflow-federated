@@ -470,3 +470,60 @@ def get_top_multi_elements(dataset: tf.data.Dataset,
       max_user_contribution=max_user_contribution,
       max_string_length=max_string_length)
   return tf.repeat(top_elements, counts)
+
+
+class _TensorShapeNotFullyDefinedError(ValueError):
+  pass
+
+
+@tf.function
+def to_stacked_tensor(ds: tf.data.Dataset) -> tf.Tensor:
+  """Encodes the `tf.data.Dataset as stacked tensors.
+
+  This is effectively the inverse of `tf.data.Dataset.from_tensor_slices()`.
+  All elements from the input dataset are concatenated into a tensor structure,
+  where the output structure matches the input `ds.element_spec`, and each
+  output tensor will have the same shape plus one additional prefix dimension
+  which elements are stacked in.
+
+  Dataset elements must have fully-defined shapes. Any partially-defined element
+  shapes will raise an error. If passing in a batched dataset, use
+  `drop_remainder=True` to ensure the batched shape is fully defined.
+
+  Args:
+    ds: The input `tf.data.Dataset` to stack.
+
+  Returns:
+    A structure of tensors encoding the input dataset.
+
+  Raises:
+    ValueError: If any dataset element shape is not fully-defined.
+  """
+  if not isinstance(ds, tf.data.Dataset):
+    raise TypeError(f'Expected ds to be a Dataset; but found an '
+                    f'instance of {type(ds).__name__}.')
+
+  def expanded_empty_tensor(tensor_spec: tf.TensorSpec) -> tf.Tensor:
+    if not tensor_spec.shape.is_fully_defined():
+      raise _TensorShapeNotFullyDefinedError()
+    return tf.zeros(shape=[0] + tensor_spec.shape, dtype=tensor_spec.dtype)
+
+  with tf.name_scope('to_stacked_tensor'):
+    try:
+      initial_state = tf.nest.map_structure(expanded_empty_tensor,
+                                            ds.element_spec)
+    except _TensorShapeNotFullyDefinedError as shape_not_defined_error:
+      raise ValueError('Dataset elements must have fully-defined shapes. '
+                       f'Found: {ds.element_spec}') from shape_not_defined_error
+
+  @tf.function
+  def append_tensor(stacked: tf.Tensor, tensor: tf.Tensor) -> tf.Tensor:
+    expanded_tensor = tf.expand_dims(tensor, axis=0)
+    return tf.concat((stacked, expanded_tensor), axis=0)
+
+  @tf.function
+  def reduce_func(old_state, input_element):
+    tf.nest.assert_same_structure(old_state, input_element)
+    return tf.nest.map_structure(append_tensor, old_state, input_element)
+
+  return ds.reduce(initial_state, reduce_func)
