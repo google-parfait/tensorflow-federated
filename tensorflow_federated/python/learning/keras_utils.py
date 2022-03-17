@@ -389,6 +389,11 @@ class _KerasModel(model_lib.Model):
   def get_metrics(self):
     return self._metrics
 
+  @tf.function
+  def reset_metrics(self):
+    for metric in self.get_metrics():
+      metric.reset_state()
+
   @property
   def input_spec(self):
     return self._input_spec

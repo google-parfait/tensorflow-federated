@@ -1201,6 +1201,42 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     # we add above have two values because they are a mean.
     self.assertLen(model.report_local_unfinalized_metrics()[metric.name], 2)
 
+  @parameterized.named_parameters(
+      # Test cases for the cartesian product of all parameter values.
+      *_create_tff_model_from_keras_model_tuples())
+  def test_tff_model_from_keras_model_resets_metrics(self, feature_dims,
+                                                     model_fn):
+    keras_model = model_fn(feature_dims)
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=_create_whimsy_types(feature_dims),
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[tf.keras.metrics.MeanAbsoluteError()])
+    self.assertIsInstance(tff_model, model_lib.Model)
+
+    expected_initial_local_variables = [0.0, 0.0, 0.0, 0.0, 0, 0]
+    self.assertSequenceEqual(tff_model.local_variables,
+                             expected_initial_local_variables)
+
+    # Execute the forward pass once, and assert the metrics values are not zero.
+    batch = _create_test_batch(feature_dims)
+    output = tff_model.forward_pass(batch)
+    self.assertEqual(output.loss, 0.5)
+    metrics = tff_model.report_local_unfinalized_metrics()
+    self.assertEqual(metrics['num_batches'], [1])
+    self.assertEqual(metrics['num_examples'], [2])
+    self.assertSequenceEqual(metrics['loss'], [1, 2])
+    self.assertSequenceEqual(metrics['mean_absolute_error'], [1, 2])
+
+    # Reset all of the metric state variables.
+    tff_model.reset_metrics()
+    self.assertSequenceEqual(tff_model.local_variables,
+                             expected_initial_local_variables)
+    metrics = tff_model.report_local_unfinalized_metrics()
+    self.assertEqual(metrics['num_batches'], [0])
+    self.assertEqual(metrics['num_examples'], [0])
+    self.assertSequenceEqual(metrics['loss'], [0, 0])
+    self.assertSequenceEqual(metrics['mean_absolute_error'], [0, 0])
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
