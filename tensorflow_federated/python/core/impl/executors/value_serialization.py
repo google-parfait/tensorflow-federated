@@ -188,7 +188,8 @@ def _check_container_compat_with_tf_nest(type_spec: computation_types.Type):
 
     container_type = computation_types.StructWithPythonType.get_container_type(
         type_to_check)
-    if (not names_are_sorted) and container_type is not collections.OrderedDict:
+    if (not names_are_sorted) and (container_type is not collections.OrderedDict
+                                   and container_type is not tf.SparseTensor):
       raise ValueError('Attempted to serialize a dataset yielding named '
                        'elements in non-sorted sequence order with '
                        f'non-OrderedDict container (type {container_type}). '
