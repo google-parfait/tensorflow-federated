@@ -58,14 +58,19 @@ class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
       ('numpy_nested',
        {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
        {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]}),
-      ('server_array_reference', test_utils.TestServerArrayReference(1), 1),
-      ('server_array_reference_nested',
-       {'a': [test_utils.TestServerArrayReference(True),
-              test_utils.TestServerArrayReference(1)],
-        'b': [test_utils.TestServerArrayReference('a')]},
+      ('materializable_value_reference_tensor',
+       test_utils.TestMaterializableValueReference(1), 1),
+      ('materializable_value_reference_sequence',
+       test_utils.TestMaterializableValueReference(
+           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+      ('materializable_value_reference_nested',
+       {'a': [test_utils.TestMaterializableValueReference(True),
+              test_utils.TestMaterializableValueReference(1)],
+        'b': [test_utils.TestMaterializableValueReference('a')]},
        {'a': [True, 1], 'b': ['a']}),
-      ('materialized_values_and_value_references',
-       [1, test_utils.TestServerArrayReference(2)],
+      ('materializable_value_reference_and_materialized_value',
+       [1, test_utils.TestMaterializableValueReference(2)],
        [1, 2]),
   )
   # pyformat: enable
@@ -76,8 +81,11 @@ class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertLen(release_mngr._values, 1)
     actual_value = release_mngr._values[1]
-    self.assertEqual(type(actual_value), type(expected_value))
-    self.assertAllEqual(actual_value, expected_value)
+    if (isinstance(actual_value, tf.data.Dataset) and
+        isinstance(expected_value, tf.data.Dataset)):
+      self.assertEqual(list(actual_value), list(expected_value))
+    else:
+      self.assertAllEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -121,13 +129,9 @@ class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
   def test_values_returns_copy(self):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
-    values = release_mngr.values()
-    self.assertEmpty(values)
-
-    values[1] = 1
-
-    values = release_mngr.values()
-    self.assertEmpty(values)
+    values_1 = release_mngr.values()
+    values_2 = release_mngr.values()
+    self.assertIsNot(values_1, values_2)
 
 
 if __name__ == '__main__':

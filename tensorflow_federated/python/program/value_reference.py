@@ -21,13 +21,40 @@ unplaced.
 """
 
 import abc
-import typing
-from typing import Any, Union
+from typing import Any, Iterable, Union
 
 import numpy as np
 import tree
 
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
+
+
+class MaterializableValueReference(
+    typed_object.TypedObject, metaclass=abc.ABCMeta):
+  """An abstract interface representing references to server-placed values."""
+
+  @abc.abstractproperty
+  def type_signature(
+      self
+  ) -> Union[computation_types.TensorType, computation_types.SequenceType]:
+    """The `tff.Type` of this object."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def get_value(
+      self
+  ) -> Union[np.generic, np.ndarray, Iterable[Union[np.generic, np.ndarray]]]:
+    """Returns the referenced value.
+
+    The Python type of the referenced value depends on the `type_signature`:
+
+    | TFF Type           | Python Type                             |
+    | ------------------ | --------------------------------------- |
+    | `tff.TensorType`   | `np.generic` or `np.ndarray`            |
+    | `tff.SequenceType` | `Iterable` `np.generic` or `np.ndarray` |
+    """
+    raise NotImplementedError
 
 
 def materialize_value(value: Any) -> Any:
@@ -39,19 +66,9 @@ def materialize_value(value: Any) -> Any:
   """
 
   def _materialize(value):
-    if isinstance(value, ServerArrayReference):
-      value = typing.cast(ServerArrayReference, value)
+    if isinstance(value, MaterializableValueReference):
       return value.get_value()
     else:
       return value
 
   return tree.map_structure(_materialize, value)
-
-
-class ServerArrayReference(typed_object.TypedObject, metaclass=abc.ABCMeta):
-  """An abstract interface representing references to server placed values."""
-
-  @abc.abstractmethod
-  def get_value(self) -> Union[np.generic, np.ndarray]:
-    """Returns the referenced value as a numpy scalar or array."""
-    raise NotImplementedError

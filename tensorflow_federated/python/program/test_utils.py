@@ -20,10 +20,11 @@ on the server, elements of structures that are placed on the server, or
 unplaced.
 """
 
-from typing import Optional, Union
+from typing import Any, Iterable, Union
 
 import attr
 import numpy as np
+import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import value_reference
@@ -40,26 +41,43 @@ class TestAttrObject2():
   a = attr.ib()
 
 
-class TestServerArrayReference(value_reference.ServerArrayReference):
-  """A test implementation of `tff.program.ServerArrayReference`."""
+class TestMaterializableValueReference(
+    value_reference.MaterializableValueReference):
+  """A test implementation of `tff.program.MaterializableValueReference`."""
 
-  def __init__(self,
-               value: Union[np.generic, np.ndarray],
-               type_signature: Optional[computation_types.Type] = None):
+  def __init__(self, value: Union[np.generic, np.ndarray,
+                                  Iterable[Union[np.generic, np.ndarray]]]):
+    if isinstance(value, int):
+      self._type_signature = computation_types.TensorType(tf.int32)
+    elif isinstance(value, bool):
+      self._type_signature = computation_types.TensorType(tf.bool)
+    elif isinstance(value, str):
+      self._type_signature = computation_types.TensorType(tf.string)
+    elif isinstance(value, tf.data.Dataset):
+      self._type_signature = computation_types.SequenceType(tf.int32)
+    else:
+      raise NotImplementedError(f'Unexpected type found: {type(value)}.')
     self._value = value
-    self._type_signature = type_signature
 
   @property
-  def type_signature(self) -> computation_types.Type:
+  def type_signature(
+      self
+  ) -> Union[computation_types.TensorType, computation_types.SequenceType]:
     return self._type_signature
 
-  def get_value(self) -> Union[np.generic, np.ndarray]:
+  def get_value(
+      self
+  ) -> Union[np.generic, np.ndarray, Iterable[Union[np.generic, np.ndarray]]]:
     return self._value
 
-  def __eq__(self, other):
+  def __eq__(self, other: Any) -> bool:
     if self is other:
       return True
-    elif not isinstance(other, TestServerArrayReference):
+    elif not isinstance(other, TestMaterializableValueReference):
       return NotImplemented
-    return (self._value == other._value and
-            self._type_signature == other._type_signature)
+    if self._type_signature != other._type_signature:
+      return False
+    if self._type_signature.is_sequence():
+      return list(self._value) == list(other._value)
+    else:
+      return self._value == other._value

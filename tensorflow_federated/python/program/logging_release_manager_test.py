@@ -58,14 +58,19 @@ class LoggingReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
       ('numpy_nested',
        {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
        {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]}),
-      ('server_array_reference', test_utils.TestServerArrayReference(1), 1),
-      ('server_array_reference_nested',
-       {'a': [test_utils.TestServerArrayReference(True),
-              test_utils.TestServerArrayReference(1)],
-        'b': [test_utils.TestServerArrayReference('a')]},
+      ('materializable_value_reference_tensor',
+       test_utils.TestMaterializableValueReference(1), 1),
+      ('materializable_value_reference_sequence',
+       test_utils.TestMaterializableValueReference(
+           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+      ('materializable_value_reference_nested',
+       {'a': [test_utils.TestMaterializableValueReference(True),
+              test_utils.TestMaterializableValueReference(1)],
+        'b': [test_utils.TestMaterializableValueReference('a')]},
        {'a': [True, 1], 'b': ['a']}),
-      ('materialized_values_and_value_references',
-       [1, test_utils.TestServerArrayReference(2)],
+      ('materializable_value_reference_and_materialized_value',
+       [1, test_utils.TestMaterializableValueReference(2)],
        [1, 2]),
   )
   # pyformat: enable
@@ -79,8 +84,11 @@ class LoggingReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
       call = mock_info.mock_calls[0]
       _, args, _ = call
       _, actual_value = args
-      self.assertEqual(type(actual_value), type(expected_value))
-      self.assertAllEqual(actual_value, expected_value)
+      if (isinstance(actual_value, tf.data.Dataset) and
+          isinstance(expected_value, tf.data.Dataset)):
+        self.assertEqual(list(actual_value), list(expected_value))
+      else:
+        self.assertAllEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
       ('bool', True),

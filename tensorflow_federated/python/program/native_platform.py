@@ -15,7 +15,7 @@
 
 import collections
 import random
-from typing import Any, List, Optional, Sequence, Union
+from typing import Any, Iterable, List, Optional, Sequence, Union
 
 import numpy as np
 import tensorflow as tf
@@ -32,28 +32,30 @@ from tensorflow_federated.python.program import data_source
 from tensorflow_federated.python.program import value_reference
 
 
-class NumpyValueReference(value_reference.ServerArrayReference):
-  """A `tff.program.ServerArrayReference` backed by a `numpy` value."""
+class NumpyValueReference(value_reference.MaterializableValueReference):
+  """A `tff.program.MaterializableValueReference` backed by a `numpy` value."""
 
-  def __init__(self, value: Union[np.generic, np.ndarray],
-               type_signature: computation_types.TensorType):
-    """Returns an initialized `tff.program.NumpyValueReference`.
-
-    Args:
-      value: A numpy scalar or array.
-      type_signature: The `tff.TensorType` of this object.
-    """
-    py_typecheck.check_type(type_signature, computation_types.TensorType)
+  def __init__(self, value: Union[np.generic, np.ndarray,
+                                  Iterable[Union[np.generic, np.ndarray]]],
+               type_signature: Union[computation_types.TensorType,
+                                     computation_types.SequenceType]):
+    py_typecheck.check_type(
+        type_signature,
+        (computation_types.TensorType, computation_types.SequenceType))
 
     self._value = value
     self._type_signature = type_signature
 
   @property
-  def type_signature(self) -> computation_types.TensorType:
+  def type_signature(
+      self
+  ) -> Union[computation_types.TensorType, computation_types.SequenceType]:
     """The `tff.TensorType` of this object."""
     return self._type_signature
 
-  def get_value(self) -> Union[np.generic, np.ndarray]:
+  def get_value(
+      self
+  ) -> Union[np.generic, np.ndarray, Iterable[Union[np.generic, np.ndarray]]]:
     """Returns the referenced value as a numpy scalar or array."""
     return self._value
 
@@ -62,8 +64,12 @@ class NumpyValueReference(value_reference.ServerArrayReference):
       return True
     elif not isinstance(other, NumpyValueReference):
       return NotImplemented
-    return (self._type_signature == other._type_signature and
-            self._value == other._value)
+    if self._type_signature != other._type_signature:
+      return False
+    if self._type_signature.is_sequence():
+      return list(self._value) == list(other._value)
+    else:
+      return self._value == other._value
 
 
 def _contains_only_server_placed_data(

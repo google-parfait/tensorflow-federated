@@ -26,6 +26,7 @@ import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.program import file_release_manager
+from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import test_utils
 
 
@@ -544,8 +545,7 @@ class CSVFileReleaseManagerRemoveValuesAfterTest(parameterized.TestCase):
       release_mngr._remove_values_after(key)
 
 
-class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
-                                       tf.test.TestCase):
+class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
 
   def test_calls_remove_all_values_with_existing_file(self):
     temp_file = self.create_tempfile()
@@ -717,16 +717,20 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
       ('numpy_nested',
        {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
        [{'key': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'a'}]),
-      ('server_array_reference',
-       test_utils.TestServerArrayReference(1),
+      ('materializable_value_reference_tensor',
+       test_utils.TestMaterializableValueReference(1),
        [{'key': '1', '': '1'}]),
-      ('server_array_reference_nested',
-       {'a': [test_utils.TestServerArrayReference(True),
-              test_utils.TestServerArrayReference(1)],
-        'b': [test_utils.TestServerArrayReference('a')]},
+      ('materializable_value_reference_sequence',
+       test_utils.TestMaterializableValueReference(
+           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       [{'key': '1', '': '[1, 2, 3]'}]),
+      ('materializable_value_reference_nested',
+       {'a': [test_utils.TestMaterializableValueReference(True),
+              test_utils.TestMaterializableValueReference(1)],
+        'b': [test_utils.TestMaterializableValueReference('a')]},
        [{'key': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'a'}]),
-      ('materialized_values_and_value_references',
-       [1, test_utils.TestServerArrayReference(2)],
+      ('materializable_value_reference_and_materialized_value',
+       [1, test_utils.TestMaterializableValueReference(2)],
        [{'key': '1', '0': '1', '1': '2'}]),
   )
   # pyformat: enable
@@ -739,8 +743,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr.release(value, 1)
 
     _, actual_value = _read_values_from_csv(temp_file)
-    self.assertAllEqual(type(actual_value), type(expected_value))
-    self.assertAllEqual(actual_value, expected_value)
+    self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -850,52 +853,48 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
   # pyformat: disable
   @parameterized.named_parameters(
       ('none', None, [None]),
-      ('bool', True, [tf.constant(True)]),
-      ('int', 1, [tf.constant(1)]),
-      ('str', 'a', [tf.constant('a')]),
-      ('list',
-       [True, 1, 'a'],
-       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('bool', True, [True]),
+      ('int', 1, [1]),
+      ('str', 'a', ['a']),
+      ('list', [True, 1, 'a'], [True, 1, 'a']),
       ('list_empty', [], []),
-      ('list_nested',
-       [[True, 1], ['a']],
-       [tf.constant(True), tf.constant(1), tf.constant('a')]),
-      ('dict',
-       {'a': True, 'b': 1, 'c': 'a'},
-       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('list_nested', [[True, 1], ['a']], [True, 1, 'a']),
+      ('dict', {'a': True, 'b': 1, 'c': 'a'}, [True, 1, 'a']),
       ('dict_empty', {}, []),
       ('dict_nested',
        {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
-       [tf.constant(True), tf.constant(1), tf.constant('a')]),
-      ('attr',
-       test_utils.TestAttrObject1(True, 1),
-       [tf.constant(True), tf.constant(1)]),
+       [True, 1, 'a']),
+      ('attr', test_utils.TestAttrObject1(True, 1), [True, 1]),
       ('attr_nested',
        {'a': [test_utils.TestAttrObject1(True, 1)],
         'b': test_utils.TestAttrObject2('a')},
-       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+       [True, 1, 'a']),
       ('tensor_int', tf.constant(1), [tf.constant(1)]),
       ('tensor_str', tf.constant('a'), [tf.constant('a')]),
       ('tensor_2d', tf.ones((2, 3)), [tf.ones((2, 3))]),
       ('tensor_nested',
        {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]},
        [tf.constant(True), tf.constant(1), tf.constant('a')]),
-      ('numpy_int', np.int32(1), [tf.constant(1)]),
-      ('numpy_2d', np.ones((2, 3)), [tf.ones((2, 3))]),
+      ('numpy_int', np.int32(1), [np.int32(1)]),
+      ('numpy_2d', np.ones((2, 3)), [np.ones((2, 3))]),
       ('numpy_nested',
        {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
-       [tf.constant(True), tf.constant(1), tf.constant('a')]),
-      ('server_array_reference',
-       test_utils.TestServerArrayReference(1),
-       [tf.constant(1)]),
-      ('server_array_reference_nested',
-       {'a': [test_utils.TestServerArrayReference(True),
-              test_utils.TestServerArrayReference(1)],
-        'b': [test_utils.TestServerArrayReference('a')]},
-       [tf.constant(True), tf.constant(1), tf.constant('a')]),
-      ('materialized_values_and_value_references',
-       [1, test_utils.TestServerArrayReference(2)],
-       [tf.constant(1), tf.constant(2)]),
+       [np.bool(True), np.int32(1), np.str_('a')]),
+      ('materializable_value_reference_tensor',
+       test_utils.TestMaterializableValueReference(1),
+       [1]),
+      ('materializable_value_reference_sequence',
+       test_utils.TestMaterializableValueReference(
+           tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       [tf.data.Dataset.from_tensor_slices([1, 2, 3])]),
+      ('materializable_value_reference_nested',
+       {'a': [test_utils.TestMaterializableValueReference(True),
+              test_utils.TestMaterializableValueReference(1)],
+        'b': [test_utils.TestMaterializableValueReference('a')]},
+       [True, 1, 'a']),
+      ('materialized_values_and_materializable_value_reference',
+       [1, test_utils.TestMaterializableValueReference(2)],
+       [1, 2]),
   )
   # pyformat: enable
   def test_writes_value(self, value, expected_value):
@@ -905,11 +904,24 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
 
     release_mngr.release(value, 1)
 
-    path = release_mngr._get_path_for_key(1)
-    module = tf.saved_model.load(path)
-    actual_value = module()
-    self.assertEqual(type(actual_value), type(expected_value))
-    self.assertAllEqual(actual_value, expected_value)
+    with mock.patch.object(file_utils,
+                           'write_saved_model') as mock_write_saved_model:
+      release_mngr.release(value, 1)
+
+      mock_write_saved_model.assert_called_once()
+      call = mock_write_saved_model.mock_calls[0]
+      _, args, _ = call
+      module, _ = args
+      actual_value = module._value
+
+      def _to_list(value):
+        if isinstance(value, tf.data.Dataset):
+          return list(value)
+        return value
+
+      actual_value = tree.map_structure(_to_list, actual_value)
+      expected_value = tree.map_structure(_to_list, expected_value)
+      self.assertAllEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
       ('none', None),

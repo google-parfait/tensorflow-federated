@@ -230,14 +230,19 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
         self._remove_all_values()
       else:
         self._remove_values_after(key - 1)
+
     materialized_value = value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
-    normalized_value = collections.OrderedDict()
-    for x, y in flattened_value.items():
-      normalized_value[x] = np.array(y).tolist()
+    def _normalize(value):
+      if isinstance(value, tf.data.Dataset):
+        value = list(value)
+      return np.array(value).tolist()
 
-    normalized_value[self._key_fieldname] = key
+    normalized_value = [(k, _normalize(v)) for k, v in flattened_value]
+    normalized_value.insert(0, (self._key_fieldname, key))
+    normalized_value = collections.OrderedDict(normalized_value)
+
     if self._save_mode == CSVSaveMode.APPEND:
       self._append_value(normalized_value)
     elif self._save_mode == CSVSaveMode.WRITE:
@@ -312,7 +317,13 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     """
     py_typecheck.check_type(key, int)
     path = self._get_path_for_key(key)
-    materialized_value = value_reference.materialize_value(value)
-    flattened_value = tree.flatten(materialized_value)
+
+    def _normalize(value):
+      if isinstance(value, value_reference.MaterializableValueReference):
+        value = value.get_value()
+      return value
+
+    normalize_value = tree.map_structure(_normalize, value)
+    flattened_value = tree.flatten(normalize_value)
     module = file_utils.ValueModule(flattened_value)
     file_utils.write_saved_model(module, path, overwrite=True)
