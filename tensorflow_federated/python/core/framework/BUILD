@@ -38,6 +38,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_service",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
         "//tensorflow_federated/python/core/impl/executors:executor_value_base",
+        "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "//tensorflow_federated/python/core/impl/executors:federated_composing_strategy",
         "//tensorflow_federated/python/core/impl/executors:federated_resolving_strategy",
         "//tensorflow_federated/python/core/impl/executors:federating_executor",
