@@ -16,28 +16,12 @@
 load("@rules_python//python:defs.bzl", "py_test")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
-# Include specific extra deps or srcs when building statically. The
-# "framework_shared_object" list is used for additional deps or srcs on
-# framework_shared_object platforms. This is implemented via 3 macros:
-# "if_static", "if_static_oss", and "if_static_google". In Google internal
-# builds we only use "extra", that is, we use the "if_static_google"
-# macro. In OSS, we use all arguments via "if_static_oss". We convert between
-# the two macros in the "if_static" macro using the OSS export automation.
-def if_static_oss(extra, framework_shared_object = []):
+def if_static(extra, framework_shared_object = []):  # buildifier: disable=unused-variable
     return_value = {
         str(Label("@org_tensorflow//tensorflow:framework_shared_object")): framework_shared_object,
         "//conditions:default": extra,
     }
     return select(return_value)
-
-def if_static_google(extra, framework_shared_object = []):  # buildifier: disable=unused-variable
-    return_value = {
-        "//conditions:default": extra,
-    }
-    return select(return_value)
-
-def if_static(extra, framework_shared_object = []):
-    return if_static_oss(extra, framework_shared_object)
 
 def py_cpu_gpu_test(name, main = None, tags = [], **kwargs):
     """A version of `py_test` that tests both cpu and gpu.

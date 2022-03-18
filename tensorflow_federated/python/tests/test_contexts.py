@@ -44,8 +44,7 @@ def _get_all_contexts():
   # pylint: disable=unnecessary-lambda
   # pyformat: disable
   return [
-      # native_local_cpp removed by copybara
-      ('native_local_python',
+      ('native_local',
        lambda: tff.backends.native.create_local_python_execution_context()),
       ('native_mergeable',
        lambda: _create_local_mergeable_comp_context()),

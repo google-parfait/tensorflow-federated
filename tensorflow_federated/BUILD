@@ -4,7 +4,9 @@ package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])
 
-exports_files(["LICENSE"])
+exports_files([
+    "LICENSE",
+])
 
 py_library(
     name = "tensorflow_federated",
