@@ -120,9 +120,9 @@ class FederatedSGDTest(test_case.TestCase, parameterized.TestCase):
   )
   # pylint: enable=g-complex-comprehension
   def test_construction_calls_model_fn(self, aggregation_factory):
-    # Assert that the the process building does not call `model_fn` too many
-    # times. `model_fn` can potentially be expensive (loading weights,
-    # processing, etc).
+    # Assert that the process building does not call `model_fn` too many times.
+    # `model_fn` can potentially be expensive (loading weights, processing, etc
+    # ).
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
     fed_sgd.build_fed_sgd(
         model_fn=mock_model_fn, model_aggregator=aggregation_factory())

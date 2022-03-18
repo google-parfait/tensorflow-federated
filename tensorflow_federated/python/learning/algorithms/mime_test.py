@@ -227,9 +227,9 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
   """Tests construction of the Mime Lite training process."""
 
   def test_construction_calls_model_fn(self):
-    # Assert that the the process building does not call `model_fn` too many
-    # times. `model_fn` can potentially be expensive (loading weights,
-    # processing, etc).
+    # Assert that the process building does not call `model_fn` too many times.
+    # `model_fn` can potentially be expensive (loading weights, processing, etc
+    # ).
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
     mime.build_weighted_mime_lite(
         model_fn=mock_model_fn,

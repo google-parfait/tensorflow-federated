@@ -45,9 +45,9 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
   ]))
   # pylint: enable=g-complex-comprehension
   def test_construction_calls_model_fn(self, optimizer_fn, aggregation_factory):
-    # Assert that the the process building does not call `model_fn` too many
-    # times. `model_fn` can potentially be expensive (loading weights,
-    # processing, etc).
+    # Assert that the process building does not call `model_fn` too many times.
+    # `model_fn` can potentially be expensive (loading weights, processing, etc
+    # ).
     learning_rate_fn = lambda x: 0.1
     mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
     fed_avg_with_optimizer_schedule.build_weighted_fed_avg_with_optimizer_schedule(
