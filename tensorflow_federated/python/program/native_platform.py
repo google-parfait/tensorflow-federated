@@ -26,9 +26,9 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.program import data_source
+from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import value_reference
 
 
@@ -70,34 +70,6 @@ class NumpyValueReference(value_reference.MaterializableValueReference):
       return list(self._value) == list(other._value)
     else:
       return self._value == other._value
-
-
-def _contains_only_server_placed_data(
-    type_signature: computation_types.Type) -> bool:
-  """Determines if `type_signature` contains only server-placed data.
-
-  Determines if `type_signature` contains only:
-  * `tff.StructType`s
-  * `tff.SequenceType`s
-  * server-placed `tff.FederatedType`s
-  * `tff.TensorType`s
-
-  Args:
-      type_signature: The `tff.Type` to test.
-
-  Returns:
-    `True` if `type_signature` contains only server-placed data, otherwise
-    `False`.
-  """
-  py_typecheck.check_type(type_signature, computation_types.Type)
-
-  def predicate(type_spec: computation_types.Type) -> bool:
-    return (type_spec.is_struct() or
-            (type_spec.is_federated() and
-             type_spec.placement is placements.SERVER) or
-            type_spec.is_sequence() or type_spec.is_tensor())
-
-  return type_analysis.contains_only(type_signature, predicate)
 
 
 def _create_structure_of_value_references(
@@ -154,8 +126,8 @@ def _materialize_structure_of_value_references(
     return value
 
 
-class NativeFederatedContext(context_base.Context):
-  """A federated context backed by a `tff.framework.Context`."""
+class NativeFederatedContext(federated_context.FederatedContext):
+  """A `tff.program.FederatedContext` backed by a `tff.framework.Context`."""
 
   def __init__(self, context: context_base.Context):
     """Returns an initialized `tff.program.NativeFederatedContext`.
@@ -206,7 +178,7 @@ class NativeFederatedContext(context_base.Context):
     py_typecheck.check_type(comp, computation_base.Computation)
 
     result_type = comp.type_signature.result
-    if not _contains_only_server_placed_data(result_type):
+    if not federated_context.contains_only_server_placed_data(result_type):
       raise ValueError(
           'Expected the result type of the invoked computation to contain only '
           'structures, server-placed values, or tensors, found '

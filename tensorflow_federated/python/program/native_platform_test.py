@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import native_platform
 
 
@@ -60,81 +61,6 @@ class NumpyValueReferenceTest(parameterized.TestCase):
     actual_value = value_reference.get_value()
 
     self.assertEqual(actual_value, expected_value)
-
-
-class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
-
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('struct_unnamed', computation_types.StructType([
-          (None, computation_types.TensorType(tf.bool)),
-          (None, computation_types.TensorType(tf.int32)),
-          (None, computation_types.TensorType(tf.string)),
-      ])),
-      ('struct_named', computation_types.StructType([
-          ('a', computation_types.TensorType(tf.bool)),
-          ('b', computation_types.TensorType(tf.int32)),
-          ('c', computation_types.TensorType(tf.string)),
-      ])),
-      ('struct_nested', computation_types.StructType([
-          ('x', computation_types.StructType([
-              ('a', computation_types.TensorType(tf.bool)),
-              ('b', computation_types.TensorType(tf.int32)),
-          ])),
-          ('y', computation_types.StructType([
-              ('c', computation_types.TensorType(tf.string)),
-          ])),
-      ])),
-      ('federated_struct', computation_types.FederatedType(
-          computation_types.StructType([
-              ('a', computation_types.TensorType(tf.bool)),
-              ('b', computation_types.TensorType(tf.int32)),
-              ('c', computation_types.TensorType(tf.string)),
-          ]),
-          placements.SERVER)),
-      ('federated_sequence', computation_types.FederatedType(
-          computation_types.SequenceType(
-              computation_types.TensorType(tf.int32)),
-          placements.SERVER)),
-      ('federated_tensor', computation_types.FederatedType(
-          computation_types.TensorType(tf.int32),
-          placements.SERVER)),
-      ('sequence', computation_types.SequenceType(
-          computation_types.TensorType(tf.int32))),
-      ('tensor', computation_types.TensorType(tf.int32)),
-  )
-  # pyformat: enable
-  def test_returns_true(self, type_signature):
-    result = native_platform._contains_only_server_placed_data(type_signature)
-
-    self.assertTrue(result)
-
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('federated', computation_types.FederatedType(
-          computation_types.TensorType(tf.int32),
-          placements.CLIENTS)),
-      ('function', computation_types.FunctionType(
-          computation_types.TensorType(tf.int32),
-          computation_types.TensorType(tf.int32))),
-      ('placement', computation_types.PlacementType()),
-  )
-  # pyformat: enable
-  def test_returns_false(self, type_signature):
-    result = native_platform._contains_only_server_placed_data(type_signature)
-
-    self.assertFalse(result)
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_raises_type_error_with_type_signature(self, type_signature):
-    with self.assertRaises(TypeError):
-      native_platform._contains_only_server_placed_data(type_signature)
 
 
 class CreateStructureOfValueReferencesTest(parameterized.TestCase):
@@ -429,8 +355,8 @@ class NativeFederatedContextTest(parameterized.TestCase):
 
     try:
       with mock.patch.object(
-          native_platform,
-          '_contains_only_server_placed_data',
+          federated_context,
+          'contains_only_server_placed_data',
           return_value=True):
         context.invoke(return_one, None)
     except ValueError:
@@ -446,8 +372,8 @@ class NativeFederatedContextTest(parameterized.TestCase):
 
     with self.assertRaises(ValueError):
       with mock.patch.object(
-          native_platform,
-          '_contains_only_server_placed_data',
+          federated_context,
+          'contains_only_server_placed_data',
           return_value=False):
         context.invoke(return_one, None)
 

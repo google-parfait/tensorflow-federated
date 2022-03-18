@@ -22,6 +22,7 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":data_source",
+        ":federated_context",
         ":file_program_state_manager",
         ":file_release_manager",
         ":logging_release_manager",
@@ -39,6 +40,36 @@ py_library(
     srcs = ["data_source.py"],
     srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
+)
+
+py_library(
+    name = "federated_context",
+    srcs = ["federated_context.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+    ],
+)
+
+py_test(
+    name = "federated_context_test",
+    srcs = ["federated_context_test.py"],
+    deps = [
+        ":federated_context",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -178,6 +209,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":data_source",
+        ":federated_context",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -185,7 +217,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -197,6 +228,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":federated_context",
         ":native_platform",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
