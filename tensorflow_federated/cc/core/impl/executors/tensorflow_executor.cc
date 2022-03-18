@@ -491,7 +491,7 @@ class ExecutorValue {
   // Constructs an `ExecutorValue` from a `SequenceTensor`.
   explicit ExecutorValue(const SequenceTensor st) : value_(std::move(st)) {}
 
-  // Constructs a structural `ExecutorValue from a list of elements.
+  // Constructs a structural `ExecutorValue` from a list of elements.
   explicit ExecutorValue(std::shared_ptr<std::vector<ExecutorValue>> elements)
       : value_(elements) {}
 

@@ -907,3 +907,14 @@ tff_cc_test_with_tf_deps(
         "@com_google_absl//absl/types:span",
     ],
 )
+
+tff_cc_library_with_tf_deps(
+    name = "xla_executor",
+    srcs = ["xla_executor.cc"],
+    hdrs = ["xla_executor.h"],
+    deps = [
+        ":executor",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+)
