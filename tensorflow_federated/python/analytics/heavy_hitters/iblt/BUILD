@@ -153,3 +153,36 @@ py_test(
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
+
+py_library(
+    name = "iblt_factory",
+    srcs = ["iblt_factory.py"],
+    visibility = ["//tensorflow_federated/python/analytics:__pkg__"],
+    deps = [
+        ":iblt_tensor",
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:sum_factory",
+        "//tensorflow_federated/python/analytics:data_processing",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "iblt_factory_test",
+    srcs = ["iblt_factory_test.py"],
+    deps = [
+        ":iblt_factory",
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:secure",
+        "//tensorflow_federated/python/aggregators:sum_factory",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)

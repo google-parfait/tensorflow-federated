@@ -26,6 +26,7 @@ py_library(
         ":data_processing",
         ":histogram_processing",
         "//tensorflow_federated/python/analytics/heavy_hitters",
+        "//tensorflow_federated/python/analytics/heavy_hitters/iblt:iblt_factory",
         "//tensorflow_federated/python/analytics/hierarchical_histogram:hierarchical_histogram_decoder",
         "//tensorflow_federated/python/analytics/hierarchical_histogram:hierarchical_histogram_lib",
     ],
@@ -35,7 +36,10 @@ py_library(
     name = "data_processing",
     srcs = ["data_processing.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(

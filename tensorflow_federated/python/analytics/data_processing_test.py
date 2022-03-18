@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 from absl.testing import parameterized
 
 import tensorflow as tf
@@ -596,6 +597,79 @@ class DataProcessingTest(parameterized.TestCase,
         TypeError, '`dataset.element_spec.dtype` must be `tf.string`.'):
       data_processing.get_top_multi_elements(ds, max_user_contribution=10)
 
+
+class ToStackedTensorTest(tf.test.TestCase):
+
+  def test_basic_encoding(self):
+    ds = tf.data.Dataset.range(5)
+
+    encoded = data_processing.to_stacked_tensor(ds)
+
+    self.assertIsInstance(encoded, tf.Tensor)
+    self.assertEqual(encoded.shape, [5])
+    self.assertAllEqual(encoded, list(range(5)))
+
+  def test_nested_structure(self):
+    ds = tf.data.Dataset.from_tensors(collections.OrderedDict(x=42))
+
+    encoded = data_processing.to_stacked_tensor(ds)
+
+    self.assertAllEqual(encoded, collections.OrderedDict(x=[42]))
+
+  def test_single_element(self):
+    ds = tf.data.Dataset.from_tensors([42])
+
+    encoded = data_processing.to_stacked_tensor(ds)
+
+    self.assertAllEqual(encoded, [[42]])
+
+  def test_non_scalar_tensor(self):
+    ds = tf.data.Dataset.from_tensors([[1, 2], [3, 4]])
+    assert len(ds.element_spec.shape) > 1, ds.element_spec.shape
+
+    encoded = data_processing.to_stacked_tensor(ds)
+
+    self.assertAllEqual(encoded, [[[1, 2], [3, 4]]])
+
+  def test_empty_dataset(self):
+    ds = tf.data.Dataset.range(-1)
+    assert ds.cardinality() == 0
+
+    encoded = data_processing.to_stacked_tensor(ds)
+
+    self.assertAllEqual(encoded, list())
+
+  def test_batched_drop_remainder(self):
+    ds = tf.data.Dataset.range(6).batch(2, drop_remainder=True)
+
+    encoded = data_processing.to_stacked_tensor(ds)
+
+    self.assertAllEqual(encoded, [[0, 1], [2, 3], [4, 5]])
+
+  def test_batched_with_remainder_unsupported(self):
+    ds = tf.data.Dataset.range(6).batch(2, drop_remainder=False)
+
+    with self.assertRaisesRegex(
+        ValueError, 'Dataset elements must have fully-defined shapes'):
+      data_processing.to_stacked_tensor(ds)
+
+  def test_roundtrip(self):
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[1, 2, 3],
+            y=[['a'], ['b'], ['c']],
+        ))
+
+    encoded = data_processing.to_stacked_tensor(ds)
+    roundtripped = tf.data.Dataset.from_tensor_slices(encoded)
+
+    self.assertAllEqual(list(ds), list(roundtripped))
+
+  def test_validates_input(self):
+    not_a_dataset = [tf.constant(42)]
+
+    with self.assertRaisesRegex(TypeError, 'ds'):
+      data_processing.to_stacked_tensor(not_a_dataset)
 
 if __name__ == '__main__':
   tf.test.main()
