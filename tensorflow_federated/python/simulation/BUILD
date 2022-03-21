@@ -63,8 +63,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:iterative_process",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -80,11 +78,7 @@ py_test(
     srcs = ["sampling_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":sampling_utils",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
+    deps = [":sampling_utils"],
 )
 
 py_library(
@@ -96,7 +90,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_service",
-        "@absl_py//absl/logging",
     ],
 )
 
@@ -125,7 +118,6 @@ py_library(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/program:program_state_manager",
         "//tensorflow_federated/python/program:release_manager",
-        "@absl_py//absl/logging",
     ],
 )
 
@@ -140,7 +132,5 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/program:release_manager",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
     ],
 )

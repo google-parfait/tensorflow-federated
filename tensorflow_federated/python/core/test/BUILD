@@ -47,6 +47,5 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:absltest",
     ],
 )

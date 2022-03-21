@@ -2,6 +2,7 @@ workspace(name = "org_tensorflow_federated")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
+load("//:workspace.bzl", "tensorflow_pip")
 
 #
 # Direct dependencies
@@ -22,11 +23,11 @@ git_repository(
 # TODO(b/218935430): Temporarily disable the direct dependency on Abseil C++
 # Common Libraries, for now we pick this dependency up via TensorFlows
 # workspace.
-# git_repository(
-#     name = "com_google_absl",
-#     remote = "https://github.com/abseil/abseil-cpp.git",
-#     tag = "20211102.0",
-# )
+git_repository(
+    name = "com_google_absl",
+    remote = "https://github.com/abseil/abseil-cpp.git",
+    tag = "20211102.0",
+)
 
 git_repository(
     name = "com_google_googletest",
@@ -48,11 +49,8 @@ git_repository(
     tag = "v0.29.0",
 )
 
-git_repository(
-    name = "org_tensorflow",
-    patches = ["//third_party/tensorflow:internal_visibility.patch"],
-    remote = "https://github.com/tensorflow/tensorflow.git",
-    tag = "v2.8.0",
+tensorflow_pip(
+    name = "tensorflow_pip",
 )
 
 git_repository(
@@ -126,22 +124,6 @@ git_repository(
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
 gazelle_dependencies()
-
-load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
-
-tf_workspace3()
-
-load("@org_tensorflow//tensorflow:workspace2.bzl", "tf_workspace2")
-
-tf_workspace2()
-
-load("@org_tensorflow//tensorflow:workspace1.bzl", "tf_workspace1")
-
-tf_workspace1()
-
-load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
-
-tf_workspace0()
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 

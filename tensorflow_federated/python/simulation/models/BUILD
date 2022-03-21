@@ -25,7 +25,6 @@ py_library(
     name = "group_norm",
     srcs = ["group_norm.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
@@ -34,19 +33,12 @@ py_test(
     srcs = ["group_norm_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":group_norm",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
+    deps = [":group_norm"],
 )
 
 py_library(
     name = "mnist",
     srcs = ["mnist.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/learning/metrics:counters",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
+    deps = ["//tensorflow_federated/python/learning/metrics:counters"],
 )

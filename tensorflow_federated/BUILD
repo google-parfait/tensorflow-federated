@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_python//python:defs.bzl", "py_library")
 
 package(default_visibility = ["//visibility:private"])
@@ -44,4 +45,11 @@ py_library(
     name = "version",
     srcs = ["version.py"],
     srcs_version = "PY3",
+)
+
+bzl_library(
+    name = "workspace_bzl",
+    srcs = ["workspace.bzl"],
+    parse_tests = False,
+    visibility = ["//visibility:private"],
 )

@@ -43,8 +43,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",  # build_cleaner: keep
     ],
 )
 
@@ -58,7 +56,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
         "@com_google_protobuf//:protobuf_python",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -72,7 +69,5 @@ py_test(
         ":executor_stack_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
     ],
 )

@@ -49,7 +49,6 @@ py_test(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "@absl_py//absl/testing:absltest",
         "@com_google_protobuf//:protobuf_python",
     ],
 )

@@ -51,11 +51,7 @@ py_library(
     name = "test_case",
     srcs = ["test_case.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
+    deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
 )
 
 py_test(

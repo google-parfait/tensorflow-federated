@@ -60,8 +60,9 @@ REQUIRED_PACKAGES = [
     'dm-tree~=0.1.1',
     'farmhashpy~=0.4.0',
     'grpcio~=1.34.0',
-    'jax~=0.2.27',
     'jaxlib~=0.1.76',
+    'jax~=0.2.27',
+    'kubernetes~=21.7.0',
     'numpy~=1.21.4',
     'portpicker~=1.3.1',
     'semantic-version~=2.8.5',
@@ -69,7 +70,6 @@ REQUIRED_PACKAGES = [
     'tensorflow-privacy~=0.8.0',
     'tensorflow~=2.8.0',
     'tqdm~=4.28.1',
-    'kubernetes~=21.7.0',
 ]
 
 with open('tensorflow_federated/version.py') as fp:

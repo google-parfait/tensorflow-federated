@@ -24,7 +24,6 @@ py_library(
     name = "char_prediction_models",
     srcs = ["char_prediction_models.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
@@ -32,20 +31,14 @@ py_test(
     srcs = ["char_prediction_models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":char_prediction_models",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
+    deps = [":char_prediction_models"],
 )
 
 py_library(
     name = "char_prediction_preprocessing",
     srcs = ["char_prediction_preprocessing.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
+    deps = ["//tensorflow_federated/python/simulation/baselines:client_spec"],
 )
 
 py_test(
@@ -58,8 +51,6 @@ py_test(
         ":char_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -78,7 +69,6 @@ py_library(
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/simulation/datasets:shakespeare",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -92,7 +82,5 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
