@@ -481,6 +481,22 @@ class DatasetSerializationTest(test_case.TestCase):
     self.assertEqual(x.element_spec, y.element_spec)
     self.assertAllEqual(list(y), [x * 2 for x in range(5)])
 
+  def test_roundtrip_sequence_of_sparse_tensors(self):
+    self.skipTest('b/225927855')
+
+    tensors = (tf.constant([(1, 1)], dtype=tf.int64), (1.,),
+               tf.constant((3, 3), dtype=tf.int64))
+
+    ds = tf.data.Dataset.from_tensors(tensors)
+    ds = ds.map(lambda i, v, s: tf.SparseTensor(i, v, s))  # pylint: disable=unnecessary-lambda
+
+    serialized_value, _ = value_serialization.serialize_value(
+        ds, computation_types.SequenceType(ds.element_spec))
+    deserialized_ds, _ = value_serialization.deserialize_value(serialized_value)
+    self.assertEqual(ds.element_spec, deserialized_ds.element_spec)
+    self.assertAllEqual(
+        list(deserialized_ds), [tf.sparse.SparseTensor([(1, 1)], (1.), (3, 3))])
+
   def test_roundtrip_sequence_of_tuples(self):
     x = tf.data.Dataset.range(5).map(
         lambda x: (x * 2, tf.cast(x, tf.int32), tf.cast(x - 1, tf.float32)))
