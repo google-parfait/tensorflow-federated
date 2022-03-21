@@ -57,7 +57,7 @@ def build_scheduled_client_work(
     metrics_aggregator: Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation],
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
 
@@ -155,7 +155,7 @@ def build_weighted_fed_avg_with_optimizer_schedule(
     metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> learning_process.LearningProcess:
   """Builds a learning process for FedAvg with client optimizer scheduling.
 

@@ -83,7 +83,7 @@ def _build_client_update_fn_for_mime_lite(
     model_fn: Callable[[], model_lib.Model],
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
-    use_experimental_simulation_loop: bool = False):
+    use_experimental_simulation_loop: bool = True):
   """Builds the `tf_computation` for Mime Lite client training."""
 
   @computations.tf_computation
@@ -183,7 +183,7 @@ def _build_mime_lite_client_work(
     metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for Mime Lite.
 
@@ -301,7 +301,7 @@ def build_weighted_mime_lite(
     metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs Mime Lite.
 
@@ -435,7 +435,7 @@ def build_unweighted_mime_lite(
     metrics_aggregator: Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs Mime Lite.
 

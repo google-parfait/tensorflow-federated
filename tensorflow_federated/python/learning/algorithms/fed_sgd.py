@@ -55,7 +55,7 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 def _build_client_update(model: model_lib.Model,
-                         use_experimental_simulation_loop: bool = False):
+                         use_experimental_simulation_loop: bool = True):
   """Creates client update logic for FedSGD.
 
   Args:
@@ -128,7 +128,7 @@ def _build_fed_sgd_client_work(
     metrics_aggregator: Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation],
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> client_works.ClientWorkProcess:
   """Creates a `tff.learning.templates.ClientWorkProcess` for federated SGD.
 
@@ -198,7 +198,7 @@ def build_fed_sgd(
     metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False,
+    use_experimental_simulation_loop: bool = True,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated SGD.
 

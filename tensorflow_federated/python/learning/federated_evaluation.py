@@ -43,7 +43,7 @@ def build_local_evaluation(
     model_fn: Callable[[], model_lib.Model],
     model_weights_type: computation_types.StructType,
     batch_type: computation_types.Type,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> computation_base.Computation:
   """Builds the local TFF computation for evaluation of the given model.
 
@@ -110,7 +110,7 @@ def build_federated_evaluation(
     metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False,
+    use_experimental_simulation_loop: bool = True,
 ) -> computation_base.Computation:
   """Builds the TFF computation for federated evaluation of the given model.
 

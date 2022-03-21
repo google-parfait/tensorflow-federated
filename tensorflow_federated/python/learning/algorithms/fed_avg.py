@@ -72,7 +72,7 @@ def build_weighted_fed_avg(
     metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 
@@ -198,7 +198,7 @@ def build_unweighted_fed_avg(
     metrics_aggregator: Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation] = metric_aggregator.sum_then_finalize,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 

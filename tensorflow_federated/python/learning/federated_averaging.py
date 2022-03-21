@@ -64,7 +64,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
                        Callable[[], tf.keras.optimizers.Optimizer]],
       client_weighting: client_weight_lib.ClientWeightType = client_weight_lib
       .ClientWeighting.NUM_EXAMPLES,
-      use_experimental_simulation_loop: bool = False):
+      use_experimental_simulation_loop: bool = True):
     """Creates the client computation for Federated Averaging.
 
     Note: All variable creation required for the client computation (e.g. model
@@ -177,7 +177,7 @@ def build_federated_averaging_process(
     metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> iterative_process.IterativeProcess:
   """Builds an iterative process that performs federated averaging.
 

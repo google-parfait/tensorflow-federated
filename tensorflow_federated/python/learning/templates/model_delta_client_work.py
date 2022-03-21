@@ -52,7 +52,7 @@ def build_model_delta_update_with_tff_optimizer(
     model_fn,
     weighting,
     delta_l2_regularizer=0.0,
-    use_experimental_simulation_loop: bool = False):
+    use_experimental_simulation_loop: bool = True):
   """Creates client update logic in FedAvg using a TFF optimizer.
 
   In contrast to using a `tf.keras.optimizers.Optimizer`, we avoid creating
@@ -144,7 +144,7 @@ def build_model_delta_update_with_keras_optimizer(
     model_fn,
     weighting,
     delta_l2_regularizer=0.0,
-    use_experimental_simulation_loop: bool = False):
+    use_experimental_simulation_loop: bool = True):
   """Creates client update logic in FedAvg using a `tf.keras` optimizer.
 
   In contrast to using a `tff.learning.optimizers.Optimizer`, we have to
@@ -240,7 +240,7 @@ def build_model_delta_client_work(
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
     *,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = True
 ) -> client_works.ClientWorkProcess:
   """Creates a `ClientWorkProcess` for federated averaging.
 
