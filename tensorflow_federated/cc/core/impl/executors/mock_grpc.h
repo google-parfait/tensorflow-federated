@@ -26,8 +26,11 @@ limitations under the License
 
 namespace tensorflow_federated {
 
-class MockGrpcExecutorService : public v0::Executor::Service {
+class MockGrpcExecutorService : public v0::ExecutorGroup::Service {
  public:
+  MOCK_METHOD(grpc::Status, GetExecutor,
+              (grpc::ServerContext*, const v0::GetExecutorRequest*,
+               v0::GetExecutorResponse*));
   MOCK_METHOD(grpc::Status, CreateValue,
               (grpc::ServerContext*, const v0::CreateValueRequest*,
                v0::CreateValueResponse*));
@@ -43,15 +46,12 @@ class MockGrpcExecutorService : public v0::Executor::Service {
   MOCK_METHOD(grpc::Status, Compute,
               (grpc::ServerContext*, const v0::ComputeRequest*,
                v0::ComputeResponse*));
-  MOCK_METHOD(grpc::Status, SetCardinalities,
-              (grpc::ServerContext*, const v0::SetCardinalitiesRequest*,
-               v0::SetCardinalitiesResponse*));
-  MOCK_METHOD(grpc::Status, ClearExecutor,
-              (grpc::ServerContext*, const v0::ClearExecutorRequest*,
-               v0::ClearExecutorResponse*));
   MOCK_METHOD(grpc::Status, Dispose,
               (grpc::ServerContext*, const v0::DisposeRequest*,
                v0::DisposeResponse*));
+  MOCK_METHOD(grpc::Status, DisposeExecutor,
+              (grpc::ServerContext*, const v0::DisposeExecutorRequest*,
+               v0::DisposeExecutorResponse*));
 };
 
 // A minimal, self-contained, OSS-compatible mock GRPC Executor service.
@@ -76,8 +76,8 @@ class MockGrpcExecutorServer {
 
   MockGrpcExecutorService* service() { return &service_; }
 
-  std::unique_ptr<v0::Executor::Stub> NewStub() {
-    return v0::Executor::NewStub(
+  std::unique_ptr<v0::ExecutorGroup::Stub> NewStub() {
+    return v0::ExecutorGroup::NewStub(
         grpc::CreateChannel(absl::StrCat("localhost:", port_),
                             grpc::experimental::LocalCredentials(LOCAL_TCP)));
   }

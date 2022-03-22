@@ -19,18 +19,24 @@ limitations under the License
 #include <cstdint>
 #include <string>
 
-#include "absl/container/flat_hash_map.h"
+#include "absl/container/btree_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 
 namespace tensorflow_federated {
 
-using CardinalityMap = absl::flat_hash_map<std::string, uint32_t>;
+// `btree_map` is used rather than `flat_hash_map` to provide ordering.
+//
+// This ensures that simple string-joining of the entries in this map will
+// produce a specific value for a given set of cardinalities independent of
+// ordering. the `ExecutorService` uses this as an optimization to provide
+// per-cardinality `ExecutorId`s.
+using CardinalityMap = absl::btree_map<std::string, int>;
 const absl::string_view kClientsUri = "clients";
 const absl::string_view kServerUri = "server";
 
 // Returns the number of clients specifed by the provided `cardinalities`.
-absl::StatusOr<uint32_t> NumClientsFromCardinalities(
+absl::StatusOr<int> NumClientsFromCardinalities(
     const CardinalityMap& cardinalities);
 
 }  // namespace tensorflow_federated

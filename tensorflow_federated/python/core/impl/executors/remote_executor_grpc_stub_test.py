@@ -61,7 +61,7 @@ class GrpcConnectivityTest(absltest.TestCase):
     self.assertTrue(stub.is_ready)
 
 
-@mock.patch.object(executor_pb2_grpc, 'ExecutorStub')
+@mock.patch.object(executor_pb2_grpc, 'ExecutorGroupStub')
 class RemoteExecutorGrpcStubTest(absltest.TestCase):
 
   def test_compute_returns_result(self, mock_executor_grpc_stub):
@@ -73,7 +73,8 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     instance = mock_executor_grpc_stub.return_value
     instance.Compute = mock.Mock(side_effect=[response])
 
-    request = executor_pb2.ComputeRequest(value_ref=executor_pb2.ValueRef())
+    request = executor_pb2.ComputeRequest(
+        executor=executor_pb2.ExecutorId(), value_ref=executor_pb2.ValueRef())
 
     stub = create_stub()
     result = stub.compute(request)
@@ -98,20 +99,20 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
     instance.Compute = mock.Mock(side_effect=_raise_non_retryable_grpc_error)
 
     stub = create_stub()
-    request = executor_pb2.ComputeRequest(value_ref=executor_pb2.ValueRef())
+    request = executor_pb2.ComputeRequest(
+        executor=executor_pb2.ExecutorId(), value_ref=executor_pb2.ValueRef())
 
     with self.assertRaises(grpc.RpcError) as context:
       stub.compute(request)
 
     self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
-  def test_set_cardinalities(self, mock_executor_grpc_stub):
-    response = executor_pb2.SetCardinalitiesResponse()
+  def test_get_executor(self, mock_executor_grpc_stub):
+    response = executor_pb2.GetExecutorResponse()
     instance = mock_executor_grpc_stub.return_value
-    instance.SetCardinalities = mock.Mock(side_effect=[response])
+    instance.GetExecutor = mock.Mock(side_effect=[response])
     stub = create_stub()
-    result = stub.set_cardinalities(
-        request=executor_pb2.SetCardinalitiesRequest())
+    result = stub.get_executor(request=executor_pb2.GetExecutorRequest())
     self.assertEqual(result, response)
 
   def test_create_value_returns_value(self, mock_executor_grpc_stub):

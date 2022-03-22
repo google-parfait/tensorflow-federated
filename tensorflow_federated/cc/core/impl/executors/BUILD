@@ -22,7 +22,7 @@ tff_cc_library_with_tf_deps(
     srcs = ["cardinalities.cc"],
     hdrs = ["cardinalities.h"],
     deps = [
-        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
     ],

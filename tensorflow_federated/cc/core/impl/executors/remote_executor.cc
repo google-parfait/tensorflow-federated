@@ -45,12 +45,52 @@ class ExecutorValue;
 using ValueFuture =
     std::shared_future<absl::StatusOr<std::shared_ptr<ExecutorValue>>>;
 
+// A custom deleter for the `std::shared_ptr<v0::ExecutorGroup::StubInterface>`
+// which will call `DisposeExecutor` for the provided `executor_pb`, if any.
+// This ensures that the remote service knows no more calls will be coming for
+// the given `executor_pb` and that the associated resources can be released.
+//
+// Unfortunately, this cannot be part of the destructor of `RemoteExecutor`, as
+// `RemoteExecutor`'s methods may start threads that send new GRPC requests for
+// the given executor after the `RemoteExecutor` has already been destroyed.
+class StubDeleter {
+ public:
+  StubDeleter() {}
+  void SetExecutorId(v0::ExecutorId executor_pb) {
+    executor_pb_ = std::move(executor_pb);
+  }
+  void operator()(v0::ExecutorGroup::StubInterface* stub) {
+    if (executor_pb_.has_value()) {
+      ThreadRun([stub, executor_pb = std::move(*executor_pb_)]() {
+        v0::DisposeExecutorRequest request;
+        v0::DisposeExecutorResponse response;
+        grpc::ClientContext context;
+        *request.mutable_executor() = std::move(executor_pb);
+        grpc::Status dispose_status =
+            stub->DisposeExecutor(&context, request, &response);
+        if (!dispose_status.ok()) {
+          LOG(ERROR) << "Error disposing of Executor ["
+                     << request.executor().id()
+                     << "]: " << grpc_to_absl(dispose_status);
+        }
+        delete stub;
+      });
+    } else {
+      delete stub;
+    }
+  }
+
+ private:
+  absl::optional<v0::ExecutorId> executor_pb_;
+};
+
 class RemoteExecutor : public ExecutorBase<ValueFuture> {
  public:
-  RemoteExecutor(std::unique_ptr<v0::Executor::StubInterface> stub,
+  RemoteExecutor(std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
                  const CardinalityMap& cardinalities)
-      : stub_(std::move(stub)), cardinalities_(cardinalities) {}
-  ~RemoteExecutor() {}
+      : stub_(stub.release(), StubDeleter()), cardinalities_(cardinalities) {}
+
+  ~RemoteExecutor() override {}
 
   absl::string_view ExecutorName() final {
     static constexpr absl::string_view kExecutorName = "RemoteExecutor";
@@ -73,29 +113,32 @@ class RemoteExecutor : public ExecutorBase<ValueFuture> {
 
  private:
   absl::Status EnsureInitialized();
-  std::shared_ptr<v0::Executor::StubInterface> stub_;
-  absl::Mutex mutex_;
-  bool cardinalities_set_ ABSL_GUARDED_BY(mutex_) = false;
+  std::shared_ptr<v0::ExecutorGroup::StubInterface> stub_;
   CardinalityMap cardinalities_;
+  absl::Mutex mutex_;
+  bool executor_pb_set_ ABSL_GUARDED_BY(mutex_) = false;
+  v0::ExecutorId executor_pb_;
 };
 
 class ExecutorValue {
  public:
-  ExecutorValue(const v0::ValueRef&& value_ref,
-                std::shared_ptr<v0::Executor::StubInterface> stub)
-      : value_ref_(value_ref), stub_(stub) {}
+  ExecutorValue(v0::ValueRef value_ref, v0::ExecutorId executor_pb,
+                std::shared_ptr<v0::ExecutorGroup::StubInterface> stub)
+      : value_ref_(std::move(value_ref)),
+        executor_pb_(std::move(executor_pb)),
+        stub_(stub) {}
   // Dispose implemented for now just on destructors, and stub is copied in.
   ~ExecutorValue() {
-    ThreadRun([dispose_id = value_ref_.id(), stub = stub_] {
+    ThreadRun([value_ref = value_ref_, executor_pb = executor_pb_,
+               stub = stub_] {
       v0::DisposeRequest request;
       v0::DisposeResponse response;
       grpc::ClientContext context;
-      v0::ValueRef value_to_dispose;
-      *value_to_dispose.mutable_id() = dispose_id;
-      request.mutable_value_ref()->Add(std::move(value_to_dispose));
+      *request.mutable_executor() = std::move(executor_pb);
+      *request.add_value_ref() = value_ref;
       grpc::Status dispose_status = stub->Dispose(&context, request, &response);
       if (!dispose_status.ok()) {
-        LOG(ERROR) << "Error disposing of ExecutorValue [" << dispose_id
+        LOG(ERROR) << "Error disposing of ExecutorValue [" << value_ref.id()
                    << "]: " << grpc_to_absl(dispose_status);
       }
     });
@@ -105,29 +148,34 @@ class ExecutorValue {
 
  private:
   v0::ValueRef value_ref_;
-  std::shared_ptr<v0::Executor::StubInterface> stub_;
+  v0::ExecutorId executor_pb_;
+  std::shared_ptr<v0::ExecutorGroup::StubInterface> stub_;
 };
 
 absl::Status RemoteExecutor::EnsureInitialized() {
   absl::MutexLock lock(&mutex_);
-  if (cardinalities_set_) {
+  if (executor_pb_set_) {
     return absl::OkStatus();
   }
-  v0::SetCardinalitiesRequest request;
+  v0::GetExecutorRequest request;
   for (auto iter = cardinalities_.begin(); iter != cardinalities_.end();
        ++iter) {
     v0::Placement placement;
     placement.set_uri(iter->first);
-    v0::SetCardinalitiesRequest::Cardinality cardinality;
+    v0::Cardinality cardinality;
     *cardinality.mutable_placement() = placement;
     cardinality.set_cardinality(iter->second);
     request.mutable_cardinalities()->Add(std::move(cardinality));
   }
-  v0::SetCardinalitiesResponse response;
+  v0::GetExecutorResponse response;
   grpc::ClientContext client_context;
-  auto result = stub_->SetCardinalities(&client_context, request, &response);
+  auto result = stub_->GetExecutor(&client_context, request, &response);
   if (result.ok()) {
-    cardinalities_set_ = true;
+    executor_pb_ = response.executor();
+    executor_pb_set_ = true;
+    // Tell the `StubDeleter` which executor it should delete when the stub is
+    // no longer referenced.
+    std::get_deleter<StubDeleter>(stub_)->SetExecutorId(executor_pb_);
   }
   return grpc_to_absl(result);
 }
@@ -136,10 +184,11 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateExecutorValue(
     const v0::Value& value_pb) {
   TFF_TRY(EnsureInitialized());
   v0::CreateValueRequest request;
-  request.mutable_value()->CopyFrom(value_pb);
+  *request.mutable_executor() = executor_pb_;
+  *request.mutable_value() = value_pb;
 
   return ThreadRun(
-      [request = std::move(request),
+      [request = std::move(request), executor_pb = executor_pb_,
        stub = this->stub_]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
         v0::CreateValueResponse response;
         grpc::ClientContext client_context;
@@ -147,7 +196,7 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateExecutorValue(
             stub->CreateValue(&client_context, request, &response);
         TFF_TRY(grpc_to_absl(status));
         return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                               stub);
+                                               executor_pb, stub);
       });
 }
 
@@ -156,12 +205,14 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateCall(
   TFF_TRY(EnsureInitialized());
   return ThreadRun(
       [function = std::move(function), argument = std::move(argument),
+       executor_pb = executor_pb_,
        stub = this->stub_]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
         v0::CreateCallRequest request;
         v0::CreateCallResponse response;
         grpc::ClientContext context;
         std::shared_ptr<ExecutorValue> fn = TFF_TRY(Wait(function));
 
+        *request.mutable_executor() = executor_pb;
         *request.mutable_function_ref() = fn->Get();
         if (argument.has_value()) {
           std::shared_ptr<ExecutorValue> arg_value =
@@ -172,7 +223,7 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateCall(
         grpc::Status status = stub->CreateCall(&context, request, &response);
         TFF_TRY(grpc_to_absl(status));
         return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                               stub);
+                                               executor_pb, stub);
       });
 }
 
@@ -180,9 +231,10 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateStruct(
     std::vector<ValueFuture> members) {
   TFF_TRY(EnsureInitialized());
   return ThreadRun(
-      [futures = std::move(members),
+      [futures = std::move(members), executor_pb = executor_pb_,
        stub = this->stub_]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
         v0::CreateStructRequest request;
+        *request.mutable_executor() = executor_pb;
         v0::CreateStructResponse response;
         grpc::ClientContext context;
         std::vector<std::shared_ptr<ExecutorValue>> values =
@@ -195,7 +247,7 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateStruct(
         grpc::Status status = stub->CreateStruct(&context, request, &response);
         TFF_TRY(grpc_to_absl(status));
         return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                               stub);
+                                               executor_pb, stub);
       });
 }
 
@@ -203,19 +255,20 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateSelection(
     ValueFuture value, const uint32_t index) {
   TFF_TRY(EnsureInitialized());
   return ThreadRun(
-      [source = std::move(value), index = index,
+      [source = std::move(value), index = index, executor_pb = executor_pb_,
        stub = this->stub_]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
         v0::CreateSelectionRequest request;
         v0::CreateSelectionResponse response;
         grpc::ClientContext context;
         std::shared_ptr<ExecutorValue> source_value = TFF_TRY(Wait(source));
+        *request.mutable_executor() = executor_pb;
         *request.mutable_source_ref() = source_value->Get();
         request.set_index(index);
         grpc::Status status =
             stub->CreateSelection(&context, request, &response);
         TFF_TRY(grpc_to_absl(status));
         return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                               stub);
+                                               executor_pb, stub);
       });
 }
 
@@ -223,6 +276,7 @@ absl::Status RemoteExecutor::Materialize(ValueFuture value,
                                          v0::Value* value_pb) {
   v0::ComputeRequest request;
   std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(Wait(value));
+  *request.mutable_executor() = executor_pb_;
   *request.mutable_value_ref() = value_ref->Get();
 
   v0::ComputeResponse compute_response;
@@ -234,7 +288,7 @@ absl::Status RemoteExecutor::Materialize(ValueFuture value,
 }
 
 std::shared_ptr<Executor> CreateRemoteExecutor(
-    std::unique_ptr<v0::Executor::StubInterface> stub,
+    std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
     const CardinalityMap& cardinalities) {
   return std::make_shared<RemoteExecutor>(std::move(stub), cardinalities);
 }
@@ -242,8 +296,8 @@ std::shared_ptr<Executor> CreateRemoteExecutor(
 std::shared_ptr<Executor> CreateRemoteExecutor(
     std::shared_ptr<grpc::ChannelInterface> channel,
     const CardinalityMap& cardinalities) {
-  std::unique_ptr<v0::Executor::StubInterface> stub(
-      v0::Executor::NewStub(channel));
+  std::unique_ptr<v0::ExecutorGroup::StubInterface> stub(
+      v0::ExecutorGroup::NewStub(channel));
   return std::make_shared<RemoteExecutor>(std::move(stub), cardinalities);
 }
 }  // namespace tensorflow_federated

@@ -27,6 +27,13 @@ class RemoteExecutorStub(abc.ABC):
   """Represents the interface of stubs call to an remote executor instance."""
 
   @abc.abstractmethod
+  def get_executor(
+      self, request: executor_pb2.GetExecutorRequest
+  ) -> executor_pb2.GetExecutorResponse:
+    """Invokes GetExecutor remotely."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
   def create_value(
       self, request: executor_pb2.CreateValueRequest
   ) -> executor_pb2.CreateValueResponse:
@@ -97,20 +104,6 @@ class RemoteExecutorStub(abc.ABC):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def set_cardinalities(
-      self, request: executor_pb2.SetCardinalitiesRequest
-  ) -> executor_pb2.SetCardinalitiesResponse:
-    """Invokes SetCardinalities in a remote TFF runtime.
-
-    Args:
-      request: SetCardinalitiesRequest.
-
-    Returns:
-      SetCardinalitiesResponse.
-    """
-    raise NotImplementedError
-
-  @abc.abstractmethod
   def dispose(
       self,
       request: executor_pb2.DisposeRequest) -> executor_pb2.DisposeResponse:
@@ -125,17 +118,10 @@ class RemoteExecutorStub(abc.ABC):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def clear_executor(
-      self, request: executor_pb2.ClearExecutorRequest
-  ) -> executor_pb2.ClearExecutorResponse:
-    """Invokes ClearExecutor in a remote TFF runtime.
-
-    Args:
-      request: ClearExecutorRequest.
-
-    Returns:
-      ClearExecutorResponse.
-    """
+  def dispose_executor(
+      self, request: executor_pb2.DisposeExecutorRequest
+  ) -> executor_pb2.DisposeExecutorResponse:
+    """Invokes `DisposeExecutor` in a remote TFF runtime."""
     raise NotImplementedError
 
   @property

@@ -30,7 +30,7 @@ std::shared_ptr<Executor> CreateRemoteExecutor(
     std::shared_ptr<grpc::ChannelInterface> channel,
     const CardinalityMap& cardinalities);
 std::shared_ptr<Executor> CreateRemoteExecutor(
-    std::unique_ptr<v0::Executor::StubInterface> stub,
+    std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
     const CardinalityMap& cardinalities);
 
 }  // namespace tensorflow_federated

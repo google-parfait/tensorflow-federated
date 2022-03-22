@@ -46,21 +46,26 @@ class TestEnv(object):
     self._server = grpc.server(self._server_pool)
     self._server.add_insecure_port('[::]:{}'.format(port))
     self._service = executor_service.ExecutorService(ex_factory=ex_factory)
-    executor_pb2_grpc.add_ExecutorServicer_to_server(self._service,
-                                                     self._server)
+    executor_pb2_grpc.add_ExecutorGroupServicer_to_server(
+        self._service, self._server)
     self._server.start()
     self._channel = grpc.insecure_channel('localhost:{}'.format(port))
-    self._stub = executor_pb2_grpc.ExecutorStub(self._channel)
+    self._stub = executor_pb2_grpc.ExecutorGroupStub(self._channel)
 
     serialized_cards = executor_serialization.serialize_cardinalities(
         {placements.CLIENTS: num_clients})
-    self._stub.SetCardinalities(
-        executor_pb2.SetCardinalitiesRequest(cardinalities=serialized_cards))
+    self._executor_pb = self._stub.GetExecutor(
+        executor_pb2.GetExecutorRequest(
+            cardinalities=serialized_cards)).executor
 
   def __del__(self):
     self._channel.close()
     self._server_pool.shutdown(wait=False)
     self._server.stop(None)
+
+  @property
+  def executor_pb(self):
+    return self._executor_pb
 
   @property
   def stub(self):
@@ -70,6 +75,7 @@ class TestEnv(object):
     """Retrieves a value using the `Compute` endpoint."""
     response = self._stub.Compute(
         executor_pb2.ComputeRequest(
+            executor=self._executor_pb,
             value_ref=executor_pb2.ValueRef(id=value_id)))
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
     value, _ = executor_serialization.deserialize_value(response.value)
@@ -133,7 +139,8 @@ class ExecutorServiceTest(absltest.TestCase):
     self.assertEqual(ex.status, 'idle')
     value_proto, _ = executor_serialization.serialize_value(10, tf.int32)
     response = env.stub.CreateValue(
-        executor_pb2.CreateValueRequest(value=value_proto))
+        executor_pb2.CreateValueRequest(
+            executor=env.executor_pb, value=value_proto))
     ex.busy.wait()
     self.assertEqual(ex.status, 'busy')
     ex.done.set()
@@ -148,7 +155,8 @@ class ExecutorServiceTest(absltest.TestCase):
     value_proto, _ = executor_serialization.serialize_value(
         tf.constant(10.0).numpy(), tf.float32)
     response = env.stub.CreateValue(
-        executor_pb2.CreateValueRequest(value=value_proto))
+        executor_pb2.CreateValueRequest(
+            executor=env.executor_pb, value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     value_id = str(response.value_ref.id)
     value = env.get_value(value_id)
@@ -166,10 +174,12 @@ class ExecutorServiceTest(absltest.TestCase):
 
     value_proto, _ = executor_serialization.serialize_value(comp)
     response = env.stub.CreateValue(
-        executor_pb2.CreateValueRequest(value=value_proto))
+        executor_pb2.CreateValueRequest(
+            executor=env.executor_pb, value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     response = env.stub.CreateCall(
-        executor_pb2.CreateCallRequest(function_ref=response.value_ref))
+        executor_pb2.CreateCallRequest(
+            executor=env.executor_pb, function_ref=response.value_ref))
     self.assertIsInstance(response, executor_pb2.CreateCallResponse)
     value_id = str(response.value_ref.id)
     value = env.get_value(value_id)
@@ -184,13 +194,14 @@ class ExecutorServiceTest(absltest.TestCase):
         tf.constant(10.0).numpy(), tf.float32)
     # Create the value
     response = env.stub.CreateValue(
-        executor_pb2.CreateValueRequest(value=value_proto))
+        executor_pb2.CreateValueRequest(
+            executor=env.executor_pb, value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     value_id = str(response.value_ref.id)
     # Check that the value appears in the _values map
     env.get_value_future_directly(value_id)
     # Dispose of the value
-    dispose_request = executor_pb2.DisposeRequest()
+    dispose_request = executor_pb2.DisposeRequest(executor=env.executor_pb)
     dispose_request.value_ref.append(response.value_ref)
     response = env.stub.Dispose(dispose_request)
     self.assertIsInstance(response, executor_pb2.DisposeResponse)
@@ -218,13 +229,14 @@ class ExecutorServiceTest(absltest.TestCase):
         tf.constant(10.0).numpy(), tf.float32)
     # Create the value
     response = env.stub.CreateValue(
-        executor_pb2.CreateValueRequest(value=value_proto))
+        executor_pb2.CreateValueRequest(
+            executor=env.executor_pb, value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     value_id = str(response.value_ref.id)
     # Check that the value appears in the _values map
     env.get_value_future_directly(value_id)
     # Dispose of the value
-    dispose_request = executor_pb2.DisposeRequest()
+    dispose_request = executor_pb2.DisposeRequest(executor=env.executor_pb)
     dispose_request.value_ref.append(response.value_ref)
     response = env.stub.Dispose(dispose_request)
     # We shouldn't be propagating close down the executor stack on Dispose--this
@@ -244,19 +256,23 @@ class ExecutorServiceTest(absltest.TestCase):
 
     value_proto, _ = executor_serialization.serialize_value(comp)
     response = env.stub.CreateValue(
-        executor_pb2.CreateValueRequest(value=value_proto))
+        executor_pb2.CreateValueRequest(
+            executor=env.executor_pb, value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     comp_ref = response.value_ref
 
     value_proto, _ = executor_serialization.serialize_value(10, tf.int32)
     response = env.stub.CreateValue(
-        executor_pb2.CreateValueRequest(value=value_proto))
+        executor_pb2.CreateValueRequest(
+            executor=env.executor_pb, value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     arg_ref = response.value_ref
 
     response = env.stub.CreateCall(
         executor_pb2.CreateCallRequest(
-            function_ref=comp_ref, argument_ref=arg_ref))
+            executor=env.executor_pb,
+            function_ref=comp_ref,
+            argument_ref=arg_ref))
     self.assertIsInstance(response, executor_pb2.CreateCallResponse)
     value_id = str(response.value_ref.id)
     value = env.get_value(value_id)
@@ -270,25 +286,29 @@ class ExecutorServiceTest(absltest.TestCase):
 
     value_proto, _ = executor_serialization.serialize_value(10, tf.int32)
     response = env.stub.CreateValue(
-        executor_pb2.CreateValueRequest(value=value_proto))
+        executor_pb2.CreateValueRequest(
+            executor=env.executor_pb, value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     ten_ref = response.value_ref
     self.assertEqual(env.get_value(ten_ref.id), 10)
 
     value_proto, _ = executor_serialization.serialize_value(20, tf.int32)
     response = env.stub.CreateValue(
-        executor_pb2.CreateValueRequest(value=value_proto))
+        executor_pb2.CreateValueRequest(
+            executor=env.executor_pb, value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     twenty_ref = response.value_ref
     self.assertEqual(env.get_value(twenty_ref.id), 20)
 
     response = env.stub.CreateStruct(
-        executor_pb2.CreateStructRequest(element=[
-            executor_pb2.CreateStructRequest.Element(
-                name='a', value_ref=ten_ref),
-            executor_pb2.CreateStructRequest.Element(
-                name='b', value_ref=twenty_ref)
-        ]))
+        executor_pb2.CreateStructRequest(
+            executor=env.executor_pb,
+            element=[
+                executor_pb2.CreateStructRequest.Element(
+                    name='a', value_ref=ten_ref),
+                executor_pb2.CreateStructRequest.Element(
+                    name='b', value_ref=twenty_ref)
+            ]))
     self.assertIsInstance(response, executor_pb2.CreateStructResponse)
     tuple_ref = response.value_ref
     self.assertEqual(str(env.get_value(tuple_ref.id)), '<a=10,b=20>')
@@ -296,21 +316,40 @@ class ExecutorServiceTest(absltest.TestCase):
     for index, result_val in [(0, 10), (1, 20)]:
       response = env.stub.CreateSelection(
           executor_pb2.CreateSelectionRequest(
-              source_ref=tuple_ref, index=index))
+              executor=env.executor_pb, source_ref=tuple_ref, index=index))
       self.assertIsInstance(response, executor_pb2.CreateSelectionResponse)
       selection_ref = response.value_ref
       self.assertEqual(env.get_value(selection_ref.id), result_val)
 
     del env
 
-  @mock.patch.object(executor_stacks.ResourceManagingExecutorFactory,
-                     'clean_up_executors')
-  def test_clear_executor_calls_cleanup(self, mock_cleanup):
+  def test_dispose_executor_calls_close(self):
+
+    class MockExecutor(executor_base.Executor):
+
+      async def create_value(self, value, type_spec=None):
+        raise NotImplementedError
+
+      async def create_call(self, comp, arg=None):
+        raise NotImplementedError
+
+      async def create_struct(self, elements):
+        raise NotImplementedError
+
+      async def create_selection(self, source, index):
+        raise NotImplementedError
+
+      def close(self):
+        raise NotImplementedError
+
+    mock_executor = MockExecutor()
+    mock_executor.close = mock.MagicMock()
     ex_factory = executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: eager_tf_executor.EagerTFExecutor())
+        lambda _: mock_executor)
     env = TestEnv(ex_factory)
-    env.stub.ClearExecutor(executor_pb2.ClearExecutorRequest())
-    mock_cleanup.assert_called_once()
+    env.stub.DisposeExecutor(
+        executor_pb2.DisposeExecutorRequest(executor=env.executor_pb))
+    mock_executor.close.assert_called_once()
 
 
 if __name__ == '__main__':
