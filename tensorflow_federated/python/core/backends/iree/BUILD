@@ -137,7 +137,6 @@ py_library(
         ":computation_module",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:typed_object",
-        "//third_party/py/iree:pylib_runtime",
     ],
 )
 
@@ -151,7 +150,6 @@ py_test(
         ":computation_module",
         ":runtime",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//third_party/py/iree:pylib_runtime",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
