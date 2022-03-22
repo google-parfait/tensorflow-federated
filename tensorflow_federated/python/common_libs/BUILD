@@ -121,6 +121,28 @@ py_test(
 )
 
 py_library(
+    name = "sequential",
+    srcs = ["sequential.py"],
+    srcs_version = "PY3",
+    deps = [
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "sequential_test",
+    size = "small",
+    srcs = ["sequential_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":sequential",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "serialization_utils",
     srcs = ["serialization_utils.py"],
     srcs_version = "PY3",
