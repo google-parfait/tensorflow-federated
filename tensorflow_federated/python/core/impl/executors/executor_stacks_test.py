@@ -419,8 +419,7 @@ class UnplacedExecutorFactoryTest(parameterized.TestCase):
     tf_devices = tf.config.list_logical_devices(tf_device)
     server_tf_device = None if not tf_devices else tf_devices[0]
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(
-        server_device=server_tf_device,
-        client_devices=tf_devices)
+        server_device=server_tf_device, client_devices=tf_devices)
     unplaced_executor = unplaced_factory.create_executor()
     self.assertIsInstance(unplaced_executor, executor_base.Executor)
 
@@ -432,8 +431,7 @@ class UnplacedExecutorFactoryTest(parameterized.TestCase):
     client_devices = tf.config.list_logical_devices(tf_device)
     server_tf_device = None if not cpu_devices else cpu_devices[0]
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(
-        server_device=server_tf_device,
-        client_devices=client_devices)
+        server_device=server_tf_device, client_devices=client_devices)
     unplaced_executor = unplaced_factory.create_executor()
     self.assertIsInstance(unplaced_executor, executor_base.Executor)
 
@@ -641,7 +639,9 @@ class RemoteExecutorFactoryTest(parameterized.TestCase):
         'set_cardinalities',
         new=self._make_set_cardinalities_patch(self.coro_mock))
     self.ready_patcher = mock.patch.object(
-        remote_executor.RemoteExecutor, 'is_ready', new=lambda _: True)
+        remote_executor_grpc_stub.RemoteExecutorGrpcStub,
+        'is_ready',
+        new=lambda _: True)
     self.cardinalities_patcher.start()
     self.ready_patcher.start()
 

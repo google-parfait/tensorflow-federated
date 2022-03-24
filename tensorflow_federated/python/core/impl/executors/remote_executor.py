@@ -112,10 +112,6 @@ class RemoteExecutor(executor_base.Executor):
     self._dispose_batch_size = dispose_batch_size
     self._dispose_request = executor_pb2.DisposeRequest()
 
-  @property
-  def is_ready(self) -> bool:
-    return self._stub.is_ready
-
   def close(self):
     logging.debug('Clearing executor state on server.')
     self._clear_executor()

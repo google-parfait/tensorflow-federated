@@ -48,7 +48,6 @@ from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 from tensorflow_federated.python.core.impl.types import placements
 
-
 # Place a limit on the maximum size of the executor caches managed by the
 # ExecutorFactories, to prevent unbounded thread and memory growth in the case
 # of rapidly-changing cross-round cardinalities.
@@ -99,10 +98,10 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
     with `cardinalities` and returns the result.
 
     Args:
-      cardinalities: `dict` with `placements.PlacementLiteral` keys and
-        integer values, specifying the population size at each placement. The
-        executor stacks returned from this method are not themselves
-        polymorphic; a concrete stack must have fixed sizes at each placement.
+      cardinalities: `dict` with `placements.PlacementLiteral` keys and integer
+        values, specifying the population size at each placement. The executor
+        stacks returned from this method are not themselves polymorphic; a
+        concrete stack must have fixed sizes at each placement.
 
     Returns:
       Instance of `executor_base.Executor` as described above.
@@ -647,12 +646,12 @@ def local_executor_factory(
       sequence ops (currently False by default).
     leaf_executor_fn: A function that constructs leaf-level executors. Default
       is the eager TF executor (other possible options: XLA, IREE). Should
-      accept the `device` keyword argument if the executor is to be configured
-      with explicitly chosen devices.
-    local_computation_factory: An instance of `LocalComputationFactory` to
-      use to construct local computations used as parameters in certain
-      federated operators (such as `tff.federated_sum`, etc.). Defaults to
-      a TensorFlow computation factory that generates TensorFlow code.
+        accept the `device` keyword argument if the executor is to be configured
+        with explicitly chosen devices.
+    local_computation_factory: An instance of `LocalComputationFactory` to use
+      to construct local computations used as parameters in certain federated
+      operators (such as `tff.federated_sum`, etc.). Defaults to a TensorFlow
+      computation factory that generates TensorFlow code.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -741,8 +740,8 @@ def thread_debugging_executor_factory(
       memory.
     leaf_executor_fn: A function that constructs leaf-level executors. Default
       is the eager TF executor (other possible options: XLA, IREE). Should
-      accept the `device` keyword argument if the executor is to be configured
-      with explicitly chosen devices.
+        accept the `device` keyword argument if the executor is to be configured
+        with explicitly chosen devices.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -753,8 +752,7 @@ def thread_debugging_executor_factory(
   """
   py_typecheck.check_type(clients_per_thread, int)
   unplaced_ex_factory = UnplacedExecutorFactory(
-      can_resolve_references=False,
-      leaf_executor_fn=leaf_executor_fn)
+      can_resolve_references=False, leaf_executor_fn=leaf_executor_fn)
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
@@ -908,21 +906,25 @@ class _CardinalitiesOrReadyListChanged():
     return cardinalities_changed or ready_list_changed
 
 
-def _configure_remote_workers(default_num_clients, remote_executors):
+def _configure_remote_workers(default_num_clients, stubs, thread_pool_executor,
+                              dispose_batch_size, executors_to_close):
   """"Configures `default_num_clients` across `remote_executors`."""
-  available_executors = [ex for ex in remote_executors if ex.is_ready]
+  available_stubs = [stub for stub in stubs if stub.is_ready]
   logging.info('%s TFF workers available out of a total of %s.',
-               len(available_executors), len(remote_executors))
-  if not available_executors:
+               len(available_stubs), len(stubs))
+  if not available_stubs:
     raise executors_errors.RetryableError(
         'No workers are ready; try again to reconnect.')
   remaining_clients = default_num_clients
   live_workers = []
-  for ex_idx, ex in enumerate(available_executors):
-    remaining_executors = len(available_executors) - ex_idx
-    default_num_clients_to_host = remaining_clients // remaining_executors
+  for stub_idx, stub in enumerate(available_stubs):
+    remaining_stubs = len(available_stubs) - stub_idx
+    default_num_clients_to_host = remaining_clients // remaining_stubs
     remaining_clients -= default_num_clients_to_host
     if default_num_clients_to_host > 0:
+      ex = remote_executor.RemoteExecutor(stub, thread_pool_executor,
+                                          dispose_batch_size)
+      executors_to_close.append(ex)
       ex.set_cardinalities({placements.CLIENTS: default_num_clients_to_host})
       live_workers.append(ex)
   return [
@@ -1026,17 +1028,12 @@ def remote_executor_factory_from_stubs(
   py_typecheck.check_type(max_fanout, int)
   py_typecheck.check_type(default_num_clients, int)
 
-  remote_executors = []
-  for stub in stubs:
-    remote_executors.append(
-        remote_executor.RemoteExecutor(
-            stub=stub,
-            thread_pool_executor=thread_pool_executor,
-            dispose_batch_size=dispose_batch_size))
+  executors_to_close = []
 
   def _flat_stack_fn(cardinalities):
     num_clients = cardinalities.get(placements.CLIENTS, default_num_clients)
-    return _configure_remote_workers(num_clients, remote_executors)
+    return _configure_remote_workers(num_clients, stubs, thread_pool_executor,
+                                     dispose_batch_size, executors_to_close)
 
   unplaced_ex_factory = UnplacedExecutorFactory()
   composing_executor_factory = ComposingExecutorFactory(
@@ -1047,6 +1044,5 @@ def remote_executor_factory_from_stubs(
 
   return ReconstructOnChangeExecutorFactory(
       underlying_stack=composing_executor_factory,
-      ensure_closed=remote_executors,
-      change_query=_CardinalitiesOrReadyListChanged(
-          maybe_ready_list=remote_executors))
+      ensure_closed=executors_to_close,
+      change_query=_CardinalitiesOrReadyListChanged(maybe_ready_list=stubs))
