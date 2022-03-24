@@ -68,9 +68,9 @@ py_library(
     data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     srcs_version = "PY3",
     deps = [
-        ":async_execution_context",
         "//tensorflow_federated/python/common_libs:retrying",
         "//tensorflow_federated/python/core/impl/compiler:compiler_pipeline",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
         "//tensorflow_federated/python/core/impl/executors:value_serialization",
         "//tensorflow_federated/python/core/impl/types:type_conversions",

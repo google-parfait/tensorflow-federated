@@ -75,7 +75,7 @@ py_library(
     ],
 )
 
-py_library(
+py_test(
     name = "cpp_execution_contexts_test",
     srcs = ["cpp_execution_contexts_test.py"],
     srcs_version = "PY3",

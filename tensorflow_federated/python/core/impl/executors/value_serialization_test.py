@@ -587,8 +587,7 @@ class SerializeCardinalitiesTest(test_case.TestCase):
     cardinalities_list = value_serialization.serialize_cardinalities(
         client_and_server_cardinalities)
     for cardinality in cardinalities_list:
-      self.assertIsInstance(cardinality,
-                            executor_pb2.SetCardinalitiesRequest.Cardinality)
+      self.assertIsInstance(cardinality, executor_pb2.Cardinality)
     reconstructed_cardinalities = value_serialization.deserialize_cardinalities(
         cardinalities_list)
     self.assertEqual(client_and_server_cardinalities,
@@ -599,8 +598,7 @@ class SerializeCardinalitiesTest(test_case.TestCase):
     cardinalities_list = value_serialization.serialize_cardinalities(
         client_cardinalities)
     for cardinality in cardinalities_list:
-      self.assertIsInstance(cardinality,
-                            executor_pb2.SetCardinalitiesRequest.Cardinality)
+      self.assertIsInstance(cardinality, executor_pb2.Cardinality)
     reconstructed_cardinalities = value_serialization.deserialize_cardinalities(
         cardinalities_list)
     self.assertEqual(client_cardinalities, reconstructed_cardinalities)

@@ -79,13 +79,18 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       return [x, x]
 
     with get_context_stack.get_context_stack().install(context):
-      single_val_coro = repackage_arg([1])
-      second_val_coro = repackage_arg([1, 2])
-      self.assertTrue(asyncio.iscoroutine(single_val_coro))
-      self.assertTrue(asyncio.iscoroutine(second_val_coro))
-      self.assertEqual(
-          [asyncio.run(single_val_coro),
-           asyncio.run(second_val_coro)], [[[1], [1]], [[1, 2], [1, 2]]])
+
+      async def run_both_at_the_same_time():
+        single_val_coro = repackage_arg([1])
+        second_val_coro = repackage_arg([1, 2])
+        self.assertTrue(asyncio.iscoroutine(single_val_coro))
+        self.assertTrue(asyncio.iscoroutine(second_val_coro))
+        return await asyncio.gather(single_val_coro, second_val_coro)
+
+      single_val_result, second_val_result = asyncio.run(
+          run_both_at_the_same_time())
+      self.assertEqual(single_val_result, [[1], [1]])
+      self.assertEqual(second_val_result, [[1, 2], [1, 2]])
 
 
 if __name__ == '__main__':

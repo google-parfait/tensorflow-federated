@@ -23,7 +23,7 @@ from absl import logging
 from pybind11_abseil import status as absl_status
 from tensorflow_federated.python.common_libs import retrying
 from tensorflow_federated.python.core.impl.compiler import compiler_pipeline
-from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
+from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -36,10 +36,7 @@ def _is_retryable_absl_status(exception):
           exception.status.code() in [absl_status.StatusCode.UNAVAILABLE])
 
 
-# TODO(b/223898183): Inherit directly from Context when remote workers support
-# hosting several executors concurrently.
-class AsyncSerializeAndExecuteCPPContext(
-    async_execution_context.SingleCardinalityAsyncContext):
+class AsyncSerializeAndExecuteCPPContext(context_base.Context):
   """An async execution context delegating to CPP Executor bindings."""
 
   def __init__(self, factory, compiler_fn, max_workers=None):
@@ -67,26 +64,25 @@ class AsyncSerializeAndExecuteCPPContext(
         arg, comp.type_signature.parameter)
 
     try:
-      async with self._reset_factory_on_error(self._executor_factory,
-                                              cardinalities) as executor:
-        fn = executor.create_value(serialized_comp)
-        if arg is not None:
-          try:
-            serialized_arg, _ = value_serialization.serialize_value(
-                arg, comp.type_signature.parameter)
-          except Exception as e:
-            raise TypeError(
-                f'Failed to serialize argument:\n{arg}\nas a value of type:\n'
-                f'{comp.type_signature.parameter}') from e
-          arg_value = executor.create_value(serialized_arg)
-          call = executor.create_call(fn.ref, arg_value.ref)
-        else:
-          call = executor.create_call(fn.ref, None)
-        # Delaying grabbing the event loop til now ensures that the call below
-        # is attached to the loop running the invoke.
-        running_loop = asyncio.get_running_loop()
-        result_pb = await running_loop.run_in_executor(
-            self._futures_executor_pool, lambda: executor.materialize(call.ref))
+      executor = self._executor_factory.create_executor(cardinalities)
+      fn = executor.create_value(serialized_comp)
+      if arg is not None:
+        try:
+          serialized_arg, _ = value_serialization.serialize_value(
+              arg, comp.type_signature.parameter)
+        except Exception as e:
+          raise TypeError(
+              f'Failed to serialize argument:\n{arg}\nas a value of type:\n'
+              f'{comp.type_signature.parameter}') from e
+        arg_value = executor.create_value(serialized_arg)
+        call = executor.create_call(fn.ref, arg_value.ref)
+      else:
+        call = executor.create_call(fn.ref, None)
+      # Delaying grabbing the event loop til now ensures that the call below
+      # is attached to the loop running the invoke.
+      running_loop = asyncio.get_running_loop()
+      result_pb = await running_loop.run_in_executor(
+          self._futures_executor_pool, lambda: executor.materialize(call.ref))
     except absl_status.StatusNotOk:
       indent = lambda s: textwrap.indent(s, prefix='\t')
       if arg is None:
