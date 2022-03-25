@@ -60,6 +60,13 @@ class DataDescriptorTest(absltest.TestCase):
       result = foo(ds)
     self.assertEqual(result, 3000)
 
+  def test_raises_with_server_cardinality_specified(self):
+    with self.assertRaises(TypeError):
+      data_descriptor.DataDescriptor(
+          computations.federated_computation(
+              lambda x: intrinsics.federated_value(x, placements.SERVER),
+              tf.int32), 1000, computation_types.TensorType(tf.int32), 3)
+
   def test_comp_none(self):
     ds = data_descriptor.DataDescriptor(
         None, [1, 2, 3],
@@ -75,6 +82,31 @@ class DataDescriptorTest(absltest.TestCase):
         executor_stacks.local_executor_factory()):
       result = foo(ds)
     self.assertEqual(result, 6)
+
+  def test_cardinality_free_data_descriptor_places_data(self):
+    ds = data_descriptor.CardinalityFreeDataDescriptor(
+        computations.federated_computation(
+            lambda x: intrinsics.federated_value(x, placements.CLIENTS),
+            tf.int32), 1000, computation_types.TensorType(tf.int32))
+    self.assertEqual(str(ds.type_signature), 'int32@CLIENTS')
+
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            tf.int32, placements.CLIENTS, all_equal=True))
+    def foo(x):
+      return intrinsics.federated_sum(x)
+
+    # Since this DataDescriptor does not specify its cardinality, the number of
+    # values placed is inferred from the decault setting for the executor.
+    with executor_test_utils.install_executor(
+        executor_stacks.local_executor_factory(default_num_clients=1)):
+      result = foo(ds)
+    self.assertEqual(result, 1000)
+
+    with executor_test_utils.install_executor(
+        executor_stacks.local_executor_factory(default_num_clients=3)):
+      result = foo(ds)
+    self.assertEqual(result, 3000)
 
 
 if __name__ == '__main__':

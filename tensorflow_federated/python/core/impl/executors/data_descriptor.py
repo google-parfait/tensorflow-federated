@@ -19,25 +19,26 @@
 """Helper class for representing fully-specified data-yeilding computations."""
 
 import asyncio
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.executors import cardinality_carrying_base
 from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
 
-class DataDescriptor(ingestable_base.Ingestable,
-                     cardinality_carrying_base.CardinalityCarrying):
-  """Helper class for representing fully-specified data-yielding computations.
+class CardinalityFreeDataDescriptor(ingestable_base.Ingestable):
+  """Represent data-yielding computations with unspecified cardinalities.
 
   Instances of this class are objects that may combine a federated computation
-  that returns a portion of federated data and an argument to be supplied as
-  input to this computation, or the argument alone. These objects are designed
+  that returns federated data and an argument to be supplied as input to this
+  computation, or alternatively the argument alone. These objects are designed
   to be recognized by the runtime. When ingesting those objects (e.g., as they
   are passed as arguments to a computation invocation), the runtime ingests
-  the argument, and (if provided) optionally invokes the computation contained
-  in this descriptor on the argument to cause the data to materialize within
+  the argument, and (if provided) invokes the computation contained
+  in this descriptor on this argument to cause the data to materialize within
   the runtime (but without marshaling it out and returning it to user).
 
   In the typical usage of this helper class, the embedded argument is a set of
@@ -49,17 +50,14 @@ class DataDescriptor(ingestable_base.Ingestable,
   executed on the clients. In this case, the computation can be omitted.
   """
 
-  def __init__(self,
-               comp: Optional[computation_base.Computation],
-               arg: Any,
-               arg_type: computation_types.Type,
-               cardinality: Optional[int] = None):
+  def __init__(self, comp: Optional[computation_base.Computation], arg: Any,
+               arg_type: computation_types.Type):
     """Constructs this data descriptor from the given computation and argument.
 
     Args:
       comp: The computation that materializes the data, of some type `(T -> U)`
         where `T` is the type of the argument `arg` and `U` is the type of the
-        materialzied data that's being produces. This can be `None`, in which
+        materialized data that's being produced. This can be `None`, in which
         case it's assumed to be an identity function (and `T` in that case must
         be identical to `U`).
       arg: The argument to be passed as input to `comp` if `comp` is not `None`,
@@ -67,8 +65,6 @@ class DataDescriptor(ingestable_base.Ingestable,
         runtime as a payload of type `T`.
       arg_type: The type of the argument (`T` references above). An instance of
         `tff.Type`.
-      cardinality: Optional cardinality (e.g., number of clients) to supply if
-        this descriptor represents an instance of federated data.
 
     Raises:
       ValueError: if the arguments don't satisfy the constraints listed above.
@@ -86,18 +82,10 @@ class DataDescriptor(ingestable_base.Ingestable,
       self._type_signature = self._comp.type_signature.result
     else:
       self._type_signature = self._arg_type
-    self._cardinality = {}
-    if (isinstance(self._type_signature, computation_types.FederatedType) and
-        cardinality is not None):
-      self._cardinality[self._type_signature.placement] = cardinality
 
   @property
   def type_signature(self):
     return self._type_signature
-
-  @property
-  def cardinality(self):
-    return self._cardinality
 
   async def ingest(self, executor):
     if isinstance(self._arg, ingestable_base.Ingestable):
@@ -115,3 +103,50 @@ class DataDescriptor(ingestable_base.Ingestable,
       return await executor.create_call(comp_val, arg_val)
     else:
       return await arg_coro
+
+
+class DataDescriptor(CardinalityFreeDataDescriptor,
+                     cardinality_carrying_base.CardinalityCarrying):
+  """Represents fully-specified data-yielding computations.
+
+  Similar to CardinalityFreeDataDescriptor, but additionally accepts a
+  cardinality argument, allowing callers to explcitly specify the number
+  of clients this data descriptor is intended to represent.
+  """
+
+  def __init__(self,
+               comp: Optional[computation_base.Computation],
+               arg: Any,
+               arg_type: computation_types.Type,
+               cardinality: Optional[int] = None):
+    """Constructs this data descriptor from the given computation and argument.
+
+    Args:
+      comp: The computation that materializes the data, of some type `(T -> U)`
+        where `T` is the type of the argument `arg` and `U` is the type of the
+        materialized data that's being produced. This can be `None`, in which
+        case it's assumed to be an identity function (and `T` in that case must
+        be identical to `U`).
+      arg: The argument to be passed as input to `comp` if `comp` is not `None`,
+        or to be treated as the computed result. Must be recognized by the TFF
+        runtime as a payload of type `T`.
+      arg_type: The type of the argument (`T` references above). An instance of
+        `tff.Type`.
+      cardinality: If of federated type, placed at clients, this int specifies
+        the number of clients represented by this DataDescriptor.
+
+    Raises:
+      ValueError: if the arguments don't satisfy the constraints listed above.
+    """
+    super().__init__(comp, arg, arg_type)
+    self._cardinality = {}
+    if self._type_signature.is_federated():
+      if self._type_signature.placement is placements.CLIENTS:
+        py_typecheck.check_not_none(cardinality)
+        self._cardinality[placements.CLIENTS] = cardinality
+      else:
+        py_typecheck.check_none(cardinality)
+
+  @property
+  def cardinality(self) -> Mapping[placements.PlacementLiteral, int]:
+    return self._cardinality
