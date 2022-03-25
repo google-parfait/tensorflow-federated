@@ -28,6 +28,11 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('', 1), ('_three_features', 3))
   def test_linear_regression(self, feature_dim):
     model = model_examples.LinearRegression(feature_dim=feature_dim)
+
+    expected_initial_local_variables = [0, 0, 0.0]
+    self.assertSequenceEqual(model.local_variables,
+                             expected_initial_local_variables)
+
     batch = collections.OrderedDict(
         x=tf.constant([[0.0] * feature_dim, [1.0] * feature_dim]),
         y=tf.constant([[0.0], [1.0]]))
@@ -45,6 +50,14 @@ class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
         for metric_name, finalizer in model.metric_finalizers().items())
     self.assertEqual(finalized_metrics,
                      collections.OrderedDict(loss=0.25, num_examples=2))
+
+    # Ensure reset_metrics works.
+    model.reset_metrics()
+    self.assertSequenceEqual(model.local_variables,
+                             expected_initial_local_variables)
+    unfinalized_metrics = model.report_local_unfinalized_metrics()
+    self.assertEqual(unfinalized_metrics,
+                     collections.OrderedDict(loss=[0, 0], num_examples=0))
 
   def test_tff(self):
     feature_dim = 2

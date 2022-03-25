@@ -176,6 +176,12 @@ class MnistModel(tff.learning.Model):
         loss=tf.function(func=lambda x: x[0] / x[1]),
         accuracy=tf.function(func=lambda x: x[0] / x[1]))
 
+  @tf.function
+  def reset_metrics(self):
+    """Resets metrics variables to initial value."""
+    for var in self.local_variables:
+      var.assign(tf.zeros_like(var))
+
 
 def _create_client_data():
   emnist_batch = collections.OrderedDict(

@@ -128,6 +128,12 @@ class LinearRegression(model.Model):
         loss=tf.function(func=lambda x: x[0] / x[1]),
         num_examples=tf.function(func=lambda x: x))
 
+  @tf.function
+  def reset_metrics(self):
+    """Resets metrics variables to initial value."""
+    for var in self.local_variables:
+      var.assign(tf.zeros_like(var))
+
 
 def _dense_all_zeros_layer(input_dims=None, output_dim=1):
   """Create a layer that can be used in isolation for linear regression.
