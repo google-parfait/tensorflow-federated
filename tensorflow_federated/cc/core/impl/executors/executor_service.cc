@@ -15,13 +15,17 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/executor_service.h"
 
+#include <grpcpp/support/status.h>
+
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
@@ -43,93 +47,93 @@ namespace tensorflow_federated {
     }                                         \
   })
 
-grpc::Status ParseRef(const v0::ValueRef& value_ref_pb, ValueId* value_id_out) {
-  if (absl::SimpleAtoi(value_ref_pb.id(), value_id_out)) {
+namespace {
+
+// Creates a unique string for cardinalities like "CLIENTS=4,SERVER=1"
+std::string CardinalitiesToString(const CardinalityMap& cardinalities) {
+  return absl::StrJoin(cardinalities, ",", absl::PairFormatter("="));
+}
+
+v0::ValueRef IdToRemoteValue(ValueId value_id) {
+  v0::ValueRef value_ref;
+  value_ref.set_id(absl::StrCat(value_id));
+  return value_ref;
+}
+
+grpc::Status RemoteValueToId(const v0::ValueRef& remote_value_ref,
+                             ValueId& value_id_out) {
+  // Incoming ref should be a string containing the ValueId.
+  if (absl::SimpleAtoi(remote_value_ref.id(), &value_id_out)) {
     return grpc::Status::OK;
   }
   return grpc::Status(
       grpc::StatusCode::INVALID_ARGUMENT,
-      absl::StrCat("Could not parse ValueRef from string. Incoming id:",
-                   value_ref_pb.id()));
+      absl::StrCat("Expected value ref to be an integer id, found ",
+                   remote_value_ref.id()));
 }
 
-grpc::Status ExecutorService::RequireExecutor_(
-    std::string method_name, std::shared_ptr<Executor>* executor_out,
-    int* generation_out) {
-  absl::ReaderMutexLock reader_lock(&executor_mutex_);
-  if (executor_and_generation_.first == nullptr) {
-    return grpc::Status(
-        grpc::StatusCode::UNAVAILABLE,
-        absl::StrCat("Attempted to call ExecutorService::", method_name,
-                     " before setting cardinalities."));
+}  // namespace
+
+grpc::Status ExecutorService::GetExecutor(grpc::ServerContext* context,
+                                          const v0::GetExecutorRequest* request,
+                                          v0::GetExecutorResponse* response) {
+  CardinalityMap cardinalities;
+  for (const auto& cardinality : request->cardinalities()) {
+    cardinalities.insert(
+        {cardinality.placement().uri(), cardinality.cardinality()});
   }
-  *executor_out = executor_and_generation_.first;
-  *generation_out = executor_and_generation_.second;
+  std::string executor_key = CardinalitiesToString(cardinalities);
+  {
+    absl::WriterMutexLock lock(&executors_mutex_);
+    // Insert a `nullptr` `std::shared_ptr<Executor>` to avoid invoking
+    // `executor_factory_` in the case where an entry is already present.
+    auto insert = executors_.insert({executor_key, ExecutorEntry{nullptr, 1}});
+    bool did_insert = insert.second;
+    ExecutorEntry& entry = insert.first->second;
+    if (did_insert) {
+      // Initialize the `std::shared_ptr<Executor>` added to the map.
+      absl::StatusOr<std::shared_ptr<Executor>> new_executor =
+          executor_factory_(cardinalities);
+      if (!new_executor.ok()) {
+        LOG(ERROR) << new_executor.status().message();
+        return absl_to_grpc(new_executor.status());
+      }
+      entry.executor = std::move(*new_executor);
+    } else {
+      entry.remote_refcount++;
+    }
+  }
+  response->mutable_executor()->set_id(executor_key);
   return grpc::Status::OK;
 }
 
-ExecutorService::RemoteValueId ExecutorService::CreateRemoteValue_(
-    ValueId embedded_value_id, int executor_generation) {
-  return absl::StrCat(embedded_value_id, "-", executor_generation);
-}
-
-grpc::Status MalformattedValueStatus(absl::string_view bad_id) {
+grpc::Status ExecutorService::RequireExecutor(
+    absl::string_view method_name, const v0::ExecutorId& executor,
+    std::shared_ptr<Executor>& executor_out) {
+  absl::ReaderMutexLock lock(&executors_mutex_);
+  auto it = executors_.find(executor.id());
+  if (it != executors_.end()) {
+    executor_out = it->second.executor;
+    return grpc::Status::OK;
+  }
   return grpc::Status(
       grpc::StatusCode::INVALID_ARGUMENT,
-      absl::StrCat("Remote value ID ", bad_id,
-                   " malformed: expected to be of the form a-b, where a and "
-                   "b are both ints."));
-}
-
-grpc::Status ExecutorService::EnsureGeneration_(int reference_generation,
-                                                int expected_generation) {
-  if (reference_generation != expected_generation) {
-    return grpc::Status(
-        grpc::StatusCode::INVALID_ARGUMENT,
-        absl::StrCat(
-            "Remote value refers to a non-live executor generation. "
-            "Current generation is: ",
-            expected_generation,
-            " remote value refers to generation: ", reference_generation));
-  }
-  return grpc::Status::OK;
-}
-
-grpc::Status ExecutorService::ResolveRemoteValue_(
-    const v0::ValueRef& remote_value_ref, int expected_generation,
-    ValueId* value_id_out) {
-  // Incoming ref should have ID of the form a-b, where a is a
-  // uint64_t and b s an int. a represents the ValueId in the
-  // service's executor, b represents the generation of this executor.
-  std::vector<absl::string_view> id_and_generation =
-      absl::StrSplit(remote_value_ref.id(), '-');
-  if (id_and_generation.size() != 2) {
-    return MalformattedValueStatus(remote_value_ref.id());
-  }
-  int reference_generation;
-  if (!absl::SimpleAtoi(id_and_generation[1], &reference_generation)) {
-    return MalformattedValueStatus(remote_value_ref.id());
-  }
-  TFF_TRYLOG_GRPC(EnsureGeneration_(reference_generation, expected_generation));
-  if (!absl::SimpleAtoi(id_and_generation[0], value_id_out)) {
-    return MalformattedValueStatus(remote_value_ref.id());
-  }
-  return grpc::Status::OK;
+      absl::StrCat("Error evaluating `ExecutorService::", method_name,
+                   "`. No executor found for ID: '", executor.id(), "'."));
 }
 
 grpc::Status ExecutorService::CreateValue(grpc::ServerContext* context,
                                           const v0::CreateValueRequest* request,
                                           v0::CreateValueResponse* response) {
   std::shared_ptr<Executor> executor;
-  int generation;
-  TFF_TRYLOG_GRPC(RequireExecutor_("CreateValue", &executor, &generation));
+  TFF_TRYLOG_GRPC(
+      RequireExecutor("CreateValue", request->executor(), executor));
   absl::StatusOr<OwnedValueId> id = executor->CreateValue(request->value());
   if (!id.ok()) {
     LOG(ERROR) << id.status().message();
     return absl_to_grpc(id.status());
   }
-  response->mutable_value_ref()->mutable_id()->assign(
-      CreateRemoteValue_(id.value().ref(), generation));
+  *response->mutable_value_ref() = IdToRemoteValue(id.value());
   // We must call forget on the embedded id to prevent the destructor from
   // running when the variable goes out of scope. Similar considerations apply
   // to the reset of the Create methods below.
@@ -141,17 +145,14 @@ grpc::Status ExecutorService::CreateCall(grpc::ServerContext* context,
                                          const v0::CreateCallRequest* request,
                                          v0::CreateCallResponse* response) {
   std::shared_ptr<Executor> executor;
-  int generation;
-  TFF_TRYLOG_GRPC(RequireExecutor_("CreateCall", &executor, &generation));
+  TFF_TRYLOG_GRPC(RequireExecutor("CreateCall", request->executor(), executor));
   ValueId embedded_fn;
-  TFF_TRYLOG_GRPC(
-      ResolveRemoteValue_(request->function_ref(), generation, &embedded_fn));
+  TFF_TRYLOG_GRPC(RemoteValueToId(request->function_ref(), embedded_fn));
   absl::optional<ValueId> embedded_arg;
   if (request->has_argument_ref()) {
-    // Callers should avoid setting the argument ref for invocation of a no-arg
-    // fn.
-    TFF_TRYLOG_GRPC(ResolveRemoteValue_(request->argument_ref(), generation,
-                                        &embedded_arg.emplace()));
+    embedded_arg = 0;
+    TFF_TRYLOG_GRPC(
+        RemoteValueToId(request->argument_ref(), embedded_arg.value()));
   }
   absl::StatusOr<OwnedValueId> called_fn =
       executor->CreateCall(embedded_fn, embedded_arg);
@@ -159,8 +160,7 @@ grpc::Status ExecutorService::CreateCall(grpc::ServerContext* context,
     LOG(ERROR) << called_fn.status().message();
     return absl_to_grpc(called_fn.status());
   }
-  response->mutable_value_ref()->mutable_id()->assign(
-      CreateRemoteValue_(called_fn.value().ref(), generation));
+  *response->mutable_value_ref() = IdToRemoteValue(called_fn.value());
   // We must prevent this destructor from running similarly to CreateValue.
   called_fn.value().forget();
   return grpc::Status::OK;
@@ -170,13 +170,13 @@ grpc::Status ExecutorService::CreateStruct(
     grpc::ServerContext* context, const v0::CreateStructRequest* request,
     v0::CreateStructResponse* response) {
   std::shared_ptr<Executor> executor;
-  int generation;
-  TFF_TRYLOG_GRPC(RequireExecutor_("CreateStruct", &executor, &generation));
+  TFF_TRYLOG_GRPC(
+      RequireExecutor("CreateStruct", request->executor(), executor));
   std::vector<ValueId> requested_ids;
   requested_ids.reserve(request->element().size());
   for (const v0::CreateStructRequest::Element& elem : request->element()) {
     ValueId id;
-    TFF_TRYLOG_GRPC(ResolveRemoteValue_(elem.value_ref(), generation, &id));
+    TFF_TRYLOG_GRPC(RemoteValueToId(elem.value_ref(), id));
     requested_ids.push_back(id);
   }
   absl::StatusOr<OwnedValueId> created_struct =
@@ -185,8 +185,7 @@ grpc::Status ExecutorService::CreateStruct(
     LOG(ERROR) << created_struct.status().message();
     return absl_to_grpc(created_struct.status());
   }
-  response->mutable_value_ref()->mutable_id()->assign(
-      CreateRemoteValue_(created_struct.value().ref(), generation));
+  *response->mutable_value_ref() = IdToRemoteValue(created_struct.value());
   // We must prevent this destructor from running similarly to CreateValue.
   created_struct.value().forget();
   return grpc::Status::OK;
@@ -196,19 +195,17 @@ grpc::Status ExecutorService::CreateSelection(
     grpc::ServerContext* context, const v0::CreateSelectionRequest* request,
     v0::CreateSelectionResponse* response) {
   std::shared_ptr<Executor> executor;
-  int generation;
-  TFF_TRYLOG_GRPC(RequireExecutor_("CreateSelection", &executor, &generation));
+  TFF_TRYLOG_GRPC(
+      RequireExecutor("CreateSelection", request->executor(), executor));
   ValueId selection_source;
-  TFF_TRYLOG_GRPC(ResolveRemoteValue_(request->source_ref(), generation,
-                                      &selection_source));
+  TFF_TRYLOG_GRPC(RemoteValueToId(request->source_ref(), selection_source));
   absl::StatusOr<OwnedValueId> selected_element =
       executor->CreateSelection(selection_source, request->index());
   if (!selected_element.ok()) {
     LOG(ERROR) << selected_element.status().message();
     return absl_to_grpc(selected_element.status());
   }
-  response->mutable_value_ref()->mutable_id()->assign(
-      CreateRemoteValue_(selected_element.value().ref(), generation));
+  *response->mutable_value_ref() = IdToRemoteValue(selected_element.value());
   // We must prevent this destructor from running similarly to CreateValue.
   selected_element.value().forget();
   return grpc::Status::OK;
@@ -218,58 +215,19 @@ grpc::Status ExecutorService::Compute(grpc::ServerContext* context,
                                       const v0::ComputeRequest* request,
                                       v0::ComputeResponse* response) {
   std::shared_ptr<Executor> executor;
-  int generation;
-  TFF_TRYLOG_GRPC(RequireExecutor_("Compute", &executor, &generation));
+  TFF_TRYLOG_GRPC(RequireExecutor("Compute", request->executor(), executor));
   ValueId requested_value;
-  TFF_TRYLOG_GRPC(
-      ResolveRemoteValue_(request->value_ref(), generation, &requested_value));
+  TFF_TRYLOG_GRPC(RemoteValueToId(request->value_ref(), requested_value));
   absl::Status status =
       executor->Materialize(requested_value, response->mutable_value());
   return absl_to_grpc(status);
-}
-
-grpc::Status ExecutorService::SetCardinalities(
-    grpc::ServerContext* context, const v0::SetCardinalitiesRequest* request,
-    v0::SetCardinalitiesResponse* response) {
-  CardinalityMap cardinality_map;
-  for (const auto& cardinality : request->cardinalities()) {
-    cardinality_map.insert(
-        {cardinality.placement().uri(), cardinality.cardinality()});
-  }
-  {
-    absl::WriterMutexLock writer_lock(&executor_mutex_);
-    absl::StatusOr<std::shared_ptr<Executor>> new_executor =
-        executor_factory_(cardinality_map);
-    if (!new_executor.ok()) {
-      LOG(ERROR) << new_executor.status().message();
-      return absl_to_grpc(new_executor.status());
-    }
-    int new_generation = executor_and_generation_.second + 1;
-    executor_and_generation_ =
-        std::make_pair(std::move(new_executor.value()), new_generation);
-  }
-  return grpc::Status::OK;
-}
-
-grpc::Status ExecutorService::ClearExecutor(
-    grpc::ServerContext* context, const v0::ClearExecutorRequest* request,
-    v0::ClearExecutorResponse* response) {
-  {
-    absl::WriterMutexLock writer_lock(&executor_mutex_);
-    // Clearing executor should reset executor to null, but without changing the
-    // executor's generation; this will be incremented by SetCardinalities.
-    executor_and_generation_ =
-        std::make_pair(nullptr, executor_and_generation_.second);
-  }
-  return grpc::Status::OK;
 }
 
 grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
                                       const v0::DisposeRequest* request,
                                       v0::DisposeResponse* response) {
   std::shared_ptr<Executor> executor;
-  int generation;
-  TFF_TRYLOG_GRPC(RequireExecutor_("Dispose", &executor, &generation));
+  TFF_TRYLOG_GRPC(RequireExecutor("Dispose", request->executor(), executor));
   std::vector<ValueId> embedded_ids_to_dispose;
   embedded_ids_to_dispose.reserve(request->value_ref().size());
   // Filter the requested IDs to those corresponding to the currently live
@@ -278,8 +236,7 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
   // dispose of values in the live executor.
   for (const v0::ValueRef& disposed_value_ref : request->value_ref()) {
     ValueId embedded_value;
-    grpc::Status status =
-        ResolveRemoteValue_(disposed_value_ref, generation, &embedded_value);
+    grpc::Status status = RemoteValueToId(disposed_value_ref, embedded_value);
     if (status.ok()) {
       absl::Status absl_status = executor->Dispose(embedded_value);
       if (!absl_status.ok()) {
@@ -289,6 +246,27 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
     }
   }
   return grpc::Status::OK;
+}
+
+grpc::Status ExecutorService::DisposeExecutor(
+    grpc::ServerContext* context, const v0::DisposeExecutorRequest* request,
+    v0::DisposeExecutorResponse* response) {
+  absl::WriterMutexLock lock(&executors_mutex_);
+  const std::string& id = request->executor().id();
+  auto it = executors_.find(id);
+  if (it != executors_.end()) {
+    ExecutorEntry& entry = it->second;
+    entry.remote_refcount--;
+    if (entry.remote_refcount == 0) {
+      executors_.erase(it);
+    }
+    return grpc::Status::OK;
+  } else {
+    return grpc::Status(
+        grpc::StatusCode::INVALID_ARGUMENT,
+        absl::StrCat("Error evaluating `ExecutorService::DisposeExecutor`. ",
+                     "No executor found for ID: '", id, "'."));
+  }
 }
 
 }  // namespace tensorflow_federated

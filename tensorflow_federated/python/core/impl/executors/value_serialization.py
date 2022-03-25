@@ -674,11 +674,10 @@ CardinalitiesType = Mapping[placements.PlacementLiteral, int]
 
 
 def serialize_cardinalities(
-    cardinalities: CardinalitiesType
-) -> List[executor_pb2.SetCardinalitiesRequest.Cardinality]:
+    cardinalities: CardinalitiesType) -> List[executor_pb2.Cardinality]:
   serialized_cardinalities = []
   for placement, cardinality in cardinalities.items():
-    cardinality_message = executor_pb2.SetCardinalitiesRequest.Cardinality(
+    cardinality_message = executor_pb2.Cardinality(
         placement=computation_pb2.Placement(uri=placement.uri),
         cardinality=cardinality)
     serialized_cardinalities.append(cardinality_message)
@@ -686,8 +685,7 @@ def serialize_cardinalities(
 
 
 def deserialize_cardinalities(
-    serialized_cardinalities: Collection[
-        executor_pb2.SetCardinalitiesRequest.Cardinality]
+    serialized_cardinalities: Collection[executor_pb2.Cardinality]
 ) -> CardinalitiesType:
   cardinalities_dict = {}
   for cardinality_spec in serialized_cardinalities:

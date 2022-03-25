@@ -80,7 +80,13 @@ class RemoteExecutorGrpcStub(remote_executor_stub.RemoteExecutorStub):
 
     channel.subscribe(_channel_status_callback, try_to_connect=True)
     self._channel = channel
-    self._stub = executor_pb2_grpc.ExecutorStub(channel)
+    self._stub = executor_pb2_grpc.ExecutorGroupStub(channel)
+
+  def get_executor(
+      self, request: executor_pb2.GetExecutorRequest
+  ) -> executor_pb2.GetExecutorResponse:
+    """Dispatches a GetExecutor gRPC."""
+    return _request(self._stub.GetExecutor, request)
 
   def create_value(
       self, request: executor_pb2.CreateValueRequest
@@ -112,23 +118,16 @@ class RemoteExecutorGrpcStub(remote_executor_stub.RemoteExecutorStub):
     """Dispatches a Compute gRPC."""
     return _request(self._stub.Compute, request)
 
-  def set_cardinalities(
-      self, request: executor_pb2.SetCardinalitiesRequest
-  ) -> executor_pb2.SetCardinalitiesResponse:
-    """Dispatches a SetCardinalities gRPC."""
-    return _request(self._stub.SetCardinalities, request)
-
   def dispose(
       self,
       request: executor_pb2.DisposeRequest) -> executor_pb2.DisposeResponse:
     """Dispatches a Dispose gRPC."""
     return _request(self._stub.Dispose, request)
 
-  def clear_executor(
-      self, request: executor_pb2.ClearExecutorRequest
-  ) -> executor_pb2.ClearExecutorResponse:
-    """Dispatches a ClearExecutor gRPC."""
-    return _request(self._stub.ClearExecutor, request)
+  def dispose_executor(
+      self, request: executor_pb2.DisposeExecutorRequest
+  ) -> executor_pb2.DisposeExecutorResponse:
+    return _request(self._stub.DisposeExecutor, request)
 
   @property
   def is_ready(self) -> bool:

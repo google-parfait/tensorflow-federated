@@ -57,7 +57,7 @@ def test_context():
 
   service = executor_service.ExecutorService(
       executor_stacks.ResourceManagingExecutorFactory(_tracer_fn))
-  executor_pb2_grpc.add_ExecutorServicer_to_server(service, server)
+  executor_pb2_grpc.add_ExecutorGroupServicer_to_server(service, server)
   server.start()
 
   channel = grpc.insecure_channel('localhost:{}'.format(port))
@@ -106,6 +106,13 @@ def _raise_non_retryable_grpc_error(*args):
   raise error
 
 
+def _set_cardinalities_with_mock(executor: remote_executor.RemoteExecutor,
+                                 mock_stub: mock.Mock):
+  mock_stub.get_executor.return_value = executor_pb2.GetExecutorResponse(
+      executor=executor_pb2.ExecutorId(id='id'))
+  executor.set_cardinalities({placements.CLIENTS: 3})
+
+
 @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
 class RemoteValueTest(absltest.TestCase):
 
@@ -116,6 +123,8 @@ class RemoteValueTest(absltest.TestCase):
     value = executor_pb2.Value(tensor=any_pb)
     mock_stub.compute.return_value = executor_pb2.ComputeResponse(value=value)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
+    executor.set_cardinalities({placements.CLIENTS: 3})
     type_signature = computation_types.FunctionType(None, tf.int32)
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
                                        executor)
@@ -128,6 +137,7 @@ class RemoteValueTest(absltest.TestCase):
   def test_compute_reraises_grpc_error(self, mock_stub):
     mock_stub.compute = mock.Mock(side_effect=_raise_non_retryable_grpc_error)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
                                        executor)
@@ -140,6 +150,7 @@ class RemoteValueTest(absltest.TestCase):
   def test_compute_reraises_type_error(self, mock_stub):
     mock_stub.compute = mock.Mock(side_effect=TypeError)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
                                        executor)
@@ -152,15 +163,17 @@ class RemoteValueTest(absltest.TestCase):
 class RemoteExecutorTest(absltest.TestCase):
 
   def test_set_cardinalities_returns_none(self, mock_stub):
-    mock_stub.set_cardinalities.return_value = executor_pb2.SetCardinalitiesResponse(
-    )
+    mock_stub.get_executor.return_value = executor_pb2.GetExecutorResponse(
+        executor=executor_pb2.ExecutorId(id='test_id'))
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     result = executor.set_cardinalities({placements.CLIENTS: 3})
     self.assertIsNone(result)
 
   def test_create_value_returns_remote_value(self, mock_stub):
     mock_stub.create_value.return_value = executor_pb2.CreateValueResponse()
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
 
     result = asyncio.run(executor.create_value(1, tf.int32))
 
@@ -171,6 +184,7 @@ class RemoteExecutorTest(absltest.TestCase):
     mock_stub.create_value = mock.Mock(
         side_effect=_raise_non_retryable_grpc_error)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
 
     with self.assertRaises(grpc.RpcError) as context:
       asyncio.run(executor.create_value(1, tf.int32))
@@ -180,6 +194,7 @@ class RemoteExecutorTest(absltest.TestCase):
   def test_create_value_reraises_type_error(self, mock_stub):
     mock_stub.create_value = mock.Mock(side_effect=TypeError)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
 
     with self.assertRaises(TypeError):
       asyncio.run(executor.create_value(1, tf.int32))
@@ -187,6 +202,7 @@ class RemoteExecutorTest(absltest.TestCase):
   def test_create_call_returns_remote_value(self, mock_stub):
     mock_stub.create_call.return_value = executor_pb2.CreateCallResponse()
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
     fn = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
                                      executor)
@@ -200,6 +216,7 @@ class RemoteExecutorTest(absltest.TestCase):
     mock_stub.create_call = mock.Mock(
         side_effect=_raise_non_retryable_grpc_error)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
                                        executor)
@@ -212,6 +229,7 @@ class RemoteExecutorTest(absltest.TestCase):
   def test_create_call_reraises_type_error(self, mock_stub):
     mock_stub.create_call = mock.Mock(side_effect=TypeError)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
                                        executor)
@@ -222,6 +240,7 @@ class RemoteExecutorTest(absltest.TestCase):
   def test_create_struct_returns_remote_value(self, mock_stub):
     mock_stub.create_struct.return_value = executor_pb2.CreateStructResponse()
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.TensorType(tf.int32)
     value_1 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                           type_signature, executor)
@@ -237,6 +256,7 @@ class RemoteExecutorTest(absltest.TestCase):
     mock_stub.create_struct = mock.Mock(
         side_effect=_raise_non_retryable_grpc_error)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.TensorType(tf.int32)
     value_1 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                           type_signature, executor)
@@ -251,6 +271,7 @@ class RemoteExecutorTest(absltest.TestCase):
   def test_create_struct_reraises_type_error(self, mock_stub):
     mock_stub.create_struct = mock.Mock(side_effect=TypeError)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.TensorType(tf.int32)
     value_1 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                           type_signature, executor)
@@ -264,6 +285,7 @@ class RemoteExecutorTest(absltest.TestCase):
     mock_stub.create_selection.return_value = executor_pb2.CreateSelectionResponse(
     )
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.StructType([tf.int32, tf.int32])
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                          type_signature, executor)
@@ -277,6 +299,7 @@ class RemoteExecutorTest(absltest.TestCase):
     mock_stub.create_selection = mock.Mock(
         side_effect=_raise_non_retryable_grpc_error)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.StructType([tf.int32, tf.int32])
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                          type_signature, executor)
@@ -289,6 +312,7 @@ class RemoteExecutorTest(absltest.TestCase):
   def test_create_selection_reraises_type_error(self, mock_stub):
     mock_stub.create_selection = mock.Mock(side_effect=TypeError)
     executor = remote_executor.RemoteExecutor(mock_stub)
+    _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.StructType([tf.int32, tf.int32])
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                          type_signature, executor)

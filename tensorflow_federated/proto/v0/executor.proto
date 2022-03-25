@@ -5,8 +5,11 @@ package tensorflow_federated.v0;
 import "google/protobuf/any.proto";
 import "tensorflow_federated/proto/v0/computation.proto";
 
-// A service interface to be implemented by executors.
-service Executor {
+// A service providing computation execution.
+service ExecutorGroup {
+  // Returns a
+  rpc GetExecutor(GetExecutorRequest) returns (GetExecutorResponse) {}
+
   // Creates a value in the executor and returns a reference to it that can be
   // supplied as an argument to other methods.
   rpc CreateValue(CreateValueRequest) returns (CreateValueResponse) {}
@@ -26,13 +29,6 @@ service Executor {
   // call (it will block until the value becomes available).
   rpc Compute(ComputeRequest) returns (ComputeResponse) {}
 
-  // Configures executor to handle specified cardinalities.
-  rpc SetCardinalities(SetCardinalitiesRequest)
-      returns (SetCardinalitiesResponse) {}
-
-  // Clears executor state, resetting executor service.
-  rpc ClearExecutor(ClearExecutorRequest) returns (ClearExecutorResponse) {}
-
   // TODO(b/134543154): Given that there is no support for asynchronous server
   // processing in Python gRPC, long-running calls may be a problem. Revisit
   // this and look for alternatives.
@@ -40,10 +36,34 @@ service Executor {
   // Causes one or more values in the executor to get disposed of (no longer
   // available for future calls).
   rpc Dispose(DisposeRequest) returns (DisposeResponse) {}
+
+  // Causes an executor to be disposed of (no longer available for future
+  // calls).
+  rpc DisposeExecutor(DisposeExecutorRequest)
+      returns (DisposeExecutorResponse) {}
+}
+
+message Cardinality {
+  tensorflow_federated.v0.Placement placement = 1;
+  int32 cardinality = 2;
+}
+
+message GetExecutorRequest {
+  repeated Cardinality cardinalities = 1;
+}
+
+message GetExecutorResponse {
+  ExecutorId executor = 1;
+}
+
+// An identifier for a particular executor within an `ExecutorGroup`.
+message ExecutorId {
+  string id = 1;
 }
 
 message CreateValueRequest {
   Value value = 1;
+  ExecutorId executor = 2;
 }
 
 message CreateValueResponse {
@@ -57,6 +77,8 @@ message CreateCallRequest {
 
   // An optional argument, only for functions that declare an argument.
   ValueRef argument_ref = 2;
+
+  ExecutorId executor = 3;
 }
 
 message CreateCallResponse {
@@ -69,6 +91,7 @@ message CreateStructRequest {
     string name = 1;
     ValueRef value_ref = 2;
   }
+  ExecutorId executor = 3;
 }
 
 message CreateStructResponse {
@@ -78,6 +101,7 @@ message CreateStructResponse {
 message CreateSelectionRequest {
   ValueRef source_ref = 1;
   int32 index = 3;
+  ExecutorId executor = 4;
 }
 
 message CreateSelectionResponse {
@@ -86,6 +110,7 @@ message CreateSelectionResponse {
 
 message ComputeRequest {
   ValueRef value_ref = 1;
+  ExecutorId executor = 2;
 }
 
 message ComputeResponse {
@@ -94,26 +119,16 @@ message ComputeResponse {
 
 message DisposeRequest {
   repeated ValueRef value_ref = 1;
+  ExecutorId executor = 2;
 }
 
 message DisposeResponse {}
 
-// A message used to configure the worker to execute a specified set of
-// cardinalities.
-message SetCardinalitiesRequest {
-  repeated Cardinality cardinalities = 1;
-
-  message Cardinality {
-    tensorflow_federated.v0.Placement placement = 1;
-    int32 cardinality = 2;
-  }
+message DisposeExecutorRequest {
+  ExecutorId executor = 1;
 }
 
-message SetCardinalitiesResponse {}
-
-// A message used to clear executor state on a server.
-message ClearExecutorRequest {}
-message ClearExecutorResponse {}
+message DisposeExecutorResponse {}
 
 // A representation of a value that's to be embedded in the executor, or that
 // is being returned as a result of a computation.

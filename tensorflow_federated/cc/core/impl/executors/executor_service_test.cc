@@ -42,104 +42,32 @@ namespace tensorflow_federated {
 
 static constexpr char kClients[] = "clients";
 
-v0::SetCardinalitiesRequest CreateSetCardinalitiesRequest(
-    int client_cardinalities) {
-  v0::SetCardinalitiesRequest request_pb;
+v0::GetExecutorRequest CreateGetExecutorRequest(int client_cardinalities) {
+  v0::GetExecutorRequest request_pb;
 
-  v0::SetCardinalitiesRequest::Cardinality* cardinalities =
-      request_pb.mutable_cardinalities()->Add();
+  v0::Cardinality* cardinalities = request_pb.mutable_cardinalities()->Add();
   cardinalities->mutable_placement()->mutable_uri()->assign(kClients);
   cardinalities->set_cardinality(client_cardinalities);
   return request_pb;
 }
 
-v0::CreateValueRequest CreateValueFloatRequest(float float_value) {
-  v0::CreateValueRequest request_pb;
-  request_pb.mutable_value()->MergeFrom(testing::TensorV(float_value));
-  return request_pb;
-}
-
-v0::DisposeRequest DisposeRequestForIds(absl::Span<const std::string> ids) {
-  v0::DisposeRequest request_pb;
-  for (const std::string& id : ids) {
-    v0::ValueRef value_ref;
-    value_ref.mutable_id()->assign(id);
-    request_pb.mutable_value_ref()->Add(std::move(value_ref));
-  }
-  return request_pb;
-}
-
-v0::ComputeRequest ComputeRequestForId(std::string id) {
-  v0::ComputeRequest compute_request_pb;
-  compute_request_pb.mutable_value_ref()->mutable_id()->assign(id);
-  return compute_request_pb;
-}
-
 absl::Status ReturnOk() { return absl::OkStatus(); }
 
-v0::CreateCallRequest CreateCallRequestForIds(
-    std::string function_id, absl::optional<std::string> argument_id) {
-  v0::CreateCallRequest create_call_request_pb;
-  create_call_request_pb.mutable_function_ref()->mutable_id()->assign(
-      function_id);
-  if (argument_id != absl::nullopt) {
-    create_call_request_pb.mutable_argument_ref()->mutable_id()->assign(
-        *argument_id);
-  }
-  return create_call_request_pb;
-}
-
-v0::CreateStructRequest CreateStructForIds(
-    const absl::Span<const absl::string_view> ids_for_struct) {
-  v0::CreateStructRequest create_struct_request_pb;
-  for (const absl::string_view& id : ids_for_struct) {
-    v0::CreateStructRequest::Element elem;
-    elem.mutable_value_ref()->mutable_id()->append(id.data(), id.size());
-    create_struct_request_pb.mutable_element()->Add(std::move(elem));
-  }
-  return create_struct_request_pb;
-}
-
-v0::CreateStructRequest CreateNamedStructForIds(
-    const absl::Span<const absl::string_view> ids_for_struct) {
-  v0::CreateStructRequest create_struct_request_pb;
-  // Assign an integer index as name internally. Names are dropped on the C++
-  // side, but a caller may supply them.
-  int idx = 0;
-  for (const absl::string_view& id : ids_for_struct) {
-    v0::CreateStructRequest::Element elem;
-    elem.mutable_value_ref()->mutable_id()->assign(id.data(), id.size());
-    elem.mutable_name()->assign(std::to_string(idx));
-    idx++;
-    create_struct_request_pb.mutable_element()->Add(std::move(elem));
-  }
-  return create_struct_request_pb;
-}
-
-v0::CreateSelectionRequest CreateSelectionRequestForIndex(
-    std::string source_ref_id, int index) {
-  v0::CreateSelectionRequest create_selection_request_pb;
-  create_selection_request_pb.mutable_source_ref()->mutable_id()->assign(
-      source_ref_id);
-  create_selection_request_pb.set_index(index);
-  return create_selection_request_pb;
-}
-
-TEST(ExecutorServiceFailureTest, CreateValueBeforeSetCardinalities) {
+TEST(ExecutorServiceFailureTest, CreateValueWithoutExecutorFails) {
   auto executor_ptr = std::make_shared<::testing::StrictMock<MockExecutor>>();
   ExecutorService executor_service_ =
       ExecutorService([&](auto cardinalities) { return executor_ptr; });
 
-  auto request_pb = CreateValueFloatRequest(2.0f);
+  v0::CreateValueRequest request_pb;
+  request_pb.mutable_value()->MergeFrom(testing::TensorV(1.0));
   v0::CreateValueResponse response_pb;
   grpc::ServerContext server_context;
 
   auto response_status =
       executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
 
-  ASSERT_THAT(response_status,
-              GrpcStatusIs(grpc::StatusCode::UNAVAILABLE,
-                           "CreateValue before setting cardinalities"));
+  ASSERT_THAT(response_status, GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+                                            "No executor found for ID: ''."));
 }
 
 class ExecutorServiceTest : public ::testing::Test {
@@ -150,13 +78,13 @@ class ExecutorServiceTest : public ::testing::Test {
 
  private:
   void SetUp() override {
-    const v0::SetCardinalitiesRequest request_pb =
-        CreateSetCardinalitiesRequest(1);
-    v0::SetCardinalitiesResponse response_pb;
+    const v0::GetExecutorRequest request_pb = CreateGetExecutorRequest(1);
+    v0::GetExecutorResponse response_pb;
     grpc::ServerContext server_context;
-    auto ok_status = executor_service_.SetCardinalities(
-        &server_context, &request_pb, &response_pb);
+    auto ok_status = executor_service_.GetExecutor(&server_context, &request_pb,
+                                                   &response_pb);
     TFF_ASSERT_OK(grpc_to_absl(ok_status));
+    executor_pb_ = response_pb.executor();
   }
 
  protected:
@@ -164,15 +92,93 @@ class ExecutorServiceTest : public ::testing::Test {
       [&](auto cardinalities) { return *(&this->executor_ptr_); });
   std::shared_ptr<MockExecutor> executor_ptr_ =
       std::make_shared<::testing::StrictMock<MockExecutor>>();
+  v0::ExecutorId executor_pb_;
+
+  v0::CreateValueRequest CreateValueFloatRequest(float float_value) {
+    v0::CreateValueRequest request_pb;
+    *request_pb.mutable_executor() = executor_pb_;
+    request_pb.mutable_value()->MergeFrom(testing::TensorV(float_value));
+    return request_pb;
+  }
+
+  v0::DisposeRequest DisposeRequestForIds(absl::Span<const std::string> ids) {
+    v0::DisposeRequest request_pb;
+    *request_pb.mutable_executor() = executor_pb_;
+    for (const std::string& id : ids) {
+      v0::ValueRef value_ref;
+      value_ref.mutable_id()->assign(id);
+      request_pb.mutable_value_ref()->Add(std::move(value_ref));
+    }
+    return request_pb;
+  }
+
+  v0::ComputeRequest ComputeRequestForId(std::string id) {
+    v0::ComputeRequest compute_request_pb;
+    *compute_request_pb.mutable_executor() = executor_pb_;
+    compute_request_pb.mutable_value_ref()->mutable_id()->assign(id);
+    return compute_request_pb;
+  }
+
+  v0::CreateCallRequest CreateCallRequestForIds(
+      std::string function_id, absl::optional<std::string> argument_id) {
+    v0::CreateCallRequest create_call_request_pb;
+    *create_call_request_pb.mutable_executor() = executor_pb_;
+    create_call_request_pb.mutable_function_ref()->mutable_id()->assign(
+        function_id);
+    if (argument_id != absl::nullopt) {
+      create_call_request_pb.mutable_argument_ref()->mutable_id()->assign(
+          *argument_id);
+    }
+    return create_call_request_pb;
+  }
+
+  v0::CreateStructRequest CreateStructForIds(
+      const absl::Span<const absl::string_view> ids_for_struct) {
+    v0::CreateStructRequest create_struct_request_pb;
+    *create_struct_request_pb.mutable_executor() = executor_pb_;
+    for (absl::string_view id : ids_for_struct) {
+      v0::CreateStructRequest::Element elem;
+      elem.mutable_value_ref()->mutable_id()->append(id.data(), id.size());
+      create_struct_request_pb.mutable_element()->Add(std::move(elem));
+    }
+    return create_struct_request_pb;
+  }
+
+  v0::CreateStructRequest CreateNamedStructForIds(
+      const absl::Span<const absl::string_view> ids_for_struct) {
+    v0::CreateStructRequest create_struct_request_pb;
+    *create_struct_request_pb.mutable_executor() = executor_pb_;
+    // Assign an integer index as name internally. Names are dropped on the C++
+    // side, but a caller may supply them.
+    int idx = 0;
+    for (const absl::string_view& id : ids_for_struct) {
+      v0::CreateStructRequest::Element elem;
+      elem.mutable_value_ref()->mutable_id()->assign(id.data(), id.size());
+      elem.mutable_name()->assign(std::to_string(idx));
+      idx++;
+      create_struct_request_pb.mutable_element()->Add(std::move(elem));
+    }
+    return create_struct_request_pb;
+  }
+
+  v0::CreateSelectionRequest CreateSelectionRequestForIndex(
+      std::string source_ref_id, int index) {
+    v0::CreateSelectionRequest create_selection_request_pb;
+    *create_selection_request_pb.mutable_executor() = executor_pb_;
+    create_selection_request_pb.mutable_source_ref()->mutable_id()->assign(
+        source_ref_id);
+    create_selection_request_pb.set_index(index);
+    return create_selection_request_pb;
+  }
 };
 
-TEST_F(ExecutorServiceTest, SetCardinalitiesReturnsOK) {
+TEST_F(ExecutorServiceTest, GetExecutorReturnsOk) {
   int client_cards = 5;
-  auto request_pb = CreateSetCardinalitiesRequest(client_cards);
-  v0::SetCardinalitiesResponse response_pb;
+  auto request_pb = CreateGetExecutorRequest(client_cards);
+  v0::GetExecutorResponse response_pb;
   grpc::ServerContext server_context;
 
-  TFF_EXPECT_OK(grpc_to_absl(executor_service_.SetCardinalities(
+  TFF_EXPECT_OK(grpc_to_absl(executor_service_.GetExecutor(
       &server_context, &request_pb, &response_pb)));
 }
 
@@ -189,39 +195,32 @@ TEST_F(ExecutorServiceTest, CreateValueReturnsZeroRef) {
       &server_context, &request_pb, &response_pb)));
   // First element in the id is the id in the mock executor; the second is the
   // executor's generation.
-  EXPECT_THAT(response_pb, testing::EqualsProto("value_ref { id: '0-0' }"));
+  EXPECT_THAT(response_pb, testing::EqualsProto("value_ref { id: '0' }"));
 }
 
-TEST_F(ExecutorServiceTest, SetCardinalitiesIncrementsExecutorGeneration) {
-  auto request_pb = CreateValueFloatRequest(2.0f);
-  v0::CreateValueResponse first_response_pb;
-  v0::CreateValueResponse second_response_pb;
-  grpc::ServerContext server_context;
+TEST_F(ExecutorServiceTest, GetExecutorReturnsCardinalitySpecificIds) {
+  grpc::ServerContext context;
 
-  v0::SetCardinalitiesRequest set_cardinalities_request_pb =
-      CreateSetCardinalitiesRequest(1);
-  v0::SetCardinalitiesResponse set_cardinalities_response_pb;
+  v0::GetExecutorRequest get_executor_request_1 = CreateGetExecutorRequest(1);
+  v0::GetExecutorResponse get_executor_response_1;
 
-  EXPECT_CALL(*executor_ptr_, CreateValue(::testing::_)).WillRepeatedly([this] {
-    return TestId(0);
-  });
+  v0::GetExecutorRequest get_executor_request_2 = CreateGetExecutorRequest(2);
+  v0::GetExecutorResponse get_executor_response_2;
 
-  // A second set cardinalities call increments the executor generation in the
-  // service.
-  auto first_response_status = executor_service_.CreateValue(
-      &server_context, &request_pb, &first_response_pb);
-  auto ok_status = executor_service_.SetCardinalities(
-      &server_context, &set_cardinalities_request_pb,
-      &set_cardinalities_response_pb);
-  auto second_response_status = executor_service_.CreateValue(
-      &server_context, &request_pb, &second_response_pb);
+  TFF_EXPECT_OK(grpc_to_absl(executor_service_.GetExecutor(
+      &context, &get_executor_request_1, &get_executor_response_1)));
+  TFF_EXPECT_OK(grpc_to_absl(executor_service_.GetExecutor(
+      &context, &get_executor_request_2, &get_executor_response_2)));
 
-  TFF_ASSERT_OK(grpc_to_absl(first_response_status));
-  EXPECT_THAT(first_response_pb,
-              testing::EqualsProto("value_ref { id: '0-0' }"));
-  TFF_ASSERT_OK(grpc_to_absl(second_response_status));
-  EXPECT_THAT(second_response_pb,
-              testing::EqualsProto("value_ref { id: '0-1' }"));
+  v0::GetExecutorResponse expected_response_1;
+  expected_response_1.mutable_executor()->set_id("clients=1");
+  EXPECT_THAT(get_executor_response_1,
+              testing::EqualsProto(expected_response_1));
+
+  v0::GetExecutorResponse expected_response_2;
+  expected_response_2.mutable_executor()->set_id("clients=2");
+  EXPECT_THAT(get_executor_response_2,
+              testing::EqualsProto(expected_response_2));
 }
 
 TEST_F(ExecutorServiceTest, ComputeWithMalformedRefFails) {
@@ -238,34 +237,6 @@ TEST_F(ExecutorServiceTest, ComputeWithMalformedRefFails) {
                            "Remote value ID malformed_id malformed"));
 }
 
-TEST_F(ExecutorServiceTest, ComputeWithNoIntsInRefFails) {
-  v0::ComputeResponse compute_response_pb;
-  v0::CreateValueResponse response_pb;
-  grpc::ServerContext server_context;
-
-  v0::ComputeRequest compute_request_pb = ComputeRequestForId("malformed-id");
-
-  auto compute_response_status = executor_service_.Compute(
-      &server_context, &compute_request_pb, &compute_response_pb);
-  ASSERT_THAT(compute_response_status,
-              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
-                           "Remote value ID malformed-id malformed"));
-}
-
-TEST_F(ExecutorServiceTest, ComputeWithDashOnlyFails) {
-  v0::ComputeResponse compute_response_pb;
-  v0::CreateValueResponse response_pb;
-  grpc::ServerContext server_context;
-
-  v0::ComputeRequest compute_request_pb = ComputeRequestForId("-");
-
-  auto compute_response_status = executor_service_.Compute(
-      &server_context, &compute_request_pb, &compute_response_pb);
-  ASSERT_THAT(compute_response_status,
-              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
-                           "Remote value ID - malformed"));
-}
-
 TEST_F(ExecutorServiceTest, ComputeUnknownRefForwardsFromMock) {
   v0::ComputeResponse compute_response_pb;
   v0::CreateValueResponse response_pb;
@@ -273,7 +244,7 @@ TEST_F(ExecutorServiceTest, ComputeUnknownRefForwardsFromMock) {
 
   // This value does not exist in the lower-level executor, as it has not been
   // preceded by a create_value call.
-  v0::ComputeRequest compute_request_pb = ComputeRequestForId("0-0");
+  v0::ComputeRequest compute_request_pb = ComputeRequestForId("0");
   EXPECT_CALL(*executor_ptr_, Materialize(::testing::_, ::testing::_))
       .WillOnce([](ValueId id, v0::Value* val) {
         return absl::InvalidArgumentError("Unknown value ref");
@@ -286,19 +257,20 @@ TEST_F(ExecutorServiceTest, ComputeUnknownRefForwardsFromMock) {
       GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT, "Unknown value ref"));
 }
 
-TEST_F(ExecutorServiceTest, ComputeBadGenerationFails) {
+TEST_F(ExecutorServiceTest, ComputeInvalidExecutorFails) {
   v0::ComputeResponse compute_response_pb;
   v0::CreateValueResponse response_pb;
   grpc::ServerContext server_context;
 
   // The 0th executor generation is the live one per the test fixture setup.
-  v0::ComputeRequest compute_request_pb = ComputeRequestForId("0-1");
+  v0::ComputeRequest compute_request_pb;
+  compute_request_pb.mutable_executor()->set_id("booyeah");
 
   auto compute_response_status = executor_service_.Compute(
       &server_context, &compute_request_pb, &compute_response_pb);
   ASSERT_THAT(compute_response_status,
               GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
-                           "non-live executor generation."));
+                           "icky sticky hope it doesn't lick me"));
 }
 
 TEST_F(ExecutorServiceTest, ComputeReturnsMockValue) {
@@ -390,7 +362,7 @@ TEST_F(ExecutorServiceTest, ComputeTwoValuesReturnsAppropriateValues) {
 }
 
 TEST_F(ExecutorServiceTest, DisposePassesCallsDown) {
-  auto dispose_request = DisposeRequestForIds({"0-0", "1-0"});
+  auto dispose_request = DisposeRequestForIds({"0", "1"});
   v0::DisposeResponse dispose_response;
   grpc::ServerContext server_context;
 
@@ -402,61 +374,79 @@ TEST_F(ExecutorServiceTest, DisposePassesCallsDown) {
   TFF_ASSERT_OK(grpc_to_absl(dispose_status));
 }
 
-TEST_F(ExecutorServiceTest, DisposeFiltersBadGeneration) {
-  auto dispose_request =
-      DisposeRequestForIds(std::vector<std::string>{"0-0", "1-1"});
-  v0::DisposeResponse dispose_response;
-  grpc::ServerContext server_context;
-
-  // We expect one forwarded dispose call, as the generation of the second id is
-  // not live.
-  EXPECT_CALL(*executor_ptr_, Dispose(0)).WillOnce(ReturnOk);
-  TFF_ASSERT_OK(grpc_to_absl(executor_service_.Dispose(
-      &server_context, &dispose_request, &dispose_response)));
-}
-
-TEST_F(ExecutorServiceTest, ClearExecutorThenCreateValueFails) {
-  v0::ClearExecutorRequest clear_executor_request;
-  v0::ClearExecutorResponse clear_executor_response;
+TEST_F(ExecutorServiceTest, DisposeExecutorThenCreateValueFails) {
+  v0::DisposeExecutorRequest dispose_executor_request;
+  *dispose_executor_request.mutable_executor() = executor_pb_;
+  v0::DisposeExecutorResponse dispose_executor_response;
   grpc::ServerContext server_context;
 
   auto request_pb = CreateValueFloatRequest(2.0f);
   v0::CreateValueResponse response_pb;
 
-  TFF_ASSERT_OK(grpc_to_absl(executor_service_.ClearExecutor(
-      &server_context, &clear_executor_request, &clear_executor_response)));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.DisposeExecutor(
+      &server_context, &dispose_executor_request, &dispose_executor_response)));
 
   auto create_value_response_status =
       executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
 
   ASSERT_THAT(create_value_response_status,
-              GrpcStatusIs(grpc::StatusCode::UNAVAILABLE,
-
-                           "CreateValue before setting cardinalities"));
+              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+                           "No executor found for ID"));
 }
 
-TEST_F(ExecutorServiceTest, ClearExecutorThenDisposeFails) {
-  v0::ClearExecutorRequest clear_executor_request;
-  v0::ClearExecutorResponse clear_executor_response;
-  auto dispose_request = DisposeRequestForIds({"0-0"});
+TEST_F(ExecutorServiceTest, DisposeExecutorDoesntRemoveUnlessItsTheLastRef) {
+  grpc::ServerContext server_context;
+
+  // Create another ref by calling `GetExecutor` again.
+  {
+    auto request_pb = CreateGetExecutorRequest(1);
+    v0::GetExecutorResponse response_pb;
+    TFF_ASSERT_OK(grpc_to_absl(executor_service_.GetExecutor(
+        &server_context, &request_pb, &response_pb)));
+    EXPECT_THAT(response_pb.executor(), testing::EqualsProto(executor_pb_));
+  }
+
+  {
+    v0::DisposeExecutorRequest request_pb;
+    *request_pb.mutable_executor() = executor_pb_;
+    v0::DisposeExecutorResponse response_pb;
+    TFF_ASSERT_OK(grpc_to_absl(executor_service_.DisposeExecutor(
+        &server_context, &request_pb, &response_pb)));
+  }
+
+  // Should still succeed-- one reference remains.
+  auto request_pb = CreateValueFloatRequest(2.0f);
+  EXPECT_CALL(*executor_ptr_, CreateValue(::testing::_)).WillOnce([this] {
+    return TestId(0);
+  });
+  v0::CreateValueResponse response_pb;
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.CreateValue(
+      &server_context, &request_pb, &response_pb)));
+}
+
+TEST_F(ExecutorServiceTest, DisposeExecutorThenDisposeFails) {
+  v0::DisposeExecutorRequest dispose_executor_request;
+  *dispose_executor_request.mutable_executor() = executor_pb_;
+  v0::DisposeExecutorResponse dispose_executor_response;
+  auto dispose_request = DisposeRequestForIds({"whimsy_id"});
   v0::DisposeResponse dispose_response;
   grpc::ServerContext server_context;
 
-  TFF_ASSERT_OK(grpc_to_absl(executor_service_.ClearExecutor(
-      &server_context, &clear_executor_request, &clear_executor_response)));
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.DisposeExecutor(
+      &server_context, &dispose_executor_request, &dispose_executor_response)));
 
   auto dispose_response_status = executor_service_.Dispose(
       &server_context, &dispose_request, &dispose_response);
 
   ASSERT_THAT(dispose_response_status,
-              GrpcStatusIs(grpc::StatusCode::UNAVAILABLE,
-                           "Dispose before setting cardinalities"));
+              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+                           "No executor found for ID"));
 }
 
 TEST_F(ExecutorServiceTest, CreateCallNoArgFnArgumentSetToEmptyString) {
   // The argument ref in the associated create call request will be marked as
   // set, but to an empty string.
-  v0::CreateCallRequest call_request = CreateCallRequestForIds("0-0", "");
+  v0::CreateCallRequest call_request = CreateCallRequestForIds("0", "");
   v0::CreateCallResponse create_call_response_pb;
   grpc::ServerContext server_context;
 
@@ -469,7 +459,7 @@ TEST_F(ExecutorServiceTest, CreateCallNoArgFnArgumentSetToEmptyString) {
 
 TEST_F(ExecutorServiceTest, CreateCallNoArgFn) {
   v0::CreateCallRequest call_request =
-      CreateCallRequestForIds("0-0", absl::nullopt);
+      CreateCallRequestForIds("0", absl::nullopt);
   v0::CreateCallResponse create_call_response_pb;
   grpc::ServerContext server_context;
 
@@ -482,11 +472,11 @@ TEST_F(ExecutorServiceTest, CreateCallNoArgFn) {
       &server_context, &call_request, &create_call_response_pb)));
 
   EXPECT_THAT(create_call_response_pb,
-              testing::EqualsProto("value_ref { id: '1-0' }"));
+              testing::EqualsProto("value_ref { id: '1' }"));
 }
 
 TEST_F(ExecutorServiceTest, CreateCallFunctionWithArgument) {
-  v0::CreateCallRequest call_request = CreateCallRequestForIds("0-0", "1-0");
+  v0::CreateCallRequest call_request = CreateCallRequestForIds("0", "1");
   v0::CreateCallResponse create_call_response_pb;
   grpc::ServerContext server_context;
 
@@ -497,14 +487,14 @@ TEST_F(ExecutorServiceTest, CreateCallFunctionWithArgument) {
       &server_context, &call_request, &create_call_response_pb)));
 
   EXPECT_THAT(create_call_response_pb,
-              testing::EqualsProto("value_ref { id: '2-0' }"));
+              testing::EqualsProto("value_ref { id: '2' }"));
 }
 
 TEST_F(ExecutorServiceTest, CreateSelection) {
   v0::CreateSelectionRequest first_selection_request =
-      CreateSelectionRequestForIndex("0-0", 1);
+      CreateSelectionRequestForIndex("0", 1);
   v0::CreateSelectionRequest second_selection_request =
-      CreateSelectionRequestForIndex("2-0", 2);
+      CreateSelectionRequestForIndex("2", 2);
   v0::CreateSelectionResponse first_create_selection_response_pb;
   v0::CreateSelectionResponse second_create_selection_response_pb;
   grpc::ServerContext server_context;
@@ -529,22 +519,9 @@ TEST_F(ExecutorServiceTest, CreateSelection) {
   TFF_ASSERT_OK(grpc_to_absl(first_create_selection_response_status));
   TFF_ASSERT_OK(grpc_to_absl(second_create_selection_response_status));
   EXPECT_THAT(first_create_selection_response_pb,
-              testing::EqualsProto("value_ref { id: '1-0' }"));
+              testing::EqualsProto("value_ref { id: '1' }"));
   EXPECT_THAT(second_create_selection_response_pb,
-              testing::EqualsProto("value_ref { id: '3-0' }"));
-}
-
-TEST_F(ExecutorServiceTest, CreateStructFailsWithBadGeneration) {
-  v0::CreateStructRequest struct_request = CreateStructForIds({"0-0", "0-1"});
-  v0::CreateStructResponse struct_response_pb;
-  grpc::ServerContext server_context;
-
-  auto create_struct_response_status = executor_service_.CreateStruct(
-      &server_context, &struct_request, &struct_response_pb);
-
-  ASSERT_THAT(create_struct_response_status,
-              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
-                           "non-live executor generation."));
+              testing::EqualsProto("value_ref { id: '3' }"));
 }
 
 TEST_F(ExecutorServiceTest, CreateEmptyStruct) {
@@ -560,11 +537,11 @@ TEST_F(ExecutorServiceTest, CreateEmptyStruct) {
       &server_context, &struct_request, &struct_response_pb)));
 
   EXPECT_THAT(struct_response_pb,
-              testing::EqualsProto("value_ref { id: '0-0' }"));
+              testing::EqualsProto("value_ref { id: '0' }"));
 }
 
 TEST_F(ExecutorServiceTest, CreateNonemptyStruct) {
-  v0::CreateStructRequest struct_request = CreateStructForIds({"0-0", "1-0"});
+  v0::CreateStructRequest struct_request = CreateStructForIds({"0", "1"});
   v0::CreateStructResponse struct_response_pb;
   grpc::ServerContext server_context;
 
@@ -576,12 +553,11 @@ TEST_F(ExecutorServiceTest, CreateNonemptyStruct) {
       &server_context, &struct_request, &struct_response_pb)));
 
   EXPECT_THAT(struct_response_pb,
-              testing::EqualsProto("value_ref { id: '0-0' }"));
+              testing::EqualsProto("value_ref { id: '0' }"));
 }
 
 TEST_F(ExecutorServiceTest, CreateNamedNonemptyStruct) {
-  v0::CreateStructRequest struct_request =
-      CreateNamedStructForIds({"0-0", "1-0"});
+  v0::CreateStructRequest struct_request = CreateNamedStructForIds({"0", "1"});
   v0::CreateStructResponse struct_response_pb;
   grpc::ServerContext server_context;
 
@@ -593,7 +569,7 @@ TEST_F(ExecutorServiceTest, CreateNamedNonemptyStruct) {
       &server_context, &struct_request, &struct_response_pb)));
 
   EXPECT_THAT(struct_response_pb,
-              testing::EqualsProto("value_ref { id: '0-0' }"));
+              testing::EqualsProto("value_ref { id: '0' }"));
 }
 
 }  // namespace tensorflow_federated
