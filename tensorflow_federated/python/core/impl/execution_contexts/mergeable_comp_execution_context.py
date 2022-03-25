@@ -376,38 +376,27 @@ class MergeableCompExecutionContextValue(typed_object.TypedObject):
     return self._partitioned_value
 
 
-async def _ingest_arg_or_none(arg, context, type_signature):
-  if arg is not None:
-    return await context.ingest(arg, type_signature)
-  return None
-
-
 async def _invoke_up_to_merge_and_return_context(
     comp: MergeableCompForm, arg,
     context: async_execution_context.AsyncExecutionContext):
-  ingested_arg = await _ingest_arg_or_none(
-      arg, context, comp.up_to_merge.type_signature.parameter)
-  return await context.invoke(comp.up_to_merge, ingested_arg), context
+  return await context.invoke(comp.up_to_merge, arg), context
 
 
 async def _merge_results(
     comp: MergeableCompForm, merge_partial, value_to_merge,
     context: async_execution_context.AsyncExecutionContext):
-  ingested_arg = await context.ingest((merge_partial, value_to_merge),
-                                      comp.merge.type_signature.parameter)
-  return await context.invoke(comp.merge, ingested_arg)
+  return await context.invoke(
+      comp.merge, structure.Struct.unnamed(merge_partial, value_to_merge))
 
 
 async def _compute_after_merged(
     comp: MergeableCompForm, original_arg, merge_result,
     context: async_execution_context.AsyncExecutionContext):
   if original_arg is not None:
-    ingested_arg = await context.ingest(
-        (original_arg, merge_result), comp.after_merge.type_signature.parameter)
+    arg = structure.Struct.unnamed(original_arg, merge_result)
   else:
-    ingested_arg = await context.ingest(
-        merge_result, comp.after_merge.type_signature.parameter)
-  return await context.invoke(comp.after_merge, ingested_arg)
+    arg = merge_result
+  return await context.invoke(comp.after_merge, arg)
 
 
 async def _invoke_mergeable_comp_form(
@@ -479,11 +468,6 @@ class MergeableCompExecutionContext(context_base.Context):
       self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
     else:
       self._compiler_pipeline = None
-
-  def ingest(self, val: Any, type_spec: computation_types.Type) -> Any:
-    # Delay wrapping as MergeableCompExecutionContextValue to ensure we split
-    # values only once.
-    return val
 
   def invoke(self,
              comp: Union[MergeableCompForm, computation_base.Computation],

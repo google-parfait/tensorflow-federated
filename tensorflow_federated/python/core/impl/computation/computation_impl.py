@@ -113,10 +113,8 @@ class ConcreteComputation(computation_base.Computation):
     return self._type_signature
 
   def __call__(self, *args, **kwargs):
-    context = self._context_stack.current
-    arg = function_utils.pack_args(self._type_signature.parameter, args, kwargs,
-                                   context)
-    return context.invoke(self, arg)
+    arg = function_utils.pack_args(self._type_signature.parameter, args, kwargs)
+    return self._context_stack.current.invoke(self, arg)
 
   def __hash__(self) -> int:
     return hash(self._computation_proto.SerializeToString(deterministic=True))

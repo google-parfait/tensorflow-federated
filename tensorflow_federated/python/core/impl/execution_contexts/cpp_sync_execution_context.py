@@ -27,10 +27,6 @@ class SyncSerializeAndExecuteCPPContext(context_base.Context):
         factory, compiler_fn)
     self._loop = asyncio.new_event_loop()
 
-  def ingest(self, val, type_spec):
-    return self._loop.run_until_complete(
-        self._async_execution_context.ingest(val, type_spec))
-
   def invoke(self, comp, arg):
     return self._loop.run_until_complete(
         self._async_execution_context.invoke(comp, arg))

@@ -121,28 +121,8 @@ class FederatedContext(context_base.Context):
   """
 
   @abc.abstractmethod
-  def ingest(self, value: Any, type_spec: computation_types.Type) -> Any:
-    """Ingests the 'val' for the type `type_spec`.
-
-    Ingest translates the arguments of `tff.Computation`s from Python values to
-    a form that can be used by the context, values must be ingested by the
-    context before calling `invoke`.
-
-    Args:
-      value: The value to ingest.
-      type_spec: The `tff.Type` of the value.
-
-    Returns:
-      The result of ingestion, which is context-dependent.
-    """
-    raise NotImplementedError
-
-  @abc.abstractmethod
   def invoke(self, comp: computation_base.Computation, arg: Any) -> Any:
     """Invokes the `comp` with the argument `arg`.
-
-    The `arg` must be ingested by the context before calling `invoke`, by
-    calling `ingest`.
 
     Args:
       comp: The `tff.Computation` being invoked.

@@ -164,29 +164,8 @@ class NativeFederatedContext(federated_context.FederatedContext):
 
     self._context = context
 
-  def ingest(self, value: Any, type_spec: computation_types.Type) -> Any:
-    """Ingests the 'val' for the type `type_spec`.
-
-    Ingest translates the arguments of `tff.Computation`s from Python values to
-    a form that can be used by the context, values must be ingested by the
-    context before calling `invoke`.
-
-    Args:
-      value: The value to ingest.
-      type_spec: The `tff.Type` of the value.
-
-    Returns:
-      The result of ingestion, which is context-dependent.
-    """
-    py_typecheck.check_type(type_spec, computation_types.Type)
-
-    return value
-
   def invoke(self, comp: computation_base.Computation, arg: Any) -> Any:
     """Invokes the `comp` with the argument `arg`.
-
-    The `arg` must be ingested by the context before calling `invoke`, by
-    calling `ingest`.
 
     Args:
       comp: The `tff.Computation` being invoked.
@@ -212,7 +191,6 @@ class NativeFederatedContext(federated_context.FederatedContext):
     if comp.type_signature.parameter is not None:
       arg = _materialize_structure_of_value_references(
           arg, comp.type_signature.parameter)
-      arg = self._context.ingest(arg, comp.type_signature.parameter)
     result = self._context.invoke(comp, arg)
     result = _create_structure_of_coro_references(result, result_type)
     result = type_conversions.type_to_py_container(result, result_type)

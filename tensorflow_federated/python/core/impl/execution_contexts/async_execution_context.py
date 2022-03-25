@@ -144,18 +144,6 @@ async def _invoke(executor, comp, arg, result_type: computation_types.Type):
   return type_conversions.type_to_py_container(result_val, result_type)
 
 
-def _unwrap_execution_context_value(val):
-  """Recursively removes wrapping from `val` under anonymous tuples."""
-  if isinstance(val, structure.Struct):
-    value_elements_iter = structure.iter_elements(val)
-    return structure.Struct((name, _unwrap_execution_context_value(elem))
-                            for name, elem in value_elements_iter)
-  elif isinstance(val, AsyncExecutionContextValue):
-    return _unwrap_execution_context_value(val.value)
-  else:
-    return val
-
-
 # TODO(b/223898183): If we implement support for multiple concurrent executors
 # in Python as well as C++, this locking context will have no use and can be
 # deleted.
@@ -260,9 +248,6 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
     else:
       self._compiler_pipeline = None
 
-  async def ingest(self, val, type_spec):
-    return AsyncExecutionContextValue(val, type_spec)
-
   @retrying.retry(
       retry_on_exception_filter=_is_retryable_error,
       wait_max_ms=30 * 1000,
@@ -285,10 +270,8 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
     with tracing.span('ExecutionContext', 'Invoke', span=True):
 
       if arg is not None:
-        py_typecheck.check_type(arg, AsyncExecutionContextValue)
-        unwrapped_arg = _unwrap_execution_context_value(arg)
         cardinalities = cardinalities_utils.infer_cardinalities(
-            unwrapped_arg, arg.type_signature)
+            arg, comp.type_signature.parameter)
       else:
         cardinalities = {}
 
@@ -298,7 +281,7 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
 
         if arg is not None:
           arg = await tracing.wrap_coroutine_in_current_trace_context(
-              _ingest(executor, unwrapped_arg, arg.type_signature))
+              _ingest(executor, arg, comp.type_signature.parameter))
 
         return await tracing.wrap_coroutine_in_current_trace_context(
             _invoke(executor, comp, arg, result_type))

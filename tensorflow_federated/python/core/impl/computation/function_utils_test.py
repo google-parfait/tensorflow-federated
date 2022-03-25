@@ -27,18 +27,7 @@ from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
-
-
-class NoopIngestContextForTest(context_base.Context):
-
-  def ingest(self, val, type_spec):
-    type_analysis.check_type(val, type_spec)
-    return val
-
-  def invoke(self, comp, arg):
-    raise NotImplementedError
 
 
 class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
@@ -158,7 +147,7 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
         bound_args = signature.bind(*args, **kwargs).arguments
         self.assertEqual(bound_args, expected_callargs)
       except (TypeError, AssertionError) as test_err:
-        raise AssertionError(
+        raise AssertionError(  # pylint: disable=raise-missing-from
             'With signature `{!s}`, args {!s}, kwargs {!s}, expected bound '
             'args {!s} and error {!s}, tested function returned {!s} and the '
             'test has failed with message: {!s}'.format(signature, args, kwargs,
@@ -315,21 +304,15 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
   def test_pack_args_into_struct_with_type_spec_expect_success(
       self, args, kwargs, type_spec, elements):
     self.assertEqual(
-        function_utils.pack_args_into_struct(args, kwargs, type_spec,
-                                             NoopIngestContextForTest()),
+        function_utils.pack_args_into_struct(args, kwargs, type_spec),
         structure.Struct(elements))
 
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('wrong_type', [1], {}, [(tf.bool)]),
-      ('wrong_structure', [], {'x': 1, 'y': True}, [(tf.int32), (tf.bool)]),
-  )
-  # pyformat: enable
-  def test_pack_args_into_struct_with_type_spec_expect_failure(
-      self, args, kwargs, type_spec):
+  def test_pack_args_into_struct_named_to_unnamed_fails(self):
     with self.assertRaises(TypeError):
-      function_utils.pack_args_into_struct(args, kwargs, type_spec,
-                                           NoopIngestContextForTest())
+      function_utils.pack_args_into_struct([], {
+          'x': 1,
+          'y': True
+      }, [tf.int32, tf.bool])
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -345,9 +328,7 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
   # pyformat: enable
   def test_pack_args(self, parameter_type, args, kwargs, expected_value_string):
     self.assertEqual(
-        str(
-            function_utils.pack_args(parameter_type, args, kwargs,
-                                     NoopIngestContextForTest())),
+        str(function_utils.pack_args(parameter_type, args, kwargs)),
         expected_value_string)
 
   # pyformat: disable

@@ -89,12 +89,7 @@ class MergeableCompCompilerTest(test_case.TestCase):
   def _invoke_mergeable_form_on_arg(
       self, mergeable_form: mergeable_comp_execution_context.MergeableCompForm,
       arg):
-    arg_type = mergeable_form.up_to_merge.type_signature.parameter
-    if arg is not None:
-      ingested_val = self._mergeable_comp_context.ingest(arg, arg_type)
-    else:
-      ingested_val = arg
-    return self._mergeable_comp_context.invoke(mergeable_form, ingested_val)
+    return self._mergeable_comp_context.invoke(mergeable_form, arg)
 
   def test_raises_two_dependent_aggregates(self):
 

@@ -60,11 +60,9 @@ class TensorFlowComputationContext(context_base.Context):
     """Returns a string tensor which uniquely identifies the current session."""
     return self._session_token
 
-  def ingest(self, val, type_spec):
-    type_analysis.check_type(val, type_spec)
-    return val
-
   def invoke(self, comp: computation_impl.ConcreteComputation, arg):
+    if arg is not None:
+      type_analysis.check_type(arg, comp.type_signature.parameter)
     # We are invoking a tff.tf_computation inside of another
     # tf_computation.
     py_typecheck.check_type(comp, computation_impl.ConcreteComputation)

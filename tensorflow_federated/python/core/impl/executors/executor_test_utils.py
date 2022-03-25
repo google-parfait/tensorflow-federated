@@ -53,10 +53,6 @@ class TestExecutionContext(context_base.Context):
     self._executor_factory = executor_factory
     self._loop = asyncio.new_event_loop()
 
-  def ingest(self, value, type_signature):
-    del type_signature  # Unused
-    return value
-
   def _unwrap_tensors(self, value):
     if tf.is_tensor(value):
       return value.numpy()
