@@ -13,52 +13,22 @@
 # limitations under the License.
 
 import asyncio
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
-from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
-from tensorflow_federated.python.core.impl.executors import executor_stacks
-from tensorflow_federated.python.core.impl.executors import executors_errors
+from tensorflow_federated.python.core.impl.execution_contexts import cpp_async_execution_context
+from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-
-
-class RetryableErrorTest(tf.test.TestCase):
-
-  def test_is_retryable_error(self):
-    retryable_error = executors_errors.RetryableError()
-    self.assertTrue(
-        async_execution_context._is_retryable_error(retryable_error))
-    self.assertFalse(async_execution_context._is_retryable_error(TypeError()))
-    self.assertFalse(async_execution_context._is_retryable_error(1))
-    self.assertFalse(async_execution_context._is_retryable_error('a'))
-    self.assertFalse(async_execution_context._is_retryable_error(None))
-
-
-class UnwrapValueTest(tf.test.TestCase):
-
-  def test_tensor(self):
-    result = async_execution_context._unwrap(tf.constant(1))
-    self.assertIsInstance(result, np.int32)
-    result = async_execution_context._unwrap(tf.constant([1, 2]))
-    self.assertIsInstance(result, np.ndarray)
-    self.assertAllEqual(result, [1, 2])
-
-  def test_structure_of_tensors(self):
-    result = async_execution_context._unwrap([tf.constant(x) for x in range(5)])
-    self.assertIsInstance(result, list)
-    for x in range(5):
-      self.assertIsInstance(result[x], np.int32)
-      self.assertEqual(result[x], x)
 
 
 class AsyncContextInstallationTest(tf.test.TestCase):
 
   def test_install_and_execute_in_context(self):
-    factory = executor_stacks.local_executor_factory()
-    context = async_execution_context.AsyncExecutionContext(factory)
+    factory = cpp_executor_factory.local_cpp_executor_factory()
+    context = cpp_async_execution_context.AsyncSerializeAndExecuteCPPContext(
+        factory, compiler_fn=lambda x: x)
 
     @computations.tf_computation(tf.int32)
     def add_one(x):
@@ -70,8 +40,9 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       self.assertEqual(asyncio.run(val_coro), 2)
 
   def test_install_and_execute_unpacked_structure_arg_in_context(self):
-    factory = executor_stacks.local_executor_factory()
-    context = async_execution_context.AsyncExecutionContext(factory)
+    factory = cpp_executor_factory.local_cpp_executor_factory()
+    context = cpp_async_execution_context.AsyncSerializeAndExecuteCPPContext(
+        factory, compiler_fn=lambda x: x)
 
     @computations.tf_computation(tf.int32, tf.int32)
     def add_one(x):
@@ -83,8 +54,9 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       self.assertEqual(asyncio.run(val_coro), 2)
 
   def test_install_and_execute_packed_structure_arg_in_context(self):
-    factory = executor_stacks.local_executor_factory()
-    context = async_execution_context.AsyncExecutionContext(factory)
+    factory = cpp_executor_factory.local_cpp_executor_factory()
+    context = cpp_async_execution_context.AsyncSerializeAndExecuteCPPContext(
+        factory, compiler_fn=lambda x: x)
 
     @computations.tf_computation(tf.int32, tf.int32)
     def add_one(x, y):
@@ -97,8 +69,9 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       self.assertEqual(asyncio.run(val_coro), 2)
 
   def test_install_and_execute_computations_with_different_cardinalities(self):
-    factory = executor_stacks.local_executor_factory()
-    context = async_execution_context.AsyncExecutionContext(factory)
+    factory = cpp_executor_factory.local_cpp_executor_factory()
+    context = cpp_async_execution_context.AsyncSerializeAndExecuteCPPContext(
+        factory, compiler_fn=lambda x: x)
 
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))

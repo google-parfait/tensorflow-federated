@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import collections
 import inspect
 import itertools
@@ -41,7 +42,23 @@ class NoopIngestContextForTest(context_base.Context):
     raise NotImplementedError
 
 
+class AsyncNoopIngestContextForTest(context_base.Context):
+
+  async def ingest(self, val, type_spec):
+    if asyncio.iscoroutine(val):
+      val = await val
+    type_analysis.check_type(val, type_spec)
+    return val
+
+  def invoke(self, comp, arg):
+    raise NotImplementedError
+
+
 class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
+
+  def _evaluate_coro(self, coro):
+    event_loop = asyncio.new_event_loop()
+    return event_loop.run_until_complete(coro)
 
   def test_get_defun_argspec_with_typed_non_eager_defun(self):
     # In a tf.function with a defined input signature, **kwargs or default
@@ -321,6 +338,28 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
+      ('int', [1], {}, [tf.int32], [(None, 1)]),
+      ('tuple_unnamed_with_args',
+       [1, True], {}, [tf.int32, tf.bool], [(None, 1), (None, True)]),
+      ('tuple_named_with_args', [1, True], {},
+       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]),
+      ('tuple_named_with_args_and_kwargs', [1], {'y': True},
+       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]),
+      ('tuple_with_kwargs', [], {'x': 1, 'y': True},
+       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]),
+      ('tuple_with_args_odict', [], collections.OrderedDict([('y', True), ('x', 1)]),
+       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]))
+  # pyformat: enable
+  def test_pack_args_into_struct_async_with_type_spec_expect_success(
+      self, args, kwargs, type_spec, elements):
+    struct_coro = function_utils.pack_args_into_struct(
+        args, kwargs, type_spec, AsyncNoopIngestContextForTest())
+    self.assertTrue(asyncio.iscoroutine(struct_coro))
+    self.assertEqual(
+        self._evaluate_coro(struct_coro), structure.Struct(elements))
+
+  # pyformat: disable
+  @parameterized.named_parameters(
       ('wrong_type', [1], {}, [(tf.bool)]),
       ('wrong_structure', [], {'x': 1, 'y': True}, [(tf.int32), (tf.bool)]),
   )
@@ -330,6 +369,20 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       function_utils.pack_args_into_struct(args, kwargs, type_spec,
                                            NoopIngestContextForTest())
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('wrong_type', [1], {}, [(tf.bool)]),
+      ('wrong_structure', [], {'x': 1, 'y': True}, [(tf.int32), (tf.bool)]),
+  )
+  # pyformat: enable
+  def test_pack_args_into_struct_async_with_type_spec_expect_failure(
+      self, args, kwargs, type_spec):
+    with self.assertRaises(TypeError):
+      # Force evaluation to cause all the checks to run.
+      self._evaluate_coro(
+          function_utils.pack_args_into_struct(args, kwargs, type_spec,
+                                               AsyncNoopIngestContextForTest()))
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -349,6 +402,29 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
             function_utils.pack_args(parameter_type, args, kwargs,
                                      NoopIngestContextForTest())),
         expected_value_string)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('int', tf.int32, [1], {}, '1'),
+      ('tuple_unnamed', [tf.int32, tf.bool], [1, True], {}, '<1,True>'),
+      ('tuple_named_with_args', [('x', tf.int32), ('y', tf.bool)], [1, True],
+       {}, '<x=1,y=True>'),
+      ('tuple_named_with_kwargs', [('x', tf.int32), ('y', tf.bool)], [1],
+       {'y': True}, '<x=1,y=True>'),
+      ('tuple_with_args_struct', [tf.int32, tf.bool],
+       [structure.Struct([(None, 1), (None, True)])], {}, '<1,True>'))
+  # pyformat: enable
+  def test_pack_args_async_ingest(self, parameter_type, args, kwargs,
+                                  expected_value_string):
+    arg_coro = function_utils.pack_args(parameter_type, args, kwargs,
+                                        AsyncNoopIngestContextForTest())
+    self.assertTrue(asyncio.iscoroutine(arg_coro))
+    self.assertEqual(str(self._evaluate_coro(arg_coro)), expected_value_string)
+
+  def test_pack_args_async_ingest_noarg(self):
+    arg_coro = function_utils.pack_args(None, [], {},
+                                        AsyncNoopIngestContextForTest())
+    self.assertIsNone(arg_coro)
 
   # pyformat: disable
   @parameterized.named_parameters(

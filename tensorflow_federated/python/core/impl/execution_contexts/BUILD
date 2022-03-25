@@ -78,6 +78,23 @@ py_library(
     ],
 )
 
+py_test(
+    name = "cpp_async_execution_context_test",
+    size = "small",
+    srcs = ["cpp_async_execution_context_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":cpp_async_execution_context",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
+        "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
 py_library(
     name = "cpp_sync_execution_context",
     srcs = ["cpp_sync_execution_context.py"],

@@ -50,6 +50,8 @@ class AsyncSerializeAndExecuteCPPContext(
         max_workers=max_workers)
 
   async def ingest(self, val, type_spec):
+    if asyncio.iscoroutine(val):
+      val = await val
     return val
 
   @retrying.retry(

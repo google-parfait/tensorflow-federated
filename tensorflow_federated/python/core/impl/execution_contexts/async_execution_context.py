@@ -261,6 +261,8 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
       self._compiler_pipeline = None
 
   async def ingest(self, val, type_spec):
+    if asyncio.iscoroutine(val):
+      val = await val
     return AsyncExecutionContextValue(val, type_spec)
 
   @retrying.retry(

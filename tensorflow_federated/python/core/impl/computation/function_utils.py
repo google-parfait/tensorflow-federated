@@ -18,11 +18,12 @@
 # information.
 """Utilities for Python functions, defuns, and other types of callables."""
 
+import asyncio
 import functools
 import inspect
 import types
 import typing
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -184,7 +185,8 @@ def pack_args_into_struct(
     args: Sequence[Any],
     kwargs: Mapping[str, Any],
     type_spec=None,
-    context: Optional[context_base.Context] = None) -> structure.Struct:
+    context: Optional[context_base.Context] = None
+) -> Union[structure.Struct, Awaitable[structure.Struct]]:
   """Packs positional and keyword arguments into a `Struct`.
 
   If 'type_spec' is not None, it must be a `StructType` or something that's
@@ -208,12 +210,21 @@ def pack_args_into_struct(
       `type_spec` is not `None`.
 
   Returns:
-    An struct containing all the arguments.
+    An struct containing all the arguments (if context.ingest is a synchronous
+    function), or a coroutine returning such a struct (if context.ingest is a
+    coroutine function)
 
   Raises:
     TypeError: if the arguments are of the wrong computation_types.
   """
   type_spec = computation_types.to_type(type_spec)
+
+  async def _create_struct_from_coros(
+      result_coros: List[Tuple[str, Awaitable[Any]]]):
+    """Creates a structure from an element list whose values are coroutines."""
+    result_elements = await asyncio.gather(*[x[1] for x in result_coros])
+    return structure.Struct(zip([x[0] for x in result_coros], result_elements))
+
   if not type_spec:
     return structure.Struct([(None, arg) for arg in args] +
                             list(kwargs.items()))
@@ -257,7 +268,12 @@ def pack_args_into_struct(
       keywords_missing = set(kwargs.keys()).difference(keywords_used)
       if keywords_missing:
         raise TypeError(f'Keyword arguments at {keywords_missing} not used.')
-      return structure.Struct(result_elements)
+
+      ingest_is_corofunc = inspect.iscoroutinefunction(context.ingest)
+      if ingest_is_corofunc:
+        return _create_struct_from_coros(result_elements)
+      else:
+        return structure.Struct(result_elements)
 
 
 def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any],
