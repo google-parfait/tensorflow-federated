@@ -182,6 +182,24 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase):
       native_platform._create_structure_of_coro_references(
           coro=coro, type_signature=type_signature)
 
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('federated', computation_types.FederatedType(
+          computation_types.TensorType(tf.int32), placements.CLIENTS)),
+      ('function', computation_types.FunctionType(
+          computation_types.TensorType(tf.int32),
+          computation_types.TensorType(tf.int32))),
+      ('placement', computation_types.PlacementType()),
+  )
+  # pyformat: enable
+  def test_raises_not_implemented_error_with_type_signature(
+      self, type_signature):
+    coro = _coro(1)
+
+    with self.assertRaises(NotImplementedError):
+      native_platform._create_structure_of_coro_references(
+          coro=coro, type_signature=type_signature)
+
 
 class MaterializeStructureOfValueReferencesTest(parameterized.TestCase):
 
@@ -448,11 +466,11 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
       native_platform.DatasetDataSourceIterator(
           datasets=datasets, federated_type=federated_type)
 
+  # pyformat: disable
   @parameterized.named_parameters(
-      ('function',
-       computation_types.FunctionType(
-           computation_types.TensorType(tf.int32),
-           computation_types.TensorType(tf.int32))),
+      ('function', computation_types.FunctionType(
+          computation_types.TensorType(tf.int32),
+          computation_types.TensorType(tf.int32))),
       ('placement', computation_types.PlacementType()),
       ('sequence', computation_types.SequenceType(tf.int32)),
       ('struct',
@@ -463,6 +481,7 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
        ])),
       ('tensor', computation_types.TensorType(tf.int32)),
   )
+  # pyformat: enable
   def test_init_raises_type_error_with_federated_type(self, federated_type):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
 

@@ -102,7 +102,8 @@ def _create_structure_of_coro_references(
       element = _create_structure_of_coro_references(element_coro, element_type)
       elements.append((name, element))
     return structure.Struct(elements)
-  elif type_signature.is_federated():
+  elif (type_signature.is_federated() and
+        type_signature.placement == placements.SERVER):
     return _create_structure_of_coro_references(coro, type_signature.member)
   elif type_signature.is_sequence():
     return CoroValueReference(coro, type_signature)
@@ -132,7 +133,8 @@ def _materialize_structure_of_value_references(
           element, element_type)
       elements.append((name, element))
     return structure.Struct(elements)
-  elif type_signature.is_federated():
+  elif (type_signature.is_federated() and
+        type_signature.placement == placements.SERVER):
     return _materialize_structure_of_value_references(value,
                                                       type_signature.member)
   elif type_signature.is_sequence():
