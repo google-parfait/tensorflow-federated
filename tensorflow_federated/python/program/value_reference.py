@@ -59,12 +59,12 @@ class MaterializableValueReference(
     raise NotImplementedError
 
 
-def materialize_value(value: Any) -> Any:
+def materialize_structure(structure: Any) -> Any:
   """Returns a structure of materialized values.
 
   Args:
-    value: A materialized value, a value reference, or structure materialized
-      values and value references to materialize.
+    structure: A materialized value, a value reference, or structure
+      materialized values and value references to materialize.
   """
 
   def _materialize(value):
@@ -73,4 +73,4 @@ def materialize_value(value: Any) -> Any:
     else:
       return value
 
-  return tree.map_structure(_materialize, value)
+  return tree.map_structure(_materialize, structure)

@@ -45,7 +45,7 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
         release.
       key: A hashable value used to reference the released `value`.
     """
-    materialized_value = value_reference.materialize_value(value)
+    materialized_value = value_reference.materialize_structure(value)
     self._values[key] = materialized_value
 
   def values(self) -> OrderedDict[Hashable, Any]:

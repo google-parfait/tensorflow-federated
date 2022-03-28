@@ -230,7 +230,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
         self._remove_all_values()
       else:
         self._remove_values_after(key - 1)
-    materialized_value = value_reference.materialize_value(value)
+    materialized_value = value_reference.materialize_structure(value)
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
     def _normalize(value):
@@ -315,7 +315,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     """
     py_typecheck.check_type(key, int)
     path = self._get_path_for_key(key)
-    materialized_value = value_reference.materialize_value(value)
+    materialized_value = value_reference.materialize_structure(value)
     flattened_value = tree.flatten(materialized_value)
     module = file_utils.ValueModule(flattened_value)
     file_utils.write_saved_model(module, path, overwrite=True)

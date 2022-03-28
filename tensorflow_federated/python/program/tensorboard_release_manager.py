@@ -76,7 +76,7 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
         step in a federated program.
     """
     py_typecheck.check_type(key, int)
-    materialized_value = value_reference.materialize_value(value)
+    materialized_value = value_reference.materialize_structure(value)
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
     def _normalize(value):

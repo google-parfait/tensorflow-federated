@@ -42,7 +42,7 @@ class LoggingReleaseManager(release_manager.ReleaseManager):
         release.
       key: An optional value used to reference the released `value`.
     """
-    materialized_value = value_reference.materialize_value(value)
+    materialized_value = value_reference.materialize_structure(value)
     if key is not None:
       logging.info('Releasing value for key %d: %s', key, materialized_value)
     else:

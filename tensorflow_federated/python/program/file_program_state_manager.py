@@ -221,7 +221,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     if tf.io.gfile.exists(path):
       raise program_state_manager.ProgramStateManagerStateAlreadyExistsError(
           f'Program state already exists for version: {version}')
-    materialized_state = value_reference.materialize_value(program_state)
+    materialized_state = value_reference.materialize_structure(program_state)
     flattened_state = tree.flatten(materialized_state)
     module = file_utils.ValueModule(flattened_state)
     file_utils.write_saved_model(module, path)
