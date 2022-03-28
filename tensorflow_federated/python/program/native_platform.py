@@ -13,9 +13,10 @@
 # limitations under the License.
 """A federated platform implemented using native components."""
 
+import asyncio
 import collections
 import random
-from typing import Any, List, Optional, Sequence
+from typing import Any, Coroutine, List, Optional, Sequence
 
 import tensorflow as tf
 
@@ -31,17 +32,21 @@ from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import value_reference
 
 
-class NumpyValueReference(value_reference.MaterializableValueReference):
-  """A `tff.program.MaterializableValueReference` backed by a `numpy` value."""
+class CoroValueReference(value_reference.MaterializableValueReference):
+  """A `tff.program.MaterializableValueReference` backed by a coroutine."""
 
-  def __init__(self, value: value_reference.MaterializablePythonType,
+  def __init__(self, coro: Coroutine[Any, Any,
+                                     value_reference.MaterializablePythonType],
                type_signature: value_reference.MaterializableTffType):
+    if not asyncio.iscoroutine(coro):
+      raise TypeError(f'Expected a `Coroutine`, found {type(coro)}')
     py_typecheck.check_type(
         type_signature,
         (computation_types.TensorType, computation_types.SequenceType))
 
-    self._value = value
+    self._coro = coro
     self._type_signature = type_signature
+    self._value = None
 
   @property
   def type_signature(self) -> value_reference.MaterializableTffType:
@@ -50,54 +55,73 @@ class NumpyValueReference(value_reference.MaterializableValueReference):
 
   def get_value(self) -> value_reference.MaterializablePythonType:
     """Returns the referenced value as a numpy scalar or array."""
+    if self._value is None:
+      loop = asyncio.new_event_loop()
+      self._value = loop.run_until_complete(self._coro)
     return self._value
 
   def __eq__(self, other: Any) -> bool:
     if self is other:
       return True
-    elif not isinstance(other, NumpyValueReference):
+    elif not isinstance(other, CoroValueReference):
       return NotImplemented
     if self._type_signature != other._type_signature:
       return False
+    self_value = self.get_value()
+    other_value = other.get_value()
     if self._type_signature.is_sequence():
-      return list(self._value) == list(other._value)
+      return list(self_value) == list(other_value)
     else:
-      return self._value == other._value
+      return self_value == other_value
 
 
-def _create_structure_of_value_references(
-    value: Any, type_signature: computation_types.Type) -> Any:
-  """Returns a structure of `tff.program.NumpyValueReference`s."""
+def _create_structure_of_coro_references(
+    coro: Coroutine[Any, Any,
+                    Any], type_signature: computation_types.Type) -> Any:
+  """Returns a structure of `tff.program.CoroValueReference`s."""
   py_typecheck.check_type(type_signature, computation_types.Type)
 
   if type_signature.is_struct():
-    value = structure.from_container(value)
+
+    async def _to_structure(coro):
+      return structure.from_container(await coro)
+
+    coro = _to_structure(coro)
     elements = []
+    awaited_structure = None
+
+    async def _get_item(index):
+      nonlocal awaited_structure
+      if awaited_structure is None:
+        awaited_structure = await coro
+      return awaited_structure[index]
+
     element_types = structure.iter_elements(type_signature)
-    for element, (name, element_type) in zip(value, element_types):
-      element = _create_structure_of_value_references(element, element_type)
+    for index, (name, element_type) in enumerate(element_types):
+      element_coro = _get_item(index)
+      element = _create_structure_of_coro_references(element_coro, element_type)
       elements.append((name, element))
     return structure.Struct(elements)
   elif type_signature.is_federated():
-    return _create_structure_of_value_references(value, type_signature.member)
+    return _create_structure_of_coro_references(coro, type_signature.member)
   elif type_signature.is_sequence():
-    return NumpyValueReference(value, type_signature)
+    return CoroValueReference(coro, type_signature)
   elif type_signature.is_tensor():
-    return NumpyValueReference(value, type_signature)
+    return CoroValueReference(coro, type_signature)
   else:
     raise NotImplementedError(f'Unexpected type found: {type_signature}.')
 
 
 def _materialize_structure_of_value_references(
     value: Any, type_signature: computation_types.Type) -> Any:
-  """Returns a structure of materialized `tff.program.NumpyValueReference`s."""
+  """Returns a structure of materialized values."""
   py_typecheck.check_type(type_signature, computation_types.Type)
 
-  def _materialize(x):
-    if isinstance(x, NumpyValueReference):
-      return x.get_value()
+  def _materialize(value):
+    if isinstance(value, value_reference.MaterializableValueReference):
+      return value.get_value()
     else:
-      return x
+      return value
 
   if type_signature.is_struct():
     value = structure.from_container(value)
@@ -126,9 +150,15 @@ class NativeFederatedContext(federated_context.FederatedContext):
     """Returns an initialized `tff.program.NativeFederatedContext`.
 
     Args:
-      context: A `tff.framework.Context`.
+      context: A `tff.framework.Context` with an async `invoke`.
+
+    Raises:
+      ValueError: If `context` does not have an async `invoke`.
     """
     py_typecheck.check_type(context, context_base.Context)
+    if not asyncio.iscoroutinefunction(context.invoke):
+      raise ValueError('Expected a `context` with an async `invoke`, received '
+                       f'{context}.')
 
     self._context = context
 
@@ -148,7 +178,7 @@ class NativeFederatedContext(federated_context.FederatedContext):
     """
     py_typecheck.check_type(type_spec, computation_types.Type)
 
-    return _materialize_structure_of_value_references(value, type_spec)
+    return value
 
   def invoke(self, comp: computation_base.Computation, arg: Any) -> Any:
     """Invokes the `comp` with the argument `arg`.
@@ -178,9 +208,11 @@ class NativeFederatedContext(federated_context.FederatedContext):
           f'\'{result_type}\'.')
 
     if comp.type_signature.parameter is not None:
+      arg = _materialize_structure_of_value_references(
+          arg, comp.type_signature.parameter)
       arg = self._context.ingest(arg, comp.type_signature.parameter)
     result = self._context.invoke(comp, arg)
-    result = _create_structure_of_value_references(result, result_type)
+    result = _create_structure_of_coro_references(result, result_type)
     result = type_conversions.type_to_py_container(result, result_type)
     return result
 

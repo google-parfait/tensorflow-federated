@@ -29,14 +29,38 @@ from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import native_platform
 
 
-class NumpyValueReferenceTest(parameterized.TestCase):
+async def _coro(value):
+  return value
 
-  def test_init_does_not_raise_type_error_with_type_signature_tensor(self):
+
+class CoroValueReferenceTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('tensor', _coro(1), computation_types.TensorType(tf.int32)),
+      ('sequence', _coro([1, 2, 3]), computation_types.SequenceType(tf.int32)),
+  )
+  def test_init_does_not_raise_type_error_with_type_signature(
+      self, coro, type_signature):
+
     try:
-      native_platform.NumpyValueReference(
-          value=1, type_signature=computation_types.TensorType(tf.int32))
+      native_platform.CoroValueReference(
+          coro=coro, type_signature=type_signature)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('bool', True),
+      ('int', 1),
+      ('str', 'a'),
+      ('list', []),
+  )
+  def test_init_raises_type_error_with_coro(self, coro):
+    type_signature = computation_types.TensorType(tf.int32)
+
+    with self.assertRaises(TypeError):
+      native_platform.CoroValueReference(
+          coro=coro, type_signature=type_signature)
 
   @parameterized.named_parameters(
       ('federated',
@@ -45,74 +69,76 @@ class NumpyValueReferenceTest(parameterized.TestCase):
       ('struct', computation_types.StructType([])),
   )
   def test_init_raises_type_error_with_type_signature(self, type_signature):
+    coro = _coro(1)
+
     with self.assertRaises(TypeError):
-      native_platform.NumpyValueReference(
-          value=1, type_signature=type_signature)
+      native_platform.CoroValueReference(
+          coro=coro, type_signature=type_signature)
 
   @parameterized.named_parameters(
-      ('bool', True, computation_types.TensorType(tf.bool), True),
-      ('int', 1, computation_types.TensorType(tf.int32), 1),
-      ('str', 'a', computation_types.TensorType(tf.string), 'a'),
+      ('bool', _coro(True), computation_types.TensorType(tf.bool), True),
+      ('int', _coro(1), computation_types.TensorType(tf.int32), 1),
+      ('str', _coro('a'), computation_types.TensorType(tf.string), 'a'),
   )
-  def test_get_value_returns_value(self, value, type_signature, expected_value):
-    value_reference = native_platform.NumpyValueReference(
-        value=value, type_signature=type_signature)
+  def test_get_value_returns_value(self, coro, type_signature, expected_value):
+    value_reference = native_platform.CoroValueReference(
+        coro=coro, type_signature=type_signature)
 
     actual_value = value_reference.get_value()
 
     self.assertEqual(actual_value, expected_value)
 
 
-class CreateStructureOfValueReferencesTest(parameterized.TestCase):
+class CreateStructureOfCoroReferencesTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
-       1,
+       _coro(1),
        computation_types.TensorType(tf.int32),
-       native_platform.NumpyValueReference(
-           1, computation_types.TensorType(tf.int32))),
+       native_platform.CoroValueReference(
+           _coro(1), computation_types.TensorType(tf.int32))),
       ('federated',
-       1,
+       _coro(1),
        computation_types.FederatedType(
            computation_types.TensorType(tf.int32), placements.SERVER),
-       native_platform.NumpyValueReference(
-           1, computation_types.TensorType(tf.int32))),
+       native_platform.CoroValueReference(
+           _coro(1), computation_types.TensorType(tf.int32))),
       ('struct_unnamed',
-       (True, 1, 'a'),
+       _coro((True, 1, 'a')),
        computation_types.StructType([
            (None, computation_types.TensorType(tf.bool)),
            (None, computation_types.TensorType(tf.int32)),
            (None, computation_types.TensorType(tf.string)),
        ]),
        structure.Struct([
-           (None, native_platform.NumpyValueReference(
-               True, computation_types.TensorType(tf.bool))),
-           (None, native_platform.NumpyValueReference(
-               1, computation_types.TensorType(tf.int32))),
-           (None, native_platform.NumpyValueReference(
-               'a', computation_types.TensorType(tf.string))),
+           (None, native_platform.CoroValueReference(
+               _coro(True), computation_types.TensorType(tf.bool))),
+           (None, native_platform.CoroValueReference(
+               _coro(1), computation_types.TensorType(tf.int32))),
+           (None, native_platform.CoroValueReference(
+               _coro('a'), computation_types.TensorType(tf.string))),
        ])),
       ('struct_named',
-       collections.OrderedDict([('a', True), ('b', 1), ('c', 'a')]),
+       _coro(collections.OrderedDict([('a', True), ('b', 1), ('c', 'a')])),
        computation_types.StructType([
            ('a', computation_types.TensorType(tf.bool)),
            ('b', computation_types.TensorType(tf.int32)),
            ('c', computation_types.TensorType(tf.string)),
        ]),
        structure.Struct([
-           ('a', native_platform.NumpyValueReference(
-               True, computation_types.TensorType(tf.bool))),
-           ('b', native_platform.NumpyValueReference(
-               1, computation_types.TensorType(tf.int32))),
-           ('c', native_platform.NumpyValueReference(
-               'a', computation_types.TensorType(tf.string))),
+           ('a', native_platform.CoroValueReference(
+               _coro(True), computation_types.TensorType(tf.bool))),
+           ('b', native_platform.CoroValueReference(
+               _coro(1), computation_types.TensorType(tf.int32))),
+           ('c', native_platform.CoroValueReference(
+               _coro('a'), computation_types.TensorType(tf.string))),
        ])),
       ('struct_nested',
-       collections.OrderedDict([
+       _coro(collections.OrderedDict([
            ('x', collections.OrderedDict([('a', True), ('b', 1)])),
            ('y', collections.OrderedDict([('c', 'a')])),
-       ]),
+       ])),
        computation_types.StructType([
            ('x', computation_types.StructType([
                ('a', computation_types.TensorType(tf.bool)),
@@ -124,21 +150,21 @@ class CreateStructureOfValueReferencesTest(parameterized.TestCase):
        ]),
        structure.Struct([
            ('x', structure.Struct([
-               ('a', native_platform.NumpyValueReference(
-                   True, computation_types.TensorType(tf.bool))),
-               ('b', native_platform.NumpyValueReference(
-                   1, computation_types.TensorType(tf.int32))),
+               ('a', native_platform.CoroValueReference(
+                   _coro(True), computation_types.TensorType(tf.bool))),
+               ('b', native_platform.CoroValueReference(
+                   _coro(1), computation_types.TensorType(tf.int32))),
            ])),
            ('y', structure.Struct([
-               ('c', native_platform.NumpyValueReference(
-                   'a', computation_types.TensorType(tf.string))),
+               ('c', native_platform.CoroValueReference(
+                   _coro('a'), computation_types.TensorType(tf.string))),
            ])),
        ])),
   )
   # pyformat: enable
-  def test_returns_value(self, value, type_signature, expected_value):
-    actual_value = native_platform._create_structure_of_value_references(
-        value=value, type_signature=type_signature)
+  def test_returns_value(self, coro, type_signature, expected_value):
+    actual_value = native_platform._create_structure_of_coro_references(
+        coro=coro, type_signature=type_signature)
 
     self.assertEqual(actual_value, expected_value)
 
@@ -150,9 +176,11 @@ class CreateStructureOfValueReferencesTest(parameterized.TestCase):
       ('list', []),
   )
   def test_raises_type_error_with_type_signature(self, type_signature):
+    coro = _coro(1)
+
     with self.assertRaises(TypeError):
-      native_platform._create_structure_of_value_references(
-          value=1, type_signature=type_signature)
+      native_platform._create_structure_of_coro_references(
+          coro=coro, type_signature=type_signature)
 
 
 class MaterializeStructureOfValueReferencesTest(parameterized.TestCase):
@@ -160,24 +188,24 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
-       native_platform.NumpyValueReference(
-           1, computation_types.TensorType(tf.int32)),
+       native_platform.CoroValueReference(
+           _coro(1), computation_types.TensorType(tf.int32)),
        computation_types.TensorType(tf.int32),
        1),
       ('federated',
-       native_platform.NumpyValueReference(
-           1, computation_types.TensorType(tf.int32)),
+       native_platform.CoroValueReference(
+           _coro(1), computation_types.TensorType(tf.int32)),
        computation_types.FederatedType(
            computation_types.TensorType(tf.int32), placements.SERVER),
        1),
       ('struct_unnamed',
        (
-           native_platform.NumpyValueReference(
-               True, computation_types.TensorType(tf.bool)),
-           native_platform.NumpyValueReference(
-               1, computation_types.TensorType(tf.int32)),
-           native_platform.NumpyValueReference(
-               'a', computation_types.TensorType(tf.string)),
+           native_platform.CoroValueReference(
+               _coro(True), computation_types.TensorType(tf.bool)),
+           native_platform.CoroValueReference(
+               _coro(1), computation_types.TensorType(tf.int32)),
+           native_platform.CoroValueReference(
+               _coro('a'), computation_types.TensorType(tf.string)),
        ),
        computation_types.StructType([
            (None, computation_types.TensorType(tf.bool)),
@@ -191,12 +219,12 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase):
        ])),
       ('struct_named',
        collections.OrderedDict([
-           ('a', native_platform.NumpyValueReference(
-               True, computation_types.TensorType(tf.bool))),
-           ('b', native_platform.NumpyValueReference(
-               1, computation_types.TensorType(tf.int32))),
-           ('c', native_platform.NumpyValueReference(
-               'a', computation_types.TensorType(tf.string))),
+           ('a', native_platform.CoroValueReference(
+               _coro(True), computation_types.TensorType(tf.bool))),
+           ('b', native_platform.CoroValueReference(
+               _coro(1), computation_types.TensorType(tf.int32))),
+           ('c', native_platform.CoroValueReference(
+               _coro('a'), computation_types.TensorType(tf.string))),
        ]),
        computation_types.StructType([
            ('a', computation_types.TensorType(tf.bool)),
@@ -211,14 +239,14 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase):
       ('struct_nested',
        collections.OrderedDict([
            ('x', collections.OrderedDict([
-               ('a', native_platform.NumpyValueReference(
-                   True, computation_types.TensorType(tf.bool))),
-               ('b', native_platform.NumpyValueReference(
-                   1, computation_types.TensorType(tf.int32))),
+               ('a', native_platform.CoroValueReference(
+                   _coro(True), computation_types.TensorType(tf.bool))),
+               ('b', native_platform.CoroValueReference(
+                   _coro(1), computation_types.TensorType(tf.int32))),
            ])),
            ('y', collections.OrderedDict([
-               ('c', native_platform.NumpyValueReference(
-                   'a', computation_types.TensorType(tf.string))),
+               ('c', native_platform.CoroValueReference(
+                   _coro('a'), computation_types.TensorType(tf.string))),
            ])),
        ]),
        computation_types.StructType([
@@ -263,7 +291,7 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase):
 class NativeFederatedContextTest(parameterized.TestCase):
 
   def test_init_does_not_raise_type_error_with_context(self):
-    context = execution_contexts.create_local_python_execution_context()
+    context = execution_contexts.create_local_async_python_execution_context()
 
     try:
       native_platform.NativeFederatedContext(context)
@@ -281,21 +309,21 @@ class NativeFederatedContextTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       native_platform.NativeFederatedContext(context)
 
-  def test_ingest_returns_result(self):
+  def test_init_raises_value_error_with_context(self):
     context = execution_contexts.create_local_python_execution_context()
+
+    with self.assertRaises(ValueError):
+      native_platform.NativeFederatedContext(context)
+
+  def test_ingest_does_nothing(self):
+    context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
     type_signature = computation_types.TensorType(tf.int32)
-    value = native_platform.NumpyValueReference(1, type_signature)
-    expected_value = 1
+    value = native_platform.CoroValueReference(_coro(1), type_signature)
 
-    with mock.patch.object(
-        native_platform,
-        '_materialize_structure_of_value_references',
-        return_value=expected_value) as mock_function:
-      actual_value = context.ingest(value, type_signature)
-      mock_function.assert_called_once()
+    actual_value = context.ingest(value, type_signature)
 
-    self.assertEqual(actual_value, expected_value)
+    self.assertIs(actual_value, value)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -305,14 +333,14 @@ class NativeFederatedContextTest(parameterized.TestCase):
       ('list', []),
   )
   def test_ingest_raises_type_error_with_type_signature(self, type_signature):
-    context = execution_contexts.create_local_python_execution_context()
+    context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
     with self.assertRaises(TypeError):
       context.ingest(1, type_signature)
 
   def test_invoke_returns_result(self):
-    context = execution_contexts.create_local_python_execution_context()
+    context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
     @computations.tf_computation(tf.int32, tf.int32)
@@ -329,7 +357,8 @@ class NativeFederatedContextTest(parameterized.TestCase):
 
     result = context.invoke(add, arg)
 
-    self.assertEqual(result.get_value(), 3)
+    actual_value = result.get_value()
+    self.assertEqual(actual_value, 3)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -339,14 +368,14 @@ class NativeFederatedContextTest(parameterized.TestCase):
       ('list', []),
   )
   def test_invoke_raises_type_error_with_comp(self, comp):
-    context = execution_contexts.create_local_python_execution_context()
+    context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
     with self.assertRaises(TypeError):
       context.invoke(comp, None)
 
   def test_invoke_does_not_raise_value_error_with_comp(self):
-    context = execution_contexts.create_local_python_execution_context()
+    context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
     @computations.tf_computation()
@@ -363,7 +392,7 @@ class NativeFederatedContextTest(parameterized.TestCase):
       self.fail('Raised ValueError unexpectedly.')
 
   def test_invoke_raises_value_error_with_comp(self):
-    context = execution_contexts.create_local_python_execution_context()
+    context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
     @computations.tf_computation()
@@ -378,7 +407,7 @@ class NativeFederatedContextTest(parameterized.TestCase):
         context.invoke(return_one, None)
 
   def test_computation_returns_result(self):
-    context = execution_contexts.create_local_python_execution_context()
+    context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
     @computations.tf_computation(tf.int32, tf.int32)
@@ -388,7 +417,8 @@ class NativeFederatedContextTest(parameterized.TestCase):
     with context_stack_impl.context_stack.install(context):
       result = add(1, 2)
 
-    self.assertEqual(result.get_value(), 3)
+    actual_value = result.get_value()
+    self.assertEqual(actual_value, 3)
 
 
 class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
