@@ -15,9 +15,8 @@
 
 import collections
 import random
-from typing import Any, Iterable, List, Optional, Sequence, Union
+from typing import Any, List, Optional, Sequence
 
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -35,10 +34,8 @@ from tensorflow_federated.python.program import value_reference
 class NumpyValueReference(value_reference.MaterializableValueReference):
   """A `tff.program.MaterializableValueReference` backed by a `numpy` value."""
 
-  def __init__(self, value: Union[np.generic, np.ndarray,
-                                  Iterable[Union[np.generic, np.ndarray]]],
-               type_signature: Union[computation_types.TensorType,
-                                     computation_types.SequenceType]):
+  def __init__(self, value: value_reference.MaterializablePythonType,
+               type_signature: value_reference.MaterializableTffType):
     py_typecheck.check_type(
         type_signature,
         (computation_types.TensorType, computation_types.SequenceType))
@@ -47,15 +44,11 @@ class NumpyValueReference(value_reference.MaterializableValueReference):
     self._type_signature = type_signature
 
   @property
-  def type_signature(
-      self
-  ) -> Union[computation_types.TensorType, computation_types.SequenceType]:
+  def type_signature(self) -> value_reference.MaterializableTffType:
     """The `tff.TensorType` of this object."""
     return self._type_signature
 
-  def get_value(
-      self
-  ) -> Union[np.generic, np.ndarray, Iterable[Union[np.generic, np.ndarray]]]:
+  def get_value(self) -> value_reference.MaterializablePythonType:
     """Returns the referenced value as a numpy scalar or array."""
     return self._value
 

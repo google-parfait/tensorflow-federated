@@ -29,30 +29,32 @@ import tree
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
 
+MaterializableTffType = Union[computation_types.TensorType,
+                              computation_types.SequenceType,]
+
+MaterializablePythonType = Union[np.generic, np.ndarray,
+                                 Iterable[Union[np.generic, np.ndarray]],]
+
 
 class MaterializableValueReference(
     typed_object.TypedObject, metaclass=abc.ABCMeta):
   """An abstract interface representing references to server-placed values."""
 
   @abc.abstractproperty
-  def type_signature(
-      self
-  ) -> Union[computation_types.TensorType, computation_types.SequenceType]:
+  def type_signature(self) -> MaterializableTffType:
     """The `tff.Type` of this object."""
     raise NotImplementedError
 
   @abc.abstractmethod
-  def get_value(
-      self
-  ) -> Union[np.generic, np.ndarray, Iterable[Union[np.generic, np.ndarray]]]:
+  def get_value(self) -> MaterializablePythonType:
     """Returns the referenced value.
 
     The Python type of the referenced value depends on the `type_signature`:
 
-    | TFF Type           | Python Type                             |
-    | ------------------ | --------------------------------------- |
-    | `tff.TensorType`   | `np.generic` or `np.ndarray`            |
-    | `tff.SequenceType` | `Iterable` `np.generic` or `np.ndarray` |
+    | TFF Type           | Python Type                                |
+    | ------------------ | ------------------------------------------ |
+    | `tff.TensorType`   | `np.generic` or `np.ndarray`               |
+    | `tff.SequenceType` | `Iterable` of `np.generic` or `np.ndarray` |
     """
     raise NotImplementedError
 

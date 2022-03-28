@@ -20,10 +20,9 @@ on the server, elements of structures that are placed on the server, or
 unplaced.
 """
 
-from typing import Any, Iterable, Union
+from typing import Any
 
 import attr
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -45,8 +44,7 @@ class TestMaterializableValueReference(
     value_reference.MaterializableValueReference):
   """A test implementation of `tff.program.MaterializableValueReference`."""
 
-  def __init__(self, value: Union[np.generic, np.ndarray,
-                                  Iterable[Union[np.generic, np.ndarray]]]):
+  def __init__(self, value: value_reference.MaterializablePythonType):
     if isinstance(value, int):
       self._type_signature = computation_types.TensorType(tf.int32)
     elif isinstance(value, bool):
@@ -60,14 +58,10 @@ class TestMaterializableValueReference(
     self._value = value
 
   @property
-  def type_signature(
-      self
-  ) -> Union[computation_types.TensorType, computation_types.SequenceType]:
+  def type_signature(self) -> value_reference.MaterializableTffType:
     return self._type_signature
 
-  def get_value(
-      self
-  ) -> Union[np.generic, np.ndarray, Iterable[Union[np.generic, np.ndarray]]]:
+  def get_value(self) -> value_reference.MaterializablePythonType:
     return self._value
 
   def __eq__(self, other: Any) -> bool:
