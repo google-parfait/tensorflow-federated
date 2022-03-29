@@ -66,8 +66,9 @@ TEST(ExecutorServiceFailureTest, CreateValueWithoutExecutorFails) {
   auto response_status =
       executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
 
-  ASSERT_THAT(response_status, GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
-                                            "No executor found for ID: ''."));
+  ASSERT_THAT(response_status,
+              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
+                           "No executor found for ID: ''."));
 }
 
 class ExecutorServiceTest : public ::testing::Test {
@@ -269,7 +270,7 @@ TEST_F(ExecutorServiceTest, ComputeInvalidExecutorFails) {
   auto compute_response_status = executor_service_.Compute(
       &server_context, &compute_request_pb, &compute_response_pb);
   ASSERT_THAT(compute_response_status,
-              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
                            "icky sticky hope it doesn't lick me"));
 }
 
@@ -390,7 +391,7 @@ TEST_F(ExecutorServiceTest, DisposeExecutorThenCreateValueFails) {
       executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
 
   ASSERT_THAT(create_value_response_status,
-              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
                            "No executor found for ID"));
 }
 
@@ -439,7 +440,7 @@ TEST_F(ExecutorServiceTest, DisposeExecutorThenDisposeFails) {
       &server_context, &dispose_request, &dispose_response);
 
   ASSERT_THAT(dispose_response_status,
-              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
                            "No executor found for ID"));
 }
 

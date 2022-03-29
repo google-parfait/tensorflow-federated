@@ -33,7 +33,10 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 # more easily localize and control retries.
 def _is_retryable_absl_status(exception):
   return (isinstance(exception, absl_status.StatusNotOk) and
-          exception.status.code() in [absl_status.StatusCode.UNAVAILABLE])
+          exception.status.code() in [
+              absl_status.StatusCode.UNAVAILABLE,
+              absl_status.StatusCode.FAILED_PRECONDITION
+          ])
 
 
 # TODO(b/223898183): Inherit directly from Context when remote workers support

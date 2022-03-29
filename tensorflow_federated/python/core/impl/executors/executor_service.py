@@ -99,7 +99,11 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   def executor(self, request):
     """Returns the executor which should be used to handle `request`."""
     with self._lock:
-      return self._executors[request.executor.id]
+      executor = self._executors.get(request.executor.id)
+      if executor is None:
+        raise RuntimeError('No executor found for executor id: '
+                           f'{request.executor.id}')
+      return executor
 
   def GetExecutor(
       self,

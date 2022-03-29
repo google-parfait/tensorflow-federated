@@ -116,8 +116,13 @@ grpc::Status ExecutorService::RequireExecutor(
     executor_out = it->second.executor;
     return grpc::Status::OK;
   }
+  // A lack of executor in the expected slot is retryable, but clients must
+  // ensure the service state is adjusted (e.g. with a GetExecutor call) before
+  // retrying. Following
+  // https://grpc.github.io/grpc/core/md_doc_statuscodes.html we raise
+  // FailedPrecondition.
   return grpc::Status(
-      grpc::StatusCode::INVALID_ARGUMENT,
+      grpc::StatusCode::FAILED_PRECONDITION,
       absl::StrCat("Error evaluating `ExecutorService::", method_name,
                    "`. No executor found for ID: '", executor.id(), "'."));
 }
