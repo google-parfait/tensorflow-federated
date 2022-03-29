@@ -119,6 +119,8 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
       release_mngr.release(value, 1)
 
+      self.assertEqual(
+          len(mock_scalar.mock_calls), len(expected_names_and_values))
       iterator = zip(mock_scalar.mock_calls, expected_names_and_values)
       for call, (expected_name, expected_value) in iterator:
         _, args, _ = call
@@ -162,6 +164,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     patch_histogram = mock.patch.object(tf.summary, 'histogram')
     with patch_scalar as mock_scalar, patch_histogram as mock_histogram:
       release_mngr.release([1, tf.ones([1])], 1)
+
       mock_scalar.assert_called_once_with('0', 1, step=1)
       mock_histogram.assert_called_once_with('1', tf.ones([1]), step=1)
 
@@ -181,6 +184,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     patch_histogram = mock.patch.object(tf.summary, 'histogram')
     with patch_scalar as mock_scalar, patch_histogram as mock_histogram:
       release_mngr.release(value, 1)
+
       mock_scalar.assert_not_called()
       mock_histogram.assert_not_called()
 
