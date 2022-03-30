@@ -126,12 +126,17 @@ class ServerState(object):
   model_broadcast_state = attr.ib()
 
 
+# TODO(b/227484749): standardize/improve the function for
+# `tff.learning.algorithms`.
 def state_with_new_model_weights(
     server_state: ServerState,
     trainable_weights: List[np.ndarray],
     non_trainable_weights: List[np.ndarray],
 ) -> ServerState:
   """Returns a `ServerState` with updated model weights.
+
+  This function cannot currently be used for `tff.learning.algorithms`, which
+  can have a different `ServerState` structure.
 
   Args:
     server_state: A server state object returned by an iterative training
