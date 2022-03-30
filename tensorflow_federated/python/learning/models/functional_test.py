@@ -357,6 +357,50 @@ class FunctionalTest(tf.test.TestCase):
         # mae = (1.0+1.0)/(2.0+6.0) = 0.25
         collections.OrderedDict(loss=0.5, mse=0.75, mae=0.25))
 
+  def test_tff_model_from_functional_resets_metrics(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(initial_weights(),
+                                                  forward_pass,
+                                                  predict_on_batch, input_spec)
+    metric_constructors = [
+        tf.keras.metrics.MeanSquaredError, tf.keras.metrics.RootMeanSquaredError
+    ]
+    tff_model = functional.model_from_functional(functional_model,
+                                                 metric_constructors)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
+
+    expected_initial_local_variables = [0.0, 0, 0.0, 0.0, 0.0, 0.0]
+    self.assertSequenceEqual(tff_model.local_variables,
+                             expected_initial_local_variables)
+
+    # Execute forward pass on the dataset, assert metrics are not zero.
+    for batch in dataset:
+      with tf.GradientTape() as tape:
+        batch_output = tff_model.forward_pass(batch, training=True)
+      gradients = tape.gradient(batch_output.loss,
+                                tff_model.trainable_variables)
+      optimizer.apply_gradients(zip(gradients, tff_model.trainable_variables))
+      loss = batch_output.loss
+    self.assertGreater(loss, 0)
+    self.assertAllClose(
+        tff_model.report_local_unfinalized_metrics(),
+        collections.OrderedDict(
+            loss=[876.11523, 25.0],
+            mean_squared_error=[876.11523, 25.0],
+            root_mean_squared_error=[876.11523, 25.0]))
+
+    # Reset metrics variables.
+    tff_model.reset_metrics()
+    self.assertSequenceEqual(tff_model.local_variables,
+                             expected_initial_local_variables)
+    self.assertEqual(
+        tff_model.report_local_unfinalized_metrics(),
+        collections.OrderedDict(
+            loss=[0, 0],
+            mean_squared_error=[0, 0],
+            root_mean_squared_error=[0, 0]))
+
   def test_keras_model_with_non_trainable_variables_fails(self):
     inputs = tf.keras.layers.Input(shape=[1])
     d = tf.keras.layers.Dense(1)

@@ -159,12 +159,13 @@ def _test_model_fn(keras_model_fn, loss_fn, test_input_spec):
 class _TestModel(model_lib.Model):
   """Test model that returns different signatures when `training` value changes."""
 
-  def __init__(self):
+  def __init__(self, has_reset_metrics_implemented=False):
     input_tensor = tf.keras.layers.Input(shape=(3,))
     logits = tf.keras.layers.Dense(5,)(input_tensor)
     predictions = tf.keras.layers.Softmax()(logits)
     self._model = tf.keras.Model(
         inputs=[input_tensor], outputs=[logits, predictions])
+    self._has_reset_metrics_implemented = has_reset_metrics_implemented
 
   @tf.function
   def predict_on_batch(self, x, training=True):
@@ -214,10 +215,26 @@ class _TestModel(model_lib.Model):
   def metric_finalizers(self):
     return collections.OrderedDict()
 
+  @tf.function
+  def reset_metrics(self):
+    """Resets metrics variables to initial value."""
+    if self._has_reset_metrics_implemented:
+      for var in self.local_variables:
+        var.assign(tf.zeros_like(var))
+    else:
+      raise NotImplementedError(
+          'The `reset_metrics` method isn\'t implemented for your custom '
+          '`tff.learning.Model`. Please implement it before using this method. '
+          'You can leave this method unimplemented if you won\'t use this '
+          'method.')
+
 
 _TEST_MODEL_FNS = [
     ('linear_regression', model_examples.LinearRegression),
-    ('inference_training_diff', _TestModel),
+    ('inference_training_diff_has_reset_metrics_implemented',
+     lambda: _TestModel(has_reset_metrics_implemented=True)),
+    ('inference_training_diff_has_reset_metrics_unimplemented',
+     lambda: _TestModel(has_reset_metrics_implemented=False)),
     ('keras_linear_regression_tuple_input',
      _test_model_fn(
          model_examples.build_linear_regression_keras_sequential_model,
@@ -318,6 +335,22 @@ class SerializationTest(test_case.TestCase, parameterized.TestCase):
           loaded_model_unfinalized_metrics[metric_name])
     self.assertEqual(unfinalized_metrics, loaded_model_unfinalized_metrics)
     self.assertEqual(finalized_metrics, loaded_model_finalized_metrics)
+
+    # Assert that the loaded model has the same `reset_metrics` method.
+    # If this method is implemented in the original model, assert that it works
+    # the same in the loaded model; otherwise, assert that it raises a
+    # `NotImplementedError` in the loaded model.
+    try:
+      model.reset_metrics()
+    except NotImplementedError:
+      # pylint: disable=g-assert-in-except
+      with self.assertRaisesRegex(NotImplementedError, 'isn\'t implemented'):
+        loaded_model.reset_metrics()
+      return
+    loaded_model.reset_metrics()
+    self.assertEqual(model.local_variables, loaded_model.local_variables)
+    self.assertEqual(model.report_local_unfinalized_metrics(),
+                     loaded_model.report_local_unfinalized_metrics())
 
   @parameterized.named_parameters(_TEST_MODEL_FNS)
   def test_saved_model_to_tflite(self, model_fn):

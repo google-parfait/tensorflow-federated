@@ -66,6 +66,12 @@ class TestModel(model_lib.Model):
   def metric_finalizers(self):
     return collections.OrderedDict(num_examples=tf.function(func=lambda x: x))
 
+  @tf.function
+  def reset_metrics(self):
+    """Resets metrics variables to initial value."""
+    for var in self.local_variables:
+      var.assign(tf.zeros_like(var))
+
 
 class WeightsTypeFromModelTest(test_case.TestCase):
 

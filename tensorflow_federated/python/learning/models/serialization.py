@@ -64,6 +64,18 @@ class _LoadedSavedModel(model_lib.Model):
     self._report_local_unfinalized_metrics = loaded_module.report_local_unfinalized_metrics
     self._serialized_metric_finalizers = loaded_module.serialized_metric_finalizers
 
+    def raise_not_implemented_error():
+      raise NotImplementedError(
+          'The `reset_metrics` method isn\'t implemented for your custom '
+          '`tff.learning.Model`. Please implement it before using this method. '
+          'You can leave this method unimplemented if you won\'t use this '
+          'method.')
+
+    if hasattr(loaded_module, 'reset_metrics'):
+      self._reset_metrics = loaded_module.reset_metrics
+    else:
+      self._reset_metrics = raise_not_implemented_error
+
   @property
   def input_spec(self):
     return self._input_spec
@@ -108,6 +120,9 @@ class _LoadedSavedModel(model_lib.Model):
     return collections.OrderedDict(
         (metric_name, deserialize_metric_finalizer(finalizer)) for metric_name,
         finalizer in self._serialized_metric_finalizers.items())
+
+  def reset_metrics(self):
+    return self._reset_metrics()
 
 
 def _save_tensorflow_module(tf_module: tf.Module, path: str) -> None:
@@ -301,6 +316,12 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
           computation_types.to_type(
               model.input_spec)).SerializeToString(deterministic=True),
       trainable=False)
+
+  # Serialize the reset_metrics tf.function.
+  try:
+    m.reset_metrics = (model.reset_metrics.get_concrete_function())
+  except NotImplementedError:
+    m.reset_metrics = None
 
   _save_tensorflow_module(m, path)
 

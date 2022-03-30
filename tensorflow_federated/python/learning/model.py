@@ -200,9 +200,13 @@ class Model(object, metaclass=abc.ABCMeta):
 
     For a metric, its unfinalized values are given as a structure (typically a
     list) of tensors representing values from aggregating over *all* previous
-    `forward_pass` calls. For a Keras metric, its unfinalized values are
-    typically the tensor values of its state variables. In general, the tensors
-    can be an arbitrary function of all the `tf.Variable`s of this model.
+    `forward_pass` calls, unless the `reset_metrics` is called. Each time the
+    `reset_metrics` is called, the local metric variables will be reset, and
+    `report_local_unfinalized_metrics` only reports metrics aggregated from the
+    `forward_pass` calls since the *last* `reset_metrics` call. For a Keras
+    metric, its unfinalized values are typically the tensor values of its state
+    variables. In general, the tensors can be an arbitrary function of all the
+    `tf.Variable`s of this model.
 
     The metric names returned by this method should be the same as those
     expected by the `metric_finalizers()`; one should be able to use the
@@ -258,5 +262,19 @@ class Model(object, metaclass=abc.ABCMeta):
       values. This method and the `report_local_unfinalized_metrics()` method
       will be used together to build a cross-client metrics aggregator in
       federated training processes or evaluation computations.
+    """
+    pass
+
+  @abc.abstractmethod
+  def reset_metrics(self) -> None:
+    """Resets metrics variables to initial value.
+
+    This method is a `tf.function`. It is used to reset the metrics variables
+    between different stages in client's *local* computation. Each time the
+    `reset_metrics` is called, the *local* metric variables will be reset, and
+    `report_local_unfinalized_metrics` only reports metrics aggregated from the
+    `forward_pass` calls since the *last* `reset_metrics` call. If the
+    `reset_metrics` is never called, `report_local_unfinalized_metrics` will
+    report metrics aggregated over *all* previous `forward_pass` calls.
     """
     pass

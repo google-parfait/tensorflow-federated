@@ -97,6 +97,12 @@ class TestModel(model.Model):
   def metric_finalizers(self):
     return collections.OrderedDict(num_over=tf.function(func=lambda x: x))
 
+  @tf.function
+  def reset_metrics(self):
+    """Resets metrics variables to initial value."""
+    for var in self.local_variables:
+      var.assign(tf.zeros_like(var))
+
 
 class TestModelQuant(model.Model):
   """This model stores how much client data matches the input (num_same)."""
@@ -153,6 +159,12 @@ class TestModelQuant(model.Model):
 
   def metric_finalizers(self):
     return collections.OrderedDict(num_same=tf.function(func=lambda x: x))
+
+  @tf.function
+  def reset_metrics(self):
+    """Resets metrics variables to initial value."""
+    for var in self.local_variables:
+      var.assign(tf.zeros_like(var))
 
 
 def _model_fn_from_keras():

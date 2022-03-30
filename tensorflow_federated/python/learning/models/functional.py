@@ -266,6 +266,14 @@ class _ModelFromFunctional(model_lib.Model):
           metric_constructor)
     return finalizers
 
+  @tf.function
+  def reset_metrics(self):
+    for metric in self._metrics:
+      metric.reset_state()
+    additional_metrics_variables = [self._loss_sum, self._num_examples]
+    for var in additional_metrics_variables:
+      var.assign(tf.zeros_like(var))
+
 
 def model_from_functional(
     functional_model: FunctionalModel,
