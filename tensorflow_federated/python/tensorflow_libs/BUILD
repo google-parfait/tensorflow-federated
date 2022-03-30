@@ -128,11 +128,13 @@ py_library(
 py_test(
     name = "variable_utils_test",
     size = "small",
+    timeout = "moderate",
     srcs = ["variable_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
         ":variable_utils",
+        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
