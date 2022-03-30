@@ -490,7 +490,8 @@ def _check_select_keys_type(keys_type, secure):
           and keys_type.member.shape.rank == 1 and
           keys_type.member.shape.dims[0].value is not None):
     _select_parameter_mismatch(
-        keys_type.member, 'a one-dimensional fixed-length tf.int32 tensor',
+        keys_type.member,
+        'a rank-1 tensor with statically known shape and tf.int32 dtype',
         'client_keys.type_signature.member', secure)
 
 
@@ -498,14 +499,15 @@ def federated_select(client_keys, max_key, server_val, select_fn):
   """Sends selected values from a server database to clients.
 
   Args:
-    client_keys: `tff.CLIENTS`-placed one-dimensional fixed-size `int32` keys
-      used to select values from `database` to load for each client.
+    client_keys: `tff.CLIENTS`-placed one-dimensional fixed-size non-negative
+      `int32` keys used to select values from `database` to load for each
+      client.
     max_key: A `tff.SERVER`-placed `int32` which is guaranteed to be greater
       than any of `client_keys`. Lower values may permit more optimizations.
     server_val: `tff.SERVER`-placed value used as an input to `select_fn`.
-    select_fn: A function which accepts `server_val` and a `int32` client key
-      and returns a value to be sent to the client. `select_fn` should be
-      deterministic (nonrandom).
+    select_fn: A `tff.Computation` which accepts unplaced `server_val` and a
+      `int32` client key and returns a value to be sent to the client.
+      `select_fn` should be deterministic (nonrandom).
 
   Returns:
     `tff.CLIENTS`-placed sequences of values returned from `select_fn`. In each
@@ -525,17 +527,18 @@ def federated_select(client_keys, max_key, server_val, select_fn):
 
 
 def federated_secure_select(client_keys, max_key, server_val, select_fn):
-  """Sends privately-selected values from a server database to  clients.
+  """Sends privately-selected values from a server database to clients.
 
   Args:
-    client_keys: `tff.CLIENTS`-placed one-dimensional fixed-size `int32` keys
-      used to select values from `database` to load for each client.
+    client_keys: `tff.CLIENTS`-placed one-dimensional fixed-size non-negative
+      `int32` keys used to select values from `database` to load for each
+      client.
     max_key: A `tff.SERVER`-placed `int32` which is guaranteed to be greater
       than any of `client_keys`. Lower values may permit more optimizations.
     server_val: `tff.SERVER`-placed value used as an input to `select_fn`.
-    select_fn: A function which accepts `server_val` and a `int32` client key
-      and returns a value to be sent to the client. `select_fn` should be
-      deterministic (nonrandom).
+    select_fn: A `tff.Computation` which accepts unplaced `server_val` and a
+      `int32` client key and returns a value to be sent to the client.
+      `select_fn` should be deterministic (nonrandom).
 
   Returns:
     `tff.CLIENTS`-placed sequences of values returned from `select_fn`. In each
