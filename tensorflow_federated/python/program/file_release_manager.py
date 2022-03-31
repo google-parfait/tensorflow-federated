@@ -106,12 +106,13 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
         contain a fieldname of `key_fieldname`.
     """
     py_typecheck.check_type(file_path, (str, os.PathLike))
-    py_typecheck.check_type(save_mode, CSVSaveMode)
-    py_typecheck.check_type(key_fieldname, str)
     if not file_path:
       raise ValueError('Expected `file_path` to not be an empty string.')
+    py_typecheck.check_type(save_mode, CSVSaveMode)
+    py_typecheck.check_type(key_fieldname, str)
     if not key_fieldname:
       raise ValueError('Expected `key_fieldname` to not be an empty string.')
+
     file_dir = os.path.dirname(file_path)
     if not tf.io.gfile.exists(file_dir):
       tf.io.gfile.makedirs(file_dir)
@@ -198,6 +199,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
   def _remove_values_after(self, key: int):
     """Removes all values after `key` from the managed CSV."""
     py_typecheck.check_type(key, int)
+
     filtered_fieldnames = [self._key_fieldname]
     filtered_values = []
     _, values = self._read_values()
@@ -225,6 +227,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
         step in a federated program.
     """
     py_typecheck.check_type(key, int)
+
     if self._latest_key is not None and key <= self._latest_key:
       if key == 0:
         self._remove_all_values()
@@ -283,9 +286,10 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
       ValueError: If `root_dir` is an empty string.
     """
     py_typecheck.check_type(root_dir, (str, os.PathLike))
-    py_typecheck.check_type(prefix, str)
     if not root_dir:
       raise ValueError('Expected `root_dir` to not be an empty string.')
+    py_typecheck.check_type(prefix, str)
+
     if not tf.io.gfile.exists(root_dir):
       tf.io.gfile.makedirs(root_dir)
     self._root_dir = root_dir
@@ -301,6 +305,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
       key: The key used to construct the path.
     """
     py_typecheck.check_type(key, int)
+
     basename = f'{self._prefix}{key}'
     return os.path.join(self._root_dir, basename)
 
@@ -314,8 +319,8 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
       key: An integer used to reference the released `value`.
     """
     py_typecheck.check_type(key, int)
+
     path = self._get_path_for_key(key)
     materialized_value = value_reference.materialize_value(value)
     flattened_value = tree.flatten(materialized_value)
-    module = file_utils.ValueModule(flattened_value)
-    file_utils.write_saved_model(module, path, overwrite=True)
+    file_utils.write_saved_model(flattened_value, path, overwrite=True)

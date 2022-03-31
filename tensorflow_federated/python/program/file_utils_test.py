@@ -23,34 +23,16 @@ import tensorflow as tf
 from tensorflow_federated.python.program import file_utils
 
 
-class WriteSavedModelTest(parameterized.TestCase):
+class ReadSavedModelTest(parameterized.TestCase):
 
-  def test_writes_to_new_file(self):
+  def test_returns_value(self):
     temp_dir = self.create_tempdir()
-    shutil.rmtree(temp_dir)
-    obj = tf.Module()
-    self.assertFalse(os.path.exists(temp_dir))
+    module = file_utils._ValueModule(1)
+    tf.saved_model.save(module, temp_dir.full_path, signatures={})
 
-    file_utils.write_saved_model(obj, temp_dir)
+    actual_value = file_utils.read_saved_model(temp_dir)
 
-    self.assertTrue(os.path.exists(temp_dir))
-
-  def test_writes_to_existing_file(self):
-    temp_dir = self.create_tempdir()
-    obj = tf.Module()
-    overwrite = True
-    self.assertTrue(os.path.exists(temp_dir))
-
-    file_utils.write_saved_model(obj, temp_dir, overwrite)
-
-    self.assertTrue(os.path.exists(temp_dir))
-
-  def test_raises_file_already_exists_error_with_existing_file(self):
-    temp_dir = self.create_tempdir()
-    obj = tf.Module()
-
-    with self.assertRaises(file_utils.FileAlreadyExistsError):
-      file_utils.write_saved_model(obj, temp_dir)
+    self.assertEqual(actual_value, 1)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -59,23 +41,56 @@ class WriteSavedModelTest(parameterized.TestCase):
       ('list', []),
   )
   def test_raises_type_error_with_path(self, path):
-    obj = tf.Module()
-
     with self.assertRaises(TypeError):
-      file_utils.write_saved_model(obj, path)
+      file_utils.read_saved_model(path)
+
+
+class WriteSavedModelTest(parameterized.TestCase):
+
+  def test_writes_to_new_file(self):
+    temp_dir = self.create_tempdir()
+    shutil.rmtree(temp_dir)
+    value = 1
+    self.assertFalse(os.path.exists(temp_dir))
+
+    file_utils.write_saved_model(value, temp_dir)
+
+    self.assertTrue(os.path.exists(temp_dir))
+    module = tf.saved_model.load(temp_dir.full_path)
+    actual_value = module()
+    self.assertEqual(actual_value, 1)
+
+  def test_writes_to_existing_file(self):
+    temp_dir = self.create_tempdir()
+    value = 1
+    overwrite = True
+    self.assertTrue(os.path.exists(temp_dir))
+
+    file_utils.write_saved_model(value, temp_dir, overwrite)
+
+    self.assertTrue(os.path.exists(temp_dir))
+    module = tf.saved_model.load(temp_dir.full_path)
+    actual_value = module()
+    self.assertEqual(actual_value, 1)
+
+  def test_raises_file_already_exists_error_with_existing_file(self):
+    temp_dir = self.create_tempdir()
+    value = 1
+
+    with self.assertRaises(file_utils.FileAlreadyExistsError):
+      file_utils.write_saved_model(value, temp_dir)
 
   @parameterized.named_parameters(
       ('none', None),
       ('int', 1),
       ('bool', True),
-      ('str', 'a'),
       ('list', []),
   )
-  def test_raises_type_error_with_obj(self, obj):
-    temp_dir = self.create_tempdir()
+  def test_raises_type_error_with_path(self, path):
+    value = 1
 
     with self.assertRaises(TypeError):
-      file_utils.write_saved_model(obj, temp_dir)
+      file_utils.write_saved_model(value, path)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -84,10 +99,10 @@ class WriteSavedModelTest(parameterized.TestCase):
   )
   def test_raises_type_error_with_overwrite(self, overwrite):
     temp_dir = self.create_tempdir()
-    obj = tf.Module()
+    value = 1
 
     with self.assertRaises(TypeError):
-      file_utils.write_saved_model(obj, temp_dir, overwrite)
+      file_utils.write_saved_model(value, temp_dir, overwrite)
 
 
 if __name__ == '__main__':

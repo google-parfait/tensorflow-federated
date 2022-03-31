@@ -101,7 +101,7 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
     os.remove(temp_file)
 
     try:
-      file_release_manager.CSVFileReleaseManager(file_path=temp_file.full_path)
+      file_release_manager.CSVFileReleaseManager(file_path=temp_file)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -776,7 +776,7 @@ class SavedModelFileReleaseManagerInitTest(parameterized.TestCase):
 
     try:
       file_release_manager.SavedModelFileReleaseManager(
-          root_dir=temp_dir.full_path, prefix='a_')
+          root_dir=temp_dir, prefix='a_')
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -911,8 +911,7 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       mock_write_saved_model.assert_called_once()
       call = mock_write_saved_model.mock_calls[0]
       _, args, _ = call
-      module, _ = args
-      actual_value = module._value
+      actual_value, _ = args
 
       def _to_list(value):
         if isinstance(value, tf.data.Dataset):

@@ -160,9 +160,9 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
-    patch_scalar = mock.patch.object(tf.summary, 'scalar')
-    patch_histogram = mock.patch.object(tf.summary, 'histogram')
-    with patch_scalar as mock_scalar, patch_histogram as mock_histogram:
+    patched_scalar = mock.patch.object(tf.summary, 'scalar')
+    patched_histogram = mock.patch.object(tf.summary, 'histogram')
+    with patched_scalar as mock_scalar, patched_histogram as mock_histogram:
       release_mngr.release([1, tf.ones([1])], 1)
 
       mock_scalar.assert_called_once_with('0', 1, step=1)

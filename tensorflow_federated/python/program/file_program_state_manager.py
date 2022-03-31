@@ -87,6 +87,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     py_typecheck.check_type(prefix, str)
     py_typecheck.check_type(keep_total, int)
     py_typecheck.check_type(keep_first, bool)
+
     if not tf.io.gfile.exists(root_dir):
       tf.io.gfile.makedirs(root_dir)
     self._root_dir = root_dir
@@ -126,6 +127,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       path: The path to extract the version from.
     """
     py_typecheck.check_type(path, str, os.PathLike)
+
     basename = os.path.basename(path)
     if basename.startswith(self._prefix):
       version = basename[len(self._prefix):]
@@ -146,6 +148,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       version: The version used to construct the path.
     """
     py_typecheck.check_type(version, int)
+
     basename = f'{self._prefix}{version}'
     return os.path.join(self._root_dir, basename)
 
@@ -165,12 +168,12 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
         loaded for the given `version`.
     """
     py_typecheck.check_type(version, int)
+
     path = self._get_path_for_version(version)
     if not tf.io.gfile.exists(path):
       raise program_state_manager.ProgramStateManagerStateNotFoundError(
           f'No program state found for version: {version}')
-    module = tf.saved_model.load(path)
-    flattened_state = module()
+    flattened_state = file_utils.read_saved_model(path)
     try:
       program_state = tree.unflatten_as(structure, flattened_state)
     except ValueError as e:
@@ -185,6 +188,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
   def _remove(self, version: int):
     """Removes program state for the given `version`."""
     py_typecheck.check_type(version, int)
+
     path = self._get_path_for_version(version)
     if tf.io.gfile.exists(path):
       tf.io.gfile.rmtree(path)
@@ -217,12 +221,12 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
         state for the given `version`.
     """
     py_typecheck.check_type(version, int)
+
     path = self._get_path_for_version(version)
     if tf.io.gfile.exists(path):
       raise program_state_manager.ProgramStateManagerStateAlreadyExistsError(
           f'Program state already exists for version: {version}')
     materialized_state = value_reference.materialize_value(program_state)
     flattened_state = tree.flatten(materialized_state)
-    module = file_utils.ValueModule(flattened_state)
-    file_utils.write_saved_model(module, path)
+    file_utils.write_saved_model(flattened_state, path)
     self._remove_old_program_state()

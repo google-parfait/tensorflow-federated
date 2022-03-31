@@ -59,6 +59,7 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
     py_typecheck.check_type(summary_dir, (str, os.PathLike))
     if not summary_dir:
       raise ValueError('Expected `summary_dir` to not be an empty string.')
+
     if not tf.io.gfile.exists(summary_dir):
       tf.io.gfile.makedirs(summary_dir)
     if isinstance(summary_dir, os.PathLike):
@@ -76,6 +77,7 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
         step in a federated program.
     """
     py_typecheck.check_type(key, int)
+
     materialized_value = value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 

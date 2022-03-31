@@ -15,7 +15,7 @@
 
 import os
 import random
-from typing import Union
+from typing import Any, Union
 
 import tensorflow as tf
 
@@ -26,8 +26,8 @@ class FileAlreadyExistsError(Exception):
   pass
 
 
-class ValueModule(tf.Module):
-  """A simple `tf.Module` wrapping a single value."""
+class _ValueModule(tf.Module):
+  """A `tf.Module` wrapping a single value."""
 
   def __init__(self, value):
     super().__init__()
@@ -38,23 +38,34 @@ class ValueModule(tf.Module):
     return self._value
 
 
-def write_saved_model(module: tf.Module,
+def read_saved_model(path: Union[str, os.PathLike]) -> Any:
+  """Reads a SavedModel from `path`."""
+  py_typecheck.check_type(path, (str, os.PathLike))
+
+  if isinstance(path, os.PathLike):
+    path = os.fspath(path)
+  module = tf.saved_model.load(path)
+  return module()
+
+
+def write_saved_model(value: Any,
                       path: Union[str, os.PathLike],
                       overwrite: bool = False):
-  """Writes a `tf.Module` using the SavedModel format."""
-  py_typecheck.check_type(module, tf.Module)
+  """Writes `value` to `path` using the SavedModel format."""
   py_typecheck.check_type(path, (str, os.PathLike))
   py_typecheck.check_type(overwrite, bool)
 
-  # Create a temporary directory.
   if isinstance(path, os.PathLike):
     path = os.fspath(path)
+
+  # Create a temporary directory.
   temp_path = f'{path}_temp{random.randint(1000, 9999)}'
   if tf.io.gfile.exists(temp_path):
     tf.io.gfile.rmtree(temp_path)
   tf.io.gfile.makedirs(temp_path)
 
   # Write to the temporary directory.
+  module = _ValueModule(value)
   tf.saved_model.save(module, temp_path, signatures={})
 
   # Rename the temporary directory to the final location atomically.

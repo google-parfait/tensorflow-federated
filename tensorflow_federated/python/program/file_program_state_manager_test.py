@@ -548,8 +548,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase, tf.test.TestCase):
       mock_write_saved_model.assert_called_once()
       call = mock_write_saved_model.mock_calls[0]
       _, args, _ = call
-      module, _ = args
-      actual_value = module._value
+      actual_value, _ = args
 
       def _to_list(value):
         if isinstance(value, tf.data.Dataset):
