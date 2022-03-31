@@ -333,30 +333,6 @@ class NativeFederatedContextTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       native_platform.NativeFederatedContext(context)
 
-  def test_ingest_does_nothing(self):
-    context = execution_contexts.create_local_async_python_execution_context()
-    context = native_platform.NativeFederatedContext(context)
-    type_signature = computation_types.TensorType(tf.int32)
-    value = native_platform.CoroValueReference(_coro(1), type_signature)
-
-    actual_value = context.ingest(value, type_signature)
-
-    self.assertIs(actual_value, value)
-
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('str', 'a'),
-      ('list', []),
-  )
-  def test_ingest_raises_type_error_with_type_signature(self, type_signature):
-    context = execution_contexts.create_local_async_python_execution_context()
-    context = native_platform.NativeFederatedContext(context)
-
-    with self.assertRaises(TypeError):
-      context.ingest(1, type_signature)
-
   def test_invoke_returns_result(self):
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
@@ -365,16 +341,7 @@ class NativeFederatedContextTest(parameterized.TestCase):
     def add(x, y):
       return x + y
 
-    element_1 = context.ingest(1, computation_types.TensorType(tf.int32))
-    element_2 = context.ingest(2, computation_types.TensorType(tf.int32))
-    arg_type = computation_types.StructType([
-        computation_types.TensorType(tf.int32),
-        computation_types.TensorType(tf.int32),
-    ])
-    arg = context.ingest((element_1, element_2), arg_type)
-
-    result = context.invoke(add, arg)
-
+    result = context.invoke(add, structure.Struct.unnamed(1, 2))
     actual_value = result.get_value()
     self.assertEqual(actual_value, 3)
 

@@ -52,19 +52,12 @@ class AsyncSerializeAndExecuteCPPContext(
     self._futures_executor_pool = concurrent.futures.ThreadPoolExecutor(
         max_workers=max_workers)
 
-  async def ingest(self, val, type_spec):
-    if asyncio.iscoroutine(val):
-      val = await val
-    return val
-
   @retrying.retry(
       retry_on_exception_filter=_is_retryable_absl_status,
       wait_max_ms=300_000,  # 5 minutes.
       wait_multiplier=2,
   )
   async def invoke(self, comp, arg):
-    if asyncio.iscoroutine(arg):
-      arg = await arg
     compiled_comp = self._compiler_pipeline.compile(comp)
     serialized_comp, _ = value_serialization.serialize_value(
         compiled_comp, comp.type_signature)

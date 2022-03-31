@@ -103,10 +103,6 @@ class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
       self) -> List[Tuple[str, building_blocks.ComputationBuildingBlock]]:
     return self._symbol_bindings
 
-  def ingest(self, val, type_spec):
-    val = value_impl.to_value(val, type_spec, zip_if_needed=True)
-    return val
-
   def invoke(self, comp, arg):
     fn = value_impl.to_value(comp, None)
     tys = fn.type_signature
@@ -116,6 +112,7 @@ class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
         raise ValueError(
             'A computation of type {} does not expect any arguments, but got '
             'an argument {}.'.format(tys, arg))
+      arg = value_impl.to_value(arg, tys.parameter, zip_if_needed=True)
       type_analysis.check_type(arg, tys.parameter)
       ret_val = fn(arg)
     else:

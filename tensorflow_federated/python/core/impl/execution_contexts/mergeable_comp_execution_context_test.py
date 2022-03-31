@@ -430,9 +430,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     arg = structure.Struct.unnamed(*arg)
     expected_result = type_conversions.type_to_py_container(
         arg, after_merge.type_signature.result)
-    ingested_val = mergeable_comp_context.ingest(
-        arg, up_to_merge.type_signature.parameter)
-    result = mergeable_comp_context.invoke(mergeable_comp_form, ingested_val)
+    result = mergeable_comp_context.invoke(mergeable_comp_form, arg)
 
     self.assertEqual(result, expected_result)
 
@@ -457,9 +455,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
 
     expected_result = type_conversions.type_to_py_container(
         expected_sum, after_merge.type_signature.result)
-    ingested_val = mergeable_comp_context.ingest(
-        arg, up_to_merge.type_signature.parameter)
-    result = mergeable_comp_context.invoke(mergeable_comp_form, ingested_val)
+    result = mergeable_comp_context.invoke(mergeable_comp_form, arg)
 
     self.assertEqual(result, expected_result)
 
@@ -482,9 +478,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
 
     expected_result = type_conversions.type_to_py_container(
         expected_sum, after_merge.type_signature.result)
-    ingested_val = mergeable_comp_context.ingest(
-        arg, up_to_merge.type_signature.parameter)
-    result = mergeable_comp_context.invoke(mergeable_comp_form, ingested_val)
+    result = mergeable_comp_context.invoke(mergeable_comp_form, arg)
     self.assertEqual(expected_result, result)
 
   def test_counts_clients_with_noarg_computation(self):

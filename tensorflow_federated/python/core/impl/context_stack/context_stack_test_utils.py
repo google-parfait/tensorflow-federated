@@ -19,8 +19,5 @@ from tensorflow_federated.python.core.impl.context_stack import context_base
 class TestContext(context_base.Context):
   """A test context."""
 
-  def ingest(self, val, type_spec):
-    raise NotImplementedError
-
   def invoke(self, comp, arg):
     return NotImplementedError

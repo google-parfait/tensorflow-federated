@@ -21,13 +21,11 @@
 import functools
 import inspect
 import types
-import typing
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -180,11 +178,9 @@ def unpack_args_from_struct(
   return args, kwargs
 
 
-def pack_args_into_struct(
-    args: Sequence[Any],
-    kwargs: Mapping[str, Any],
-    type_spec=None,
-    context: Optional[context_base.Context] = None) -> structure.Struct:
+def pack_args_into_struct(args: Sequence[Any],
+                          kwargs: Mapping[str, Any],
+                          type_spec=None) -> structure.Struct:
   """Packs positional and keyword arguments into a `Struct`.
 
   If 'type_spec' is not None, it must be a `StructType` or something that's
@@ -203,9 +199,6 @@ def pack_args_into_struct(
       `computation_types.StructType` or something convertible to it), or None if
       there's no type. Used to drive the arrangements of args into fields of the
       constructed struct, as noted in the description.
-    context: The optional context (an instance of `context_base.Context`) in
-      which the arguments are being packed. Required if and only if the
-      `type_spec` is not `None`.
 
   Returns:
     An struct containing all the arguments.
@@ -219,8 +212,6 @@ def pack_args_into_struct(
                             list(kwargs.items()))
   else:
     py_typecheck.check_type(type_spec, computation_types.StructType)
-    py_typecheck.check_type(context, context_base.Context)
-    context = typing.cast(context_base.Context, context)
     if not is_argument_struct(type_spec):  # pylint: disable=attribute-error
       raise TypeError(
           'Parameter type {} does not have a structure of an argument struct, '
@@ -238,12 +229,12 @@ def pack_args_into_struct(
             raise TypeError('Argument `{}` specified twice.'.format(name))
           else:
             arg_value = args[index]
-            result_elements.append((name, context.ingest(arg_value, elem_type)))
+            result_elements.append((name, arg_value))
             positions_used.add(index)
         elif name is not None and name in kwargs:
           # This argument is present in `kwargs`.
           arg_value = kwargs[name]
-          result_elements.append((name, context.ingest(arg_value, elem_type)))
+          result_elements.append((name, arg_value))
           keywords_used.add(name)
         elif name:
           raise TypeError(f'Missing argument `{name}` of type {elem_type}.')
@@ -260,8 +251,7 @@ def pack_args_into_struct(
       return structure.Struct(result_elements)
 
 
-def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any],
-              context: context_base.Context):
+def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any]):
   """Pack arguments into a single one that matches the given parameter type.
 
   The arguments may or may not be packed into a `Struct`, depending on the type
@@ -273,8 +263,6 @@ def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any],
       None if the computation is not expecting a parameter.
     args: Positional arguments of a call.
     kwargs: Keyword arguments of a call.
-    context: The context (an instance of `context_base.Context`) in which the
-      arguments are being packed.
 
   Returns:
     A single value object of type that matches 'parameter_type' that contains
@@ -283,42 +271,34 @@ def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any],
   Raises:
     TypeError: if the args/kwargs do not match the given parameter type.
   """
-  py_typecheck.check_type(context, context_base.Context)
   if parameter_type is None:
     # If there's no parameter type, there should be no args of any kind.
     if args or kwargs:
       raise TypeError('Was not expecting any arguments.')
     else:
       return None
-  else:
-    parameter_type = computation_types.to_type(parameter_type)
-    if not args and not kwargs:
-      raise TypeError(
-          'Declared a parameter of type {}, but got no arguments.'.format(
-              parameter_type))
-    else:
-      single_positional_arg = (len(args) == 1) and not kwargs
-      if not parameter_type.is_struct():
-        # If not a `StructType`, a single positional argument is the only
-        # supported call style.
-        if not single_positional_arg:
-          raise TypeError(
-              'Parameter type {} is compatible only with a single positional '
-              'argument, but found {} positional and {} keyword args.'.format(
-                  parameter_type, len(args), len(kwargs)))
-        else:
-          arg = args[0]
-      elif single_positional_arg:
-        arg = args[0]
-      elif not is_argument_struct(parameter_type):
-        raise TypeError(
-            'Parameter type {} does not have a structure of an argument '
-            'struct, and cannot be populated from multiple positional and '
-            'keyword arguments; please construct a struct before the '
-            'call.'.format(parameter_type))
-      else:
-        arg = pack_args_into_struct(args, kwargs, parameter_type, context)
-      return context.ingest(arg, parameter_type)
+  parameter_type = computation_types.to_type(parameter_type)
+  if not args and not kwargs:
+    raise TypeError(
+        'Declared a parameter of type {}, but got no arguments.'.format(
+            parameter_type))
+  single_positional_arg = (len(args) == 1 and not kwargs)
+  if single_positional_arg:
+    return args[0]
+  if not parameter_type.is_struct():
+    # If not a `StructType`, a single positional argument is the only
+    # supported call style.
+    raise TypeError(
+        'Parameter type {} is compatible only with a single positional '
+        'argument, but found {} positional and {} keyword args.'.format(
+            parameter_type, len(args), len(kwargs)))
+  if not is_argument_struct(parameter_type):
+    raise TypeError(
+        'Parameter type {} does not have a structure of an argument '
+        'struct, and cannot be populated from multiple positional and '
+        'keyword arguments; please construct a struct before the '
+        'call.'.format(parameter_type))
+  return pack_args_into_struct(args, kwargs, parameter_type)
 
 
 def _infer_unpack_needed(fn: types.FunctionType,
@@ -506,10 +486,10 @@ class PolymorphicComputation(object):
     Args:
       concrete_function_factory: A callable that accepts a (non-None) TFF type
         as an argument, as well as an optional boolean `unpack` argument which
-        should be treated as documented in `create_argument_unpacking_fn`
-        above. The callable must return a `Computation` instance that's been
-        created to accept a single positional argument of this TFF type (to be
-        reused for future calls with parameters of a matching type).
+        should be treated as documented in `create_argument_unpacking_fn` above.
+        The callable must return a `Computation` instance that's been created to
+        accept a single positional argument of this TFF type (to be reused for
+        future calls with parameters of a matching type).
     """
     self._concrete_function_factory = concrete_function_factory
     self._concrete_function_cache = {}

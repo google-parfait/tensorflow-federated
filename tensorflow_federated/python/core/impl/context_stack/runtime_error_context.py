@@ -30,11 +30,6 @@ class RuntimeErrorContext(context_base.Context):
         'invoke `execution_contexts.set_local_cpp_execution_context()` in '
         'the `main` function of your test.')
 
-  def ingest(self, val, type_spec):
-    del val  # Unused
-    del type_spec  # Unused
-    self._raise_runtime_error()
-
   def invoke(self, comp, arg):
     del comp  # Unused
     del arg  # Unused

@@ -57,10 +57,6 @@ class ExecutionContext(context_base.Context):
   def executor_factory(self):
     return self._executor_factory
 
-  def ingest(self, val, type_spec):
-    return self._event_loop.run_until_complete(
-        self._async_context.ingest(val, type_spec))
-
   def invoke(self, comp, arg):
     return self._event_loop.run_until_complete(
         self._async_context.invoke(comp, arg))

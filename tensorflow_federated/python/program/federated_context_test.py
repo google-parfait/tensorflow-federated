@@ -28,9 +28,6 @@ from tensorflow_federated.python.program import federated_context
 
 class _TestFederatedContext(federated_context.FederatedContext):
 
-  def ingest(self, value: Any, type_spec: computation_types.Type) -> Any:
-    return None
-
   def invoke(self, comp: computation_base.Computation, arg: Any) -> Any:
     return None
 

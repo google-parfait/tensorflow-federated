@@ -209,8 +209,7 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
       args = [to_value(x, None) for x in args]
       kwargs = {k: to_value(v, None) for k, v in kwargs.items()}
       arg = function_utils.pack_args(self.type_signature.parameter, args,
-                                     kwargs,
-                                     context_stack_impl.context_stack.current)
+                                     kwargs)
       arg = to_value(arg, None).comp
     else:
       arg = None

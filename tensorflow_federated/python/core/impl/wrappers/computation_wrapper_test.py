@@ -64,10 +64,6 @@ class ZeroTracedFunction(computation_impl.ConcreteComputation):
 
 class ContextForTest(context_base.Context):
 
-  def ingest(self, val, type_spec):
-    del type_spec
-    return val
-
   def invoke(self, zero_traced_fn, arg):
     return Result(
         arg=arg,
