@@ -124,7 +124,7 @@ for local computation,
 for orchestration, and a
 [driver script](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/simple_fedavg/emnist_fedavg_main.py)
 on the EMNIST dataset as an example. These files can easily be adapted for
-customized applciations and algorithmic changes following detailed instructions
+customized applications and algorithmic changes following detailed instructions
 in the
 [README](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples/simple_fedavg/README.md).
 
@@ -140,7 +140,7 @@ found
 
 TFF uses the
 [tensor_encoding](https://github.com/tensorflow/model-optimization/tree/master/tensorflow_model_optimization/python/core/internal/tensor_encoding)
-API to enable lossy compression algorithms to reduce communicatation costs
+API to enable lossy compression algorithms to reduce communication costs
 between the server and clients. For an example of training with server-to-client
 and client-to-server
 [compression using Federated Averaging](https://arxiv.org/abs/1812.07210)
