@@ -22,7 +22,7 @@ Note: Refer to `get_iterative_process_for_map_reduce_form()` for the meaning of
 variable names used in this module.
 """
 
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import tensorflow as tf
 
@@ -52,6 +52,9 @@ _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.constant_folding = _AGGRE
 _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.arithmetic_optimization = _AGGRESSIVE
 _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.loop_optimization = _AGGRESSIVE
 _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.function_optimization = _AGGRESSIVE
+
+BuildingBlockFn = Callable[[building_blocks.ComputationBuildingBlock],
+                           building_blocks.ComputationBuildingBlock]
 
 
 def get_computation_for_broadcast_form(
@@ -237,7 +240,11 @@ def _check_function_signature_compatible_with_broadcast_form(
 
 
 def check_iterative_process_compatible_with_map_reduce_form(
-    ip: iterative_process.IterativeProcess):
+    ip: iterative_process.IterativeProcess,
+    *,
+    tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
+) -> Tuple[building_blocks.ComputationBuildingBlock,
+           building_blocks.ComputationBuildingBlock]:
   """Tests compatibility with `tff.backends.mapreduce.MapReduceForm`.
 
   Note: the conditions here are specified in the documentation for
@@ -247,6 +254,8 @@ def check_iterative_process_compatible_with_map_reduce_form(
   Args:
     ip: An instance of `tff.templates.IterativeProcess` to check for
       compatibility with `tff.backends.mapreduce.MapReduceForm`.
+    tff_internal_preprocessing: An optional function to transform the AST of the
+      computation.
 
   Returns:
     TFF-internal building-blocks representing the validated and simplified
@@ -258,6 +267,9 @@ def check_iterative_process_compatible_with_map_reduce_form(
   py_typecheck.check_type(ip, iterative_process.IterativeProcess)
   initialize_tree = ip.initialize.to_building_block()
   next_tree = ip.next.to_building_block()
+  if tff_internal_preprocessing:
+    initialize_tree = tff_internal_preprocessing(initialize_tree)
+    next_tree = tff_internal_preprocessing(next_tree)
 
   init_type = initialize_tree.type_signature
   _check_type_is_no_arg_fn(init_type, '`initialize`', TypeError)
@@ -818,7 +830,9 @@ def _merge_grappler_config_with_default(
 
 def get_broadcast_form_for_computation(
     comp: computation_base.Computation,
-    grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG
+    grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
+    *,
+    tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
 ) -> forms.BroadcastForm:
   """Constructs `tff.backends.mapreduce.BroadcastForm` given a computation.
 
@@ -834,6 +848,8 @@ def get_broadcast_form_for_computation(
       `grappler_config_proto` has
       `graph_options.rewrite_options.disable_meta_optimizer=True`, Grappler is
       bypassed.
+    tff_internal_preprocessing: An optional function to transform the AST of the
+      computation.
 
   Returns:
     An instance of `tff.backends.mapreduce.BroadcastForm` equivalent to the
@@ -845,6 +861,8 @@ def get_broadcast_form_for_computation(
   grappler_config = _merge_grappler_config_with_default(grappler_config)
 
   bb = comp.to_building_block()
+  if tff_internal_preprocessing:
+    bb = tff_internal_preprocessing(bb)
   bb, _ = intrinsic_reductions.replace_intrinsics_with_bodies(bb)
   bb = _replace_lambda_body_with_call_dominant_form(bb)
 
@@ -879,7 +897,9 @@ def get_broadcast_form_for_computation(
 
 def get_map_reduce_form_for_iterative_process(
     ip: iterative_process.IterativeProcess,
-    grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG
+    grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
+    *,
+    tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
 ) -> forms.MapReduceForm:
   """Constructs `tff.backends.mapreduce.MapReduceForm` given iterative process.
 
@@ -896,6 +916,8 @@ def get_map_reduce_form_for_iterative_process(
       the input `grappler_config` has
       `graph_options.rewrite_options.disable_meta_optimizer=True`, Grappler is
       bypassed.
+    tff_internal_preprocessing: An optional function to transform the AST of the
+      iterative process.
 
   Returns:
     An instance of `tff.backends.mapreduce.MapReduceForm` equivalent to the
@@ -908,7 +930,8 @@ def get_map_reduce_form_for_iterative_process(
   """
   py_typecheck.check_type(ip, iterative_process.IterativeProcess)
   initialize_bb, next_bb = (
-      check_iterative_process_compatible_with_map_reduce_form(ip))
+      check_iterative_process_compatible_with_map_reduce_form(
+          ip, tff_internal_preprocessing=tff_internal_preprocessing))
   py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
   grappler_config = _merge_grappler_config_with_default(grappler_config)
 
