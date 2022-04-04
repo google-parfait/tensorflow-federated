@@ -45,6 +45,10 @@ class GetModelWeightsTypeSignatureError(TypeError):
   """Raises when the type signature of `get_model_weights` is not correct."""
 
 
+class SetModelWeightsTypeSignatureError(TypeError):
+  """Raises when the type signature of `get_model_weights` is not correct."""
+
+
 @attr.s(frozen=True, eq=False, slots=True)
 class LearningProcessOutput:
   """A structure containing the output of a `LearningProcess.next` computation.
@@ -90,18 +94,20 @@ class LearningProcess(iterative_process.IterativeProcess):
   purposes.
 
   For example, given a LearningProcess `process` and client data `data`, we
-  could call the following to initialize, update the state three times, and
-  extract the model weights of the state:
-  ```
-  state = process.initialize()
-  for _ in range(3):
-    state, metrics = process.next(state, data)
-  model_weights = process.get_model_weights(state)
+  could call the following to initialize, optionally load other model weights,
+  update the state three times, and extract the model weights of the state:
+
+  >>> state = process.initialize()
+  >>> # Optional: state = process.set_model_weights(state, other_weights)
+  >>> for _ in range(3):
+  >>>  state, metrics = process.next(state, data)
+  >>> model_weights = process.get_model_weights(state)
   """
 
   def __init__(self, initialize_fn: computation_base.Computation,
                next_fn: computation_base.Computation,
-               get_model_weights: computation_base.Computation):
+               get_model_weights: computation_base.Computation,
+               set_model_weights: computation_base.Computation):
     """Creates a `tff.templates.AggregationProcess`.
 
     Args:
@@ -109,15 +115,20 @@ class LearningProcess(iterative_process.IterativeProcess):
         of the learning process.
       next_fn: A `tff.Computation` that defines an iterated function. Given that
         `initialize_fn` returns a type `S@SERVER`, the `next_fn` must return a
-        `LearningProcessOutput` where the `state` attribute matches the type
-        `S@SERVER`, and accepts two argument of types `S@SERVER` and
-        `{D*}@CLIENTS`.
-     get_model_weights: A `tff.Computation` that accepts an input `S` where the
-       output of `initialize_fn` is of type `S@SERVER`. This computation is used
-       to create a representation of the state that can be used for downstream
-       tasks without requiring access to the entire server state. For example,
-       `get_model_weights` could be used to extract model weights suitable for
-       computing evaluation metrics on held-out data.
+        `LearningProcessOutput` where the `state` attribute is assignable from
+        values with type `S@SERVER`, and accepts two arguments with types
+        assignable from values with type `S@SERVER` and `{D*}@CLIENTS`.
+      get_model_weights: A `tff.Computation` that accepts an input `S` whose
+        type is assignable from the result of `init_fn`. This computation is
+        used to create a representation of the state that can be used for
+        downstream tasks without requiring access to the entire server state.
+        For example, `get_model_weights` could be used to extract model weights
+        suitable for computing evaluation metrics on held-out data.
+      set_model_weights: A `tff.Computation` that accepts two inputs `S` and `M`
+        where the type of `S` is assignable from values with the type returned
+        by `init_fn` and `M` is a representation of the model weights stored in
+        `S`. This updates the model weights representation within the state with
+        the incoming value and returns a new value of type `S`.
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
@@ -150,7 +161,6 @@ class LearningProcess(iterative_process.IterativeProcess):
       raise LearningProcessOutputError(
           f'The `next_fn` of a `LearningProcess` must return a '
           f'`LearningProcessOutput` object, but returns {next_result_type!r}')
-
     # We perform a more strict type check on the inputs to `next_fn` than in the
     # base class.
     next_fn_param = next_fn.type_signature.parameter
@@ -166,7 +176,6 @@ class LearningProcess(iterative_process.IterativeProcess):
       raise LearningProcessSequenceTypeError(
           f'The member type of the second input argument to `next_fn` must be a'
           f' `tff.SequenceType` but found {next_fn_param[1].member} instead.')
-
     next_fn_result = next_fn.type_signature.result
     if next_fn_result.metrics.placement != placements.SERVER:
       raise LearningProcessPlacementError(
@@ -174,25 +183,34 @@ class LearningProcess(iterative_process.IterativeProcess):
           f'placement {next_fn_result.metrics.placement} for `metrics`.')
 
     py_typecheck.check_type(get_model_weights, computation_base.Computation)
-
     get_model_weights_type = get_model_weights.type_signature
-    if get_model_weights_type.is_federated():
-      raise LearningProcessPlacementError(
-          f'The `get_model_weights` must not be a federated computation, '
-          f'but found `get_model_weights` with type signature:\n'
-          f'{get_model_weights_type}')
-
-    get_model_weights_param = get_model_weights.type_signature.parameter
-    state_type_without_placement = initialize_fn.type_signature.result.member
-    if not get_model_weights_param.is_assignable_from(
-        state_type_without_placement):
+    get_model_weights_param = get_model_weights_type.parameter
+    next_fn_state_param = next_fn.type_signature.parameter[0].member
+    if not get_model_weights_param.is_equivalent_to(next_fn_state_param):
       raise GetModelWeightsTypeSignatureError(
           f'The input type of `get_model_weights` must be assignable from '
           f'the member type of the output of `initialize_fn`, but found input '
-          f'type {get_model_weights_param}, which is not assignable from '
-          f'{state_type_without_placement}.')
-
+          f'type {get_model_weights_param}, which is not equivalent to '
+          f'{next_fn_state_param}.')
     self._get_model_weights = get_model_weights
+
+    py_typecheck.check_type(set_model_weights, computation_base.Computation)
+    set_model_weights_type = set_model_weights.type_signature
+    set_model_weights_state_param = set_model_weights_type.parameter[0]
+    if not set_model_weights_state_param.is_equivalent_to(next_fn_state_param):
+      raise SetModelWeightsTypeSignatureError(
+          f'The input type of `set_model_weights` must be assignable from '
+          f'the member type of the output of `initialize_fn`, but found input '
+          f'type {set_model_weights_state_param}, which is not equivalent to '
+          f'{next_fn_state_param}.')
+    set_model_weights_result = set_model_weights_type.result
+    if not next_fn_state_param.is_assignable_from(set_model_weights_result):
+      raise SetModelWeightsTypeSignatureError(
+          f'The output type of `set_model_weights` must be assignable to '
+          f'the first parameter of `next_fn`, but found input '
+          f'type {set_model_weights_result}, which is not assignable to; '
+          f'{next_fn_state_param}.')
+    self._set_model_weights = set_model_weights
 
   @property
   def initialize(self) -> computation_base.Computation:
@@ -234,3 +252,19 @@ class LearningProcess(iterative_process.IterativeProcess):
       A `tff.Computation`.
     """
     return self._get_model_weights
+
+  @property
+  def set_model_weights(self) -> computation_base.Computation:
+    """A `tff.Computation` that sets the model weights of a server state.
+
+    This computation accepts two arguments: an unplaced state of the process
+    (originally produced by the `initialize` attribute) and a new structure of
+    tensors representing the model weights, and returns new unplaced state with
+    the updated model weights. Note that the model weights representation need
+    not take the form of a `tff.learning.ModelWeights` object, and may depend on
+    the specific `LearningProcess` in question.
+
+    Returns:
+      A `tff.Computation`.
+    """
+    return self._set_model_weights

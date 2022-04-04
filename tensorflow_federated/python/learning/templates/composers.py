@@ -173,11 +173,20 @@ def compose_learning_process(
 
     return learning_process.LearningProcessOutput(new_state, metrics)
 
-  @computations.tf_computation(next_fn.type_signature.result.state.member)
-  def model_weights_fn(state):
+  state_parameter_type = next_fn.type_signature.parameter[0].member
+
+  @computations.tf_computation(state_parameter_type)
+  def get_model_weights_fn(state):
     return state.global_model_weights
 
-  return learning_process.LearningProcess(init_fn, next_fn, model_weights_fn)
+  @computations.tf_computation(state_parameter_type,
+                               state_parameter_type.global_model_weights)
+  def set_model_weights_fn(state, model_weights):
+    return attr.evolve(state, global_model_weights=model_weights)
+
+  return learning_process.LearningProcess(init_fn, next_fn,
+                                          get_model_weights_fn,
+                                          set_model_weights_fn)
 
 
 def _validate_args(initial_model_weights_fn, model_weights_distributor,

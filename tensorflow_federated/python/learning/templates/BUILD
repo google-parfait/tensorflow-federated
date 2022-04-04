@@ -88,6 +88,7 @@ py_library(
 py_test(
     name = "composers_test",
     size = "small",
+    timeout = "moderate",
     srcs = ["composers_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -107,6 +108,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning:keras_utils",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:sgdm",

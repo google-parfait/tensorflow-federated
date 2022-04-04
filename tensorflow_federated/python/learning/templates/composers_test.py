@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.optimizers import sgdm
@@ -239,7 +240,6 @@ class VanillaFedAvgTest(test_case.TestCase, parameterized.TestCase):
     fedavg = composers.build_basic_fedavg_process(
         model_fn=model_fn, client_learning_rate=0.1)
     client_data = [self._test_data()] * 3  # 3 clients with identical data.
-
     state = fedavg.initialize()
     last_loss = self._test_batch_loss(test_model, state.global_model_weights)
     for _ in range(5):
@@ -249,11 +249,62 @@ class VanillaFedAvgTest(test_case.TestCase, parameterized.TestCase):
       loss = self._test_batch_loss(test_model, state.global_model_weights)
       self.assertLess(loss, last_loss)
       last_loss = loss
-
     self.assertIsInstance(state, composers.LearningAlgorithmState)
     self.assertLen(metrics, 4)
     for key in ['distributor', 'client_work', 'aggregator', 'finalizer']:
       self.assertIn(key, metrics)
+
+  def test_get_set_model_weights_roundtrip(self):
+    model_fn = model_examples.LinearRegression
+    fedavg = composers.build_basic_fedavg_process(
+        model_fn=model_fn, client_learning_rate=0.1)
+    state = fedavg.initialize()
+    model_weights = fedavg.get_model_weights(state)
+    new_state = fedavg.set_model_weights(state, model_weights)
+    self.assertAllClose(tf.nest.flatten(state), tf.nest.flatten(new_state))
+
+  def test_get_set_model_weights_keras_model(self):
+
+    def model_fn():
+      keras_model = model_examples.build_linear_regression_keras_functional_model(
+      )
+      return keras_utils.from_keras_model(
+          keras_model,
+          loss=tf.keras.losses.MeanSquaredError(),
+          input_spec=collections.OrderedDict(
+              x=tf.TensorSpec(shape=[None, 2]),
+              y=tf.TensorSpec(shape=[None, 1])))
+
+    fedavg = composers.build_basic_fedavg_process(
+        model_fn=model_fn, client_learning_rate=0.1)
+    state = fedavg.initialize()
+    # Create a local model and perform some pretraining.
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+    )
+    keras_model.compile(optimizer='adam', loss='mse')
+    keras_model.fit(self._test_data().map(lambda d: (d['x'], d['y'])))
+    pretrained_weights = model_utils.ModelWeights.from_model(keras_model)
+    # Assert the initial state weights are not the same as the pretrained model.
+    initial_weights = fedavg.get_model_weights(state)
+    self.assertNotAllClose(
+        tf.nest.flatten(pretrained_weights), tf.nest.flatten(initial_weights))
+    # Change the state weights to those from our pretrained model.
+    state = fedavg.set_model_weights(state, pretrained_weights)
+    self.assertAllClose(
+        tf.nest.flatten(pretrained_weights),
+        tf.nest.flatten(fedavg.get_model_weights(state)))
+    # Run some FedAvg.
+    client_data = [self._test_data()] * 3  # 3 clients with identical data.
+    for _ in range(3):
+      fedavg_result = fedavg.next(state, client_data)
+      state = fedavg_result.state
+    # Weights should be different after training.
+    self.assertNotAllClose(
+        tf.nest.flatten(pretrained_weights),
+        tf.nest.flatten(fedavg.get_model_weights(state)))
+    # We should be able to assign the back to the keras model without raising
+    # an error.
+    fedavg.get_model_weights(state).assign_weights_to(keras_model)
 
   def test_created_model_raises(self):
     with self.assertRaises(TypeError):

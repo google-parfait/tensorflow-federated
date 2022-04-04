@@ -258,6 +258,10 @@ def build_fed_kmeans(
       and metrics computed during training.
   *   `get_model_weights`: A `tff.Computation` with type signature `(S -> W)`,
       where `W` represents the current k-means centroids.
+  *   `set_model_weights`: A `tff.Computation` with type signature
+      `(<S, M> -> S)`, where `S` is a
+      `tff.learning.templates.LearningAlgorithmState` whose type matches the
+      output of `initialize` and `M` a new set of k-means centroids.
 
   Here, `S` is a `tff.learning.templates.LearningAlgorithmState`. The centroids
   `W` is a tensor representing the current centroids, and is of shape

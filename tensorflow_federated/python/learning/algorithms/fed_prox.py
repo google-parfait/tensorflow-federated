@@ -90,8 +90,13 @@ def build_weighted_fed_prox(
       metrics from distribution and aggregation processes.
   *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
       where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
-      matches the output of `initialize` and `M` represents the type of the
-      model weights used during training.
+      matches the output of `initialize` and `next`, and `M` represents the type
+      of the model weights used during training.
+  *   `set_model_weights`: A `tff.Computation` with type signature
+      `(<S, M> -> S)`, where `S` is a
+      `tff.learning.templates.LearningAlgorithmState` whose type matches the
+      output of `initialize` and `M` represents the type of the model weights
+      used during training.
 
   Each time the `next` method is called, the server model is communicated to
   each client using the provided `model_distributor`. For each client, local
@@ -233,8 +238,13 @@ def build_unweighted_fed_prox(
       metrics from distribution and aggregation processes.
   *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
       where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
-      matches the output of `initialize` and `next` and `M` represents the type
+      matches the output of `initialize` and `next`, and `M` represents the type
       of the model weights used during training.
+  *   `set_model_weights`: A `tff.Computation` with type signature
+      `(<S, M> -> S)`, where `S` is a
+      `tff.learning.templates.LearningAlgorithmState` whose type matches the
+      output of `initialize` and `M` represents the type of the model weights
+      used during training.
 
   Each time the `next` method is called, the server model is communicated to
   each client using the provided `model_distributor`. For each client, local
