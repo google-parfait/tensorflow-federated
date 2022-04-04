@@ -199,12 +199,11 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     if self._keep_total <= 0:
       return
     versions = self.versions()
-    if versions is not None:
-      if len(versions) > self._keep_total:
-        start = 1 if self._keep_first else 0
-        stop = start - self._keep_total
-        for version in versions[start:stop]:
-          self._remove(version)
+    if versions is not None and len(versions) > self._keep_total:
+      start = 1 if self._keep_first else 0
+      stop = start - self._keep_total
+      for version in versions[start:stop]:
+        self._remove(version)
 
   def save(self, program_state: Any, version: int):
     """Saves `program_state` for the given `version`.

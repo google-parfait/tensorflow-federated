@@ -191,26 +191,27 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
       else:
         self._write_value(value)
 
-  def _remove_all_values(self):
-    """Removes all values from the managed CSV."""
-    self._write_values([self._key_fieldname], [])
-    self._latest_key = None
-
-  def _remove_values_after(self, key: int):
-    """Removes all values after `key` from the managed CSV."""
+  def _remove_values_greater_than(self, key: int):
+    """Removes all values greater than `key` from the managed CSV."""
     py_typecheck.check_type(key, int)
 
-    filtered_fieldnames = [self._key_fieldname]
-    filtered_values = []
-    _, values = self._read_values()
-    for value in values:
-      current_key = int(value[self._key_fieldname])
-      if current_key <= key:
-        fieldnames = [x for x in value.keys() if x not in filtered_fieldnames]
-        filtered_fieldnames.extend(fieldnames)
-        filtered_values.append(value)
-    self._write_values(filtered_fieldnames, filtered_values)
-    self._latest_key = key
+    if self._latest_key is None or key > self._latest_key:
+      return
+    if key < 0:
+      self._write_values([self._key_fieldname], [])
+      self._latest_key = None
+    else:
+      filtered_fieldnames = [self._key_fieldname]
+      filtered_values = []
+      _, values = self._read_values()
+      for value in values:
+        current_key = int(value[self._key_fieldname])
+        if current_key <= key:
+          fieldnames = [x for x in value.keys() if x not in filtered_fieldnames]
+          filtered_fieldnames.extend(fieldnames)
+          filtered_values.append(value)
+      self._write_values(filtered_fieldnames, filtered_values)
+      self._latest_key = key
 
   def release(self, value: Any, key: int):
     """Releases `value` from a federated program.
@@ -228,11 +229,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     """
     py_typecheck.check_type(key, int)
 
-    if self._latest_key is not None and key <= self._latest_key:
-      if key == 0:
-        self._remove_all_values()
-      else:
-        self._remove_values_after(key - 1)
+    self._remove_values_greater_than(key - 1)
     materialized_value = value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 

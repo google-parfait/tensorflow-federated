@@ -436,44 +436,7 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
         release_mngr._append_value({})
 
 
-class CSVFileReleaseManagerRemoveAllValuesTest(parameterized.TestCase):
-
-  def test_removes_values_from_empty_file(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
-    release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
-
-    release_mngr._remove_all_values()
-
-    actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
-    self.assertEqual(actual_fieldnames, ['key'])
-    self.assertEqual(actual_values, [])
-
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('no_values', ['key', 'a', 'b'], []),
-      ('one_value', ['key', 'a', 'b'], [{'key': 1, 'a': 10, 'b': 20}]),
-      ('two_values', ['key', 'a', 'b'],
-       [{'key': 1, 'a': 10, 'b': 20},
-        {'key': 1, 'a': 11, 'b': 21}]),
-  )
-  # pyformat: enable
-  def test_removes_values_from_existing_file(self, fieldnames, values):
-    temp_file = self.create_tempfile()
-    _write_values_to_csv(
-        file_path=temp_file, fieldnames=fieldnames, values=values)
-    release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
-
-    release_mngr._remove_all_values()
-
-    actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
-    self.assertEqual(actual_fieldnames, ['key'])
-    self.assertEqual(actual_values, [])
-
-
-class CSVFileReleaseManagerRemoveValuesAfterTest(parameterized.TestCase):
+class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('0', 0),
@@ -485,7 +448,7 @@ class CSVFileReleaseManagerRemoveValuesAfterTest(parameterized.TestCase):
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
 
-    release_mngr._remove_values_after(key)
+    release_mngr._remove_values_greater_than(key)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
     self.assertEqual(actual_fieldnames, ['key'])
@@ -518,7 +481,7 @@ class CSVFileReleaseManagerRemoveValuesAfterTest(parameterized.TestCase):
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
 
-    release_mngr._remove_values_after(key)
+    release_mngr._remove_values_greater_than(key)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
     if key == 0:
@@ -542,78 +505,45 @@ class CSVFileReleaseManagerRemoveValuesAfterTest(parameterized.TestCase):
         file_path=temp_file)
 
     with self.assertRaises(TypeError):
-      release_mngr._remove_values_after(key)
+      release_mngr._remove_values_greater_than(key)
 
 
 class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
 
-  def test_calls_remove_all_values_with_existing_file(self):
-    temp_file = self.create_tempfile()
-    _write_values_to_csv(
-        file_path=temp_file,
-        fieldnames=['key', 'a', 'b'],
-        values=[{
-            'key': 1,
-            'a': 10,
-            'b': 20
-        }])
-    release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
-
-    with mock.patch.object(release_mngr,
-                           '_remove_all_values') as mock_remove_all_values:
-      release_mngr.release({'a': 11, 'b': 21}, 0)
-
-      mock_remove_all_values.assert_called_once()
-
-    self.assertEqual(release_mngr._latest_key, 0)
-
-  def test_does_not_call_remove_all_values_with_empty_file(self):
+  def test_calls_remove_values_greater_than_with_empty_file(self):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
 
-    with mock.patch.object(release_mngr,
-                           '_remove_all_values') as mock_remove_all_values:
-      release_mngr.release({'a': 10, 'b': 20}, 0)
+    with mock.patch.object(
+        release_mngr,
+        '_remove_values_greater_than') as mock_remove_values_greater_than:
+      release_mngr.release({'a': 10, 'b': 20}, 1)
 
-      mock_remove_all_values.assert_not_called()
-
-    self.assertEqual(release_mngr._latest_key, 0)
-
-  def test_calls_remove_values_after_with_existing_file(self):
-    temp_file = self.create_tempfile()
-    _write_values_to_csv(
-        file_path=temp_file,
-        fieldnames=['key', 'a', 'b'],
-        values=[{
-            'key': 1,
-            'a': 10,
-            'b': 20
-        }])
-    release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
-
-    with mock.patch.object(release_mngr,
-                           '_remove_values_after') as mock_remove_values_after:
-      release_mngr.release({'a': 11, 'b': 21}, 1)
-
-      mock_remove_values_after.assert_called_with(0)
+      mock_remove_values_greater_than.assert_called_with(0)
 
     self.assertEqual(release_mngr._latest_key, 1)
 
-  def test_does_not_call_remove_values_after_with_empty_file(self):
+  def test_calls_remove_values_greater_than_with_existing_file(self):
     temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    _write_values_to_csv(
+        file_path=temp_file,
+        fieldnames=['key', 'a', 'b'],
+        values=[{
+            'key': 1,
+            'a': 10,
+            'b': 20
+        }])
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
 
-    with mock.patch.object(release_mngr,
-                           '_remove_values_after') as mock_remove_values_after:
-      release_mngr.release({'a': 10, 'b': 20}, 1)
+    with mock.patch.object(
+        release_mngr,
+        '_remove_values_greater_than') as mock_remove_values_greater_than:
+      release_mngr.release({'a': 11, 'b': 21}, 1)
 
-      mock_remove_values_after.assert_not_called()
+      mock_remove_values_greater_than.assert_called_with(0)
 
     self.assertEqual(release_mngr._latest_key, 1)
 
