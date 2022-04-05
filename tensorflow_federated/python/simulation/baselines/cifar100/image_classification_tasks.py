@@ -75,6 +75,7 @@ def create_image_classification_task_with_datasets(
     model_id: Union[str, ResnetModel],
     crop_height: int,
     crop_width: int,
+    distort_train_images: bool,
     train_data: client_data.ClientData,
     test_data: client_data.ClientData,
 ) -> baseline_task.BaselineTask:
@@ -100,6 +101,8 @@ def create_image_classification_task_with_datasets(
       Must be between 1 and 32 (the width of uncropped CIFAR-100 images). By
       default this is set to
       `tff.simulation.baselines.cifar100.DEFAULT_CROP_WIDTH`.
+    distort_train_images: Whether to distort images in the train preprocessing
+      function.
     train_data: A `tff.simulation.datasets.ClientData` used for training.
     test_data: A `tff.simulation.datasets.ClientData` used for testing.
 
@@ -115,7 +118,9 @@ def create_image_classification_task_with_datasets(
         num_epochs=1, batch_size=64, shuffle_buffer_size=1)
 
   train_preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
-      train_client_spec, crop_shape=crop_shape)
+      train_client_spec,
+      crop_shape=crop_shape,
+      distort_image=distort_train_images)
   eval_preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
       eval_client_spec, crop_shape=crop_shape)
 
@@ -142,6 +147,7 @@ def create_image_classification_task(
     model_id: Union[str, ResnetModel] = 'resnet18',
     crop_height: int = DEFAULT_CROP_HEIGHT,
     crop_width: int = DEFAULT_CROP_WIDTH,
+    distort_train_images: bool = False,
     cache_dir: Optional[str] = None,
     use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
   """Creates a baseline task for image classification on CIFAR-100.
@@ -169,6 +175,8 @@ def create_image_classification_task(
       Must be between 1 and 32 (the width of uncropped CIFAR-100 images). By
       default this is set to
       `tff.simulation.baselines.cifar100.DEFAULT_CROP_WIDTH`.
+    distort_train_images: Whether to distort images in the train preprocessing
+      function.
     cache_dir: An optional directory to cache the downloadeded datasets. If
       `None`, they will be cached to `~/.tff/`.
     use_synthetic_data: A boolean indicating whether to use synthetic CIFAR-100
@@ -185,8 +193,6 @@ def create_image_classification_task(
   else:
     cifar_train, cifar_test = cifar100.load_data(cache_dir=cache_dir)
 
-  return create_image_classification_task_with_datasets(train_client_spec,
-                                                        eval_client_spec,
-                                                        model_id, crop_height,
-                                                        crop_width, cifar_train,
-                                                        cifar_test)
+  return create_image_classification_task_with_datasets(
+      train_client_spec, eval_client_spec, model_id, crop_height, crop_width,
+      distort_train_images, cifar_train, cifar_test)

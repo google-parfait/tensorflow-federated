@@ -130,6 +130,38 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
           crop_width=crop_width,
           use_synthetic_data=True)
 
+  def test_train_distortion_gives_nondeterministic_result(self):
+    train_client_spec = client_spec.ClientSpec(
+        num_epochs=1, batch_size=1, max_elements=1, shuffle_buffer_size=1)
+    task = image_classification_tasks.create_image_classification_task(
+        train_client_spec,
+        model_id='resnet18',
+        distort_train_images=True,
+        use_synthetic_data=True)
+    train_preprocess_fn = task.datasets.train_preprocess_fn
+    dataset = task.datasets.train_data.create_tf_dataset_from_all_clients()
+    tf.random.set_seed(0)
+    example1 = next(iter(train_preprocess_fn(dataset)))
+    tf.random.set_seed(1)
+    example2 = next(iter(train_preprocess_fn(dataset)))
+    self.assertNotAllClose(example1, example2)
+
+  def test_no_train_distortion_gives_deterministic_result(self):
+    train_client_spec = client_spec.ClientSpec(
+        num_epochs=1, batch_size=1, max_elements=1, shuffle_buffer_size=1)
+    task = image_classification_tasks.create_image_classification_task(
+        train_client_spec,
+        model_id='resnet18',
+        distort_train_images=False,
+        use_synthetic_data=True)
+    train_preprocess_fn = task.datasets.train_preprocess_fn
+    dataset = task.datasets.train_data.create_tf_dataset_from_all_clients()
+    tf.random.set_seed(0)
+    example1 = next(iter(train_preprocess_fn(dataset)))
+    tf.random.set_seed(1)
+    example2 = next(iter(train_preprocess_fn(dataset)))
+    self.assertAllClose(example1, example2)
+
   @parameterized.named_parameters(
       ('resnet18', 'resnet18'),
       ('resnet34', 'resnet34'),
