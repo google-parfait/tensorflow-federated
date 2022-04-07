@@ -627,11 +627,11 @@ def federated_secure_modular_sum(value, modulus):
 
   ```python
   value = tff.federated_value(5, tff.CLIENTS)
-  result = tff.federated_secure_sum(value, 3)
+  result = tff.federated_secure_modular_sum(value, 3)
   # `result == (5 * num_clients % 3)@SERVER`
 
   value = tff.federated_value((3, 9), tff.CLIENTS)
-  result = tff.federated_secure_sum(value, (100, 200))
+  result = tff.federated_secure_modular_sum(value, (100, 200))
   # `result == (3 * num_clients % 100, 9 * num_clients % 100)@SERVER`
   ```
 
@@ -639,15 +639,18 @@ def federated_secure_modular_sum(value, modulus):
   weaker privacy properties, consider using `federated_sum`.
 
   Args:
-    value: An integer or nested structure of integers placed at `tff.CLIENTS`,
-      in the range `[0, max_input]`.
+    value: An integer or nested structure of integers placed at `tff.CLIENTS`.
+      Values outside of the range [0, modulus-1] will be considered equivalent
+      to mod(value, modulus), i.e. they will be projected into the range
+      [0, modulus-1] as part of the modular summation.
     modulus: A Python integer or nested structure of integers matching the
       structure of `value`. If integer `modulus` is used with a nested `value`,
       the same integer is used for each tensor in `value`.
 
   Returns:
     A representation of the modular sum of the member constituents of `value`
-    placed on the `tff.SERVER`.
+    placed on the `tff.SERVER`.  The resulting modular sum will be on the range
+    [0, modulus-1].
 
   Raises:
     TypeError: If the argument is not a federated TFF value placed at
