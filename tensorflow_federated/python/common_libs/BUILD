@@ -23,6 +23,22 @@ py_library(
 )
 
 py_library(
+    name = "async_utils",
+    srcs = ["async_utils.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "async_utils_test",
+    srcs = ["async_utils_test.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":async_utils",
+        "@absl_py//absl/testing:absltest",
+    ],
+)
+
+py_library(
     name = "named_containers",
     srcs = ["named_containers.py"],
     srcs_version = "PY3",
