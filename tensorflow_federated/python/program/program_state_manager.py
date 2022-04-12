@@ -38,7 +38,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
   """
 
   @abc.abstractmethod
-  def versions(self) -> Optional[List[int]]:
+  async def versions(self) -> Optional[List[int]]:
     """Returns a list of saved versions or `None`.
 
     Returns:
@@ -47,7 +47,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def load(self, version: int, structure: Any) -> Any:
+  async def load(self, version: int, structure: Any) -> Any:
     """Returns the saved program state for the given `version`.
 
     Args:
@@ -64,7 +64,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     """
     raise NotImplementedError
 
-  def load_latest(self, structure: Any) -> Tuple[Any, int]:
+  async def load_latest(self, structure: Any) -> Tuple[Any, int]:
     """Returns the latest saved program state and version or (`None`, 0).
 
     Args:
@@ -76,17 +76,17 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
       A tuple of the latest saved (program state, version) or (`None`, 0) if
       there is no latest saved program state.
     """
-    versions = self.versions()
+    versions = await self.versions()
     if versions is None:
       return None, 0
     latest_version = max(versions)
     try:
-      return self.load(latest_version, structure), latest_version
+      return await self.load(latest_version, structure), latest_version
     except ProgramStateManagerStateNotFoundError:
       return None, 0
 
   @abc.abstractmethod
-  def save(self, program_state: Any, version: int):
+  async def save(self, program_state: Any, version: int):
     """Saves `program_state` for the given `version`.
 
     Args:

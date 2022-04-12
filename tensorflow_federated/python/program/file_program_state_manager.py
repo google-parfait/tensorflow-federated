@@ -20,6 +20,7 @@ means that this library:
   * encodes files in the same way as `tf.io.gfile`
 """
 
+import asyncio
 import os
 import os.path
 from typing import Any, List, Optional, Union
@@ -95,18 +96,18 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     self._keep_total = keep_total
     self._keep_first = keep_first
 
-  def versions(self) -> Optional[List[int]]:
+  async def versions(self) -> Optional[List[int]]:
     """Returns a list of saved versions or `None`.
 
     Returns:
       A list of saved versions or `None` if there is no saved program state.
     """
-    if not tf.io.gfile.exists(self._root_dir):
+    if not await file_utils.exists(self._root_dir):
       return None
     versions = []
     # Due to tensorflow/issues/19378, we cannot use `tf.io.gfile.glob` here
     # because it returns directory contents recursively on Windows.
-    entries = tf.io.gfile.listdir(self._root_dir)
+    entries = await file_utils.listdir(self._root_dir)
     for entry in entries:
       if entry.startswith(self._prefix):
         version = self._get_version_for_path(entry)
@@ -152,7 +153,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     basename = f'{self._prefix}{version}'
     return os.path.join(self._root_dir, basename)
 
-  def load(self, version: int, structure: Any) -> Any:
+  async def load(self, version: int, structure: Any) -> Any:
     """Returns the program state for the given `version`.
 
     Args:
@@ -170,10 +171,10 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     py_typecheck.check_type(version, int)
 
     path = self._get_path_for_version(version)
-    if not tf.io.gfile.exists(path):
+    if not await file_utils.exists(path):
       raise program_state_manager.ProgramStateManagerStateNotFoundError(
           f'No program state found for version: {version}')
-    flattened_state = file_utils.read_saved_model(path)
+    flattened_state = await file_utils.read_saved_model(path)
     try:
       program_state = tree.unflatten_as(structure, flattened_state)
     except ValueError as e:
@@ -185,27 +186,26 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     logging.info('Program state loaded: %s', path)
     return program_state
 
-  def _remove(self, version: int):
+  async def _remove(self, version: int):
     """Removes program state for the given `version`."""
     py_typecheck.check_type(version, int)
 
     path = self._get_path_for_version(version)
-    if tf.io.gfile.exists(path):
-      tf.io.gfile.rmtree(path)
+    if await file_utils.exists(path):
+      await file_utils.rmtree(path)
       logging.info('Program state removed: %s', path)
 
-  def _remove_old_program_state(self):
+  async def _remove_old_program_state(self):
     """Removes old program state."""
     if self._keep_total <= 0:
       return
-    versions = self.versions()
+    versions = await self.versions()
     if versions is not None and len(versions) > self._keep_total:
       start = 1 if self._keep_first else 0
       stop = start - self._keep_total
-      for version in versions[start:stop]:
-        self._remove(version)
+      await asyncio.gather(*[self._remove(v) for v in versions[start:stop]])
 
-  def save(self, program_state: Any, version: int):
+  async def save(self, program_state: Any, version: int):
     """Saves `program_state` for the given `version`.
 
     Args:
@@ -222,10 +222,10 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     py_typecheck.check_type(version, int)
 
     path = self._get_path_for_version(version)
-    if tf.io.gfile.exists(path):
+    if await file_utils.exists(path):
       raise program_state_manager.ProgramStateManagerStateAlreadyExistsError(
           f'Program state already exists for version: {version}')
-    materialized_state = value_reference.materialize_value(program_state)
+    materialized_state = await value_reference.materialize_value(program_state)
     flattened_state = tree.flatten(materialized_state)
-    file_utils.write_saved_model(flattened_state, path)
-    self._remove_old_program_state()
+    await file_utils.write_saved_model(flattened_state, path)
+    await self._remove_old_program_state()

@@ -18,6 +18,7 @@ from unittest import mock
 from absl.testing import absltest
 
 from tensorflow_federated.python.program import program_state_manager
+from tensorflow_federated.python.program import test_utils
 
 
 class _TestProgramStateManager(program_state_manager.ProgramStateManager):
@@ -25,15 +26,15 @@ class _TestProgramStateManager(program_state_manager.ProgramStateManager):
   def __init__(self, values: Optional[Mapping[int, Any]] = None):
     self._values = values
 
-  def versions(self) -> Optional[List[int]]:
+  async def versions(self) -> Optional[List[int]]:
     if self._values is None:
       return None
     return self._values.keys()
 
-  def save(self, program_state: Any, version: int):
+  async def save(self, program_state: Any, version: int):
     del program_state, version  # Unused.
 
-  def load(self, version: int, structure: Any) -> Any:
+  async def load(self, version: int, structure: Any) -> Any:
     del structure  # Unused.
     if self._values is None or version not in self._values:
       raise program_state_manager.ProgramStateManagerStateNotFoundError()
@@ -42,33 +43,36 @@ class _TestProgramStateManager(program_state_manager.ProgramStateManager):
 
 class ProgramStateManagerTest(absltest.TestCase):
 
-  def test_load_latest_with_saved_program_state(self):
+  @test_utils.run_sync
+  async def test_load_latest_with_saved_program_state(self):
     values = {x: f'test{x}' for x in range(5)}
     structure = values[0]
     program_state_mngr = _TestProgramStateManager(values)
 
-    (program_state, version) = program_state_mngr.load_latest(structure)
+    (program_state, version) = await program_state_mngr.load_latest(structure)
 
     self.assertEqual(program_state, 'test4')
     self.assertEqual(version, 4)
 
-  def test_load_latest_with_no_saved_program_state(self):
+  @test_utils.run_sync
+  async def test_load_latest_with_no_saved_program_state(self):
     structure = None
     program_state_mngr = _TestProgramStateManager()
 
-    (program_state, version) = program_state_mngr.load_latest(structure)
+    (program_state, version) = await program_state_mngr.load_latest(structure)
 
     self.assertIsNone(program_state)
     self.assertEqual(version, 0)
 
-  def test_load_latest_with_load_failure(self):
+  @test_utils.run_sync
+  async def test_load_latest_with_load_failure(self):
     values = {x: f'test{x}' for x in range(5)}
     structure = values[0]
     program_state_mngr = _TestProgramStateManager(values)
     program_state_mngr.load = mock.MagicMock(
         side_effect=program_state_manager.ProgramStateManagerStateNotFoundError)
 
-    (program_state, version) = program_state_mngr.load_latest(structure)
+    (program_state, version) = await program_state_mngr.load_latest(structure)
 
     self.assertIsNone(program_state)
     self.assertEqual(version, 0)

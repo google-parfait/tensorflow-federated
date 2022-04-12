@@ -21,6 +21,7 @@ unplaced.
 """
 
 import abc
+import asyncio
 from typing import Any, Iterable, Union
 
 import numpy as np
@@ -46,7 +47,7 @@ class MaterializableValueReference(
     raise NotImplementedError
 
   @abc.abstractmethod
-  def get_value(self) -> MaterializablePythonType:
+  async def get_value(self) -> MaterializablePythonType:
     """Returns the referenced value.
 
     The Python type of the referenced value depends on the `type_signature`:
@@ -59,7 +60,7 @@ class MaterializableValueReference(
     raise NotImplementedError
 
 
-def materialize_value(value: Any) -> Any:
+async def materialize_value(value: Any) -> Any:
   """Returns a structure of materialized values.
 
   Args:
@@ -67,10 +68,12 @@ def materialize_value(value: Any) -> Any:
       values and value references to materialize.
   """
 
-  def _materialize(value):
+  async def _materialize(value):
     if isinstance(value, MaterializableValueReference):
-      return value.get_value()
+      return await value.get_value()
     else:
       return value
 
-  return tree.map_structure(_materialize, value)
+  flattened = tree.flatten(value)
+  flattened = await asyncio.gather(*[_materialize(v) for v in flattened])
+  return tree.unflatten_as(value, flattened)

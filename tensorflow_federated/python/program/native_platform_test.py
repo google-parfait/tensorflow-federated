@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import collections
 from unittest import mock
 
@@ -27,6 +28,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import native_platform
+from tensorflow_federated.python.program import test_utils
 
 
 async def _coro(value):
@@ -37,7 +39,7 @@ class CoroValueReferenceTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('tensor', _coro(1), computation_types.TensorType(tf.int32)),
-      ('sequence', _coro([1, 2, 3]), computation_types.SequenceType(tf.int32)),
+      ('sequence', _coro((1, 2, 3)), computation_types.SequenceType(tf.int32)),
   )
   def test_init_does_not_raise_type_error_with_type_signature(
       self, coro, type_signature):
@@ -80,11 +82,13 @@ class CoroValueReferenceTest(parameterized.TestCase):
       ('int', _coro(1), computation_types.TensorType(tf.int32), 1),
       ('str', _coro('a'), computation_types.TensorType(tf.string), 'a'),
   )
-  def test_get_value_returns_value(self, coro, type_signature, expected_value):
+  @test_utils.run_sync
+  async def test_get_value_returns_value(self, coro, type_signature,
+                                         expected_value):
     value_reference = native_platform.CoroValueReference(
         coro=coro, type_signature=type_signature)
 
-    actual_value = value_reference.get_value()
+    actual_value = await value_reference.get_value()
 
     self.assertEqual(actual_value, expected_value)
 
@@ -162,11 +166,24 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase):
        ])),
   )
   # pyformat: enable
-  def test_returns_value(self, coro, type_signature, expected_value):
+  @test_utils.run_sync
+  async def test_returns_value(self, coro, type_signature, expected_value):
     actual_value = native_platform._create_structure_of_coro_references(
         coro=coro, type_signature=type_signature)
 
-    self.assertEqual(actual_value, expected_value)
+    if (isinstance(actual_value, structure.Struct) and
+        isinstance(expected_value, structure.Struct)):
+      structure.is_same_structure(actual_value, expected_value)
+      actual_value = structure.flatten(actual_value)
+      expected_value = structure.flatten(expected_value)
+      for a, b in zip(actual_value, expected_value):
+        a = await a.get_value()
+        b = await b.get_value()
+        self.assertEqual(a, b)
+    else:
+      actual_value = await actual_value.get_value()
+      expected_value = await expected_value.get_value()
+      self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -199,6 +216,41 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase):
     with self.assertRaises(NotImplementedError):
       native_platform._create_structure_of_coro_references(
           coro=coro, type_signature=type_signature)
+
+  @test_utils.run_sync
+  async def test_returned_structure_materialized_sequentially(self):
+    coro = _coro((True, 1, 'a'))
+    type_signature = computation_types.StructType([
+        (None, computation_types.TensorType(tf.bool)),
+        (None, computation_types.TensorType(tf.int32)),
+        (None, computation_types.TensorType(tf.string)),
+    ])
+
+    result = native_platform._create_structure_of_coro_references(
+        coro=coro, type_signature=type_signature)
+
+    actual_values = []
+    for value in result:
+      actual_value = await value.get_value()
+      actual_values.append(actual_value)
+    expected_values = [True, 1, 'a']
+    self.assertEqual(actual_values, expected_values)
+
+  @test_utils.run_sync
+  async def test_returned_structure_materialized_concurrently(self):
+    coro = _coro((True, 1, 'a'))
+    type_signature = computation_types.StructType([
+        (None, computation_types.TensorType(tf.bool)),
+        (None, computation_types.TensorType(tf.int32)),
+        (None, computation_types.TensorType(tf.string)),
+    ])
+
+    result = native_platform._create_structure_of_coro_references(
+        coro=coro, type_signature=type_signature)
+
+    actual_values = await asyncio.gather(*[v.get_value() for v in result])
+    expected_values = [True, 1, 'a']
+    self.assertEqual(actual_values, expected_values)
 
 
 class MaterializeStructureOfValueReferencesTest(parameterized.TestCase):
@@ -287,8 +339,9 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase):
        ])),
   )
   # pyformat: enable
-  def test_returns_value(self, value, type_signature, expected_value):
-    actual_value = native_platform._materialize_structure_of_value_references(
+  @test_utils.run_sync
+  async def test_returns_value(self, value, type_signature, expected_value):
+    actual_value = await native_platform._materialize_structure_of_value_references(
         value=value, type_signature=type_signature)
 
     self.assertEqual(actual_value, expected_value)
@@ -300,13 +353,14 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  def test_raises_type_error_with_type_signature(self, type_signature):
+  @test_utils.run_sync
+  async def test_raises_type_error_with_type_signature(self, type_signature):
     with self.assertRaises(TypeError):
-      native_platform._materialize_structure_of_value_references(
+      await native_platform._materialize_structure_of_value_references(
           value=1, type_signature=type_signature)
 
 
-class NativeFederatedContextTest(parameterized.TestCase):
+class NativeFederatedContextTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_init_does_not_raise_type_error_with_context(self):
     context = execution_contexts.create_local_async_python_execution_context()
@@ -333,7 +387,8 @@ class NativeFederatedContextTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       native_platform.NativeFederatedContext(context)
 
-  def test_invoke_returns_result(self):
+  @test_utils.run_sync
+  async def test_invoke_returns_result(self):
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
@@ -342,7 +397,7 @@ class NativeFederatedContextTest(parameterized.TestCase):
       return x + y
 
     result = context.invoke(add, structure.Struct.unnamed(1, 2))
-    actual_value = result.get_value()
+    actual_value = await result.get_value()
     self.assertEqual(actual_value, 3)
 
   @parameterized.named_parameters(
@@ -391,7 +446,8 @@ class NativeFederatedContextTest(parameterized.TestCase):
           return_value=False):
         context.invoke(return_one, None)
 
-  def test_computation_returns_result(self):
+  @test_utils.run_sync
+  async def test_computation_returns_result(self):
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
@@ -402,7 +458,7 @@ class NativeFederatedContextTest(parameterized.TestCase):
     with context_stack_impl.context_stack.install(context):
       result = add(1, 2)
 
-    actual_value = result.get_value()
+    actual_value = await result.get_value()
     self.assertEqual(actual_value, 3)
 
 

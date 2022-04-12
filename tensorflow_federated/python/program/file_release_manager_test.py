@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import csv
 import os
 import os.path
@@ -307,13 +308,14 @@ class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
       ('more_fields', {'a': 11, 'b': 21, 'c': 31}),
   )
   # pyformat: enable
-  def test_writes_value_to_empty_file(self, value):
+  @test_utils.run_sync
+  async def test_writes_value_to_empty_file(self, value):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.WRITE)
 
-    release_mngr._write_value(value)
+    await release_mngr._write_value(value)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
     expected_fieldnames = ['key']
@@ -334,7 +336,8 @@ class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
       ('more_fields', {'a': 11, 'b': 21, 'c': 31}),
   )
   # pyformat: enable
-  def test_writes_value_to_existing_file(self, value):
+  @test_utils.run_sync
+  async def test_writes_value_to_existing_file(self, value):
     temp_file = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']
     existing_value = {'key': 1, 'a': 10, 'b': 20}
@@ -345,7 +348,7 @@ class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.WRITE)
 
-    release_mngr._write_value(value)
+    await release_mngr._write_value(value)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
     expected_fieldnames = existing_fieldnames.copy()
@@ -369,13 +372,14 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
       ('more_fields', {'a': 11, 'b': 21, 'c': 31}),
   )
   # pyformat: enable
-  def test_appends_value_to_empty_file(self, value):
+  @test_utils.run_sync
+  async def test_appends_value_to_empty_file(self, value):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.APPEND)
 
-    release_mngr._append_value(value)
+    await release_mngr._append_value(value)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
     expected_fieldnames = ['key']
@@ -396,7 +400,8 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
       ('more_fields', {'a': 11, 'b': 21, 'c': 31}),
   )
   # pyformat: enable
-  def test_appends_value_to_existing_file(self, value):
+  @test_utils.run_sync
+  async def test_appends_value_to_existing_file(self, value):
     temp_file = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']
     existing_value = {'key': 1, 'a': 10, 'b': 20}
@@ -407,7 +412,7 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.APPEND)
 
-    release_mngr._append_value(value)
+    await release_mngr._append_value(value)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
     expected_fieldnames = existing_fieldnames.copy()
@@ -422,7 +427,8 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
     expected_values = tree.map_structure(str, expected_values)
     self.assertEqual(actual_values, expected_values)
 
-  def test_raises_permission_denied_error(self):
+  @test_utils.run_sync
+  async def test_raises_permission_denied_error(self):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     release_mngr = file_release_manager.CSVFileReleaseManager(
@@ -433,22 +439,23 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
 
       with self.assertRaises(
           file_release_manager.FileReleaseManagerPermissionDeniedError):
-        release_mngr._append_value({})
+        await release_mngr._append_value({})
 
 
-class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
+class CSVFileReleaseManagerRemoveValuesAfterTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('0', 0),
       ('1', 1),
   )
-  def test_removes_values_from_empty_file(self, key):
+  @test_utils.run_sync
+  async def test_removes_values_from_empty_file(self, key):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
 
-    release_mngr._remove_values_greater_than(key)
+    await release_mngr._remove_values_greater_than(key)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
     self.assertEqual(actual_fieldnames, ['key'])
@@ -459,7 +466,8 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
       ('1', 1),
       ('2', 2),
   )
-  def test_removes_values_from_existing_file(self, key):
+  @test_utils.run_sync
+  async def test_removes_values_from_existing_file(self, key):
     temp_file = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']
     existing_values = [
@@ -481,7 +489,7 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
 
-    release_mngr._remove_values_greater_than(key)
+    await release_mngr._remove_values_greater_than(key)
 
     actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
     if key == 0:
@@ -498,34 +506,21 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  def test_raises_type_error_with_key(self, key):
+  @test_utils.run_sync
+  async def test_raises_type_error_with_key(self, key):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
 
     with self.assertRaises(TypeError):
-      release_mngr._remove_values_greater_than(key)
+      await release_mngr._remove_values_greater_than(key)
 
 
 class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
 
-  def test_calls_remove_values_greater_than_with_empty_file(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
-    release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
-
-    with mock.patch.object(
-        release_mngr,
-        '_remove_values_greater_than') as mock_remove_values_greater_than:
-      release_mngr.release({'a': 10, 'b': 20}, 1)
-
-      mock_remove_values_greater_than.assert_called_with(0)
-
-    self.assertEqual(release_mngr._latest_key, 1)
-
-  def test_calls_remove_values_greater_than_with_existing_file(self):
+  @test_utils.run_sync
+  async def test_calls_remove_values_greater_than_with_existing_file(self):
     temp_file = self.create_tempfile()
     _write_values_to_csv(
         file_path=temp_file,
@@ -538,29 +533,54 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
 
+    future = asyncio.Future()
+    future.set_result(None)
     with mock.patch.object(
-        release_mngr,
-        '_remove_values_greater_than') as mock_remove_values_greater_than:
-      release_mngr.release({'a': 11, 'b': 21}, 1)
+        release_mngr, '_remove_values_greater_than',
+        return_value=future) as mock_remove_values_greater_than:
+      await release_mngr.release({'a': 11, 'b': 21}, 1)
 
       mock_remove_values_greater_than.assert_called_with(0)
 
     self.assertEqual(release_mngr._latest_key, 1)
 
-  # pyformat: disable
+  @test_utils.run_sync
+  async def test_calls_remove_values_greater_than_with_empty_file(self):
+    temp_file = self.create_tempfile()
+    os.remove(temp_file)
+    release_mngr = file_release_manager.CSVFileReleaseManager(
+        file_path=temp_file)
+
+    future = asyncio.Future()
+    future.set_result(None)
+    with mock.patch.object(
+        release_mngr, '_remove_values_greater_than',
+        return_value=future) as mock_remove_values_greater_than:
+      await release_mngr.release({'a': 10, 'b': 20}, 1)
+
+      mock_remove_values_greater_than.assert_called_with(0)
+
+    self.assertEqual(release_mngr._latest_key, 1)
+
+# pyformat: disable
   @parameterized.named_parameters(
       ('empty', {}, 1),
       ('more_fields', {'a': 10, 'b': 20}, 1),
   )
   # pyformat: enable
-  def test_calls_append_value(self, value, key):
+  @test_utils.run_sync
+  async def test_calls_append_value(self, value, key):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.APPEND)
 
-    with mock.patch.object(release_mngr, '_append_value') as mock_append_value:
-      release_mngr.release(value, key)
+    future = asyncio.Future()
+    future.set_result(None)
+    with mock.patch.object(
+        release_mngr, '_append_value',
+        return_value=future) as mock_append_value:
+      await release_mngr.release(value, key)
 
       mock_append_value.assert_called_once()
       call = mock_append_value.mock_calls[0]
@@ -582,14 +602,18 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
       ('more_fields', {'a': 10, 'b': 20}, 1),
   )
   # pyformat: enable
-  def test_calls_write_value(self, value, key):
+  @test_utils.run_sync
+  async def test_calls_write_value(self, value, key):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.WRITE)
 
-    with mock.patch.object(release_mngr, '_write_value') as mock_write_value:
-      release_mngr.release(value, key)
+    future = asyncio.Future()
+    future.set_result(None)
+    with mock.patch.object(
+        release_mngr, '_write_value', return_value=future) as mock_write_value:
+      await release_mngr.release(value, key)
 
       mock_write_value.assert_called_once()
       call = mock_write_value.mock_calls[0]
@@ -664,13 +688,14 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
        [{'key': '1', '0': '1', '1': '2'}]),
   )
   # pyformat: enable
-  def test_writes_value(self, value, expected_value):
+  @test_utils.run_sync
+  async def test_writes_value(self, value, expected_value):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
 
-    release_mngr.release(value, 1)
+    await release_mngr.release(value, 1)
 
     _, actual_value = _read_values_from_csv(temp_file)
     self.assertEqual(actual_value, expected_value)
@@ -680,14 +705,15 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  def test_raises_type_error_with_key(self, key):
+  @test_utils.run_sync
+  async def test_raises_type_error_with_key(self, key):
     temp_file = self.create_tempfile()
     os.remove(temp_file)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=temp_file)
 
     with self.assertRaises(TypeError):
-      release_mngr.release({}, key)
+      await release_mngr.release({}, key)
 
 
 class SavedModelFileReleaseManagerInitTest(parameterized.TestCase):
@@ -827,16 +853,20 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
        [1, 2]),
   )
   # pyformat: enable
-  def test_writes_value(self, value, expected_value):
+  @test_utils.run_sync
+  async def test_writes_value(self, value, expected_value):
     temp_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
         root_dir=temp_dir, prefix='a_')
 
-    release_mngr.release(value, 1)
+    await release_mngr.release(value, 1)
 
-    with mock.patch.object(file_utils,
-                           'write_saved_model') as mock_write_saved_model:
-      release_mngr.release(value, 1)
+    future = asyncio.Future()
+    future.set_result(None)
+    with mock.patch.object(
+        file_utils, 'write_saved_model',
+        return_value=future) as mock_write_saved_model:
+      await release_mngr.release(value, 1)
 
       mock_write_saved_model.assert_called_once()
       call = mock_write_saved_model.mock_calls[0]
@@ -857,13 +887,14 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       ('str', 'a'),
       ('list', []),
   )
-  def test_raises_type_error_with_key(self, key):
+  @test_utils.run_sync
+  async def test_raises_type_error_with_key(self, key):
     temp_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
         root_dir=temp_dir, prefix='a_')
 
     with self.assertRaises(TypeError):
-      release_mngr.release(1, key)
+      await release_mngr.release(1, key)
 
 
 if __name__ == '__main__':

@@ -66,7 +66,7 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
       summary_dir = os.fspath(summary_dir)
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
-  def release(self, value: Any, key: int):
+  async def release(self, value: Any, key: int):
     """Releases `value` from a federated program.
 
     Args:
@@ -78,7 +78,7 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
     """
     py_typecheck.check_type(key, int)
 
-    materialized_value = value_reference.materialize_value(value)
+    materialized_value = await value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
     def _normalize(value):
