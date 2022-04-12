@@ -83,14 +83,13 @@ PYBIND11_MODULE(executor_bindings, m) {
 
   // v0::Value serialization methods.
   m.def("serialize_tensor_value",
-        py::google::WithWrappedProtos(
+        WithWrappedProtos(
             [](const tensorflow::Tensor& tensor) -> absl::StatusOr<v0::Value> {
               v0::Value value_pb;
               TFF_TRY(SerializeTensorValue(tensor, &value_pb));
               return value_pb;
             }));
-  m.def("deserialize_tensor_value",
-        py::google::WithWrappedProtos(&DeserializeTensorValue));
+  m.def("deserialize_tensor_value", WithWrappedProtos(&DeserializeTensorValue));
 
   // Provide an `OwnedValueId` class to handle return values from the
   // `Executor` interface.
