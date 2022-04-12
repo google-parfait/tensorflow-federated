@@ -58,15 +58,6 @@ from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-# TODO(b/152633983): Move to the tff.learning.Model class.
-def _reset_local_model_variables(model):
-  for var in model.local_variables:
-    if var.initial_value is not None:
-      var.assign(var.initial_value)
-    else:
-      var.assign(tf.zeros_like(var))
-
-
 def _choose_client_weight(weighting, has_non_finite_delta, num_examples):
   if has_non_finite_delta > 0:
     return tf.constant(0.0, tf.float32)
@@ -138,7 +129,7 @@ def _build_client_update_fn_for_mime_lite(
       # Resets the local model variables, including metrics states, as we are
       # not interested in metrics based on the full gradient evaluation, only
       # from the subsequent training.
-      _reset_local_model_variables(model)
+      model.reset_metrics()
 
       def train_reduce_fn(state, batch):
         with tf.GradientTape() as tape:

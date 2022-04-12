@@ -143,11 +143,7 @@ def evaluate_fn(model: tff.learning.Model,
   # training).
   # Resetting ensures that the returned metrics are computed on test data.
   # Similar to the `reset_states` method of `tf.keras.metrics.Metric`.
-  for var in model.local_variables:
-    if var.initial_value is not None:
-      var.assign(var.initial_value)
-    else:
-      var.assign(tf.zeros_like(var))
+  model.reset_metrics()
 
   def reduce_fn(num_examples_sum, batch):
     output = model.forward_pass(batch, training=False)
