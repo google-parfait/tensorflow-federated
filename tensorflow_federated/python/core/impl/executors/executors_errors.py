@@ -16,3 +16,7 @@
 
 class RetryableError(Exception):
   """Raised when execution fails and can be retried."""
+
+
+class CardinalityError(Exception):
+  """Raised when a value in a stack does not match the stack's cardinality."""

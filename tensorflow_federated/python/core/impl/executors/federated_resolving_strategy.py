@@ -61,6 +61,7 @@ from tensorflow_federated.python.core.impl.compiler import tensorflow_computatio
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -254,7 +255,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       py_typecheck.check_type(value, (list, tuple, set, frozenset))
       children = self._target_executors.get(placement)
       if len(value) != len(children):
-        raise ValueError(
+        raise executors_errors.CardinalityError(
             'Expected a value that contains one element for each participant '
             'for the given placement, found a value with {elements} elements '
             'and this executor is configured to have {participants} '

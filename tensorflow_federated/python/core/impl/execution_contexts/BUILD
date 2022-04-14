@@ -85,6 +85,7 @@ py_library(
     deps = [
         ":cpp_async_execution_context",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
     ],
 )
 
@@ -98,6 +99,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
     ],
 )
@@ -114,8 +116,10 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
+        "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",

@@ -16,7 +16,8 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""Common functions needed across executor classes."""
+"""Utilities for cardinality inference and handling."""
+from typing import Any, Callable, Mapping
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -57,6 +58,12 @@ class InvalidNonAllEqualValueError(TypeError):
         f'to be a `list` or `tuple`, found a value of Python type '
         f'{type(value)}:\n{value}')
     super().__init__(message)
+
+
+# We define this type here to avoid having to redeclare it wherever we
+# parameterize by a cardinality inference fn.
+CardinalityInferenceFnType = Callable[[Any, computation_types.Type],
+                                      Mapping[placements.PlacementLiteral, int]]
 
 
 def infer_cardinalities(value, type_spec):

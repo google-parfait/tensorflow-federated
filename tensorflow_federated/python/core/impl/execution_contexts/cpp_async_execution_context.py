@@ -45,12 +45,20 @@ class AsyncSerializeAndExecuteCPPContext(
     async_execution_context.SingleCardinalityAsyncContext):
   """An async execution context delegating to CPP Executor bindings."""
 
-  def __init__(self, factory, compiler_fn, max_workers=None):
+  def __init__(
+      self,
+      factory,
+      compiler_fn,
+      max_workers=None,
+      *,
+      cardinality_inference_fn: cardinalities_utils
+      .CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities):
     super().__init__()
     self._executor_factory = factory
     self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
     self._futures_executor_pool = concurrent.futures.ThreadPoolExecutor(
         max_workers=max_workers)
+    self._cardinality_inference_fn = cardinality_inference_fn
 
   @retrying.retry(
       retry_on_exception_filter=_is_retryable_absl_status,
@@ -61,7 +69,7 @@ class AsyncSerializeAndExecuteCPPContext(
     compiled_comp = self._compiler_pipeline.compile(comp)
     serialized_comp, _ = value_serialization.serialize_value(
         compiled_comp, comp.type_signature)
-    cardinalities = cardinalities_utils.infer_cardinalities(
+    cardinalities = self._cardinality_inference_fn(
         arg, comp.type_signature.parameter)
 
     try:

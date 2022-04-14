@@ -17,14 +17,21 @@ import asyncio
 
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.execution_contexts import cpp_async_execution_context
+from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 
 
 class SyncSerializeAndExecuteCPPContext(context_base.Context):
   """A synchronous execution context delegating to CPP Executor bindings."""
 
-  def __init__(self, factory, compiler_fn):
+  def __init__(
+      self,
+      factory,
+      compiler_fn,
+      *,
+      cardinality_inference_fn: cardinalities_utils
+      .CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities):
     self._async_execution_context = cpp_async_execution_context.AsyncSerializeAndExecuteCPPContext(
-        factory, compiler_fn)
+        factory, compiler_fn, cardinality_inference_fn=cardinality_inference_fn)
     self._loop = asyncio.new_event_loop()
 
   def invoke(self, comp, arg):

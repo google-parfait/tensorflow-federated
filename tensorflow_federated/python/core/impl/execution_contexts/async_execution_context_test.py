@@ -87,6 +87,47 @@ class AsyncContextInstallationTest(tf.test.TestCase):
           [asyncio.run(single_val_coro),
            asyncio.run(second_val_coro)], [[[1], [1]], [[1, 2], [1, 2]]])
 
+  def test_runs_cardinality_free(self):
+    factory = executor_stacks.local_executor_factory()
+    context = async_execution_context.AsyncExecutionContext(
+        factory, cardinality_inference_fn=(lambda x, y: {}))
+
+    @computations.federated_computation(tf.int32)
+    def identity(x):
+      return x
+
+    with get_context_stack.get_context_stack().install(context):
+      data = 0
+      # This computation is independent of cardinalities
+      val_coro = identity(data)
+      self.assertTrue(asyncio.iscoroutine(val_coro))
+      self.assertEqual(asyncio.run(val_coro), 0)
+
+  def test_raises_cardinality_mismatch(self):
+    factory = executor_stacks.local_executor_factory()
+
+    def _cardinality_fn(x, y):
+      del x, y  # Unused
+      return {placements.CLIENTS: 1}
+
+    context = async_execution_context.AsyncExecutionContext(
+        factory, cardinality_inference_fn=_cardinality_fn)
+
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+
+    @computations.federated_computation(arg_type)
+    def identity(x):
+      return x
+
+    with get_context_stack.get_context_stack().install(context):
+      # This argument conflicts with the value returned by the
+      # cardinality-inference function; we should get an error surfaced.
+      data = [0, 1]
+      val_coro = identity(data)
+      self.assertTrue(asyncio.iscoroutine(val_coro))
+      with self.assertRaises(executors_errors.CardinalityError):
+        asyncio.run(val_coro)
+
 
 if __name__ == '__main__':
   tf.test.main()

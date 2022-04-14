@@ -229,15 +229,23 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
   their arguments have the same cardinalities.
   """
 
-  def __init__(self,
-               executor_fn: executor_factory.ExecutorFactory,
-               compiler_fn: Optional[Callable[[computation_base.Computation],
-                                              Any]] = None):
+  def __init__(
+      self,
+      executor_fn: executor_factory.ExecutorFactory,
+      compiler_fn: Optional[Callable[[computation_base.Computation],
+                                     Any]] = None,
+      *,
+      cardinality_inference_fn: cardinalities_utils
+      .CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities):
     """Initializes an execution context.
 
     Args:
       executor_fn: Instance of `executor_factory.ExecutorFactory`.
       compiler_fn: A Python function that will be used to compile a computation.
+      cardinality_inference_fn: A Python function specifying how to infer
+        cardinalities from arguments (and their associated types). The value
+        returned by this function will be passed to the `create_executor` method
+        of `executor_fn` to construct a `tff.framework.Executor` instance.
     """
     super().__init__()
     py_typecheck.check_type(executor_fn, executor_factory.ExecutorFactory)
@@ -247,6 +255,8 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
       self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
     else:
       self._compiler_pipeline = None
+    py_typecheck.check_callable(cardinality_inference_fn)
+    self._cardinality_inference_fn = cardinality_inference_fn
 
   @retrying.retry(
       retry_on_exception_filter=_is_retryable_error,
@@ -270,7 +280,7 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
     with tracing.span('ExecutionContext', 'Invoke', span=True):
 
       if arg is not None:
-        cardinalities = cardinalities_utils.infer_cardinalities(
+        cardinalities = self._cardinality_inference_fn(
             arg, comp.type_signature.parameter)
       else:
         cardinalities = {}

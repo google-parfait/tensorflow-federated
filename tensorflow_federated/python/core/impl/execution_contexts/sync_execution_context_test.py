@@ -24,8 +24,10 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def _install_executor_in_synchronous_context(executor_factory_instance):
@@ -188,6 +190,24 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       # pylint:enable=no-value-for-parameter
 
     self.assertEqual(result, 5)
+
+  def test_raises_cardinality_mismatch(self):
+    factory = executor_stacks.local_executor_factory()
+
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+
+    @computations.federated_computation(arg_type)
+    def identity(x):
+      return x
+
+    context = sync_execution_context.ExecutionContext(
+        factory, cardinality_inference_fn=lambda x, y: {placements.CLIENTS: 1})
+    with context_stack_impl.context_stack.install(context):
+      # This argument conflicts with the value returned by the
+      # cardinality-inference function; we should get an error surfaced.
+      data = [0, 1]
+      with self.assertRaises(executors_errors.CardinalityError):
+        identity(data)
 
 
 if __name__ == '__main__':

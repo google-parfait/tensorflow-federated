@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
@@ -307,7 +308,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     value = [10, 20]
     type_signature = computation_types.at_clients(tf.int32)
 
-    with self.assertRaises(ValueError):
+    with self.assertRaises(executors_errors.CardinalityError):
       self.run_sync(executor.create_value(value, type_signature))
 
   def test_raises_type_error_with_unexpected_federated_type_at_clients_all_equal(
