@@ -136,34 +136,18 @@ federated learning algorithms, including federated k-means clustering, can be
 found
 [here](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/algorithms/).
 
-### Model and update compression
+### Model update compression
 
-TFF uses the
-[tensor_encoding](https://github.com/tensorflow/model-optimization/tree/master/tensorflow_model_optimization/python/core/internal/tensor_encoding)
-API to enable lossy compression algorithms to reduce communicatation costs
-between the server and clients. For an example of training with server-to-client
-and client-to-server
-[compression using Federated Averaging](https://arxiv.org/abs/1812.07210)
-algorithm, see
-[this experiment](https://github.com/google-research/federated/blob/master/compression/run_experiment.py).
+Lossy compression of model updates can lead to reduced communication costs,
+which in turn can lead to reduced overall training time.
 
-To implement a custom compression algorithm and apply it to the training loop,
-you can:
-
-1.  Implement a new compression algorithm as a subclass of
-    [`EncodingStageInterface`](https://github.com/tensorflow/model-optimization/blob/master/tensorflow_model_optimization/python/core/internal/tensor_encoding/core/encoding_stage.py#L75)
-    or its more general variant,
-    [`AdaptiveEncodingStageInterface`](https://github.com/tensorflow/model-optimization/blob/master/tensorflow_model_optimization/python/core/internal/tensor_encoding/core/encoding_stage.py#L274)
-    following
-    [this example](https://github.com/google-research/federated/blob/master/compression/sparsity.py).
-1.  Construct your new
-    [`Encoder`](https://github.com/tensorflow/model-optimization/blob/master/tensorflow_model_optimization/python/core/internal/tensor_encoding/core/core_encoder.py#L38)
-    and specialize it for
-    [model broadcast](https://github.com/google-research/federated/blob/master/compression/run_experiment.py#L118)
-    or
-    [model update averaging](https://github.com/google-research/federated/blob/master/compression/run_experiment.py#L144).
-1.  Use those objects to build the entire
-    [training computation](https://github.com/google-research/federated/blob/master/compression/run_experiment.py#L247).
+To reproduce a recent [paper](https://arxiv.org/abs/2201.02664), see
+[this research project](https://github.com/google-research/federated/tree/master/compressed_communication).
+To implement a custom compression algorithm, see
+[comparison_methods](https://github.com/google-research/federated/tree/master/compressed_communication/aggregators/comparison_methods)
+in the project for baselines as an example, and
+[TFF Aggregators tutorial](https://www.tensorflow.org/federated/tutorials/custom_aggregators)
+if not already familiar with.
 
 ### Differential privacy
 
