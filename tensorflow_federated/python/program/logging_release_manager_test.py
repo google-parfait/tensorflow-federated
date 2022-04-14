@@ -74,12 +74,11 @@ class LoggingReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
        [1, 2]),
   )
   # pyformat: enable
-  @test_utils.run_sync
-  async def test_release_logs_value(self, value, expected_value):
+  def test_release_logs_value(self, value, expected_value):
     release_mngr = logging_release_manager.LoggingReleaseManager()
 
     with mock.patch('absl.logging.info') as mock_info:
-      await release_mngr.release(value)
+      release_mngr.release(value)
 
       mock_info.assert_called_once()
       call = mock_info.mock_calls[0]
@@ -97,12 +96,11 @@ class LoggingReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
-  @test_utils.run_sync
-  async def test_release_logs_key(self, key):
+  def test_release_logs_key(self, key):
     release_mngr = logging_release_manager.LoggingReleaseManager()
 
     with mock.patch('absl.logging.info') as mock_info:
-      await release_mngr.release(1, key)
+      release_mngr.release(1, key)
 
       mock_info.assert_called_once()
       call = mock_info.mock_calls[0]

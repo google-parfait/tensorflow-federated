@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import os
 import os.path
 import shutil
@@ -118,22 +117,19 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
       ('2', 2),
       ('10', 10),
   )
-  @test_utils.run_sync
-  async def test_returns_versions_with_saved_program_state(self, count):
+  def test_returns_versions_with_saved_program_state(self, count):
     temp_dir = self.create_tempdir()
     for version in range(count):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_', keep_total=0)
 
-    actual_versions = await program_state_mngr.versions()
+    actual_versions = program_state_mngr.versions()
 
     expected_versions = list(range(count))
     self.assertEqual(actual_versions, expected_versions)
 
-  @test_utils.run_sync
-  async def test_returns_versions_with_saved_program_state_and_other_files(
-      self):
+  def test_returns_versions_with_saved_program_state_and_other_files(self):
     temp_dir = self.create_tempdir()
     for version in range(10):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
@@ -141,14 +137,12 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_', keep_total=0)
 
-    actual_versions = await program_state_mngr.versions()
+    actual_versions = program_state_mngr.versions()
 
     expected_versions = list(range(10))
     self.assertEqual(actual_versions, expected_versions)
 
-  @test_utils.run_sync
-  async def test_returns_versions_with_saved_program_state_and_prefixed_files(
-      self):
+  def test_returns_versions_with_saved_program_state_and_prefixed_files(self):
     temp_dir = self.create_tempdir()
     for version in range(10):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
@@ -156,41 +150,38 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_', keep_total=0)
 
-    actual_versions = await program_state_mngr.versions()
+    actual_versions = program_state_mngr.versions()
 
     expected_versions = list(range(10))
     self.assertEqual(actual_versions, expected_versions)
 
-  @test_utils.run_sync
-  async def test_returns_none_if_root_dir_does_not_exist(self):
+  def test_returns_none_if_root_dir_does_not_exist(self):
     temp_dir = self.create_tempdir()
     shutil.rmtree(temp_dir)
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
-    versions = await program_state_mngr.versions()
+    versions = program_state_mngr.versions()
 
     self.assertIsNone(versions)
 
-  @test_utils.run_sync
-  async def test_returns_none_with_no_files(self):
+  def test_returns_none_with_no_files(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
-    versions = await program_state_mngr.versions()
+    versions = program_state_mngr.versions()
 
     self.assertIsNone(versions)
 
-  @test_utils.run_sync
-  async def test_returns_none_with_no_saved_program_state(self):
+  def test_returns_none_with_no_saved_program_state(self):
     temp_dir = self.create_tempdir()
     for _ in range(10):
       tempfile.mkstemp(prefix=os.path.join(temp_dir, 'a_'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
-    versions = await program_state_mngr.versions()
+    versions = program_state_mngr.versions()
 
     self.assertIsNone(versions)
 
@@ -328,16 +319,15 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase, tf.test.TestCase):
        [tf.constant(1), tf.constant(2)]),
   )
   # pyformat: enable
-  @test_utils.run_sync
-  async def test_returns_saved_program_state(self, program_state,
-                                             expected_program_state):
+  def test_returns_saved_program_state(self, program_state,
+                                       expected_program_state):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
-    await program_state_mngr.save(program_state, 1)
+    program_state_mngr.save(program_state, 1)
     structure = program_state
 
-    actual_program_state = await program_state_mngr.load(1, structure)
+    actual_program_state = program_state_mngr.load(1, structure)
 
     if (isinstance(actual_program_state, tf.data.Dataset) and
         isinstance(expected_program_state, tf.data.Dataset)):
@@ -350,68 +340,62 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase, tf.test.TestCase):
       ('1', 1),
       ('2', 2),
   )
-  @test_utils.run_sync
-  async def test_returns_saved_program_state_with_version(self, version):
+  def test_returns_saved_program_state_with_version(self, version):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
     for i in range(3):
-      await program_state_mngr.save(f'state_{i}', i)
+      program_state_mngr.save(f'state_{i}', i)
     structure = 'state'
 
-    actual_program_state = await program_state_mngr.load(version, structure)
+    actual_program_state = program_state_mngr.load(version, structure)
 
     expected_program_state = f'state_{version}'
     self.assertEqual(actual_program_state, expected_program_state)
 
-  @test_utils.run_sync
-  async def test_raises_version_not_found_error_with_no_saved_program_state(
-      self):
+  def test_raises_version_not_found_error_with_no_saved_program_state(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
     with self.assertRaises(
         program_state_manager.ProgramStateManagerStateNotFoundError):
-      await program_state_mngr.load(0, None)
+      _ = program_state_mngr.load(0, None)
 
-  @test_utils.run_sync
-  async def test_raises_version_not_found_error_with_unknown_version(self):
+  def test_raises_version_not_found_error_with_unknown_version(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
-    await program_state_mngr.save('state_1', 1)
+    program_state_mngr.save('state_1', 1)
     structure = 'state'
 
     with self.assertRaises(
         program_state_manager.ProgramStateManagerStateNotFoundError):
-      await program_state_mngr.load(10, structure)
+      program_state_mngr.load(10, structure)
 
-  @test_utils.run_sync
-  async def test_raises_structure_error(self):
+  def test_raises_structure_error(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
-    await program_state_mngr.save('state_1', 1)
+    program_state_mngr.save('state_1', 1)
     structure = []
 
     with self.assertRaises(
         program_state_manager.ProgramStateManagerStructureError):
-      await program_state_mngr.load(1, structure)
+      program_state_mngr.load(1, structure)
 
   @parameterized.named_parameters(
       ('none', None),
       ('str', 'a'),
       ('list', []),
   )
-  @test_utils.run_sync
-  async def test_raises_type_error_with_version(self, version):
+  def test_raises_type_error_with_version(self, version):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
     with self.assertRaises(TypeError):
-      await program_state_mngr.load(version, None)
+      program_state_mngr.load(version, None)
 
 
 class FileProgramStateManagerRemoveTest(parameterized.TestCase):
@@ -421,39 +405,36 @@ class FileProgramStateManagerRemoveTest(parameterized.TestCase):
       ('1', 1),
       ('2', 2),
   )
-  @test_utils.run_sync
-  async def test_removes_saved_program_state_with_version(self, version):
+  def test_removes_saved_program_state_with_version(self, version):
     temp_dir = self.create_tempdir()
     for version in range(3):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
-    await program_state_mngr._remove(version)
+    program_state_mngr._remove(version)
 
     expected_dirs = ['a_0', 'a_1', 'a_2']
     expected_dirs.remove(f'a_{version}')
     self.assertCountEqual(os.listdir(temp_dir), expected_dirs)
 
-  @test_utils.run_sync
-  async def test_removes_saved_program_state_last(self):
+  def test_removes_saved_program_state_last(self):
     temp_dir = self.create_tempdir()
     os.mkdir(os.path.join(temp_dir, 'a_1'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
-    await program_state_mngr._remove(1)
+    program_state_mngr._remove(1)
 
     self.assertCountEqual(os.listdir(temp_dir), [])
 
-  @test_utils.run_sync
-  async def test_noops_with_unknown_version(self):
+  def test_noops_with_unknown_version(self):
     temp_dir = self.create_tempdir()
     os.mkdir(os.path.join(temp_dir, 'a_1'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
-    await program_state_mngr._remove(10)
+    program_state_mngr._remove(10)
 
     self.assertCountEqual(os.listdir(temp_dir), ['a_1'])
 
@@ -462,51 +443,47 @@ class FileProgramStateManagerRemoveTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  @test_utils.run_sync
-  async def test_raises_type_error_with_version(self, version):
+  def test_raises_type_error_with_version(self, version):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
     with self.assertRaises(TypeError):
-      await program_state_mngr._remove(version)
+      program_state_mngr._remove(version)
 
 
 class FileProgramStateManagerRemoveOldProgramStateTest(absltest.TestCase):
 
-  @test_utils.run_sync
-  async def test_does_not_remove_saved_program_state_with_keep_total_0(self):
+  def test_does_not_remove_saved_program_state_with_keep_total_0(self):
     temp_dir = self.create_tempdir()
     for version in range(10):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_', keep_total=0)
 
-    await program_state_mngr._remove_old_program_state()
+    program_state_mngr._remove_old_program_state()
 
     self.assertCountEqual(os.listdir(temp_dir), [f'a_{i}' for i in range(10)])
 
-  @test_utils.run_sync
-  async def test_removes_saved_program_state_with_keep_first_true(self):
+  def test_removes_saved_program_state_with_keep_first_true(self):
     temp_dir = self.create_tempdir()
     for version in range(10):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_', keep_total=3, keep_first=True)
 
-    await program_state_mngr._remove_old_program_state()
+    program_state_mngr._remove_old_program_state()
 
     self.assertCountEqual(os.listdir(temp_dir), ['a_0', 'a_8', 'a_9'])
 
-  @test_utils.run_sync
-  async def test_removes_saved_program_state_with_keep_first_false(self):
+  def test_removes_saved_program_state_with_keep_first_false(self):
     temp_dir = self.create_tempdir()
     for version in range(10):
       os.mkdir(os.path.join(temp_dir, f'a_{version}'))
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_', keep_total=3, keep_first=False)
 
-    await program_state_mngr._remove_old_program_state()
+    program_state_mngr._remove_old_program_state()
 
     self.assertCountEqual(os.listdir(temp_dir), ['a_7', 'a_8', 'a_9'])
 
@@ -559,18 +536,14 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase, tf.test.TestCase):
        [1, 2]),
   )
   # pyformat: enable
-  @test_utils.run_sync
-  async def test_writes_program_state(self, program_state, expected_value):
+  def test_writes_program_state(self, program_state, expected_value):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_', keep_total=0)
 
-    future = asyncio.Future()
-    future.set_result(None)
-    with mock.patch.object(
-        file_utils, 'write_saved_model',
-        return_value=future) as mock_write_saved_model:
-      await program_state_mngr.save(program_state, 1)
+    with mock.patch.object(file_utils,
+                           'write_saved_model') as mock_write_saved_model:
+      program_state_mngr.save(program_state, 1)
 
       mock_write_saved_model.assert_called_once()
       call = mock_write_saved_model.mock_calls[0]
@@ -586,47 +559,41 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase, tf.test.TestCase):
       expected_value = tree.map_structure(_to_list, expected_value)
       self.assertAllEqual(actual_value, expected_value)
 
-  @test_utils.run_sync
-  async def test_removes_saved_program_state(self):
+  def test_removes_saved_program_state(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
-    future = asyncio.Future()
-    future.set_result(None)
     with mock.patch.object(
-        program_state_mngr, '_remove_old_program_state',
-        return_value=future) as mock_remove_old_program_state:
-      await program_state_mngr.save('state_1', 1)
+        program_state_mngr,
+        '_remove_old_program_state') as mock_remove_old_program_state:
+      program_state_mngr.save('state_1', 1)
 
       mock_remove_old_program_state.assert_called_once()
 
-  @test_utils.run_sync
-  async def test_raises_version_already_exists_error_with_existing_version(
-      self):
+  def test_raises_version_already_exists_error_with_existing_version(self):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
-    await program_state_mngr.save('state_1', 1)
+    program_state_mngr.save('state_1', 1)
 
     with self.assertRaises(
         program_state_manager.ProgramStateManagerStateAlreadyExistsError):
-      await program_state_mngr.save('state_1', 1)
+      program_state_mngr.save('state_1', 1)
 
   @parameterized.named_parameters(
       ('none', None),
       ('str', 'a'),
       ('list', []),
   )
-  @test_utils.run_sync
-  async def test_raises_type_error_with_version(self, version):
+  def test_raises_type_error_with_version(self, version):
     temp_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=temp_dir, prefix='a_')
 
     with self.assertRaises(TypeError):
-      await program_state_mngr.save('state', version)
+      program_state_mngr.save('state', version)
 
 
 if __name__ == '__main__':

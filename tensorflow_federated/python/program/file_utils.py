@@ -13,11 +13,9 @@
 # limitations under the License.
 """Utilities for working with file systems."""
 
-import asyncio
-import functools
 import os
 import random
-from typing import Any, Callable, Union
+from typing import Any, Union
 
 import tensorflow as tf
 
@@ -26,23 +24,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 class FileAlreadyExistsError(Exception):
   pass
-
-
-def _create_async_def(fn: Callable[..., Any]) -> Callable[..., Any]:
-  """A decorator for creating async defs from synchronous functions."""
-
-  @functools.wraps(fn)
-  async def wrapper(*args, **kwargs):
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, fn, *args, **kwargs)
-
-  return wrapper
-
-
-exists = _create_async_def(tf.io.gfile.exists)
-listdir = _create_async_def(tf.io.gfile.listdir)
-makedirs = _create_async_def(tf.io.gfile.makedirs)
-rmtree = _create_async_def(tf.io.gfile.rmtree)
 
 
 class _ValueModule(tf.Module):
@@ -57,47 +38,39 @@ class _ValueModule(tf.Module):
     return self._value
 
 
-async def read_saved_model(path: Union[str, os.PathLike]) -> Any:
+def read_saved_model(path: Union[str, os.PathLike]) -> Any:
   """Reads a SavedModel from `path`."""
   py_typecheck.check_type(path, (str, os.PathLike))
 
-  def _read_saved_model(path: Union[str, os.PathLike]) -> Any:
-    if isinstance(path, os.PathLike):
-      path = os.fspath(path)
-    module = tf.saved_model.load(path)
-    return module()
-
-  loop = asyncio.get_running_loop()
-  return await loop.run_in_executor(None, _read_saved_model, path)
+  if isinstance(path, os.PathLike):
+    path = os.fspath(path)
+  module = tf.saved_model.load(path)
+  return module()
 
 
-async def write_saved_model(value: Any,
-                            path: Union[str, os.PathLike],
-                            overwrite: bool = False):
+def write_saved_model(value: Any,
+                      path: Union[str, os.PathLike],
+                      overwrite: bool = False):
   """Writes `value` to `path` using the SavedModel format."""
   py_typecheck.check_type(path, (str, os.PathLike))
   py_typecheck.check_type(overwrite, bool)
 
-  def _write_saved_model(value, path, overwrite):
-    if isinstance(path, os.PathLike):
-      path = os.fspath(path)
+  if isinstance(path, os.PathLike):
+    path = os.fspath(path)
 
-    # Create a temporary directory.
-    temp_path = f'{path}_temp{random.randint(1000, 9999)}'
-    if tf.io.gfile.exists(temp_path):
-      tf.io.gfile.rmtree(temp_path)
-    tf.io.gfile.makedirs(temp_path)
+  # Create a temporary directory.
+  temp_path = f'{path}_temp{random.randint(1000, 9999)}'
+  if tf.io.gfile.exists(temp_path):
+    tf.io.gfile.rmtree(temp_path)
+  tf.io.gfile.makedirs(temp_path)
 
-    # Write to the temporary directory.
-    module = _ValueModule(value)
-    tf.saved_model.save(module, temp_path, signatures={})
+  # Write to the temporary directory.
+  module = _ValueModule(value)
+  tf.saved_model.save(module, temp_path, signatures={})
 
-    # Rename the temporary directory to the final location atomically.
-    if tf.io.gfile.exists(path):
-      if not overwrite:
-        raise FileAlreadyExistsError(f'File already exists for path: {path}')
-      tf.io.gfile.rmtree(path)
-    tf.io.gfile.rename(temp_path, path)
-
-  loop = asyncio.get_running_loop()
-  await loop.run_in_executor(None, _write_saved_model, value, path, overwrite)
+  # Rename the temporary directory to the final location atomically.
+  if tf.io.gfile.exists(path):
+    if not overwrite:
+      raise FileAlreadyExistsError(f'File already exists for path: {path}')
+    tf.io.gfile.rmtree(path)
+  tf.io.gfile.rename(temp_path, path)

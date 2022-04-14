@@ -111,14 +111,13 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
        [('0', 1), ('1', 2)]),
   )
   # pyformat: enable
-  @test_utils.run_sync
-  async def test_writes_value_scalar(self, value, expected_names_and_values):
+  def test_writes_value_scalar(self, value, expected_names_and_values):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      await release_mngr.release(value, 1)
+      release_mngr.release(value, 1)
 
       self.assertEqual(
           len(mock_scalar.mock_calls), len(expected_names_and_values))
@@ -139,14 +138,13 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
        [('', [1, 2, 3])]),
   )
   # pyformat: enable
-  @test_utils.run_sync
-  async def test_writes_value_histogram(self, value, expected_names_and_values):
+  def test_writes_value_histogram(self, value, expected_names_and_values):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
     with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
-      await release_mngr.release(value, 1)
+      release_mngr.release(value, 1)
 
       self.assertEqual(
           len(mock_histogram.mock_calls), len(expected_names_and_values))
@@ -157,8 +155,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
         self.assertEqual(actual_name, expected_name)
         self.assertAllEqual(actual_value, expected_value)
 
-  @test_utils.run_sync
-  async def test_writes_value_scalar_and_histogram(self):
+  def test_writes_value_scalar_and_histogram(self):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
@@ -166,7 +163,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     patched_scalar = mock.patch.object(tf.summary, 'scalar')
     patched_histogram = mock.patch.object(tf.summary, 'histogram')
     with patched_scalar as mock_scalar, patched_histogram as mock_histogram:
-      await release_mngr.release([1, tf.ones([1])], 1)
+      release_mngr.release([1, tf.ones([1])], 1)
 
       mock_scalar.assert_called_once_with('0', 1, step=1)
       mock_histogram.assert_called_once_with('1', tf.ones([1]), step=1)
@@ -178,8 +175,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       ('dict_empty', {}),
       ('tensor_str', tf.constant('a')),
   )
-  @test_utils.run_sync
-  async def test_does_not_write_value(self, value):
+  def test_does_not_write_value(self, value):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
@@ -187,7 +183,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     patch_scalar = mock.patch.object(tf.summary, 'scalar')
     patch_histogram = mock.patch.object(tf.summary, 'histogram')
     with patch_scalar as mock_scalar, patch_histogram as mock_histogram:
-      await release_mngr.release(value, 1)
+      release_mngr.release(value, 1)
 
       mock_scalar.assert_not_called()
       mock_histogram.assert_not_called()
@@ -197,14 +193,13 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       ('0', 0),
       ('1', 1),
   )
-  @test_utils.run_sync
-  async def test_does_not_raise_with_key(self, key):
+  def test_does_not_raise_with_key(self, key):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
     try:
-      await release_mngr.release(1, key)
+      release_mngr.release(1, key)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -213,14 +208,13 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       ('str', 'a'),
       ('list', []),
   )
-  @test_utils.run_sync
-  async def test_raises_type_error_with_key(self, key):
+  def test_raises_type_error_with_key(self, key):
     temp_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=temp_dir)
 
     with self.assertRaises(TypeError):
-      await release_mngr.release(1, key)
+      release_mngr.release(1, key)
 
 
 if __name__ == '__main__':
