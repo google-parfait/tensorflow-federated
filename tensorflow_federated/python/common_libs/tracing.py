@@ -34,7 +34,7 @@ import random
 import sys
 import threading
 import time
-from typing import Any, ContextManager, Dict, Generator, Generic, Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import Any, ContextManager, Dict, Generator, Generic, List, Optional, Tuple, TypeVar, Union
 
 from absl import logging
 
@@ -122,7 +122,7 @@ class TracingProvider(Generic[T], metaclass=abc.ABCMeta):
   def wrap_rpc(self, parent_span_yield: Optional[T]) -> ContextManager[None]:
     """Wrap an RPC call so that it can carry over the `parent_span_yield`."""
     del parent_span_yield
-    return _null_context()
+    return contextlib.nullcontext()
 
   def receive_rpc(self) -> Optional[T]:
     """Unpack `parent_span_yield` from the receiving end of an RPC."""
@@ -438,11 +438,3 @@ def _func_to_class_and_method(fn) -> Tuple[str, str]:
     class_name = module_name.split('.')[-1]
     method_name = fn.__name__
   return class_name, method_name
-
-
-@contextlib.contextmanager
-def _null_context() -> Iterator[None]:
-  # TODO(b/154533346)
-  # This should move to `contextlib.nullcontext` once TFF's minimum
-  # Python version moves up to 3.7,
-  yield None
