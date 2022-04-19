@@ -33,6 +33,7 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import serialization
+from tensorflow_federated.python.learning.models import test_models
 
 # Convenience aliases.
 TensorType = computation_types.TensorType
@@ -390,32 +391,6 @@ class SerializationTest(test_case.TestCase, parameterized.TestCase):
     self.assertNotEmpty(tflite_flatbuffer)
 
 
-def initial_weights():
-  """Returns lists of trainable variables and non-trainable variables."""
-  trainable_variables = (np.asarray([[0.0], [0.0], [0.0]], dtype=np.float32),
-                         np.asarray([0.0], dtype=np.float32))
-  non_trainable_variables = ()
-  return (trainable_variables, non_trainable_variables)
-
-
-@tf.function
-def predict_on_batch(model_weights, x, training):
-  del training  # Unused
-  trainable = model_weights[0]
-  return tf.matmul(x, trainable[0]) + trainable[1]
-
-
-@tf.function
-def forward_pass(model_weights, batch_input, training):
-  predictions = predict_on_batch(model_weights, batch_input[0], training)
-  residuals = predictions - batch_input[1]
-  num_examples = tf.gather(tf.shape(predictions), 0)
-  total_loss = tf.reduce_sum(tf.pow(residuals, 2))
-  average_loss = total_loss / tf.cast(num_examples, tf.float32)
-  return model_lib.BatchOutput(
-      loss=average_loss, predictions=predictions, num_examples=num_examples)
-
-
 def preprocess(ds):
 
   def generate_example(i, t):
@@ -438,8 +413,8 @@ def get_example_batch(dataset):
 
 
 def create_test_functional_model(input_spec):
-  return functional.FunctionalModel(initial_weights(), forward_pass,
-                                    predict_on_batch, input_spec)
+  del input_spec  # Unused.
+  return test_models.build_functional_linear_regression(feature_dim=3)
 
 
 def create_test_keras_functional_model(input_spec):

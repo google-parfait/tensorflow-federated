@@ -69,6 +69,7 @@ py_test(
     deps = [
         ":functional",
         ":serialization",
+        ":test_models",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -80,6 +81,17 @@ py_test(
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_examples",
         "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "test_models",
+    testonly = True,
+    srcs = ["test_models.py"],
+    deps = [
+        ":functional",
+        "//tensorflow_federated/python/learning:model",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
