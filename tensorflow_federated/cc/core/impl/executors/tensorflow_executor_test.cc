@@ -488,11 +488,5 @@ TEST_F(TensorFlowExecutorTest, CallWithComputationId) {
   CheckCallEqualsProto(fn, arg, expected);
 }
 
-TEST_F(TensorFlowExecutorTest, CreateValueArgsIntoSequenceSuggestsPython) {
-  EXPECT_THAT(test_executor_->CreateValue(ArgsIntoSequenceV()),
-              StatusIs(StatusCode::kUnimplemented,
-                       HasSubstr("consider opting into the Python runtime")));
-}
-
 }  // namespace
 }  // namespace tensorflow_federated

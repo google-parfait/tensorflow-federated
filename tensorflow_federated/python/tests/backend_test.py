@@ -498,6 +498,7 @@ class NonDeterministicTest(parameterized.TestCase):
 
   @test_contexts.with_contexts
   def test_computation_called_twice_is_invoked_twice(self):
+
     @tff.tf_computation
     def get_random():
       return tf.random.normal([])

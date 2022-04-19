@@ -72,6 +72,7 @@ class ExecutorValue;
 constexpr char kPlaceholderOp[] = "Placeholder";
 constexpr char kDatasetToGraphOp[] = "DatasetToGraphV2";
 constexpr char kDatasetFromGraphOp[] = "DatasetFromGraph";
+constexpr char kArgsIntoSequenceUri[] = "args_into_sequence";
 
 std::string GetNodeName(absl::string_view tensor_name) {
   absl::string_view::size_type pos = tensor_name.find(':');
@@ -477,11 +478,33 @@ class SequenceTensor {
   tensorflow::Tensor tensor_;
 };
 
+enum class Intrinsic { kArgsIntoSequence };
+
+absl::StatusOr<Intrinsic> IntrinsicFromUri(absl::string_view uri) {
+  if (uri == kArgsIntoSequenceUri) {
+    return Intrinsic::kArgsIntoSequence;
+  } else {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "TensorFlow Executor does not support intrinsic URI: ", uri));
+  }
+}
+
+absl::string_view IntrinsicToUri(Intrinsic intrinsic) {
+  switch (intrinsic) {
+    case Intrinsic::kArgsIntoSequence: {
+      return kArgsIntoSequenceUri;
+    }
+    default: {
+      return "No URI for intrinsic.";
+    }
+  }
+}
+
 // Representation for values inside the TensorFlow Executor.
 class ExecutorValue {
  public:
   // Whether a given `ExecutorValue` is a structure or a single tensor.
-  enum class ValueType { TENSOR, STRUCT, COMPUTATION, SEQUENCE };
+  enum class ValueType { TENSOR, STRUCT, COMPUTATION, SEQUENCE, INTRINSIC };
 
   // Constructs an `ExecutorValue` from a `tensorflow::Tensor`.
   // NOTE: `tensorflow::Tensor` is internally refcounted, so copies of it are
@@ -498,6 +521,10 @@ class ExecutorValue {
   // Constructs a functional `ExecutorValue` from a TensorFlow computation.
   explicit ExecutorValue(std::shared_ptr<Computation> computation)
       : value_(computation) {}
+
+  // Constructs an `ExecutorValue` representing an function built into the
+  // TensorFlowExecutor.
+  explicit ExecutorValue(Intrinsic intrinsic) : value_(intrinsic) {}
 
   // Copy constructor.
   //
@@ -521,6 +548,8 @@ class ExecutorValue {
       return ValueType::COMPUTATION;
     } else if (absl::holds_alternative<SequenceTensor>(value_)) {
       return ValueType::SEQUENCE;
+    } else if (absl::holds_alternative<Intrinsic>(value_)) {
+      return ValueType::INTRINSIC;
     } else {
       return ValueType::STRUCT;
     }
@@ -545,6 +574,8 @@ class ExecutorValue {
   const tensorflow::Tensor& sequence() const {
     return absl::get<SequenceTensor>(value_).as_tensor();
   }
+
+  const Intrinsic intrinsic() const { return absl::get<Intrinsic>(value_); }
 
   const absl::Status Bind(
       const v0::TensorFlow::Binding& shape,
@@ -585,10 +616,44 @@ class ExecutorValue {
                                sequence());
         return absl::OkStatus();
       }
+      case ValueType::INTRINSIC: {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Attempted to bind intrinsic ", IntrinsicToUri(intrinsic()),
+            " as argument to a TensorFlow computation. This is not "
+            "supported."));
+      }
       default:
         return absl::InvalidArgumentError(
             absl::StrCat("Unable to bind unknown value type: ", type()));
     }
+  }
+
+  // Flattens a tensor structure value into flat list of tensors `tensors_out`.
+  absl::Status FlattenTo(std::vector<tensorflow::Tensor>& tensors_out) const {
+    switch (type()) {
+      case ValueType::TENSOR: {
+        tensors_out.push_back(tensor());
+        return absl::OkStatus();
+      }
+      case ValueType::STRUCT: {
+        for (const auto& element : elements()) {
+          TFF_TRY(element.FlattenTo(tensors_out));
+        }
+        return absl::OkStatus();
+      }
+      default: {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Cannot flatten values other than tensor structures, found ",
+            DebugString()));
+      }
+    }
+  }
+
+  // Flattens a tensor structure value into a flat list of tensors.
+  absl::StatusOr<std::vector<tensorflow::Tensor>> Flatten() const {
+    std::vector<tensorflow::Tensor> out;
+    TFF_TRY(FlattenTo(out));
+    return out;
   }
 
   static absl::StatusOr<ExecutorValue> FromTensorsAndBindingStructure(
@@ -638,6 +703,8 @@ class ExecutorValue {
     } else if (absl::holds_alternative<SequenceTensor>(value_)) {
       return absl::StrCat(tensorflow::DataTypeString(tensor().dtype()),
                           tensor().shape().DebugString(), "*");
+    } else if (absl::holds_alternative<Intrinsic>(value_)) {
+      return absl::StrCat("Intrinsic(\"", IntrinsicToUri(intrinsic()), "\")");
     } else {
       auto element_formatter = [](std::string* out, const ExecutorValue& v) {
         absl::StrAppend(out, v.DebugString());
@@ -652,7 +719,7 @@ class ExecutorValue {
 
   absl::variant<tensorflow::Tensor, SequenceTensor,
                 std::shared_ptr<Computation>,
-                std::shared_ptr<std::vector<ExecutorValue>>>
+                std::shared_ptr<std::vector<ExecutorValue>>, Intrinsic>
       value_;
 
   static absl::Status BindKindMismatch(const absl::string_view value_kind,
@@ -712,6 +779,23 @@ absl::StatusOr<ExecutorValue> Computation::Call(
   session.ReturnRental();
   absl::Span<tensorflow::Tensor> slice(outputs);
   return ExecutorValue::FromTensorsAndBindingStructure(output_shape_, &slice);
+}
+
+absl::StatusOr<ExecutorValue> CallIntrinsic(Intrinsic intrinsic,
+                                            absl::optional<ExecutorValue> arg) {
+  switch (intrinsic) {
+    case Intrinsic::kArgsIntoSequence: {
+      return absl::UnimplementedError(
+        "`DatasetFromTensorStructures` is not yet usable in the OSS TFF C++ "
+        "runtime. If you were trying to use `federated_select`, consider "
+        "using either the Google-only version or the Python runtime via "
+        "`tff.backends.natvie.set_local_python_execution_context()`.");
+    }
+    default: {
+      return absl::UnimplementedError(absl::StrCat(
+          "Missing implementation for intrinsic ", IntrinsicToUri(intrinsic)));
+    }
+  }
 }
 
 using ValueFuture = std::shared_future<absl::StatusOr<ExecutorValue>>;
@@ -776,18 +860,9 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
           comp_pb.computation_case()));
     }
     if (comp_pb.has_intrinsic()) {
-      if (comp_pb.intrinsic().uri() == "args_into_sequence") {
-        return absl::UnimplementedError(
-            "`federated_select` simulation is not yet supported in the TFF C++ "
-            "runtime. For `federated_select` support, consider opting into the "
-            "Python runtime using "
-            "`tff.backends.native.set_local_python_execution_context()` (or "
-            "`tff.google.backends.native.set_borg_execution_context(...)` for "
-            "multi-machine uses).");
-      }
-      return absl::InvalidArgumentError(
-          absl::StrCat("TensorFlowExecutor does not support intrinsic ",
-                       comp_pb.intrinsic().uri()));
+      Intrinsic intrinsic =
+          TFF_TRY(IntrinsicFromUri(comp_pb.intrinsic().uri()));
+      return ExecutorValue(intrinsic);
     }
     if (!comp_pb.tensorflow().has_cache_key() ||
         comp_pb.tensorflow().cache_key().id() == 0) {
@@ -893,6 +968,10 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
         return absl::InvalidArgumentError(
             "Cannot materialize uncalled computations");
       }
+      case ExecutorValue::ValueType::INTRINSIC: {
+        return absl::InvalidArgumentError(
+            "Cannot materialize uncalled intrinsics");
+      }
     }
   }
 
@@ -915,13 +994,16 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
       if (argument.has_value()) {
         arg = TFF_TRY(Wait(argument.value()));
       }
-      if (fn.type() != ExecutorValue::ValueType::COMPUTATION) {
+      if (fn.type() == ExecutorValue::ValueType::COMPUTATION) {
+        return fn.computation()->Call(std::move(arg));
+      } else if (fn.type() == ExecutorValue::ValueType::INTRINSIC) {
+        return CallIntrinsic(fn.intrinsic(), std::move(arg));
+      } else {
         return absl::InvalidArgumentError(absl::StrCat(
             "Expected `function` argument to `TensorFlowExecutor::CreateCall` "
-            "to be a computation, but found type ",
+            "to be a computation or intrinsic, but found type ",
             fn.type()));
       }
-      return fn.computation()->Call(std::move(arg));
     });
   }
   absl::StatusOr<ValueFuture> CreateStruct(
