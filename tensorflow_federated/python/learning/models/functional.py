@@ -289,7 +289,7 @@ class KerasFunctionalModelError(Exception):
 
 
 def functional_model_from_keras(
-    keras_model: tf.keras.Model,
+    keras_model: Union[tf.keras.Model, Callable[[], tf.keras.Model]],
     loss_fn: tf.keras.losses.Loss,
     input_spec: Union[Sequence[Any], Mapping[str, Any]],
 ) -> FunctionalModel:
@@ -343,22 +343,26 @@ def functional_model_from_keras(
   #
   # 3. This does not support multiple outputs with different loss functions, or
   #    laywerise regularization losses TODO(b/156629927).
-  for layer in keras_model.layers:
-    # There may be other layers that are problematic, at this time updating the
-    # mean/variance in batchnorm layer is the only known such instance.
-    if isinstance(layer, tf.keras.layers.BatchNormalization):
+  if isinstance(keras_model, tf.keras.Model):
+    for layer in keras_model.layers:
+      # There may be other layers that are problematic, at this time updating
+      # the mean/variance in batchnorm layer is the only known such instance.
+      if isinstance(layer, tf.keras.layers.BatchNormalization):
+        raise KerasFunctionalModelError(
+            'Keras model contains a batch normalization layer, which is '
+            'incompatible with `tff.learning.models.FunctionalModel`. Consider '
+            'using group normalization instead.')
+    if keras_model.non_trainable_variables:
       raise KerasFunctionalModelError(
-          'Keras model contains a batch normalization layer, which is '
-          'incompatible with `tff.learning.models.FunctionalModel`. Consider '
-          'using group normalization instead.')
-  if keras_model.non_trainable_variables:
-    raise KerasFunctionalModelError(
-        'Received a Keras model with non-trainable variables. Keras models with '
-        'non-trainable variables are currently not supported by FunctionalModel'
-        '. Most training algorithms (e.g. Federated Averaging) will not '
-        'aggregate them, and they are not updated locally by the optimizer. '
-        'We can relax this in the future if we have APIs that support updating '
-        'non-trainable varaibles.')
+          'Received a Keras model with non-trainable variables. Keras models with '
+          'non-trainable variables are currently not supported by FunctionalModel'
+          '. Most training algorithms (e.g. Federated Averaging) will not '
+          'aggregate them, and they are not updated locally by the optimizer. '
+          'We can relax this in the future if we have APIs that support updating '
+          'non-trainable variables.')
+  elif not callable(keras_model):
+    raise ValueError('`keras_model` must be a `tf.keras.Model` or a no-arg '
+                     'callable that returns a `tf.keras.Model`.')
 
   # Clone the keras model inside a graph context so that we only get the
   # variables for the layers (otherwise keras adds other non-user variables). We
@@ -366,12 +370,24 @@ def functional_model_from_keras(
   # will be re-initialized from scratch.
   with tf.Graph().as_default() as g:
     with variable_utils.record_variable_creation_scope() as captured_variables:
-      cloned_model = tf.keras.models.clone_model(keras_model)
-      if len(cloned_model.variables) != len(keras_model.variables):
-        raise KerasFunctionalModelError(
-            'The input Keras model is likely sharing variables across layers '
-            'which is unsupported. Cloning the model will duplicate these '
-            'variables and result in unexpected training gradients.')
+      if isinstance(keras_model, tf.keras.Model):
+        try:
+          cloned_model = tf.keras.models.clone_model(keras_model)
+        except RuntimeError as e:
+          raise KerasFunctionalModelError(
+              'Encountered a error converting the Keras model. Often this '
+              'occurs when the `tf.keras.Model` has a layer that receives '
+              'inputs from other layers directly (e.g. shared embeddings).'
+              'To avoid the problem, wrap the `tf.keras.Model` construction in '
+              'a no-arg callable (e.g. lambda) and pass that callable to '
+              '`functional_model_from_keras`') from e
+        if len(cloned_model.variables) != len(keras_model.variables):
+          raise KerasFunctionalModelError(
+              'The input Keras model is likely sharing variables across layers '
+              'which is unsupported. Cloning the model will duplicate these '
+              'variables and result in unexpected training gradients.')
+      else:
+        cloned_model = keras_model()
       # Ensure our cloned model has the same weights as the current model.
       # We'll feed in the current model waits into the palceholders for
       # assignmnet in a session below.
@@ -388,8 +404,12 @@ def functional_model_from_keras(
   # Here we get the initial weights from the incoming keras model in the order
   # they are constructed; and also ensure that the values are set to the
   # incoming model weights rather than their fresh initialization.
+  if isinstance(keras_model, tf.keras.Model):
+    model_for_variables = keras_model
+  else:
+    model_for_variables = keras_model()
   current_model_weights = tf.nest.map_structure(
-      lambda v: v.read_value().numpy(), keras_model.variables)
+      lambda v: v.read_value().numpy(), model_for_variables.variables)
   with tf.compat.v1.Session(graph=g) as sess:
     sess.run(tf.compat.v1.initializers.variables(captured_variables))
     sess.run(
@@ -446,7 +466,10 @@ def functional_model_from_keras(
         return non_trainable.pop(0)
 
     with tf.variable_creator_scope(swap_tensor_parameter_for_variable):
-      variableless_model = tf.keras.models.clone_model(keras_model)
+      if isinstance(keras_model, tf.keras.Model):
+        variableless_model = tf.keras.models.clone_model(keras_model)
+      else:
+        variableless_model = keras_model()
     return variableless_model(x, training)
 
   @tf.function

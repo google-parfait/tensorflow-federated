@@ -428,12 +428,12 @@ class FunctionalTest(tf.test.TestCase):
           input_spec=(tf.TensorSpec(shape=[None, 10]),
                       tf.TensorSpec(shape=[None, 1])))
 
-  def test_keras_model_with_shared_variables_fails(self):
+  def test_keras_layer_capturing_other_layer_fails(self):
 
     class SharedLayer(tf.keras.layers.Layer):
 
       def __init__(self, dense_layer: tf.keras.layers.Dense, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         self._dense_layer = dense_layer
         self.kernel = dense_layer.kernel
         self.bias = dense_layer.bias
@@ -443,7 +443,7 @@ class FunctionalTest(tf.test.TestCase):
 
       def get_config(self):
         config = super().get_config()
-        config['dense_layer'] = self._dense_layer
+        config.update({'dense_layer': self._dense_layer})
         return config
 
     inputs = tf.keras.layers.Input(shape=[1])
@@ -452,6 +452,7 @@ class FunctionalTest(tf.test.TestCase):
     layer2 = SharedLayer(layer1)
     outputs = layer2(y)
     keras_model = tf.keras.Model(inputs=inputs, outputs=outputs)
+
     with self.assertRaisesRegex(functional.KerasFunctionalModelError,
                                 'sharing variables across layers'):
       functional.functional_model_from_keras(
@@ -459,6 +460,39 @@ class FunctionalTest(tf.test.TestCase):
           tf.keras.losses.MeanSquaredError(),
           input_spec=(tf.TensorSpec(shape=[None, 1]),
                       tf.TensorSpec(shape=[None, 1])))
+
+  def test_keras_layer_input_other_layer_fails(self):
+    # A variant of test_keras_layer_capturing_other_layer_fails, but
+    # instead of passing the layer in the construction, it takes the other
+    # layer as an input to `call`.
+
+    class SharedLayer(tf.keras.layers.Layer):
+
+      def call(self, inputs: tf.Tensor,
+               dense_layer: tf.keras.layers.Dense) -> tf.Tensor:
+        return inputs @ dense_layer.kernel + dense_layer.bias
+
+    def create_test_model():
+      inputs = tf.keras.layers.Input(shape=[1])
+      layer1 = tf.keras.layers.Dense(1)
+      y = layer1(inputs)
+      layer2 = SharedLayer()
+      outputs = layer2(y, layer1)
+      return tf.keras.Model(inputs=inputs, outputs=outputs)
+
+    with self.assertRaisesRegex(
+        functional.KerasFunctionalModelError,
+        'has a layer that receives inputs from other layers directly'):
+      functional.functional_model_from_keras(
+          create_test_model(),
+          tf.keras.losses.MeanSquaredError(),
+          input_spec=(tf.TensorSpec(shape=[None, 1]),
+                      tf.TensorSpec(shape=[None, 1])))
+    functional.functional_model_from_keras(
+        create_test_model,
+        tf.keras.losses.MeanSquaredError(),
+        input_spec=(tf.TensorSpec(shape=[None, 1]),
+                    tf.TensorSpec(shape=[None, 1])))
 
 
 if __name__ == '__main__':
