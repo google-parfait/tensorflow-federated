@@ -18,6 +18,8 @@
 # information.
 """Utilities for testing aggregation factories and processes."""
 
+import typing
+
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -51,8 +53,8 @@ class SumPlusOneFactory(factory.UnweightedAggregationFactory):
   def create(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
-
-    py_typecheck.check_type(value_type, factory.ValueType.__args__)
+    type_args = typing.get_args(factory.ValueType)
+    py_typecheck.check_type(value_type, type_args)
 
     @computations.federated_computation()
     def init_fn():

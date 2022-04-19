@@ -20,6 +20,7 @@
 
 import abc
 import collections
+import typing
 from typing import Callable, List, Optional, Tuple, Union
 
 import attr
@@ -596,8 +597,8 @@ def build_model_delta_optimizer_process(
 
   if model_update_aggregation_factory is None:
     model_update_aggregation_factory = mean.MeanFactory()
-  py_typecheck.check_type(model_update_aggregation_factory,
-                          factory.AggregationFactory.__args__)
+  type_args = typing.get_args(factory.AggregationFactory)
+  py_typecheck.check_type(model_update_aggregation_factory, type_args)
   if isinstance(model_update_aggregation_factory,
                 factory.WeightedAggregationFactory):
     aggregation_process = model_update_aggregation_factory.create(

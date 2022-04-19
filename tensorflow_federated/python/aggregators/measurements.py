@@ -19,7 +19,7 @@
 """Aggregation factory for adding custom measurements."""
 
 import inspect
-
+import typing
 from typing import Any, Callable, Dict, Optional
 
 from tensorflow_federated.python.aggregators import factory
@@ -65,8 +65,8 @@ def add_measurements(
   Returns:
     An `AggregationFactory` that reports additional measurements.
   """
-  py_typecheck.check_type(inner_agg_factory,
-                          factory.AggregationFactory.__args__)
+  type_args = typing.get_args(factory.AggregationFactory)
+  py_typecheck.check_type(inner_agg_factory, type_args)
 
   if not (client_measurement_fn or server_measurement_fn):
     raise ValueError('Must specify one or both of `client_measurement_fn` or '
@@ -105,8 +105,9 @@ def add_measurements(
       def create(
           self, value_type: factory.ValueType, weight_type: factory.ValueType
       ) -> aggregation_process.AggregationProcess:
-        py_typecheck.check_type(value_type, factory.ValueType.__args__)
-        py_typecheck.check_type(weight_type, factory.ValueType.__args__)
+        type_args = typing.get_args(factory.ValueType)
+        py_typecheck.check_type(value_type, type_args)
+        py_typecheck.check_type(weight_type, type_args)
 
         inner_agg_process = inner_agg_factory.create(value_type, weight_type)
         init_fn = inner_agg_process.initialize
@@ -142,7 +143,8 @@ def add_measurements(
       def create(
           self, value_type: factory.ValueType
       ) -> aggregation_process.AggregationProcess:
-        py_typecheck.check_type(value_type, factory.ValueType.__args__)
+        type_args = typing.get_args(factory.ValueType)
+        py_typecheck.check_type(value_type, type_args)
 
         inner_agg_process = inner_agg_factory.create(value_type)
         init_fn = inner_agg_process.initialize
