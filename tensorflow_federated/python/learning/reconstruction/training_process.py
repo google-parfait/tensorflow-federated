@@ -47,6 +47,7 @@ Federated Reconstruction: Partially Local Federated Learning
 
 import collections
 import functools
+import typing
 from typing import Callable, List, Optional, Union
 
 import attr
@@ -545,8 +546,8 @@ def _instantiate_aggregation_process(
   """Constructs aggregation process given factory, checking compatibilty."""
   if aggregation_factory is None:
     aggregation_factory = mean.MeanFactory()
-  py_typecheck.check_type(aggregation_factory,
-                          factory.AggregationFactory.__args__)
+  type_args = typing.get_args(factory.AggregationFactory)
+  py_typecheck.check_type(aggregation_factory, type_args)
 
   # We give precedence to unweighted aggregation.
   if isinstance(aggregation_factory, factory.UnweightedAggregationFactory):

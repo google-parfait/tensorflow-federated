@@ -20,6 +20,7 @@
 
 import collections
 import math
+import typing
 from typing import Callable, Optional, Union
 
 import numpy as np
@@ -344,7 +345,8 @@ def _make_wrapper(
           self, value_type: factory.ValueType, weight_type: factory.ValueType
       ) -> aggregation_process.AggregationProcess:
         _check_value_type(value_type)
-        py_typecheck.check_type(weight_type, factory.ValueType.__args__)
+        type_args = typing.get_args(factory.ValueType)
+        py_typecheck.check_type(weight_type, type_args)
 
         inner_agg_process = inner_agg_factory.create(value_type, weight_type)
         clip_fn = make_clip_fn(value_type)
@@ -392,7 +394,8 @@ def _make_wrapper(
 
 
 def _check_value_type(value_type):
-  py_typecheck.check_type(value_type, factory.ValueType.__args__)
+  type_args = typing.get_args(factory.ValueType)
+  py_typecheck.check_type(value_type, type_args)
   if not type_analysis.is_structure_of_floats(value_type):
     raise TypeError(f'All values in provided value_type must be of floating '
                     f'dtype. Provided value_type: {value_type}')

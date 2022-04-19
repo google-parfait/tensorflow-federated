@@ -19,7 +19,9 @@
 """Factory for mean."""
 
 import collections
+import typing
 from typing import Optional
+
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -100,7 +102,8 @@ class MeanFactory(factory.WeightedAggregationFactory):
       self, value_type: factory.ValueType,
       weight_type: factory.ValueType) -> aggregation_process.AggregationProcess:
     _check_value_type(value_type)
-    py_typecheck.check_type(weight_type, factory.ValueType.__args__)
+    type_args = typing.get_args(factory.ValueType)
+    py_typecheck.check_type(weight_type, type_args)
 
     value_sum_process = self._value_sum_factory.create(value_type)
     weight_sum_process = self._weight_sum_factory.create(weight_type)
@@ -228,7 +231,8 @@ class UnweightedMeanFactory(factory.UnweightedAggregationFactory):
 
 
 def _check_value_type(value_type):
-  py_typecheck.check_type(value_type, factory.ValueType.__args__)
+  type_args = typing.get_args(factory.ValueType)
+  py_typecheck.check_type(value_type, type_args)
   if not type_analysis.is_structure_of_floats(value_type):
     raise TypeError(f'All values in provided value_type must be of floating '
                     f'dtype. Provided value_type: {value_type}')
