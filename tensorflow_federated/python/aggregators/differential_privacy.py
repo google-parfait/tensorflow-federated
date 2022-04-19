@@ -19,6 +19,7 @@
 """Factory for aggregations parameterized by TensorFlow Privacy DPQueries."""
 
 import collections
+import typing
 from typing import Collection, Optional, Tuple
 import warnings
 
@@ -312,7 +313,8 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
   def create(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
-    py_typecheck.check_type(value_type, factory.ValueType.__args__)
+    type_args = typing.get_args(factory.ValueType)
+    py_typecheck.check_type(value_type, type_args)
 
     query_initial_state_fn = computations.tf_computation(
         self._query.initial_global_state)

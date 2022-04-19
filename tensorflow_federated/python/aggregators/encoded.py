@@ -19,6 +19,7 @@
 """Factory for aggregations parameterized by tensor_encoding Encoders."""
 
 import collections
+import typing
 from typing import Callable
 
 import tensorflow as tf
@@ -125,7 +126,8 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
   def create(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
-    py_typecheck.check_type(value_type, factory.ValueType.__args__)
+    type_args = typing.get_args(factory.ValueType)
+    py_typecheck.check_type(value_type, type_args)
     encoders = self._encoders_for_value_type(value_type)
     init_fn = _encoded_init_fn(encoders)
     next_fn = _encoded_next_fn(init_fn.type_signature.result, value_type,

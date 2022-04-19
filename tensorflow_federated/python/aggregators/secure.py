@@ -21,6 +21,7 @@
 import collections
 import enum
 import math
+import typing
 from typing import Optional, Union, Set
 
 import numpy as np
@@ -117,7 +118,8 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
     self._symmetric_range = symmetric_range
 
   def create(self, value_type):
-    py_typecheck.check_type(value_type, factory.ValueType.__args__)
+    type_args = typing.get_args(factory.ValueType)
+    py_typecheck.check_type(value_type, type_args)
     if not type_analysis.is_structure_of_integers(value_type):
       raise TypeError('Provided value_type must either be an integer type or'
                       f'a structure of integer types, but found: {value_type}')
@@ -282,7 +284,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         `tff.templates.EstimationProcess`).
       ValueError: If `upper_bound_threshold` is provided as a negative constant.
     """
-    py_typecheck.check_type(upper_bound_threshold, ThresholdEstType.__args__)
+    type_args = typing.get_args(ThresholdEstType)
+    py_typecheck.check_type(upper_bound_threshold, type_args)
     if lower_bound_threshold is not None:
       if not isinstance(lower_bound_threshold, type(upper_bound_threshold)):
         raise TypeError(
@@ -426,7 +429,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     return bounds_fn(state)
 
   def _check_value_type_compatible_with_config_mode(self, value_type):
-    py_typecheck.check_type(value_type, factory.ValueType.__args__)
+    type_args = typing.get_args(factory.ValueType)
+    py_typecheck.check_type(value_type, type_args)
     if not _is_structure_of_single_dtype(value_type):
       raise TypeError(
           f'Expected a type which is a structure containing the same dtypes, '
