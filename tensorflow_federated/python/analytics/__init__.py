@@ -14,6 +14,7 @@
 """Libraries for using Federated Analytics algorithms."""
 
 from tensorflow_federated.python.analytics import data_processing
+from tensorflow_federated.python.analytics import differential_privacy
 from tensorflow_federated.python.analytics import heavy_hitters
 from tensorflow_federated.python.analytics import histogram_processing
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_factory import IbltFactory

@@ -24,6 +24,7 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":data_processing",
+        ":differential_privacy",
         ":histogram_processing",
         "//tensorflow_federated/python/analytics/heavy_hitters",
         "//tensorflow_federated/python/analytics/heavy_hitters/iblt:iblt_factory",
@@ -80,5 +81,23 @@ py_test(
         ":histogram_test_utils",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "differential_privacy",
+    srcs = ["differential_privacy.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "differential_privacy_test",
+    srcs = ["differential_privacy_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":differential_privacy",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
