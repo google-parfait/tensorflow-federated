@@ -48,6 +48,7 @@ from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
@@ -64,6 +65,7 @@ def build_weighted_fed_avg(
                                Callable[[], tf.keras.optimizers.Optimizer]],
     server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
         [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
+    *,
     client_weighting: Optional[
         client_weight_lib.ClientWeighting] = client_weight_lib.ClientWeighting
     .NUM_EXAMPLES,
@@ -72,7 +74,8 @@ def build_weighted_fed_avg(
     metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False
+    use_experimental_simulation_loop: bool = False,
+    model: Optional[functional.FunctionalModel] = None,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 
@@ -121,7 +124,8 @@ def build_weighted_fed_avg(
     model_fn: A no-arg function that returns a `tff.learning.Model`. This method
       must *not* capture TensorFlow tensors or variables and use them. The model
       must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+      the same pre-constructed model each call will result in an error. Cannot
+      be used with `model` argument.
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`.
     server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
@@ -146,16 +150,36 @@ def build_weighted_fed_avg(
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
       simulations.
+    model: A `tff.learning.models.FunctionalModel` to train. Cannot be used with
+      `model_fn` and must be `None` if `model_fn` is not `None`.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
   """
-  py_typecheck.check_callable(model_fn)
+  if model is not None and model_fn is not None:
+    raise ValueError('Must specify only one of `model` and `model_fn`, both '
+                     'were not `None`.')
+  elif model is None and model_fn is None:
+    raise ValueError('Must specify one of `model` and `model_fn`, both were '
+                     '`None`.')
+  if model_fn is not None:
+    py_typecheck.check_callable(model_fn)
+  else:
+    py_typecheck.check_type(model, functional.FunctionalModel)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
 
-  @computations.tf_computation()
-  def initial_model_weights_fn():
-    return model_utils.ModelWeights.from_model(model_fn())
+  if model is not None:
+
+    @computations.tf_computation()
+    def initial_model_weights_fn():
+      return model_utils.ModelWeights(
+          tuple(tf.convert_to_tensor(w) for w in model.initial_weights[0]),
+          tuple(tf.convert_to_tensor(w) for w in model.initial_weights[1]))
+  else:
+
+    @computations.tf_computation()
+    def initial_model_weights_fn():
+      return model_utils.ModelWeights.from_model(model_fn())
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 
@@ -165,8 +189,15 @@ def build_weighted_fed_avg(
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
-  aggregator = model_aggregator.create(model_weights_type.trainable,
+
+  if model is not None:
+    trainable_weights_type, _ = model_weights_type
+    model_update_type = trainable_weights_type
+  else:
+    model_update_type = model_weights_type.trainable
+  aggregator = model_aggregator.create(model_update_type,
                                        computation_types.TensorType(tf.float32))
+
   process_signature = aggregator.next.type_signature
   input_client_value_type = process_signature.parameter[1]
   result_server_value_type = process_signature.result[1]
@@ -179,12 +210,20 @@ def build_weighted_fed_avg(
 
   if metrics_aggregator is None:
     metrics_aggregator = metric_aggregator.sum_then_finalize
-  client_work = model_delta_client_work.build_model_delta_client_work(
-      model_fn=model_fn,
-      optimizer=client_optimizer_fn,
-      client_weighting=client_weighting,
-      metrics_aggregator=metrics_aggregator,
-      use_experimental_simulation_loop=use_experimental_simulation_loop)
+
+  if model is not None:
+    client_work = model_delta_client_work.build_functional_model_delta_client_work(
+        model=model,
+        optimizer=client_optimizer_fn,
+        client_weighting=client_weighting,
+        metrics_aggregator=metrics_aggregator)
+  else:
+    client_work = model_delta_client_work.build_model_delta_client_work(
+        model_fn=model_fn,
+        optimizer=client_optimizer_fn,
+        client_weighting=client_weighting,
+        metrics_aggregator=metrics_aggregator,
+        use_experimental_simulation_loop=use_experimental_simulation_loop)
   finalizer = finalizers.build_apply_optimizer_finalizer(
       server_optimizer_fn, model_weights_type)
   return composers.compose_learning_process(initial_model_weights_fn,

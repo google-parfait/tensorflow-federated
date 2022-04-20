@@ -29,6 +29,7 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import distributors
 
@@ -159,6 +160,29 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
         client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
         model_aggregator=model_update_aggregator.secure_aggregator(
             weighted=False),
+        metrics_aggregator=aggregator.secure_sum_then_finalize)
+    static_assert.assert_not_contains_unsecure_aggregation(
+        learning_process.next)
+
+
+class FunctionalFedAvgTest(test_case.TestCase, parameterized.TestCase):
+  """Tests construction of the FedAvg training process."""
+
+  def test_raises_on_model_and_model_fn(self):
+    with self.assertRaises(ValueError):
+      fed_avg.build_weighted_fed_avg(
+          model_fn=model_examples.LinearRegression,
+          model=test_models.build_functional_linear_regression(),
+          client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1))
+
+  def test_weighted_fed_avg_with_only_secure_aggregation(self):
+    model = test_models.build_functional_linear_regression()
+    learning_process = fed_avg.build_weighted_fed_avg(
+        model_fn=None,
+        model=model,
+        client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1),
+        model_aggregator=model_update_aggregator.secure_aggregator(
+            weighted=True),
         metrics_aggregator=aggregator.secure_sum_then_finalize)
     static_assert.assert_not_contains_unsecure_aggregation(
         learning_process.next)

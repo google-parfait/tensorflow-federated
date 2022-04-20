@@ -6,7 +6,7 @@ py_library(
     name = "models",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/python/learning:__pkg__"],
+    visibility = ["//tensorflow_federated/python/learning:learning_packages"],
     deps = [
         ":functional",
         ":serialization",
@@ -17,6 +17,7 @@ py_library(
     name = "functional",
     srcs = ["functional.py"],
     srcs_version = "PY3",
+    visibility = ["//tensorflow_federated/python/learning:learning_packages"],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/learning:model",
@@ -89,6 +90,7 @@ py_library(
     name = "test_models",
     testonly = True,
     srcs = ["test_models.py"],
+    visibility = ["//tensorflow_federated/python/learning:learning_packages"],
     deps = [
         ":functional",
         "//tensorflow_federated/python/learning:model",

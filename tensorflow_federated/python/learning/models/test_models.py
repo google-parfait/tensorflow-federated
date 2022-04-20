@@ -35,9 +35,9 @@ def build_functional_linear_regression(
       tf.TensorSpec([None, 1], tf.float32),
   )
 
-  initial_trainable_weights = (np.reshape(np.zeros([feature_dim]),
-                                          [3, 1]).astype(np.float32),
-                               np.zeros([1]).astype(np.float32))
+  initial_trainable_weights = (np.reshape(
+      np.zeros([feature_dim]),
+      [feature_dim, 1]).astype(np.float32), np.zeros([1]).astype(np.float32))
   initial_non_trainable_weights = ()
   initial_weights = (initial_trainable_weights, initial_non_trainable_weights)
 
