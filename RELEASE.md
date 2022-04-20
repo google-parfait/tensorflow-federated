@@ -1,3 +1,51 @@
+# Release 0.21.0
+
+## Major Features and Improvements
+
+*   `tff.analytics`
+    *   Added new `tff.analytics.IbltFactory` aggregation factory.
+    *   Added new IBTL tensor encoder/decoder libraries and uses them in
+        `tff.analytics.heavy_hitters.iblt.build_iblt_computation`.
+*   `tff.aggregator`
+    *   Added `as_weighted_aggregator` to the `tff.aggregator.Factory` API.
+*   `tff.learning`
+    *   Improved compilation and execution performance of
+        `tff.learning.metrics.secure_sum_then_finalize` by grouping tensors by
+        DType.
+    *   Added `set_model_weights` method and default implementation to
+        `tff.learning.templates.LearningProcess`.
+    *   Added a new `reset_metrics` attribute to `tff.learning.Model`.
+    *   Added `schedule_learning_rate` to `tff.learning.optimizers`.
+    *   Added new `tff.learning.ddp_secure_aggregator` for Distributed
+        Differential Privacy.
+*   `tff.simulation`
+    *   Added an option to distort train images in the CIFAR-100 baseline task.
+    *   Changed the default sequence length for the Shakespeare baseline task to
+        a more reasonable value.
+*   Core
+    *   Switched runtime to create new RemoteExecutors with different
+        cardinalities, rather than resetting the cardinality in the remote
+        service.
+
+## Breaking Changes
+
+*   Removed support for Python 3.7 and 3.8, TFF supports 3.9 and later.
+*   Removed deprecated attributes `report_local_outputs` and
+    `federated_output_computation` from `tff.learning.Model`
+*   Removed the `ingest` method from `tff.Context`
+
+## Bug Fixes
+
+*   Multiple typos in tests, code comments, and pydoc.
+
+## Known Bugs
+
+*   Sequences (datasets) of SparseTensors don't work on the C++ runtime.
+*   Computations when `CLIENTS` cardinality is zero doesn't work on the Python
+    runtime.
+*   Assigning variables to a Keras model after construction inside a `model_fn`
+    results in a non-deterministic graph.
+
 # Release 0.20.0
 
 ## Major Features and Improvements
