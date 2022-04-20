@@ -275,7 +275,6 @@ py_library(
     srcs = ["model_update_aggregator.py"],
     srcs_version = "PY3",
     deps = [
-        ":debug_measurements",
         "//tensorflow_federated/python/aggregators:differential_privacy",
         "//tensorflow_federated/python/aggregators:distributed_dp",
         "//tensorflow_federated/python/aggregators:encoded",
@@ -294,11 +293,13 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":debug_measurements",
         ":model_update_aggregator",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/mapreduce:form_utils",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
