@@ -14,7 +14,85 @@
 """Concurrency utilities for use with Python `async`."""
 
 import asyncio
+import contextlib
 import sys
+from typing import Callable
+
+from absl import logging
+
+
+async def _log_error(awaitable):
+  try:
+    await awaitable
+  except:  # pylint: disable=bare-except
+    logging.exception("Error running task")
+
+
+async def _then(first, second):
+  await first
+  await second
+
+
+class OrderedTasks():
+  """A group of asynchronous tasks to be run sequentially.
+
+  Newly added awaitables or functions will be added to a new task to be run as
+  soon as all previously-scheduled tasks have completed.
+
+  Any exceptions encountered during the execution of an awaitable or task will
+  be logged, and concurrent or subsequent tasks will continue to run unaffected.
+  """
+
+  def __init__(self):
+
+    async def empty_coroutine():
+      pass
+
+    self._last_task: asyncio.Task = asyncio.create_task(empty_coroutine())
+
+  def add(self, awaitable):
+    """Add an awaitable to run after previously-added tasks have completed."""
+    self._last_task = asyncio.create_task(
+        _then(self._last_task, _log_error(awaitable)))
+
+  def add_all(self, *awaitables):
+    """Add awaitables run concurrently after previous tasks have completed."""
+    awaitables = (_log_error(x) for x in awaitables)
+    gather = asyncio.gather(*awaitables)
+    self._last_task = asyncio.create_task(_then(self._last_task, gather))
+
+  def add_callable(self, function: Callable[[], None]):
+    """Add function to run after previous tasks have completed."""
+    # Save `_last_task` to a variable so that `_then_run` references the
+    # current value of `_last_task`, rather than the value after it is updated.
+    previous = self._last_task
+
+    async def _then_run():
+      await previous
+      try:
+        function()
+      except:  # pylint: disable=bare-except
+        logging.exception("Error running synchronous task")
+
+    self._last_task = asyncio.create_task(_then_run())
+
+  async def wait(self):
+    """Waits for all previously-scheduled tasks to complete."""
+    await self._last_task
+
+  async def aclose(self):
+    """Alias for `wait` to be used with Python 3.10+'s `aclosing` function."""
+    await self.wait()
+
+
+@contextlib.asynccontextmanager
+async def ordered_tasks():
+  """A context manager ensuring that all ordered tasks complete before exit."""
+  tasks = OrderedTasks()
+  try:
+    yield tasks
+  finally:
+    await tasks.wait()
 
 
 class SharedAwaitable():

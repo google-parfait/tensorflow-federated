@@ -26,6 +26,7 @@ py_library(
     name = "async_utils",
     srcs = ["async_utils.py"],
     srcs_version = "PY3",
+    deps = ["@absl_py//absl/logging"],
 )
 
 py_test(
