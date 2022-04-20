@@ -46,7 +46,7 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
   about summary data and how to visualize summary data using TensorBoard.
   """
 
-  def __init__(self, summary_dir: Union[str, os.PathLike]):
+  def __init__(self, summary_dir: Union[str, os.PathLike[str]]):
     """Returns an initialized `tff.program.TensorBoardReleaseManager`.
 
     Args:

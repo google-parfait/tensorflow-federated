@@ -16,7 +16,7 @@ import csv
 import os
 import os.path
 import shutil
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
 from unittest import mock
 
 from absl.testing import absltest
@@ -31,7 +31,8 @@ from tensorflow_federated.python.program import test_utils
 
 
 def _read_values_from_csv(
-    file_path: os.PathLike) -> Tuple[List[str], List[Dict[str, Any]]]:
+    file_path: Union[str, os.PathLike[str]]
+) -> Tuple[List[str], List[Dict[str, Any]]]:
   with tf.io.gfile.GFile(file_path, 'r') as file:
     reader = csv.DictReader(file)
     fieldnames = list(reader.fieldnames)
@@ -39,7 +40,8 @@ def _read_values_from_csv(
   return fieldnames, values
 
 
-def _write_values_to_csv(file_path: os.PathLike, fieldnames: Sequence[str],
+def _write_values_to_csv(file_path: Union[str, os.PathLike[str]],
+                         fieldnames: Sequence[str],
                          values: Iterable[Mapping[str, Any]]):
   with tf.io.gfile.GFile(file_path, 'w') as file:
     writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -50,69 +52,72 @@ def _write_values_to_csv(file_path: os.PathLike, fieldnames: Sequence[str],
 
 class CSVFileReleaseManagerInitTest(parameterized.TestCase):
 
-  def test_creates_file_path(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
-    self.assertFalse(os.path.exists(temp_file))
+  def test_creates_new_file_with_file_path_str(self):
+    file_path = self.create_tempfile()
+    file_path = file_path.full_path
+    os.remove(file_path)
+    self.assertFalse(os.path.exists(file_path))
 
-    file_release_manager.CSVFileReleaseManager(file_path=temp_file)
+    file_release_manager.CSVFileReleaseManager(file_path=file_path)
 
-    self.assertTrue(os.path.exists(temp_file))
+    self.assertTrue(os.path.exists(file_path))
 
-  def test_creates_file_dir(self):
-    temp_dir = self.create_tempdir()
-    shutil.rmtree(temp_dir)
-    self.assertFalse(os.path.exists(temp_dir))
-    temp_file = os.path.join(temp_dir, 'a')
+  def test_creates_new_file_with_file_path_path_like(self):
+    file_path = self.create_tempfile()
+    os.remove(file_path)
+    self.assertFalse(os.path.exists(file_path))
 
-    file_release_manager.CSVFileReleaseManager(file_path=temp_file)
+    file_release_manager.CSVFileReleaseManager(file_path=file_path)
 
-    self.assertTrue(os.path.exists(temp_file))
+    self.assertTrue(os.path.exists(file_path))
+
+  def test_creates_new_dir_with_file_path_str(self):
+    file_path = self.create_tempfile()
+    file_path = file_path.full_path
+    root_dir = os.path.dirname(file_path)
+    shutil.rmtree(root_dir)
+    self.assertFalse(os.path.exists(root_dir))
+
+    file_release_manager.CSVFileReleaseManager(file_path=file_path)
+
+    self.assertTrue(os.path.exists(file_path))
+
+  def test_creates_new_dir_with_file_path_path_like(self):
+    file_path = self.create_tempfile()
+    root_dir = os.path.dirname(file_path)
+    shutil.rmtree(root_dir)
+    self.assertFalse(os.path.exists(root_dir))
+
+    file_release_manager.CSVFileReleaseManager(file_path=file_path)
+
+    self.assertTrue(os.path.exists(file_path))
 
   def test_initializes_with_empty_file(self):
-    temp_file = self.create_tempfile()
-    _write_values_to_csv(file_path=temp_file, fieldnames=['key'], values=[])
-    self.assertTrue(os.path.exists(temp_file))
+    file_path = self.create_tempfile()
+    _write_values_to_csv(file_path=file_path, fieldnames=['key'], values=[])
+    self.assertTrue(os.path.exists(file_path))
 
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     self.assertIsNone(release_mngr._latest_key)
 
   def test_initializes_with_existing_file(self):
-    temp_file = self.create_tempfile()
+    file_path = self.create_tempfile()
     _write_values_to_csv(
-        file_path=temp_file,
+        file_path=file_path,
         fieldnames=['key', 'a', 'b'],
         values=[{
             'key': 1,
             'a': 10,
             'b': 20
         }])
-    self.assertTrue(os.path.exists(temp_file))
+    self.assertTrue(os.path.exists(file_path))
 
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     self.assertEqual(release_mngr._latest_key, 1)
-
-  def test_does_not_raise_type_error_with_file_path_str(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
-
-    try:
-      file_release_manager.CSVFileReleaseManager(file_path=temp_file)
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
-
-  def test_does_not_raise_type_error_with_file_path_path_like(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
-
-    try:
-      file_release_manager.CSVFileReleaseManager(file_path=temp_file)
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -129,12 +134,12 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
       file_release_manager.CSVFileReleaseManager(file_path='')
 
   def test_does_not_raise_type_error_with_save_mode(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
 
     try:
       file_release_manager.CSVFileReleaseManager(
-          file_path=temp_file,
+          file_path=file_path,
           save_mode=file_release_manager.CSVSaveMode.APPEND)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
@@ -147,20 +152,20 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
       ('list', []),
   )
   def test_raises_type_error_with_save_mode(self, save_mode):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
 
     with self.assertRaises(TypeError):
       file_release_manager.CSVFileReleaseManager(
-          file_path=temp_file, save_mode=save_mode)
+          file_path=file_path, save_mode=save_mode)
 
   def test_does_not_raise_type_error_with_key_fieldname(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
 
     try:
       file_release_manager.CSVFileReleaseManager(
-          file_path=temp_file, key_fieldname='z')
+          file_path=file_path, key_fieldname='z')
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -171,25 +176,25 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
       ('list', []),
   )
   def test_raises_type_error_with_key_fieldname(self, key_fieldname):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
 
     with self.assertRaises(TypeError):
       file_release_manager.CSVFileReleaseManager(
-          file_path=temp_file, key_fieldname=key_fieldname)
+          file_path=file_path, key_fieldname=key_fieldname)
 
   def test_raises_value_error_with_key_fieldname_empty(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
 
     with self.assertRaises(ValueError):
       file_release_manager.CSVFileReleaseManager(
-          file_path=temp_file, key_fieldname='')
+          file_path=file_path, key_fieldname='')
 
   def test_raises_incompatible_file_error_with_unknown_key_fieldname(self):
-    temp_file = self.create_tempfile()
+    file_path = self.create_tempfile()
     _write_values_to_csv(
-        file_path=temp_file,
+        file_path=file_path,
         fieldnames=['z', 'a', 'b'],
         values=[{
             'z': 1,
@@ -199,23 +204,23 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
 
     with self.assertRaises(
         file_release_manager.FileReleaseManagerIncompatibleFileError):
-      file_release_manager.CSVFileReleaseManager(file_path=temp_file)
+      file_release_manager.CSVFileReleaseManager(file_path=file_path)
 
   def test_raises_incompatible_file_error_with_unknown_file(self):
-    temp_file = self.create_tempfile()
+    file_path = self.create_tempfile()
 
     with self.assertRaises(
         file_release_manager.FileReleaseManagerIncompatibleFileError):
-      file_release_manager.CSVFileReleaseManager(file_path=temp_file)
+      file_release_manager.CSVFileReleaseManager(file_path=file_path)
 
 
 class CSVFileReleaseManagerReadValuesTest(parameterized.TestCase):
 
   def test_returns_values_from_empty_file(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     fieldnames, values = release_mngr._read_values()
 
@@ -232,11 +237,11 @@ class CSVFileReleaseManagerReadValuesTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_returns_values_from_existing_file(self, fieldnames, values):
-    temp_file = self.create_tempfile()
+    file_path = self.create_tempfile()
     _write_values_to_csv(
-        file_path=temp_file, fieldnames=fieldnames, values=values)
+        file_path=file_path, fieldnames=fieldnames, values=values)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     actual_fieldnames, actual_values = release_mngr._read_values()
 
@@ -257,14 +262,14 @@ class CSVFileReleaseManagerWriteValuesTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_writes_values_to_empty_file(self, fieldnames, values):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     release_mngr._write_values(fieldnames=fieldnames, values=values)
 
-    actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
+    actual_fieldnames, actual_values = _read_values_from_csv(file_path)
     self.assertEqual(actual_fieldnames, fieldnames)
     expected_values = tree.map_structure(str, values)
     self.assertEqual(actual_values, expected_values)
@@ -279,9 +284,9 @@ class CSVFileReleaseManagerWriteValuesTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_writes_values_to_existing_file(self, fieldnames, values):
-    temp_file = self.create_tempfile()
+    file_path = self.create_tempfile()
     _write_values_to_csv(
-        file_path=temp_file,
+        file_path=file_path,
         fieldnames=['key', 'a', 'b'],
         values=[{
             'key': 1,
@@ -289,11 +294,11 @@ class CSVFileReleaseManagerWriteValuesTest(parameterized.TestCase):
             'b': 20
         }])
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     release_mngr._write_values(fieldnames=fieldnames, values=values)
 
-    actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
+    actual_fieldnames, actual_values = _read_values_from_csv(file_path)
     self.assertEqual(actual_fieldnames, fieldnames)
     expected_values = tree.map_structure(str, values)
     self.assertEqual(actual_values, expected_values)
@@ -308,14 +313,14 @@ class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_writes_value_to_empty_file(self, value):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.WRITE)
+        file_path=file_path, save_mode=file_release_manager.CSVSaveMode.WRITE)
 
     release_mngr._write_value(value)
 
-    actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
+    actual_fieldnames, actual_values = _read_values_from_csv(file_path)
     expected_fieldnames = ['key']
     expected_fieldnames.extend(
         [x for x in value.keys() if x not in expected_fieldnames])
@@ -335,19 +340,19 @@ class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_writes_value_to_existing_file(self, value):
-    temp_file = self.create_tempfile()
+    file_path = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']
     existing_value = {'key': 1, 'a': 10, 'b': 20}
     _write_values_to_csv(
-        file_path=temp_file,
+        file_path=file_path,
         fieldnames=existing_fieldnames,
         values=[existing_value])
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.WRITE)
+        file_path=file_path, save_mode=file_release_manager.CSVSaveMode.WRITE)
 
     release_mngr._write_value(value)
 
-    actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
+    actual_fieldnames, actual_values = _read_values_from_csv(file_path)
     expected_fieldnames = existing_fieldnames.copy()
     expected_fieldnames.extend(
         [x for x in value.keys() if x not in expected_fieldnames])
@@ -370,14 +375,14 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_appends_value_to_empty_file(self, value):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.APPEND)
+        file_path=file_path, save_mode=file_release_manager.CSVSaveMode.APPEND)
 
     release_mngr._append_value(value)
 
-    actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
+    actual_fieldnames, actual_values = _read_values_from_csv(file_path)
     expected_fieldnames = ['key']
     expected_fieldnames.extend(
         [x for x in value.keys() if x not in expected_fieldnames])
@@ -397,19 +402,19 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_appends_value_to_existing_file(self, value):
-    temp_file = self.create_tempfile()
+    file_path = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']
     existing_value = {'key': 1, 'a': 10, 'b': 20}
     _write_values_to_csv(
-        file_path=temp_file,
+        file_path=file_path,
         fieldnames=existing_fieldnames,
         values=[existing_value])
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.APPEND)
+        file_path=file_path, save_mode=file_release_manager.CSVSaveMode.APPEND)
 
     release_mngr._append_value(value)
 
-    actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
+    actual_fieldnames, actual_values = _read_values_from_csv(file_path)
     expected_fieldnames = existing_fieldnames.copy()
     expected_fieldnames.extend(
         [x for x in value.keys() if x not in expected_fieldnames])
@@ -423,10 +428,10 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
     self.assertEqual(actual_values, expected_values)
 
   def test_raises_permission_denied_error(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.APPEND)
+        file_path=file_path, save_mode=file_release_manager.CSVSaveMode.APPEND)
 
     with mock.patch.object(csv.DictWriter, 'writerow') as mock_writerow:
       mock_writerow.side_effect = csv.Error()
@@ -443,14 +448,14 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
       ('1', 1),
   )
   def test_removes_values_from_empty_file(self, key):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     release_mngr._remove_values_greater_than(key)
 
-    actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
+    actual_fieldnames, actual_values = _read_values_from_csv(file_path)
     self.assertEqual(actual_fieldnames, ['key'])
     self.assertEqual(actual_values, [])
 
@@ -460,7 +465,7 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
       ('2', 2),
   )
   def test_removes_values_from_existing_file(self, key):
-    temp_file = self.create_tempfile()
+    file_path = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']
     existing_values = [
         {
@@ -475,15 +480,15 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
         },
     ]
     _write_values_to_csv(
-        file_path=temp_file,
+        file_path=file_path,
         fieldnames=existing_fieldnames,
         values=existing_values)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     release_mngr._remove_values_greater_than(key)
 
-    actual_fieldnames, actual_values = _read_values_from_csv(temp_file)
+    actual_fieldnames, actual_values = _read_values_from_csv(file_path)
     if key == 0:
       expected_fieldnames = ['key']
     else:
@@ -499,10 +504,10 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
       ('list', []),
   )
   def test_raises_type_error_with_key(self, key):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     with self.assertRaises(TypeError):
       release_mngr._remove_values_greater_than(key)
@@ -511,10 +516,10 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
 class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
 
   def test_calls_remove_values_greater_than_with_empty_file(self):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     with mock.patch.object(
         release_mngr,
@@ -526,9 +531,9 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
     self.assertEqual(release_mngr._latest_key, 1)
 
   def test_calls_remove_values_greater_than_with_existing_file(self):
-    temp_file = self.create_tempfile()
+    file_path = self.create_tempfile()
     _write_values_to_csv(
-        file_path=temp_file,
+        file_path=file_path,
         fieldnames=['key', 'a', 'b'],
         values=[{
             'key': 1,
@@ -536,7 +541,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
             'b': 20
         }])
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     with mock.patch.object(
         release_mngr,
@@ -554,10 +559,10 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_calls_append_value(self, value, key):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.APPEND)
+        file_path=file_path, save_mode=file_release_manager.CSVSaveMode.APPEND)
 
     with mock.patch.object(release_mngr, '_append_value') as mock_append_value:
       release_mngr.release(value, key)
@@ -583,10 +588,10 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_calls_write_value(self, value, key):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file, save_mode=file_release_manager.CSVSaveMode.WRITE)
+        file_path=file_path, save_mode=file_release_manager.CSVSaveMode.WRITE)
 
     with mock.patch.object(release_mngr, '_write_value') as mock_write_value:
       release_mngr.release(value, key)
@@ -665,14 +670,14 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_writes_value(self, value, expected_value):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     release_mngr.release(value, 1)
 
-    _, actual_value = _read_values_from_csv(temp_file)
+    _, actual_value = _read_values_from_csv(file_path)
     self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
@@ -681,10 +686,10 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
       ('list', []),
   )
   def test_raises_type_error_with_key(self, key):
-    temp_file = self.create_tempfile()
-    os.remove(temp_file)
+    file_path = self.create_tempfile()
+    os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
-        file_path=temp_file)
+        file_path=file_path)
 
     with self.assertRaises(TypeError):
       release_mngr.release({}, key)
@@ -692,32 +697,24 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
 
 class SavedModelFileReleaseManagerInitTest(parameterized.TestCase):
 
-  def test_creates_root_dir(self):
-    temp_dir = self.create_tempdir()
-    shutil.rmtree(temp_dir)
-    self.assertFalse(os.path.exists(temp_dir))
+  def test_creates_new_dir_with_root_dir_str(self):
+    root_dir = self.create_tempdir()
+    root_dir = root_dir.full_path
+    shutil.rmtree(root_dir)
+    self.assertFalse(os.path.exists(root_dir))
 
-    file_release_manager.SavedModelFileReleaseManager(root_dir=temp_dir)
+    file_release_manager.SavedModelFileReleaseManager(root_dir=root_dir)
 
-    self.assertTrue(os.path.exists(temp_dir))
+    self.assertTrue(os.path.exists(root_dir))
 
-  def test_does_not_raise_type_error_with_root_dir_str(self):
-    temp_dir = self.create_tempdir()
+  def test_creates_new_dir_with_root_dir_path_like(self):
+    root_dir = self.create_tempdir()
+    shutil.rmtree(root_dir)
+    self.assertFalse(os.path.exists(root_dir))
 
-    try:
-      file_release_manager.SavedModelFileReleaseManager(
-          root_dir=temp_dir, prefix='a_')
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+    file_release_manager.SavedModelFileReleaseManager(root_dir=root_dir)
 
-  def test_does_not_raise_type_error_with_root_dir_path_like(self):
-    temp_dir = self.create_tempdir()
-
-    try:
-      file_release_manager.SavedModelFileReleaseManager(
-          root_dir=temp_dir, prefix='a_')
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+    self.assertTrue(os.path.exists(root_dir))
 
   @parameterized.named_parameters(
       ('none', None),
@@ -740,11 +737,11 @@ class SavedModelFileReleaseManagerInitTest(parameterized.TestCase):
       ('list', []),
   )
   def test_raises_type_error_with_prefix(self, prefix):
-    temp_dir = self.create_tempdir()
+    root_dir = self.create_tempdir()
 
     with self.assertRaises(TypeError):
       file_release_manager.SavedModelFileReleaseManager(
-          root_dir=temp_dir, prefix=prefix)
+          root_dir=root_dir, prefix=prefix)
 
 
 class SavedModelFileReleaseManagerGetPathForKeyTest(parameterized.TestCase):
@@ -769,9 +766,9 @@ class SavedModelFileReleaseManagerGetPathForKeyTest(parameterized.TestCase):
       ('list', []),
   )
   def test_raises_type_error_with_key(self, key):
-    temp_dir = self.create_tempdir()
+    root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
-        root_dir=temp_dir, prefix='a_')
+        root_dir=root_dir, prefix='a_')
 
     with self.assertRaises(TypeError):
       release_mngr._get_path_for_key(key)
@@ -828,9 +825,9 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
   )
   # pyformat: enable
   def test_writes_value(self, value, expected_value):
-    temp_dir = self.create_tempdir()
+    root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
-        root_dir=temp_dir, prefix='a_')
+        root_dir=root_dir, prefix='a_')
 
     release_mngr.release(value, 1)
 
@@ -858,9 +855,9 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       ('list', []),
   )
   def test_raises_type_error_with_key(self, key):
-    temp_dir = self.create_tempdir()
+    root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
-        root_dir=temp_dir, prefix='a_')
+        root_dir=root_dir, prefix='a_')
 
     with self.assertRaises(TypeError):
       release_mngr.release(1, key)

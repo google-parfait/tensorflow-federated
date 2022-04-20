@@ -38,7 +38,7 @@ class _ValueModule(tf.Module):
     return self._value
 
 
-def read_saved_model(path: Union[str, os.PathLike]) -> Any:
+def read_saved_model(path: Union[str, os.PathLike[str]]) -> Any:
   """Reads a SavedModel from `path`."""
   py_typecheck.check_type(path, (str, os.PathLike))
 
@@ -49,7 +49,7 @@ def read_saved_model(path: Union[str, os.PathLike]) -> Any:
 
 
 def write_saved_model(value: Any,
-                      path: Union[str, os.PathLike],
+                      path: Union[str, os.PathLike[str]],
                       overwrite: bool = False):
   """Writes `value` to `path` using the SavedModel format."""
   py_typecheck.check_type(path, (str, os.PathLike))

@@ -87,7 +87,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
   """
 
   def __init__(self,
-               file_path: Union[str, os.PathLike],
+               file_path: Union[bytes, str, os.PathLike[Union[bytes, str]]],
                save_mode: CSVSaveMode = CSVSaveMode.APPEND,
                key_fieldname: str = 'key'):
     """Returns an initialized `tff.program.CSVFileReleaseManager`.
@@ -105,7 +105,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
       FileReleaseManagerIncompatibleFileError: If the file exists but does not
         contain a fieldname of `key_fieldname`.
     """
-    py_typecheck.check_type(file_path, (str, os.PathLike))
+    py_typecheck.check_type(file_path, (bytes, str, os.PathLike))
     if not file_path:
       raise ValueError('Expected `file_path` to not be an empty string.')
     py_typecheck.check_type(save_mode, CSVSaveMode)
@@ -270,7 +270,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
   """
 
   def __init__(self,
-               root_dir: Union[str, os.PathLike],
+               root_dir: Union[str, os.PathLike[str]],
                prefix: str = 'release_'):
     """Returns an initialized `tff.program.SavedModelFileReleaseManager`.
 

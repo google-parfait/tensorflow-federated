@@ -58,7 +58,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
   """
 
   def __init__(self,
-               root_dir: Union[str, os.PathLike],
+               root_dir: Union[str, os.PathLike[str]],
                prefix: str = 'program_state_',
                keep_total: int = 5,
                keep_first: bool = True):
@@ -116,8 +116,8 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       return None
     return sorted(versions)
 
-  def _get_version_for_path(self, path: Union[str,
-                                              os.PathLike]) -> Optional[int]:
+  def _get_version_for_path(
+      self, path: Union[str, os.PathLike[str]]) -> Optional[int]:
     """Returns the version for the given `path` or `None`.
 
     This method does not assert that the given `path` or the returned version
@@ -126,7 +126,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     Args:
       path: The path to extract the version from.
     """
-    py_typecheck.check_type(path, str, os.PathLike)
+    py_typecheck.check_type(path, (str, os.PathLike))
 
     basename = os.path.basename(path)
     if basename.startswith(self._prefix):
