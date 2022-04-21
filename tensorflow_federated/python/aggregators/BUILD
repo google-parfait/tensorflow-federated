@@ -429,6 +429,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:value_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

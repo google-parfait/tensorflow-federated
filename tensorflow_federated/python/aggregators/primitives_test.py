@@ -253,10 +253,7 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertCountEqual(value, [1.0, 2.0, 5.0])
 
   def test_federated_sample_on_nested_scalars(self):
-    tuple_type = collections.OrderedDict([
-        ('x', tf.float32),
-        ('y', tf.float32),
-    ])
+    tuple_type = collections.OrderedDict(x=tf.float32, y=tf.float32)
 
     @computations.federated_computation(
         computation_types.FederatedType(tuple_type, placements.CLIENTS))
@@ -337,18 +334,15 @@ class FederatedSampleTest(tf.test.TestCase):
         [test_type(x, y),
          test_type(3.4, 5.6),
          test_type(1.0, 1.0)])
-
     self.assertIn(y, result['y'])
     self.assertIn(x, result['x'])
 
   def test_federated_sample_nested_named_tuples(self):
-    tuple_test_type = (
-        collections.OrderedDict([('x', tf.float32), ('y', tf.float32)]))
-    dict_test_type = (
-        computation_types.to_type(
-            collections.OrderedDict([('a', tf.float32), ('b', tf.float32)])))
-    nested_tuple_type = collections.OrderedDict([('tuple_1', tuple_test_type),
-                                                 ('tuple_2', dict_test_type)])
+    tuple_test_type = collections.OrderedDict(x=tf.float32, y=tf.float32)
+    dict_test_type = computation_types.to_type(
+        collections.OrderedDict(a=tf.float32, b=tf.float32))
+    nested_tuple_type = collections.OrderedDict(
+        tuple_1=tuple_test_type, tuple_2=dict_test_type)
     nested_test_type = collections.namedtuple('Nested', ['tuple_1', 'tuple_2'])
 
     @computations.federated_computation(
@@ -362,7 +356,6 @@ class FederatedSampleTest(tf.test.TestCase):
         nested_test_type(tuple_type(1.2, 2.2), dict_type(1.3, 8.8)),
         nested_test_type(tuple_type(-9.1, 3.1), dict_type(1.2, -5.4))
     ])
-
     self.assertIn(1.2, result['tuple_1']['x'])
     self.assertIn(8.8, result['tuple_2']['b'])
 

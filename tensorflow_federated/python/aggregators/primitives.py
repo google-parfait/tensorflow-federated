@@ -18,7 +18,6 @@
 # information.
 """A package of primitive (stateless) aggregations."""
 
-import collections
 import attr
 
 import tensorflow as tf
@@ -30,6 +29,7 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 
 
 def _validate_value_on_clients(value):
@@ -179,17 +179,15 @@ def _zeros_for_sample(member_type):
     A function of the result of zeros to first concatenate.
   """
 
+  def zeros_for_tensor_type(tensor_type):
+    return tf.zeros([0] + tensor_type.shape.dims, tensor_type.dtype)
+
   @computations.tf_computation
   def accumlator_type_fn():
     """Gets the type for the accumulators."""
-    # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
-    if member_type.is_struct():
-      a = structure.map_structure(
-          lambda v: tf.zeros([0] + v.shape.dims, v.dtype), member_type)
-      return _Samples(structure.to_odict(a, True), tf.zeros([0], tf.float32))
-    if member_type.shape:
-      s = [0] + member_type.shape.dims
-    return _Samples(tf.zeros(s, member_type.dtype), tf.zeros([0], tf.float32))
+    accumulator_zeros = type_conversions.structure_from_tensor_type_tree(
+        zeros_for_tensor_type, member_type)
+    return _Samples(accumulator_zeros, tf.zeros([0], tf.float32))
 
   return accumlator_type_fn()
 
@@ -207,26 +205,18 @@ def _get_accumulator_type(member_type):
     i-th index in one corresponds to the i-th index in the other). These two
     lists are used to sample from the accumulators with equal probability.
   """
-  # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
-  if member_type.is_struct():
-    a = structure.map_structure(
-        lambda v: computation_types.TensorType(v.dtype, [None] + v.shape.dims),
-        member_type)
-    return computation_types.StructType(
-        collections.OrderedDict({
-            'accumulators':
-                computation_types.StructType(structure.to_odict(a, True)),
-            'rands':
-                computation_types.TensorType(tf.float32, shape=[None]),
-        }))
-  return computation_types.StructType(
-      collections.OrderedDict({
-          'accumulators':
-              computation_types.TensorType(
-                  member_type.dtype, shape=[None] + member_type.shape.dims),
-          'rands':
-              computation_types.TensorType(tf.float32, shape=[None]),
-      }))
+
+  def add_unknown_first_dim(tensor_type):
+    return computation_types.TensorType(tensor_type.dtype,
+                                        [None] + tensor_type.shape.dims)
+
+  accumulator_type = type_conversions.structure_from_tensor_type_tree(
+      add_unknown_first_dim, member_type)
+  return computation_types.to_type(
+      _Samples(
+          accumulators=accumulator_type,
+          rands=computation_types.TensorType(tf.float32, shape=[None]),
+      ))
 
 
 def federated_sample(value, max_num_samples=100):
@@ -254,53 +244,34 @@ def federated_sample(value, max_num_samples=100):
   accumulator_type = _get_accumulator_type(member_type)
   zeros = _zeros_for_sample(member_type)
 
-  @tf.function
-  def fed_concat_expand_dims(a, b):
-    b = tf.expand_dims(b, axis=0)
-    return tf.concat([a, b], axis=0)
-
-  @tf.function
-  def fed_concat(a, b):
-    return tf.concat([a, b], axis=0)
-
-  @tf.function
-  def fed_gather(value, indices):
-    return tf.gather(value, indices)
-
   def apply_sampling(accumulators, rands):
     size = tf.shape(rands)[0]
     k = tf.minimum(size, max_num_samples)
     indices = tf.math.top_k(rands, k=k).indices
-    # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
-    if member_type.is_struct():
-      return structure.map_structure(lambda v: fed_gather(v, indices),
-                                     accumulators), fed_gather(rands, indices)
-    return fed_gather(accumulators, indices), fed_gather(rands, indices)
+    return tf.nest.map_structure(lambda v: tf.gather(v, indices),
+                                 accumulators), tf.gather(rands, indices)
+
+  def concat_expand_dims(a, b):
+    b = tf.expand_dims(b, axis=0)
+    return tf.concat([a, b], axis=0)
 
   @computations.tf_computation(accumulator_type, value.type_signature.member)
   def accumulate(current, value):
     """Accumulates samples through concatenation."""
-    rands = fed_concat_expand_dims(current.rands, tf.random.uniform(shape=()))
-    # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
-    if member_type.is_struct():
-      accumulators = structure.map_structure(
-          fed_concat_expand_dims, _ensure_structure(current.accumulators),
-          _ensure_structure(value))
-    else:
-      accumulators = fed_concat_expand_dims(current.accumulators, value)
-
+    rands = concat_expand_dims(current.rands, tf.random.uniform(shape=()))
+    accumulators = tf.nest.map_structure(concat_expand_dims,
+                                         current.accumulators, value)
     accumulators, rands = apply_sampling(accumulators, rands)
     return _Samples(accumulators, rands)
 
   @computations.tf_computation(accumulator_type, accumulator_type)
   def merge(a, b):
     """Merges accumulators through concatenation."""
-    # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
-    if accumulator_type.is_struct():
-      samples = structure.map_structure(fed_concat, _ensure_structure(a),
-                                        _ensure_structure(b))
-    else:
-      samples = fed_concat(a, b)
+
+    def zero_axis_concat(a, b):
+      return tf.concat([a, b], axis=0)
+
+    samples = tf.nest.map_structure(zero_axis_concat, a, b)
     accumulators, rands = apply_sampling(samples.accumulators, samples.rands)
     return _Samples(accumulators, rands)
 
@@ -309,10 +280,6 @@ def federated_sample(value, max_num_samples=100):
     return value.accumulators
 
   return intrinsics.federated_aggregate(value, zeros, accumulate, merge, report)
-
-
-def _ensure_structure(obj):
-  return structure.from_container(obj, True)
 
 
 # Lower precision types are not supported to avoid potential hard to discover
