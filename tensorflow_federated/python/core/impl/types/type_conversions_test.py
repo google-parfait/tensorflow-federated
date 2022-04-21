@@ -504,9 +504,7 @@ class TypeFromTensorsTest(test_case.TestCase):
     v1 = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
     v2 = {'bar'}
     d = collections.OrderedDict([('v1', v1), ('v2', v2)])
-    # TODO(b/122081673): Change Exception back to ValueError once TFF moves to
-    # be TF 2.0 only
-    with self.assertRaisesRegex(Exception, 'supported type'):
+    with self.assertRaisesRegex(ValueError, 'supported type'):
       type_conversions.type_from_tensors(d)
 
   def test_with_nested_tensors(self):
