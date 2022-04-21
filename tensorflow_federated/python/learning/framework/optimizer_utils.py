@@ -300,8 +300,6 @@ def _build_one_round_computation(
   # TODO(b/124477628): would be nice not to have the construct a throwaway model
   # here just to get the types. After fully moving to TF2.0 and eager-mode, we
   # should re-evaluate what happens here.
-  # TODO(b/144382142): Keras name uniquification is probably the main reason we
-  # still need this.
   with tf.Graph().as_default():
     whimsy_model_for_metadata = model_fn()
     model_weights = model_utils.ModelWeights.from_model(
