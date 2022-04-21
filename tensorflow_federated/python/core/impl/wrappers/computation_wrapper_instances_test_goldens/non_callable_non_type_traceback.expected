@@ -2,7 +2,7 @@ Traceback (most recent call last):
   File "python/core/impl/wrappers/computation_wrapper.py", in __call__
     provided_types.append(computation_types.to_type(args[0]))
   File "python/core/impl/types/computation_types.py", in to_type
-    py_typecheck.type_string(type(spec))))
+    raise TypeError(
 TypeError: Unable to interpret an argument of type int as a type spec.
 
 During handling of the above exception, another exception occurred:
