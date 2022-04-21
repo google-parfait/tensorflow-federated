@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.impl.context_stack.get_context_stack impor
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts.sync_execution_context import ExecutionContext
 from tensorflow_federated.python.core.impl.executors import executors_errors
+from tensorflow_federated.python.core.impl.executors.cardinalities_utils import merge_cardinalities
 from tensorflow_federated.python.core.impl.executors.cardinality_carrying_base import CardinalityCarrying
 from tensorflow_federated.python.core.impl.executors.data_backend_base import DataBackend
 from tensorflow_federated.python.core.impl.executors.data_descriptor import CardinalityFreeDataDescriptor
@@ -31,6 +32,7 @@ from tensorflow_federated.python.core.impl.executors.data_descriptor import Data
 from tensorflow_federated.python.core.impl.executors.data_executor import DataExecutor
 from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
+from tensorflow_federated.python.core.impl.executors.executor_factory import CardinalitiesType
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_serialization import deserialize_value
 from tensorflow_federated.python.core.impl.executors.executor_serialization import serialize_value
@@ -58,6 +60,7 @@ from tensorflow_federated.python.core.impl.executors.remote_executor_stub import
 from tensorflow_federated.python.core.impl.executors.thread_delegating_executor import ThreadDelegatingExecutor
 from tensorflow_federated.python.core.impl.executors.transforming_executor import TransformingExecutor
 from tensorflow_federated.python.core.impl.tensorflow_context.tensorflow_computation_context import get_session_token
+from tensorflow_federated.python.core.impl.types.placements import PlacementLiteral
 from tensorflow_federated.python.core.impl.types.type_conversions import type_from_tensors
 from tensorflow_federated.python.core.impl.types.type_conversions import type_to_tf_tensor_specs
 from tensorflow_federated.python.core.impl.types.type_serialization import deserialize_type
