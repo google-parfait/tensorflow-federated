@@ -45,9 +45,9 @@ def _get_character_recognition_model(model_id: Union[str,
   """Constructs a `tf.keras.Model` for character recognition."""
   try:
     model_enum = CharacterRecognitionModel(model_id)
-  except ValueError:
+  except ValueError as e:
     raise ValueError('The model argument must be one of {}, found {}'.format(
-        _CHARACTER_RECOGNITION_MODELS, model_id))
+        _CHARACTER_RECOGNITION_MODELS, model_id)) from e
 
   if model_enum == CharacterRecognitionModel.CNN_DROPOUT:
     keras_model = emnist_models.create_conv_dropout_model(

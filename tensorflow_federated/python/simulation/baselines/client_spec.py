@@ -19,6 +19,7 @@ import attr
 
 
 def _check_positive(instance, attribute, value):
+  del instance  # Unused.
   if value <= 0:
     raise ValueError(f'{attribute.name} must be positive. Found {value}.')
 

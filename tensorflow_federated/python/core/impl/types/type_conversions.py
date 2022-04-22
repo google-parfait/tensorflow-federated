@@ -150,9 +150,9 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
         return computation_types.TensorType(
             tf.dtypes.as_dtype(tensor_proto.dtype),
             tf.TensorShape(tensor_proto.tensor_shape))
-      except TypeError as err:
-        raise TypeError('Could not infer the TFF type of {}: {}'.format(
-            py_typecheck.type_string(type(arg)), err))
+      except TypeError as e:
+        raise TypeError('Could not infer the TFF type of {}.'.format(
+            py_typecheck.type_string(type(arg)))) from e
 
 
 def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):

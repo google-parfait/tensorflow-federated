@@ -53,7 +53,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

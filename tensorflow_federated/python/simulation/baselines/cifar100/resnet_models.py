@@ -38,13 +38,13 @@ def _check_iterable_with_positive_ints(structure):
 
 
 class ResidualBlock(enum.Enum):
-  basic = 'basic'
-  bottleneck = 'bottleneck'
+  BASIC = 'basic'
+  BOTTLENECK = 'bottleneck'
 
 
 class NormLayer(enum.Enum):
-  group_norm = 'group_norm'
-  batch_norm = 'batch_norm'
+  GROUP_NORM = 'group_norm'
+  BATCH_NORM = 'batch_norm'
 
 
 def _norm_relu(input_tensor, norm):
@@ -62,9 +62,9 @@ def _norm_relu(input_tensor, norm):
   else:
     channel_axis = 1
 
-  if norm is NormLayer.group_norm:
+  if norm is NormLayer.GROUP_NORM:
     x = group_norm.GroupNormalization(axis=channel_axis)(input_tensor)
-  elif norm is NormLayer.batch_norm:
+  elif norm is NormLayer.BATCH_NORM:
     x = tf.keras.layers.BatchNormalization(
         axis=channel_axis,
         momentum=BATCH_NORM_DECAY,
@@ -182,9 +182,9 @@ def _shortcut(input_tensor, residual, norm):
         kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(
             shortcut)
 
-    if norm is NormLayer.group_norm:
+    if norm is NormLayer.GROUP_NORM:
       shortcut = group_norm.GroupNormalization(axis=channel_axis)(shortcut)
-    elif norm is NormLayer.batch_norm:
+    elif norm is NormLayer.BATCH_NORM:
       shortcut = tf.keras.layers.BatchNormalization(
           axis=channel_axis,
           momentum=BATCH_NORM_DECAY,
@@ -322,13 +322,13 @@ def _residual_block(input_tensor,
 def create_resnet(
     input_shape: Tuple[int, int, int],
     num_classes: int = 10,
-    residual_block: ResidualBlock = ResidualBlock.bottleneck,
+    residual_block: ResidualBlock = ResidualBlock.BOTTLENECK,
     repetitions: Optional[List[int]] = None,
     initial_filters: int = 64,
     initial_strides: Tuple[int, int] = (2, 2),
     initial_kernel_size: Tuple[int, int] = (7, 7),
     initial_max_pooling: bool = True,
-    norm_layer: NormLayer = NormLayer.group_norm) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
   """Creates a ResNet v2 model with batch or group normalization.
 
   Instantiates the architecture from http://arxiv.org/pdf/1603.05027v2.pdf.
@@ -378,9 +378,9 @@ def create_resnet(
   if num_classes < 1:
     raise ValueError('num_classes must be a positive integer.')
 
-  if residual_block is ResidualBlock.basic:
+  if residual_block is ResidualBlock.BASIC:
     block_fn = _basic_block
-  elif residual_block is ResidualBlock.bottleneck:
+  elif residual_block is ResidualBlock.BOTTLENECK:
     block_fn = _bottleneck_block
   else:
     raise ValueError('residual_block must be of type `ResidualBlock`.')
@@ -451,7 +451,7 @@ def create_resnet(
 def create_resnet18(
     input_shape: Tuple[int, int, int],
     num_classes: int,
-    norm_layer: NormLayer = NormLayer.group_norm) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
   """Creates a ResNet-18 with basic residual blocks.
 
   Args:
@@ -468,7 +468,7 @@ def create_resnet18(
   return create_resnet(
       input_shape,
       num_classes,
-      residual_block=ResidualBlock.basic,
+      residual_block=ResidualBlock.BASIC,
       repetitions=[2, 2, 2, 2],
       norm_layer=norm_layer)
 
@@ -476,7 +476,7 @@ def create_resnet18(
 def create_resnet34(
     input_shape: Tuple[int, int, int],
     num_classes: int,
-    norm_layer: NormLayer = NormLayer.group_norm) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
   """Creates a ResNet-34 with basic residual blocks.
 
   Args:
@@ -493,7 +493,7 @@ def create_resnet34(
   return create_resnet(
       input_shape,
       num_classes,
-      residual_block=ResidualBlock.basic,
+      residual_block=ResidualBlock.BASIC,
       repetitions=[3, 4, 6, 3],
       norm_layer=norm_layer)
 
@@ -501,7 +501,7 @@ def create_resnet34(
 def create_resnet50(
     input_shape: Tuple[int, int, int],
     num_classes: int,
-    norm_layer: NormLayer = NormLayer.group_norm) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
   """Creates a ResNet-50 model with bottleneck residual blocks.
 
   Args:
@@ -518,7 +518,7 @@ def create_resnet50(
   return create_resnet(
       input_shape,
       num_classes,
-      residual_block=ResidualBlock.bottleneck,
+      residual_block=ResidualBlock.BOTTLENECK,
       repetitions=[3, 4, 6, 3],
       norm_layer=norm_layer)
 
@@ -526,7 +526,7 @@ def create_resnet50(
 def create_resnet101(
     input_shape: Tuple[int, int, int],
     num_classes: int,
-    norm_layer: NormLayer = NormLayer.group_norm) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
   """Creates a ResNet-101 model with bottleneck residual blocks.
 
   Args:
@@ -543,7 +543,7 @@ def create_resnet101(
   return create_resnet(
       input_shape,
       num_classes,
-      residual_block=ResidualBlock.bottleneck,
+      residual_block=ResidualBlock.BOTTLENECK,
       repetitions=[3, 4, 23, 3],
       norm_layer=norm_layer)
 
@@ -551,7 +551,7 @@ def create_resnet101(
 def create_resnet152(
     input_shape: Tuple[int, int, int],
     num_classes: int,
-    norm_layer: NormLayer = NormLayer.group_norm) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
   """Creates a ResNet-152 model with bottleneck residual blocks.
 
   Args:
@@ -568,6 +568,6 @@ def create_resnet152(
   return create_resnet(
       input_shape,
       num_classes,
-      residual_block=ResidualBlock.bottleneck,
+      residual_block=ResidualBlock.BOTTLENECK,
       repetitions=[3, 8, 36, 3],
       norm_layer=norm_layer)

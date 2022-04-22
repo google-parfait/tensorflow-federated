@@ -15,7 +15,6 @@
 import collections
 
 from absl import flags
-from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import emnist
@@ -26,7 +25,7 @@ EXPECTED_ELEMENT_TYPE = collections.OrderedDict(
     pixels=tf.TensorSpec(shape=(28, 28), dtype=tf.float32))
 
 
-class EMNISTTest(tf.test.TestCase, absltest.TestCase):
+class EmnistTest(tf.test.TestCase):
 
   def test_get_synthetic(self):
     client_data = emnist.get_synthetic()

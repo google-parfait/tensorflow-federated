@@ -14,7 +14,6 @@
 """Base class for TFF test cases."""
 from typing import List, Set
 
-from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -29,7 +28,7 @@ def _filter_node_list_to_ops(nodedefs: List[tf.compat.v1.NodeDef],
   return found_ops
 
 
-class TestCase(tf.test.TestCase, absltest.TestCase):
+class TestCase(tf.test.TestCase):
   """Base class for TensroFlow Federated tests."""
 
   def setUp(self):
@@ -105,6 +104,7 @@ class TestCase(tf.test.TestCase, absltest.TestCase):
 
   def assert_graph_does_not_contain_ops(self, graphdef: tf.compat.v1.GraphDef,
                                         forbidden_ops: Set[str]):
+    """Asserts that `graphdef` does not contain `forbidden_ops`."""
     found_ops = _filter_node_list_to_ops(graphdef.node, forbidden_ops)
     if found_ops:
       self.fail(

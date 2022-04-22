@@ -45,7 +45,7 @@ class _AsyncFromSyncIterator(object):
     try:
       return next(self._iter)
     except StopIteration:
-      raise StopAsyncIteration
+      raise StopAsyncIteration  # pylint: disable=raise-missing-from
 
 
 class _SyncFromAsyncIterable(object):
@@ -111,10 +111,10 @@ class _SequenceFromPayload(_Sequence):
     try:
       iter(payload)
       self._payload = payload
-    except Exception as err:
+    except Exception as e:
       raise NotImplementedError(
           'Unrecognized type of payload: {}: returned {} from iter()'.format(
-              py_typecheck.type_string(type(payload)), str(err)))
+              py_typecheck.type_string(type(payload)), str(e))) from e
 
   async def compute(self):
     return self._payload

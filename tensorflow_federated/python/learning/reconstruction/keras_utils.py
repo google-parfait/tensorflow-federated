@@ -19,7 +19,7 @@
 """Utilities for constructing reconstruction models from Keras models."""
 
 import collections
-from typing import Iterable, List
+from typing import Any, Iterable, List
 
 import tensorflow as tf
 
@@ -222,7 +222,8 @@ class MeanLossMetric(tf.keras.metrics.Mean):
 
 
 def read_metric_variables(
-    metrics: List[tf.keras.metrics.Metric]) -> collections.OrderedDict:
+    metrics: List[tf.keras.metrics.Metric]
+) -> collections.OrderedDict[str, Any]:
   """Reads values from Keras metric variables."""
   metric_variables = collections.OrderedDict()
   for metric in metrics:

@@ -98,20 +98,20 @@ def check_weights_gradients_match(weights, gradients):
   try:
     tf.nest.assert_same_structure(weights, gradients, check_types=True)
     tf.nest.map_structure(_check_shape_dtype_match, weights, gradients)
-  except (TypeError, ValueError):
+  except (TypeError, ValueError) as e:
     # Raises a more informative error message specific for optimizers.
     raise ValueError(
         'Provided weights and gradients must be collections of tensors of the '
         'same structure and the tensors must have the same shapes and dtypes.\n'
         f'Provided weights: {weights}\n'
-        f'Provided gradients: {gradients}')
+        f'Provided gradients: {gradients}') from e
 
 
 def check_weights_state_match(weights, state, name):
   try:
     tf.nest.assert_same_structure(state, weights, check_types=True)
     tf.nest.map_structure(_check_shape_dtype_match, weights, state)
-  except (TypeError, ValueError):
+  except (TypeError, ValueError) as e:
     # Raises a more informative error message.
     raise ValueError(
         f'Provided {name} and weigths do not match. The {name} term in '
@@ -120,7 +120,7 @@ def check_weights_state_match(weights, state, name):
         f'possible reason is that the `initialize` method was invoked with '
         f'`specs` not matching the weights being optimized.\n'
         f'Provided {name}: {state}\n'
-        f'Provided weights: {weights}')
+        f'Provided weights: {weights}') from e
 
 
 def handle_indexed_slices_gradients(gradients):

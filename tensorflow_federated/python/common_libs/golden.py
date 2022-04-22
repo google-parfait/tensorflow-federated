@@ -105,8 +105,8 @@ def traceback_string(exc_type, exc_value, tb) -> str:
   return without_linenumber
 
 
-def check_raises_traceback(filename: str,
-                           exception) -> contextlib.AbstractContextManager:
+def check_raises_traceback(
+    filename: str, exception) -> contextlib.AbstractContextManager[None]:
   """Check for `exception` to be raised, generating a golden traceback."""
   # Note: does not use `@contextlib.contextmanager` because that adds
   # this function to the traceback.

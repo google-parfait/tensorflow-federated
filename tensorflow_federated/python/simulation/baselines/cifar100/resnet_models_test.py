@@ -119,14 +119,14 @@ class ResNetConstructionTest(tf.test.TestCase):
     batch_resnet = resnet_models.create_resnet(
         input_shape=(32, 32, 3),
         num_classes=10,
-        norm_layer=resnet_models.NormLayer.batch_norm)
+        norm_layer=resnet_models.NormLayer.BATCH_NORM)
     self.assertIsInstance(batch_resnet, tf.keras.Model)
 
   def test_resnet_constructs_with_group_norm(self):
     group_resnet = resnet_models.create_resnet(
         input_shape=(32, 32, 3),
         num_classes=10,
-        norm_layer=resnet_models.NormLayer.group_norm)
+        norm_layer=resnet_models.NormLayer.GROUP_NORM)
     self.assertIsInstance(group_resnet, tf.keras.Model)
 
   def test_basic_block_has_fewer_parameters_than_bottleneck(self):
@@ -135,11 +135,11 @@ class ResNetConstructionTest(tf.test.TestCase):
     basic_resnet = resnet_models.create_resnet(
         input_shape,
         num_classes,
-        residual_block=resnet_models.ResidualBlock.basic)
+        residual_block=resnet_models.ResidualBlock.BASIC)
     bottleneck_resnet = resnet_models.create_resnet(
         input_shape,
         num_classes,
-        residual_block=resnet_models.ResidualBlock.bottleneck)
+        residual_block=resnet_models.ResidualBlock.BOTTLENECK)
 
     self.assertLess(basic_resnet.count_params(),
                     bottleneck_resnet.count_params())

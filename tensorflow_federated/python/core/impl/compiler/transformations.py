@@ -860,6 +860,6 @@ def force_align_and_split_by_intrinsics(
   try:
     tree_analysis.check_has_unique_names(before)
     tree_analysis.check_has_unique_names(after)
-  except:
-    raise ValueError(f'nonunique names in result of splitting\n{comp}')
+  except tree_analysis.NonuniqueNameError as e:
+    raise ValueError(f'nonunique names in result of splitting\n{comp}') from e
   return before, after

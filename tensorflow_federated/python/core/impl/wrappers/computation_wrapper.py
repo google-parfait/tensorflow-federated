@@ -70,6 +70,7 @@ def _wrap_concrete(fn_name: Optional[str],
                    parameter_type,
                    unpack=None) -> computation_impl.ConcreteComputation:
   """Wraps with `wrapper_fn` given the provided `parameter_type`."""
+  del unpack  # Unused.
   generator = wrapper_fn(parameter_type, fn_name)
   arg = next(generator)
   try:
@@ -446,8 +447,9 @@ class ComputationWrapper(object):
         # may have forgotten to `lambda` wrap a value.
         try:
           provided_types.append(computation_types.to_type(args[0]))
-        except TypeError:
-          raise TypeError(f'Expected a function or a type, found {args[0]}.')
+        except TypeError as e:
+          raise TypeError(
+              f'Expected a function or a type, found {args[0]}.') from e
         if len(args) > 1:
           provided_types.extend(map(computation_types.to_type, args[1:]))
       return functools.partial(self.__call__, tff_internal_types=provided_types)

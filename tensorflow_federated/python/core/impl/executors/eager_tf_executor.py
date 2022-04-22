@@ -147,11 +147,10 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
     raise TypeError(
         'Caught exception trying to prune graph `{g}` with '
         'feeds {feeds} and fetches {fetches}. This indicates that these '
-        'names may not refer to tensors in the graph. .\nException: {e}'.format(
+        'names may not refer to tensors in the graph.'.format(
             g=import_graph,
             feeds=input_tensor_names,
-            fetches=output_tensor_names,
-            e=e))
+            fetches=output_tensor_names)) from e
   return wrapped_fn
 
 

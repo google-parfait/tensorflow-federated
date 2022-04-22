@@ -19,7 +19,7 @@
 """Define a template for a stateful process that produces metrics."""
 
 import collections
-from typing import Optional
+from typing import Any, Optional
 
 import attr
 import tensorflow as tf
@@ -139,7 +139,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
 
 
 def chain_measured_processes(
-    measured_processes: collections.OrderedDict) -> MeasuredProcess:
+    measured_processes: collections.OrderedDict[str, Any]) -> MeasuredProcess:
   """Creates a composition of multiple `tff.templates.MeasuredProcess`es.
 
   Composing `MeasuredProcess`es is a chaining process in which the output of the
@@ -227,7 +227,7 @@ def chain_measured_processes(
 
 
 def concatenate_measured_processes(
-    measured_processes: collections.OrderedDict) -> MeasuredProcess:
+    measured_processes: collections.OrderedDict[str, Any]) -> MeasuredProcess:
   """Creates a concatenation of multiple `tff.templates.MeasuredProcess`es.
 
   For example, given `y = f(x)` and `z = g(y)`, this produces a new

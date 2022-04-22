@@ -707,7 +707,7 @@ def count_tensors_in_type(
     type_spec: computation_types.Type,
     tensor_filter: Optional[Callable[[computation_types.TensorType],
                                      bool]] = None
-) -> collections.OrderedDict:
+) -> collections.OrderedDict[str, Any]:
   """Counts tensors and fully-specified elements under `type_spec`.
 
   Args:

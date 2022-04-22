@@ -49,9 +49,9 @@ def _get_resnet_model(model_id: Union[str, ResnetModel],
   """Constructs a `tf.keras.Model` for digit recognition."""
   try:
     model_enum = ResnetModel(model_id)
-  except ValueError:
+  except ValueError as e:
     raise ValueError('The model argument must be one of {}, found {}'.format(
-        model, ResnetModel))
+        model, ResnetModel)) from e
 
   if model_enum == ResnetModel.RESNET18:
     keras_model_fn = resnet_models.create_resnet18

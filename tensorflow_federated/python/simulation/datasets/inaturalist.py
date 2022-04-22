@@ -274,12 +274,13 @@ def load_data(
     os.mkdir(cache_dir)
   try:
     return _load_data_from_cache(cache_dir, split)
-  except Exception:  # pylint: disable=broad-except:
+  except Exception as e:  # pylint: disable=broad-except:
     if not image_dir:
-      raise ValueError('image_dir cannot be empty or none.')
+      raise ValueError('image_dir cannot be empty or none.') from e
     if not os.path.isdir(image_dir):
       logger.error('Image directory %s does not exist', image_dir)
-      raise ValueError('%s does not exist or is not a directory' % image_dir)
+      raise ValueError('%s does not exist or is not a directory' %
+                       image_dir) from e
     logger.info('Start to download the images for the training set.')
     tf.keras.utils.get_file(
         'train_val_images.tar.gz',

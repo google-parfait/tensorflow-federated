@@ -147,7 +147,6 @@ py_test(
     deps = [
         ":emnist",
         "@absl_py//absl/flags",
-        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

@@ -15,12 +15,11 @@
 
 import collections
 import os
+import sqlite3
 import tempfile
 from typing import Callable, List, Mapping
 
 from absl import logging
-
-import sqlite3
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import client_data
@@ -179,7 +178,6 @@ def save_to_sql_client_data(
           f'and must not be nested, found {key}:{val} instead.')
 
   serializer = _build_serializer(example_element_spec)
-  parser = _build_parser(example_element_spec)
 
   with sqlite3.connect(tmp_database_filepath) as con:
     test_setup_queries = [

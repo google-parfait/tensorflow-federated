@@ -13,12 +13,12 @@
 # limitations under the License.
 """Module for utilites for downloading datasets and caching them locally."""
 
+import lzma
 import os
 from typing import Optional
 import urllib
 import urllib.parse
 
-import lzma
 import tensorflow as tf
 import tqdm
 

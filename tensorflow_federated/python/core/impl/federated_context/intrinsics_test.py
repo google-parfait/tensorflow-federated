@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import itertools
 import warnings
 
 from absl.testing import parameterized
@@ -606,10 +605,17 @@ class FederatedZipTest(parameterized.TestCase, IntrinsicTestBase):
         ]))
     self.assert_types_identical(mixed_result.type_signature, expected)
 
-  @parameterized.named_parameters([
-      ('test_n_' + str(n) + '_m_' + str(m), n, m)
-      for n, m in itertools.product([1, 2, 3], [1, 2, 3])
-  ])
+  @parameterized.named_parameters(
+      ('n_1_m_1', 1, 1),
+      ('n_1_m_2', 1, 2),
+      ('n_1_m_3', 1, 3),
+      ('n_2_m_1', 2, 1),
+      ('n_2_m_2', 2, 2),
+      ('n_2_m_3', 2, 3),
+      ('n_3_m_1', 3, 1),
+      ('n_3_m_2', 3, 2),
+      ('n_3_m_3', 3, 3),
+  )
   def test_federated_zip_n_tuple_mixed_args(self, n, m):
     tuple_fed_type = computation_types.at_clients((tf.int32, tf.int32))
     single_fed_type = computation_types.at_clients(tf.int32)

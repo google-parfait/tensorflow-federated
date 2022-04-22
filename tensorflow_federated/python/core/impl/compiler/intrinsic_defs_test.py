@@ -18,27 +18,26 @@ from absl.testing import parameterized
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 
 
-def _get_intrinsic_names():
-  return [
-      name for name in dir(intrinsic_defs)
-      if isinstance(getattr(intrinsic_defs, name), intrinsic_defs.IntrinsicDef)
-  ]
+def _get_intrinsic_named_parameters():
+
+  def _predicate(obj):
+    return isinstance(obj, intrinsic_defs.IntrinsicDef)
+
+  objects = [getattr(intrinsic_defs, x) for x in dir(intrinsic_defs)]
+  intrinsics = filter(_predicate, objects)
+  return [(x.name, x) for x in intrinsics]
 
 
 class IntrinsicDefsTest(parameterized.TestCase):
 
-  @parameterized.named_parameters(*[
-      (name.lower(), name) for name in _get_intrinsic_names()
-  ])
-  def test_names_match_those_in_module(self, name):
-    self.assertEqual(getattr(intrinsic_defs, name).name, name)
+  @parameterized.named_parameters(*_get_intrinsic_named_parameters())
+  def test_names_match_those_in_module(self, intrinsic):
+    self.assertEqual(intrinsic, getattr(intrinsic_defs, intrinsic.name))
 
   def test_uris_are_unique(self):
-    uris_found = set()
-    for name in _get_intrinsic_names():
-      uri = getattr(intrinsic_defs, name).uri
-      self.assertNotIn(uri, uris_found)
-      uris_found.add(uri)
+    uris = set([x.uri for _, x in _get_intrinsic_named_parameters()])
+    expected_length = len(_get_intrinsic_named_parameters())
+    self.assertLen(uris, expected_length)
 
   @parameterized.named_parameters(
       ('federated_broadcast', 'FEDERATED_BROADCAST', '(T@SERVER -> T@CLIENTS)'),

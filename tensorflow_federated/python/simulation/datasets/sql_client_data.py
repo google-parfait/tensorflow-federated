@@ -13,10 +13,10 @@
 # limitations under the License.
 """Implementation of `ClientData` backed by an SQL database."""
 
+import sqlite3
 from typing import Iterator, Optional
 
 from absl import logging
-import sqlite3
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck

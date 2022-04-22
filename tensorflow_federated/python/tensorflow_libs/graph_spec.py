@@ -19,6 +19,7 @@ import tensorflow as tf
 
 
 def _check_names_are_strings(instance, attribute, value):
+  del instance  # Unused.
   for name in value:
     if not isinstance(name, str):
       raise TypeError('Each entry in {} must be of string type; '
