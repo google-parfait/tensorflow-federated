@@ -152,11 +152,16 @@ def state_with_new_model_weights(
     of the iterative process.
   """
   py_typecheck.check_type(server_state, ServerState)
-  leaf_types = (int, float, np.ndarray, tf.Tensor, np.number)
+  tensor_leaf_types = (int, float, bytes, np.ndarray, tf.Tensor, np.number)
+  scalar_leaf_types = (int, float, bytes)
 
   def assert_weight_lists_match(old_value, new_value):
     """Assert two flat lists of ndarrays or tensors match."""
-    if isinstance(new_value, leaf_types) and isinstance(old_value, leaf_types):
+    if isinstance(new_value, scalar_leaf_types) and isinstance(
+        old_value, scalar_leaf_types):
+      return
+    elif isinstance(new_value, tensor_leaf_types) and isinstance(
+        old_value, tensor_leaf_types):
       if (old_value.dtype != new_value.dtype or
           old_value.shape != new_value.shape):
         raise TypeError('Element is not the same tensor type. old '
