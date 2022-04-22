@@ -67,7 +67,7 @@ py_test(
     name = "hierarchical_histogram_lib_test",
     srcs = ["hierarchical_histogram_lib_test.py"],
     python_version = "PY3",
-    shard_count = 4,
+    shard_count = 6,
     srcs_version = "PY3",
     deps = [
         ":hierarchical_histogram_lib",

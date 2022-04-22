@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
@@ -56,7 +57,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_server_measurement_fn_traceable_by_federated_computation(
       self, value_type):
     _, server_measurement_fn = (
-        debug_measurements.build_aggregator_measurement_fns())
+        debug_measurements._build_aggregator_measurement_fns())
     input_type = computation_types.at_server(value_type)
 
     @computations.federated_computation(input_type)
@@ -78,7 +79,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_unweighted_client_measurement_fn_traceable_by_federated_computation(
       self, value_type):
-    client_measurement_fn, _ = debug_measurements.build_aggregator_measurement_fns(
+    client_measurement_fn, _ = debug_measurements._build_aggregator_measurement_fns(
         weighted_aggregator=False)
     input_type = computation_types.at_clients(value_type)
 
@@ -101,7 +102,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_weighted_client_measurement_fn_traceable_by_federated_computation(
       self, value_type):
-    client_measurement_fn, _ = debug_measurements.build_aggregator_measurement_fns(
+    client_measurement_fn, _ = debug_measurements._build_aggregator_measurement_fns(
         weighted_aggregator=True)
     input_type = computation_types.at_clients(value_type)
     weights_type = computation_types.at_clients(tf.float32)
@@ -116,9 +117,9 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
     type_signature.result.check_assignable_from(CLIENT_MEASUREMENTS_OUTPUT_TYPE)
 
   @parameterized.named_parameters(
-      ('server_update1', [-3.0, 4.0, 0.0], 4.0, 5.0, -3.0),
-      ('server_update2', [0.0], 0.0, 0.0, 0.0),
-      ('server_update3', {
+      ('server_update_float32_1', [-3.0, 4.0, 0.0], 4.0, 5.0, -3.0),
+      ('server_update_float32_2', [0.0], 0.0, 0.0, 0.0),
+      ('server_update_float32_3', {
           'a': tf.constant([1.0, -1.0]),
           'b': tf.constant(2.0),
       }, 2.0, tf.math.sqrt(6.0), -1.0),
@@ -126,7 +127,27 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_correctness_of_server_update_statistics(self, server_update,
                                                    expected_max, expected_norm,
                                                    expected_min):
-    actual_server_statistics = debug_measurements.calculate_server_update_statistics(
+    actual_server_statistics = debug_measurements._calculate_server_update_statistics(
+        server_update)
+    expected_server_statistics = collections.OrderedDict(
+        server_update_max=expected_max,
+        server_update_norm=expected_norm,
+        server_update_min=expected_min)
+    self.assertAllClose(actual_server_statistics, expected_server_statistics)
+
+  @parameterized.named_parameters(
+      ('server_update_mixed_float16_float32_1',
+       [-3.0, tf.cast(4.0, tf.float16), 0.0], 4.0, 5.0, -3.0),
+      ('server_update_mixed_float16_float32_2', {
+          'a': tf.constant([1.0, -1.0]),
+          'b': tf.constant(tf.cast(2.0, tf.float16)),
+      }, 2.0, tf.math.sqrt(6.0), -1.0),
+      ('server_update_mixed_float64_float32_1',
+       [-3.0, tf.cast(4, tf.float64), 0.0], 4.0, 5.0, -3.0),
+  )
+  def test_correctness_of_server_update_statistics_mixed_dtypes(
+      self, server_update, expected_max, expected_norm, expected_min):
+    actual_server_statistics = debug_measurements._calculate_server_update_statistics_mixed_dtype(
         server_update)
     expected_server_statistics = collections.OrderedDict(
         server_update_max=expected_max,
@@ -143,7 +164,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
     n = tf.cast(len(distribution), dtype=tf.float32)
     expected_value = tf.math.reduce_mean(distribution)
     expected_value_squared = tf.math.reduce_mean(tf.constant(distribution)**2)
-    unbiased_std_dev = debug_measurements.calculate_unbiased_std_dev(
+    unbiased_std_dev = debug_measurements._calculate_unbiased_std_dev(
         expected_value, expected_value_squared, n, n)
     biased_std_dev = tf.math.reduce_std(distribution)
     correct_unbiased_std_dev = tf.math.sqrt(tf.math.divide_no_nan(
@@ -163,7 +184,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
         computation_types.at_clients(tf.float32),
         computation_types.at_clients(tf.float32))
     def compute_client_statistics(client_updates, client_weights):
-      return debug_measurements.calculate_client_update_statistics(
+      return debug_measurements._calculate_client_update_statistics(
           client_updates, client_weights)
 
     actual_client_statistics = compute_client_statistics(
@@ -180,10 +201,10 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(actual_client_statistics, expected_client_statistics)
 
   @parameterized.named_parameters(
-      ('distribution1', [1.0, 3.0, 0.0], [2.0, 3.0, 1.0]),
-      ('distribution2', [-1.0], [5.0]),
-      ('distribution3', [2.0, -2.0, 2.0], [6.0, 7.0, 4.0]),
-      ('distribution4', [1.0, 2.0, -3.0], [1.0, 1.0, 0.0]),
+      ('distribution_float32_1', [1.0, 3.0, 0.0], [2.0, 3.0, 1.0]),
+      ('distribution_float32_2', [-1.0], [5.0]),
+      ('distribution_float32_3', [2.0, -2.0, 2.0], [6.0, 7.0, 4.0]),
+      ('distribution_float32_4', [1.0, 2.0, -3.0], [1.0, 1.0, 0.0]),
   )
   def test_correctness_of_weighted_client_update_statistics(
       self, client_updates, client_weights):
@@ -192,7 +213,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
         computation_types.at_clients(tf.float32),
         computation_types.at_clients(tf.float32))
     def compute_client_statistics(client_updates, client_weights):
-      return debug_measurements.calculate_client_update_statistics(
+      return debug_measurements._calculate_client_update_statistics(
           client_updates, client_weights)
 
     actual_client_statistics = compute_client_statistics(
@@ -216,6 +237,87 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
     expected_client_statistics = collections.OrderedDict(
         average_client_norm=expected_norm, std_dev_client_norm=unbiased_std_dev)
     self.assertAllClose(actual_client_statistics, expected_client_statistics)
+
+  @parameterized.named_parameters(
+      ('distribution_float16',
+       [np.float16(1.0), np.float16(3.0),
+        np.float16(2.0)], [2.0, 3.0, 1.0], tf.float16),
+      ('distribution_float64',
+       [np.float64(123), np.float64(234),
+        np.float64(456)], [6.0, 7.0, 4.0], tf.float64),
+  )
+  def test_correctness_of_weighted_client_update_statistics_mixed_dtype(
+      self, client_updates, client_weights, client_type_spec):
+
+    @computations.federated_computation(
+        computation_types.at_clients(client_type_spec),
+        computation_types.at_clients(tf.float32))
+    def compute_client_statistics(client_updates, client_weights):
+      return debug_measurements._calculate_client_update_statistics_mixed_dtype(
+          client_updates, client_weights)
+
+    actual_client_statistics = compute_client_statistics(
+        client_updates, client_weights)
+
+    client_updates = tf.cast(tf.constant(client_updates), tf.float32)
+
+    client_weights = tf.constant(client_weights)
+    weights_sum = tf.math.reduce_sum(client_weights)
+    weights_squared_sum = tf.math.reduce_sum(client_weights**2)
+    expected_norm = tf.math.divide_no_nan(
+        tf.math.reduce_sum(tf.math.abs(client_updates) * client_weights),
+        weights_sum)
+    expected_norm_squared = tf.math.divide_no_nan(
+        tf.math.reduce_sum(client_updates**2 * client_weights), weights_sum)
+
+    biased_variance = expected_norm_squared - expected_norm**2
+    unbiased_variance = tf.math.divide_no_nan(
+        weights_sum**2, weights_sum**2 - weights_squared_sum) * biased_variance
+    unbiased_std_dev = tf.math.sqrt(unbiased_variance)
+
+    expected_client_statistics = collections.OrderedDict(
+        average_client_norm=expected_norm, std_dev_client_norm=unbiased_std_dev)
+    self.assertAllClose(actual_client_statistics, expected_client_statistics)
+
+  @parameterized.named_parameters(
+      ('distribution_float64',
+       [np.float64(2**63 - 1),
+        np.float64(2**63),
+        np.float64(2**63 + 1)], [2.0, 3.0, 1.0], tf.float64),)
+  def test_inf_error_in_client_update_statistics(self, client_updates,
+                                                 client_weights,
+                                                 client_type_spec):
+
+    @computations.federated_computation(
+        computation_types.at_clients(client_type_spec),
+        computation_types.at_clients(tf.float32))
+    def compute_client_statistics(client_updates, client_weights):
+      return debug_measurements._calculate_client_update_statistics_mixed_dtype(
+          client_updates, client_weights)
+
+    actual_client_statistics = compute_client_statistics(
+        client_updates, client_weights)
+
+    self.assertTrue(
+        tf.math.is_inf(actual_client_statistics['std_dev_client_norm']))
+
+  @parameterized.named_parameters(
+      ('distribution_int32', [np.int32(123),
+                              np.int32(234),
+                              np.int32(345)], [2.0, 3.0, 1.0], tf.int32),)
+  def test_type_error_in_client_update_statistics_with_int32(
+      self, client_updates, client_weights, client_type_spec):
+
+    with self.assertRaises(TypeError):
+
+      @computations.federated_computation(
+          computation_types.at_clients(client_type_spec),
+          computation_types.at_clients(tf.float32))
+      def compute_client_statistics(client_updates, client_weights):
+        return debug_measurements._calculate_client_update_statistics_mixed_dtype(
+            client_updates, client_weights)
+
+      compute_client_statistics(client_updates, client_weights)
 
   def test_add_measurements_to_weighted_aggregation_factory_types(self):
     mean_factory = mean.MeanFactory()
