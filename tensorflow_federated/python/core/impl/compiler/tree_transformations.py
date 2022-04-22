@@ -18,7 +18,7 @@
 # information.
 """A library of transformation functions for ASTs."""
 
-from typing import Tuple
+from typing import FrozenSet, Tuple
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
@@ -408,3 +408,12 @@ def transform_tf_call_ops_to_disable_grappler(comp):
 def transform_tf_add_ids(comp):
   """Adds unique IDs to each TensorFlow subcomputations."""
   return _apply_transforms(comp, compiled_computation_transforms.AddUniqueIDs())
+
+
+def check_disallowed_ops(
+    comp: building_blocks.ComputationBuildingBlock,
+    disallowed_op_names: FrozenSet[str]) -> TransformReturnType:
+  """Raises error on disallowed ops in any Tensorflow computation."""
+  return _apply_transforms(
+      comp,
+      compiled_computation_transforms.RaiseOnDisallowedOp(disallowed_op_names))

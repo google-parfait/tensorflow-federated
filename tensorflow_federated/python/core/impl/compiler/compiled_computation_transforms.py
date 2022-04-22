@@ -19,6 +19,7 @@
 """Holds library of transformations for on compiled computations."""
 
 import ctypes
+from typing import FrozenSet, Tuple
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -142,6 +143,37 @@ class DisableCallOpGrappler(transformation_utils.TransformSpec):
         comp.proto)
     return building_blocks.CompiledComputation(
         new_comp_proto, type_signature=comp.type_signature), True
+
+
+class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
+  """Identity transformation that raises an error if a disallowed op is found.
+
+  This tranverses Tensorflow compiled computations searching for ops that have
+  been disallowed. If a disallowed op is found, raises a
+  `DisallowedOpInTensorFlowComputationError`. Otherwise if no disalloed ops are
+  found, the original computation is returned.
+
+  This `transformation_utils.TransformSpec` does not alter the TFF structure of
+  the computations on which it is called.
+  """
+
+  def __init__(self, disallowed_op_names: FrozenSet[str]):
+    self._disallowed_op_names = disallowed_op_names
+
+  def should_transform(self,
+                       comp: building_blocks.ComputationBuildingBlock) -> bool:
+    return (comp.is_compiled_computation() and
+            comp.proto.WhichOneof('computation') == 'tensorflow')
+
+  def transform(
+      self, comp: building_blocks.ComputationBuildingBlock
+  ) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+    if not self.should_transform(comp):
+      return comp, False
+    py_typecheck.check_type(comp, building_blocks.CompiledComputation)
+    tensorflow_computation_transformations.check_no_disallowed_ops(
+        comp.proto, self._disallowed_op_names)
+    return comp, False
 
 
 class AddUniqueIDs(transformation_utils.TransformSpec):

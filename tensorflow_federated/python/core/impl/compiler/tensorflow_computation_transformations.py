@@ -19,6 +19,7 @@
 """A library of transformation functions for tensorflow computation."""
 
 import itertools
+from typing import FrozenSet
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -74,3 +75,40 @@ def disable_grappler_for_partitioned_calls(proto):
       result=original_tf.result)
   new_proto = pb.Computation(type=proto.type, tensorflow=tf_block)
   return new_proto
+
+
+class DisallowedOpInTensorFlowComputationError(Exception):
+  """Error raised when a TensorFlow computation contains a disallowed op."""
+
+
+def check_no_disallowed_ops(proto: pb.Computation,
+                            disallowed_op_names: FrozenSet[str]):
+  """Checks the TensorFlow computation for disallowed ops.
+
+  Args:
+    proto: Instance of `pb.Computation` with the `tensorflow` field populated.
+    disallowed_op_names: Set of disallowed op names.
+
+  Raises:
+    DisallowedOpInTensorFlowComputationError: If the computation contains a
+      disallowed op.
+  """
+  py_typecheck.check_type(proto, pb.Computation)
+  computation_oneof = proto.WhichOneof('computation')
+  if computation_oneof != 'tensorflow':
+    raise TypeError('`prune_tensorflow_proto` only accepts `Computation` '
+                    'protos of the "tensorflow" variety; you have passed '
+                    'one of variety {}.'.format(computation_oneof))
+  tensorflow_pb = proto.tensorflow
+  graph_def = serialization_utils.unpack_graph_def(tensorflow_pb.graph_def)
+  all_nodes = itertools.chain(graph_def.node,
+                              *[f.node_def for f in graph_def.library.function])
+  found_disallowed_op_names = set()
+  for node in all_nodes:
+    if node.op in disallowed_op_names:
+      found_disallowed_op_names.add(node.op)
+
+  if found_disallowed_op_names:
+    found_disallowed_op_names_str = ', '.join(found_disallowed_op_names)
+    raise DisallowedOpInTensorFlowComputationError(
+        f'Found disallowed ops: {found_disallowed_op_names_str}')

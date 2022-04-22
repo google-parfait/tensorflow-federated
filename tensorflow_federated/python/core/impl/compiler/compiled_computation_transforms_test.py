@@ -19,6 +19,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import compiled_computation_transforms
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_transformations
 from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 
@@ -186,6 +187,42 @@ class AddUniqueIDsTest(test_case.TestCase):
       self.assertNotEqual(
           first_transformed_comp.proto.tensorflow.cache_key.id,
           different_transformed_comp.proto.tensorflow.cache_key.id)
+
+
+class RaiseOnDisallowedOpTest(test_case.TestCase):
+
+  def test_should_transform_tf_computation(self):
+    tuple_type = computation_types.TensorType(tf.int32)
+    compiled_computation = building_block_factory.create_compiled_identity(
+        tuple_type)
+    self.assertTrue(
+        compiled_computation_transforms.RaiseOnDisallowedOp(
+            frozenset()).should_transform(compiled_computation))
+
+  def test_should_not_transform_non_compiled_computations(self):
+    reference = building_blocks.Reference('x', tf.int32)
+    self.assertFalse(
+        compiled_computation_transforms.RaiseOnDisallowedOp(
+            frozenset()).should_transform(reference))
+
+  def test_transform_no_disallowed_ops(self):
+    tuple_type = computation_types.TensorType(tf.int32)
+    compiled_computation = building_block_factory.create_compiled_identity(
+        tuple_type)
+    disallowed_op_names = frozenset(['ShardedFilename'])
+    _, mutated = compiled_computation_transforms.RaiseOnDisallowedOp(
+        disallowed_op_names).transform(compiled_computation)
+    self.assertFalse(mutated)
+
+  def test_transform_disallowed_ops(self):
+    tuple_type = computation_types.TensorType(tf.int32)
+    compiled_computation = building_block_factory.create_compiled_identity(
+        tuple_type)
+    disallowed_op_names = frozenset(['Identity'])
+    with self.assertRaises(tensorflow_computation_transformations
+                           .DisallowedOpInTensorFlowComputationError):
+      compiled_computation_transforms.RaiseOnDisallowedOp(
+          disallowed_op_names).transform(compiled_computation)
 
 
 if __name__ == '__main__':
