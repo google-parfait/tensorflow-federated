@@ -99,23 +99,6 @@ tff_cc_library_with_tf_deps(
 )
 
 tff_cc_library_with_tf_deps(
-    name = "mock_data_backend",
-    testonly = True,
-    hdrs = ["mock_data_backend.h"],
-    deps = [
-        ":data_backend",
-        ":protobuf_matchers",
-        "//tensorflow_federated/proto/v0:computation_cc_proto",
-        "//tensorflow_federated/proto/v0:executor_cc_proto",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:span",
-        "@com_google_googletest//:gtest",
-    ],
-)
-
-tff_cc_library_with_tf_deps(
     name = "data_executor",
     srcs = ["data_executor.cc"],
     hdrs = ["data_executor.h"],
@@ -181,6 +164,73 @@ tff_cc_test_with_tf_deps(
     ],
 )
 
+tff_cc_library_with_tf_runtime_deps(
+    name = "dataset_from_tensor_structures",
+    srcs = ["dataset_from_tensor_structures.cc"],
+    hdrs = ["dataset_from_tensor_structures.h"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/cc:array_ops",
+        "@org_tensorflow//tensorflow/cc:const_op",
+        "@org_tensorflow//tensorflow/cc:cc_ops",
+        "@org_tensorflow//tensorflow/cc:ops",
+        "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:graph",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+    deps = [
+        ":session_provider",
+        ":status_macros",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+tff_cc_test_with_tf_deps(
+    name = "dataset_from_tensor_structures_test",
+    srcs = ["dataset_from_tensor_structures_test.cc"],
+    args = [
+        "--reduce_graph_path",
+        "$(location structural_reduce_test.pbtxt)",
+    ],
+    data = ["structural_reduce_test.pbtxt"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:tensorflow",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+    deps = [
+        ":dataset_from_tensor_structures",
+        ":session_provider",
+        ":status_matchers",
+        ":value_test_utils",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "@com_google_absl//absl/flags:flag",
+    ],
+)
+
+tff_cc_library_with_tf_deps(
+    name = "executor",
+    srcs = ["executor.cc"],
+    hdrs = ["executor.h"],
+    tf_deps = ["@org_tensorflow//tensorflow/core/profiler/lib:traceme"],
+    deps = [
+        ":status_macros",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 tff_pybind_extension_with_tf_deps(
     name = "executor_bindings",
     srcs = ["executor_bindings.cc"],
@@ -211,26 +261,6 @@ tff_pybind_extension_with_tf_deps(
         "@pybind11_abseil//pybind11_abseil:absl_casters",
         "@pybind11_abseil//pybind11_abseil:status_casters",
         "@pybind11_protobuf//pybind11_protobuf:wrapped_proto_caster",
-    ],
-)
-
-tff_cc_library_with_tf_deps(
-    name = "executor",
-    srcs = ["executor.cc"],
-    hdrs = ["executor.h"],
-    tf_deps = ["@org_tensorflow//tensorflow/core/profiler/lib:traceme"],
-    deps = [
-        ":status_macros",
-        "//tensorflow_federated/proto/v0:computation_cc_proto",
-        "//tensorflow_federated/proto/v0:executor_cc_proto",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/synchronization",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -352,6 +382,71 @@ tff_cc_test_with_tf_deps(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+genrule(
+    name = "reduce_lambda_test_graph",
+    testonly = True,
+    srcs = [],
+    outs = ["reduce_lambda_test.pbtxt"],
+    cmd = "$(location :make_reduce_lambda_test_graph) --output \"$@\"",
+    exec_tools = [":make_reduce_lambda_test_graph"],
+)
+
+# Python target which generates an example GraphDef for testing `reduce`
+# in `tensorflow_executor_test`.
+py_binary(
+    name = "make_reduce_lambda_test_graph",
+    testonly = True,
+    srcs = ["make_reduce_lambda_test_graph.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+genrule(
+    name = "structural_reduce_test_graph",
+    testonly = True,
+    srcs = [],
+    outs = ["structural_reduce_test.pbtxt"],
+    cmd = "$(location :make_structural_reduce_test_graph) --output \"$@\"",
+    exec_tools = [":make_structural_reduce_test_graph"],
+)
+
+# Python target which generates an example GraphDef for testing structural
+# `reduce` in `dataset_from_tensor_structures_test`.
+py_binary(
+    name = "make_structural_reduce_test_graph",
+    testonly = True,
+    srcs = ["make_structural_reduce_test_graph.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+tff_cc_library_with_tf_deps(
+    name = "mock_data_backend",
+    testonly = True,
+    hdrs = ["mock_data_backend.h"],
+    deps = [
+        ":data_backend",
+        ":protobuf_matchers",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -500,16 +595,6 @@ tff_cc_test_with_tf_deps(
 )
 
 tff_cc_library_with_tf_deps(
-    name = "sequence_intrinsics",
-    srcs = ["sequence_intrinsics.cc"],
-    hdrs = ["sequence_intrinsics.h"],
-    deps = [
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-tff_cc_library_with_tf_deps(
     name = "sequence_executor",
     srcs = ["sequence_executor.cc"],
     hdrs = ["sequence_executor.h"],
@@ -551,125 +636,12 @@ tff_cc_test_with_tf_deps(
 )
 
 tff_cc_library_with_tf_deps(
-    name = "status_conversion",
-    srcs = ["status_conversion.cc"],
-    hdrs = ["status_conversion.h"],
+    name = "sequence_intrinsics",
+    srcs = ["sequence_intrinsics.cc"],
+    hdrs = ["sequence_intrinsics.h"],
     deps = [
-        "@com_github_grpc_grpc//:grpc++",
-        "@com_google_absl//absl/status",
-    ],
-)
-
-tff_cc_library_with_tf_deps(
-    name = "status_macros",
-    hdrs = ["status_macros.h"],
-    deps = [
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-    ],
-)
-
-tff_cc_library_with_tf_deps(
-    name = "status_matchers",
-    testonly = True,
-    srcs = ["status_matchers.cc"],
-    hdrs = ["status_matchers.h"],
-    deps = [
-        "@com_github_grpc_grpc//:grpc++",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:optional",
-        "@com_google_googletest//:gtest",
-    ],
-)
-
-tff_cc_library_with_tf_deps(
-    name = "tensor_serialization",
-    srcs = ["tensor_serialization.cc"],
-    hdrs = ["tensor_serialization.h"],
-    tf_deps = [
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/core/platform:byte_order",
-    ],
-    deps = [
-        ":status_macros",
-        "//tensorflow_federated/proto/v0:executor_cc_proto",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-    ],
-)
-
-tff_cc_library_with_tf_runtime_deps(
-    name = "dataset_from_tensor_structures",
-    srcs = ["dataset_from_tensor_structures.cc"],
-    hdrs = ["dataset_from_tensor_structures.h"],
-    tf_deps = [
-        "@org_tensorflow//tensorflow/cc:array_ops",
-        "@org_tensorflow//tensorflow/cc:const_op",
-        "@org_tensorflow//tensorflow/cc:cc_ops",
-        "@org_tensorflow//tensorflow/cc:ops",
-        "@org_tensorflow//tensorflow/cc:scope",
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:graph",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
-    deps = [
-        ":session_provider",
-        ":status_macros",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-# Python target which generates an example GraphDef for testing structural `reduce`
-# in `dataset_from_tensor_structures_test`.
-py_binary(
-    name = "make_structural_reduce_test_graph",
-    testonly = True,
-    srcs = ["make_structural_reduce_test_graph.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        "@absl_py//absl:app",
-        "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-genrule(
-    name = "structural_reduce_test_graph",
-    testonly = True,
-    srcs = [],
-    outs = ["structural_reduce_test.pbtxt"],
-    cmd = "$(location :make_structural_reduce_test_graph) --output \"$@\"",
-    exec_tools = [":make_structural_reduce_test_graph"],
-)
-
-tff_cc_test_with_tf_deps(
-    name = "dataset_from_tensor_structures_test",
-    srcs = ["dataset_from_tensor_structures_test.cc"],
-    args = [
-        "--reduce_graph_path",
-        "$(location structural_reduce_test.pbtxt)",
-    ],
-    data = ["structural_reduce_test.pbtxt"],
-    tf_deps = [
-        "@org_tensorflow//tensorflow/core:framework",
-        "@org_tensorflow//tensorflow/core:tensorflow",
-        "@org_tensorflow//tensorflow/core:protos_all_cc",
-    ],
-    deps = [
-        ":dataset_from_tensor_structures",
-        ":session_provider",
-        ":status_matchers",
-        ":value_test_utils",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
-        "@com_google_absl//absl/flags:flag",
     ],
 )
 
@@ -708,6 +680,77 @@ tff_cc_test_with_tf_deps(
 )
 
 tff_cc_library_with_tf_deps(
+    name = "status_conversion",
+    srcs = ["status_conversion.cc"],
+    hdrs = ["status_conversion.h"],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+tff_cc_library_with_tf_deps(
+    name = "status_macros",
+    hdrs = ["status_macros.h"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+tff_cc_library_with_tf_deps(
+    name = "status_matchers",
+    testonly = True,
+    srcs = ["status_matchers.cc"],
+    hdrs = ["status_matchers.h"],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+tff_cc_library_with_tf_deps(
+    name = "struct_traversal_order",
+    hdrs = ["struct_traversal_order.h"],
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+tff_cc_test_with_tf_deps(
+    name = "struct_traversal_order_test",
+    srcs = ["struct_traversal_order_test.cc"],
+    deps = [
+        ":status_matchers",
+        ":struct_traversal_order",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+    ],
+)
+
+tff_cc_library_with_tf_deps(
+    name = "tensor_serialization",
+    srcs = ["tensor_serialization.cc"],
+    hdrs = ["tensor_serialization.h"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/platform:byte_order",
+    ],
+    deps = [
+        ":status_macros",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+tff_cc_library_with_tf_deps(
     name = "tensorflow_executor",
     srcs = ["tensorflow_executor.cc"],
     hdrs = ["tensorflow_executor.h"],
@@ -738,49 +781,6 @@ tff_cc_library_with_tf_deps(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
-    ],
-)
-
-# Python target which generates an example GraphDef for testing `reduce`
-# in `tensorflow_executor_test`.
-py_binary(
-    name = "make_reduce_lambda_test_graph",
-    testonly = True,
-    srcs = ["make_reduce_lambda_test_graph.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        "@absl_py//absl:app",
-        "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-genrule(
-    name = "reduce_lambda_test_graph",
-    testonly = True,
-    srcs = [],
-    outs = ["reduce_lambda_test.pbtxt"],
-    cmd = "$(location :make_reduce_lambda_test_graph) --output \"$@\"",
-    exec_tools = [":make_reduce_lambda_test_graph"],
-)
-
-tff_cc_library_with_tf_deps(
-    name = "struct_traversal_order",
-    hdrs = ["struct_traversal_order.h"],
-    deps = [
-        "//tensorflow_federated/proto/v0:computation_cc_proto",
-        "@com_google_absl//absl/status:statusor",
-    ],
-)
-
-tff_cc_test_with_tf_deps(
-    name = "struct_traversal_order_test",
-    srcs = ["struct_traversal_order_test.cc"],
-    deps = [
-        ":status_matchers",
-        ":struct_traversal_order",
-        "//tensorflow_federated/cc/common_libs:oss_test_main",
     ],
 )
 
