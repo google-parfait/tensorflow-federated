@@ -95,7 +95,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     self._keep_total = keep_total
     self._keep_first = keep_first
 
-  def versions(self) -> Optional[List[int]]:
+  def get_versions(self) -> Optional[List[int]]:
     """Returns a list of saved versions or `None`.
 
     Returns:
@@ -198,7 +198,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     """Removes old program state."""
     if self._keep_total <= 0:
       return
-    versions = self.versions()
+    versions = self.get_versions()
     if versions is not None and len(versions) > self._keep_total:
       start = 1 if self._keep_first else 0
       stop = start - self._keep_total

@@ -104,7 +104,7 @@ class FileProgramStateManagerInitTest(parameterized.TestCase):
           root_dir=root_dir, keep_first=keep_first)
 
 
-class FileProgramStateManagerVersionsTest(parameterized.TestCase):
+class FileProgramStateManagerGetVersionsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('1', 1),
@@ -118,7 +118,7 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_', keep_total=0)
 
-    actual_versions = program_state_mngr.versions()
+    actual_versions = program_state_mngr.get_versions()
 
     expected_versions = list(range(count))
     self.assertEqual(actual_versions, expected_versions)
@@ -131,7 +131,7 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_', keep_total=0)
 
-    actual_versions = program_state_mngr.versions()
+    actual_versions = program_state_mngr.get_versions()
 
     expected_versions = list(range(10))
     self.assertEqual(actual_versions, expected_versions)
@@ -144,7 +144,7 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_', keep_total=0)
 
-    actual_versions = program_state_mngr.versions()
+    actual_versions = program_state_mngr.get_versions()
 
     expected_versions = list(range(10))
     self.assertEqual(actual_versions, expected_versions)
@@ -155,7 +155,7 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_')
 
-    versions = program_state_mngr.versions()
+    versions = program_state_mngr.get_versions()
 
     self.assertIsNone(versions)
 
@@ -164,7 +164,7 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_')
 
-    versions = program_state_mngr.versions()
+    versions = program_state_mngr.get_versions()
 
     self.assertIsNone(versions)
 
@@ -175,7 +175,7 @@ class FileProgramStateManagerVersionsTest(parameterized.TestCase):
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_')
 
-    versions = program_state_mngr.versions()
+    versions = program_state_mngr.get_versions()
 
     self.assertIsNone(versions)
 

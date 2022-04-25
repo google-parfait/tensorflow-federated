@@ -25,7 +25,7 @@ class _TestProgramStateManager(program_state_manager.ProgramStateManager):
   def __init__(self, values: Optional[Mapping[int, Any]] = None):
     self._values = values
 
-  def versions(self) -> Optional[List[int]]:
+  def get_versions(self) -> Optional[List[int]]:
     if self._values is None:
       return None
     return self._values.keys()

@@ -38,7 +38,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
   """
 
   @abc.abstractmethod
-  def versions(self) -> Optional[List[int]]:
+  def get_versions(self) -> Optional[List[int]]:
     """Returns a list of saved versions or `None`.
 
     Returns:
@@ -76,7 +76,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
       A tuple of the latest saved (program state, version) or (`None`, 0) if
       there is no latest saved program state.
     """
-    versions = self.versions()
+    versions = self.get_versions()
     if versions is None:
       return None, 0
     latest_version = max(versions)
