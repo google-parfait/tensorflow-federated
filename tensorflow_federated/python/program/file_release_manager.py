@@ -20,6 +20,7 @@ means that this library:
   * encodes files in the same way as `tf.io.gfile`
 """
 
+import asyncio
 import collections
 import csv
 import enum
@@ -167,19 +168,29 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     # Rename the temporary file to the final location atomically.
     tf.io.gfile.rename(temp_path, self._file_path, overwrite=True)
 
-  def _write_value(self, value: Mapping[str, Any]):
+  async def _write_value(self, value: Mapping[str, Any]):
     """Writes `value` to the managed CSV."""
-    fieldnames, values = self._read_values()
+    loop = asyncio.get_running_loop()
+    fieldnames, values = await loop.run_in_executor(None, self._read_values)
     fieldnames.extend([x for x in value.keys() if x not in fieldnames])
     values.append(value)
-    self._write_values(fieldnames, values)
+    await loop.run_in_executor(None, self._write_values, fieldnames, values)
 
-  def _append_value(self, value: Mapping[str, Any]):
+  async def _append_value(self, value: Mapping[str, Any]):
     """Appends `value` to the managed CSV."""
-    with tf.io.gfile.GFile(self._file_path, 'a+') as file:
-      reader = csv.DictReader(file)
-      if all(key in reader.fieldnames for key in value.keys()):
-        writer = csv.DictWriter(file, fieldnames=reader.fieldnames)
+
+    def _read_fieldnames_only():
+      with tf.io.gfile.GFile(self._file_path, 'r') as file:
+        reader = csv.DictReader(file)
+        if reader.fieldnames is not None:
+          fieldnames = list(reader.fieldnames)
+        else:
+          fieldnames = []
+      return fieldnames
+
+    def _append_value(fieldnames, value):
+      with tf.io.gfile.GFile(self._file_path, 'a') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
         try:
           writer.writerow(value)
         except (tf.errors.PermissionDeniedError, csv.Error) as e:
@@ -188,32 +199,42 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
               'is possible that this file is compressed or encoded. Olease use '
               'write mode instead of append mode to release values to this '
               'file using a `tff.program.CSVFileReleaseManager`.') from e
-      else:
-        self._write_value(value)
 
-  def _remove_values_greater_than(self, key: int):
+    loop = asyncio.get_running_loop()
+    fieldnames = await loop.run_in_executor(None, _read_fieldnames_only)
+    if all(key in fieldnames for key in value.keys()):
+      await loop.run_in_executor(None, _append_value, fieldnames, value)
+    else:
+      await self._write_value(value)
+
+  async def _remove_values_greater_than(self, key: int):
     """Removes all values greater than `key` from the managed CSV."""
     py_typecheck.check_type(key, int)
 
     if self._latest_key is None or key > self._latest_key:
       return
+
+    loop = asyncio.get_running_loop()
     if key < 0:
-      self._write_values([self._key_fieldname], [])
+      await loop.run_in_executor(None, self._write_values,
+                                 [self._key_fieldname], [])
       self._latest_key = None
     else:
+      loop = asyncio.get_running_loop()
       filtered_fieldnames = [self._key_fieldname]
       filtered_values = []
-      _, values = self._read_values()
+      _, values = await loop.run_in_executor(None, self._read_values)
       for value in values:
         current_key = int(value[self._key_fieldname])
         if current_key <= key:
           fieldnames = [x for x in value.keys() if x not in filtered_fieldnames]
           filtered_fieldnames.extend(fieldnames)
           filtered_values.append(value)
-      self._write_values(filtered_fieldnames, filtered_values)
+      await loop.run_in_executor(None, self._write_values, filtered_fieldnames,
+                                 filtered_values)
       self._latest_key = key
 
-  def release(self, value: Any, key: int):
+  async def release(self, value: Any, key: int):
     """Releases `value` from a federated program.
 
     This method will atomically update the managed CSV file by removing all
@@ -229,8 +250,10 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     """
     py_typecheck.check_type(key, int)
 
-    self._remove_values_greater_than(key - 1)
-    materialized_value = value_reference.materialize_value(value)
+    _, materialized_value = await asyncio.gather(
+        self._remove_values_greater_than(key - 1),
+        value_reference.materialize_value(value))
+
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
     def _normalize(value):
@@ -242,9 +265,9 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     normalized_value.insert(0, (self._key_fieldname, key))
     normalized_value = collections.OrderedDict(normalized_value)
     if self._save_mode == CSVSaveMode.APPEND:
-      self._append_value(normalized_value)
+      await self._append_value(normalized_value)
     elif self._save_mode == CSVSaveMode.WRITE:
-      self._write_value(normalized_value)
+      await self._write_value(normalized_value)
     self._latest_key = key
 
 
@@ -306,7 +329,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     basename = f'{self._prefix}{key}'
     return os.path.join(self._root_dir, basename)
 
-  def release(self, value: Any, key: int):
+  async def release(self, value: Any, key: int):
     """Releases `value` from a federated program.
 
     Args:
@@ -318,6 +341,6 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     py_typecheck.check_type(key, int)
 
     path = self._get_path_for_key(key)
-    materialized_value = value_reference.materialize_value(value)
+    materialized_value = await value_reference.materialize_value(value)
     flattened_value = tree.flatten(materialized_value)
-    file_utils.write_saved_model(flattened_value, path, overwrite=True)
+    await file_utils.write_saved_model(flattened_value, path, overwrite=True)

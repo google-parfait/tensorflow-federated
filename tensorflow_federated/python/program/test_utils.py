@@ -20,13 +20,33 @@ on the server, elements of structures that are placed on the server, or
 unplaced.
 """
 
-from typing import Any
+import asyncio
+import functools
+from typing import Any, Callable, Coroutine
 
 import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import value_reference
+
+
+# TODO(b/205140778) After Python 3.8 use `unittest.IsolatedAsyncioTestCase`.
+def run_sync(
+    fn: Callable[..., Coroutine[Any, None, Any]]) -> Callable[..., Any]:
+  """A decorator for running tests synchronously."""
+
+  @functools.wraps(fn)
+  def wrapper(*args, **kwargs):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+      return loop.run_until_complete(fn(*args, **kwargs))
+    finally:
+      asyncio.set_event_loop(None)
+      loop.close()
+
+  return wrapper
 
 
 @attr.s
@@ -61,7 +81,7 @@ class TestMaterializableValueReference(
   def type_signature(self) -> value_reference.MaterializableTffType:
     return self._type_signature
 
-  def get_value(self) -> value_reference.MaterializablePythonType:
+  async def get_value(self) -> value_reference.MaterializablePythonType:
     return self._value
 
   def __eq__(self, other: Any) -> bool:

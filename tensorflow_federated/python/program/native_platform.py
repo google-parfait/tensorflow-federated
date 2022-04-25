@@ -20,6 +20,7 @@ from typing import Any, Coroutine, List, Optional, Sequence
 
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
@@ -53,11 +54,10 @@ class CoroValueReference(value_reference.MaterializableValueReference):
     """The `tff.TensorType` of this object."""
     return self._type_signature
 
-  def get_value(self) -> value_reference.MaterializablePythonType:
+  async def get_value(self) -> value_reference.MaterializablePythonType:
     """Returns the referenced value as a numpy scalar or array."""
     if self._value is None:
-      loop = asyncio.new_event_loop()
-      self._value = loop.run_until_complete(self._coro)
+      self._value = await self._coro
     return self._value
 
   def __eq__(self, other: Any) -> bool:
@@ -65,14 +65,8 @@ class CoroValueReference(value_reference.MaterializableValueReference):
       return True
     elif not isinstance(other, CoroValueReference):
       return NotImplemented
-    if self._type_signature != other._type_signature:
-      return False
-    self_value = self.get_value()
-    other_value = other.get_value()
-    if self._type_signature.is_sequence():
-      return list(self_value) == list(other_value)
-    else:
-      return self_value == other_value
+    return (self._type_signature == other._type_signature and
+            self._coro == other._coro)
 
 
 def _create_structure_of_coro_references(
@@ -87,18 +81,16 @@ def _create_structure_of_coro_references(
       return structure.from_container(await coro)
 
     coro = _to_structure(coro)
+    shared_awaitable = async_utils.SharedAwaitable(coro)
+
+    async def _get_item(awaitable, index: int) -> Any:
+      value = await awaitable
+      return value[index]
+
     elements = []
-    awaited_structure = None
-
-    async def _get_item(index):
-      nonlocal awaited_structure
-      if awaited_structure is None:
-        awaited_structure = await coro
-      return awaited_structure[index]
-
     element_types = structure.iter_elements(type_signature)
     for index, (name, element_type) in enumerate(element_types):
-      element_coro = _get_item(index)
+      element_coro = _get_item(shared_awaitable, index)
       element = _create_structure_of_coro_references(element_coro, element_type)
       elements.append((name, element))
     return structure.Struct(elements)
@@ -113,34 +105,35 @@ def _create_structure_of_coro_references(
     raise NotImplementedError(f'Unexpected type found: {type_signature}.')
 
 
-def _materialize_structure_of_value_references(
+async def _materialize_structure_of_value_references(
     value: Any, type_signature: computation_types.Type) -> Any:
   """Returns a structure of materialized values."""
   py_typecheck.check_type(type_signature, computation_types.Type)
 
-  def _materialize(value):
+  async def _materialize(value):
     if isinstance(value, value_reference.MaterializableValueReference):
-      return value.get_value()
+      return await value.get_value()
     else:
       return value
 
   if type_signature.is_struct():
     value = structure.from_container(value)
-    elements = []
-    element_types = structure.iter_elements(type_signature)
-    for element, (name, element_type) in zip(value, element_types):
-      element = _materialize_structure_of_value_references(
-          element, element_type)
-      elements.append((name, element))
+    element_types = list(structure.iter_elements(type_signature))
+    element_coros = [
+        _materialize_structure_of_value_references(v, t)
+        for v, (_, t) in zip(value, element_types)
+    ]
+    elements = await asyncio.gather(*element_coros)
+    elements = [(n, v) for v, (n, _) in zip(elements, element_types)]
     return structure.Struct(elements)
   elif (type_signature.is_federated() and
         type_signature.placement == placements.SERVER):
-    return _materialize_structure_of_value_references(value,
-                                                      type_signature.member)
+    return await _materialize_structure_of_value_references(
+        value, type_signature.member)
   elif type_signature.is_sequence():
-    return _materialize(value)
+    return await _materialize(value)
   elif type_signature.is_tensor():
-    return _materialize(value)
+    return await _materialize(value)
   else:
     return value
 
@@ -188,11 +181,14 @@ class NativeFederatedContext(federated_context.FederatedContext):
           'structures, server-placed values, or tensors, found '
           f'\'{result_type}\'.')
 
-    if comp.type_signature.parameter is not None:
-      arg = _materialize_structure_of_value_references(
-          arg, comp.type_signature.parameter)
-    result = self._context.invoke(comp, arg)
-    result = _create_structure_of_coro_references(result, result_type)
+    async def _invoke(context, comp, arg):
+      if comp.type_signature.parameter is not None:
+        arg = await _materialize_structure_of_value_references(
+            arg, comp.type_signature.parameter)
+      return await context.invoke(comp, arg)
+
+    result_coro = _invoke(self._context, comp, arg)
+    result = _create_structure_of_coro_references(result_coro, result_type)
     result = type_conversions.type_to_py_container(result, result_type)
     return result
 

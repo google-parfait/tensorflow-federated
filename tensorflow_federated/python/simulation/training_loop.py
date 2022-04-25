@@ -13,6 +13,7 @@
 # limitations under the License.
 """Training loops for iterative process simulations."""
 
+import asyncio
 import collections
 import time
 from typing import Any, Callable, Iterable, Mapping, MutableMapping, Optional, Tuple
@@ -186,11 +187,13 @@ def run_training_process(
   Returns:
     The `state` of the training process after training.
   """
+  loop = asyncio.get_event_loop()
+
   logging.info('Running training process')
   if program_state_manager is not None:
     training_process_structure = training_process.initialize()
-    program_state, previous_saved_version = program_state_manager.load_latest(
-        training_process_structure)
+    program_state, previous_saved_version = loop.run_until_complete(
+        program_state_manager.load_latest(training_process_structure))
   else:
     program_state = None
   if program_state is not None:
@@ -207,11 +210,12 @@ def run_training_process(
                                            evaluation_selection_fn, state, 0)
 
       if metrics_managers is not None:
-        for metrics_manager in metrics_managers:
-          metrics_manager.release(evaluation_metrics, 0)
+        loop.run_until_complete(
+            asyncio.gather(
+                *[m.release(evaluation_metrics, 0) for m in metrics_managers]))
 
     if program_state_manager is not None:
-      program_state_manager.save(state, 0)
+      loop.run_until_complete(program_state_manager.save(state, 0))
 
   for round_num in range(start_round, total_rounds + 1):
     logging.info('Starting round %d', round_num)
@@ -229,11 +233,12 @@ def run_training_process(
         round_metrics.update(evaluation_metrics)
 
     if metrics_managers is not None:
-      for metrics_manager in metrics_managers:
-        metrics_manager.release(round_metrics, round_num)
+      loop.run_until_complete(
+          asyncio.gather(
+              *[m.release(round_metrics, round_num) for m in metrics_managers]))
 
     if program_state_manager is not None:
       if round_num % rounds_per_saving_program_state == 0:
-        program_state_manager.save(state, round_num)
+        loop.run_until_complete(program_state_manager.save(state, round_num))
 
   return state

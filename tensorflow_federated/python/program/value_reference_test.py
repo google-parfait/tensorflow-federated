@@ -72,8 +72,9 @@ class MaterializeValueTest(parameterized.TestCase, tf.test.TestCase):
        [1, 2]),
   )
   # pyformat: enable
-  def test_returns_value(self, value, expected_value):
-    actual_value = value_reference.materialize_value(value)
+  @test_utils.run_sync
+  async def test_returns_value(self, value, expected_value):
+    actual_value = await value_reference.materialize_value(value)
 
     if (isinstance(actual_value, tf.data.Dataset) and
         isinstance(expected_value, tf.data.Dataset)):

@@ -74,10 +74,11 @@ class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
        [1, 2]),
   )
   # pyformat: enable
-  def test_release_saves_value(self, value, expected_value):
+  @test_utils.run_sync
+  async def test_release_saves_value(self, value, expected_value):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
-    release_mngr.release(value, 1)
+    await release_mngr.release(value, 1)
 
     self.assertLen(release_mngr._values, 1)
     actual_value = release_mngr._values[1]
@@ -93,10 +94,11 @@ class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
       ('int', 1),
       ('str', 'a'),
   )
-  def test_release_saves_key(self, key):
+  @test_utils.run_sync
+  async def test_release_saves_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
-    release_mngr.release(1, key)
+    await release_mngr.release(1, key)
 
     self.assertLen(release_mngr._values, 1)
     self.assertIn(key, release_mngr._values)
@@ -106,11 +108,12 @@ class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
       ('dict', {}),
       ('orderd_dict', collections.OrderedDict()),
   )
-  def test_release_raises_type_error_with_key(self, key):
+  @test_utils.run_sync
+  async def test_release_raises_type_error_with_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
     with self.assertRaises(TypeError):
-      release_mngr.release(1, key)
+      await release_mngr.release(1, key)
 
   @parameterized.named_parameters(
       ('0', 0),

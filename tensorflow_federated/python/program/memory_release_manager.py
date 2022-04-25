@@ -36,7 +36,7 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
     """Returns an initialized `tff.program.MemoryReleaseManager`."""
     self._values = collections.OrderedDict()
 
-  def release(self, value: Any, key: Hashable):
+  async def release(self, value: Any, key: Hashable):
     """Releases `value` from a federated program.
 
     Args:
@@ -45,7 +45,7 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
         release.
       key: A hashable value used to reference the released `value`.
     """
-    materialized_value = value_reference.materialize_value(value)
+    materialized_value = await value_reference.materialize_value(value)
     self._values[key] = materialized_value
 
   def values(self) -> OrderedDict[Hashable, Any]:

@@ -33,7 +33,7 @@ class LoggingReleaseManager(release_manager.ReleaseManager):
   containing value references, each value reference is materialized.
   """
 
-  def release(self, value: Any, key: Any = None):
+  async def release(self, value: Any, key: Any = None):
     """Releases `value` from a federated program.
 
     Args:
@@ -42,7 +42,7 @@ class LoggingReleaseManager(release_manager.ReleaseManager):
         release.
       key: An optional value used to reference the released `value`.
     """
-    materialized_value = value_reference.materialize_value(value)
+    materialized_value = await value_reference.materialize_value(value)
     if key is not None:
       logging.info('Releasing value for key %d: %s', key, materialized_value)
     else:
