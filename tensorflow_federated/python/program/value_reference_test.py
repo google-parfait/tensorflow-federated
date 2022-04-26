@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
@@ -21,7 +23,8 @@ from tensorflow_federated.python.program import test_utils
 from tensorflow_federated.python.program import value_reference
 
 
-class MaterializeValueTest(parameterized.TestCase, tf.test.TestCase):
+class MaterializeValueTest(parameterized.TestCase,
+                           unittest.IsolatedAsyncioTestCase, tf.test.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -72,7 +75,6 @@ class MaterializeValueTest(parameterized.TestCase, tf.test.TestCase):
        [1, 2]),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_returns_value(self, value, expected_value):
     actual_value = await value_reference.materialize_value(value)
 

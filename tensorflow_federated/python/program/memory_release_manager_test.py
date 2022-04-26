@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import unittest
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -23,7 +24,9 @@ from tensorflow_federated.python.program import memory_release_manager
 from tensorflow_federated.python.program import test_utils
 
 
-class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
+class MemoryReleaseManagerTest(parameterized.TestCase,
+                               unittest.IsolatedAsyncioTestCase,
+                               tf.test.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -74,7 +77,6 @@ class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
        [1, 2]),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_release_saves_value(self, value, expected_value):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
@@ -94,7 +96,6 @@ class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
       ('int', 1),
       ('str', 'a'),
   )
-  @test_utils.run_sync
   async def test_release_saves_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
@@ -108,7 +109,6 @@ class MemoryReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
       ('dict', {}),
       ('orderd_dict', collections.OrderedDict()),
   )
-  @test_utils.run_sync
   async def test_release_raises_type_error_with_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 

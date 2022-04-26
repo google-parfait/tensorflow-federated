@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from typing import Any, List, Mapping, Optional
+import unittest
 from unittest import mock
 
 from absl.testing import absltest
 
 from tensorflow_federated.python.program import program_state_manager
-from tensorflow_federated.python.program import test_utils
 
 
 class _TestProgramStateManager(program_state_manager.ProgramStateManager):
@@ -41,9 +41,9 @@ class _TestProgramStateManager(program_state_manager.ProgramStateManager):
     return self._values[version]
 
 
-class ProgramStateManagerTest(absltest.TestCase):
+class ProgramStateManagerTest(absltest.TestCase,
+                              unittest.IsolatedAsyncioTestCase):
 
-  @test_utils.run_sync
   async def test_load_latest_with_saved_program_state(self):
     values = {x: f'test{x}' for x in range(5)}
     structure = values[0]
@@ -54,7 +54,6 @@ class ProgramStateManagerTest(absltest.TestCase):
     self.assertEqual(program_state, 'test4')
     self.assertEqual(version, 4)
 
-  @test_utils.run_sync
   async def test_load_latest_with_no_saved_program_state(self):
     structure = None
     program_state_mngr = _TestProgramStateManager()
@@ -64,7 +63,6 @@ class ProgramStateManagerTest(absltest.TestCase):
     self.assertIsNone(program_state)
     self.assertEqual(version, 0)
 
-  @test_utils.run_sync
   async def test_load_latest_with_load_failure(self):
     values = {x: f'test{x}' for x in range(5)}
     structure = values[0]

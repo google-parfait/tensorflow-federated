@@ -15,6 +15,7 @@
 import os
 import os.path
 import shutil
+import unittest
 from unittest import mock
 
 from absl.testing import absltest
@@ -66,6 +67,7 @@ class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
 
 
 class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
+                                           unittest.IsolatedAsyncioTestCase,
                                            tf.test.TestCase):
 
   # pyformat: disable
@@ -109,7 +111,6 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
        [('0', 1), ('1', 2)]),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_writes_value_scalar(self, value, expected_names_and_values):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
@@ -137,7 +138,6 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
        [('', [1, 2, 3])]),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_writes_value_histogram(self, value, expected_names_and_values):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
@@ -155,7 +155,6 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
         self.assertEqual(actual_name, expected_name)
         self.assertAllEqual(actual_value, expected_value)
 
-  @test_utils.run_sync
   async def test_writes_value_scalar_and_histogram(self):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
@@ -176,7 +175,6 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       ('dict_empty', {}),
       ('tensor_str', tf.constant('a')),
   )
-  @test_utils.run_sync
   async def test_does_not_write_value(self, value):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
@@ -195,7 +193,6 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       ('0', 0),
       ('1', 1),
   )
-  @test_utils.run_sync
   async def test_does_not_raise_with_key(self, key):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
@@ -211,7 +208,6 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       ('str', 'a'),
       ('list', []),
   )
-  @test_utils.run_sync
   async def test_raises_type_error_with_key(self, key):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(

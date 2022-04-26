@@ -18,6 +18,7 @@ import os
 import os.path
 import shutil
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
+import unittest
 from unittest import mock
 
 from absl.testing import absltest
@@ -305,7 +306,8 @@ class CSVFileReleaseManagerWriteValuesTest(parameterized.TestCase):
     self.assertEqual(actual_values, expected_values)
 
 
-class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
+class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase,
+                                          unittest.IsolatedAsyncioTestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -313,7 +315,6 @@ class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
       ('more_fields', {'a': 11, 'b': 21, 'c': 31}),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_writes_value_to_empty_file(self, value):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -341,7 +342,6 @@ class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
       ('more_fields', {'a': 11, 'b': 21, 'c': 31}),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_writes_value_to_existing_file(self, value):
     file_path = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']
@@ -369,7 +369,8 @@ class CSVFileReleaseManagerWriteValueTest(parameterized.TestCase):
     self.assertEqual(actual_values, expected_values)
 
 
-class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
+class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase,
+                                           unittest.IsolatedAsyncioTestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -377,7 +378,6 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
       ('more_fields', {'a': 11, 'b': 21, 'c': 31}),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_appends_value_to_empty_file(self, value):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -405,7 +405,6 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
       ('more_fields', {'a': 11, 'b': 21, 'c': 31}),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_appends_value_to_existing_file(self, value):
     file_path = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']
@@ -432,7 +431,6 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
     expected_values = tree.map_structure(str, expected_values)
     self.assertEqual(actual_values, expected_values)
 
-  @test_utils.run_sync
   async def test_raises_permission_denied_error(self):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -447,13 +445,13 @@ class CSVFileReleaseManagerAppendValueTest(parameterized.TestCase):
         await release_mngr._append_value({})
 
 
-class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
+class CSVFileReleaseManagerRemoveValuesGreaterThanTest(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase):
 
   @parameterized.named_parameters(
       ('0', 0),
       ('1', 1),
   )
-  @test_utils.run_sync
   async def test_removes_values_from_empty_file(self, key):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -471,7 +469,6 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
       ('1', 1),
       ('2', 2),
   )
-  @test_utils.run_sync
   async def test_removes_values_from_existing_file(self, key):
     file_path = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']
@@ -511,7 +508,6 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  @test_utils.run_sync
   async def test_raises_type_error_with_key(self, key):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -522,9 +518,9 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(parameterized.TestCase):
       await release_mngr._remove_values_greater_than(key)
 
 
-class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
+class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
+                                       unittest.IsolatedAsyncioTestCase):
 
-  @test_utils.run_sync
   async def test_calls_remove_values_greater_than_with_empty_file(self):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -542,7 +538,6 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
 
     self.assertEqual(release_mngr._latest_key, 1)
 
-  @test_utils.run_sync
   async def test_calls_remove_values_greater_than_with_existing_file(self):
     file_path = self.create_tempfile()
     _write_values_to_csv(
@@ -573,7 +568,6 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
       ('more_fields', {'a': 10, 'b': 20}, 1),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_calls_append_value(self, value, key):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -607,7 +601,6 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
       ('more_fields', {'a': 10, 'b': 20}, 1),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_calls_write_value(self, value, key):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -693,7 +686,6 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
        [{'key': '1', '0': '1', '1': '2'}]),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_writes_value(self, value, expected_value):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -710,7 +702,6 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  @test_utils.run_sync
   async def test_raises_type_error_with_key(self, key):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -801,6 +792,7 @@ class SavedModelFileReleaseManagerGetPathForKeyTest(parameterized.TestCase):
 
 
 class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
+                                              unittest.IsolatedAsyncioTestCase,
                                               tf.test.TestCase):
 
   # pyformat: disable
@@ -850,7 +842,6 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
        [1, 2]),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_writes_value(self, value, expected_value):
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
@@ -884,7 +875,6 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       ('str', 'a'),
       ('list', []),
   )
-  @test_utils.run_sync
   async def test_raises_type_error_with_key(self, key):
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(

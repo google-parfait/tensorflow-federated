@@ -148,7 +148,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":file_utils",
-        ":test_utils",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -232,7 +231,6 @@ py_test(
     deps = [
         ":federated_context",
         ":native_platform",
-        ":test_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -258,7 +256,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":program_state_manager",
-        ":test_utils",
         "@absl_py//absl/testing:absltest",
     ],
 )

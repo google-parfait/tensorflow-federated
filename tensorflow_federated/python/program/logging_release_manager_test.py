@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 from unittest import mock
 
 from absl.testing import absltest
@@ -23,7 +24,9 @@ from tensorflow_federated.python.program import logging_release_manager
 from tensorflow_federated.python.program import test_utils
 
 
-class LoggingReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
+class LoggingReleaseManagerTest(parameterized.TestCase,
+                                unittest.IsolatedAsyncioTestCase,
+                                tf.test.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -74,7 +77,6 @@ class LoggingReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
        [1, 2]),
   )
   # pyformat: enable
-  @test_utils.run_sync
   async def test_release_logs_value(self, value, expected_value):
     release_mngr = logging_release_manager.LoggingReleaseManager()
 
@@ -97,7 +99,6 @@ class LoggingReleaseManagerTest(parameterized.TestCase, tf.test.TestCase):
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
-  @test_utils.run_sync
   async def test_release_logs_key(self, key):
     release_mngr = logging_release_manager.LoggingReleaseManager()
 

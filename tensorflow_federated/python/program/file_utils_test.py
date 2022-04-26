@@ -15,18 +15,18 @@
 import os
 import os.path
 import shutil
+import unittest
 
 from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.program import file_utils
-from tensorflow_federated.python.program import test_utils
 
 
-class ReadSavedModelTest(parameterized.TestCase):
+class ReadSavedModelTest(parameterized.TestCase,
+                         unittest.IsolatedAsyncioTestCase):
 
-  @test_utils.run_sync
   async def test_returns_value_with_path_str(self):
     module = file_utils._ValueModule(1)
     path = self.create_tempdir()
@@ -37,7 +37,6 @@ class ReadSavedModelTest(parameterized.TestCase):
 
     self.assertEqual(actual_value, 1)
 
-  @test_utils.run_sync
   async def test_returns_value_with_path_path_like(self):
     module = file_utils._ValueModule(1)
     path = self.create_tempdir()
@@ -53,15 +52,14 @@ class ReadSavedModelTest(parameterized.TestCase):
       ('bool', True),
       ('list', []),
   )
-  @test_utils.run_sync
   async def test_raises_type_error_with_path(self, path):
     with self.assertRaises(TypeError):
       await file_utils.read_saved_model(path)
 
 
-class WriteSavedModelTest(parameterized.TestCase):
+class WriteSavedModelTest(parameterized.TestCase,
+                          unittest.IsolatedAsyncioTestCase):
 
-  @test_utils.run_sync
   async def test_writes_to_new_file_with_path_str(self):
     path = self.create_tempdir()
     path = path.full_path
@@ -75,7 +73,6 @@ class WriteSavedModelTest(parameterized.TestCase):
     actual_value = module()
     self.assertEqual(actual_value, 1)
 
-  @test_utils.run_sync
   async def test_writes_to_new_file_with_path_path_like(self):
     path = self.create_tempdir()
     shutil.rmtree(path)
@@ -88,7 +85,6 @@ class WriteSavedModelTest(parameterized.TestCase):
     actual_value = module()
     self.assertEqual(actual_value, 1)
 
-  @test_utils.run_sync
   async def test_writes_to_existing_file(self):
     path = self.create_tempdir()
     self.assertTrue(os.path.exists(path))
@@ -100,7 +96,6 @@ class WriteSavedModelTest(parameterized.TestCase):
     actual_value = module()
     self.assertEqual(actual_value, 1)
 
-  @test_utils.run_sync
   async def test_raises_file_already_exists_error_with_existing_file(self):
     path = self.create_tempdir()
 
@@ -113,7 +108,6 @@ class WriteSavedModelTest(parameterized.TestCase):
       ('bool', True),
       ('list', []),
   )
-  @test_utils.run_sync
   async def test_raises_type_error_with_path(self, path):
     with self.assertRaises(TypeError):
       await file_utils.write_saved_model(1, path)
@@ -123,7 +117,6 @@ class WriteSavedModelTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  @test_utils.run_sync
   async def test_raises_type_error_with_overwrite(self, overwrite):
     path = self.create_tempdir()
 
