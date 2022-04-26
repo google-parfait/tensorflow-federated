@@ -1,3 +1,32 @@
+# Release 0.22.0
+
+## Major Features and Improvements
+
+*   Updated .bazelversion to `5.1.1`.
+*   Updated the `tff.program` API to use `asyncio`.
+*   Exposed new APIs in the `tff.framework` package:
+    *   `tff.framework.CardinalitiesType`.
+    *   `tff.framework.PlacementLiteral`.
+    *   `tff.framework.merge_cardinalities`.
+*   `tff.analytics`
+    *   Added new `analytic_gauss_stddev` API.
+
+## Breaking Changes
+
+*   Renamed `ProgramStateManager.version` to `ProgramStateManager.get_versions`.
+
+## Bug Fixes
+
+*   Fixed some Python lint errors related to linting Python 3.9.
+*   Cleaned up stale TODOs throughout the codebase.
+
+## Known Bugs
+
+*   Version 0.21.0 currently fails to import in
+    [colab](https://colab.research.google.com) if the version of Python is less
+    than Python 3.9. Please use a runtime with a version of Python greater than
+    Python 3.9 or use TFF version 0.20.0.
+
 # Release 0.21.0
 
 ## Major Features and Improvements
