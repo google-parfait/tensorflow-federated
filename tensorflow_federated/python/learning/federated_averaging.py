@@ -237,8 +237,12 @@ def build_federated_averaging_process(
     client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
       built-in weighting method, or a callable that takes the output of
       `model.report_local_unfinalized_metrics` and returns a tensor that
-      provides the weight in the federated average of model deltas. If None,
-      defaults to weighting by number of examples.
+      provides the weight in the federated average of model deltas. If `None`,
+      this will default base on `model_update_aggregation_factory`: If the
+      factory is a `tff.aggregators.UnweightedAggregationFactory`, this defaults
+      to a uniform weighting, otherwise it will weight clients by their number
+      of examples. An error will be raised if `client_weighting` is not uniform,
+      but `model_update_aggregation_factory` is unweighted.
     broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`. If set to default None,
