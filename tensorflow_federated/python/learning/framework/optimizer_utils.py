@@ -152,11 +152,28 @@ def state_with_new_model_weights(
     of the iterative process.
   """
   py_typecheck.check_type(server_state, ServerState)
-  leaf_types = (int, float, np.ndarray, tf.Tensor, np.number)
+  tensor_leaf_types = (np.ndarray, tf.Tensor, np.number)
+  python_leaf_types = (int, float, bytes)
 
   def assert_weight_lists_match(old_value, new_value):
     """Assert two flat lists of ndarrays or tensors match."""
-    if isinstance(new_value, leaf_types) and isinstance(old_value, leaf_types):
+    # First try to normalize python scalar leaves to numpy. If one of the
+    # values is not a Python value we can try casting the other value to it.
+    if (isinstance(old_value, python_leaf_types) and
+        isinstance(new_value, tensor_leaf_types)):
+      old_value = np.add(old_value, 0, dtype=new_value.dtype)
+    elif (isinstance(old_value, tensor_leaf_types) and
+          isinstance(new_value, python_leaf_types)):
+      new_value = np.add(new_value, 0, dtype=old_value.dtype)
+
+    if (isinstance(new_value, python_leaf_types) and
+        isinstance(old_value, python_leaf_types)):
+      # If both values are python types, just compare the types.
+      if type(new_value) is not type(old_value):
+        raise TypeError(f'Element is not the same type. old '
+                        f'({type(old_value)} != new ({type(new_value)}).')
+    elif (isinstance(new_value, tensor_leaf_types) and
+          isinstance(old_value, tensor_leaf_types)):
       if (old_value.dtype != new_value.dtype or
           old_value.shape != new_value.shape):
         raise TypeError('Element is not the same tensor type. old '
