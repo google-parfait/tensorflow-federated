@@ -23,28 +23,20 @@ source "${script_dir}/common.sh"
 usage() {
   local script_name=$(basename "${0}")
   local options=(
-      "--python=python3"
       "--package=<path>"
   )
   echo "usage: ${script_name} ${options[@]}"
-  echo "  --python=python3  The Python version used by the environment to build"
-  echo "                    the Python package."
   echo "  --package=<path>  A path to a local pip package."
   exit 1
 }
 
 main() {
   # Parse arguments
-  local python="python3"
   local package=""
 
   while [[ "$#" -gt 0 ]]; do
     option="$1"
     case "${option}" in
-      --python=*)
-        python="${option#*=}"
-        shift
-        ;;
       --package=*)
         package="${option#*=}"
         shift
@@ -70,7 +62,7 @@ main() {
   pushd "${temp_dir}"
 
   # Create a virtual environment
-  "${python}" -m venv "venv"
+  python3.9 -m venv "venv"
   source "venv/bin/activate"
   python --version
   pip install --upgrade pip
