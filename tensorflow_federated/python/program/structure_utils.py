@@ -31,7 +31,7 @@ def flatten_with_name(structure: Any) -> List[Tuple[str, Any]]:
   """
   flattened = tree.flatten_with_path(structure)
 
-  def name(path):
+  def _name(path):
     return '/'.join(map(str, path))
 
-  return [(name(path), value) for path, value in flattened]
+  return [(_name(path), value) for path, value in flattened]

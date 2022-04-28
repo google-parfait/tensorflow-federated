@@ -32,12 +32,12 @@ from tensorflow_federated.python.program import value_reference
 @attr.s
 class TestAttrObject1():
   a = attr.ib()
-  b = attr.ib()
 
 
 @attr.s
 class TestAttrObject2():
   a = attr.ib()
+  b = attr.ib()
 
 
 class TestMaterializableValueReference(

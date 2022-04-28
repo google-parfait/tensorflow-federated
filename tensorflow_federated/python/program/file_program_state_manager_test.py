@@ -265,44 +265,18 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase,
 
   # pyformat: disable
   @parameterized.named_parameters(
+      # materialized values
       ('none', None, None),
       ('bool', True, tf.constant(True)),
       ('int', 1, tf.constant(1)),
       ('str', 'a', tf.constant('a')),
-      ('list',
-       [True, 1, 'a'],
-       [tf.constant(True), tf.constant(1), tf.constant('a')]),
-      ('list_empty', [], []),
-      ('list_nested',
-       [[True, 1], ['a']],
-       [[tf.constant(True), tf.constant(1)], [tf.constant('a')]]),
-      ('dict',
-       {'a': True, 'b': 1, 'c': 'a'},
-       {'a': tf.constant(True), 'b': tf.constant(1), 'c': tf.constant('a')}),
-      ('dict_empty', {}, {}),
-      ('dict_nested',
-       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
-       {'x': {'a': tf.constant(True), 'b': tf.constant(1)},
-        'y': {'c': tf.constant('a')}}),
-      ('attr',
-       test_utils.TestAttrObject1(True, 1),
-       test_utils.TestAttrObject1(tf.constant(True), tf.constant(1))),
-      ('attr_nested',
-       {'a': [test_utils.TestAttrObject1(True, 1)],
-        'b': test_utils.TestAttrObject2('a')},
-       {'a': [test_utils.TestAttrObject1(tf.constant(True), tf.constant(1))],
-        'b': test_utils.TestAttrObject2(tf.constant('a'))}),
       ('tensor_int', tf.constant(1), tf.constant(1)),
       ('tensor_str', tf.constant('a'), tf.constant('a')),
       ('tensor_2d', tf.ones((2, 3)), tf.ones((2, 3))),
-      ('tensor_nested',
-       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]},
-       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]}),
       ('numpy_int', np.int32(1), tf.constant(1)),
       ('numpy_2d', np.ones((2, 3)), tf.ones((2, 3))),
-      ('numpy_nested',
-       {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
-       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]}),
+
+      # value references
       ('materializable_value_reference_tensor',
        test_utils.TestMaterializableValueReference(1),
        tf.constant(1)),
@@ -310,14 +284,38 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase,
        test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
        tf.data.Dataset.from_tensor_slices([1, 2, 3])),
-      ('materializable_value_reference_nested',
-       {'a': [test_utils.TestMaterializableValueReference(True),
-              test_utils.TestMaterializableValueReference(1)],
-        'b': [test_utils.TestMaterializableValueReference('a')]},
-       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]}),
-      ('materializable_value_reference_and_materialized_value',
-       [1, test_utils.TestMaterializableValueReference(2)],
-       [tf.constant(1), tf.constant(2)]),
+
+      # structures
+      ('list',
+       [True, test_utils.TestMaterializableValueReference(1), 'a'],
+       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+      ('list_empty', [], []),
+      ('list_nested',
+       [[True, test_utils.TestMaterializableValueReference(1)], ['a']],
+       [[tf.constant(True), tf.constant(1)], [tf.constant('a')]]),
+      ('dict',
+       {'a': True,
+        'b': test_utils.TestMaterializableValueReference(1),
+        'c': 'a'},
+       {'a': tf.constant(True), 'b': tf.constant(1), 'c': tf.constant('a')}),
+      ('dict_empty', {}, {}),
+      ('dict_nested',
+       {'x': {'a': True, 'b': test_utils.TestMaterializableValueReference(1)},
+        'y': {'c': 'a'}},
+       {'x': {'a': tf.constant(True), 'b': tf.constant(1)},
+        'y': {'c': tf.constant('a')}}),
+      ('attr',
+       test_utils.TestAttrObject2(
+           True, test_utils.TestMaterializableValueReference(1)),
+       test_utils.TestAttrObject2(tf.constant(True), tf.constant(1))),
+      ('attr_nested',
+       test_utils.TestAttrObject2(
+           test_utils.TestAttrObject2(
+               True, test_utils.TestMaterializableValueReference(1)),
+           test_utils.TestAttrObject1('a')),
+       test_utils.TestAttrObject2(
+           test_utils.TestAttrObject2(tf.constant(True), tf.constant(1)),
+           test_utils.TestAttrObject1(tf.constant('a')))),
   )
   # pyformat: enable
   async def test_returns_saved_program_state(self, program_state,
@@ -330,11 +328,11 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase,
 
     actual_program_state = await program_state_mngr.load(1, structure)
 
-    if (isinstance(actual_program_state, tf.data.Dataset) and
-        isinstance(expected_program_state, tf.data.Dataset)):
-      self.assertEqual(list(actual_program_state), list(expected_program_state))
-    else:
-      self.assertAllEqual(actual_program_state, expected_program_state)
+    if isinstance(actual_program_state, tf.data.Dataset):
+      actual_program_state = list(actual_program_state)
+    if isinstance(expected_program_state, tf.data.Dataset):
+      expected_program_state = list(expected_program_state)
+    self.assertAllEqual(actual_program_state, expected_program_state)
 
   @parameterized.named_parameters(
       ('0', 0),
@@ -510,10 +508,12 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
       ('dict_nested',
        {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
        [True, 1, 'a']),
-      ('attr', test_utils.TestAttrObject1(True, 1), [True, 1]),
+      ('attr', test_utils.TestAttrObject2(True, 1), [True, 1]),
       ('attr_nested',
-       {'a': [test_utils.TestAttrObject1(True, 1)],
-        'b': test_utils.TestAttrObject2('a')},
+       test_utils.TestAttrObject2(
+           test_utils.TestAttrObject2(
+               True, test_utils.TestMaterializableValueReference(1)),
+           test_utils.TestAttrObject1('a')),
        [True, 1, 'a']),
       ('tensor_int', tf.constant(1), [tf.constant(1)]),
       ('tensor_str', tf.constant('a'), [tf.constant('a')]),
@@ -559,13 +559,13 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
       _, args, _ = call
       actual_value, _ = args
 
-      def _to_list(value):
+      def _normalize(value):
         if isinstance(value, tf.data.Dataset):
           return list(value)
         return value
 
-      actual_value = tree.map_structure(_to_list, actual_value)
-      expected_value = tree.map_structure(_to_list, expected_value)
+      actual_value = tree.map_structure(_normalize, actual_value)
+      expected_value = tree.map_structure(_normalize, expected_value)
       self.assertAllEqual(actual_value, expected_value)
 
   async def test_removes_saved_program_state(self):

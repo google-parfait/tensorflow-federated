@@ -629,46 +629,22 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
 
   # pyformat: disable
   @parameterized.named_parameters(
+      # materialized values
       ('none', None, [{'key': '1', '': ''}]),
       ('bool', True, [{'key': '1', '': 'True'}]),
       ('int', 1, [{'key': '1', '': '1'}]),
       ('str', 'a', [{'key': '1', '': 'a'}]),
-      ('list',
-       [True, 1, 'a'],
-       [{'key': '1', '0': 'True', '1': '1', '2': 'a'}]),
-      ('list_empty', [], [{'key': '1'}]),
-      ('list_nested',
-       [[True, 1], ['a']],
-       [{'key': '1', '0/0': 'True', '0/1': '1', '1/0': 'a'}]),
-      ('dict',
-       {'a': True, 'b': 1, 'c': 'a'},
-       [{'key': '1', 'a': 'True', 'b': '1', 'c': 'a'}]),
-      ('dict_empty', {}, [{'key': '1'}]),
-      ('dict_nested',
-       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
-       [{'key': '1', 'x/a': 'True', 'x/b': '1', 'y/c': 'a'}]),
-      ('attr',
-       test_utils.TestAttrObject1(True, 1),
-       [{'key': '1', 'a': 'True', 'b': '1'}]),
-      ('attr_nested',
-       {'a': [test_utils.TestAttrObject1(True, 1)],
-        'b': test_utils.TestAttrObject2('a')},
-       [{'key': '1', 'a/0/a': 'True', 'a/0/b': '1', 'b/a': 'a'}]),
       ('tensor_int', tf.constant(1), [{'key': '1', '': '1'}]),
       ('tensor_str', tf.constant('a'), [{'key': '1', '': 'b\'a\''}]),
       ('tensor_2d',
        tf.ones((2, 3)),
        [{'key': '1', '': '[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]'}]),
-      ('tensor_nested',
-       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]},
-       [{'key': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'b\'a\''}]),
       ('numpy_int', np.int32(1), [{'key': '1', '': '1'}]),
       ('numpy_2d',
        np.ones((2, 3)),
        [{'key': '1', '': '[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]'}]),
-      ('numpy_nested',
-       {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
-       [{'key': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'a'}]),
+
+      # value references
       ('materializable_value_reference_tensor',
        test_utils.TestMaterializableValueReference(1),
        [{'key': '1', '': '1'}]),
@@ -676,14 +652,35 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
        test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
        [{'key': '1', '': '[1, 2, 3]'}]),
-      ('materializable_value_reference_nested',
-       {'a': [test_utils.TestMaterializableValueReference(True),
-              test_utils.TestMaterializableValueReference(1)],
-        'b': [test_utils.TestMaterializableValueReference('a')]},
-       [{'key': '1', 'a/0': 'True', 'a/1': '1', 'b/0': 'a'}]),
-      ('materializable_value_reference_and_materialized_value',
-       [1, test_utils.TestMaterializableValueReference(2)],
-       [{'key': '1', '0': '1', '1': '2'}]),
+
+      # structures
+      ('list',
+       [True, test_utils.TestMaterializableValueReference(1), 'a'],
+       [{'key': '1', '0': 'True', '1': '1', '2': 'a'}]),
+      ('list_empty', [], [{'key': '1'}]),
+      ('list_nested',
+       [[True, test_utils.TestMaterializableValueReference(1)], ['a']],
+       [{'key': '1', '0/0': 'True', '0/1': '1', '1/0': 'a'}]),
+      ('dict',
+       {'a': True,
+        'b': test_utils.TestMaterializableValueReference(1),
+        'c': 'a'},
+       [{'key': '1', 'a': 'True', 'b': '1', 'c': 'a'}]),
+      ('dict_empty', {}, [{'key': '1'}]),
+      ('dict_nested',
+       {'x': {'a': True, 'b': test_utils.TestMaterializableValueReference(1)},
+        'y': {'c': 'a'}},
+       [{'key': '1', 'x/a': 'True', 'x/b': '1', 'y/c': 'a'}]),
+      ('attr',
+       test_utils.TestAttrObject2(
+           True, test_utils.TestMaterializableValueReference(1)),
+       [{'key': '1', 'a': 'True', 'b': '1'}]),
+      ('attr_nested',
+       test_utils.TestAttrObject2(
+           test_utils.TestAttrObject2(
+               True, test_utils.TestMaterializableValueReference(1)),
+           test_utils.TestAttrObject1('a')),
+       [{'key': '1', 'a/a': 'True', 'a/b': '1', 'b/a': 'a'}]),
   )
   # pyformat: enable
   async def test_writes_value(self, value, expected_value):
@@ -797,34 +794,18 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
 
   # pyformat: disable
   @parameterized.named_parameters(
+      # materialized values
       ('none', None, [None]),
       ('bool', True, [True]),
       ('int', 1, [1]),
       ('str', 'a', ['a']),
-      ('list', [True, 1, 'a'], [True, 1, 'a']),
-      ('list_empty', [], []),
-      ('list_nested', [[True, 1], ['a']], [True, 1, 'a']),
-      ('dict', {'a': True, 'b': 1, 'c': 'a'}, [True, 1, 'a']),
-      ('dict_empty', {}, []),
-      ('dict_nested',
-       {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
-       [True, 1, 'a']),
-      ('attr', test_utils.TestAttrObject1(True, 1), [True, 1]),
-      ('attr_nested',
-       {'a': [test_utils.TestAttrObject1(True, 1)],
-        'b': test_utils.TestAttrObject2('a')},
-       [True, 1, 'a']),
       ('tensor_int', tf.constant(1), [tf.constant(1)]),
       ('tensor_str', tf.constant('a'), [tf.constant('a')]),
       ('tensor_2d', tf.ones((2, 3)), [tf.ones((2, 3))]),
-      ('tensor_nested',
-       {'a': [tf.constant(True), tf.constant(1)], 'b': [tf.constant('a')]},
-       [tf.constant(True), tf.constant(1), tf.constant('a')]),
       ('numpy_int', np.int32(1), [np.int32(1)]),
       ('numpy_2d', np.ones((2, 3)), [np.ones((2, 3))]),
-      ('numpy_nested',
-       {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
-       [np.bool(True), np.int32(1), np.str_('a')]),
+
+      # value references
       ('materializable_value_reference_tensor',
        test_utils.TestMaterializableValueReference(1),
        [1]),
@@ -832,14 +813,35 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
        test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
        [tf.data.Dataset.from_tensor_slices([1, 2, 3])]),
-      ('materializable_value_reference_nested',
-       {'a': [test_utils.TestMaterializableValueReference(True),
-              test_utils.TestMaterializableValueReference(1)],
-        'b': [test_utils.TestMaterializableValueReference('a')]},
+
+      # structures
+      ('list',
+       [True, test_utils.TestMaterializableValueReference(1), 'a'],
        [True, 1, 'a']),
-      ('materialized_values_and_materializable_value_reference',
-       [1, test_utils.TestMaterializableValueReference(2)],
-       [1, 2]),
+      ('list_empty', [], []),
+      ('list_nested',
+       [[True, test_utils.TestMaterializableValueReference(1)], ['a']],
+       [True, 1, 'a']),
+      ('dict',
+       {'a': True,
+        'b': test_utils.TestMaterializableValueReference(1),
+        'c': 'a'},
+       [True, 1, 'a']),
+      ('dict_empty', {}, []),
+      ('dict_nested',
+       {'x': {'a': True, 'b': test_utils.TestMaterializableValueReference(1)},
+        'y': {'c': 'a'}},
+       [True, 1, 'a']),
+      ('attr',
+       test_utils.TestAttrObject2(
+           True, test_utils.TestMaterializableValueReference(1)),
+       [True, 1]),
+      ('attr_nested',
+       test_utils.TestAttrObject2(
+           test_utils.TestAttrObject2(
+               True, test_utils.TestMaterializableValueReference(1)),
+           test_utils.TestAttrObject1('a')),
+       [True, 1, 'a']),
   )
   # pyformat: enable
   async def test_writes_value(self, value, expected_value):
@@ -861,13 +863,13 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       _, args, _ = call
       actual_value, _ = args
 
-      def _to_list(value):
+      def _normalize(value):
         if isinstance(value, tf.data.Dataset):
           return list(value)
         return value
 
-      actual_value = tree.map_structure(_to_list, actual_value)
-      expected_value = tree.map_structure(_to_list, expected_value)
+      actual_value = tree.map_structure(_normalize, actual_value)
+      expected_value = tree.map_structure(_normalize, expected_value)
       self.assertAllEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
