@@ -98,3 +98,26 @@ py_test(
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
+
+py_library(
+    name = "keras_utils",
+    srcs = ["keras_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/tensorflow_libs:variable_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "keras_utils_test",
+    srcs = ["keras_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":counters",
+        ":keras_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
