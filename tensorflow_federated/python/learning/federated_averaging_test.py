@@ -21,6 +21,7 @@ tensorflow_federated/python/tests/federated_averaging_integration_test.py.
 import collections
 import itertools
 from unittest import mock
+import warnings
 
 from absl.testing import parameterized
 import numpy as np
@@ -142,6 +143,19 @@ class FederatedAveragingClientTest(test_case.TestCase, parameterized.TestCase):
 
 class FederatedAveragingTest(test_case.TestCase, parameterized.TestCase):
   """Tests construction of FedAvg training process."""
+
+  def test_deprecation_warning_raises(self):
+    mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      federated_averaging.build_federated_averaging_process(
+          model_fn=mock_model_fn,
+          client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1))
+      self.assertNotEmpty(w)
+      self.assertEqual(w[0].category, DeprecationWarning)
+      self.assertRegex(
+          str(w[0].message),
+          'tff.learning.build_federated_averaging_process is deprecated')
 
   # pylint: disable=g-complex-comprehension
   @parameterized.named_parameters((

@@ -34,6 +34,7 @@ Adaptive Federated Optimization
 """
 
 from typing import Callable, Optional, Union
+import warnings
 
 import tensorflow as tf
 
@@ -224,6 +225,11 @@ def build_federated_averaging_process(
   or server optimizers (this generalized FedAvg algorithm is described in
   [Reddi et al., 2021](https://arxiv.org/abs/2003.00295)).
 
+  WARNING: This method is deprecated. Please use
+  `tff.learning.algorithms.build_weighted_fed_avg` or
+  `tff.learning.algorithms.build_unweighted_fed_avg` instead (depending on the
+  client weighting being used).
+
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`. This method
       must *not* capture TensorFlow tensors or variables and use them. The model
@@ -271,6 +277,11 @@ def build_federated_averaging_process(
   Returns:
     A `tff.templates.IterativeProcess`.
   """
+  warnings.warn(
+      'tff.learning.build_federated_averaging_process is deprecated. Please '
+      'use tff.learning.algorithms.build_weighted_fed_avg or '
+      'tff.learning.algorithms.build_unweighted_fed_avg instead.',
+      DeprecationWarning)
 
   if isinstance(model_update_aggregation_factory,
                 factory.UnweightedAggregationFactory):
