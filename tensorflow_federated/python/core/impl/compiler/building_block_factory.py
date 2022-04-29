@@ -983,25 +983,43 @@ def create_federated_mean(
 def create_null_federated_secure_modular_sum():
   return create_federated_secure_modular_sum(
       create_federated_value(building_blocks.Struct([]), placements.CLIENTS),
-      building_blocks.Struct([]))
+      building_blocks.Struct([]),
+      preapply_modulus=False)
+
+
+def _cast(comp: building_blocks.ComputationBuildingBlock,
+          type_signature: computation_types.Type) -> building_blocks.Call:
+  """Casts `comp` to the provided type."""
+
+  def cast_fn(value):
+
+    def cast_element(element, type_signature: computation_types.Type):
+      type_signature.check_tensor()
+      return tf.cast(element, type_signature.dtype)
+
+    if comp.type_signature.is_struct():
+      return structure.map_structure(cast_element, value, type_signature)
+    return cast_element(value, type_signature)
+
+  cast_comp = create_tensorflow_unary_operator(cast_fn, comp.type_signature)
+  return building_blocks.Call(cast_comp, comp)
 
 
 def create_federated_secure_modular_sum(
     value: building_blocks.ComputationBuildingBlock,
-    modulus: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
+    modulus: building_blocks.ComputationBuildingBlock,
+    preapply_modulus: bool = True) -> building_blocks.ComputationBuildingBlock:
   r"""Creates a called secure modular sum.
-
-            Call
-           /    \
-  Intrinsic      [Comp, Comp]
 
   Args:
     value: A `building_blocks.ComputationBuildingBlock` to use as the value.
     modulus: A `building_blocks.ComputationBuildingBlock` to use as the
       `modulus` value.
+    preapply_modulus: Whether or not to preapply `modulus` to the input `value`.
+      This can be `False` if `value` is guaranteed to already be in range.
 
   Returns:
-    A `building_blocks.Call`.
+    A computation building block which invokes `federated_secure_modular_sum`.
 
   Raises:
     TypeError: If any of the types do not match.
@@ -1016,8 +1034,32 @@ def create_federated_secure_modular_sum(
   ], result_type)
   intrinsic = building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_SECURE_MODULAR_SUM.uri, intrinsic_type)
-  values = building_blocks.Struct([value, modulus])
-  return building_blocks.Call(intrinsic, values)
+
+  if not preapply_modulus:
+    values = building_blocks.Struct([value, modulus])
+    return building_blocks.Call(intrinsic, values)
+
+  # Pre-insert a modulus to ensure the the input values are within range.
+  mod_ref = building_blocks.Reference('mod', modulus.type_signature)
+
+  # In order to run `tf.math.floormod`, our modulus and value must be the same
+  # type.
+  casted_mod = _cast(mod_ref, value.type_signature.member)
+  value_with_mod = create_federated_zip(
+      building_blocks.Struct(
+          [value, create_federated_value(casted_mod, placements.CLIENTS)]))
+
+  def structural_modulus(value, mod):
+    return structure.map_structure(tf.math.floormod, value, mod)
+
+  structural_modulus_tf = create_tensorflow_binary_operator(
+      structural_modulus, value.type_signature.member,
+      casted_mod.type_signature)
+  value_modded = create_federated_map_or_apply(structural_modulus_tf,
+                                               value_with_mod)
+  values = building_blocks.Struct([value_modded, mod_ref])
+  return building_blocks.Block([('mod', modulus)],
+                               building_blocks.Call(intrinsic, values))
 
 
 def create_null_federated_secure_sum():
@@ -1699,7 +1741,7 @@ def apply_binary_operator_with_upcast(
   of type `<a=float32[784],b=float32[10]>` by a scalar of type `float32`, but
   the binary operator constructors we have implemented only take arguments of
   type `<T, T>`. Therefore in this case we would broadcast the `float` argument
-  to the `tuple` type, before constructing a biary operator which divides
+  to the `tuple` type, before constructing a binary operator which divides
   pointwise.
 
   Args:

@@ -1,0 +1,12 @@
+(let
+  mod=some_compiled_comp()
+ in federated_secure_modular_sum(<
+  federated_map(<
+    some_compiled_comp,
+    federated_zip_at_clients(<
+      v,
+      federated_value_at_clients(some_compiled_comp(mod))
+    >)
+  >),
+  mod
+>))

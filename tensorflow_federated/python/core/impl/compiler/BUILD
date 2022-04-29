@@ -84,13 +84,15 @@ py_library(
 
 py_test(
     name = "building_block_factory_test",
-    size = "small",
+    size = "large",
     srcs = ["building_block_factory_test.py"],
     args = [
         "--golden",
         "$(location building_block_factory_test_goldens/constructs_correct_computation_clients.expected)",
         "--golden",
         "$(location building_block_factory_test_goldens/constructs_correct_computation_server.expected)",
+        "--golden",
+        "$(location building_block_factory_test_goldens/federated_secure_modular_sum.expected)",
         "--golden",
         "$(location building_block_factory_test_goldens/replaces_single_element.expected)",
         "--golden",
@@ -117,6 +119,7 @@ py_test(
     data = [
         "building_block_factory_test_goldens/constructs_correct_computation_clients.expected",
         "building_block_factory_test_goldens/constructs_correct_computation_server.expected",
+        "building_block_factory_test_goldens/federated_secure_modular_sum.expected",
         "building_block_factory_test_goldens/replaces_single_element.expected",
         "building_block_factory_test_goldens/skips_unnamed_element.expected",
         "building_block_factory_test_goldens/tuple_federated_apply_with_two_values_different_typed.expected",

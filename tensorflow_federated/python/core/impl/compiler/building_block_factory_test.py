@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import re
 
 from absl.testing import parameterized
 import numpy as np
@@ -619,8 +620,12 @@ class CreateFederatedSecureModularSumTest(test_case.TestCase):
         modulus_type, 8, 'b')
     comp = building_block_factory.create_federated_secure_modular_sum(
         value, modulus)
-    self.assertEqual(comp.compact_representation(),
-                     'federated_secure_modular_sum(<v,comp#b()>)')
+    # Regex replaces compiled computations such as `comp#b03f` to ensure a
+    # consistent output.
+    golden.check_string(
+        'federated_secure_modular_sum.expected',
+        re.sub(r'comp\#\w*', 'some_compiled_comp',
+               comp.formatted_representation()))
     self.assertEqual(comp.type_signature.compact_representation(),
                      'int32@SERVER')
 
