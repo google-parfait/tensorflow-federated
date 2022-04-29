@@ -24,9 +24,9 @@ from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
 from tensorflow_federated.python.simulation.baselines.cifar100 import image_classification_preprocessing
-from tensorflow_federated.python.simulation.baselines.cifar100 import resnet_models
 from tensorflow_federated.python.simulation.datasets import cifar100
 from tensorflow_federated.python.simulation.datasets import client_data
+from tensorflow_federated.python.simulation.models import resnet_models
 
 
 class ResnetModel(enum.Enum):

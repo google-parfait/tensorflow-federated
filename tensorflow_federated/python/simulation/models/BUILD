@@ -50,3 +50,45 @@ py_library(
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
+
+py_library(
+    name = "mobilenet_v2",
+    srcs = ["mobilenet_v2.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":group_norm",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "mobilenet_v2_test",
+    srcs = ["mobilenet_v2_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":mobilenet_v2",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "resnet_models",
+    srcs = ["resnet_models.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":group_norm",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "resnet_models_test",
+    srcs = ["resnet_models_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":resnet_models",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)

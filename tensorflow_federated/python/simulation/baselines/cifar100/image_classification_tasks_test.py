@@ -21,7 +21,7 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.cifar100 import image_classification_tasks
-from tensorflow_federated.python.simulation.baselines.cifar100 import resnet_models
+from tensorflow_federated.python.simulation.models import resnet_models
 
 
 class CreateResnetModelTest(tf.test.TestCase, parameterized.TestCase):
