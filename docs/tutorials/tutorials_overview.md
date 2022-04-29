@@ -51,8 +51,9 @@ documentation can be found in the [TFF guides](../get_started.md).
 
 **Simulation best practices**
 
-*   [High-performance simulations with TFF](simulations.ipynb) describes how to
-    setup and configure the high performance TFF runtime.
+*   [High-performance simulations with Kubernetes](high_performance_simulation_with_kubernetes.ipynb)
+    describes how to setup and configure a high-performance TFF runtime running
+    on Kubernetes.
 
 *   [TFF simulation with accelerators (GPU)](simulations_with_accelerators.ipynb)
     shows how TFF's high-performance runtime can be used with GPUs.

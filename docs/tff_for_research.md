@@ -94,13 +94,13 @@ Datasets include:
 
 ## High performance simulations
 
-While the wall-clock time of an FL _simulation_ is not a relevant metric for
+While the wall-clock time of an FL *simulation* is not a relevant metric for
 evaluating algorithms (as simulation hardware isn't representative of real FL
 deployment environments), being able to run FL simulations quickly is critical
 for research productivity. Hence, TFF has invested heavily in providing
 high-performance single and multi-machine runtimes. Documentation is under
 development, but for now see the
-[High-performance simulations with TFF](https://www.tensorflow.org/federated/tutorials/simulations)
+[High-performance simulations with Kubernetes](https://www.tensorflow.org/federated/tutorials/high_performance_simulation_with_kubernetes)
 tutorial, instructions on
 [TFF simulations with accelerators](https://www.tensorflow.org/federated/tutorials/simulations_with_accelerators),
 and instructions on
