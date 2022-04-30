@@ -171,7 +171,7 @@ build:cuda --action_env=GCC_HOST_COMPILER_PATH="/dt7/usr/bin/gcc"
 # GCC >= 5 requires specify this to be ABI compatible with how the TensorFlow
 # pip package is built. More details at
 # https://www.tensorflow.org/guide/create_op#build_the_op_library.
-build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0
+# build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0
 
 # Default startup
 startup --host_jvm_args=-Dbazel.DigestFunction=SHA256
