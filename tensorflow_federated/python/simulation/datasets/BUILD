@@ -234,6 +234,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":client_data",
+        ":from_tensor_slices_client_data",
         ":vision_datasets_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
