@@ -23,6 +23,7 @@ from typing import Tuple
 
 import tensorflow as tf
 
+from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
 from tensorflow_federated.python.simulation.datasets import vision_datasets_utils as utils
 from tensorflow_federated.python.simulation.datasets.client_data import ClientData
 
@@ -300,3 +301,23 @@ def load_data(
         cache_dir=image_dir)
     logger.info('Finish to download the images for the testing set.')
     return _generate_data_from_image_dir(image_dir, cache_dir, split)
+
+
+# TODO(b/231165858): Rename to create_synthetic
+def get_synthetic() -> ClientData:
+  """Returns a small synthetic dataset for testing.
+
+  The single client produced has 3 examples generated pseudo-randomly.
+
+  Returns:
+     A `tff.simulation.datasets.ClientData`.
+  """
+  images = [
+      tf.random.stateless_normal(shape=(128, 128, 3), seed=(0, i))
+      for i in range(3)
+  ]
+  images_as_tensor = tf.cast(tf.stack(images, axis=0), dtype=tf.uint8)
+  labels = tf.constant([0, 1, 2], dtype=tf.int64)
+  data = collections.OrderedDict([('image/decoded', images_as_tensor),
+                                  ('class', labels)])
+  return from_tensor_slices_client_data.TestClientData({'synthetic': data})

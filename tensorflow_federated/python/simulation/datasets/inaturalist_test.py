@@ -12,13 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import inaturalist
 from tensorflow_federated.python.simulation.datasets import vision_datasets_utils
 
+EXPECTED_ELEMENT_TYPE = collections.OrderedDict([
+    ('image/decoded', tf.TensorSpec(shape=(128, 128, 3), dtype=tf.uint8)),
+    ('class', tf.TensorSpec(shape=(), dtype=tf.int64))
+])
+
 
 class INatualistTest(tf.test.TestCase):
+
+  def test_get_synthetic(self):
+    client_data = inaturalist.get_synthetic()
+    self.assertLen(client_data.client_ids, 1)
+    self.assertEqual(client_data.element_type_structure, EXPECTED_ELEMENT_TYPE)
+
+    data = client_data.create_tf_dataset_for_client(client_data.client_ids[0])
+    images = [x['image/decoded'].numpy() for x in data]
+    classes = [x['class'].numpy() for x in data]
+    self.assertLen(images, 3)
+    self.assertCountEqual(classes, [0, 1, 2])
 
   def test_create_dataset_from_mapping(self):
     tmp_dir = self.create_tempdir(name='images')
