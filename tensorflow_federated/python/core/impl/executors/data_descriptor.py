@@ -71,7 +71,7 @@ class CardinalityFreeDataDescriptor(ingestable_base.Ingestable):
     """
     self._comp = comp
     self._arg = arg
-    self._arg_type = arg_type
+    self._arg_type = computation_types.to_type(arg_type)
     if self._comp is not None:
       if not self._comp.type_signature.parameter.is_assignable_from(
           self._arg_type):
