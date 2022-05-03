@@ -189,16 +189,16 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
       return fieldnames
 
     def _append_value(fieldnames, value):
-      with tf.io.gfile.GFile(self._file_path, 'a') as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        try:
+      try:
+        with tf.io.gfile.GFile(self._file_path, 'a') as file:
+          writer = csv.DictWriter(file, fieldnames=fieldnames)
           writer.writerow(value)
-        except (tf.errors.PermissionDeniedError, csv.Error) as e:
-          raise FileReleaseManagerPermissionDeniedError(
-              f'Could not append a value to the file \'{self._file_path}\'. It '
-              'is possible that this file is compressed or encoded. Olease use '
-              'write mode instead of append mode to release values to this '
-              'file using a `tff.program.CSVFileReleaseManager`.') from e
+      except (tf.errors.PermissionDeniedError, csv.Error) as e:
+        raise FileReleaseManagerPermissionDeniedError(
+            f'Could not append a value to the file \'{self._file_path}\'. It '
+            'is possible that this file is compressed or encoded. Please use '
+            'write mode instead of append mode to release values to this '
+            'file using a `tff.program.CSVFileReleaseManager`.') from e
 
     loop = asyncio.get_running_loop()
     fieldnames = await loop.run_in_executor(None, _read_fieldnames_only)
