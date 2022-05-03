@@ -14,6 +14,7 @@
 """Libraries for extending the TensorFlow Federated core library."""
 
 from tensorflow_federated.python.core.impl.compiler.building_blocks import ComputationBuildingBlock
+from tensorflow_federated.python.core.impl.compiler.building_blocks import Data
 from tensorflow_federated.python.core.impl.compiler.intrinsic_reductions import replace_intrinsics_with_bodies
 from tensorflow_federated.python.core.impl.compiler.tree_transformations import check_disallowed_ops
 from tensorflow_federated.python.core.impl.computation.computation_impl import ConcreteComputation
