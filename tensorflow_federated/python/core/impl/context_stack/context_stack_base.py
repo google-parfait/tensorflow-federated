@@ -20,7 +20,8 @@ import contextlib
 class ContextStack(object, metaclass=abc.ABCMeta):
   """An interface to a context stack for the API to run against."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def current(self):
     """Returns the current context (one at the top of the context stack)."""
     raise NotImplementedError

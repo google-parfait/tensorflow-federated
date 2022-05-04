@@ -41,7 +41,8 @@ class MaterializableValueReference(
     typed_object.TypedObject, metaclass=abc.ABCMeta):
   """An abstract interface representing references to server-placed values."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def type_signature(self) -> MaterializableTffType:
     """The `tff.Type` of this object."""
     raise NotImplementedError

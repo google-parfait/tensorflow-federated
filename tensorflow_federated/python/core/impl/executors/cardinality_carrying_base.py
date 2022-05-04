@@ -24,7 +24,8 @@ import abc
 class CardinalityCarrying(metaclass=abc.ABCMeta):
   """Asbtract interface for objects that carry information about cardinality."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def cardinality(self):
     """Returns the cardinality information associated with this object.
 

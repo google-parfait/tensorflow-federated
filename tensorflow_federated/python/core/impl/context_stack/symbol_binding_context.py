@@ -27,7 +27,8 @@ class SymbolBindingContext(context_base.Context, metaclass=abc.ABCMeta):
     """Binds a computation to a symbol, returns a reference to this binding."""
     raise NotImplementedError
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def symbol_bindings(self) -> List[Tuple[str, Any]]:
     """Returns all symbols bound in this context."""
     raise NotImplementedError

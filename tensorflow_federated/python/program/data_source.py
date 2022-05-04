@@ -73,7 +73,8 @@ class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
   high-level description of how to use data sources.
   """
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def federated_type(self) -> computation_types.FederatedType:
     """The type of the data returned by calling `select`."""
     raise NotImplementedError
@@ -123,12 +124,14 @@ class FederatedDataSource(metaclass=abc.ABCMeta):
     source. See the descriptions of capabilities for the formal guarantees.
   """
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def federated_type(self) -> computation_types.FederatedType:
     """The type of the data returned by calling `select` on an iterator."""
     raise NotImplementedError
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def capabilities(self) -> List[Capability]:
     """The list of capabilities supported by this data source."""
     raise NotImplementedError
