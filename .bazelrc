@@ -30,12 +30,6 @@ build --compilation_mode=opt
 # Enable fast C++ protocol buffers, 10x speedup over pure Python.
 # build --define=use_fast_cpp_protos=true
 build --define=allow_oversize_protos=true
-# Compile time define to switch to use Runtime proto reflection. This appears
-# to be required for protos that are shared across the Python/C++ and TFF/TF
-# boundaries due to shared libraries having their own libproto and descriptors
-# pools. This should be paired with the `define framework_shared_object=true`
-# argument below in the TensorFlow section.
-build --copt=-DSHARED_TF_FRAMEWORK_OBJECT
 
 # pybind_abseil does not include a __init__.py, which breaks dependencies when
 # bazel produces an empty __init__.py and hides the symbols from the `.so`
