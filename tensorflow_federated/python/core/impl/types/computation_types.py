@@ -821,7 +821,8 @@ class AbstractType(Type, metaclass=_Intern):
     return (self is other) or (isinstance(other, AbstractType) and
                                self._label == other.label)
 
-  def is_assignable_from(self, _source_type: 'Type') -> bool:
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    del source_type  # Unused.
     # TODO(b/113112108): Revise this to extend the relation of assignability to
     # abstract types.
     raise TypeError('Abstract types are not comparable.')

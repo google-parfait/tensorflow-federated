@@ -971,8 +971,8 @@ class _BeginScopePointer(BoundVariableTracker):
                        '_BeginScopePointer; it will simply be ignored.')
     super().__init__('BeginScope', None)
 
-  def update(self, comp=None):
-    del comp  # Unused
+  def update(self, value=None):
+    del value  # Unused.
     raise RuntimeError('We shouldn\'t be trying to update the outer context.')
 
   def __str__(self):
@@ -1035,8 +1035,8 @@ class ReferenceCounter(BoundVariableTracker):
     super().__init__(name, value)
     self.count = 0
 
-  def update(self, reference=None):
-    del reference  # Unused
+  def update(self, value=None):
+    del value  # Unused.
     self.count += 1
 
   def __str__(self):
