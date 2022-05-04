@@ -212,8 +212,10 @@ def capture_result_from_graph(
         ((k,) + capture_result_from_graph(v, graph))
         for k, v in name_value_pairs
     ]
-    type_members = [((e[0], e[1]) if e[0] else e[1])
-                    for e in element_name_type_binding_triples]
+    type_members = []
+    for e in element_name_type_binding_triples:
+      type_member = (e[0], e[1]) if e[0] else e[1]
+      type_members.append(type_member)
     if container_type:
       type_spec = computation_types.StructWithPythonType(
           type_members, container_type=container_type)
