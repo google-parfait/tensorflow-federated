@@ -24,7 +24,7 @@ import threading
 from typing import Optional
 import weakref
 
-import absl.logging as logging
+from absl import logging
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure

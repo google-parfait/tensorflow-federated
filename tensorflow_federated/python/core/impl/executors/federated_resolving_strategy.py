@@ -49,7 +49,7 @@
 import asyncio
 from typing import Any, Dict, List
 
-import absl.logging as logging
+from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
