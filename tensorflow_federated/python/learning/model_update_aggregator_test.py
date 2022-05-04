@@ -19,12 +19,14 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
+from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.test import static_assert
+from tensorflow_federated.python.learning import debug_measurements
 from tensorflow_federated.python.learning import model_update_aggregator
 
 _float_type = computation_types.TensorType(tf.float32)
@@ -34,19 +36,21 @@ _float_matrix_type = computation_types.TensorType(tf.float32, [200, 300])
 class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('simple', False, False, False),
-      ('zeroing', True, False, False),
-      ('clipping', False, True, False),
-      ('zeroing_and_clipping', True, True, False),
-      ('debug_measurements', False, False, True),
-      ('zeroing_clipping_debug_measurements', True, True, True),
+      ('simple', False, False, None),
+      ('zeroing', True, False, None),
+      ('clipping', False, True, None),
+      ('zeroing_and_clipping', True, True, None),
+      ('debug_measurements', False, False,
+       debug_measurements.add_debug_measurements),
+      ('zeroing_clipping_debug_measurements', True, True,
+       debug_measurements.add_debug_measurements),
   )
   def test_robust_aggregator_weighted(self, zeroing, clipping,
-                                      add_debug_measurements):
+                                      debug_measurements_fn):
     factory_ = model_update_aggregator.robust_aggregator(
         zeroing=zeroing,
         clipping=clipping,
-        add_debug_measurements=add_debug_measurements)
+        debug_measurements_fn=debug_measurements_fn)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
     process = factory_.create(_float_type, _float_type)
@@ -54,25 +58,58 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     self.assertTrue(process.is_weighted)
 
   @parameterized.named_parameters(
-      ('simple', False, False, False),
-      ('zeroing', True, False, False),
-      ('clipping', False, True, False),
-      ('zeroing_and_clipping', True, True, False),
-      ('debug_measurements', False, False, True),
-      ('zeroing_clipping_debug_measurements', True, True, True),
+      ('simple', False, False, None),
+      ('zeroing', True, False, None),
+      ('clipping', False, True, None),
+      ('zeroing_and_clipping', True, True, None),
+      ('debug_measurements', False, False,
+       debug_measurements.add_debug_measurements),
+      ('zeroing_clipping_debug_measurements', True, True,
+       debug_measurements.add_debug_measurements),
   )
   def test_robust_aggregator_unweighted(self, zeroing, clipping,
-                                        add_debug_measurements):
+                                        debug_measurements_fn):
     factory_ = model_update_aggregator.robust_aggregator(
         zeroing=zeroing,
         clipping=clipping,
         weighted=False,
-        add_debug_measurements=add_debug_measurements)
+        debug_measurements_fn=debug_measurements_fn)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create(_float_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertFalse(process.is_weighted)
+
+  @parameterized.named_parameters(
+      ('debug_measurements', False, False,
+       debug_measurements.add_debug_measurements_with_mixed_dtype),
+      ('zeroing_clipping_debug_measurements', True, True,
+       debug_measurements.add_debug_measurements_with_mixed_dtype),
+  )
+  def test_robust_aggregator_weighted_mixed_dtype(self, zeroing, clipping,
+                                                  debug_measurements_fn):
+    factory_ = model_update_aggregator.robust_aggregator(
+        zeroing=zeroing,
+        clipping=clipping,
+        debug_measurements_fn=debug_measurements_fn)
+
+    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
+    process = factory_.create(_float_type, _float_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertTrue(process.is_weighted)
+
+  def test_wrong_debug_measurements_fn_robust_aggregator(self):
+    """Expect error if debug_measurements_fn is wrong."""
+    with self.assertRaises(context_base.ContextError):
+
+      def wrong_debug_measurements_fn(
+          aggregation_factory: factory.AggregationFactory) ->...:
+        del aggregation_factory
+        return debug_measurements._calculate_client_update_statistics_mixed_dtype(
+            [1.0], [1.0])
+
+      model_update_aggregator.robust_aggregator(
+          debug_measurements_fn=wrong_debug_measurements_fn)
 
   @parameterized.named_parameters(
       ('simple', False),
@@ -160,19 +197,21 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     self.assertFalse(process.is_weighted)
 
   @parameterized.named_parameters(
-      ('simple', False, False, False),
-      ('zeroing', True, False, False),
-      ('clipping', False, True, False),
-      ('zeroing_and_clipping', True, True, False),
-      ('debug_measurements', False, False, True),
-      ('zeroing_clipping_debug_measurements', True, True, True),
+      ('simple', False, False, None),
+      ('zeroing', True, False, None),
+      ('clipping', False, True, None),
+      ('zeroing_and_clipping', True, True, None),
+      ('debug_measurements', False, False,
+       debug_measurements.add_debug_measurements),
+      ('zeroing_clipping_debug_measurements', True, True,
+       debug_measurements.add_debug_measurements),
   )
   def test_compression_aggregator_weighted(self, zeroing, clipping,
-                                           add_debug_measurements):
+                                           debug_measurements_fn):
     factory_ = model_update_aggregator.compression_aggregator(
         zeroing=zeroing,
         clipping=clipping,
-        add_debug_measurements=add_debug_measurements)
+        debug_measurements_fn=debug_measurements_fn)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
     process = factory_.create(_float_type, _float_type)
@@ -180,25 +219,58 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     self.assertTrue(process.is_weighted)
 
   @parameterized.named_parameters(
-      ('simple', False, False, False),
-      ('zeroing', True, False, False),
-      ('clipping', False, True, False),
-      ('zeroing_and_clipping', True, True, False),
-      ('debug_measurements', False, False, True),
-      ('zeroing_clipping_debug_measurements', True, True, True),
+      ('simple', False, False, None),
+      ('zeroing', True, False, None),
+      ('clipping', False, True, None),
+      ('zeroing_and_clipping', True, True, None),
+      ('debug_measurements', False, False,
+       debug_measurements.add_debug_measurements),
+      ('zeroing_clipping_debug_measurements', True, True,
+       debug_measurements.add_debug_measurements),
   )
   def test_compression_aggregator_unweighted(self, zeroing, clipping,
-                                             add_debug_measurements):
+                                             debug_measurements_fn):
     factory_ = model_update_aggregator.compression_aggregator(
         zeroing=zeroing,
         clipping=clipping,
         weighted=False,
-        add_debug_measurements=add_debug_measurements)
+        debug_measurements_fn=debug_measurements_fn)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create(_float_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertFalse(process.is_weighted)
+
+  @parameterized.named_parameters(
+      ('debug_measurements', False, False,
+       debug_measurements.add_debug_measurements_with_mixed_dtype),
+      ('zeroing_clipping_debug_measurements', True, True,
+       debug_measurements.add_debug_measurements_with_mixed_dtype),
+  )
+  def test_compression_aggregator_weighted_mixed_dtype(self, zeroing, clipping,
+                                                       debug_measurements_fn):
+    factory_ = model_update_aggregator.compression_aggregator(
+        zeroing=zeroing,
+        clipping=clipping,
+        debug_measurements_fn=debug_measurements_fn)
+
+    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
+    process = factory_.create(_float_type, _float_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertTrue(process.is_weighted)
+
+  def test_wrong_debug_measurements_fn_compression_aggregator(self):
+    """Expect error if debug_measurements_fn is wrong."""
+    with self.assertRaises(context_base.ContextError):
+
+      def wrong_debug_measurements_fn(
+          aggregation_factory: factory.AggregationFactory) ->...:
+        del aggregation_factory
+        return debug_measurements._calculate_client_update_statistics_mixed_dtype(
+            [1.0], [1.0])
+
+      model_update_aggregator.compression_aggregator(
+          debug_measurements_fn=wrong_debug_measurements_fn)
 
 
 class CompilerIntegrationTest(test_case.TestCase, parameterized.TestCase):
