@@ -110,12 +110,14 @@ class ClientData(object, metaclass=abc.ABCMeta):
   an easy way to construct toy federated datasets.
   """
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def client_ids(self) -> List[str]:
     """A list of string identifiers for clients in this dataset."""
     pass
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def serializable_dataset_fn(self):
     """A callable accepting a client ID and returning a `tf.data.Dataset`.
 
@@ -161,7 +163,8 @@ class ClientData(object, metaclass=abc.ABCMeta):
       self._cached_dataset_computation = dataset_computation
     return self._cached_dataset_computation
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def element_type_structure(self):
     """The element type information of the client datasets.
 

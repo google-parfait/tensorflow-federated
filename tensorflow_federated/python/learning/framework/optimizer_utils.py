@@ -79,7 +79,8 @@ class ClientOutput(object):
 class ClientDeltaFn(object, metaclass=abc.ABCMeta):
   """Represents a client computation that produces an update to a model."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def variables(self):
     """Returns all the variables of this object.
 

@@ -19,7 +19,8 @@ import abc
 class TypedObject(object, metaclass=abc.ABCMeta):
   """An abstract interface for things that possess TFF type signatures."""
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def type_signature(self):
     """Returns the TFF type of this object (an instance of `tff.Type`)."""
     raise NotImplementedError

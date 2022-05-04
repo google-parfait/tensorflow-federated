@@ -83,22 +83,26 @@ class Model(object, metaclass=abc.ABCMeta):
   the future.
   """
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def trainable_variables(self) -> Sequence[tf.Variable]:
     """An iterable of `tf.Variable` objects, see class comment for details."""
     pass
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def non_trainable_variables(self) -> Sequence[tf.Variable]:
     """An iterable of `tf.Variable` objects, see class comment for details."""
     pass
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def local_variables(self) -> Sequence[tf.Variable]:
     """An iterable of `tf.Variable` objects, see class comment for details."""
     pass
 
-  @abc.abstractproperty
+  @property
+  @abc.abstractmethod
   def input_spec(self):
     """The type specification of the `batch_input` parameter for `forward_pass`.
 
