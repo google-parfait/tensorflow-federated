@@ -60,15 +60,16 @@ inline T __void_or_result(absl::StatusOr<T>&& res) {
 //
 // The macro accepts an optional last argument for a `const absl::string_view&`
 // to append to the error message.
-#define TFF_TRY(expr, ...)                                        \
-  ({                                                              \
-    auto __tff_expr_res = expr;                                   \
-    if (!__tff_expr_res.ok()) {                                   \
-      return ::tensorflow_federated::status_macros::__get_status( \
-          std::move(__tff_expr_res), ##__VA_ARGS__);              \
-    }                                                             \
-    ::tensorflow_federated::status_macros::__void_or_result(      \
-        std::move(__tff_expr_res));                               \
+#define TFF_TRY(expr, ...)                                                     \
+  ({                                                                           \
+    auto __tff_expr_res = expr;                                                \
+    if (!__tff_expr_res.ok()) {                                                \
+      return ::tensorflow_federated::status_macros::__get_status(              \
+          std::move(__tff_expr_res),                                           \
+          ##__VA_ARGS__);                                                      \
+    }                                                                          \
+    ::tensorflow_federated::status_macros::__void_or_result(                   \
+        std::move(__tff_expr_res));                                            \
   })
 
 }  // namespace status_macros
