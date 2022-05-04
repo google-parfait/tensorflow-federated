@@ -1,3 +1,19 @@
+# Release 0.23.0
+
+## Major Features and Improvements
+
+*   Deprecated `tff.learning.build_federated_averaging_process`.
+*   Added an API to convert `tf.keras.metrics.Metric` to a set of pure
+    `tf.functions`.
+
+## Breaking Changes
+
+*   Renamed `ProgramStateManager.version` to `ProgramStateManager.get_versions`.
+
+## Bug Fixes
+
+*   Fixed the "datasets/" path in the working with TFF's ClientData tutorial.
+
 # Release 0.22.0
 
 ## Major Features and Improvements
