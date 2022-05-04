@@ -21,7 +21,7 @@ $ cd "federated"
     $ docker build \
         --network=host \
         --tag "<registry>/tff-runtime" \
-        --file "tensorflow_federated/tools/runtime/container/latest.Dockerfile" \
+        --file "tensorflow_federated/tools/runtime/container/Dockerfile" \
         .
     ```
 
