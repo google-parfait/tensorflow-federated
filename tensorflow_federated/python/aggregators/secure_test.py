@@ -38,7 +38,7 @@ _int_at_clients = computation_types.at_clients(tf.int32)
 
 
 def _test_struct_type(dtype):
-  return ((dtype, (2,)), dtype)
+  return (dtype, (2,)), dtype
 
 
 def _test_float_init_fn(factor):

@@ -77,7 +77,7 @@ def fast_walsh_hadamard_transform(x):
     ]):
       x = tf.identity(x)
   else:  # dim is statically known.
-    if not (dim and ((dim & (dim - 1)) == 0)):
+    if not (dim and (dim & (dim - 1)) == 0):
       raise TensorShapeError('The dimension of x must be a power of two. '
                              f'Provided dimension is: {dim}')
     log2 = int(math.ceil(math.log2(dim)))
