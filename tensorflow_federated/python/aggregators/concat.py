@@ -71,7 +71,9 @@ def _next_fn_impl(state,
       measurements=inner_agg_output.measurements)
 
 
-def _create_concat_fns(value_type):
+def create_concat_fns(
+    value_type: factory.ValueType
+) -> (computations.tf_computation, computations.tf_computation):
   """Creates the forward and backward flattening/concatenation functions."""
   # As the factory alters the tensor specs, we compute the Python structure
   # of the types for the unconcat procedure.
@@ -121,7 +123,7 @@ def _unweighted_concat_factory(inner_agg_factory):
     """A concat_factory with type `UnweightedAggregationFactory`."""
 
     def create(self, value_type) -> aggregation_process.AggregationProcess:
-      concat_fn, unconcat_fn = _create_concat_fns(value_type)
+      concat_fn, unconcat_fn = create_concat_fns(value_type)
       inner_agg_process = inner_agg_factory.create(
           concat_fn.type_signature.result)
       init_fn = inner_agg_process.initialize
@@ -146,7 +148,7 @@ def _weighted_concat_factory(inner_agg_factory):
 
     def create(self, value_type,
                weight_type) -> aggregation_process.AggregationProcess:
-      concat_fn, unconcat_fn = _create_concat_fns(value_type)
+      concat_fn, unconcat_fn = create_concat_fns(value_type)
       inner_agg_process = inner_agg_factory.create(
           concat_fn.type_signature.result, weight_type)
       init_fn = inner_agg_process.initialize
