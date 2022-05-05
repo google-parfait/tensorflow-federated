@@ -633,7 +633,7 @@ class StructWithPythonType(StructType, metaclass=_Intern):
   """A representation of a structure paired with a Python container type."""
 
   @staticmethod
-  def _normalize_init_args(elements, container_type):
+  def _normalize_init_args(elements, container_type):  # pylint: disable=arguments-renamed
     py_typecheck.check_type(container_type, type)
     # TODO(b/161561250): check the `container_type` for validity.
     elements = StructType._normalize_init_args(elements)[0]
