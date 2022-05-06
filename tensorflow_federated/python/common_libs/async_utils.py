@@ -167,10 +167,8 @@ class SharedAwaitable():
     async def waiter():
       await self._event.wait()
       if self._exception is not None:
-        e_type, value, traceback = self._exception
-        exception = e_type(value)
-        exception.__traceback__ = traceback
-        raise exception
+        _, exception, traceback = self._exception
+        raise exception.with_traceback(traceback)
       return self._result
 
     return waiter().__await__()
