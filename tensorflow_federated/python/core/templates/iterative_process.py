@@ -18,7 +18,7 @@
 # information.
 """Defines a template for a stateful process."""
 
-from typing import Optional
+from typing import Optional, Generic, TypeVar, Type
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
@@ -75,7 +75,10 @@ def _infer_state_type(initialize_result_type, next_parameter_type,
         f'{next_parameter_type}')
 
 
-class IterativeProcess:
+_S = TypeVar('_S', computation_types.Type)
+
+
+class IterativeProcess(Generic[_S]):
   """A process that includes an initialization and iterated computation.
 
   An iterated process will usually be driven by a control loop like:
@@ -113,8 +116,8 @@ class IterativeProcess:
   """
 
   def __init__(self,
-               initialize_fn: computation_base.Computation,
-               next_fn: computation_base.Computation,
+               initialize_fn: computation_base.Computation[[], _S],
+               next_fn: computation_base.Computation[[_S, ...], _S],
                next_is_multi_arg: Optional[bool] = None):
     """Creates a `tff.templates.IterativeProcess`.
 
@@ -170,12 +173,12 @@ class IterativeProcess:
     self._next_fn = next_fn
 
   @property
-  def initialize(self) -> computation_base.Computation:
+  def initialize(self) -> computation_base.Computation[_S]:
     """A no-arg `tff.Computation` that returns the initial state."""
     return self._initialize_fn
 
   @property
-  def next(self) -> computation_base.Computation:
+  def next(self) -> computation_base.Computation[_S]:
     """A `tff.Computation` that produces the next state.
 
     Its first argument should always be the current state (originally produced
@@ -188,7 +191,7 @@ class IterativeProcess:
     return self._next_fn
 
   @property
-  def state_type(self) -> computation_types.Type:
+  def state_type(self) -> Type[_S]:
     """The `tff.Type` of the state of the process."""
     return self._state_type
 

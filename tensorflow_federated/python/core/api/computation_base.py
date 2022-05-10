@@ -15,14 +15,20 @@
 
 import abc
 
+from typing import Callable, TypeVar
+
 from tensorflow_federated.python.core.impl.types import typed_object
 
+_IN = TypeVar('_IN')
+_OUT = TypeVar('_OUT')
 
-class Computation(typed_object.TypedObject, metaclass=abc.ABCMeta):
+
+class Computation(
+    typed_object.TypedObject, Callable[[_IN], _OUT], metaclass=abc.ABCMeta):
   """An abstract interface for all classes that represent computations."""
 
   @abc.abstractmethod
-  def __call__(self, *args, **kwargs):
+  def __call__(self, *args, **kwargs) -> _OUT:
     """Invokes the computation with the given arguments in the given context.
 
     Args:
