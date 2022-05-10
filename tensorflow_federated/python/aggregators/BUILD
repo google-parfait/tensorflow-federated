@@ -50,6 +50,7 @@ py_library(
     deps = [
         ":factory",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
