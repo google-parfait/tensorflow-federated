@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.simulation import iterative_process_compositions
 
 
@@ -371,6 +372,54 @@ class ConstructDatasetsOnClientsIterativeProcessTest(absltest.TestCase):
         expected_new_next_type_signature.is_equivalent_to(
             new_iterproc.next.type_signature))
 
+
+class ConstructDatasetsOnClientsLearningProcessTest(absltest.TestCase):
+
+  def test_returns_iterative_process_with_same_non_next_type_signatures(self):
+
+    @computations.tf_computation()
+    def make_zero():
+      return tf.cast(0, tf.int64)
+
+    @computations.federated_computation()
+    def initialize_fn():
+      return intrinsics.federated_eval(make_zero, placements.SERVER)
+
+    @computations.federated_computation(
+        (initialize_fn.type_signature.result,
+         computation_types.FederatedType(
+             computation_types.SequenceType(tf.int64), placements.CLIENTS)))
+    def next_fn(server_state, client_data):
+      del client_data
+      return learning_process.LearningProcessOutput(
+          state=server_state,
+          metrics=intrinsics.federated_value((), placements.SERVER))
+
+    @computations.tf_computation(tf.int64)
+    def get_model_weights(server_state):
+      return server_state + 1
+
+    @computations.tf_computation(tf.int64, tf.int64)
+    def set_model_weights(state, state_update):
+      return state + state_update
+
+    process = learning_process.LearningProcess(
+        initialize_fn=initialize_fn,
+        next_fn=next_fn,
+        get_model_weights=get_model_weights,
+        set_model_weights=set_model_weights)
+    new_process = iterative_process_compositions.compose_dataset_computation_with_learning_process(
+        int_dataset_computation, process)
+
+    self.assertIsInstance(new_process, iterative_process.IterativeProcess)
+    self.assertTrue(hasattr(new_process, 'get_model_weights'))
+    self.assertTrue(
+        new_process.get_model_weights.type_signature.is_equivalent_to(
+            process.get_model_weights.type_signature))
+    self.assertTrue(hasattr(new_process, 'set_model_weights'))
+    self.assertTrue(
+        new_process.set_model_weights.type_signature.is_equivalent_to(
+            process.set_model_weights.type_signature))
 
 if __name__ == '__main__':
   absltest.main()

@@ -22,6 +22,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.learning.templates import learning_process
 
 
 class SequenceTypeNotAssignableError(TypeError):
@@ -328,3 +329,37 @@ def compose_dataset_computation_with_iterative_process(
       dataset_computation, process.next)
   return iterative_process.IterativeProcess(
       initialize_fn=init_fn, next_fn=new_next_comp)
+
+
+def compose_dataset_computation_with_learning_process(
+    dataset_computation: computation_base.Computation,
+    process: learning_process.LearningProcess,
+) -> iterative_process.IterativeProcess:
+  """Builds a new iterative process which constructs datasets on clients.
+
+  This functionality is identical to
+  `tff.simulation.compose_dataset_computation_with_iterative_process`, except
+  that all public attributes of the process (except for `initialize` and `next`)
+  are also preserved (eg. `LearningProcess.get_model_weights`).
+
+  Args:
+    dataset_computation: An instance of `tff.Computation` which accepts some
+      parameter and returns an element of `tff.SequenceType`.
+    process: An instance of `tff.learning.templates.LearningProcess` whose
+      `next` function accepts exactly one federated dataset (ie. something of
+      type `{B*}@CLIENTS`, where `B` is equivalent to the return type of
+      `dataset_computation`).
+
+  Returns:
+    A `tff.templates.IterativeProcess`.
+  """
+  new_process = compose_dataset_computation_with_iterative_process(
+      dataset_computation, process)
+  for attribute in dir(process):
+    # We need to ensure that we do not call `setattr` on non-public attributes
+    # or attributes already posessed by the iterative process (eg. 'next')
+    if attribute.startswith('_') or hasattr(new_process, attribute):
+      continue
+    setattr(new_process, attribute, getattr(process, attribute))
+
+  return new_process
