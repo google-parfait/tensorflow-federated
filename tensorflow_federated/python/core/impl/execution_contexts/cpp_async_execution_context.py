@@ -22,8 +22,8 @@ from absl import logging
 
 from pybind11_abseil import status as absl_status
 from tensorflow_federated.python.common_libs import retrying
-from tensorflow_federated.python.core.impl.compiler import compiler_pipeline
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import type_conversions

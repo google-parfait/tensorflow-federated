@@ -104,8 +104,8 @@ py_library(
     deps = [
         ":iblt_tensor",
         "//tensorflow_federated/python/analytics:data_processing",
-        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
@@ -122,9 +122,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":iblt_tff",
-        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",

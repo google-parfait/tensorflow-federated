@@ -5,6 +5,7 @@ package(default_visibility = [
     "//tensorflow_federated/experimental/python/core/impl/jax_context:jax_context_packages",
     "//tensorflow_federated/python/core/impl:impl_visibility",
     "//tensorflow_federated/python/core/impl/compiler:compiler_packages",
+    "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
     "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
     "//tensorflow_federated/python/core/impl/executors:executors_packages",
     "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
@@ -31,14 +32,21 @@ py_library(
 )
 
 py_library(
+    name = "computation_base",
+    srcs = ["computation_base.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
+)
+
+py_library(
     name = "computation_impl",
     srcs = ["computation_impl.py"],
     srcs_version = "PY3",
     deps = [
+        ":computation_base",
         ":function_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -68,10 +76,10 @@ py_library(
     srcs = ["computation_serialization.py"],
     srcs_version = "PY3",
     deps = [
+        ":computation_base",
         ":computation_impl",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
@@ -83,8 +91,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":computation_base",
         ":computation_serialization",
-        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -96,9 +104,9 @@ py_library(
     srcs = ["function_utils.py"],
     srcs_version = "PY3",
     deps = [
+        ":computation_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",

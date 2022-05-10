@@ -25,8 +25,8 @@ import tempfile
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.simulation.datasets import file_per_user_client_data
 
 # A fake columnar dataset of (user id, value 1, value 2, value 3), roughly

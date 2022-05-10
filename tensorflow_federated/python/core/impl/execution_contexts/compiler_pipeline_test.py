@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.impl.compiler import compiler_pipeline
+from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
 
 
 class CompilerPipelineTest(test_case.TestCase):

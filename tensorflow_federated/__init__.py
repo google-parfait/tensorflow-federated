@@ -31,10 +31,10 @@ from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import templates
 from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core import types
-from tensorflow_federated.python.core.api.computation_base import Computation
 from tensorflow_federated.python.core.api.computations import check_returns_type
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
+from tensorflow_federated.python.core.impl.computation.computation_base import Computation
 from tensorflow_federated.python.core.impl.federated_context.data import data
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_aggregate
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_broadcast

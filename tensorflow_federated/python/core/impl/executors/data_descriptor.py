@@ -22,7 +22,7 @@ import asyncio
 from typing import Any, Mapping, Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.executors import cardinality_carrying_base
 from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
