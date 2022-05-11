@@ -316,29 +316,6 @@ py_test(
 )
 
 py_library(
-    name = "compiler_pipeline",
-    srcs = ["compiler_pipeline.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_base",
-    ],
-)
-
-py_test(
-    name = "compiler_pipeline_test",
-    size = "small",
-    srcs = ["compiler_pipeline_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":compiler_pipeline",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:test_case",
-    ],
-)
-
-py_library(
     name = "local_computation_factory_base",
     srcs = ["local_computation_factory_base.py"],
     srcs_version = "PY3",

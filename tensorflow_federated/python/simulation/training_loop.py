@@ -21,7 +21,7 @@ from typing import Any, Callable, Iterable, Mapping, MutableMapping, Optional, T
 from absl import logging
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
 from tensorflow_federated.python.program import release_manager as release_manager_lib

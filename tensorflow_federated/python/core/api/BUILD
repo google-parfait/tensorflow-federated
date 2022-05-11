@@ -34,13 +34,6 @@ py_library(
 )
 
 py_library(
-    name = "computation_base",
-    srcs = ["computation_base.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
-)
-
-py_library(
     name = "computations",
     srcs = ["computations.py"],
     srcs_version = "PY3",

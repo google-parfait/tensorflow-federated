@@ -19,7 +19,7 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.program import release_manager as release_manager_lib
 from tensorflow_federated.python.simulation import training_loop

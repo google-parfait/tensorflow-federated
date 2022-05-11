@@ -82,7 +82,7 @@ py_library(
     srcs = ["task_data.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

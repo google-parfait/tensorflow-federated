@@ -24,8 +24,8 @@ from typing import Any, Optional
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import errors

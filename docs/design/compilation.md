@@ -92,12 +92,3 @@ transformation modules.
 
 A compiler is a collection of [transformations](#transformation) that construct
 a form that can be executed.
-
-### `CompilerPipeline`
-
-A
-[compiler_pipeline.CompilerPipeline](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/compiler_pipeline.py)
-is a data structure that compiles [ASTs](#ast) and caches the compiled results.
-The performance of comipling a ASTs is dependent on the complexity of the
-compilation function; the `CompilerPipeline` ensures that compiling the same
-ASTs multiple times does not impact the performance of the system.

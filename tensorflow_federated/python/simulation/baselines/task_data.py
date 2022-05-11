@@ -19,7 +19,7 @@ from typing import Any, Callable, List, Optional, Union
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.simulation.datasets import client_data
 
 CentralOrClientData = Union[tf.data.Dataset, client_data.ClientData]

@@ -23,7 +23,7 @@ import functools
 from typing import Callable, Any
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.impl.computation import computation_base
 
 
 class CompilerPipeline(object):
