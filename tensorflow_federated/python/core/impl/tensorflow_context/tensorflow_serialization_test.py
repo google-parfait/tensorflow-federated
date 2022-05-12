@@ -36,7 +36,8 @@ class TensorFlowSerializationTest(test_case.TestCase):
     comp, extra_type_spec = serializer.send(result)
     deserialized_type = type_serialization.deserialize_type(comp.type)
     self.assert_types_equivalent(deserialized_type, extra_type_spec)
-    self.assert_type_string(deserialized_type, expected_fn_type_str)
+    self.assertEqual(deserialized_type.compact_representation(),
+                     expected_fn_type_str)
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
     return comp.tensorflow, extra_type_spec
 

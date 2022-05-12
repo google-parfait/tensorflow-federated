@@ -62,7 +62,7 @@ class IntrinsicTestBase(test_case.TestCase):
 
   def assert_value(self, value, type_string):
     self.assertIsInstance(value, value_impl.Value)
-    self.assert_type_string(value.type_signature, type_string)
+    self.assertEqual(value.type_signature.compact_representation(), type_string)
 
 
 class FederatedBroadcastTest(IntrinsicTestBase):
