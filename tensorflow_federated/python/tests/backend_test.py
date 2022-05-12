@@ -29,8 +29,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
 
   @test_contexts.with_contexts
   def test_executes_null_aggregate(self):
-
-    unit_type = tff.StructType([])
+    unit_type = tff.StructWithPythonType([], tuple)
 
     @tff.tf_computation(unit_type, unit_type)
     def accumulate(a, b):
