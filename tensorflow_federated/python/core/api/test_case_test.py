@@ -47,17 +47,5 @@ class TestUtilsTest(test_case.TestCase):
     with self.assertRaises(self.failureException):  # pylint: disable=g-error-prone-assert-raises
       self.assert_types_identical(*container_mismatch)
 
-  def test_nested_structures_are_same_where_they_are_same(self):
-    self.assert_nested_struct_eq({'a': 10}, {'a': 10})
-
-  def test_nested_structures_are_same_where_nesting_differs(self):
-    with self.assertRaises(self.failureException):  # pylint: disable=g-error-prone-assert-raises
-      self.assert_nested_struct_eq({'a': 10}, 10)
-
-  def test_nested_structures_are_same_where_values_differ(self):
-    with self.assertRaises(self.failureException):  # pylint: disable=g-error-prone-assert-raises
-      self.assert_nested_struct_eq({'a': 10}, {'a': False})
-
-
 if __name__ == '__main__':
   test_case.main()
