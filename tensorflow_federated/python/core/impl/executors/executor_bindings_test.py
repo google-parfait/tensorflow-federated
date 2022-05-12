@@ -90,7 +90,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
         materialized_value)
     # Note: here we've lost the names `a` and `b` in the output. The output
     # is a more _strict_ type.
-    self.assert_type_assignable_from(expected_type_spec, type_spec)
+    self.assertTrue(expected_type_spec.is_assignable_from(type_spec))
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, expected_type_spec)
     self.assertAllClose(deserialized_value,
@@ -316,7 +316,7 @@ class ReferenceResolvingExecutorBindingsTest(test_case.TestCase):
         materialized_value)
     # Note: here we've lost the names `a` and `b` in the output. The output
     # is a more _strict_ type.
-    self.assert_type_assignable_from(expected_type_spec, type_spec)
+    self.assertTrue(expected_type_spec.is_assignable_from(type_spec))
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, expected_type_spec)
     self.assertAllClose(deserialized_value,

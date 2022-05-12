@@ -26,13 +26,6 @@ naming_mismatch = (named_field, unnamed_field)
 
 class TestUtilsTest(test_case.TestCase):
 
-  def test_type_assignable_from_passes_add_name(self):
-    self.assert_type_assignable_from(named_field, unnamed_field)
-
-  def test_type_assignable_from_fails_remove_name(self):
-    with self.assertRaises(self.failureException):  # pylint: disable=g-error-prone-assert-raises
-      self.assert_type_assignable_from(unnamed_field, named_field)
-
   def test_types_equivalent_passes_container(self):
     self.assert_types_equivalent(*container_mismatch)
 
