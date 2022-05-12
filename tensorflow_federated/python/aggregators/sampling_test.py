@@ -19,7 +19,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import sampling
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -35,15 +34,6 @@ TensorType = computation_types.TensorType
 SEED_TYPE = computation_types.TensorType(tf.int64, shape=[2])
 TEST_SEED = 42
 RANDOM_VALUE_TYPE = computation_types.TensorType(tf.int32, [None])
-
-
-def python_container_coercion(structure, type_spec):
-
-  @computations.tf_computation(type_spec)
-  def identity(s):
-    return tf.nest.map_structure(tf.identity, s)
-
-  return identity(structure)
 
 
 class BuildReservoirTypeTest(test_case.TestCase):
@@ -117,8 +107,6 @@ class BuildInitialSampleReservoirTest(test_case.TestCase):
                TensorType(tf.bool)]))
     initial_reservoir = sampling._build_initial_sample_reservoir(
         sample_value_type=value_type, seed=TEST_SEED)
-    initial_reservoir = python_container_coercion(
-        initial_reservoir, sampling._build_reservoir_type(value_type))
     self.assertAllEqual(
         initial_reservoir,
         collections.OrderedDict(

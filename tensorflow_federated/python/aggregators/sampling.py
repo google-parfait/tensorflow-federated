@@ -25,13 +25,13 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -154,15 +154,13 @@ def _build_initial_sample_reservoir(sample_value_type: computation_types.Type,
         raise TypeError(f'Cannot create zero for non TesnorType: {type(t)}')
       return tf.zeros([0] + t.shape, dtype=t.dtype)
 
-    if sample_value_type.is_tensor():
-      initial_samples = zero_for_tensor_type(sample_value_type)
-    elif sample_value_type.is_struct():
-      initial_samples = structure.map_structure(zero_for_tensor_type,
-                                                sample_value_type)
-    else:
+    try:
+      initial_samples = type_conversions.structure_from_tensor_type_tree(
+          zero_for_tensor_type, sample_value_type)
+    except ValueError as e:
       raise TypeError('Cannot build initial reservoir for structure that has '
                       'types other than StructWithPythonType or TensorType, '
-                      f'got {sample_value_type!r}.')
+                      f'got {sample_value_type!r}.') from e
     return collections.OrderedDict(
         random_seed=tf.fill(dims=(2,), value=real_seed),
         random_values=tf.zeros([0], tf.int32),
