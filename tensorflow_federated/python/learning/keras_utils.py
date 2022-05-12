@@ -26,7 +26,6 @@ from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -212,8 +211,8 @@ def federated_aggregate_keras_metric(
   """Aggregates variables a keras metric placed at CLIENTS to SERVER.
 
   Args:
-    metrics: A single or a `Sequence` of `tf.keras.metrics.Metric` objects, or
-      a single or a `Sequence` of no-arg callables that each constructs a
+    metrics: A single or a `Sequence` of `tf.keras.metrics.Metric` objects, or a
+      single or a `Sequence` of no-arg callables that each constructs a
       `tf.keras.metrics.Metric`. The order must match the order of variables in
       `federated_values`.
     federated_values: A single federated value, or a `Sequence` of federated
@@ -231,10 +230,8 @@ def federated_aggregate_keras_metric(
 
   @computations.tf_computation
   def zeros_fn():
-    # `member_type` is a (potentially nested) `tff.StructType`, which is an
-    # `structure.Struct`.
-    return structure.map_structure(lambda v: tf.zeros(v.shape, dtype=v.dtype),
-                                   member_types)
+    return type_conversions.structure_from_tensor_type_tree(
+        lambda t: tf.zeros(shape=t.shape, dtype=t.dtype), member_types)
 
   zeros = zeros_fn()
 
