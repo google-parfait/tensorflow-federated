@@ -57,29 +57,6 @@ class TestCase(tf.test.TestCase):
   def assert_type_string(self, type_signature, expected_string):
     self.assertEqual(type_signature.compact_representation(), expected_string)
 
-  def assert_nested_struct_eq(self, x, y):
-    """Asserts that nested structures 'x' and 'y' are the same.
-
-    Args:
-      x: One nested structure.
-      y: Another nested structure.
-
-    Raises:
-      ValueError: if the structures are not the same.
-    """
-    try:
-      tf.nest.assert_same_structure(x, y)
-    except ValueError:
-      self.fail('Expected structures to have the same shape.')
-    xl = tf.nest.flatten(x)
-    yl = tf.nest.flatten(y)
-    if len(xl) != len(yl):
-      self.fail('The sizes of structures {} and {} mismatch.'.format(
-          str(len(xl)), str(len(yl))))
-    for xe, ye in zip(xl, yl):
-      if xe != ye:
-        self.fail('Mismatching elements {} and {}.'.format(str(xe), str(ye)))
-
 
 def main():
   """Runs all unit tests with TF 2.0 features enabled.
