@@ -49,7 +49,6 @@ py_test(
         ":building_blocks",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
@@ -249,6 +248,20 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "computation_test_utils",
+    testonly = True,
+    srcs = ["computation_test_utils.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "//third_party/py/tensorflow:tensorflow_no_contrib",
     ],
 )
 

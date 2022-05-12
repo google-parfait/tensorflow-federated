@@ -92,10 +92,11 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_base",
+        ":computation_impl",
         ":computation_serialization",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "//tensorflow_federated/python/core/impl/compiler:computation_test_utils",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 

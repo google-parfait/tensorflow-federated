@@ -17,7 +17,6 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -59,29 +58,40 @@ class CountTensorFlowOpsTest(absltest.TestCase):
 
   def test_counts_correct_number_of_ops_with_function(self):
 
-    @computations.tf_computation(
-        computation_types.TensorType(tf.int32, shape=[]))
-    def foo(x):
+    @tf.function
+    def add_one(x):
+      return x + 1
 
-      @tf.function
-      def bar(x):
-        return x + 1
+    with tf.Graph().as_default() as graph:
+      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
+          'x', tf.int32, graph)
+      result = add_one(add_one(parameter_value))
 
-      return bar(bar(x))
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        result, graph)
+    type_signature = computation_types.FunctionType(tf.int32, result_type)
+    tensorflow = pb.TensorFlow(
+        graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+        parameter=parameter_binding,
+        result=result_binding)
+    proto = pb.Computation(
+        type=type_serialization.serialize_type(type_signature),
+        tensorflow=tensorflow)
+    building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
 
-    building_block = foo.to_building_block()
     tf_ops_in_graph = building_block_analysis.count_tensorflow_ops_in(
         building_block)
-    # Expect 8 ops:
+
+    # Expect 7 ops:
     #    Inside the tf.function:
     #      - one constant
     #      - one addition
     #      - one identity on the result
     #    Inside the tff_computation:
-    #      - two placeholders (one for the argument, one for the session token)
+    #      - one placeholders (one for the argument)
     #      - two partition calls
     #      - one identity on the tff_computation result
-    self.assertEqual(tf_ops_in_graph, 8)
+    self.assertEqual(tf_ops_in_graph, 7)
 
 
 class CountTensorFlowVariablesTest(absltest.TestCase):
@@ -152,22 +162,32 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
 
   def test_counts_correct_variables_with_function(self):
 
-    @computations.tf_computation(tf.int32)
-    def foo(x):
+    @tf.function
+    def add_one(x):
+      with tf.init_scope():
+        y = tf.Variable(1)
+      return x + y
 
-      y = tf.Variable(initial_value=0)
+    with tf.Graph().as_default() as graph:
+      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
+          'x', tf.int32, graph)
+      result = add_one(add_one(parameter_value))
 
-      @tf.function
-      def bar(x):
-        y.assign_add(1)
-        return x + y, tf.shape(y)
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        result, graph)
+    type_signature = computation_types.FunctionType(tf.int32, result_type)
+    tensorflow = pb.TensorFlow(
+        graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+        parameter=parameter_binding,
+        result=result_binding)
+    proto = pb.Computation(
+        type=type_serialization.serialize_type(type_signature),
+        tensorflow=tensorflow)
+    building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
 
-      z = bar(x)
-      return bar(z[0])
-
-    building_block = foo.to_building_block()
     tf_vars_in_graph = building_block_analysis.count_tensorflow_variables_in(
         building_block)
+
     self.assertEqual(tf_vars_in_graph, 1)
 
 

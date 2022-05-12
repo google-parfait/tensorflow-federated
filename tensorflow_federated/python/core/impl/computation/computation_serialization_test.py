@@ -12,28 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow as tf
+from absl.testing import absltest
 
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.impl.compiler import computation_test_utils
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_serialization
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 
-@computations.tf_computation(tf.int32, tf.int32)
-def add_int32(current, val):
-  return current + val
-
-
-class ComputationSerializationTest(test_case.TestCase):
+class ComputationSerializationTest(absltest.TestCase):
 
   def test_serialize_deserialize_round_trip(self):
-    serialized_comp = computation_serialization.serialize_computation(add_int32)
+    proto = computation_test_utils.create_computation_tensorflow_add_values()
+    comp = computation_impl.ConcreteComputation(
+        proto, context_stack_impl.context_stack)
+    serialized_comp = computation_serialization.serialize_computation(comp)
     deserialize_comp = computation_serialization.deserialize_computation(
         serialized_comp)
     self.assertIsInstance(deserialize_comp, computation_base.Computation)
-    self.assertEqual(deserialize_comp, add_int32)
+    self.assertEqual(deserialize_comp, comp)
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()
