@@ -25,17 +25,6 @@ class TestCase(tf.test.TestCase):
     super().setUp()
     tf.keras.backend.clear_session()
 
-  def assert_type_assignable_from(self, target_type, source_type):
-    # Reraise the exception outside of `except` so as to avoid setting
-    # the `.__cause__` on the final error (repeating everything).
-    message = None
-    try:
-      target_type.check_assignable_from(source_type)
-    except computation_types.TypeNotAssignableError as e:
-      message = e.message
-    if message is not None:
-      self.fail(message)
-
   def assert_types_equivalent(self, first_type, second_type):
     message = None
     try:
