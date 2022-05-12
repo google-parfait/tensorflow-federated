@@ -154,6 +154,7 @@ py_test(
         ":typed_object",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:test_case",
+        "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
