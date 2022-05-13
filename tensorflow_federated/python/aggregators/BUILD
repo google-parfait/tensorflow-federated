@@ -44,6 +44,44 @@ py_library(
 )
 
 py_library(
+    name = "aggregator_test_utils",
+    testonly = True,
+    srcs = ["aggregator_test_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":factory",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "aggregator_test_utils_test",
+    size = "small",
+    srcs = ["aggregator_test_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":aggregator_test_utils",
+        ":factory",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "concat",
     srcs = ["concat.py"],
     srcs_version = "PY3",
@@ -106,9 +144,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":aggregator_test_utils",
         ":differential_privacy",
         ":factory",
-        ":test_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -334,9 +372,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":aggregator_test_utils",
         ":factory",
         ":mean",
-        ":test_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -519,10 +557,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":aggregator_test_utils",
         ":mean",
         ":robust",
         ":sum_factory",
-        ":test_utils",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -684,44 +722,6 @@ py_test(
     deps = [
         ":factory",
         ":sum_factory",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/templates:aggregation_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
-    name = "test_utils",
-    testonly = True,
-    srcs = ["test_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":factory",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/templates:aggregation_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_test(
-    name = "test_utils_test",
-    size = "small",
-    srcs = ["test_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":factory",
-        ":test_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",

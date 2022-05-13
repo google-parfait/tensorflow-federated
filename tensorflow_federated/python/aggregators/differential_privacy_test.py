@@ -19,9 +19,9 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
 
+from tensorflow_federated.python.aggregators import aggregator_test_utils
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.aggregators import test_utils
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -33,7 +33,7 @@ from tensorflow_federated.python.core.templates import measured_process
 _test_dp_query = tfp.GaussianSumQuery(l2_norm_clip=1.0, stddev=0.0)
 
 _test_struct_type = [(tf.float32, (2,)), tf.float32]
-_test_inner_agg_factory = test_utils.SumPlusOneFactory()
+_test_inner_agg_factory = aggregator_test_utils.SumPlusOneFactory()
 
 
 class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
@@ -155,7 +155,7 @@ class DPFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
     output = process.next(state, client_data)
     self.assertAllEqual(1, output.state[1])
     self.assertAllClose(3.5, output.result)
-    self.assertAllEqual(test_utils.MEASUREMENT_CONSTANT,
+    self.assertAllEqual(aggregator_test_utils.MEASUREMENT_CONSTANT,
                         output.measurements['dp'])
 
   def test_adaptive_query(self):

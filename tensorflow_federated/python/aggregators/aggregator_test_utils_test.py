@@ -17,8 +17,8 @@ import collections
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import aggregator_test_utils
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.aggregators import test_utils as aggregators_test_utils
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -33,7 +33,7 @@ class SumPlusOneFactoryComputationTest(test_case.TestCase,
   @parameterized.named_parameters(('float', tf.float32),
                                   ('struct', ((tf.float32, (2,)), tf.int32)))
   def test_type_properties(self, value_type):
-    sum_f = aggregators_test_utils.SumPlusOneFactory()
+    sum_f = aggregator_test_utils.SumPlusOneFactory()
     self.assertIsInstance(sum_f, factory.UnweightedAggregationFactory)
     value_type = computation_types.to_type(value_type)
     process = sum_f.create(value_type)
@@ -68,7 +68,7 @@ class SumPlusOneFactoryComputationTest(test_case.TestCase,
       ('function_type', computation_types.FunctionType(None, ())),
       ('sequence_type', computation_types.SequenceType(tf.float32)))
   def test_incorrect_value_type_raises(self, bad_value_type):
-    sum_f = aggregators_test_utils.SumPlusOneFactory()
+    sum_f = aggregator_test_utils.SumPlusOneFactory()
     with self.assertRaises(TypeError):
       sum_f.create(bad_value_type)
 
@@ -76,7 +76,7 @@ class SumPlusOneFactoryComputationTest(test_case.TestCase,
 class SumPlusOneFactoryExecutionTest(test_case.TestCase):
 
   def test_sum_scalar(self):
-    sum_f = aggregators_test_utils.SumPlusOneFactory()
+    sum_f = aggregator_test_utils.SumPlusOneFactory()
     value_type = computation_types.to_type(tf.float32)
     process = sum_f.create(value_type)
 
@@ -90,7 +90,7 @@ class SumPlusOneFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(42, output.measurements)
 
   def test_sum_structure(self):
-    sum_f = aggregators_test_utils.SumPlusOneFactory()
+    sum_f = aggregator_test_utils.SumPlusOneFactory()
     value_type = computation_types.to_type(((tf.float32, (2,)), tf.int32))
     process = sum_f.create(value_type)
 

@@ -18,16 +18,16 @@ import math
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import aggregator_test_utils
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
-from tensorflow_federated.python.aggregators import test_utils as aggregators_test_utils
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-M_CONST = aggregators_test_utils.MEASUREMENT_CONSTANT
+M_CONST = aggregator_test_utils.MEASUREMENT_CONSTANT
 
 _test_struct_type = ((tf.float32, (2,)), tf.float64)
 
@@ -127,7 +127,7 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
   def test_type_properties_with_inner_factory(self, value_type, weight_type):
     value_type = computation_types.to_type(value_type)
     weight_type = computation_types.to_type(weight_type)
-    sum_factory = aggregators_test_utils.SumPlusOneFactory()
+    sum_factory = aggregator_test_utils.SumPlusOneFactory()
 
     factory_ = mean.MeanFactory(
         value_sum_factory=sum_factory, weight_sum_factory=sum_factory)
@@ -169,7 +169,7 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
   )
   def test_type_properties_with_inner_factory_unweighted(self, value_type):
     value_type = computation_types.to_type(value_type)
-    sum_factory = aggregators_test_utils.SumPlusOneFactory()
+    sum_factory = aggregator_test_utils.SumPlusOneFactory()
 
     factory_ = mean.UnweightedMeanFactory(
         value_sum_factory=sum_factory, count_sum_factory=sum_factory)
@@ -340,7 +340,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(0.0, process.next(state, client_data, weights).result)
 
   def test_inner_value_sum_factory(self):
-    sum_factory = aggregators_test_utils.SumPlusOneFactory()
+    sum_factory = aggregator_test_utils.SumPlusOneFactory()
     factory_ = mean.MeanFactory(value_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
     weight_type = computation_types.to_type(tf.float32)
@@ -365,7 +365,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
         output.measurements)
 
   def test_inner_value_sum_factory_unweighted(self):
-    sum_factory = aggregators_test_utils.SumPlusOneFactory()
+    sum_factory = aggregator_test_utils.SumPlusOneFactory()
     factory_ = mean.UnweightedMeanFactory(
         value_sum_factory=sum_factory, count_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
@@ -385,7 +385,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
         output.measurements)
 
   def test_inner_weight_sum_factory(self):
-    sum_factory = aggregators_test_utils.SumPlusOneFactory()
+    sum_factory = aggregator_test_utils.SumPlusOneFactory()
     factory_ = mean.MeanFactory(weight_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
     weight_type = computation_types.to_type(tf.float32)
@@ -410,7 +410,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
         output.measurements)
 
   def test_inner_value_and_weight_sum_factory(self):
-    sum_factory = aggregators_test_utils.SumPlusOneFactory()
+    sum_factory = aggregator_test_utils.SumPlusOneFactory()
     factory_ = mean.MeanFactory(
         value_sum_factory=sum_factory, weight_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)

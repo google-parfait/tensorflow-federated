@@ -18,10 +18,10 @@ import itertools
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import aggregator_test_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.aggregators import test_utils as aggregators_test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -246,7 +246,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
         zeroing_norm=1.0,
         inner_agg_factory=sum_factory.SumFactory(),
         norm_order=2.0,
-        zeroed_count_sum_factory=aggregators_test_utils.SumPlusOneFactory())
+        zeroed_count_sum_factory=aggregator_test_utils.SumPlusOneFactory())
     value_type = computation_types.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
@@ -285,7 +285,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
     factory = robust.clipping_factory(
         clipping_norm=1.0,
         inner_agg_factory=sum_factory.SumFactory(),
-        clipped_count_sum_factory=aggregators_test_utils.SumPlusOneFactory())
+        clipped_count_sum_factory=aggregator_test_utils.SumPlusOneFactory())
     value_type = computation_types.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
