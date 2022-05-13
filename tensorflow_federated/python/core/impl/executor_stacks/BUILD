@@ -29,6 +29,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@absl_py//absl/logging",
     ],
 )
 
