@@ -92,15 +92,14 @@ def _initial_values(initial_value_fn, member_type):
     A function of the result of reducing a value with no constituents.
   """
 
+  def validate_and_fill(type_spec: computation_types.TensorType) -> tf.Tensor:
+    _validate_dtype_is_min_max_compatible(type_spec.dtype)
+    return tf.fill(dims=type_spec.shape, value=initial_value_fn(type_spec))
+
   @computations.tf_computation
   def zeros_fn():
-    if member_type.is_struct():
-      structure.map_structure(
-          lambda v: _validate_dtype_is_min_max_compatible(v.dtype), member_type)
-      return structure.map_structure(
-          lambda v: tf.fill(v.shape, value=initial_value_fn(v)), member_type)
-    _validate_dtype_is_min_max_compatible(member_type.dtype)
-    return tf.fill(member_type.shape, value=initial_value_fn(member_type))
+    return type_conversions.structure_from_tensor_type_tree(
+        validate_and_fill, member_type)
 
   return zeros_fn()
 
