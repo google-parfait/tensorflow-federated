@@ -66,6 +66,7 @@ def run_stateless_simulation(computation: computation_base.Computation,
       outputs of each round's computation, with extra keys for timing
       information.
   """
+  loop = asyncio.get_event_loop()
   # TODO(b/194841884): Add an optional checkpoint manager argument once the
   # checkpoint managers have compatibility with "stateless" structures.
   start_round = 0
@@ -84,8 +85,9 @@ def run_stateless_simulation(computation: computation_base.Computation,
     round_metrics[ROUND_TIME_KEY] = computation_time
 
     if metrics_managers is not None:
-      for metrics_manager in metrics_managers:
-        metrics_manager.release(round_metrics, round_num)
+      loop.run_until_complete(
+          asyncio.gather(
+              *[m.release(round_metrics, round_num) for m in metrics_managers]))
 
     all_metrics[round_num] = round_metrics
 
