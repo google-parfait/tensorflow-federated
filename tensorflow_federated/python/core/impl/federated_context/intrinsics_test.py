@@ -731,11 +731,11 @@ class FederatedAggregateTest(IntrinsicTestBase):
 
   def test_federated_aggregate_with_unknown_dimension(self):
     Accumulator = collections.namedtuple('Accumulator', ['samples'])  # pylint: disable=invalid-name
-    accumulator_type = computation_types.StructType(
+    accumulator_type = computation_types.to_type(
         Accumulator(
             samples=computation_types.TensorType(dtype=tf.int32, shape=[None])))
 
-    @computations.tf_computation()
+    @computations.tf_computation
     def build_empty_accumulator():
       return Accumulator(samples=tf.zeros(shape=[0], dtype=tf.int32))
 
