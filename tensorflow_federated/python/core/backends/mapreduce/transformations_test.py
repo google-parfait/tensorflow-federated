@@ -17,7 +17,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
-from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
+from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks

@@ -17,7 +17,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.mapreduce import forms
-from tensorflow_federated.python.core.backends.mapreduce import test_utils
+from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
@@ -417,16 +417,17 @@ class MapReduceFormTest(absltest.TestCase):
       _build_test_map_reduce_form_with_computations(update=update)
 
   def test_securely_aggregates_tensors_true(self):
-    cf_with_secure_sum = test_utils.get_federated_sum_example(secure_sum=True)
+    cf_with_secure_sum = mapreduce_test_utils.get_federated_sum_example(
+        secure_sum=True)
     self.assertTrue(cf_with_secure_sum.securely_aggregates_tensors)
 
   def test_securely_aggregates_tensors_false(self):
-    cf_with_no_secure_sum = test_utils.get_federated_sum_example(
+    cf_with_no_secure_sum = mapreduce_test_utils.get_federated_sum_example(
         secure_sum=False)
     self.assertFalse(cf_with_no_secure_sum.securely_aggregates_tensors)
 
   def test_summary(self):
-    mrf = test_utils.get_temperature_sensor_example()
+    mrf = mapreduce_test_utils.get_temperature_sensor_example()
 
     class CapturePrint(object):
 

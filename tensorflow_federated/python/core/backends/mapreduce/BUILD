@@ -43,7 +43,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":forms",
-        ":test_utils",
+        ":mapreduce_test_utils",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:absltest",
@@ -87,7 +87,7 @@ py_test(
     deps = [
         ":form_utils",
         ":forms",
-        ":test_utils",
+        ":mapreduce_test_utils",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
@@ -105,9 +105,9 @@ py_test(
 )
 
 py_library(
-    name = "test_utils",
+    name = "mapreduce_test_utils",
     testonly = True,
-    srcs = ["test_utils.py"],
+    srcs = ["mapreduce_test_utils.py"],
     srcs_version = "PY3",
     deps = [
         ":forms",
@@ -146,7 +146,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":form_utils",
-        ":test_utils",
+        ":mapreduce_test_utils",
         ":transformations",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/api:test_case",
