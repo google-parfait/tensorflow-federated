@@ -19,7 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.program import test_utils
+from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import value_reference
 
 
@@ -41,42 +41,43 @@ class MaterializeValueTest(parameterized.TestCase,
 
       # value references
       ('materializable_value_reference_tensor',
-       test_utils.TestMaterializableValueReference(1), 1),
+       program_test_utils.TestMaterializableValueReference(1), 1),
       ('materializable_value_reference_sequence',
-       test_utils.TestMaterializableValueReference(
+       program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
        tf.data.Dataset.from_tensor_slices([1, 2, 3])),
 
       # structures
       ('list',
-       [True, test_utils.TestMaterializableValueReference(1), 'a'],
+       [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
        [True, 1, 'a']),
       ('list_empty', [], []),
       ('list_nested',
-       [[True, test_utils.TestMaterializableValueReference(1)], ['a']],
+       [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
        [[True, 1], ['a']]),
       ('dict',
        {'a': True,
-        'b': test_utils.TestMaterializableValueReference(1),
+        'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a'},
        {'a': True, 'b': 1, 'c': 'a'}),
       ('dict_empty', {}, {}),
       ('dict_nested',
-       {'x': {'a': True, 'b': test_utils.TestMaterializableValueReference(1)},
+       {'x': {'a': True,
+              'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
        {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}}),
       ('attr',
-       test_utils.TestAttrObject2(
-           True, test_utils.TestMaterializableValueReference(1)),
-       test_utils.TestAttrObject2(True, 1)),
+       program_test_utils.TestAttrObject2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
+       program_test_utils.TestAttrObject2(True, 1)),
       ('attr_nested',
-       test_utils.TestAttrObject2(
-           test_utils.TestAttrObject2(
-               True, test_utils.TestMaterializableValueReference(1)),
-           test_utils.TestAttrObject1('a')),
-       test_utils.TestAttrObject2(
-           test_utils.TestAttrObject2(True, 1),
-           test_utils.TestAttrObject1('a'))),
+       program_test_utils.TestAttrObject2(
+           program_test_utils.TestAttrObject2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestAttrObject1('a')),
+       program_test_utils.TestAttrObject2(
+           program_test_utils.TestAttrObject2(True, 1),
+           program_test_utils.TestAttrObject1('a'))),
   )
   # pyformat: enable
   async def test_returns_value(self, value, expected_value):

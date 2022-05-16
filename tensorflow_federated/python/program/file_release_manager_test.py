@@ -29,7 +29,7 @@ import tree
 
 from tensorflow_federated.python.program import file_release_manager
 from tensorflow_federated.python.program import file_utils
-from tensorflow_federated.python.program import test_utils
+from tensorflow_federated.python.program import program_test_utils
 
 
 def _read_values_from_csv(
@@ -646,40 +646,41 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
 
       # value references
       ('materializable_value_reference_tensor',
-       test_utils.TestMaterializableValueReference(1),
+       program_test_utils.TestMaterializableValueReference(1),
        [{'key': '1', '': '1'}]),
       ('materializable_value_reference_sequence',
-       test_utils.TestMaterializableValueReference(
+       program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
        [{'key': '1', '': '[1, 2, 3]'}]),
 
       # structures
       ('list',
-       [True, test_utils.TestMaterializableValueReference(1), 'a'],
+       [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
        [{'key': '1', '0': 'True', '1': '1', '2': 'a'}]),
       ('list_empty', [], [{'key': '1'}]),
       ('list_nested',
-       [[True, test_utils.TestMaterializableValueReference(1)], ['a']],
+       [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
        [{'key': '1', '0/0': 'True', '0/1': '1', '1/0': 'a'}]),
       ('dict',
        {'a': True,
-        'b': test_utils.TestMaterializableValueReference(1),
+        'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a'},
        [{'key': '1', 'a': 'True', 'b': '1', 'c': 'a'}]),
       ('dict_empty', {}, [{'key': '1'}]),
       ('dict_nested',
-       {'x': {'a': True, 'b': test_utils.TestMaterializableValueReference(1)},
+       {'x': {'a': True,
+              'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
        [{'key': '1', 'x/a': 'True', 'x/b': '1', 'y/c': 'a'}]),
       ('attr',
-       test_utils.TestAttrObject2(
-           True, test_utils.TestMaterializableValueReference(1)),
+       program_test_utils.TestAttrObject2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
        [{'key': '1', 'a': 'True', 'b': '1'}]),
       ('attr_nested',
-       test_utils.TestAttrObject2(
-           test_utils.TestAttrObject2(
-               True, test_utils.TestMaterializableValueReference(1)),
-           test_utils.TestAttrObject1('a')),
+       program_test_utils.TestAttrObject2(
+           program_test_utils.TestAttrObject2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestAttrObject1('a')),
        [{'key': '1', 'a/a': 'True', 'a/b': '1', 'b/a': 'a'}]),
   )
   # pyformat: enable
@@ -807,40 +808,41 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
 
       # value references
       ('materializable_value_reference_tensor',
-       test_utils.TestMaterializableValueReference(1),
+       program_test_utils.TestMaterializableValueReference(1),
        [1]),
       ('materializable_value_reference_sequence',
-       test_utils.TestMaterializableValueReference(
+       program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
        [tf.data.Dataset.from_tensor_slices([1, 2, 3])]),
 
       # structures
       ('list',
-       [True, test_utils.TestMaterializableValueReference(1), 'a'],
+       [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
        [True, 1, 'a']),
       ('list_empty', [], []),
       ('list_nested',
-       [[True, test_utils.TestMaterializableValueReference(1)], ['a']],
+       [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
        [True, 1, 'a']),
       ('dict',
        {'a': True,
-        'b': test_utils.TestMaterializableValueReference(1),
+        'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a'},
        [True, 1, 'a']),
       ('dict_empty', {}, []),
       ('dict_nested',
-       {'x': {'a': True, 'b': test_utils.TestMaterializableValueReference(1)},
+       {'x': {'a': True,
+              'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
        [True, 1, 'a']),
       ('attr',
-       test_utils.TestAttrObject2(
-           True, test_utils.TestMaterializableValueReference(1)),
+       program_test_utils.TestAttrObject2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
        [True, 1]),
       ('attr_nested',
-       test_utils.TestAttrObject2(
-           test_utils.TestAttrObject2(
-               True, test_utils.TestMaterializableValueReference(1)),
-           test_utils.TestAttrObject1('a')),
+       program_test_utils.TestAttrObject2(
+           program_test_utils.TestAttrObject2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestAttrObject1('a')),
        [True, 1, 'a']),
   )
   # pyformat: enable

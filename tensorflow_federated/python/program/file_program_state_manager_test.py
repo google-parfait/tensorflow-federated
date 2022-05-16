@@ -29,7 +29,7 @@ import tree
 from tensorflow_federated.python.program import file_program_state_manager
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
-from tensorflow_federated.python.program import test_utils
+from tensorflow_federated.python.program import program_test_utils
 
 
 class FileProgramStateManagerInitTest(parameterized.TestCase):
@@ -278,44 +278,46 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase,
 
       # value references
       ('materializable_value_reference_tensor',
-       test_utils.TestMaterializableValueReference(1),
+       program_test_utils.TestMaterializableValueReference(1),
        tf.constant(1)),
       ('materializable_value_reference_sequence',
-       test_utils.TestMaterializableValueReference(
+       program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
        tf.data.Dataset.from_tensor_slices([1, 2, 3])),
 
       # structures
       ('list',
-       [True, test_utils.TestMaterializableValueReference(1), 'a'],
+       [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
        [tf.constant(True), tf.constant(1), tf.constant('a')]),
       ('list_empty', [], []),
       ('list_nested',
-       [[True, test_utils.TestMaterializableValueReference(1)], ['a']],
+       [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
        [[tf.constant(True), tf.constant(1)], [tf.constant('a')]]),
       ('dict',
        {'a': True,
-        'b': test_utils.TestMaterializableValueReference(1),
+        'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a'},
        {'a': tf.constant(True), 'b': tf.constant(1), 'c': tf.constant('a')}),
       ('dict_empty', {}, {}),
       ('dict_nested',
-       {'x': {'a': True, 'b': test_utils.TestMaterializableValueReference(1)},
+       {'x': {'a': True,
+              'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
        {'x': {'a': tf.constant(True), 'b': tf.constant(1)},
         'y': {'c': tf.constant('a')}}),
       ('attr',
-       test_utils.TestAttrObject2(
-           True, test_utils.TestMaterializableValueReference(1)),
-       test_utils.TestAttrObject2(tf.constant(True), tf.constant(1))),
+       program_test_utils.TestAttrObject2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
+       program_test_utils.TestAttrObject2(tf.constant(True), tf.constant(1))),
       ('attr_nested',
-       test_utils.TestAttrObject2(
-           test_utils.TestAttrObject2(
-               True, test_utils.TestMaterializableValueReference(1)),
-           test_utils.TestAttrObject1('a')),
-       test_utils.TestAttrObject2(
-           test_utils.TestAttrObject2(tf.constant(True), tf.constant(1)),
-           test_utils.TestAttrObject1(tf.constant('a')))),
+       program_test_utils.TestAttrObject2(
+           program_test_utils.TestAttrObject2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestAttrObject1('a')),
+       program_test_utils.TestAttrObject2(
+           program_test_utils.TestAttrObject2(
+               tf.constant(True), tf.constant(1)),
+           program_test_utils.TestAttrObject1(tf.constant('a')))),
   )
   # pyformat: enable
   async def test_returns_saved_program_state(self, program_state,
@@ -508,12 +510,12 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
       ('dict_nested',
        {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}},
        [True, 1, 'a']),
-      ('attr', test_utils.TestAttrObject2(True, 1), [True, 1]),
+      ('attr', program_test_utils.TestAttrObject2(True, 1), [True, 1]),
       ('attr_nested',
-       test_utils.TestAttrObject2(
-           test_utils.TestAttrObject2(
-               True, test_utils.TestMaterializableValueReference(1)),
-           test_utils.TestAttrObject1('a')),
+       program_test_utils.TestAttrObject2(
+           program_test_utils.TestAttrObject2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestAttrObject1('a')),
        [True, 1, 'a']),
       ('tensor_int', tf.constant(1), [tf.constant(1)]),
       ('tensor_str', tf.constant('a'), [tf.constant('a')]),
@@ -527,18 +529,18 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
        {'a': [np.bool(True), np.int32(1)], 'b': [np.str_('a')]},
        [np.bool(True), np.int32(1), np.str_('a')]),
       ('materializable_value_reference_tensor',
-       test_utils.TestMaterializableValueReference(1), [1]),
+       program_test_utils.TestMaterializableValueReference(1), [1]),
       ('materializable_value_reference_sequence',
-       test_utils.TestMaterializableValueReference(
+       program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
        [tf.data.Dataset.from_tensor_slices([1, 2, 3])]),
       ('materializable_value_reference_nested',
-       {'a': [test_utils.TestMaterializableValueReference(True),
-              test_utils.TestMaterializableValueReference(1)],
-        'b': [test_utils.TestMaterializableValueReference('a')]},
+       {'a': [program_test_utils.TestMaterializableValueReference(True),
+              program_test_utils.TestMaterializableValueReference(1)],
+        'b': [program_test_utils.TestMaterializableValueReference('a')]},
        [True, 1, 'a']),
       ('materializable_value_reference_and_materialized_value',
-       [1, test_utils.TestMaterializableValueReference(2)],
+       [1, program_test_utils.TestMaterializableValueReference(2)],
        [1, 2]),
   )
   # pyformat: enable

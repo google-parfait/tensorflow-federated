@@ -95,7 +95,7 @@ py_test(
         ":file_program_state_manager",
         ":file_utils",
         ":program_state_manager",
-        ":test_utils",
+        ":program_test_utils",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -124,7 +124,7 @@ py_test(
     deps = [
         ":file_release_manager",
         ":file_utils",
-        ":test_utils",
+        ":program_test_utils",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -172,7 +172,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":logging_release_manager",
-        ":test_utils",
+        ":program_test_utils",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -196,7 +196,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":memory_release_manager",
-        ":test_utils",
+        ":program_test_utils",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -261,6 +261,18 @@ py_test(
 )
 
 py_library(
+    name = "program_test_utils",
+    testonly = True,
+    srcs = ["program_test_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":value_reference",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "release_manager",
     srcs = ["release_manager.py"],
     srcs_version = "PY3",
@@ -278,8 +290,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":program_test_utils",
         ":structure_utils",
-        ":test_utils",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -305,22 +317,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":program_test_utils",
         ":tensorboard_release_manager",
-        ":test_utils",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
-    name = "test_utils",
-    testonly = True,
-    srcs = ["test_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":value_reference",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -341,7 +341,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":test_utils",
+        ":program_test_utils",
         ":value_reference",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
