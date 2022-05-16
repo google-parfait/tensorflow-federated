@@ -18,7 +18,6 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -66,7 +65,7 @@ def test_next_fn(state, weights, update):
                                intrinsics.federated_value(1, placements.SERVER))
 
 
-class FinalizerTest(test_case.TestCase):
+class FinalizerTest(tf.test.TestCase):
 
   def test_construction_does_not_raise(self):
     try:
@@ -302,7 +301,7 @@ class FinalizerTest(test_case.TestCase):
       finalizers.FinalizerProcess(test_initialize_fn, next_fn)
 
 
-class ApplyOptimizerFinalizerComputationTest(test_case.TestCase,
+class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
                                              parameterized.TestCase):
 
   def test_type_properties(self):
@@ -360,7 +359,7 @@ class ApplyOptimizerFinalizerComputationTest(test_case.TestCase,
                                                  MODEL_WEIGHTS_TYPE.member)
 
 
-class ApplyOptimizerFinalizerExecutionTest(test_case.TestCase):
+class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
 
   def test_execution_with_stateless_tff_optimizer(self):
     finalizer = finalizers.build_apply_optimizer_finalizer(
@@ -443,4 +442,4 @@ class ApplyOptimizerFinalizerExecutionTest(test_case.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

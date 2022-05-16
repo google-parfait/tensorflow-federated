@@ -19,7 +19,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import keras_utils
@@ -146,7 +145,7 @@ def _create_zero_model_weights(model_fn):
       tf.zeros_like, model_utils.ModelWeights.from_model(whimsy_model))
 
 
-class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
+class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_failure_with_invalid_model_fn(self):
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
@@ -458,4 +457,4 @@ class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

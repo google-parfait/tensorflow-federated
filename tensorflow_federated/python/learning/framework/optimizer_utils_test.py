@@ -25,7 +25,6 @@ from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -134,7 +133,7 @@ class TestMeasuredMeanFactory(factory.WeightedAggregationFactory):
         initialize_fn=initialize_comp, next_fn=next_comp)
 
 
-class UtilsTest(test_case.TestCase, parameterized.TestCase):
+class UtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_state_with_model_weights_success(self):
     trainable = [np.array([1.0, 2.0]), np.array([[1.0]]), np.int64(3)]
@@ -263,7 +262,7 @@ def _keras_optimizer_fn(learning_rate=0.1):
   return lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
 
 
-class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
+class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('weighted', True), ('unweighted', False))
   def test_construction(self, weighted):
@@ -671,4 +670,4 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

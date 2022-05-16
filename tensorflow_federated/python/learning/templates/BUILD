@@ -49,13 +49,13 @@ py_test(
     deps = [
         ":client_works",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_utils",
+        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -102,7 +102,6 @@ py_test(
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -143,7 +142,6 @@ py_test(
     deps = [
         ":distributors",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -185,7 +183,6 @@ py_test(
     deps = [
         ":finalizers",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -223,11 +220,11 @@ py_test(
     deps = [
         ":learning_process",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/templates:errors",
+        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -269,7 +266,6 @@ py_test(
         ":client_works",
         ":model_delta_client_work",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",

@@ -21,7 +21,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -37,7 +36,7 @@ from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import model_delta_client_work
 
 
-class ModelDeltaClientWorkComputationTest(test_case.TestCase,
+class ModelDeltaClientWorkComputationTest(tf.test.TestCase,
                                           parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -129,7 +128,7 @@ def create_test_initial_weights() -> model_utils.ModelWeights:
       trainable=[tf.zeros((2, 1)), tf.constant(0.0)], non_trainable=[0.0])
 
 
-class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
+class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
                                         parameterized.TestCase):
   """Tests of the client work of FedAvg using a common model and data."""
 
@@ -314,7 +313,7 @@ class ModelDeltaClientWorkExecutionTest(test_case.TestCase,
     self.assertCountEqual(output.measurements.keys(), ['train'])
 
 
-class FunctionalModelDeltaClientWorkExecutionTest(test_case.TestCase,
+class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
                                                   parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -384,4 +383,4 @@ class FunctionalModelDeltaClientWorkExecutionTest(test_case.TestCase,
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

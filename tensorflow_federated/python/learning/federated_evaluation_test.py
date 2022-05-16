@@ -15,12 +15,12 @@
 import collections
 from unittest import mock
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -238,7 +238,7 @@ def _build_expected_test_quant_model_eval_signature():
       result=return_type)
 
 
-class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
+class FederatedEvaluationTest(parameterized.TestCase):
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_local_evaluation(self):
@@ -515,4 +515,4 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  absltest.main()

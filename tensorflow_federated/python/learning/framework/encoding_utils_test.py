@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -31,7 +31,7 @@ _bad_encoder_named_parameters = [('float', 1.0), ('string', 'str'),
                                  ('encoder', te.encoders.identity())]
 
 
-class EncodedBroadcastProcessTest(test_case.TestCase, parameterized.TestCase):
+class EncodedBroadcastProcessTest(parameterized.TestCase):
   """Tests for build_encoded_broadcast_process method."""
 
   @parameterized.named_parameters(
@@ -86,7 +86,7 @@ class EncodedBroadcastProcessTest(test_case.TestCase, parameterized.TestCase):
       encoding_utils.build_encoded_broadcast_process(value_type, encoder)
 
 
-class EncodingUtilsTest(test_case.TestCase, parameterized.TestCase):
+class EncodingUtilsTest(parameterized.TestCase):
 
   def test_broadcast_process_from_model(self):
     model_fn = model_examples.LinearRegression
@@ -319,4 +319,4 @@ def _test_encoder_fn():
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  absltest.main()

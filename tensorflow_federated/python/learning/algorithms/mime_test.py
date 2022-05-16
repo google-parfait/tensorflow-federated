@@ -21,7 +21,6 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -47,7 +46,7 @@ from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
-class MimeLiteClientWorkComputationTest(test_case.TestCase,
+class MimeLiteClientWorkComputationTest(tf.test.TestCase,
                                         parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -144,8 +143,7 @@ def _create_dataset():
   return dataset.repeat(2).batch(3)
 
 
-class MimeLiteClientWorkExecutionTest(test_case.TestCase,
-                                      parameterized.TestCase):
+class MimeLiteClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))
@@ -223,7 +221,7 @@ class MimeLiteClientWorkExecutionTest(test_case.TestCase,
     self.assertEqual(output.measurements['train']['num_examples'], 16)
 
 
-class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
+class MimeLiteTest(tf.test.TestCase, parameterized.TestCase):
   """Tests construction of the Mime Lite training process."""
 
   def test_construction_calls_model_fn(self):
@@ -396,4 +394,4 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

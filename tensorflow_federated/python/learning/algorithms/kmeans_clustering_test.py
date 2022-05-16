@@ -17,7 +17,6 @@ import collections
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning.algorithms import kmeans_clustering
@@ -288,7 +287,7 @@ class FinalizerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(updated_centroids, expected_updated_centroids)
 
 
-class FederatedKmeansTest(test_case.TestCase):
+class FederatedKmeansTest(tf.test.TestCase):
 
   def test_constructs_with_pseudocounts_of_one(self):
     kmeans_process = kmeans_clustering.build_fed_kmeans(
@@ -384,4 +383,4 @@ class FederatedKmeansTest(test_case.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

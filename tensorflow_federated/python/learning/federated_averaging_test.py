@@ -27,7 +27,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import federated_averaging
@@ -39,7 +38,7 @@ from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 
-class FederatedAveragingClientTest(test_case.TestCase, parameterized.TestCase):
+class FederatedAveragingClientTest(tf.test.TestCase, parameterized.TestCase):
   """Tests of ClientFedAvg that use a common model and data."""
 
   def create_dataset(self):
@@ -141,7 +140,7 @@ class FederatedAveragingClientTest(test_case.TestCase, parameterized.TestCase):
       mock_method.assert_called()
 
 
-class FederatedAveragingTest(test_case.TestCase, parameterized.TestCase):
+class FederatedAveragingTest(tf.test.TestCase, parameterized.TestCase):
   """Tests construction of FedAvg training process."""
 
   def test_deprecation_warning_raises(self):
@@ -194,4 +193,4 @@ class FederatedAveragingTest(test_case.TestCase, parameterized.TestCase):
     static_assert.assert_not_contains_unsecure_aggregation(fed_avg.next)
 
 if __name__ == '__main__':
-  test_case.main()
+  tf.test.main()

@@ -16,12 +16,12 @@
 import collections
 from unittest import mock
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -502,4 +502,4 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  absltest.main()

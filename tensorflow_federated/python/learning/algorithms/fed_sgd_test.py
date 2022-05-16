@@ -19,7 +19,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
@@ -30,7 +29,7 @@ from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
-class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
+class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
 
   def dataset(self):
     # Create a dataset with 4 examples:
@@ -103,8 +102,7 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
       mock_method.assert_called()
 
 
-class FederatedSGDTest(test_case.TestCase, parameterized.TestCase):
-  """Tests construction of FedSGD training process."""
+class FederatedSGDTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_raises_on_non_callable_model_fn(self):
     non_callable_model_fn = model_examples.LinearRegression()
@@ -140,4 +138,4 @@ class FederatedSGDTest(test_case.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  tf.test.main()

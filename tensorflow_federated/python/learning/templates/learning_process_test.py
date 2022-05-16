@@ -14,10 +14,10 @@
 
 import collections
 
+from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -89,7 +89,7 @@ test_set_model_weights_fn = create_take_arg_set_model_weights(
     tf.int32, tf.int32)
 
 
-class LearningProcessTest(test_case.TestCase):
+class LearningProcessTest(absltest.TestCase):
 
   def test_construction_does_not_raise(self):
     try:
@@ -385,4 +385,4 @@ class LearningProcessTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

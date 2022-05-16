@@ -16,7 +16,6 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
@@ -31,7 +30,7 @@ _NESTED_SPEC = [
 ]
 
 
-class KerasOptimizerTest(test_case.TestCase, parameterized.TestCase):
+class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('no_momentum', 0.0), ('momentum_0_5', 0.5))
   def test_disjoint_init_and_next_true(self, momentum):
@@ -228,4 +227,4 @@ class KerasOptimizerTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

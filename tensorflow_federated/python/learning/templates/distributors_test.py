@@ -18,7 +18,6 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -48,7 +47,7 @@ def test_next_fn(state, val):
                                intrinsics.federated_value(1, placements.SERVER))
 
 
-class DistributionProcessTest(test_case.TestCase):
+class DistributionProcessTest(tf.test.TestCase):
 
   def test_construction_does_not_raise(self):
     try:
@@ -237,8 +236,7 @@ class DistributionProcessTest(test_case.TestCase):
       distributors.DistributionProcess(test_initialize_fn, next_fn)
 
 
-class BroadcastProcessComputationTest(test_case.TestCase,
-                                      parameterized.TestCase):
+class BroadcastProcessComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('float', computation_types.TensorType(tf.float32)),
@@ -280,7 +278,7 @@ class BroadcastProcessComputationTest(test_case.TestCase,
           computation_types.to_type([SERVER_FLOAT, SERVER_FLOAT]))
 
 
-class BroadcastProcessExecutionTest(test_case.TestCase):
+class BroadcastProcessExecutionTest(tf.test.TestCase):
 
   def test_broadcast_scalar(self):
     broadcast_process = distributors.build_broadcast_process(
@@ -302,4 +300,4 @@ class BroadcastProcessExecutionTest(test_case.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context(default_num_clients=1)
-  test_case.main()
+  tf.test.main()

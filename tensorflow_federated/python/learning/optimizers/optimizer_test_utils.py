@@ -17,7 +17,6 @@ from typing import Callable, Collection
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 
 # Positive-definite matrix with maximal eigenvalue approximately 13.3 and
@@ -77,7 +76,7 @@ def test_quadratic_problem():
   return initial_w, fn, grad_fn
 
 
-class TestCase(test_case.TestCase):
+class TestCase(tf.test.TestCase):
   """A helper class to test TFF optimizers."""
 
   def assert_optimizers_numerically_close(

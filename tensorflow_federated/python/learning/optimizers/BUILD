@@ -108,7 +108,6 @@ py_test(
         ":optimizer_test_utils",
         ":sgdm",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -128,7 +127,6 @@ py_test(
         ":sgdm",
         ":yogi",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -152,7 +150,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":optimizer",
-        "//tensorflow_federated/python/core/api:test_case",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -165,7 +162,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":optimizer",
-        "//tensorflow_federated/python/core/api:test_case",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -177,7 +173,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":optimizer_test_utils",
-        "//tensorflow_federated/python/core/api:test_case",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

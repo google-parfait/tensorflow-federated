@@ -15,10 +15,10 @@
 import itertools
 from unittest import mock
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
@@ -28,7 +28,7 @@ from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.optimizers import sgdm
 
 
-class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
+class ClientScheduledFedAvgTest(parameterized.TestCase):
 
   # pylint: disable=g-complex-comprehension
   @parameterized.named_parameters((
@@ -159,4 +159,4 @@ class ClientScheduledFedAvgTest(test_case.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

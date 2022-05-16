@@ -24,7 +24,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -84,7 +83,7 @@ def _create_test_batch(feature_dims):
       ]))
 
 
-class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
+class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     tf.keras.backend.clear_session()
@@ -1240,4 +1239,4 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

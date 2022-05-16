@@ -14,11 +14,10 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.learning.optimizers import optimizer_test_utils
 
 
-class OptimizerTestUtilsTest(test_case.TestCase):
+class OptimizerTestUtilsTest(tf.test.TestCase):
 
   def test_test_problem(self):
     init_w, fn, grad_fn = optimizer_test_utils.test_quadratic_problem()
@@ -34,4 +33,4 @@ class OptimizerTestUtilsTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  tf.test.main()

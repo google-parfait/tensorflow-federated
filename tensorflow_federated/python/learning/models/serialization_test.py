@@ -21,7 +21,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -41,7 +40,7 @@ StructType = computation_types.StructType
 StructWithPythonType = computation_types.StructWithPythonType
 
 
-class FlattenTest(test_case.TestCase, parameterized.TestCase):
+class FlattenTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('no_arg_empty_result', lambda: (), (), {}, StructType([])),
@@ -94,7 +93,7 @@ class FlattenTest(test_case.TestCase, parameterized.TestCase):
         type_spec, type_serialization.serialize_type(expected_type_spec))
 
 
-class UnflattenTest(test_case.TestCase, parameterized.TestCase):
+class UnflattenTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('empty_result', (), StructType([]), None, tuple),
@@ -271,7 +270,7 @@ _TEST_MODEL_FNS = [
 ]
 
 
-class SerializationTest(test_case.TestCase, parameterized.TestCase):
+class SerializationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_TEST_MODEL_FNS)
   def test_round_trip(self, model_fn):
@@ -600,4 +599,4 @@ if __name__ == '__main__':
   # context.
   tf.config.optimizer.set_experimental_options({'disable_meta_optimizer': True})
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

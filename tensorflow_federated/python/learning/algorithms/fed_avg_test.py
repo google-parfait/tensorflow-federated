@@ -15,11 +15,11 @@
 import itertools
 from unittest import mock
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory_utils
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.test import static_assert
@@ -34,7 +34,7 @@ from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import distributors
 
 
-class FedAvgTest(test_case.TestCase, parameterized.TestCase):
+class FedAvgTest(parameterized.TestCase):
   """Tests construction of the FedAvg training process."""
 
   # pylint: disable=g-complex-comprehension
@@ -63,19 +63,14 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(mock_model_fn.call_count, 3)
 
   @parameterized.named_parameters(
-      ('non-simulation_tff_optimizer', False, sgdm.build_sgdm(1.0)),
-      ('simulation_tff_optimizer', True, sgdm.build_sgdm(1.0)),
-      ('non-simulation_keras_optimizer', False,
-       lambda: tf.keras.optimziers.SGD(1.0)),
-      ('simulation_keras_optimizer', True,
-       lambda: tf.keras.optimziers.SGD(1.0)),
+      ('non-simulation_tff_optimizer', False),
+      ('simulation_tff_optimizer', True),
   )
   @mock.patch.object(
       dataset_reduce,
       '_dataset_reduce_fn',
       wraps=dataset_reduce._dataset_reduce_fn)
-  def test_client_tf_dataset_reduce_fn(self, simulation, optimizer,
-                                       mock_method):
+  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     fed_avg.build_weighted_fed_avg(
         model_fn=model_examples.LinearRegression,
         client_optimizer_fn=sgdm.build_sgdm(1.0),
@@ -165,7 +160,7 @@ class FedAvgTest(test_case.TestCase, parameterized.TestCase):
         learning_process.next)
 
 
-class FunctionalFedAvgTest(test_case.TestCase, parameterized.TestCase):
+class FunctionalFedAvgTest(parameterized.TestCase):
   """Tests construction of the FedAvg training process."""
 
   def test_raises_on_model_and_model_fn(self):
@@ -189,4 +184,4 @@ class FunctionalFedAvgTest(test_case.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

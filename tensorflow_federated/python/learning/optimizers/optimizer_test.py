@@ -15,11 +15,10 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.learning.optimizers import optimizer
 
 
-class OptimizerChecksTest(test_case.TestCase, parameterized.TestCase):
+class OptimizerChecksTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('bad_shape', tf.zeros([2], tf.float32), tf.zeros([3], tf.float32)),
@@ -67,4 +66,4 @@ class OptimizerChecksTest(test_case.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  tf.test.main()

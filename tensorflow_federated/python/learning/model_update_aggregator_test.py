@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -33,7 +33,7 @@ _float_type = computation_types.TensorType(tf.float32)
 _float_matrix_type = computation_types.TensorType(tf.float32, [200, 300])
 
 
-class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
+class ModelUpdateAggregatorTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('simple', False, False, None),
@@ -273,7 +273,7 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
           debug_measurements_fn=wrong_debug_measurements_fn)
 
 
-class CompilerIntegrationTest(test_case.TestCase, parameterized.TestCase):
+class CompilerIntegrationTest(parameterized.TestCase):
   """Integration tests making sure compiler does not end up confused.
 
   These tests compile the aggregator into MapReduceForm and check that the
@@ -355,4 +355,4 @@ def _mrfify_aggregator(aggregator):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

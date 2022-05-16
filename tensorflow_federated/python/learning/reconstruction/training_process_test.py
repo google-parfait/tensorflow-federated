@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for training_process.py."""
 
 import collections
 import functools
 from unittest import mock
-from absl.testing import parameterized
 
+from absl.testing import parameterized
 import attr
 import numpy as np
 import tensorflow as tf
@@ -29,7 +28,6 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -230,7 +228,7 @@ def _get_keras_optimizer_fn(learning_rate=0.1):
   return lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
 
 
-class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
+class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
 
   def _run_rounds(self, iterproc, federated_data, num_rounds):
     train_outputs = []
@@ -1016,4 +1014,4 @@ class TrainingProcessTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

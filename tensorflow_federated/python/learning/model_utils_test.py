@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for model_utils."""
+
 import collections
 
+from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
@@ -73,7 +73,7 @@ class TestModel(model_lib.Model):
       var.assign(tf.zeros_like(var))
 
 
-class WeightsTypeFromModelTest(test_case.TestCase):
+class WeightsTypeFromModelTest(absltest.TestCase):
 
   def test_fails_not_callable_or_model(self):
     with self.assertRaises(TypeError):
@@ -111,7 +111,7 @@ class WeightsTypeFromModelTest(test_case.TestCase):
               ], list))], model_utils.ModelWeights), weights_type)
 
 
-class ParamCountFromModelTest(test_case.TestCase):
+class ParamCountFromModelTest(absltest.TestCase):
 
   def test_fails_not_model(self):
     with self.assertRaises(TypeError):
@@ -134,4 +134,4 @@ class ParamCountFromModelTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

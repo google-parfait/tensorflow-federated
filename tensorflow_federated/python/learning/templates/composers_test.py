@@ -21,7 +21,6 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -112,7 +111,7 @@ def test_finalizer():
   return finalizers.FinalizerProcess(empty_init_fn, next_fn)
 
 
-class ComposeLearningProcessTest(test_case.TestCase):
+class ComposeLearningProcessTest(tf.test.TestCase):
 
   def test_learning_process_composes(self):
     process = composers.compose_learning_process(test_init_model_weights_fn,
@@ -218,7 +217,7 @@ class ComposeLearningProcessTest(test_case.TestCase):
   # _validate_args method, when adding custom error messages.
 
 
-class VanillaFedAvgTest(test_case.TestCase, parameterized.TestCase):
+class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
 
   def _test_data(self):
     return tf.data.Dataset.from_tensor_slices(
@@ -321,4 +320,4 @@ class VanillaFedAvgTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()
