@@ -168,6 +168,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/test:static_assert",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",

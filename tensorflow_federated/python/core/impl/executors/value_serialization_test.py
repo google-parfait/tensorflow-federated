@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 # Convenience aliases.
 TensorType = computation_types.TensorType
@@ -48,9 +49,9 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, serialize_type_spec)
+    type_test_utils.assert_types_identical(value_type, serialize_type_spec)
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec, serialize_type_spec)
+    type_test_utils.assert_types_identical(type_spec, serialize_type_spec)
     self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
     self.assertAllEqual(x, y)
 
@@ -63,10 +64,11 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
       value_proto, value_type = value_serialization.serialize_value(
           tensor_x, serialize_type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, serialize_type_spec)
+    type_test_utils.assert_types_identical(value_type, serialize_type_spec)
     y, deserialize_type_spec = value_serialization.deserialize_value(
         value_proto)
-    self.assert_types_identical(deserialize_type_spec, serialize_type_spec)
+    type_test_utils.assert_types_identical(deserialize_type_spec,
+                                           serialize_type_spec)
     self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
     self.assertAllEqual(x, y)
 
@@ -76,10 +78,11 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, serialize_type_spec)
+    type_test_utils.assert_types_identical(value_type, serialize_type_spec)
     y, deserialize_type_spec = value_serialization.deserialize_value(
         value_proto, type_hint=serialize_type_spec)
-    self.assert_types_identical(deserialize_type_spec, serialize_type_spec)
+    type_test_utils.assert_types_identical(deserialize_type_spec,
+                                           serialize_type_spec)
     self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
     self.assertAllEqual(x, y)
 
@@ -92,10 +95,12 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     type_spec = TensorType(tf_type, x.shape)
     value_proto, value_type = value_serialization.serialize_value(x, type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, TensorType(tf_type, x.shape))
+    type_test_utils.assert_types_identical(value_type,
+                                           TensorType(tf_type, x.shape))
     y, type_spec = value_serialization.deserialize_value(
         value_proto, type_hint=type_spec)
-    self.assert_types_identical(type_spec, TensorType(tf_type, x.shape))
+    type_test_utils.assert_types_identical(type_spec,
+                                           TensorType(tf_type, x.shape))
     self.assertIsInstance(y, bytes)
     self.assertAllEqual(x, y)
 
@@ -104,9 +109,9 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     type_spec = TensorType(tf.as_dtype(x.dtype), x.shape)
     value_proto, value_type = value_serialization.serialize_value(x, type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, TensorType(tf.float32))
+    type_test_utils.assert_types_identical(value_type, TensorType(tf.float32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec, TensorType(tf.float32))
+    type_test_utils.assert_types_identical(type_spec, TensorType(tf.float32))
     self.assertAllEqual(x, y)
 
   def test_serialize_raises_on_incompatible_dtype_float_to_int(self):
@@ -119,9 +124,9 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, TensorType(tf.float32))
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, TensorType(tf.float32))
+    type_test_utils.assert_types_identical(value_type, TensorType(tf.float32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec, TensorType(tf.float32))
+    type_test_utils.assert_types_identical(type_spec, TensorType(tf.float32))
     self.assertEqual(y, 10.0)
 
   def test_serialize_deserialize_tensor_value_with_nontrivial_shape(self):
@@ -129,9 +134,10 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         x, TensorType(tf.int32, [3]))
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, TensorType(tf.int32, [3]))
+    type_test_utils.assert_types_identical(value_type,
+                                           TensorType(tf.int32, [3]))
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec, TensorType(tf.int32, [3]))
+    type_test_utils.assert_types_identical(type_spec, TensorType(tf.int32, [3]))
     self.assertAllEqual(x, y)
 
   def test_serialize_struct_with_type_element_mismatch(self):
@@ -171,11 +177,11 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         ds_repr, computation_types.SequenceType(tf.int64))
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.SequenceType(tf.int64))
+    type_test_utils.assert_types_identical(
+        value_type, computation_types.SequenceType(tf.int64))
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec,
-                                computation_types.SequenceType(tf.int64))
+    type_test_utils.assert_types_identical(
+        type_spec, computation_types.SequenceType(tf.int64))
     self.assertAllEqual(list(y), [x * 2 for x in range(5)])
 
   @parameterized.named_parameters(('as_dataset', lambda x: x),
@@ -198,7 +204,7 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assertEqual(value_type, sequence_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_equivalent(type_spec, sequence_type)
+    type_test_utils.assert_types_equivalent(type_spec, sequence_type)
     actual_values = list(y)
     expected_values = [
         test_tuple_type(a=x * 2, b=x, c=x - 1.) for x in range(5)
@@ -212,11 +218,11 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
       value_proto, value_type = value_serialization.serialize_value(
           ds, computation_types.SequenceType(tf.int64))
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.SequenceType(tf.int64))
+    type_test_utils.assert_types_identical(
+        value_type, computation_types.SequenceType(tf.int64))
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec,
-                                computation_types.SequenceType(tf.int64))
+    type_test_utils.assert_types_identical(
+        type_spec, computation_types.SequenceType(tf.int64))
     self.assertAllEqual(list(y), [x * 2 for x in range(5)])
 
   @parameterized.named_parameters(('as_dataset', lambda x: x),
@@ -232,11 +238,11 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     expected_type = computation_types.SequenceType(
         (tf.int64, tf.int32, tf.float32))
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, expected_type)
+    type_test_utils.assert_types_identical(value_type, expected_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # Only checking for equivalence, we don't have the Python container
     # after deserialization.
-    self.assert_types_equivalent(type_spec, expected_type)
+    type_test_utils.assert_types_equivalent(type_spec, expected_type)
     self.assertAllEqual(list(y), [(x * 2, x, x - 1.) for x in range(5)])
 
   @parameterized.named_parameters(('as_dataset', lambda x: x),
@@ -267,10 +273,10 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     value_proto, value_type = value_serialization.serialize_value(
         ds_repr, sequence_type)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, sequence_type)
+    type_test_utils.assert_types_identical(value_type, sequence_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # These aren't the same because ser/de destroys the PyContainer
-    self.assert_types_equivalent(type_spec, sequence_type)
+    type_test_utils.assert_types_equivalent(type_spec, sequence_type)
 
     def _build_expected_structure(x):
       return collections.OrderedDict(
@@ -300,12 +306,12 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
 
     value_proto, value_type = value_serialization.serialize_value(comp)
     self.assertEqual(value_proto.WhichOneof('value'), 'computation')
-    self.assert_types_identical(
+    type_test_utils.assert_types_identical(
         value_type,
         computation_types.FunctionType(parameter=None, result=tf.int32))
     comp, type_spec = value_serialization.deserialize_value(value_proto)
     # self.assertIsInstance(comp, computation_pb2.Computation)
-    self.assert_types_identical(
+    type_test_utils.assert_types_identical(
         type_spec,
         computation_types.FunctionType(parameter=None, result=tf.int32))
 
@@ -319,10 +325,10 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
             c=collections.OrderedDict(d=tf.int32)))
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, x_type)
+    type_test_utils.assert_types_identical(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # Don't assert on the Python container since it is lost in serialization.
-    self.assert_types_equivalent(type_spec, x_type)
+    type_test_utils.assert_types_equivalent(type_spec, x_type)
     self.assertEqual(y, structure.from_container(x, recursive=True))
 
   def test_serialize_deserialize_nested_tuple_value_without_names(self):
@@ -330,9 +336,9 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     x_type = computation_types.to_type((tf.int32, tf.int32))
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type, x_type)
+    type_test_utils.assert_types_identical(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_equivalent(type_spec, x_type)
+    type_test_utils.assert_types_equivalent(type_spec, x_type)
     self.assertEqual(y, structure.from_container((10, 20)))
 
   def test_serialize_deserialize_federated_at_clients(self):
@@ -340,11 +346,11 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
     x_type = computation_types.at_clients(tf.int32)
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.at_clients(tf.int32))
+    type_test_utils.assert_types_identical(
+        value_type, computation_types.at_clients(tf.int32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec,
-                                computation_types.at_clients(tf.int32))
+    type_test_utils.assert_types_identical(
+        type_spec, computation_types.at_clients(tf.int32))
     self.assertEqual(y, [10, 20])
 
   def test_deserialize_federated_value_with_unset_member_type(self):
@@ -367,8 +373,8 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
 
     deserialized_federated_value, deserialized_type_spec = value_serialization.deserialize_value(
         federated_value_proto)
-    self.assert_types_identical(deserialized_type_spec,
-                                computation_types.at_clients(tf.int32))
+    type_test_utils.assert_types_identical(
+        deserialized_type_spec, computation_types.at_clients(tf.int32))
     self.assertEqual(deserialized_federated_value, [10])
 
   def test_deserialize_federated_value_with_incompatible_member_types_raises(
@@ -413,7 +419,8 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
         tf.int32, placements.CLIENTS, all_equal=True)
     deserialized_value, deserialized_type = value_serialization.deserialize_value(
         value_pb, all_equal_clients_type_hint)
-    self.assert_types_identical(deserialized_type, all_equal_clients_type_hint)
+    type_test_utils.assert_types_identical(deserialized_type,
+                                           all_equal_clients_type_hint)
     self.assertAllEqual(deserialized_value, 10)
 
   def test_deserialize_federated_value_promotes_types(self):
@@ -445,18 +452,18 @@ class ValueSerializationtest(test_case.TestCase, parameterized.TestCase):
 
     _, deserialized_type_spec = value_serialization.deserialize_value(
         federated_value_proto)
-    self.assert_types_identical(deserialized_type_spec,
-                                computation_types.at_clients(larger_type))
+    type_test_utils.assert_types_identical(
+        deserialized_type_spec, computation_types.at_clients(larger_type))
 
   def test_serialize_deserialize_federated_at_server(self):
     x = 10
     x_type = computation_types.at_server(tf.int32)
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
     self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.at_server(tf.int32))
+    type_test_utils.assert_types_identical(
+        value_type, computation_types.at_server(tf.int32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec, x_type)
+    type_test_utils.assert_types_identical(type_spec, x_type)
     self.assertEqual(y, 10)
 
 

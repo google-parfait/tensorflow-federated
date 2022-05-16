@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class UniqueNameGeneratorTest(test_case.TestCase):
@@ -935,7 +936,8 @@ class CreateFederatedZipTest(parameterized.TestCase, test_case.TestCase):
     comp = building_block_factory.create_federated_zip(value)
     self.assertEqual(comp.formatted_representation(),
                      'federated_zip_at_clients(v)')
-    self.assert_types_equivalent(expected_zipped_type, comp.type_signature)
+    type_test_utils.assert_types_equivalent(expected_zipped_type,
+                                            comp.type_signature)
 
   @parameterized.named_parameters([
       ('one_unnamed', computation_types.StructType(
@@ -965,7 +967,8 @@ class CreateFederatedZipTest(parameterized.TestCase, test_case.TestCase):
     comp = building_block_factory.create_federated_zip(value)
     self.assertEqual(comp.formatted_representation(),
                      'federated_zip_at_server(v)')
-    self.assert_types_equivalent(expected_zipped_type, comp.type_signature)
+    type_test_utils.assert_types_equivalent(expected_zipped_type,
+                                            comp.type_signature)
 
   def test_flat_raises_type_error_with_inconsistent_placement(self):
     client_type = computation_types.FederatedType(
@@ -1542,17 +1545,17 @@ class SelectOutputFromLambdaTest(test_case.TestCase):
     input_type = computation_types.StructType([tf.int32, tf.float32])
     lam = identity_for_type(input_type)
     zero_selected = building_block_factory.select_output_from_lambda(lam, 0)
-    self.assert_types_equivalent(zero_selected.type_signature.parameter,
-                                 lam.type_signature.parameter)
-    self.assert_types_equivalent(zero_selected.type_signature.result,
-                                 lam.type_signature.result[0])
+    type_test_utils.assert_types_equivalent(
+        zero_selected.type_signature.parameter, lam.type_signature.parameter)
+    type_test_utils.assert_types_equivalent(zero_selected.type_signature.result,
+                                            lam.type_signature.result[0])
     self.assertEqual(str(zero_selected), '(x -> x[0])')
 
   def test_selects_single_output_by_str(self):
     input_type = computation_types.StructType([('a', tf.int32)])
     lam = identity_for_type(input_type)
     selected = building_block_factory.select_output_from_lambda(lam, 'a')
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         selected.type_signature,
         computation_types.FunctionType(lam.parameter_type,
                                        lam.type_signature.result['a']))
@@ -1562,8 +1565,8 @@ class SelectOutputFromLambdaTest(test_case.TestCase):
         'x', tf.int32,
         building_blocks.Struct([building_blocks.Reference('x', tf.int32)]))
     selected = building_block_factory.select_output_from_lambda(lam, 0)
-    self.assert_types_equivalent(selected.type_signature.result,
-                                 computation_types.TensorType(tf.int32))
+    type_test_utils.assert_types_equivalent(
+        selected.type_signature.result, computation_types.TensorType(tf.int32))
     self.assertEqual(str(selected), '(x -> x)')
 
   def test_selects_struct_of_outputs(self):
@@ -1571,9 +1574,9 @@ class SelectOutputFromLambdaTest(test_case.TestCase):
     lam = identity_for_type(input_type)
     tuple_selected = building_block_factory.select_output_from_lambda(
         lam, [0, 1])
-    self.assert_types_equivalent(tuple_selected.type_signature.parameter,
-                                 lam.type_signature.parameter)
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
+        tuple_selected.type_signature.parameter, lam.type_signature.parameter)
+    type_test_utils.assert_types_equivalent(
         tuple_selected.type_signature.result,
         computation_types.StructType(
             [lam.type_signature.result[0], lam.type_signature.result[1]]))
@@ -1585,7 +1588,7 @@ class SelectOutputFromLambdaTest(test_case.TestCase):
                                                ('c', tf.float32)])
     lam = identity_for_type(input_type)
     selected = building_block_factory.select_output_from_lambda(lam, ['a', 'b'])
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         selected.type_signature,
         computation_types.FunctionType(
             lam.parameter_type,
@@ -1600,9 +1603,9 @@ class SelectOutputFromLambdaTest(test_case.TestCase):
     lam = identity_for_type(input_type)
     tuple_selected = building_block_factory.select_output_from_lambda(
         lam, [('a', 'inner'), 'b'])
-    self.assert_types_equivalent(tuple_selected.type_signature.parameter,
-                                 lam.type_signature.parameter)
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
+        tuple_selected.type_signature.parameter, lam.type_signature.parameter)
+    type_test_utils.assert_types_equivalent(
         tuple_selected.type_signature.result,
         computation_types.StructType(
             [lam.type_signature.result.a.inner, lam.type_signature.result.b]))
@@ -1624,7 +1627,8 @@ class ZipUpToTest(test_case.TestCase):
         placements.CLIENTS)
     zipped = building_block_factory.zip_to_match_type(
         comp_to_zip=comp, target_type=zippable_type)
-    self.assert_types_equivalent(zipped.type_signature, zippable_type)
+    type_test_utils.assert_types_equivalent(zipped.type_signature,
+                                            zippable_type)
 
   def test_does_not_zip_different_placement_target(self):
     comp = building_blocks.Struct([
@@ -1659,7 +1663,8 @@ class ZipUpToTest(test_case.TestCase):
     ])
     zipped = building_block_factory.zip_to_match_type(
         comp_to_zip=comp, target_type=zippable_type)
-    self.assert_types_equivalent(zipped.type_signature, zippable_type)
+    type_test_utils.assert_types_equivalent(zipped.type_signature,
+                                            zippable_type)
 
   def test_assignability_with_names(self):
     # This would correspond to an implicit downcast in TFF's typesystem; the
@@ -1700,7 +1705,8 @@ class ZipUpToTest(test_case.TestCase):
 
     self.assertIsNone(not_zipped)
 
-    self.assert_types_equivalent(zipped.type_signature, named_zippable_type)
+    type_test_utils.assert_types_equivalent(zipped.type_signature,
+                                            named_zippable_type)
 
   def test_does_not_zip_under_function(self):
     result_comp = building_blocks.Struct([

@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import federated_evaluation
@@ -245,7 +246,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     batch_type = computation_types.to_type(TestModel().input_spec)
     client_evaluate = federated_evaluation.build_local_evaluation(
         TestModel, model_weights_type, batch_type)
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         client_evaluate.type_signature,
         FunctionType(
             parameter=StructType([
@@ -277,7 +278,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
   def test_federated_evaluation(self):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
     model_weights_type = model_utils.weights_type_from_model(TestModel)
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         evaluate.type_signature,
         FunctionType(
             parameter=StructType([
@@ -317,12 +318,13 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     broadcaster = (
         encoding_utils.build_encoded_broadcast_process_from_model(
             TestModelQuant, _build_simple_quant_encoder(12)))
-    self.assert_types_equivalent(broadcaster.next.type_signature,
-                                 _build_expected_broadcaster_next_signature())
+    type_test_utils.assert_types_equivalent(
+        broadcaster.next.type_signature,
+        _build_expected_broadcaster_next_signature())
     evaluate = federated_evaluation.build_federated_evaluation(
         TestModelQuant, broadcast_process=broadcaster)
     # Confirm that the type signature matches what is expected.
-    self.assert_types_identical(
+    type_test_utils.assert_types_identical(
         evaluate.type_signature,
         _build_expected_test_quant_model_eval_signature())
 
@@ -355,12 +357,13 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     broadcaster = (
         encoding_utils.build_encoded_broadcast_process_from_model(
             TestModelQuant, _build_simple_quant_encoder(2)))
-    self.assert_types_equivalent(broadcaster.next.type_signature,
-                                 _build_expected_broadcaster_next_signature())
+    type_test_utils.assert_types_equivalent(
+        broadcaster.next.type_signature,
+        _build_expected_broadcaster_next_signature())
     evaluate = federated_evaluation.build_federated_evaluation(
         TestModelQuant, broadcast_process=broadcaster)
     # Confirm that the type signature matches what is expected.
-    self.assert_types_identical(
+    type_test_utils.assert_types_identical(
         evaluate.type_signature,
         _build_expected_test_quant_model_eval_signature())
 

@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
 
@@ -781,18 +782,19 @@ class BroadcastFormTest(test_case.TestCase):
         add_server_number_plus_one)
     self.assertEqual(bf.server_data_label, 'server_number')
     self.assertEqual(bf.client_data_label, 'client_numbers')
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         bf.compute_server_context.type_signature,
         computation_types.FunctionType(tf.int32, (tf.int32,)))
     self.assertEqual(2, bf.compute_server_context(1)[0])
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         bf.client_processing.type_signature,
         computation_types.FunctionType(((tf.int32,), tf.int32), tf.int32))
     self.assertEqual(3, bf.client_processing((1,), 2))
 
     round_trip_comp = form_utils.get_computation_for_broadcast_form(bf)
-    self.assert_types_equivalent(round_trip_comp.type_signature,
-                                 add_server_number_plus_one.type_signature)
+    type_test_utils.assert_types_equivalent(
+        round_trip_comp.type_signature,
+        add_server_number_plus_one.type_signature)
     # 2 (server data) + 1 (constant in comp) + 2 (client data) = 5 (output)
     self.assertEqual([5, 6, 7], round_trip_comp(2, [2, 3, 4]))
 
@@ -809,16 +811,17 @@ class BroadcastFormTest(test_case.TestCase):
     bf = form_utils.get_broadcast_form_for_computation(add_five_at_clients)
     self.assertEqual(bf.server_data_label, 'naught_at_server')
     self.assertEqual(bf.client_data_label, 'client_numbers')
-    self.assert_types_equivalent(bf.compute_server_context.type_signature,
-                                 computation_types.FunctionType((), ()))
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
+        bf.compute_server_context.type_signature,
+        computation_types.FunctionType((), ()))
+    type_test_utils.assert_types_equivalent(
         bf.client_processing.type_signature,
         computation_types.FunctionType(((), tf.int32), tf.int32))
     self.assertEqual(6, bf.client_processing((), 1))
 
     round_trip_comp = form_utils.get_computation_for_broadcast_form(bf)
-    self.assert_types_equivalent(round_trip_comp.type_signature,
-                                 add_five_at_clients.type_signature)
+    type_test_utils.assert_types_equivalent(round_trip_comp.type_signature,
+                                            add_five_at_clients.type_signature)
     self.assertEqual([10, 11, 12], round_trip_comp((), [5, 6, 7]))
 
 
@@ -829,7 +832,7 @@ class AsFunctionOfSingleSubparameterTest(test_case.TestCase):
     new_type = new_lam.type_signature
     old_type.check_function()
     new_type.check_function()
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         new_type,
         computation_types.FunctionType(old_type.parameter[index],
                                        old_type.result))
@@ -910,7 +913,7 @@ class AsFunctionOfSomeSubparametersTest(test_case.TestCase):
     new_lam = form_utils._as_function_of_some_federated_subparameters(
         lam, [(0,)])
     expected_parameter_type = computation_types.at_clients((tf.int32,))
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(expected_parameter_type,
                                        lam.result.type_signature))
@@ -930,7 +933,7 @@ class AsFunctionOfSomeSubparametersTest(test_case.TestCase):
     new_lam = form_utils._as_function_of_some_federated_subparameters(
         lam, [(0,)])
     expected_parameter_type = computation_types.at_clients((tf.int32,))
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(expected_parameter_type,
                                        lam.result.type_signature))
@@ -968,7 +971,7 @@ class AsFunctionOfSomeSubparametersTest(test_case.TestCase):
     new_lam = form_utils._as_function_of_some_federated_subparameters(
         lam, [(0, 0)])
     expected_parameter_type = computation_types.at_clients((tf.int32,))
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(expected_parameter_type,
                                        lam.result.type_signature))
@@ -996,7 +999,7 @@ class AsFunctionOfSomeSubparametersTest(test_case.TestCase):
         lam, [(0, 0), (2, 0)])
 
     expected_parameter_type = computation_types.at_clients((tf.int32, tf.int32))
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(expected_parameter_type,
                                        lam.result.type_signature))
@@ -1025,7 +1028,7 @@ class AsFunctionOfSomeSubparametersTest(test_case.TestCase):
         lam, [(0, 0), (2, 0)])
 
     expected_parameter_type = computation_types.at_clients((tf.int32, tf.int32))
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         new_lam.type_signature,
         computation_types.FunctionType(expected_parameter_type,
                                        lam.result.type_signature))

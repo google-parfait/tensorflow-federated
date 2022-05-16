@@ -22,6 +22,7 @@ from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 def build_whimsy_computation_with_aggregation_and_after(server_arg_type,
@@ -110,7 +111,7 @@ class MergeableCompCompilerTest(test_case.TestCase):
 
     self.assertIsInstance(mergeable_form,
                           mergeable_comp_execution_context.MergeableCompForm)
-    self.assert_types_identical(
+    type_test_utils.assert_types_identical(
         mergeable_form.after_merge.type_signature.result,
         return_list.type_signature.result)
 

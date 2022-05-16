@@ -24,6 +24,7 @@ from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -68,8 +69,8 @@ class ConcatFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type)
-    self.assert_types_equivalent(process.initialize.type_signature,
-                                 expected_initialize_type)
+    type_test_utils.assert_types_equivalent(process.initialize.type_signature,
+                                            expected_initialize_type)
 
     # Inner SumFactory has no measurements.
     expected_measurements_type = computation_types.at_server(())
@@ -81,8 +82,8 @@ class ConcatFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
             state=server_state_type,
             result=computation_types.at_server(value_type),
             measurements=expected_measurements_type))
-    self.assert_types_equivalent(process.next.type_signature,
-                                 expected_next_type)
+    type_test_utils.assert_types_equivalent(process.next.type_signature,
+                                            expected_next_type)
 
   @parameterized.named_parameters(
       ('float_value_float32_weight', tf.float32, tf.float32),
@@ -102,8 +103,8 @@ class ConcatFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type)
-    self.assert_types_equivalent(process.initialize.type_signature,
-                                 expected_initialize_type)
+    type_test_utils.assert_types_equivalent(process.initialize.type_signature,
+                                            expected_initialize_type)
 
     # Measurements come from the inner mean factory.
     expected_measurements_type = computation_types.at_server(
@@ -117,8 +118,8 @@ class ConcatFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
             state=server_state_type,
             result=computation_types.at_server(value_type),
             measurements=expected_measurements_type))
-    self.assert_types_equivalent(process.next.type_signature,
-                                 expected_next_type)
+    type_test_utils.assert_types_equivalent(process.next.type_signature,
+                                            expected_next_type)
 
   @parameterized.named_parameters(('bool', tf.bool), ('string', tf.string),
                                   ('string_list', [tf.string, tf.string]),

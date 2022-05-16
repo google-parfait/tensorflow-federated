@@ -202,7 +202,7 @@ class SimpleFedAvgTest(tff.test.TestCase, parameterized.TestCase):
         _tff_learning_model_fn)
     self.assertIsInstance(it_process, tff.templates.IterativeProcess)
     federated_data_type = it_process.next.type_signature.parameter[1]
-    self.assert_types_identical(
+    tff.test.assert_types_identical(
         federated_data_type,
         tff.types.at_clients(
             tff.types.SequenceType(
@@ -350,14 +350,14 @@ class RNNTest(tff.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(it_process, tff.templates.IterativeProcess)
     global_model_type, client_datasets_type = it_process.next.type_signature.parameter
     model_type = tff.learning.framework.weights_type_from_model(_rnn_model_fn)
-    self.assert_types_identical(
+    tff.test.assert_types_identical(
         global_model_type,
         tff.types.at_server(
             simple_fedavg_tf.ServerState(
                 model=model_type,
                 optimizer_state=[tf.int64],
                 round_num=tf.int32)))
-    self.assert_types_identical(
+    tff.test.assert_types_identical(
         client_datasets_type,
         tff.types.at_clients(
             tff.types.SequenceType(

@@ -15,8 +15,6 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl.types import computation_types
-
 
 class TestCase(tf.test.TestCase):
   """Base class for TensroFlow Federated tests."""
@@ -24,35 +22,6 @@ class TestCase(tf.test.TestCase):
   def setUp(self):
     super().setUp()
     tf.keras.backend.clear_session()
-
-  def assert_type_assignable_from(self, target_type, source_type):
-    # Reraise the exception outside of `except` so as to avoid setting
-    # the `.__cause__` on the final error (repeating everything).
-    message = None
-    try:
-      target_type.check_assignable_from(source_type)
-    except computation_types.TypeNotAssignableError as e:
-      message = e.message
-    if message is not None:
-      self.fail(message)
-
-  def assert_types_equivalent(self, first_type, second_type):
-    message = None
-    try:
-      first_type.check_equivalent_to(second_type)
-    except computation_types.TypesNotEquivalentError as e:
-      message = e.message
-    if message is not None:
-      self.fail(message)
-
-  def assert_types_identical(self, first_type, second_type):
-    message = None
-    try:
-      first_type.check_identical_to(second_type)
-    except computation_types.TypesNotIdenticalError as e:
-      message = e.message
-    if message is not None:
-      self.fail(message)
 
 
 def main():

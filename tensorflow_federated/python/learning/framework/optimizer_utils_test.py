@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_examples
@@ -293,7 +294,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             optimizer_state=[tf.int64],
             delta_aggregate_state=aggregate_state,
             model_broadcast_state=()), placements.SERVER)
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         computation_types.FunctionType(
             parameter=None, result=server_state_type),
         iterative_process.initialize.type_signature)
@@ -312,7 +313,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
                 loss=computation_types.TensorType(tf.float32),
                 num_examples=computation_types.TensorType(tf.int32))),
         placements.SERVER)
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         computation_types.FunctionType(
             parameter=collections.OrderedDict(
                 server_state=server_state_type,

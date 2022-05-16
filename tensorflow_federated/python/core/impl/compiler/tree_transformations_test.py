@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class TransformTestBase(test_case.TestCase):
@@ -37,7 +38,8 @@ class TransformTestBase(test_case.TestCase):
         file, f'Before transformation:\n\n{comp.formatted_representation()}\n\n'
         f'After transformation:\n\n{after.formatted_representation()}')
     if not changes_type:
-      self.assert_types_identical(comp.type_signature, after.type_signature)
+      type_test_utils.assert_types_identical(comp.type_signature,
+                                             after.type_signature)
     if unmodified:
       self.assertFalse(modified)
     else:
@@ -521,8 +523,9 @@ class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    self.assert_types_identical(before.type_signature, server_int_type)
-    self.assert_types_identical(after.type_signature, int_type)
+    type_test_utils.assert_types_identical(before.type_signature,
+                                           server_int_type)
+    type_test_utils.assert_types_identical(after.type_signature, int_type)
     self.assertEqual(
         before.compact_representation(),
         'federated_apply(<(x -> x),federated_apply(<(x -> x),x>)>)')
@@ -541,8 +544,9 @@ class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    self.assert_types_identical(before.type_signature, clients_int_type)
-    self.assert_types_identical(after.type_signature, int_type)
+    type_test_utils.assert_types_identical(before.type_signature,
+                                           clients_int_type)
+    type_test_utils.assert_types_identical(after.type_signature, int_type)
     self.assertEqual(before.compact_representation(),
                      'federated_map(<(x -> x),federated_map(<(x -> x),x>)>)')
     self.assertEqual(after.compact_representation(), '(x -> x)((x -> x)(x))')
@@ -556,8 +560,9 @@ class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    self.assert_types_identical(before.type_signature, server_list_type)
-    self.assert_types_identical(after.type_signature, list_type)
+    type_test_utils.assert_types_identical(before.type_signature,
+                                           server_list_type)
+    type_test_utils.assert_types_identical(after.type_signature, list_type)
 
   def test_unwrap_removes_federated_zips_at_clients(self):
     list_type = computation_types.to_type([tf.int32, tf.float32] * 2)
@@ -568,8 +573,9 @@ class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    self.assert_types_identical(before.type_signature, clients_list_type)
-    self.assert_types_identical(after.type_signature, list_type)
+    type_test_utils.assert_types_identical(before.type_signature,
+                                           clients_list_type)
+    type_test_utils.assert_types_identical(after.type_signature, list_type)
 
   def test_strip_placement_removes_federated_value_at_server(self):
     int_data = building_blocks.Data('x', tf.int32)
@@ -586,9 +592,9 @@ class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
     tuple_type = computation_types.StructWithPythonType([(None, tf.int32),
                                                          (None, tf.float32)],
                                                         tuple)
-    self.assert_types_identical(before.type_signature,
-                                computation_types.at_server(tuple_type))
-    self.assert_types_identical(after.type_signature, tuple_type)
+    type_test_utils.assert_types_identical(
+        before.type_signature, computation_types.at_server(tuple_type))
+    type_test_utils.assert_types_identical(after.type_signature, tuple_type)
 
   def test_strip_placement_federated_value_at_clients(self):
     int_data = building_blocks.Data('x', tf.int32)
@@ -605,9 +611,9 @@ class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
     tuple_type = computation_types.StructWithPythonType([(None, tf.int32),
                                                          (None, tf.float32)],
                                                         tuple)
-    self.assert_types_identical(before.type_signature,
-                                computation_types.at_clients(tuple_type))
-    self.assert_types_identical(after.type_signature, tuple_type)
+    type_test_utils.assert_types_identical(
+        before.type_signature, computation_types.at_clients(tuple_type))
+    type_test_utils.assert_types_identical(after.type_signature, tuple_type)
 
   def test_strip_placement_with_called_lambda(self):
     int_type = computation_types.TensorType(tf.int32)
@@ -620,8 +626,9 @@ class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    self.assert_types_identical(before.type_signature, server_int_type)
-    self.assert_types_identical(after.type_signature, int_type)
+    type_test_utils.assert_types_identical(before.type_signature,
+                                           server_int_type)
+    type_test_utils.assert_types_identical(after.type_signature, int_type)
 
   def test_strip_placement_nested_federated_type(self):
     int_type = computation_types.TensorType(tf.int32)
@@ -634,8 +641,10 @@ class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
     after, modified = tree_transformations.strip_placement(before)
     self.assertTrue(modified)
     self.assert_has_no_intrinsics_nor_federated_types(after)
-    self.assert_types_identical(before.type_signature, tupled_server_int_type)
-    self.assert_types_identical(after.type_signature, tupled_int_type)
+    type_test_utils.assert_types_identical(before.type_signature,
+                                           tupled_server_int_type)
+    type_test_utils.assert_types_identical(after.type_signature,
+                                           tupled_int_type)
 
 
 if __name__ == '__main__':

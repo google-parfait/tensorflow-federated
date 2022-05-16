@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class OutsideFederatedComputationTest(test_case.TestCase):
@@ -573,7 +574,7 @@ class FederatedZipTest(parameterized.TestCase, IntrinsicTestBase):
     val = intrinsics.federated_zip(x)
     self.assertIsInstance(val, value_impl.Value)
     expected = computation_types.at_clients([tf.int32] * n)
-    self.assert_types_identical(val.type_signature, expected)
+    type_test_utils.assert_types_identical(val.type_signature, expected)
 
   @parameterized.named_parameters(('test_n_2_int', 2, tf.int32),
                                   ('test_n_3_int', 3, tf.int32),
@@ -593,7 +594,8 @@ class FederatedZipTest(parameterized.TestCase, IntrinsicTestBase):
     self.assertIsInstance(named_result, value_impl.Value)
     expected = computation_types.at_clients(
         collections.OrderedDict((naming_fn(i), element_type) for i in range(n)))
-    self.assert_types_identical(named_result.type_signature, expected)
+    type_test_utils.assert_types_identical(named_result.type_signature,
+                                           expected)
 
     naming_fn = lambda i: str(i) if i % 2 == 0 else None
     mixed_result = intrinsics.federated_zip(
@@ -603,7 +605,8 @@ class FederatedZipTest(parameterized.TestCase, IntrinsicTestBase):
         computation_types.StructType([
             (naming_fn(i), element_type) for i in range(n)
         ]))
-    self.assert_types_identical(mixed_result.type_signature, expected)
+    type_test_utils.assert_types_identical(mixed_result.type_signature,
+                                           expected)
 
   @parameterized.named_parameters(
       ('n_1_m_1', 1, 1),
@@ -628,7 +631,7 @@ class FederatedZipTest(parameterized.TestCase, IntrinsicTestBase):
     x = _mock_data_of_type(initial_tuple_type)
     val = intrinsics.federated_zip(x)
     self.assertIsInstance(val, value_impl.Value)
-    self.assert_types_identical(val.type_signature, final_fed_type)
+    type_test_utils.assert_types_identical(val.type_signature, final_fed_type)
 
 
 class FederatedMeanTest(IntrinsicTestBase):

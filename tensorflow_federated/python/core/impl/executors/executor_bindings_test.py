@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 TensorType = computation_types.TensorType
 StructType = computation_types.StructType
@@ -69,7 +70,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
     materialized_value = executor.materialize(value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value)
-    self.assert_types_identical(type_spec, expected_type_spec)
+    type_test_utils.assert_types_identical(type_spec, expected_type_spec)
     self.assertAllEqual(deserialized_value, [1, 2, 3])
     # 2. Test a struct of tensors, ensure that we get a different ID.
     expected_type_spec = StructType([
@@ -138,8 +139,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
     result = executor.create_call(comp.ref, arg.ref)
     output_pb = executor.materialize(result.ref)
     result, result_type_spec = value_serialization.deserialize_value(output_pb)
-    self.assert_types_identical(result_type_spec,
-                                TensorType(sequence_type.element.dtype))
+    type_test_utils.assert_types_identical(
+        result_type_spec, TensorType(sequence_type.element.dtype))
     self.assertEqual(result, sum(range(5)))
 
   def test_create_tuple_of_value_sequence(self):
@@ -171,7 +172,8 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
     output_pb = executor.materialize(result.ref)
     result, result_type_spec = value_serialization.deserialize_value(
         output_pb, type_hint=struct_of_sequence_type)
-    self.assert_types_identical(result_type_spec, struct_of_sequence_type)
+    type_test_utils.assert_types_identical(result_type_spec,
+                                           struct_of_sequence_type)
 
   def test_create_struct(self):
     executor = executor_bindings.create_tensorflow_executor()
@@ -188,7 +190,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
         materialized_value)
     struct_type_spec = computation_types.to_type(
         [expected_type_spec, expected_type_spec])
-    self.assert_types_equivalent(type_spec, struct_type_spec)
+    type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec)
     self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
@@ -199,7 +201,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
         materialized_value)
     struct_type_spec = computation_types.to_type(
         [struct_type_spec, expected_type_spec])
-    self.assert_types_equivalent(type_spec, struct_type_spec)
+    type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec)
     self.assertAllClose([[(1, 2, 3), (1, 2, 3)], (1, 2, 3)], deserialized_value)
@@ -219,7 +221,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
         materialized_value)
     struct_type_spec = computation_types.to_type(
         [expected_type_spec, expected_type_spec])
-    self.assert_types_equivalent(type_spec, struct_type_spec)
+    type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec)
     self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
@@ -228,7 +230,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
     materialized_value = executor.materialize(new_value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value)
-    self.assert_types_equivalent(type_spec, expected_type_spec)
+    type_test_utils.assert_types_equivalent(type_spec, expected_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec)
     self.assertAllClose((1, 2, 3), deserialized_value)
@@ -295,7 +297,7 @@ class ReferenceResolvingExecutorBindingsTest(test_case.TestCase):
     materialized_value = executor.materialize(value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value)
-    self.assert_types_identical(type_spec, expected_type_spec)
+    type_test_utils.assert_types_identical(type_spec, expected_type_spec)
     self.assertAllEqual(deserialized_value, [1, 2, 3])
     # 2. Test a struct of tensors, ensure that we get a different ID.
     expected_type_spec = StructType([
@@ -351,7 +353,7 @@ class ReferenceResolvingExecutorBindingsTest(test_case.TestCase):
         materialized_value)
     struct_type_spec = computation_types.to_type(
         [expected_type_spec, expected_type_spec])
-    self.assert_types_equivalent(type_spec, struct_type_spec)
+    type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec)
     self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
@@ -362,7 +364,7 @@ class ReferenceResolvingExecutorBindingsTest(test_case.TestCase):
         materialized_value)
     struct_type_spec = computation_types.to_type(
         [struct_type_spec, expected_type_spec])
-    self.assert_types_equivalent(type_spec, struct_type_spec)
+    type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec)
     self.assertAllClose([[(1, 2, 3), (1, 2, 3)], (1, 2, 3)], deserialized_value)
@@ -383,7 +385,7 @@ class ReferenceResolvingExecutorBindingsTest(test_case.TestCase):
         materialized_value)
     struct_type_spec = computation_types.to_type(
         [expected_type_spec, expected_type_spec])
-    self.assert_types_equivalent(type_spec, struct_type_spec)
+    type_test_utils.assert_types_equivalent(type_spec, struct_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec)
     self.assertAllClose([(1, 2, 3), (1, 2, 3)], deserialized_value)
@@ -392,7 +394,7 @@ class ReferenceResolvingExecutorBindingsTest(test_case.TestCase):
     materialized_value = executor.materialize(new_value.ref)
     deserialized_value, type_spec = value_serialization.deserialize_value(
         materialized_value)
-    self.assert_types_equivalent(type_spec, expected_type_spec)
+    type_test_utils.assert_types_equivalent(type_spec, expected_type_spec)
     deserialized_value = type_conversions.type_to_py_container(
         deserialized_value, struct_type_spec)
     self.assertAllClose((1, 2, 3), deserialized_value)

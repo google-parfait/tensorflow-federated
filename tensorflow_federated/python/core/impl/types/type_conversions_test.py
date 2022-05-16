@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
@@ -292,7 +293,7 @@ class InferTypeTest(parameterized.TestCase, test_case.TestCase):
   def test_with_ragged_tensor(self):
     t = type_conversions.infer_type(
         tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4]))
-    self.assert_types_identical(
+    type_test_utils.assert_types_identical(
         t,
         computation_types.StructWithPythonType([
             ('flat_values', computation_types.TensorType(tf.int32, [4])),
@@ -305,7 +306,7 @@ class InferTypeTest(parameterized.TestCase, test_case.TestCase):
     # sparse_tensor = [0, 2, 0, 0, 0]
     sparse_tensor = tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
     t = type_conversions.infer_type(sparse_tensor)
-    self.assert_types_identical(
+    type_test_utils.assert_types_identical(
         t,
         computation_types.StructWithPythonType([
             ('indices', computation_types.TensorType(tf.int64, [1, 1])),
@@ -492,7 +493,7 @@ class TypeToTfStructureTest(test_case.TestCase):
     first_type = computation_types.to_type(first_spec)
     round_trip_spec = type_conversions.type_to_tf_structure(first_type)
     round_trip_type = computation_types.to_type(round_trip_spec)
-    self.assert_types_identical(first_type, round_trip_type)
+    type_test_utils.assert_types_identical(first_type, round_trip_type)
 
   def test_ragged_tensor_spec_round_trip(self):
     ragged_tensor = tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
@@ -785,8 +786,8 @@ class StructureFromTensorTypeTreeTest(test_case.TestCase):
   def test_single_tensor(self):
 
     def expect_tfint32_return_5(tensor_type):
-      self.assert_types_identical(tensor_type,
-                                  computation_types.TensorType(tf.int32))
+      type_test_utils.assert_types_identical(
+          tensor_type, computation_types.TensorType(tf.int32))
       return 5
 
     result = type_conversions.structure_from_tensor_type_tree(

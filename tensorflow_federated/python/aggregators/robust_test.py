@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -322,7 +323,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
     factory = _clipped_sum()
     mixed_float = computation_types.to_type(type_spec)
     process = factory.create(mixed_float)
-    self.assert_types_identical(
+    type_test_utils.assert_types_identical(
         mixed_float, process.next.type_signature.result.result.member)
 
   @parameterized.named_parameters(
@@ -341,7 +342,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
     factory = _zeroed_sum(norm_order=norm_order)
     mixed_float = computation_types.to_type(type_spec)
     process = factory.create(mixed_float)
-    self.assert_types_identical(
+    type_test_utils.assert_types_identical(
         mixed_float, process.next.type_signature.result.result.member)
 
   @parameterized.named_parameters(

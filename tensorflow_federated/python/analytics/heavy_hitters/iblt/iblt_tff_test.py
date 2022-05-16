@@ -14,10 +14,9 @@
 
 import collections
 import itertools
-
 from typing import Dict, List, Optional, Callable
-from absl.testing import parameterized
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tff
@@ -25,6 +24,7 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 DATA = [
     ['hello', 'hey', 'hi', 'hi', 'hi', '新年快乐'],
@@ -154,7 +154,7 @@ class IbltTffConstructionTest(test_case.TestCase):
   def test_default_construction(self):
     iblt_computation = iblt_tff.build_iblt_computation()
     self.assertIsInstance(iblt_computation, computation_base.Computation)
-    self.assert_types_identical(
+    type_test_utils.assert_types_identical(
         iblt_computation.type_signature,
         computation_types.FunctionType(
             parameter=computation_types.at_clients(

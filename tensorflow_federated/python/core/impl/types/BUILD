@@ -151,6 +151,7 @@ py_test(
         ":computation_types",
         ":placements",
         ":type_conversions",
+        ":type_test_utils",
         ":typed_object",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:test_case",
@@ -209,6 +210,13 @@ py_test(
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
+)
+
+py_library(
+    name = "type_test_utils",
+    srcs = ["type_test_utils.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
 )
 
 py_library(

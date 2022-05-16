@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package(default_visibility = [
     ":api_packages",
@@ -44,20 +44,5 @@ py_library(
     name = "test_case",
     srcs = ["test_case.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_test(
-    name = "test_case_test",
-    size = "small",
-    srcs = ["test_case_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":test_case",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-    ],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )

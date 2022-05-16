@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class ToCallDominantTest(test_case.TestCase):
@@ -210,7 +211,8 @@ class CompileLocalComputationToTensorFlow(test_case.TestCase):
     else:
       result.check_call()
       result.function.check_compiled_computation()
-    self.assert_types_equivalent(comp.type_signature, result.type_signature)
+    type_test_utils.assert_types_equivalent(comp.type_signature,
+                                            result.type_signature)
 
   def test_returns_tf_computation_with_functional_type_lambda_no_block(self):
     param = building_blocks.Reference('x', [('a', tf.int32), ('b', tf.float32)])
@@ -384,7 +386,8 @@ class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
     self.assertTrue(tree_analysis.contains_called_intrinsic(comp, uris))
 
     if comp.parameter_type is not None:
-      self.assert_types_equivalent(comp.parameter_type, before.parameter_type)
+      type_test_utils.assert_types_equivalent(comp.parameter_type,
+                                              before.parameter_type)
     else:
       self.assertIsNone(before.parameter_type)
     # THere must be one parameter for each intrinsic in `calls`.
@@ -399,8 +402,8 @@ class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
     after.parameter_type.check_struct()
     if comp.parameter_type is not None:
       self.assertLen(after.parameter_type, 2)
-      self.assert_types_equivalent(comp.parameter_type,
-                                   after.parameter_type.original_arg)
+      type_test_utils.assert_types_equivalent(comp.parameter_type,
+                                              after.parameter_type.original_arg)
     else:
       self.assertLen(after.parameter_type, 1)
     # There must be one result for each intrinsic in `calls`.

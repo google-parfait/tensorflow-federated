@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class TensorFlowSerializationTest(test_case.TestCase):
@@ -35,7 +36,7 @@ class TensorFlowSerializationTest(test_case.TestCase):
     result = fn(arg_to_fn)
     comp, extra_type_spec = serializer.send(result)
     deserialized_type = type_serialization.deserialize_type(comp.type)
-    self.assert_types_equivalent(deserialized_type, extra_type_spec)
+    type_test_utils.assert_types_equivalent(deserialized_type, extra_type_spec)
     self.assertEqual(deserialized_type.compact_representation(),
                      expected_fn_type_str)
     self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')

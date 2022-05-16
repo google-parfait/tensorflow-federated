@@ -22,6 +22,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 def _count_intrinsics(comp, uri):
@@ -56,7 +57,8 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
     count_aggregations = _count_intrinsics(
         reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri)
     self.assertTrue(modified)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     self.assertGreater(count_means_before_reduction, 0)
     self.assertEqual(count_means_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
@@ -77,7 +79,8 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
         reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri)
     count_means_after_reduction = _count_intrinsics(reduced, uri)
     self.assertTrue(modified)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     self.assertGreater(count_means_before_reduction, 0)
     self.assertEqual(count_means_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
@@ -98,7 +101,8 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
     count_aggregations = _count_intrinsics(
         reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri)
     self.assertTrue(modified)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     self.assertGreater(count_sum_before_reduction, 0)
     self.assertEqual(count_sum_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
@@ -115,7 +119,8 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
     count_after_reduction = _count_intrinsics(reduced, uri)
 
     self.assertTrue(modified)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)
     tree_analysis.check_contains_only_reducible_intrinsics(reduced)
@@ -132,7 +137,8 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
     count_after_reduction = _count_intrinsics(reduced, uri)
 
     self.assertTrue(modified)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)
     tree_analysis.check_contains_only_reducible_intrinsics(reduced)
@@ -149,7 +155,8 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
     count_after_reduction = _count_intrinsics(reduced, uri)
 
     self.assertTrue(modified)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)
     tree_analysis.check_contains_only_reducible_intrinsics(reduced)
@@ -175,12 +182,14 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
         comp)
     self.assertFalse(modified)
     self.assertGreater(_count_intrinsics(comp, uri), 0)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     # Now replace bodies including secure intrinsics.
     reduced, modified = intrinsic_reductions.replace_secure_intrinsics_with_insecure_bodies(
         comp)
     self.assertTrue(modified)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     self.assertGreater(
         _count_intrinsics(reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri), 0)
 
@@ -206,12 +215,14 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
         comp)
     self.assertFalse(modified)
     self.assertGreater(_count_intrinsics(comp, uri), 0)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     # Now replace bodies including secure intrinsics.
     reduced, modified = intrinsic_reductions.replace_secure_intrinsics_with_insecure_bodies(
         comp)
     self.assertTrue(modified)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     self.assertGreater(
         _count_intrinsics(reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri), 0)
 
@@ -237,14 +248,16 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
         comp)
     self.assertFalse(modified)
     self.assertGreater(_count_intrinsics(comp, uri), 0)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     # Now replace bodies including secure intrinsics.
     reduced, modified = intrinsic_reductions.replace_secure_intrinsics_with_insecure_bodies(
         comp)
     self.assertTrue(modified)
     # Inserting tensorflow, as we do here, does not preserve python containers
     # currently.
-    self.assert_types_equivalent(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_equivalent(comp.type_signature,
+                                            reduced.type_signature)
     self.assertGreater(
         _count_intrinsics(reduced, intrinsic_defs.FEDERATED_SUM.uri), 0)
 
@@ -268,12 +281,14 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
         comp)
     self.assertFalse(modified)
     self.assertGreater(_count_intrinsics(comp, uri), 0)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     # Now replace bodies including secure intrinsics.
     reduced, modified = intrinsic_reductions.replace_secure_intrinsics_with_insecure_bodies(
         comp)
     self.assertTrue(modified)
-    self.assert_types_identical(comp.type_signature, reduced.type_signature)
+    type_test_utils.assert_types_identical(comp.type_signature,
+                                           reduced.type_signature)
     self.assertGreater(
         _count_intrinsics(reduced, intrinsic_defs.FEDERATED_SELECT.uri), 0)
 

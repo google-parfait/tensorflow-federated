@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -258,7 +259,7 @@ class GraphUtilsTest(test_case.TestCase):
       type_spec, binding = tensorflow_utils.capture_result_from_graph(
           tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4]), graph)
       del binding
-      self.assert_types_identical(
+      type_test_utils.assert_types_identical(
           type_spec,
           computation_types.StructWithPythonType([
               ('flat_values', computation_types.TensorType(tf.int32, [4])),
@@ -273,7 +274,7 @@ class GraphUtilsTest(test_case.TestCase):
       type_spec, binding = tensorflow_utils.capture_result_from_graph(
           tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5]), graph)
       del binding
-      self.assert_types_identical(
+      type_test_utils.assert_types_identical(
           type_spec,
           computation_types.StructWithPythonType([
               ('indices', computation_types.TensorType(tf.int64, [1, 1])),

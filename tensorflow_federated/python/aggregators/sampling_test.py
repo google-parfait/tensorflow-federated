@@ -22,6 +22,8 @@ from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_test_utils
+
 
 # Convenience type aliases.
 FunctionType = computation_types.FunctionType
@@ -147,8 +149,8 @@ class BuildSampleValueComputationTest(test_case.TestCase):
         parameter=collections.OrderedDict(
             reservoir=reservoir_type, sample=example_type),
         result=reservoir_type)
-    self.assert_types_identical(sample_computation.type_signature,
-                                expected_type)
+    type_test_utils.assert_types_identical(sample_computation.type_signature,
+                                           expected_type)
     # Get the sentinel seed so that the first call initializes based on
     # timestamp.
     reservoir = sampling._build_initial_sample_reservoir(example_type)
@@ -174,8 +176,8 @@ class BuildSampleValueComputationTest(test_case.TestCase):
         parameter=collections.OrderedDict(
             reservoir=reservoir_type, sample=example_type),
         result=reservoir_type)
-    self.assert_types_identical(sample_computation.type_signature,
-                                expected_type)
+    type_test_utils.assert_types_identical(sample_computation.type_signature,
+                                           expected_type)
     reservoir = sampling._build_initial_sample_reservoir(
         example_type, seed=TEST_SEED)
     reservoir = sample_computation(reservoir, 1)
@@ -217,8 +219,8 @@ class BuildSampleValueComputationTest(test_case.TestCase):
         parameter=collections.OrderedDict(
             reservoir=reservoir_type, sample=example_type),
         result=reservoir_type)
-    self.assert_types_identical(sample_computation.type_signature,
-                                expected_type)
+    type_test_utils.assert_types_identical(sample_computation.type_signature,
+                                           expected_type)
     reservoir = sampling._build_initial_sample_reservoir(
         example_type, seed=TEST_SEED)
     reservoir = sample_computation(
@@ -270,7 +272,8 @@ class BuildMergeSamplesComputationTest(test_case.TestCase):
     expected_type = FunctionType(
         parameter=collections.OrderedDict(a=reservoir_type, b=reservoir_type),
         result=reservoir_type)
-    self.assert_types_identical(merge_computation.type_signature, expected_type)
+    type_test_utils.assert_types_identical(merge_computation.type_signature,
+                                           expected_type)
     reservoir_a = sampling._build_initial_sample_reservoir(
         example_type, seed=TEST_SEED)
     reservoir_a['random_values'] = [1, 3, 5]
@@ -329,7 +332,8 @@ class BuildMergeSamplesComputationTest(test_case.TestCase):
     expected_type = FunctionType(
         parameter=collections.OrderedDict(a=reservoir_type, b=reservoir_type),
         result=reservoir_type)
-    self.assert_types_identical(merge_computation.type_signature, expected_type)
+    type_test_utils.assert_types_identical(merge_computation.type_signature,
+                                           expected_type)
     reservoir_a = sampling._build_initial_sample_reservoir(
         example_type, seed=TEST_SEED)
     reservoir_a['random_values'] = [1, 3, 5]
@@ -407,8 +411,8 @@ class BuildFinalizeSampleTest(test_case.TestCase):
     reservoir_type = sampling._build_reservoir_type(example_type)
     expected_type = FunctionType(
         parameter=reservoir_type, result=reservoir_type.samples)
-    self.assert_types_identical(finalize_computation.type_signature,
-                                expected_type)
+    type_test_utils.assert_types_identical(finalize_computation.type_signature,
+                                           expected_type)
     reservoir = sampling._build_initial_sample_reservoir(
         example_type, seed=TEST_SEED)
     reservoir['random_values'] = [3, 5, 7]
@@ -427,8 +431,8 @@ class BuildFinalizeSampleTest(test_case.TestCase):
     reservoir_type = sampling._build_reservoir_type(example_type)
     expected_type = FunctionType(
         parameter=reservoir_type, result=reservoir_type.samples)
-    self.assert_types_identical(finalize_computation.type_signature,
-                                expected_type)
+    type_test_utils.assert_types_identical(finalize_computation.type_signature,
+                                           expected_type)
     reservoir = sampling._build_initial_sample_reservoir(
         example_type, seed=TEST_SEED)
     reservoir['random_values'] = [3, 5, 7]

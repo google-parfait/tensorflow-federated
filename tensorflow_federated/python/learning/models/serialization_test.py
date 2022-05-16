@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for model serialization."""
 
 import collections
 import os
@@ -27,6 +26,7 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model as model_lib
@@ -142,7 +142,7 @@ class UnflattenTest(test_case.TestCase, parameterized.TestCase):
     packed_fn = serialization._unflatten_fn(fn, type_spec_var,
                                             python_container_hint)
     actual_output = packed_fn()
-    self.assert_types_equivalent(
+    type_test_utils.assert_types_equivalent(
         type_conversions.type_from_tensors(actual_output), result_type_spec)
     self.assertIsInstance(actual_output, expected_python_container)
 

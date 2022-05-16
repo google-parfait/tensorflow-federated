@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for DiscretizationFactory."""
 
 import collections
 
@@ -24,6 +23,7 @@ from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -91,8 +91,8 @@ class DiscretizationFactoryComputationTest(test_case.TestCase,
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type)
-    self.assert_types_equivalent(process.initialize.type_signature,
-                                 expected_initialize_type)
+    type_test_utils.assert_types_equivalent(process.initialize.type_signature,
+                                            expected_initialize_type)
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(discretize=()))
@@ -104,8 +104,8 @@ class DiscretizationFactoryComputationTest(test_case.TestCase,
             state=server_state_type,
             result=computation_types.at_server(value_type),
             measurements=expected_measurements_type))
-    self.assert_types_equivalent(process.next.type_signature,
-                                 expected_next_type)
+    type_test_utils.assert_types_equivalent(process.next.type_signature,
+                                            expected_next_type)
 
   @parameterized.named_parameters(('bool', tf.bool), ('string', tf.string),
                                   ('int32', tf.int32), ('int64', tf.int64),

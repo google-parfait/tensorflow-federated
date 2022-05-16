@@ -20,6 +20,7 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class ComputationImplTest(test_case.TestCase):
@@ -63,8 +64,8 @@ class ComputationImplTest(test_case.TestCase):
         computation_types.StructWithPythonType([(None, tf.int32)], list))
     fn_with_annotated_type = computation_impl.ConcreteComputation.with_type(
         original_comp, list_return_type)
-    self.assert_types_identical(list_return_type,
-                                fn_with_annotated_type.type_signature)
+    type_test_utils.assert_types_identical(
+        list_return_type, fn_with_annotated_type.type_signature)
 
   def test_with_type_raises_non_assignable_type(self):
     int_return_type = computation_types.FunctionType(tf.int32, tf.int32)
