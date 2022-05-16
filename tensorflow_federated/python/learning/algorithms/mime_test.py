@@ -20,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -45,6 +44,7 @@ from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.optimizers import yogi
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import distributors
+from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 class MimeLiteClientWorkComputationTest(test_case.TestCase,
@@ -153,7 +153,7 @@ class MimeLiteClientWorkExecutionTest(test_case.TestCase,
       dataset_reduce,
       '_dataset_reduce_fn',
       wraps=dataset_reduce._dataset_reduce_fn)
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     process = mime._build_mime_lite_client_work(
         model_fn=_create_model,
@@ -173,7 +173,7 @@ class MimeLiteClientWorkExecutionTest(test_case.TestCase,
       ('rmsprop', rmsprop.build_rmsprop(0.1)), ('sgd', sgdm.build_sgdm(0.1)),
       ('sgdm', sgdm.build_sgdm(0.1, momentum=0.9)),
       ('yogi', yogi.build_yogi(0.1)))
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_execution_with_optimizer(self, optimizer):
     process = mime._build_mime_lite_client_work(
         _create_model,
@@ -185,7 +185,7 @@ class MimeLiteClientWorkExecutionTest(test_case.TestCase,
     output = process.next(state, client_model_weights, client_data)
     self.assertEqual(8, output.measurements['train']['num_examples'])
 
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_custom_metrics_aggregator(self):
 
     def sum_then_finalize_then_times_two(metric_finalizers,
@@ -343,7 +343,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
     static_assert.assert_not_contains_unsecure_aggregation(
         learning_process.next)
 
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_equivalent_to_vanilla_fed_avg(self):
     # Mime Lite with no-momentum SGD should reduce to FedAvg.
     mime_process = mime.build_weighted_mime_lite(
@@ -377,7 +377,7 @@ class MimeLiteTest(test_case.TestCase, parameterized.TestCase):
       ('sgdm_adam', sgdm.build_sgdm(0.1, 0.9), adam.build_adam(1.0)),
       ('adagrad_sgdm', adagrad.build_adagrad(0.1), sgdm.build_sgdm(1.0, 0.9)),
   )
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_execution_with_optimizers(self, base_optimizer, server_optimizer):
     learning_process = mime.build_weighted_mime_lite(
         model_fn=_create_model,

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
 import math
 from unittest import mock
@@ -21,7 +22,6 @@ import grpc
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
@@ -36,6 +36,7 @@ from tensorflow_federated.python.core.impl.executors import remote_executor_grpc
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 def _temperature_sensor_example_next_fn():
@@ -295,7 +296,7 @@ class ExecutorStacksTest(parameterized.TestCase):
       ('sizing_executor_three_clients',
        executor_stacks.sizing_executor_factory(default_num_clients=3)),
   )
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_execution_of_temperature_sensor_example(self, executor):
     comp = _temperature_sensor_example_next_fn()
     to_float = lambda x: tf.cast(x, tf.float32)

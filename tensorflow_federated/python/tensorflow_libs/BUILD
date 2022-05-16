@@ -119,6 +119,14 @@ py_test(
 )
 
 py_library(
+    name = "tensorflow_test_utils",
+    testonly = True,
+    srcs = ["tensorflow_test_utils.py"],
+    srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+)
+
+py_library(
     name = "variable_utils",
     srcs = ["variable_utils.py"],
     srcs_version = "PY3",

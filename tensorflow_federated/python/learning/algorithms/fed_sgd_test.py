@@ -19,7 +19,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model_examples
@@ -28,6 +27,7 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_sgd
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
@@ -59,7 +59,7 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
       ('non-simulation', False),
       ('simulation', True),
   )
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_client_update(self, simulation):
     dataset = self.dataset()
     client_update = fed_sgd._build_client_update(
@@ -91,7 +91,7 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
       dataset_reduce,
       '_dataset_reduce_fn',
       wraps=dataset_reduce._dataset_reduce_fn)
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     dataset = self.dataset()
     client_update = fed_sgd._build_client_update(

@@ -155,8 +155,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":execution_contexts",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",

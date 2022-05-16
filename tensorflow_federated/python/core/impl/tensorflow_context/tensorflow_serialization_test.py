@@ -18,13 +18,13 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import serialization_utils
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_test_utils
+from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 class TensorFlowSerializationTest(test_case.TestCase):
@@ -75,7 +75,7 @@ class TensorFlowSerializationTest(test_case.TestCase):
           feed_dict={tf_proto.parameter.tensor.tensor_name: ['b', 'c', 'a']})
     self.assertAllEqual(results, [1, 2, 0])
 
-  @test_utils.graph_mode_test
+  @tensorflow_test_utils.graph_mode_test
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
     tf_proto, _ = self.assert_serializes(lambda x: x + 3,
                                          computation_types.TensorType(tf.int32),
@@ -88,7 +88,7 @@ class TensorFlowSerializationTest(test_case.TestCase):
             [tf_proto.result.tensor.tensor_name]))
     self.assertEqual(results, [1003])
 
-  @test_utils.graph_mode_test
+  @tensorflow_test_utils.graph_mode_test
   def test_serialize_tensorflow_with_structured_type_signature(self):
     batch_type = collections.namedtuple('BatchType', ['x', 'y'])
     output_type = collections.namedtuple('OutputType', ['A', 'B'])
@@ -105,7 +105,7 @@ class TensorFlowSerializationTest(test_case.TestCase):
                           computation_types.StructWithPythonType)
     self.assertIs(extra_type_spec.result.python_container, output_type)
 
-  @test_utils.graph_mode_test
+  @tensorflow_test_utils.graph_mode_test
   def test_serialize_tensorflow_with_data_set_sum_lambda(self):
 
     def _legacy_dataset_reducer_example(ds):

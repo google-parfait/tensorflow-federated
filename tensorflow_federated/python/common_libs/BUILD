@@ -186,14 +186,6 @@ py_test(
 )
 
 py_library(
-    name = "test_utils",
-    testonly = True,
-    srcs = ["test_utils.py"],
-    srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
-)
-
-py_library(
     name = "tracing",
     srcs = ["tracing.py"],
     srcs_version = "PY3",

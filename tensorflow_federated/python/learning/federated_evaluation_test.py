@@ -19,7 +19,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -36,6 +35,7 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import encoding_utils
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 # Convenience aliases.
@@ -240,7 +240,7 @@ def _build_expected_test_quant_model_eval_signature():
 
 class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
 
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_local_evaluation(self):
     model_weights_type = model_utils.weights_type_from_model(TestModel)
     batch_type = computation_types.to_type(TestModel().input_spec)
@@ -274,7 +274,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
             local_outputs=collections.OrderedDict(num_over=4.0),
             num_examples=6))
 
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation(self):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
     model_weights_type = model_utils.weights_type_from_model(TestModel)
@@ -312,7 +312,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
             eval=collections.OrderedDict(num_over=9.0),
         ))
 
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_quantized_conservatively(self):
     # Set up a uniform quantization encoder as the broadcaster.
     broadcaster = (
@@ -351,7 +351,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
         result,
         collections.OrderedDict(eval=collections.OrderedDict(num_same=8.0)))
 
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_quantized_aggressively(self):
     # Set up a uniform quantization encoder as the broadcaster.
     broadcaster = (
@@ -391,7 +391,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     self.assertContainsSubset(result['eval'].keys(), ['num_same'])
     self.assertLess(result['eval']['num_same'], 8.0)
 
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_fails_stateful_broadcast(self):
     # Create a test stateful measured process that doesn't do anything useful.
 
@@ -412,7 +412,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
       federated_evaluation.build_federated_evaluation(
           TestModelQuant, broadcast_process=broadcaster)
 
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_fails_non_measured_process_broadcast(self):
     broadcaster = computations.tf_computation(lambda x: x)
     with self.assertRaisesRegex(ValueError, '`MeasuredProcess`'):
@@ -421,7 +421,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_with_keras(self, simulation):
 
     evaluate_comp = federated_evaluation.build_federated_evaluation(
@@ -452,7 +452,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
       dataset_reduce,
       '_dataset_reduce_fn',
       wraps=dataset_reduce._dataset_reduce_fn)
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_dataset_reduce(self, mock_method):
     evaluate_comp = federated_evaluation.build_federated_evaluation(
         _model_fn_from_keras, use_experimental_simulation_loop=False)
@@ -477,7 +477,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
       dataset_reduce,
       '_dataset_reduce_fn',
       wraps=dataset_reduce._dataset_reduce_fn)
-  @test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_federated_evaluation_simulation_loop(self, mock_method):
     evaluate_comp = federated_evaluation.build_federated_evaluation(
         _model_fn_from_keras, use_experimental_simulation_loop=True)

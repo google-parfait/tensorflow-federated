@@ -20,9 +20,9 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 class DatasetsTest(parameterized.TestCase):
@@ -36,7 +36,7 @@ class DatasetsTest(parameterized.TestCase):
     super().setUp()
     execution_contexts.set_local_python_execution_context()
 
-  @common_libs_test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_takes_dataset(self):
 
     @computations.tf_computation
@@ -49,7 +49,7 @@ class DatasetsTest(parameterized.TestCase):
     expected_result = ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
     self.assertEqual(actual_result, expected_result)
 
-  @common_libs_test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset(self):
 
     @computations.tf_computation
@@ -88,7 +88,7 @@ class DatasetsTest(parameterized.TestCase):
         actual_result.take(100).reduce(np.int64(0), lambda x, y: x + y),
         expected_result.take(100).reduce(np.int64(0), lambda x, y: x + y))
 
-  @common_libs_test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset_two(self):
 
     @computations.tf_computation
@@ -105,7 +105,7 @@ class DatasetsTest(parameterized.TestCase):
         list(actual_result[1].as_numpy_iterator()),
         list(expected_result[1].as_numpy_iterator()))
 
-  @common_libs_test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset_and_tensor(self):
 
     @computations.tf_computation
@@ -120,7 +120,7 @@ class DatasetsTest(parameterized.TestCase):
         list(expected_result[0].as_numpy_iterator()))
     self.assertEqual(actual_result[1], expected_result[1])
 
-  @common_libs_test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_empty_dataset(self):
 
     @computations.tf_computation

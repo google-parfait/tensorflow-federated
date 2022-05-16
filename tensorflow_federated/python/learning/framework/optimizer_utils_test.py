@@ -24,7 +24,6 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -40,6 +39,7 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.learning.optimizers import optimizer
 from tensorflow_federated.python.learning.optimizers import sgdm
+from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
@@ -504,7 +504,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
                                    ('keras_optimizer', _keras_optimizer_fn)])
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_orchestration_execute_measured_process(self, server_optimizer):
     model_weights_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression)
@@ -566,7 +566,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
                                    ('keras_optimizer', _keras_optimizer_fn)])
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_execute_measured_process_with_custom_metrics_aggregator(
       self, server_optimizer):
     model_weights_type = model_utils.weights_type_from_model(

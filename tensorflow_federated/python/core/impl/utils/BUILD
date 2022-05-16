@@ -68,12 +68,12 @@ py_test(
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

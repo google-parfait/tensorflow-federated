@@ -23,7 +23,6 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -31,6 +30,7 @@ from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 def _get_first_logical_device(
@@ -80,7 +80,7 @@ class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 1000)
 
-  @test_utils.skip_test_for_multi_gpu
+  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_embed_tensorflow_computation_with_dataset_arg_and_int_result(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int32))
@@ -570,7 +570,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(self.evaluate(result_2.internal_representation), 3)
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_call_take_two_int_from_finite_dataset(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int32))
@@ -589,7 +589,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
                           [10, 20])
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_call_take_two_from_stateful_dataset(self):
 
     vocab = ['a', 'b', 'c', 'd', 'e', 'f']
@@ -615,7 +615,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
                           [0, 1])
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_call_take_three_int_from_infinite_dataset(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int32))
@@ -634,7 +634,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
                           [10, 10, 10])
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_call_reduce_first_five_from_infinite_dataset(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int32))
@@ -652,7 +652,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(result.internal_representation, 90)
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_call_with_dataset_of_tuples(self):
 
     element = collections.namedtuple('_', 'a b')
@@ -746,7 +746,7 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
     self.assertEqual(result, 10)
 
-  @test_utils.skip_test_for_gpu
+  @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_value_from_iterable(self):
 
     def _generate_items():

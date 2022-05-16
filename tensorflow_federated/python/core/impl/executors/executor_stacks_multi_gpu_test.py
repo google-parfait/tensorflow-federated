@@ -17,13 +17,13 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
 def _create_tff_parallel_clients_with_dataset_reduce():
@@ -78,7 +78,7 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    test_utils.create_logical_multi_gpus()
+    tensorflow_test_utils.create_logical_multi_gpus()
 
   @parameterized.named_parameters(
       ('server_on_cpu', 'CPU'),
