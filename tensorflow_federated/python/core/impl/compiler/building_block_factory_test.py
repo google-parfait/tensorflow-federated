@@ -24,8 +24,8 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import computation_test_utils
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -1037,7 +1037,7 @@ class CreateGenericConstantTest(test_case.TestCase):
     self.assertIsInstance(tensor_zero, building_blocks.Call)
     self.assertTrue(
         np.array_equal(
-            test_utils.run_tensorflow(tensor_zero.function.proto),
+            computation_test_utils.run_tensorflow(tensor_zero.function.proto),
             np.zeros([2, 2])))
 
   def test_create_unnamed_tuple_zero(self):
@@ -1046,7 +1046,7 @@ class CreateGenericConstantTest(test_case.TestCase):
     tuple_zero = building_block_factory.create_generic_constant(tuple_type, 0)
     self.assertEqual(tuple_zero.type_signature, tuple_type)
     self.assertIsInstance(tuple_zero, building_blocks.Call)
-    result = test_utils.run_tensorflow(tuple_zero.function.proto)
+    result = computation_test_utils.run_tensorflow(tuple_zero.function.proto)
     self.assertLen(result, 2)
     self.assertTrue(np.array_equal(result[0], np.zeros([2, 2])))
     self.assertTrue(np.array_equal(result[1], np.zeros([2, 2])))
@@ -1060,7 +1060,7 @@ class CreateGenericConstantTest(test_case.TestCase):
 
     self.assertEqual(tuple_zero.type_signature, tuple_type)
     self.assertIsInstance(tuple_zero, building_blocks.Call)
-    result = test_utils.run_tensorflow(tuple_zero.function.proto)
+    result = computation_test_utils.run_tensorflow(tuple_zero.function.proto)
     self.assertLen(result, 2)
     self.assertTrue(np.array_equal(result.a, np.ones([2, 2])))
     self.assertTrue(np.array_equal(result.b, np.ones([2, 2])))
@@ -1079,8 +1079,8 @@ class CreateGenericConstantTest(test_case.TestCase):
     self.assertIsInstance(fed_zero.argument, building_blocks.Call)
     self.assertTrue(
         np.array_equal(
-            test_utils.run_tensorflow(fed_zero.argument.function.proto),
-            np.ones([2, 2])))
+            computation_test_utils.run_tensorflow(
+                fed_zero.argument.function.proto), np.ones([2, 2])))
 
   def test_create_federated_named_tuple_one(self):
     tuple_type = [('a', computation_types.TensorType(tf.float32, [2, 2])),
@@ -1095,7 +1095,8 @@ class CreateGenericConstantTest(test_case.TestCase):
     self.assertEqual(fed_zero.function.uri,
                      intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri)
     self.assertIsInstance(fed_zero.argument, building_blocks.Call)
-    result = test_utils.run_tensorflow(fed_zero.argument.function.proto)
+    result = computation_test_utils.run_tensorflow(
+        fed_zero.argument.function.proto)
     self.assertLen(result, 2)
     self.assertTrue(np.array_equal(result.a, np.ones([2, 2])))
     self.assertTrue(np.array_equal(result.b, np.ones([2, 2])))
@@ -1116,7 +1117,8 @@ class CreateGenericConstantTest(test_case.TestCase):
     self.assertEqual(fed_zero.function.uri,
                      intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri)
     self.assertIsInstance(fed_zero.argument, building_blocks.Call)
-    actual_result = test_utils.run_tensorflow(fed_zero.argument.function.proto)
+    actual_result = computation_test_utils.run_tensorflow(
+        fed_zero.argument.function.proto)
     self.assertTrue(np.array_equal(actual_result, np.zeros([2, 2])))
 
 
@@ -1385,11 +1387,13 @@ class ConstructTensorFlowSelectingOutputsTest(test_case.TestCase):
         [selection_spec_1, selection_spec_2])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
-    result = test_utils.run_tensorflow(constructed_tf.proto, [0, 1.])
+    result = computation_test_utils.run_tensorflow(constructed_tf.proto,
+                                                   [0, 1.])
     self.assertLen(result, 2)
     self.assertEqual(result[0], 0)
     self.assertEqual(result[1], 0)
-    result = test_utils.run_tensorflow(constructed_tf.proto, [1, 0.])
+    result = computation_test_utils.run_tensorflow(constructed_tf.proto,
+                                                   [1, 0.])
     self.assertLen(result, 2)
     self.assertEqual(result[0], 1)
     self.assertEqual(result[1], 1)
@@ -1439,7 +1443,8 @@ class ConstructTensorFlowSelectingOutputsTest(test_case.TestCase):
                                                 recursive=True)
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
-    result = test_utils.run_tensorflow(constructed_tf.proto, [[[0]], 1.])
+    result = computation_test_utils.run_tensorflow(constructed_tf.proto,
+                                                   [[[0]], 1.])
     self.assertEqual(result[0], 0)
 
   def test_construct_selection_from_nested_tuple_repack_into_tuple_executes_correctly(
@@ -1451,7 +1456,8 @@ class ConstructTensorFlowSelectingOutputsTest(test_case.TestCase):
                                                 recursive=True)
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
-    result = test_utils.run_tensorflow(constructed_tf.proto, [[[0]], 1.])
+    result = computation_test_utils.run_tensorflow(constructed_tf.proto,
+                                                   [[[0]], 1.])
     self.assertEqual(result[0][0][0], 0)
 
   def test_construct_selection_from_two_tuple_repack_named_lower_level_type_signature(
@@ -1483,12 +1489,14 @@ class ConstructTensorFlowSelectingOutputsTest(test_case.TestCase):
         [[selection_spec_1], selection_spec_2], recursive=True)
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
-    result = test_utils.run_tensorflow(constructed_tf.proto, [0, 1.])
+    result = computation_test_utils.run_tensorflow(constructed_tf.proto,
+                                                   [0, 1.])
     self.assertLen(result, 2)
     self.assertLen(result[0], 1)
     self.assertEqual(result[0][0], 0)
     self.assertEqual(result[1], 0)
-    result = test_utils.run_tensorflow(constructed_tf.proto, [1, 0.])
+    result = computation_test_utils.run_tensorflow(constructed_tf.proto,
+                                                   [1, 0.])
     self.assertLen(result, 2)
     self.assertLen(result[0], 1)
     self.assertEqual(result[0][0], 1)
@@ -1499,11 +1507,13 @@ class ConstructTensorFlowSelectingOutputsTest(test_case.TestCase):
         [selection_spec_1, [selection_spec_2]], recursive=True)
     flipped_packing_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         flipped_parameter_type, output_structure=flipped_output_structure)
-    result = test_utils.run_tensorflow(flipped_packing_tf.proto, [0, 1.])
+    result = computation_test_utils.run_tensorflow(flipped_packing_tf.proto,
+                                                   [0, 1.])
     self.assertLen(result, 2)
     self.assertEqual(result[0], 0)
     self.assertEqual(result[1][0], 0)
-    result = test_utils.run_tensorflow(flipped_packing_tf.proto, [1, 0.])
+    result = computation_test_utils.run_tensorflow(flipped_packing_tf.proto,
+                                                   [1, 0.])
     self.assertLen(result, 2)
     self.assertEqual(result[0], 1)
     self.assertEqual(result[1][0], 1)

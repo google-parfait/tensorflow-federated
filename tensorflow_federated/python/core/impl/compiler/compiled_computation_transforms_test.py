@@ -18,9 +18,9 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import compiled_computation_transforms
+from tensorflow_federated.python.core.impl.compiler import computation_test_utils
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_transformations
-from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
@@ -80,9 +80,9 @@ class TensorFlowOptimizerTest(test_case.TestCase):
     transformed_comp, mutated = tf_optimizer.transform(compiled_computation)
     self.assertTrue(mutated)
     self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
-    zero_before_transform = compiler_test_utils.run_tensorflow(
+    zero_before_transform = computation_test_utils.run_tensorflow(
         compiled_computation.proto, 0)
-    zero_after_transform = compiler_test_utils.run_tensorflow(
+    zero_after_transform = computation_test_utils.run_tensorflow(
         transformed_comp.proto, 0)
     self.assertEqual(zero_before_transform, zero_after_transform)
 

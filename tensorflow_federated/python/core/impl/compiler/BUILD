@@ -136,8 +136,8 @@ py_test(
     deps = [
         ":building_block_factory",
         ":building_blocks",
+        ":computation_test_utils",
         ":intrinsic_defs",
-        ":test_utils",
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:test_case",
@@ -214,9 +214,9 @@ py_test(
         ":building_block_factory",
         ":building_blocks",
         ":compiled_computation_transforms",
+        ":computation_test_utils",
         ":tensorflow_computation_factory",
         ":tensorflow_computation_transformations",
-        ":test_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -258,6 +258,7 @@ py_library(
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
@@ -364,8 +365,8 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":computation_test_utils",
         ":tensorflow_computation_factory",
-        ":test_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:test_case",
@@ -416,12 +417,8 @@ py_library(
     deps = [
         ":building_block_factory",
         ":building_blocks",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

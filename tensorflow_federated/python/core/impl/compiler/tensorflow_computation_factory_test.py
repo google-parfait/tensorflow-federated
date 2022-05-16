@@ -21,8 +21,8 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.impl.compiler import computation_test_utils
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
-from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -82,7 +82,7 @@ class CreateConstantTest(parameterized.TestCase, test_case.TestCase):
     actual_type = type_serialization.deserialize_type(proto.type)
     expected_type = computation_types.FunctionType(None, type_signature)
     expected_type.check_assignable_from(actual_type)
-    actual_result = test_utils.run_tensorflow(proto)
+    actual_result = computation_test_utils.run_tensorflow(proto)
     if isinstance(expected_result, list):
       self.assertCountEqual(actual_result, expected_result)
     else:
@@ -139,7 +139,7 @@ class CreateUnaryOperatorTest(parameterized.TestCase, tf.test.TestCase):
     # `create_unary_operator`.
     expected_parameter_type = operand_type
     self.assertEqual(actual_type.parameter, expected_parameter_type)
-    actual_result = test_utils.run_tensorflow(proto, operand)
+    actual_result = computation_test_utils.run_tensorflow(proto, operand)
     self.assertAllEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
@@ -214,7 +214,7 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
     else:
       expected_parameter_type = _StructType([operand_type, second_operand_type])
     self.assertEqual(actual_type.parameter, expected_parameter_type)
-    actual_result = test_utils.run_tensorflow(proto, operands)
+    actual_result = computation_test_utils.run_tensorflow(proto, operands)
     self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
@@ -330,7 +330,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
     # `create_binary_operator_with_upcast`.
     expected_parameter_type = _StructType(type_signature)
     self.assertEqual(actual_type.parameter, expected_parameter_type)
-    actual_result = test_utils.run_tensorflow(proto, operands)
+    actual_result = computation_test_utils.run_tensorflow(proto, operands)
     self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
@@ -363,7 +363,7 @@ class CreateEmptyTupleTest(test_case.TestCase):
     actual_type = type_serialization.deserialize_type(proto.type)
     expected_type = computation_types.FunctionType(None, [])
     expected_type.check_assignable_from(actual_type)
-    actual_result = test_utils.run_tensorflow(proto)
+    actual_result = computation_test_utils.run_tensorflow(proto)
     expected_result = structure.Struct([])
     self.assertEqual(actual_result, expected_result)
 
@@ -389,7 +389,7 @@ class CreateIdentityTest(parameterized.TestCase):
     actual_type = type_serialization.deserialize_type(proto.type)
     expected_type = type_factory.unary_op(type_signature)
     self.assertEqual(actual_type, expected_type)
-    actual_result = test_utils.run_tensorflow(proto, value)
+    actual_result = computation_test_utils.run_tensorflow(proto, value)
     self.assertEqual(actual_result, value)
 
   @parameterized.named_parameters(
@@ -427,7 +427,7 @@ class CreateReplicateInputTest(parameterized.TestCase):
     expected_type = computation_types.FunctionType(type_signature,
                                                    [type_signature] * count)
     expected_type.check_assignable_from(actual_type)
-    actual_result = test_utils.run_tensorflow(proto, value)
+    actual_result = computation_test_utils.run_tensorflow(proto, value)
     expected_result = structure.Struct([(None, value)] * count)
     self.assertEqual(actual_result, expected_result)
 
@@ -466,7 +466,7 @@ class CreateComputationForPyFnTest(parameterized.TestCase):
         py_fn, type_signature)
 
     self.assertIsInstance(proto, pb.Computation)
-    actual_result = test_utils.run_tensorflow(proto, arg)
+    actual_result = computation_test_utils.run_tensorflow(proto, arg)
     self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(

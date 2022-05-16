@@ -13,10 +13,14 @@
 # limitations under the License.
 """Utilities for testing computations."""
 
+from typing import Any
+
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -68,3 +72,74 @@ def create_computation_tensorflow_add_values(
   return pb.Computation(
       type=type_serialization.serialize_type(type_signature),
       tensorflow=tensorflow)
+
+
+def _stamp_value_into_graph(value: Any, type_signature: computation_types.Type,
+                            graph: tf.Graph) -> Any:
+  """Stamps `value` in `graph` as an object of type `type_signature`.
+
+  Args:
+    value: A value to stamp.
+    type_signature: The type of the value to stamp.
+    graph: The graph to stamp in.
+
+  Returns:
+    A Python object made of tensors stamped into `graph`, `tf.data.Dataset`s,
+    or `structure.Struct`s that structurally corresponds to the value passed at
+    input.
+  """
+  if value is None:
+    return None
+  if type_signature.is_tensor():
+    if isinstance(value, np.ndarray) or tf.is_tensor(value):
+      value_type = computation_types.TensorType(
+          tf.dtypes.as_dtype(value.dtype), tf.TensorShape(value.shape))
+      type_signature.check_assignable_from(value_type)
+      with graph.as_default():
+        return tf.constant(value)
+    else:
+      with graph.as_default():
+        return tf.constant(
+            value, dtype=type_signature.dtype, shape=type_signature.shape)
+  elif type_signature.is_struct():
+    if isinstance(value, (list, dict)):
+      value = structure.from_container(value)
+    stamped_elements = []
+    named_type_signatures = structure.to_elements(type_signature)
+    for (name, type_signature), element in zip(named_type_signatures, value):
+      stamped_element = _stamp_value_into_graph(element, type_signature, graph)
+      stamped_elements.append((name, stamped_element))
+    return structure.Struct(stamped_elements)
+  elif type_signature.is_sequence():
+    return tensorflow_utils.make_data_set_from_elements(graph, value,
+                                                        type_signature.element)
+  else:
+    raise NotImplementedError(
+        'Unable to stamp a value of type {} in graph.'.format(type_signature))
+
+
+def run_tensorflow(computation_proto: pb.Computation, arg: Any = None) -> Any:
+  """Runs a TensorFlow computation with argument `arg`.
+
+  Args:
+    computation_proto: An instance of `pb.Computation`.
+    arg: The argument to invoke the computation with, or None if the computation
+      does not specify a parameter type and does not expects one.
+
+  Returns:
+    The result of the computation.
+  """
+  with tf.Graph().as_default() as graph:
+    type_signature = type_serialization.deserialize_type(computation_proto.type)
+    if type_signature.parameter is not None:
+      stamped_arg = _stamp_value_into_graph(arg, type_signature.parameter,
+                                            graph)
+    else:
+      stamped_arg = None
+    init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
+        computation_proto, stamped_arg, graph, '', tf.constant('bogus_token'))
+  with tf.compat.v1.Session(graph=graph) as sess:
+    if init_op:
+      sess.run(init_op)
+    result = tensorflow_utils.fetch_value_in_session(sess, result)
+  return result
