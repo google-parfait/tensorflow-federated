@@ -19,7 +19,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import sampling
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_test_utils
@@ -38,7 +37,7 @@ TEST_SEED = 42
 RANDOM_VALUE_TYPE = computation_types.TensorType(tf.int32, [None])
 
 
-class BuildReservoirTypeTest(test_case.TestCase):
+class BuildReservoirTypeTest(tf.test.TestCase):
 
   def test_scalar(self):
     self.assertEqual(
@@ -74,7 +73,7 @@ class BuildReservoirTypeTest(test_case.TestCase):
           StructType(elements=[(None, TensorType(tf.float32, [3]))]))
 
 
-class BuildInitialSampleReservoirTest(test_case.TestCase):
+class BuildInitialSampleReservoirTest(tf.test.TestCase):
 
   def assertAllEqual(self, *args, **kwargs):
     # `test_case.assertAllEqual` doesn't handle nested structures in a
@@ -132,7 +131,7 @@ class BuildInitialSampleReservoirTest(test_case.TestCase):
           seed=TEST_SEED)
 
 
-class BuildSampleValueComputationTest(test_case.TestCase):
+class BuildSampleValueComputationTest(tf.test.TestCase):
 
   def assertAllEqual(self, *args, **kwargs):
     # `test_case.assertAllEqual` doesn't handle nested structures in a
@@ -255,7 +254,7 @@ class BuildSampleValueComputationTest(test_case.TestCase):
             samples=collections.OrderedDict(a=[[5, 6, 7]], b=[[5.0], [False]])))
 
 
-class BuildMergeSamplesComputationTest(test_case.TestCase):
+class BuildMergeSamplesComputationTest(tf.test.TestCase):
 
   def assertAllEqual(self, *args, **kwargs):
     # `test_case.assertAllEqual` doesn't handle nested structures in a
@@ -395,7 +394,7 @@ class BuildMergeSamplesComputationTest(test_case.TestCase):
                   b=[[2] + [-1] * 4, [True] + [False] * 4])))
 
 
-class BuildFinalizeSampleTest(test_case.TestCase):
+class BuildFinalizeSampleTest(tf.test.TestCase):
 
   def assertAllEqual(self, *args, **kwargs):
     # `test_case.assertAllEqual` doesn't handle nested structures in a
@@ -443,7 +442,7 @@ class BuildFinalizeSampleTest(test_case.TestCase):
     self.assertAllEqual(finalize_computation(reservoir), test_samples)
 
 
-class BuildCheckNonFiniteLeavesComputationTest(test_case.TestCase,
+class BuildCheckNonFiniteLeavesComputationTest(tf.test.TestCase,
                                                parameterized.TestCase):
 
   @parameterized.named_parameters(('float32_nan', tf.float32, np.nan, True),
@@ -493,7 +492,7 @@ class BuildCheckNonFiniteLeavesComputationTest(test_case.TestCase,
                      TensorType(tf.bool)])))
 
 
-class UnweightedReservoirSamplingFactoryTest(test_case.TestCase,
+class UnweightedReservoirSamplingFactoryTest(tf.test.TestCase,
                                              parameterized.TestCase):
 
   def test_create(self):
@@ -581,4 +580,4 @@ class UnweightedReservoirSamplingFactoryTest(test_case.TestCase,
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

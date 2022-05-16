@@ -20,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import discretization
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_test_utils
@@ -69,7 +68,7 @@ def _named_test_cases_product(*args):
   return named_cases
 
 
-class DiscretizationFactoryComputationTest(test_case.TestCase,
+class DiscretizationFactoryComputationTest(tf.test.TestCase,
                                            parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -153,7 +152,7 @@ class DiscretizationFactoryComputationTest(test_case.TestCase,
       _discretization_sum(prior_norm_bound=prior_norm_bound)
 
 
-class DiscretizationFactoryExecutionTest(test_case.TestCase,
+class DiscretizationFactoryExecutionTest(tf.test.TestCase,
                                          parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -205,7 +204,7 @@ class DiscretizationFactoryExecutionTest(test_case.TestCase,
     self.assertEqual(dtype, decoded_x.dtype)
 
 
-class QuantizationTest(test_case.TestCase, parameterized.TestCase):
+class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       _named_test_cases_product(
@@ -238,7 +237,7 @@ class QuantizationTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(x, decoded_x, rtol=0.0, atol=quantization_atol)
 
 
-class ScalingTest(test_case.TestCase, parameterized.TestCase):
+class ScalingTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('scale_factor_1', 1), ('scale_factor_2', 97),
                                   ('scale_factor_3', 10**6))
@@ -254,7 +253,7 @@ class ScalingTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllEqual(x, reverted_x)  # Scaling down.
 
 
-class StochasticRoundingTest(test_case.TestCase, parameterized.TestCase):
+class StochasticRoundingTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_conditional_rounding_bounds_norm(self):
     """Compare avg rounded norm across different values of beta."""
@@ -320,7 +319,7 @@ class StochasticRoundingTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(rounded_x.dtype, dtype)
 
 
-class InflatedNormTest(test_case.TestCase, parameterized.TestCase):
+class InflatedNormTest(tf.test.TestCase, parameterized.TestCase):
 
   # The expected inflated norm bounds for these test are computed independently
   # in Python using Equations (18) and (19) in Section 4.1 of
@@ -343,4 +342,4 @@ class InflatedNormTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

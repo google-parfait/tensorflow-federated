@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for ModularClippingSumFactory."""
 
 import collections
 
@@ -21,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import modular_clipping
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -54,7 +52,7 @@ def _named_test_cases_product(*args):
   return named_cases
 
 
-class ModularClippingSumFactoryComputationTest(test_case.TestCase,
+class ModularClippingSumFactoryComputationTest(tf.test.TestCase,
                                                parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -148,7 +146,7 @@ class ModularClippingSumFactoryComputationTest(test_case.TestCase,
       factory.create(value_type)
 
 
-class ModularClippingSumFactoryExecutionTest(test_case.TestCase,
+class ModularClippingSumFactoryExecutionTest(tf.test.TestCase,
                                              parameterized.TestCase):
 
   def _check_result(self, expected, result):
@@ -207,7 +205,7 @@ class ModularClippingSumFactoryExecutionTest(test_case.TestCase,
     self._check_result(expected_sum, output.result)
 
 
-class StddevEstimationTest(test_case.TestCase, parameterized.TestCase):
+class StddevEstimationTest(tf.test.TestCase, parameterized.TestCase):
 
   def _modclip_by_value(self, x, clip_lo, clip_hi):
     width = clip_hi - clip_lo
@@ -244,4 +242,4 @@ class StddevEstimationTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_test_execution_context()
-  test_case.main()
+  tf.test.main()

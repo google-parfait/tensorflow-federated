@@ -23,7 +23,6 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -83,8 +82,7 @@ def _test_norm_process(init_fn=_test_init_fn,
   return estimation_process.EstimationProcess(init_fn, next_fn, report_fn)
 
 
-class ClippingFactoryComputationTest(test_case.TestCase,
-                                     parameterized.TestCase):
+class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('float', tf.float32),
@@ -414,7 +412,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
       make_factory(norm)
 
 
-class ClippingFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
+class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def _check_result(self, expected, result):
     for exp, res in zip(_make_test_struct_value(expected), result):
@@ -775,7 +773,7 @@ class ClippingFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose([1.0, 1.0], output.result)
 
 
-class NormTest(test_case.TestCase):
+class NormTest(tf.test.TestCase):
 
   def test_norms(self):
     values = [1.0, -2.0, 2.0, -4.0]
@@ -800,4 +798,4 @@ class NormTest(test_case.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

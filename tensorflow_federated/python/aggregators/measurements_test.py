@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for factory_with_additional_measurements."""
 
 import collections
 
@@ -22,7 +21,6 @@ from tensorflow_federated.python.aggregators import measurements
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -65,7 +63,7 @@ def _get_server_norm(value):
   return collections.OrderedDict(server_norm=server_norm)
 
 
-class AddMeasurementsTest(test_case.TestCase):
+class AddMeasurementsTest(tf.test.TestCase):
 
   def test_raises_bad_measurement_fn(self):
     unweighted_factory = sum_factory.SumFactory()
@@ -168,4 +166,4 @@ class AddMeasurementsTest(test_case.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

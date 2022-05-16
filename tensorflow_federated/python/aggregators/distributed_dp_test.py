@@ -28,7 +28,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import rotation
 from tensorflow_federated.python.aggregators import secure
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -111,7 +110,7 @@ def _named_test_cases_product(*args):
   return named_cases
 
 
-class DistributedDpComputationTest(test_case.TestCase, parameterized.TestCase):
+class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       _named_test_cases_product(
@@ -293,7 +292,7 @@ class DistributedDpComputationTest(test_case.TestCase, parameterized.TestCase):
       test_factory.create(value_type)
 
 
-class DistributedDpExecutionTest(test_case.TestCase, parameterized.TestCase):
+class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
   """Basic integration tests for the nesting of aggregators.
 
   More precise tests are deferred to the component aggregators (secure, modular
@@ -322,6 +321,7 @@ class DistributedDpExecutionTest(test_case.TestCase, parameterized.TestCase):
         _make_test_nested_struct(-2)], _make_test_nested_struct(-3), 'dft'))
   def test_sum(self, name, value_type, client_values, expected_sum,
                rotation_type):
+    del name  # Unused.
     ddp_factory = _make_test_factory(
         noise_multiplier=0,
         expected_clients_per_round=len(client_values),
@@ -487,4 +487,4 @@ class DistributedDpExecutionTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_test_execution_context()
-  test_case.main()
+  tf.test.main()

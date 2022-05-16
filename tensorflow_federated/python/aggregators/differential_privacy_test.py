@@ -22,7 +22,6 @@ import tensorflow_privacy as tfp
 from tensorflow_federated.python.aggregators import aggregator_test_utils
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -36,7 +35,7 @@ _test_struct_type = [(tf.float32, (2,)), tf.float32]
 _test_inner_agg_factory = aggregator_test_utils.SumPlusOneFactory()
 
 
-class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
+class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('float_simple', tf.float32, None),
@@ -102,7 +101,7 @@ class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
       factory_.create(bad_value_type)
 
 
-class DPFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
+class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_simple_sum(self):
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
@@ -291,4 +290,4 @@ class DPFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

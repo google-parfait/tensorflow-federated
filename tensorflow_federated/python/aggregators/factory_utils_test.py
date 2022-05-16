@@ -18,7 +18,6 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 
@@ -26,7 +25,7 @@ _TEST_VALUE_TYPE = computation_types.TensorType(tf.float32, (2,))
 _TEST_WEIGHT_TYPE = computation_types.TensorType(tf.float32)
 
 
-class UnweightedAsWeightedAggregationTest(test_case.TestCase):
+class UnweightedAsWeightedAggregationTest(tf.test.TestCase):
 
   def test_returns_weighted_factory(self):
     wrapped_factory = factory_utils.as_weighted_aggregator(
@@ -81,4 +80,4 @@ class UnweightedAsWeightedAggregationTest(test_case.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

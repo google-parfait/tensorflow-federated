@@ -21,7 +21,6 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import aggregator_test_utils
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -32,7 +31,7 @@ M_CONST = aggregator_test_utils.MEASUREMENT_CONSTANT
 _test_struct_type = ((tf.float32, (2,)), tf.float64)
 
 
-class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
+class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('float_value_float32_weight', tf.float32, tf.float32),
@@ -216,7 +215,7 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
       factory_.create(wrong_type)
 
 
-class MeanFactoryExecutionTest(test_case.TestCase):
+class MeanFactoryExecutionTest(tf.test.TestCase):
 
   def test_scalar_value(self):
     factory_ = mean.MeanFactory()
@@ -438,4 +437,4 @@ class MeanFactoryExecutionTest(test_case.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

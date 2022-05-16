@@ -21,7 +21,6 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import concat
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_test_utils
@@ -50,7 +49,7 @@ def _make_test_struct_nested(value):
       b=tf.ones((3, 3)) * value)
 
 
-class ConcatFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
+class ConcatFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('float', tf.float32),
@@ -158,7 +157,7 @@ class ConcatFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
       factory.create(value_type)
 
 
-class ConcatFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
+class ConcatFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar', tf.int32, [1, 2, 3], 6),
@@ -261,4 +260,4 @@ class ConcatFactoryExecutionTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()

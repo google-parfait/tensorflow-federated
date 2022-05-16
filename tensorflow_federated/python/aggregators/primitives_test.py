@@ -20,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -33,7 +32,7 @@ _MIN_MAX_TEST_DTYPES = [('int16', tf.int16), ('int32', tf.int32),
                         ('bfloat16', tf.bfloat16)]
 
 
-class FederatedMinTest(test_case.TestCase, parameterized.TestCase):
+class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_min_scalar(self, dtype):
@@ -136,7 +135,7 @@ class FederatedMinTest(test_case.TestCase, parameterized.TestCase):
       call_federated_min([1, 2, 3])
 
 
-class FederatedMaxTest(test_case.TestCase, parameterized.TestCase):
+class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_max_scalar(self, dtype):
@@ -1283,4 +1282,4 @@ def _np_val_fn(value, tf_dtype):
 
 if __name__ == '__main__':
   execution_contexts.set_test_execution_context()
-  test_case.main()
+  tf.test.main()

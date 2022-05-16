@@ -21,7 +21,6 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -72,7 +71,7 @@ def _measurements_type(bound_type):
           secure_lower_threshold=bound_type))
 
 
-class SecureModularSumFactoryComputationTest(test_case.TestCase,
+class SecureModularSumFactoryComputationTest(tf.test.TestCase,
                                              parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -87,7 +86,7 @@ class SecureModularSumFactoryComputationTest(test_case.TestCase,
   )
   def test_type_properties(self, modulus, value_type, symmetric_range):
     factory_ = secure.SecureModularSumFactory(
-        modulus=8, symmetric_range=symmetric_range)
+        modulus=modulus, symmetric_range=symmetric_range)
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     value_type = computation_types.to_type(value_type)
     process = factory_.create(value_type)
@@ -147,7 +146,7 @@ class SecureModularSumFactoryComputationTest(test_case.TestCase,
       secure.SecureModularSumFactory(8).create(bad_value_type)
 
 
-class SecureModularSumFactoryExecutionTest(test_case.TestCase,
+class SecureModularSumFactoryExecutionTest(tf.test.TestCase,
                                            parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -201,8 +200,7 @@ class SecureModularSumFactoryExecutionTest(test_case.TestCase,
     self.assertEqual(1, output.result[1])
 
 
-class SecureSumFactoryComputationTest(test_case.TestCase,
-                                      parameterized.TestCase):
+class SecureSumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('float_scalar', tf.float32, 1.0, -1.0, tf.float32),
@@ -395,7 +393,7 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
       secure_sum_f.create(bad_value_type)
 
 
-class SecureSumFactoryExecutionTest(test_case.TestCase):
+class SecureSumFactoryExecutionTest(tf.test.TestCase):
 
   def test_int_constant_bounds(self):
     secure_sum_f = secure.SecureSumFactory(
@@ -585,4 +583,4 @@ class IsStructureOfSingleDtypeTest(parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_test_execution_context()
-  test_case.main()
+  tf.test.main()

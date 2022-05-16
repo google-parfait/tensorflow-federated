@@ -22,7 +22,6 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import measurements
 from tensorflow_federated.python.aggregators import rotation
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_test_utils
@@ -86,7 +85,7 @@ def _named_test_cases_product(dict1, dict2):
   return named_cases
 
 
-class RotationsComputationTest(test_case.TestCase, parameterized.TestCase):
+class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       _named_test_cases_product({
@@ -154,13 +153,13 @@ class RotationsComputationTest(test_case.TestCase, parameterized.TestCase):
       ('nested_sequence', _dft_sum,
        [[[computation_types.SequenceType(tf.int32)]]]))
   def test_raises_on_bad_tff_value_types(self, factory_fn, value_type):
-    factory = _hadamard_sum()
+    factory = factory_fn()
     value_type = computation_types.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'Expected `value_type` to be'):
       factory.create(value_type)
 
 
-class RotationsExecutionTest(test_case.TestCase, parameterized.TestCase):
+class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_hd', tf.int32, [1, 2, 3], 6, _hadamard_sum),
@@ -297,7 +296,7 @@ class RotationsExecutionTest(test_case.TestCase, parameterized.TestCase):
     self.assertBetween(np.var(inner_aggregand), 255, 257)
 
 
-class SeedUtilsTest(test_case.TestCase, parameterized.TestCase):
+class SeedUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('stride-1', 1), ('stride-3', 3))
   def test_init_and_next(self, stride):
@@ -331,7 +330,7 @@ class SeedUtilsTest(test_case.TestCase, parameterized.TestCase):
                           unique_seeds)
 
 
-class PaddingUtilsTest(test_case.TestCase, parameterized.TestCase):
+class PaddingUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('1', [1], [1]),
@@ -377,7 +376,7 @@ class PaddingUtilsTest(test_case.TestCase, parameterized.TestCase):
                             value, spec))
 
 
-class SampleRademacherTest(test_case.TestCase, parameterized.TestCase):
+class SampleRademacherTest(tf.test.TestCase, parameterized.TestCase):
 
   def _assert_signs(self, x):
     """Helper function that checks every element of a tensor is +1/-1."""
@@ -436,7 +435,7 @@ class SampleRademacherTest(test_case.TestCase, parameterized.TestCase):
     self.assertFalse(np.array_equal(signs_1, signs_2))
 
 
-class SampleCisTest(test_case.TestCase, parameterized.TestCase):
+class SampleCisTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_uniform_angles(self):
     # Checks that the average is close to zero.
@@ -494,4 +493,4 @@ class SampleCisTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  tf.test.main()
