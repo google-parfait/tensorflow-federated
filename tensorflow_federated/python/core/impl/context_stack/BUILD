@@ -68,6 +68,7 @@ py_test(
 
 py_library(
     name = "context_stack_test_utils",
+    testonly = True,
     srcs = ["context_stack_test_utils.py"],
     srcs_version = "PY3",
     deps = [":context_base"],
