@@ -108,7 +108,7 @@ def check_extraction_result(before_extraction, extracted):
           'computation {} represents a case the Tff-to-TF parser is missing.'
           .format(before_extraction.type_signature, extracted.function,
                   extracted.function.type_signature, before_extraction))
-  if not before_extraction.type_signature.is_equivalent_to(
+  if not before_extraction.type_signature.is_assignable_from(
       extracted.type_signature):
     raise MapReduceFormCompilationError(
         'We have extracted a TensorFlow block of the correct Python type, but '
