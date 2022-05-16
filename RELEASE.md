@@ -1,3 +1,31 @@
+# Release 0.24.0
+
+## Major Features and Improvements
+
+*   Added `asyncio.run` call to metrics manager release calls to ensure
+    compatibility with
+    https://github.com/tensorflow/federated/commit/a98b5ed6894c536549da06b4cc7ed116105dfe65.
+*   Added an example and documentation for the Federated Program API.
+*   Improved `model_update_aggregator` to support structures with mixed floating
+    dtypes.
+*   Create a mirror of
+    `tff.simulation.compose_dataset_computation_with_iterative_process` for
+    `tff.learning.templates.LearningProcess`.
+*   Added logging of expected sequential computations to local TFF-C++ runtime.
+
+## Breaking Changes
+
+*   Moved asserts from `tff.test.TestCase` to `tff.test.*` as functions.
+*   Removed `assert_type_assignable_from` function.
+*   Moved `assert_nested_struct_eq` to the `type_conversions_test` module.
+*   Removed `client_train_process` and fedavg_ds_loop comparisons.
+
+## Bug Fixes
+
+*   Fixed comparisons to enums in the benchmarks package.
+*   Fixed `async_utils.SharedAwaitable` exception raiser.
+*   Fixed various lint errors.
+
 # Release 0.23.0
 
 ## Major Features and Improvements
