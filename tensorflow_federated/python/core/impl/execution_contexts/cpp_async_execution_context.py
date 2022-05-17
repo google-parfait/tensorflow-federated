@@ -93,7 +93,7 @@ class AsyncSerializeAndExecuteCPPContext(
         running_loop = asyncio.get_running_loop()
         result_pb = await running_loop.run_in_executor(
             self._futures_executor_pool, lambda: executor.materialize(call.ref))
-    except absl_status.StatusNotOk:
+    except absl_status.StatusNotOk as e:
       indent = lambda s: textwrap.indent(s, prefix='\t')
       if arg is None:
         arg_str = 'without any arguments'
@@ -102,7 +102,8 @@ class AsyncSerializeAndExecuteCPPContext(
       logging.error('Error invoking computation with signature:\n%s\n%s\n',
                     indent(comp.type_signature.formatted_representation()),
                     arg_str)
-      raise
+      logging.error('Error: \n%s', e.status.message())
+      raise e
     result_value, _ = value_serialization.deserialize_value(
         result_pb, comp.type_signature.result)
     return type_conversions.type_to_py_container(result_value,
