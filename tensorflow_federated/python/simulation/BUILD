@@ -110,10 +110,10 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":server_utils",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_service",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 

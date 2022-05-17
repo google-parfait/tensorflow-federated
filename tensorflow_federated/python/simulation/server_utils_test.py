@@ -15,16 +15,16 @@
 import time
 from unittest import mock
 
+from absl.testing import absltest
 import portpicker
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.simulation import server_utils
 
 
-class ServerUtilsTest(test_case.TestCase):
+class ServerUtilsTest(absltest.TestCase):
 
   @mock.patch('absl.logging.info')
   def test_server_context_shuts_down_under_keyboard_interrupt(
@@ -58,18 +58,17 @@ class ServerUtilsTest(test_case.TestCase):
 
     mock_logging_info.assert_called_once_with('Shutting down server.')
 
-  @mock.patch.object(
-      executor_service, 'ExecutorService', side_effect=ValueError)
-  def test_failure_on_construction_fails_as_expected(self, mock_service):
-
+  def test_failure_on_construction_fails_as_expected(self):
     ex = eager_tf_executor.EagerTFExecutor()
     ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
 
-    with self.assertRaises(ValueError):
-      with server_utils.server_context(ex_factory, 1,
-                                       portpicker.pick_unused_port()):
-        time.sleep(1)
+    with mock.patch.object(
+        executor_service, 'ExecutorService', side_effect=ValueError):
+      with self.assertRaises(ValueError):
+        with server_utils.server_context(ex_factory, 1,
+                                         portpicker.pick_unused_port()):
+          time.sleep(1)
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()
