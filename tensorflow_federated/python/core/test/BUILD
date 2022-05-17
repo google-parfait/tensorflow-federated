@@ -19,7 +19,6 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":static_assert",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
     ],

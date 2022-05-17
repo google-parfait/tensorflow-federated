@@ -48,7 +48,7 @@ def construct_example_training_comp():
       client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
 
 
-class MapReduceFormTest(tff.test.TestCase):
+class MapReduceFormTest(tf.test.TestCase):
 
   def test_map_reduce_form_with_learning_structure_contains_only_one_broadcast_and_one_aggregate(
       self):
@@ -161,4 +161,4 @@ class MapReduceFormTest(tff.test.TestCase):
 
 if __name__ == '__main__':
   tff.backends.test.set_test_execution_context()
-  tff.test.main()
+  tf.test.main()

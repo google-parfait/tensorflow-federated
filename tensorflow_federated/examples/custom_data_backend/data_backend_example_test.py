@@ -11,14 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 
 import asyncio
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -34,7 +30,7 @@ INT_STRUCT_URI = 'int_struct'
 INT_VALUE = 55
 
 
-class DataBackendExampleTest(tff.test.TestCase, parameterized.TestCase):
+class DataBackendExampleTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('string', STRING_URI, tf.string, STRING_VALUE),
@@ -63,4 +59,4 @@ class DataBackendExampleTest(tff.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tff.test.main()
+  absltest.main()

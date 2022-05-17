@@ -195,7 +195,7 @@ def _create_client_data():
   return client_data
 
 
-class SimpleFedAvgTest(tff.test.TestCase, parameterized.TestCase):
+class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_process_construction(self):
     it_process = simple_fedavg_tff.build_federated_averaging_process(
@@ -342,7 +342,7 @@ def _rnn_model_fn() -> tff.learning.Model:
       keras_model=keras_model, input_spec=input_spec, loss=loss)
 
 
-class RNNTest(tff.test.TestCase, parameterized.TestCase):
+class RNNTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_build_fedavg_process(self):
     it_process = simple_fedavg_tff.build_federated_averaging_process(
@@ -390,4 +390,4 @@ class RNNTest(tff.test.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   np.random.seed(42)
-  tff.test.main()
+  tf.test.main()
