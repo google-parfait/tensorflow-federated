@@ -11,20 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for modular_clipping_factory."""
+
 import collections
+
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.hierarchical_histogram import modular_clipping_factory
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 
-class ModularClippingSumFactoryComputationTest(test_case.TestCase,
+class ModularClippingSumFactoryComputationTest(tf.test.TestCase,
                                                parameterized.TestCase):
 
   def test_type_properties_simple(self):
@@ -96,7 +96,7 @@ class ModularClippingSumFactoryComputationTest(test_case.TestCase,
       agg_factory.create(value_type)
 
 
-class ModularClippingSumFactoryExecutionTest(test_case.TestCase,
+class ModularClippingSumFactoryExecutionTest(tf.test.TestCase,
                                              parameterized.TestCase):
 
   @parameterized.named_parameters([
@@ -159,4 +159,4 @@ class ModularClippingSumFactoryExecutionTest(test_case.TestCase,
 
 if __name__ == '__main__':
   execution_contexts.set_test_execution_context()
-  test_case.main()
+  tf.test.main()

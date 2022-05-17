@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for clipping_factory."""
 
 import collections
 
@@ -21,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.analytics.hierarchical_histogram import clipping_factory
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -29,7 +27,7 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 
-class ClippingSumFactoryComputationTest(test_case.TestCase,
+class ClippingSumFactoryComputationTest(tf.test.TestCase,
                                         parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -66,8 +64,7 @@ class ClippingSumFactoryComputationTest(test_case.TestCase,
         process.next.type_signature.is_equivalent_to(expected_next_type))
 
 
-class ClippingSumFactoryExecutionTest(test_case.TestCase,
-                                      parameterized.TestCase):
+class ClippingSumFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('invalid_clip_mechanism', 'invalid', 1, (tf.int32, (2,))),
@@ -187,4 +184,4 @@ class ClippingSumFactoryExecutionTest(test_case.TestCase,
 
 if __name__ == '__main__':
   execution_contexts.set_test_execution_context()
-  test_case.main()
+  tf.test.main()

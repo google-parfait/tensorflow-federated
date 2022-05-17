@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for hierarchical_histogram."""
+
 from typing import Tuple
 from unittest import mock
 
@@ -20,7 +20,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_lib as hihi
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.test import static_assert
 
@@ -32,7 +31,7 @@ def get_mock_timestamp():
   return tf.constant(MOCK_TIME_SECONDS, dtype=tf.float64)
 
 
-class ClientWorkTest(test_case.TestCase, parameterized.TestCase):
+class ClientWorkTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('test_1', tf.data.Dataset.from_tensor_slices(
@@ -58,7 +57,7 @@ class ClientWorkTest(test_case.TestCase, parameterized.TestCase):
                                          data_range[1], num_bins)
 
 
-class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
+class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
 
   def _get_hierarchical_histogram_results(
       self,
@@ -535,4 +534,4 @@ class HierarchicalHistogramTest(test_case.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_test_execution_context()
-  test_case.main()
+  tf.test.main()

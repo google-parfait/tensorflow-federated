@@ -35,7 +35,6 @@ py_test(
         ":build_tree_from_leaf",
         ":hierarchical_histogram_factory",
         "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
@@ -71,7 +70,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":hierarchical_histogram_lib",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/test:static_assert",
         "@absl_py//absl/testing:parameterized",
@@ -145,7 +143,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":modular_clipping_factory",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/templates:aggregation_process",
@@ -180,7 +177,6 @@ py_test(
     deps = [
         ":clipping_factory",
         "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",

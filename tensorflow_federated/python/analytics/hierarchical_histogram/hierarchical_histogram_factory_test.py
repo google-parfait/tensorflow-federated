@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for hierarchical_histogram_factory."""
 
 import collections
 
@@ -23,7 +22,6 @@ import tensorflow_privacy as tfp
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.analytics.hierarchical_histogram import build_tree_from_leaf
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory as hihi_factory
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -31,7 +29,7 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 
-class TreeAggregationFactoryComputationTest(test_case.TestCase,
+class TreeAggregationFactoryComputationTest(tf.test.TestCase,
                                             parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -237,7 +235,7 @@ class TreeAggregationFactoryComputationTest(test_case.TestCase,
         process.next.type_signature.is_equivalent_to(expected_next_type))
 
 
-class TreeAggregationFactoryExecutionTest(test_case.TestCase,
+class TreeAggregationFactoryExecutionTest(tf.test.TestCase,
                                           parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -555,4 +553,4 @@ class TreeAggregationFactoryExecutionTest(test_case.TestCase,
 
 if __name__ == '__main__':
   execution_contexts.set_test_execution_context()
-  test_case.main()
+  tf.test.main()

@@ -16,11 +16,11 @@ import collections
 import itertools
 from typing import Dict, List, Optional, Callable
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tff
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -148,8 +148,7 @@ def _execute_computation(
   return dict(iteration_results), output.num_not_decoded, output.round_timestamp
 
 
-class IbltTffConstructionTest(test_case.TestCase):
-  """Tests the `build_iblt_computation` construction API."""
+class IbltTffConstructionTest(absltest.TestCase):
 
   def test_default_construction(self):
     iblt_computation = iblt_tff.build_iblt_computation()
@@ -236,7 +235,7 @@ class IbltTffConstructionTest(test_case.TestCase):
     iblt_tff.build_iblt_computation(multi_contribution=False)
 
 
-class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
+class SecAggIbltTffExecutionTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -379,7 +378,7 @@ class SecAggIbltTffExecutionTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(results, expected_result)
 
 
-class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
+class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -560,4 +559,4 @@ class SecAggIbltUniqueCountsTffTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()
