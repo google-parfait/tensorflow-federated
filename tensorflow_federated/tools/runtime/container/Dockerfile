@@ -28,12 +28,6 @@ COPY "tensorflow_federated/tools/runtime/remote_executor_service.py" /
 RUN pip3 install --no-cache-dir --upgrade pip
 
 RUN pip3 install --no-cache-dir --upgrade "tensorflow-federated==${VERSION}"
-# TODO(b/222542261): Temprary workaround for TF 2.8.0 Python dependency issue.
-# tensorflow-privacy depends on tensorflow~=2.4
-# tensorflow 2.8.0 depends on tf-estimator-nightly because of
-# https://github.com/tensorflow/tensorflow/blob/v2.8.0/tensorflow/tools/pip_package/setup.py#L95
-RUN pip3 uninstall --yes "tensorflow-estimator" "tf-estimator-nightly"
-RUN pip3 install --no-cache-dir --upgrade "tensorflow-estimator"
 
 RUN pip3 freeze
 
