@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -42,7 +42,7 @@ def test_next_fn(state):
   return state
 
 
-class IterativeProcessTest(test_case.TestCase):
+class IterativeProcessTest(absltest.TestCase):
 
   def test_construction_does_not_raise(self):
     try:
@@ -146,7 +146,7 @@ def create_test_process(
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
-class HasEmptyStateTest(parameterized.TestCase, test_case.TestCase):
+class HasEmptyStateTest(parameterized.TestCase, absltest.TestCase):
 
   @parameterized.named_parameters(
       ('simple', StructType([])),
@@ -186,4 +186,4 @@ class HasEmptyStateTest(parameterized.TestCase, test_case.TestCase):
     self.assertTrue(iterative_process.is_stateful(process))
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

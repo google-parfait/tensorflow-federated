@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import collections
-from absl.testing import parameterized
 
+from absl.testing import absltest
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -41,7 +41,7 @@ def test_next_fn(state, value):
   return MeasuredProcessOutput(state, value, ())
 
 
-class MeasuredProcessTest(test_case.TestCase):
+class MeasuredProcessTest(absltest.TestCase):
 
   def test_construction_does_not_raise(self):
     try:
@@ -269,8 +269,7 @@ def test_iterative_process(state_type, state_init):
       next_fn=next_fn)
 
 
-class MeasuredProcessCompositionComputationTest(test_case.TestCase,
-                                                parameterized.TestCase):
+class MeasuredProcessCompositionComputationTest(parameterized.TestCase):
 
   @parameterized.named_parameters([
       ('all_measured_processes', test_measured_process_sum),
@@ -355,7 +354,7 @@ class MeasuredProcessCompositionComputationTest(test_case.TestCase,
       measured_process.chain_measured_processes(measured_processes)
 
 
-class MeasuredProcessCompositionExecutionTest(test_case.TestCase):
+class MeasuredProcessCompositionExecutionTest(absltest.TestCase):
 
   def test_composition_gets_expected_output(self):
 
@@ -387,8 +386,7 @@ class MeasuredProcessCompositionExecutionTest(test_case.TestCase):
                      collections.OrderedDict(double={'a': 1}, aggregate=1))
 
 
-class MeasuredProcessConcatenationComputationTest(test_case.TestCase,
-                                                  parameterized.TestCase):
+class MeasuredProcessConcatenationComputationTest(parameterized.TestCase):
 
   @parameterized.named_parameters([
       ('all_measured_processes', test_measured_process_sum),
@@ -463,7 +461,7 @@ class MeasuredProcessConcatenationComputationTest(test_case.TestCase,
       measured_process.concatenate_measured_processes(measured_processes)
 
 
-class MeasuredProcessConcatenationExecutionTest(test_case.TestCase):
+class MeasuredProcessConcatenationExecutionTest(absltest.TestCase):
 
   def test_concatenation_gets_expected_output(self):
 
@@ -501,4 +499,4 @@ class MeasuredProcessConcatenationExecutionTest(test_case.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
-  test_case.main()
+  absltest.main()

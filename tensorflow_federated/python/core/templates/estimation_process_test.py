@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -43,7 +43,7 @@ def test_map_fn(estimate):
   return tf.stack([estimate, estimate])
 
 
-class EstimationProcessTest(test_case.TestCase):
+class EstimationProcessTest(absltest.TestCase):
 
   def test_construction_does_not_raise(self):
     try:
@@ -234,4 +234,4 @@ class EstimationProcessTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()
