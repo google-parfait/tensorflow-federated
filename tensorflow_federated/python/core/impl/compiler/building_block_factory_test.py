@@ -15,13 +15,13 @@
 import collections
 import re
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import computation_test_utils
@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
-class UniqueNameGeneratorTest(test_case.TestCase):
+class UniqueNameGeneratorTest(absltest.TestCase):
 
   def test_does_not_raise_type_error_with_none_comp(self):
     try:
@@ -290,7 +290,7 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
           'Function \'check_federated_type\' raised TypeError unexpectedly.')
 
 
-class CreateComputationAppendingTest(test_case.TestCase):
+class CreateComputationAppendingTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_comp1(self):
     comp2 = building_blocks.Data('y', tf.int32)
@@ -334,7 +334,7 @@ class CreateComputationAppendingTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), '<a=int32,b=int32,c=int32>')
 
 
-class CreateFederatedAggregateTest(test_case.TestCase):
+class CreateFederatedAggregateTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     zero = building_blocks.Data('z', tf.int32)
@@ -429,7 +429,7 @@ class CreateFederatedAggregateTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-class CreateFederatedApplyTest(test_case.TestCase):
+class CreateFederatedApplyTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg = building_blocks.Data('y', tf.int32)
@@ -453,7 +453,7 @@ class CreateFederatedApplyTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-class CreateFederatedBroadcastTest(test_case.TestCase):
+class CreateFederatedBroadcastTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -467,7 +467,7 @@ class CreateFederatedBroadcastTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
 
-class CreateFederatedEvalTest(test_case.TestCase):
+class CreateFederatedEvalTest(absltest.TestCase):
 
   def assert_type_error(self, fn, placement):
     with self.assertRaises(TypeError):
@@ -489,7 +489,7 @@ class CreateFederatedEvalTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
 
-class CreateFederatedMapTest(test_case.TestCase):
+class CreateFederatedMapTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg = building_blocks.Data('y', tf.int32)
@@ -513,7 +513,7 @@ class CreateFederatedMapTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
 
-class CreateFederatedMapAllEqualTest(test_case.TestCase):
+class CreateFederatedMapAllEqualTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg = building_blocks.Data('y', tf.int32)
@@ -538,7 +538,7 @@ class CreateFederatedMapAllEqualTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@CLIENTS')
 
 
-class CreateFederatedMapOrApplyTest(test_case.TestCase):
+class CreateFederatedMapOrApplyTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg = building_blocks.Data('y', tf.int32)
@@ -572,7 +572,7 @@ class CreateFederatedMapOrApplyTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), '{int32}@CLIENTS')
 
 
-class CreateFederatedMeanTest(test_case.TestCase):
+class CreateFederatedMeanTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -596,7 +596,7 @@ class CreateFederatedMeanTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-class CreateFederatedSecureModularSumTest(test_case.TestCase):
+class CreateFederatedSecureModularSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     modulus_type = computation_types.TensorType(tf.int32)
@@ -631,7 +631,7 @@ class CreateFederatedSecureModularSumTest(test_case.TestCase):
                      'int32@SERVER')
 
 
-class CreateFederatedSecureSumTest(test_case.TestCase):
+class CreateFederatedSecureSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     max_input_type = computation_types.TensorType(tf.int32)
@@ -661,7 +661,7 @@ class CreateFederatedSecureSumTest(test_case.TestCase):
                      'int32@SERVER')
 
 
-class CreateFederatedSecureSumBitwidthTest(test_case.TestCase):
+class CreateFederatedSecureSumBitwidthTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     bitwidth_type = computation_types.TensorType(tf.int32)
@@ -723,7 +723,7 @@ class CreateFederatedSelectTest(parameterized.TestCase):
                      '{string*}@CLIENTS')
 
 
-class CreateFederatedSumTest(test_case.TestCase):
+class CreateFederatedSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -737,7 +737,7 @@ class CreateFederatedSumTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-class CreateFederatedUnzipTest(test_case.TestCase):
+class CreateFederatedUnzipTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -856,7 +856,7 @@ class CreateFederatedUnzipTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), '<int32@SERVER,bool@SERVER>')
 
 
-class CreateFederatedValueTest(test_case.TestCase):
+class CreateFederatedValueTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -895,7 +895,7 @@ INT_AT_SERVER = computation_types.at_server(tf.int32)
 BOOL_AT_SERVER = computation_types.at_server(tf.bool)
 
 
-class CreateFederatedZipTest(parameterized.TestCase, test_case.TestCase):
+class CreateFederatedZipTest(parameterized.TestCase, absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaisesRegex(TypeError, 'found NoneType'):
@@ -1023,7 +1023,7 @@ class CreateFederatedZipTest(parameterized.TestCase, test_case.TestCase):
       building_block_factory.create_federated_zip(value)
 
 
-class CreateGenericConstantTest(test_case.TestCase):
+class CreateGenericConstantTest(absltest.TestCase):
 
   def test_raises_on_none_type(self):
     with self.assertRaises(TypeError):
@@ -1125,7 +1125,7 @@ class CreateGenericConstantTest(test_case.TestCase):
     self.assertTrue(np.array_equal(actual_result, np.zeros([2, 2])))
 
 
-class CreateSequenceMapTest(test_case.TestCase):
+class CreateSequenceMapTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_fn(self):
     arg_type = computation_types.SequenceType(tf.int32)
@@ -1150,7 +1150,7 @@ class CreateSequenceMapTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32*')
 
 
-class CreateSequenceReduceTest(test_case.TestCase):
+class CreateSequenceReduceTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     zero = building_blocks.Data('z', tf.int32)
@@ -1189,7 +1189,7 @@ class CreateSequenceReduceTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32')
 
 
-class CreateSequenceSumTest(test_case.TestCase):
+class CreateSequenceSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -1203,7 +1203,7 @@ class CreateSequenceSumTest(test_case.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32')
 
 
-class CreateNamedTupleTest(test_case.TestCase):
+class CreateNamedTupleTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
@@ -1250,7 +1250,7 @@ class CreateNamedTupleTest(test_case.TestCase):
     self.assertEqual(named_comp.type_signature, expected_type_signature)
 
 
-class CreateZipTest(test_case.TestCase):
+class CreateZipTest(absltest.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -1311,7 +1311,7 @@ class CreateZipTest(test_case.TestCase):
         '<<int32,int32>,<float32,float32>,<bool,bool>>')
 
 
-class ConstructTensorFlowSelectingOutputsTest(test_case.TestCase):
+class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
 
   def test_raises_non_named_tuple_type(self):
     parameter_type = computation_types.TensorType(tf.int32)
@@ -1529,7 +1529,7 @@ def identity_for_type(
                                 building_blocks.Reference('x', input_type))
 
 
-class SelectOutputFromLambdaTest(test_case.TestCase):
+class SelectOutputFromLambdaTest(absltest.TestCase):
 
   def test_raises_on_non_lambda(self):
     ref = building_blocks.Reference('x', tf.int32)
@@ -1613,7 +1613,7 @@ class SelectOutputFromLambdaTest(test_case.TestCase):
         str(tuple_selected), '(x -> (let _var1=x in <_var1.a.inner,_var1.b>))')
 
 
-class ZipUpToTest(test_case.TestCase):
+class ZipUpToTest(absltest.TestCase):
 
   def test_zips_struct_of_federated_values(self):
     comp = building_blocks.Struct([
@@ -1729,4 +1729,4 @@ class ZipUpToTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

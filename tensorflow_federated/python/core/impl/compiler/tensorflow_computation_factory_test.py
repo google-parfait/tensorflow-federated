@@ -20,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import computation_test_utils
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -33,7 +32,7 @@ _StructType = computation_types.StructType
 _TensorType = computation_types.TensorType
 
 
-class CreateConstantTest(parameterized.TestCase, test_case.TestCase):
+class CreateConstantTest(parameterized.TestCase, tf.test.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -354,7 +353,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
           type_signature, operator)
 
 
-class CreateEmptyTupleTest(test_case.TestCase):
+class CreateEmptyTupleTest(tf.test.TestCase):
 
   def test_returns_computation(self):
     proto, _ = tensorflow_computation_factory.create_empty_tuple()
@@ -481,4 +480,4 @@ class CreateComputationForPyFnTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  tf.test.main()

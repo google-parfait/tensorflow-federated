@@ -80,8 +80,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":compiler_pipeline",
-        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 

@@ -14,12 +14,12 @@
 
 import collections
 
+from absl.testing import absltest
 import attr
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
@@ -82,7 +82,7 @@ test_wrap = computation_wrapper.ComputationWrapper(
     computation_wrapper.PythonTracingStrategy(_zero_tracer))
 
 
-class ComputationWrapperTest(test_case.TestCase):
+class ComputationWrapperTest(absltest.TestCase):
 
   # Note: Many tests below silence certain linter warnings. These warnings are
   # not applicable, since it's the wrapper code, not not the whimsy functions
@@ -474,4 +474,4 @@ class ComputationWrapperTest(test_case.TestCase):
 
 if __name__ == '__main__':
   with context_stack_impl.context_stack.install(ContextForTest()):
-    test_case.main()
+    absltest.main()

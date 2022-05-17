@@ -16,7 +16,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -277,7 +276,7 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
               executor, arg))
 
 
-class TypeUtilsTest(test_case.TestCase, parameterized.TestCase):
+class TypeUtilsTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters([

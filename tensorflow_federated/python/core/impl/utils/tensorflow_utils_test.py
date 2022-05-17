@@ -24,7 +24,6 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -33,7 +32,7 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
-class GraphUtilsTest(test_case.TestCase):
+class GraphUtilsTest(tf.test.TestCase):
 
   def _assert_binding_matches_type_and_value(self, binding, type_spec, val,
                                              graph, is_output):
@@ -101,7 +100,7 @@ class GraphUtilsTest(test_case.TestCase):
     """Verifies that 'x' is a placeholder with the given attributes."""
     self.assertEqual(x.name, name)
     self.assertEqual(x.dtype, dtype)
-    self.assertEqual(x.shape.ndims, len(shape))
+    self.assertEqual(x.shape.ndims, len(shape))  # pylint: disable=g-generic-assert
     for i, s in enumerate(shape):
       self.assertEqual(x.shape.dims[i].value, s)
     self.assertEqual(x.op.type, 'Placeholder')
@@ -541,7 +540,7 @@ class GraphUtilsTest(test_case.TestCase):
             Y=tf.TensorSpec(shape=(), dtype=tf.int32),
         ))
 
-  def test_make_whimsy_element_for_type_spec_raises_SequenceType(self):
+  def test_make_whimsy_element_for_type_spec_raises_sequence_type(self):
     type_spec = computation_types.SequenceType(tf.float32)
     with self.assertRaisesRegex(ValueError,
                                 'Cannot construct array for TFF type'):
@@ -552,7 +551,7 @@ class GraphUtilsTest(test_case.TestCase):
     with self.assertRaisesRegex(ValueError, 'nonnegative'):
       tensorflow_utils.make_whimsy_element_for_type_spec(tf.float32, -1)
 
-  def test_make_whimsy_element_TensorType(self):
+  def test_make_whimsy_element_tensor_type(self):
     type_spec = computation_types.TensorType(tf.float32,
                                              [None, 10, None, 10, 10])
     elem = tensorflow_utils.make_whimsy_element_for_type_spec(type_spec)
@@ -587,7 +586,7 @@ class GraphUtilsTest(test_case.TestCase):
     correct_elem = np.zeros([1, 10, 1, 10, 10], np.float32)
     self.assertAllClose(elem, correct_elem)
 
-  def test_make_whimsy_element_StructType(self):
+  def test_make_whimsy_element_struct_type(self):
     tensor1 = computation_types.TensorType(tf.float32, [None, 10, None, 10, 10])
     tensor2 = computation_types.TensorType(tf.int32, [10, None, 10])
     namedtuple = computation_types.StructType([('x', tensor1), ('y', tensor2)])
@@ -1153,7 +1152,7 @@ class GraphUtilsTest(test_case.TestCase):
     computation_types.to_type(y.element_spec).check_equivalent_to(element_type)
 
 
-class TensorFlowDeserializationTest(test_case.TestCase):
+class TensorFlowDeserializationTest(tf.test.TestCase):
 
   @tensorflow_test_utils.graph_mode_test
   def test_deserialize_and_call_tf_computation_with_add_one(self):
@@ -1246,4 +1245,4 @@ class TensorFlowDeserializationTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  tf.test.main()

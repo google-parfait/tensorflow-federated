@@ -24,7 +24,6 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -42,7 +41,7 @@ def _get_first_logical_device(
   return device
 
 
-class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
+class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_int_arg_and_result(self):
 
@@ -353,7 +352,7 @@ def _create_test_executor_factory():
   return executor_stacks.ResourceManagingExecutorFactory(lambda _: executor)
 
 
-class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
+class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_to_representation_for_type_with_int(self):
     value = 10
@@ -766,4 +765,4 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  tf.test.main()

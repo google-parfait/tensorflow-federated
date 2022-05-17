@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import collections
+
+from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
@@ -25,7 +26,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
 
-class FederatedComputationContextTest(test_case.TestCase):
+class FederatedComputationContextTest(absltest.TestCase):
 
   def test_invoke_returns_value_with_correct_type(self):
     context = federated_computation_context.FederatedComputationContext(
@@ -145,4 +146,4 @@ class FederatedComputationContextTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

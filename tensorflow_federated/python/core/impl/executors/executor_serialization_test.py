@@ -21,7 +21,6 @@ from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.executors import executor_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -29,7 +28,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
-class ExecutorServiceUtilsTest(test_case.TestCase, parameterized.TestCase):
+class ExecutorServiceUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_serialize_deserialize_tensor_value(self):
     x = tf.constant(10.0)
@@ -347,7 +346,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(y, 10)
 
 
-class DatasetSerializationTest(test_case.TestCase):
+class DatasetSerializationTest(tf.test.TestCase):
 
   def test_serialize_sequence_not_a_dataset(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*Dataset.* found int'):
@@ -447,7 +446,7 @@ class DatasetSerializationTest(test_case.TestCase):
       self.assertAllClose(actual, expected)
 
 
-class SerializeCardinalitiesTest(test_case.TestCase):
+class SerializeCardinalitiesTest(tf.test.TestCase):
 
   def test_serialize_deserialize_clients_and_server_cardinalities_roundtrip(
       self):

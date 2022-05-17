@@ -21,7 +21,6 @@ import tensorflow as tf
 from pybind11_abseil import status
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -47,8 +46,7 @@ def _test_map_integers(tensor):
   return table.lookup(tensor)
 
 
-class TensorFlowExecutorBindingsTest(parameterized.TestCase,
-                                     test_case.TestCase):
+class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_create(self):
     try:
@@ -273,7 +271,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase,
       executor.materialize(0)
 
 
-class ReferenceResolvingExecutorBindingsTest(test_case.TestCase):
+class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
 
   def test_create(self):
     try:
@@ -439,7 +437,7 @@ class ReferenceResolvingExecutorBindingsTest(test_case.TestCase):
       executor.materialize(0)
 
 
-class FederatingExecutorBindingsTest(test_case.TestCase):
+class FederatingExecutorBindingsTest(tf.test.TestCase):
 
   def test_construction_placements_casters(self):
     with self.subTest('placement_literal_keys'):
@@ -468,7 +466,7 @@ class FederatingExecutorBindingsTest(test_case.TestCase):
             {placements.CLIENTS: 0.5})
 
 
-class RemoteExecutorBindingsTest(test_case.TestCase):
+class RemoteExecutorBindingsTest(tf.test.TestCase):
 
   def test_insecure_channel_construction(self):
     remote_ex = executor_bindings.create_remote_executor(
@@ -478,7 +476,7 @@ class RemoteExecutorBindingsTest(test_case.TestCase):
     self.assertIsInstance(remote_ex, executor_bindings.Executor)
 
 
-class ComposingExecutorBindingsTest(test_case.TestCase):
+class ComposingExecutorBindingsTest(tf.test.TestCase):
 
   def test_construction(self):
     server = executor_bindings.create_tensorflow_executor()
@@ -491,7 +489,7 @@ class ComposingExecutorBindingsTest(test_case.TestCase):
     self.assertIsInstance(composing_ex, executor_bindings.Executor)
 
 
-class SerializeTensorTest(test_case.TestCase, parameterized.TestCase):
+class SerializeTensorTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_int32', 1, tf.int32),
@@ -525,4 +523,4 @@ class SerializeTensorTest(test_case.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  tf.test.main()

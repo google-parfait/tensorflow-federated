@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -30,7 +30,7 @@ def _shape_to_dims(shape):
   return [s if s is not None else -1 for s in shape]
 
 
-class TypeSerializationTest(test_case.TestCase, parameterized.TestCase):
+class TypeSerializationTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_int', tf.int32, []),
@@ -201,4 +201,4 @@ class TypeSerializationTest(test_case.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()

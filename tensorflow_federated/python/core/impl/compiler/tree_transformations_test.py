@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -29,7 +29,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
-class TransformTestBase(test_case.TestCase):
+class TransformTestBase(absltest.TestCase):
 
   def assert_transforms(self, comp, file, changes_type=False, unmodified=False):
     # NOTE: A `transform` method must be present on inheritors.
@@ -203,7 +203,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertFalse(modified)
 
 
-class RemoveUnusedBlockLocalsTest(test_case.TestCase):
+class RemoveUnusedBlockLocalsTest(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -430,7 +430,7 @@ def _is_called_graph_pattern(comp):
           comp.argument.is_reference())
 
 
-class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
+class StripPlacementTest(parameterized.TestCase):
 
   def assert_has_no_intrinsics_nor_federated_types(self, comp):
 
@@ -648,4 +648,4 @@ class StripPlacementTest(test_case.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

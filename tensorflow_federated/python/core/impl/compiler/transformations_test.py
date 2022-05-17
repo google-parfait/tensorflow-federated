@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
-class ToCallDominantTest(test_case.TestCase):
+class ToCallDominantTest(absltest.TestCase):
 
   def assert_compact_representations_equal(
       self, actual: building_blocks.ComputationBuildingBlock,
@@ -201,7 +201,7 @@ class ToCallDominantTest(test_case.TestCase):
     self.assert_compact_representations_equal(after.result, expected_result)
 
 
-class CompileLocalComputationToTensorFlow(test_case.TestCase):
+class CompileLocalComputationToTensorFlow(absltest.TestCase):
 
   def assert_compiles_to_tensorflow(
       self, comp: building_blocks.ComputationBuildingBlock):
@@ -320,7 +320,7 @@ class CompileLocalComputationToTensorFlow(test_case.TestCase):
     self.assert_compiles_to_tensorflow(identity_lambda)
 
 
-class CompileLocalSubcomputationsToTensorFlowTest(test_case.TestCase):
+class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):
 
   def test_leaves_federated_comp_alone(self):
     ref_to_federated_x = building_blocks.Reference(
@@ -368,7 +368,7 @@ class CompileLocalSubcomputationsToTensorFlowTest(test_case.TestCase):
     self.assertEqual(transformed, lambda_with_unbound_ref)
 
 
-class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
+class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def assert_splits_on(self, comp, calls):
     """Asserts that `force_align_and_split_by_intrinsics` removes intrinsics."""
@@ -603,4 +603,4 @@ class ForceAlignAndSplitByIntrinsicTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

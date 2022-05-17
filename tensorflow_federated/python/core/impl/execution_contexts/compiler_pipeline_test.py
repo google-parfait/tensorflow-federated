@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tensorflow_federated.python.core.api import test_case
+from absl.testing import absltest
+
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
 
 
-class CompilerPipelineTest(test_case.TestCase):
+class CompilerPipelineTest(absltest.TestCase):
 
   def test_compile_computation_with_identity(self):
 
@@ -43,4 +44,4 @@ class CompilerPipelineTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

@@ -23,7 +23,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -52,7 +51,7 @@ def _assert_structure_eq(x, y):
       raise AssertionError(f'Mismatching elements {xe} and {ye}.')
 
 
-class InferTypeTest(parameterized.TestCase, test_case.TestCase):
+class InferTypeTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_with_none(self):
     self.assertIsNone(type_conversions.infer_type(None))
@@ -434,7 +433,7 @@ class TypeToTfTensorSpecsTest(absltest.TestCase):
     _assert_structure_eq(tensor_specs, (tf.TensorSpec([], tf.int32),))
 
 
-class TypeToTfStructureTest(test_case.TestCase):
+class TypeToTfStructureTest(tf.test.TestCase):
 
   def test_with_names(self):
     expected_structure = collections.OrderedDict([
@@ -512,7 +511,7 @@ class TypeToTfStructureTest(test_case.TestCase):
     self.check_round_trip(spec)
 
 
-class TypeFromTensorsTest(test_case.TestCase):
+class TypeFromTensorsTest(tf.test.TestCase):
 
   def test_with_single(self):
     v = tf.Variable(0.0, name='a', dtype=tf.float32, shape=[])
@@ -548,7 +547,7 @@ class TypeFromTensorsTest(test_case.TestCase):
     self.assertEqual(str(result), '<x=float32,y=int32>')
 
 
-class TypeToPyContainerTest(test_case.TestCase):
+class TypeToPyContainerTest(tf.test.TestCase):
 
   def test_tuple_passthrough(self):
     value = (1, 2.0)
@@ -748,7 +747,7 @@ class TypeToPyContainerTest(test_case.TestCase):
     result = type_conversions.type_to_py_container(value, value_type)
     self.assertIsInstance(result, tf.RaggedTensor)
     self.assertAllEqual(result.flat_values, [0, 0, 0, 0])
-    self.assertEqual(len(result.nested_row_splits), 1)
+    self.assertLen(result.nested_row_splits, 1)
     self.assertAllEqual(result.nested_row_splits[0], [0, 1, 4])
 
   def test_sparse_tensor(self):
@@ -764,13 +763,13 @@ class TypeToPyContainerTest(test_case.TestCase):
     ], tf.SparseTensor)
     result = type_conversions.type_to_py_container(value, value_type)
     self.assertIsInstance(result, tf.SparseTensor)
-    self.assertEqual(len(result.indices), 1)
+    self.assertLen(result.indices, 1)
     self.assertAllEqual(result.indices[0], [1])
     self.assertAllEqual(result.values, [2])
     self.assertAllEqual(result.dense_shape, [5])
 
 
-class StructureFromTensorTypeTreeTest(test_case.TestCase):
+class StructureFromTensorTypeTreeTest(tf.test.TestCase):
 
   def get_incrementing_function(self):
     i = -1
@@ -814,7 +813,7 @@ class StructureFromTensorTypeTreeTest(test_case.TestCase):
     self.assertEqual(result, [set(), (set(), set())])
 
 
-class TypeToNonAllEqualTest(test_case.TestCase):
+class TypeToNonAllEqualTest(tf.test.TestCase):
 
   def test_with_bool(self):
     for x in [True, False]:

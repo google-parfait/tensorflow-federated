@@ -15,13 +15,13 @@
 import collections
 import warnings
 
+from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
-class OutsideFederatedComputationTest(test_case.TestCase):
+class OutsideFederatedComputationTest(absltest.TestCase):
 
   def test_constant_to_value_raises_outside_symbol_binding_context(self):
     with context_stack_impl.context_stack.install(
@@ -59,7 +59,7 @@ def _mock_data_of_type(type_spec, name='mock'):
   return value_impl.Value(building_blocks.Data(name, type_spec))
 
 
-class IntrinsicTestBase(test_case.TestCase):
+class IntrinsicTestBase(absltest.TestCase):
 
   def assert_value(self, value, type_string):
     self.assertIsInstance(value, value_impl.Value)
@@ -896,4 +896,4 @@ if __name__ == '__main__':
   context = federated_computation_context.FederatedComputationContext(
       context_stack_impl.context_stack)
   with context_stack_impl.context_stack.install(context):
-    test_case.main()
+    absltest.main()

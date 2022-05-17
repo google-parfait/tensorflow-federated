@@ -16,7 +16,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
@@ -34,8 +33,7 @@ def _count_intrinsics(comp, uri):
   return tree_analysis.count(comp, _predicate)
 
 
-class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase,
-                                      parameterized.TestCase):
+class ReplaceIntrinsicsWithBodiesTest(parameterized.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import compiled_computation_transforms
@@ -31,7 +31,7 @@ def _create_compiled_computation(py_fn, parameter_type):
       proto, type_signature=type_signature)
 
 
-class TensorFlowOptimizerTest(test_case.TestCase):
+class TensorFlowOptimizerTest(absltest.TestCase):
 
   def test_should_transform_compiled_computation(self):
     tuple_type = computation_types.TensorType(tf.int32)
@@ -87,7 +87,7 @@ class TensorFlowOptimizerTest(test_case.TestCase):
     self.assertEqual(zero_before_transform, zero_after_transform)
 
 
-class AddUniqueIDsTest(test_case.TestCase):
+class AddUniqueIDsTest(absltest.TestCase):
 
   def test_should_transform_compiled_tf_computation(self):
     tuple_type = computation_types.TensorType(tf.int32)
@@ -189,7 +189,7 @@ class AddUniqueIDsTest(test_case.TestCase):
           different_transformed_comp.proto.tensorflow.cache_key.id)
 
 
-class RaiseOnDisallowedOpTest(test_case.TestCase):
+class RaiseOnDisallowedOpTest(absltest.TestCase):
 
   def test_should_transform_tf_computation(self):
     tuple_type = computation_types.TensorType(tf.int32)
@@ -226,4 +226,4 @@ class RaiseOnDisallowedOpTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()
