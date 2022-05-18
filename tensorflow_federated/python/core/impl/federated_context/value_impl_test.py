@@ -292,7 +292,7 @@ class ValueTest(parameterized.TestCase):
     self.assertEqual(str(value.type_signature), 'float64')
 
   def test_to_value_with_np_bool(self):
-    value = value_impl.to_value(np.bool(1.0), tf.bool)
+    value = value_impl.to_value(np.bool_(1.0), tf.bool)
     self.assertIsInstance(value, value_impl.Value)
     self.assertEqual(str(value.type_signature), 'bool')
 

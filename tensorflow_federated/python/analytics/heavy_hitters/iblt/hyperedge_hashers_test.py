@@ -52,7 +52,7 @@ class HyperedgeHashersTest(tf.test.TestCase, parameterized.TestCase):
       is_uniform: A boolean indicating if `samples` are expected to be uniformly
         distributed or not.
     """
-    samples = np.array(samples, dtype=np.int)
+    samples = np.array(samples, dtype=int)
     samples = samples.reshape(-1)
     _, counts = np.unique(samples, return_counts=True)
     expected_counts = np.sum(counts) / len(counts)

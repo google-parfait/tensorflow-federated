@@ -244,7 +244,7 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_capture_result_with_np_bool(self):
     with tf.Graph().as_default() as graph:
       type_spec, binding = tensorflow_utils.capture_result_from_graph(
-          np.bool(True), graph)
+          np.bool_(True), graph)
     self._assert_captured_result_eq_dtype(type_spec, binding, 'bool')
 
   def test_capture_result_with_np_ndarray(self):
@@ -878,7 +878,7 @@ class GraphUtilsTest(tf.test.TestCase):
 
     expected_structure = tuple([
         np.array([], dtype=np.int32),
-        collections.OrderedDict([('a', np.array([], dtype=np.bool)),
+        collections.OrderedDict([('a', np.array([], dtype=bool)),
                                  ('b', np.array([], dtype=np.float32))])
     ])
 
@@ -905,7 +905,7 @@ class GraphUtilsTest(tf.test.TestCase):
                                   tuple([
                                       np.array([], dtype=np.int32),
                                       collections.OrderedDict([
-                                          ('a', np.array([], dtype=np.bool)),
+                                          ('a', np.array([], dtype=bool)),
                                           ('b', np.array([], dtype=np.float32)),
                                       ])
                                   ])))

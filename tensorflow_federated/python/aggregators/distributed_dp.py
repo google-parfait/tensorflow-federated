@@ -631,7 +631,7 @@ def _heuristic_scale_factor(local_stddev,
 
 
 def _check_scalar(value, label):
-  is_bool = isinstance(value, (bool, np.bool))
+  is_bool = isinstance(value, bool)
   is_py_scalar = isinstance(value, (int, float))
   is_np_scalar = np.isscalar(value)
   if is_bool or not (is_py_scalar or is_np_scalar):
@@ -663,7 +663,7 @@ def _check_float(value, label):
 
 
 def _check_bool(value, label):
-  if not isinstance(value, (bool, np.bool)):
+  if not isinstance(value, bool):
     raise TypeError(f'{label} must be a bool. Found {repr(value)}.')
 
 

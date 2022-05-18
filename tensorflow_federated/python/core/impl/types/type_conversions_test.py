@@ -148,7 +148,7 @@ class InferTypeTest(parameterized.TestCase, tf.test.TestCase):
         str(type_conversions.infer_type(np.float64(10))), 'float64')
 
   def test_with_np_bool(self):
-    self.assertEqual(str(type_conversions.infer_type(np.bool(True))), 'bool')
+    self.assertEqual(str(type_conversions.infer_type(np.bool_(True))), 'bool')
 
   def test_with_unicode_string(self):
     self.assertEqual(str(type_conversions.infer_type(u'abc')), 'string')
