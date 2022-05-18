@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations
@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 DEFAULT_GRAPPLER_CONFIG = tf.compat.v1.ConfigProto()
 
 
-class CheckExtractionResultTest(test_case.TestCase):
+class CheckExtractionResultTest(absltest.TestCase):
 
   def get_function_from_first_symbol_binding_in_lambda_result(self, tree):
     """Unwraps a function from a series of nested calls, lambdas and blocks.
@@ -115,7 +115,7 @@ class CheckExtractionResultTest(test_case.TestCase):
     transformations.check_extraction_result(function, compiled_computation)
 
 
-class ConsolidateAndExtractTest(test_case.TestCase):
+class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -233,7 +233,7 @@ class ConsolidateAndExtractTest(test_case.TestCase):
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
 
 
-class ConcatenateFunctionOutputsTest(test_case.TestCase):
+class ConcatenateFunctionOutputsTest(absltest.TestCase):
 
   def test_raises_on_non_lambda_args(self):
     reference = building_blocks.Reference('x', tf.int32)
@@ -289,7 +289,7 @@ class ConcatenateFunctionOutputsTest(test_case.TestCase):
     self.assertEqual(str(concatenated), '(y -> <y,y>)')
 
 
-class NormalizedBitTest(test_case.TestCase):
+class NormalizedBitTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -383,4 +383,4 @@ if __name__ == '__main__':
   factory = executor_stacks.local_executor_factory()
   context = sync_execution_context.ExecutionContext(executor_fn=factory)
   set_default_context.set_default_context(context)
-  test_case.main()
+  absltest.main()

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -79,7 +79,7 @@ def server_placed_mult(arg):
   return intrinsics.federated_map(tf_multiply_int, arg)
 
 
-class MergeableCompCompilerTest(test_case.TestCase):
+class MergeableCompCompilerTest(absltest.TestCase):
 
   def setUp(self):
     ex_factory = executor_stacks.local_executor_factory(default_num_clients=0)
@@ -223,4 +223,4 @@ class MergeableCompCompilerTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

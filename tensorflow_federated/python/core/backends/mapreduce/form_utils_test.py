@@ -19,7 +19,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
@@ -516,7 +515,7 @@ def get_example_cf_compatible_iterative_processes():
   # pyformat: enable
 
 
-class MapReduceFormTestCase(test_case.TestCase):
+class MapReduceFormTestCase(tf.test.TestCase):
   """A base class that overrides evaluate to handle various executors."""
 
   def evaluate(self, value):
@@ -764,7 +763,7 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
     self.assertEqual(mrf.secure_modular_sum_modulus(), (22,))
 
 
-class BroadcastFormTest(test_case.TestCase):
+class BroadcastFormTest(tf.test.TestCase):
 
   def test_roundtrip(self):
     add = computations.tf_computation(lambda x, y: x + y)
@@ -825,7 +824,7 @@ class BroadcastFormTest(test_case.TestCase):
     self.assertEqual([10, 11, 12], round_trip_comp((), [5, 6, 7]))
 
 
-class AsFunctionOfSingleSubparameterTest(test_case.TestCase):
+class AsFunctionOfSingleSubparameterTest(tf.test.TestCase):
 
   def assert_selected_param_to_result_type(self, old_lam, new_lam, index):
     old_type = old_lam.type_signature
@@ -866,7 +865,7 @@ class AsFunctionOfSingleSubparameterTest(test_case.TestCase):
     self.assert_selected_param_to_result_type(lam, new_lam, 1)
 
 
-class AsFunctionOfSomeSubparametersTest(test_case.TestCase):
+class AsFunctionOfSomeSubparametersTest(tf.test.TestCase):
 
   def test_raises_on_non_tuple_parameter(self):
     lam = building_blocks.Lambda('x', tf.int32,
@@ -1060,4 +1059,4 @@ if __name__ == '__main__':
   # The test execution context replaces all secure intrinsics with insecure
   # reductions.
   execution_contexts.set_test_execution_context()
-  test_case.main()
+  tf.test.main()
