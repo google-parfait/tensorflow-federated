@@ -18,8 +18,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -233,7 +233,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks() +
-      [('complex_tree', test_utils.create_nested_syntax_tree())])
+      [('complex_tree', building_block_test_utils.create_nested_syntax_tree())])
   def test_transform_postorder_returns_untransformed(self, comp):
 
     def transform_noop(comp):
@@ -259,12 +259,12 @@ class TransformationUtilsTest(parameterized.TestCase):
     self.assertFalse(modified)
 
   def test_transform_postorder_hits_all_nodes_once(self):
-    complex_ast = test_utils.create_nested_syntax_tree()
+    complex_ast = building_block_test_utils.create_nested_syntax_tree()
     self.assertEqual(
         _get_number_of_nodes_via_transform_postorder(complex_ast), 22)
 
   def test_transform_postorder_walks_to_leaves_in_postorder(self):
-    complex_ast = test_utils.create_nested_syntax_tree()
+    complex_ast = building_block_test_utils.create_nested_syntax_tree()
 
     leaf_name_order = []
 
@@ -279,7 +279,7 @@ class TransformationUtilsTest(parameterized.TestCase):
                      ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'])
 
   def test_transform_postorder_walks_block_locals_postorder(self):
-    complex_ast = test_utils.create_nested_syntax_tree()
+    complex_ast = building_block_test_utils.create_nested_syntax_tree()
 
     leaf_name_order = []
 
@@ -304,7 +304,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     logic ingesting a `Call` breaks, this test will fail and the one above
     may pass.
     """
-    complex_ast = test_utils.create_nested_syntax_tree()
+    complex_ast = building_block_test_utils.create_nested_syntax_tree()
 
     leaf_name_order = []
 
@@ -360,7 +360,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks() +
-      [('complex_ast', test_utils.create_nested_syntax_tree())])
+      [('complex_ast', building_block_test_utils.create_nested_syntax_tree())])
   def test_transform_postorder_with_symbol_bindings_returns_untransformed(
       self, comp):
 
@@ -391,7 +391,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       self.assertEqual(id(comp), id(same_comp))
 
   def test_transform_postorder_with_symbol_bindings_hits_all_nodes_once(self):
-    complex_ast = test_utils.create_nested_syntax_tree()
+    complex_ast = building_block_test_utils.create_nested_syntax_tree()
 
     simple_count = _get_number_of_nodes_via_transform_postorder(complex_ast)
     with_hooks_count = _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
@@ -409,7 +409,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       ('placement', building_blocks.Placement))
   def test_transform_postorder_with_symbol_bindings_counts_each_type_correctly(
       self, cbb_type):
-    complex_ast = test_utils.create_nested_syntax_tree()
+    complex_ast = building_block_test_utils.create_nested_syntax_tree()
 
     simple_count = _get_number_of_nodes_via_transform_postorder(
         complex_ast, predicate=lambda x: isinstance(x, cbb_type))
@@ -420,7 +420,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_hooks_walks_leaves_in_postorder(self):
     leaf_order = []
-    outer_comp = test_utils.create_nested_syntax_tree()
+    outer_comp = building_block_test_utils.create_nested_syntax_tree()
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
@@ -436,7 +436,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_hooks_walks_block_locals_postorder(self):
     block_locals_order = []
-    outer_comp = test_utils.create_nested_syntax_tree()
+    outer_comp = building_block_test_utils.create_nested_syntax_tree()
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
@@ -452,7 +452,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_hooks_walks_variable_declarations_in_order(self):
     variable_binding_order = []
-    outer_comp = test_utils.create_nested_syntax_tree()
+    outer_comp = building_block_test_utils.create_nested_syntax_tree()
 
     class PreorderHookTracker(transformation_utils.BoundVariableTracker):
 
@@ -477,7 +477,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_transform_postorder_hooks_walks_postorder_interleaved(self):
     named_node_order = []
-    outer_comp = test_utils.create_nested_syntax_tree()
+    outer_comp = building_block_test_utils.create_nested_syntax_tree()
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
@@ -1562,7 +1562,7 @@ class TransformPreorderTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks() +
-      [('complex_tree', test_utils.create_nested_syntax_tree())])
+      [('complex_tree', building_block_test_utils.create_nested_syntax_tree())])
   def test_transform_preorder_returns_untransformed(self, comp):
 
     def transform_noop(comp):
@@ -1588,12 +1588,12 @@ class TransformPreorderTest(parameterized.TestCase):
     self.assertFalse(modified)
 
   def test_transform_preorder_hits_all_nodes_once(self):
-    complex_ast = test_utils.create_nested_syntax_tree()
+    complex_ast = building_block_test_utils.create_nested_syntax_tree()
     self.assertEqual(
         _get_number_of_nodes_via_transform_preorder(complex_ast), 22)
 
   def test_transform_preorder_walks_to_leaves_in_preorder(self):
-    complex_ast = test_utils.create_nested_syntax_tree()
+    complex_ast = building_block_test_utils.create_nested_syntax_tree()
 
     leaf_name_order = []
 
@@ -1608,7 +1608,7 @@ class TransformPreorderTest(parameterized.TestCase):
                      ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'])
 
   def test_transform_preorder_walks_block_locals_preorder(self):
-    complex_ast = test_utils.create_nested_syntax_tree()
+    complex_ast = building_block_test_utils.create_nested_syntax_tree()
 
     leaf_name_order = []
 
@@ -1633,7 +1633,7 @@ class TransformPreorderTest(parameterized.TestCase):
     logic ingesting a `Call` breaks, this test will fail and the one above
     may pass.
     """
-    complex_ast = test_utils.create_nested_syntax_tree()
+    complex_ast = building_block_test_utils.create_nested_syntax_tree()
 
     leaf_name_order = []
 

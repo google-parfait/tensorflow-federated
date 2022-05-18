@@ -19,9 +19,9 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -96,16 +96,16 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('federated_apply',
        intrinsic_defs.FEDERATED_APPLY.uri,
-       compiler_test_utils.create_whimsy_called_federated_apply),
+       building_block_test_utils.create_whimsy_called_federated_apply),
       ('federated_map',
        intrinsic_defs.FEDERATED_MAP.uri,
-       compiler_test_utils.create_whimsy_called_federated_map),
+       building_block_test_utils.create_whimsy_called_federated_map),
       ('federated_map_all_equal',
        intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
-       compiler_test_utils.create_whimsy_called_federated_map_all_equal),
+       building_block_test_utils.create_whimsy_called_federated_map_all_equal),
       ('sequence_map',
        intrinsic_defs.SEQUENCE_MAP.uri,
-       compiler_test_utils.create_whimsy_called_sequence_map),
+       building_block_test_utils.create_whimsy_called_sequence_map),
   )
   # pyformat: enable
   def test_removes_intrinsic(self, uri, factory):
@@ -123,7 +123,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_removes_federated_map_with_named_result(self):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
-    fn = compiler_test_utils.create_identity_function('c', parameter_type)
+    fn = building_block_test_utils.create_identity_function('c', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
                                                placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
@@ -140,9 +140,9 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_removes_nested_federated_map(self):
-    called_intrinsic = compiler_test_utils.create_whimsy_called_federated_map(
+    called_intrinsic = building_block_test_utils.create_whimsy_called_federated_map(
         parameter_name='a')
-    block = compiler_test_utils.create_whimsy_block(
+    block = building_block_test_utils.create_whimsy_block(
         called_intrinsic, variable_name='b')
     comp = block
 
@@ -157,7 +157,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_removes_chained_federated_maps(self):
-    fn = compiler_test_utils.create_identity_function('a', tf.int32)
+    fn = building_block_test_utils.create_identity_function('a', tf.int32)
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call = _create_chained_whimsy_federated_maps([fn, fn], arg)
@@ -174,7 +174,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertTrue(modified)
 
   def test_does_not_remove_whimsy_intrinsic(self):
-    comp = compiler_test_utils.create_whimsy_called_intrinsic(
+    comp = building_block_test_utils.create_whimsy_called_intrinsic(
         parameter_name='a')
 
     transformed_comp, modified = tree_transformations.remove_mapped_or_applied_identity(
@@ -187,7 +187,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertFalse(modified)
 
   def test_does_not_remove_called_lambda(self):
-    fn = compiler_test_utils.create_identity_function('a', tf.int32)
+    fn = building_block_test_utils.create_identity_function('a', tf.int32)
     arg = building_blocks.Data('data', tf.int32)
     call = building_blocks.Call(fn, arg)
     comp = call

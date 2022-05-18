@@ -16,7 +16,7 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""Test utils for TFF computations."""
+"""Utilities for testing building blocks."""
 
 import tensorflow as tf
 

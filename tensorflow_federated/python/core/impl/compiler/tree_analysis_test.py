@@ -20,9 +20,9 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -73,14 +73,14 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
       tree_analysis.extract_nodes_consuming(data, None)
 
   def test_adds_all_nodes_to_set_with_constant_true_predicate(self):
-    nested_tree = test_utils.create_nested_syntax_tree()
+    nested_tree = building_block_test_utils.create_nested_syntax_tree()
     all_nodes = tree_analysis.extract_nodes_consuming(nested_tree,
                                                       lambda x: True)
     node_count = tree_analysis.count(nested_tree)
     self.assertLen(all_nodes, node_count)
 
   def test_adds_no_nodes_to_set_with_constant_false_predicate(self):
-    nested_tree = test_utils.create_nested_syntax_tree()
+    nested_tree = building_block_test_utils.create_nested_syntax_tree()
     all_nodes = tree_analysis.extract_nodes_consuming(nested_tree,
                                                       lambda x: False)
     self.assertEmpty(all_nodes)
@@ -166,7 +166,8 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
       tree_analysis.check_broadcast_not_dependent_on_aggregate(None)
 
   def test_does_not_find_aggregate_dependent_on_broadcast(self):
-    broadcast = test_utils.create_whimsy_called_federated_broadcast()
+    broadcast = building_block_test_utils.create_whimsy_called_federated_broadcast(
+    )
     value_type = broadcast.type_signature
     zero = building_blocks.Data('zero', value_type.member)
     accumulate_result = building_blocks.Data('accumulate_result',
@@ -187,7 +188,8 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
         aggregate_dependent_on_broadcast)
 
   def test_finds_broadcast_dependent_on_aggregate(self):
-    aggregate = test_utils.create_whimsy_called_federated_aggregate()
+    aggregate = building_block_test_utils.create_whimsy_called_federated_aggregate(
+    )
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
         aggregate)
     with self.assertRaises(ValueError):
@@ -195,7 +197,8 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
           broadcasted_aggregate)
 
   def test_returns_correct_example_of_broadcast_dependent_on_aggregate(self):
-    aggregate = test_utils.create_whimsy_called_federated_aggregate()
+    aggregate = building_block_test_utils.create_whimsy_called_federated_aggregate(
+    )
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
         aggregate)
     with self.assertRaisesRegex(ValueError, 'acc_param'):
@@ -210,7 +213,8 @@ class AggregateDependentOnAggregateTest(absltest.TestCase):
       tree_analysis.check_aggregate_not_dependent_on_aggregate(None)
 
   def test_does_not_find_aggregate_dependent_on_broadcast(self):
-    broadcast = test_utils.create_whimsy_called_federated_broadcast()
+    broadcast = building_block_test_utils.create_whimsy_called_federated_broadcast(
+    )
     value_type = broadcast.type_signature
     zero = building_blocks.Data('zero', value_type.member)
     accumulate_result = building_blocks.Data('accumulate_result',
@@ -231,7 +235,8 @@ class AggregateDependentOnAggregateTest(absltest.TestCase):
         aggregate_dependent_on_broadcast)
 
   def test_finds_aggregate_dependent_on_aggregate(self):
-    aggregate = test_utils.create_whimsy_called_federated_aggregate()
+    aggregate = building_block_test_utils.create_whimsy_called_federated_aggregate(
+    )
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
         aggregate)
     second_aggregate = building_block_factory.create_federated_sum(
@@ -247,7 +252,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
       tree_analysis.count_tensorflow_ops_under(None)
 
   def test_returns_zero_no_tensorflow(self):
-    no_tensorflow_comp = test_utils.create_nested_syntax_tree()
+    no_tensorflow_comp = building_block_test_utils.create_nested_syntax_tree()
     tf_count = tree_analysis.count_tensorflow_ops_under(no_tensorflow_comp)
     self.assertEqual(tf_count, 0)
 
@@ -321,7 +326,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
       tree_analysis.count_tensorflow_variables_under(None)
 
   def test_returns_zero_no_tensorflow(self):
-    no_tensorflow_comp = test_utils.create_nested_syntax_tree()
+    no_tensorflow_comp = building_block_test_utils.create_nested_syntax_tree()
     variable_count = tree_analysis.count_tensorflow_variables_under(
         no_tensorflow_comp)
     self.assertEqual(variable_count, 0)
@@ -349,20 +354,20 @@ class ContainsCalledIntrinsic(absltest.TestCase):
       tree_analysis.contains_called_intrinsic(None)
 
   def test_returns_true_with_none_uri(self):
-    comp = test_utils.create_whimsy_called_federated_broadcast()
+    comp = building_block_test_utils.create_whimsy_called_federated_broadcast()
     self.assertTrue(tree_analysis.contains_called_intrinsic(comp))
 
   def test_returns_true_with_matching_uri(self):
-    comp = test_utils.create_whimsy_called_federated_broadcast()
+    comp = building_block_test_utils.create_whimsy_called_federated_broadcast()
     uri = intrinsic_defs.FEDERATED_BROADCAST.uri
     self.assertTrue(tree_analysis.contains_called_intrinsic(comp, uri))
 
   def test_returns_false_with_no_called_intrinsic(self):
-    comp = test_utils.create_identity_function('a')
+    comp = building_block_test_utils.create_identity_function('a')
     self.assertFalse(tree_analysis.contains_called_intrinsic(comp))
 
   def test_returns_false_with_unmatched_called_intrinsic(self):
-    comp = test_utils.create_whimsy_called_federated_broadcast()
+    comp = building_block_test_utils.create_whimsy_called_federated_broadcast()
     uri = intrinsic_defs.FEDERATED_MAP.uri
     self.assertFalse(tree_analysis.contains_called_intrinsic(comp, uri))
 
@@ -741,18 +746,22 @@ class TreesEqualTest(absltest.TestCase):
 
 
 non_aggregation_intrinsics = building_blocks.Struct([
-    (None, test_utils.create_whimsy_called_federated_broadcast()),
-    (None, test_utils.create_whimsy_called_federated_value(placements.CLIENTS))
+    (None,
+     building_block_test_utils.create_whimsy_called_federated_broadcast()),
+    (None,
+     building_block_test_utils.create_whimsy_called_federated_value(
+         placements.CLIENTS))
 ])
 
 unit = computation_types.StructType([])
-trivial_aggregate = test_utils.create_whimsy_called_federated_aggregate(
+trivial_aggregate = building_block_test_utils.create_whimsy_called_federated_aggregate(
     value_type=unit)
-trivial_mean = test_utils.create_whimsy_called_federated_mean(unit)
-trivial_sum = test_utils.create_whimsy_called_federated_sum(unit)
+trivial_mean = building_block_test_utils.create_whimsy_called_federated_mean(
+    unit)
+trivial_sum = building_block_test_utils.create_whimsy_called_federated_sum(unit)
 # TODO(b/120439632) Enable once federated_mean accepts structured weights.
 # trivial_weighted_mean = ...
-trivial_secure_sum = test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+trivial_secure_sum = building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     unit)
 
 
@@ -797,12 +806,13 @@ class ContainsAggregationShared(parameterized.TestCase):
     self.assertEmpty(tree_analysis.find_secure_aggregation_in_tree(comp))
 
 
-simple_aggregate = test_utils.create_whimsy_called_federated_aggregate()
-simple_mean = test_utils.create_whimsy_called_federated_mean()
-simple_sum = test_utils.create_whimsy_called_federated_sum()
-simple_weighted_mean = test_utils.create_whimsy_called_federated_mean(
+simple_aggregate = building_block_test_utils.create_whimsy_called_federated_aggregate(
+)
+simple_mean = building_block_test_utils.create_whimsy_called_federated_mean()
+simple_sum = building_block_test_utils.create_whimsy_called_federated_sum()
+simple_weighted_mean = building_block_test_utils.create_whimsy_called_federated_mean(
     tf.float32, tf.float32)
-simple_secure_sum = test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+simple_secure_sum = building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
 )
 
 
@@ -824,7 +834,7 @@ class ContainsSecureAggregation(parameterized.TestCase):
     self.assert_one_aggregation(simple_secure_sum)
 
   def test_returns_str_on_nested_secure_aggregation(self):
-    comp = test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+    comp = building_block_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
         (tf.int32, tf.int32))
     self.assert_one_aggregation(comp)
 

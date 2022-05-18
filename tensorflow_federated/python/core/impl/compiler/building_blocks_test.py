@@ -18,9 +18,9 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -598,7 +598,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_federated_aggregate(self):
-    comp = test_utils.create_whimsy_called_federated_aggregate(
+    comp = building_block_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -630,7 +630,8 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_federated_map(self):
-    comp = test_utils.create_whimsy_called_federated_map(parameter_name='a')
+    comp = building_block_test_utils.create_whimsy_called_federated_map(
+        parameter_name='a')
 
     self.assertEqual(comp.compact_representation(),
                      'federated_map(<(a -> a),data>)')

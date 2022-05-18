@@ -151,6 +151,20 @@ py_test(
 )
 
 py_library(
+    name = "building_block_test_utils",
+    testonly = True,
+    srcs = ["building_block_test_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":building_block_factory",
+        ":building_blocks",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "building_blocks",
     srcs = ["building_blocks.py"],
     srcs_version = "PY3",
@@ -175,9 +189,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":building_block_factory",
+        ":building_block_test_utils",
         ":building_blocks",
         ":intrinsic_defs",
-        ":test_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -410,20 +424,6 @@ py_test(
 )
 
 py_library(
-    name = "test_utils",
-    testonly = True,
-    srcs = ["test_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":building_block_factory",
-        ":building_blocks",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
     name = "transformations",
     srcs = ["transformations.py"],
     srcs_version = "PY3",
@@ -451,8 +451,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":building_block_factory",
+        ":building_block_test_utils",
         ":building_blocks",
-        ":test_utils",
         ":transformations",
         ":tree_analysis",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -485,8 +485,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":building_block_factory",
+        ":building_block_test_utils",
         ":building_blocks",
-        ":test_utils",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -522,9 +522,9 @@ py_test(
     deps = [
         ":building_block_analysis",
         ":building_block_factory",
+        ":building_block_test_utils",
         ":building_blocks",
         ":intrinsic_defs",
-        ":test_utils",
         ":tree_analysis",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:serialization_utils",
@@ -569,9 +569,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":building_block_factory",
+        ":building_block_test_utils",
         ":building_blocks",
         ":intrinsic_defs",
-        ":test_utils",
         ":tree_analysis",
         ":tree_transformations",
         "//tensorflow_federated/python/common_libs:golden",
