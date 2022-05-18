@@ -25,7 +25,7 @@ class ReleaseManager(metaclass=abc.ABCMeta):
   """
 
   @abc.abstractmethod
-  async def release(self, value: Any, key: Any = None):
+  async def release(self, value: Any, key: Any = None) -> None:
     """Releases `value` from a federated program.
 
     An implementation of this interface should be specific about the types of
