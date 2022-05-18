@@ -136,8 +136,8 @@ py_test(
     deps = [
         ":building_block_factory",
         ":building_blocks",
-        ":computation_test_utils",
         ":intrinsic_defs",
+        ":tensorflow_computation_test_utils",
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -229,8 +229,8 @@ py_test(
         ":building_block_factory",
         ":building_blocks",
         ":compiled_computation_transforms",
-        ":computation_test_utils",
         ":tensorflow_computation_factory",
+        ":tensorflow_computation_test_utils",
         ":tensorflow_computation_transformations",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:absltest",
@@ -262,21 +262,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
-    name = "computation_test_utils",
-    testonly = True,
-    srcs = ["computation_test_utils.py"],
-    deps = [
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -380,8 +365,8 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":computation_test_utils",
         ":tensorflow_computation_factory",
+        ":tensorflow_computation_test_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
@@ -400,6 +385,20 @@ py_library(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "tensorflow_computation_test_utils",
+    testonly = True,
+    srcs = ["tensorflow_computation_test_utils.py"],
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

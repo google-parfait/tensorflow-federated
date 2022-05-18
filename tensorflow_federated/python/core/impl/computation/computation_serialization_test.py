@@ -13,18 +13,22 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import tensorflow as tf
 
-from tensorflow_federated.python.core.impl.compiler import computation_test_utils
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class ComputationSerializationTest(absltest.TestCase):
 
   def test_serialize_deserialize_round_trip(self):
-    proto = computation_test_utils.create_computation_tensorflow_add_values()
+    operand_type = computation_types.TensorType(tf.int32)
+    proto, _ = tensorflow_computation_factory.create_binary_operator(
+        tf.add, operand_type, operand_type)
     comp = computation_impl.ConcreteComputation(
         proto, context_stack_impl.context_stack)
     serialized_comp = computation_serialization.serialize_computation(comp)
