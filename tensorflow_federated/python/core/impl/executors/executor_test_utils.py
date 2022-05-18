@@ -16,7 +16,7 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""Utils for testing executors."""
+"""Utilities for testing executors."""
 
 import asyncio
 
