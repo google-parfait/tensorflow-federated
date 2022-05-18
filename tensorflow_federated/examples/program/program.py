@@ -32,8 +32,9 @@ From the perspective of roles/ownership:
 *   TFF is the library
 *   This example is the author of the program and the program logic
 
-Please read //third_party/tensorflow_federated/python/program/README.md for more
-documentation about this example.
+Please read
+https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/program/README.md for
+more documentation about this example.
 """
 
 import asyncio
