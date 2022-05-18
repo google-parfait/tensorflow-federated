@@ -522,8 +522,8 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     batch = collections.OrderedDict(
         x=np.random.uniform(low=0.0, high=1.0,
                             size=[batch_size, 28 * 28]).astype(np.float32),
-        y=np.random.random_integers(low=0, high=9, size=[batch_size,
-                                                         1]).astype(np.int64))
+        y=np.random.randint(low=0, high=9, size=[batch_size,
+                                                 1]).astype(np.int64))
 
     num_train_steps = 2
     for _ in range(num_train_steps):
