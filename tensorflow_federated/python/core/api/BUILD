@@ -39,10 +39,3 @@ py_library(
     srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances"],
 )
-
-py_library(
-    name = "test_case",
-    srcs = ["test_case.py"],
-    srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
-)
