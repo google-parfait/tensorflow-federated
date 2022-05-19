@@ -85,22 +85,25 @@ grpc::Status ExecutorService::GetExecutor(grpc::ServerContext* context,
   std::string executor_key = CardinalitiesToString(cardinalities);
   {
     absl::WriterMutexLock lock(&executors_mutex_);
-    // Insert a `nullptr` `std::shared_ptr<Executor>` to avoid invoking
-    // `executor_factory_` in the case where an entry is already present.
-    auto insert = executors_.insert({executor_key, ExecutorEntry{nullptr, 1}});
-    bool did_insert = insert.second;
-    ExecutorEntry& entry = insert.first->second;
-    if (did_insert) {
+    auto entry = executors_.find(executor_key);
+    bool executor_exists = (entry != executors_.end());
+    if (!executor_exists) {
       // Initialize the `std::shared_ptr<Executor>` added to the map.
       absl::StatusOr<std::shared_ptr<Executor>> new_executor =
           executor_factory_(cardinalities);
       if (!new_executor.ok()) {
+        LOG(ERROR) << "Failure to construct executor in executor service: ";
         LOG(ERROR) << new_executor.status().message();
         return absl_to_grpc(new_executor.status());
       }
-      entry.executor = std::move(*new_executor);
+      // Initialize the refcount to one.
+      executors_.insert(
+          {executor_key, ExecutorEntry{std::move(*new_executor), 1}});
+      LOG(INFO) << "ExecutorService created new Executor for cardinalities: "
+                << executor_key;
     } else {
-      entry.remote_refcount++;
+      // Just increment the refcount of the entry.
+      entry->second.remote_refcount++;
     }
   }
   response->mutable_executor()->set_id(executor_key);
