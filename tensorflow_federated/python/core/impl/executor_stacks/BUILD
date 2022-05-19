@@ -16,7 +16,7 @@ py_library(
     name = "executor_stacks",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
+    visibility = ["//visibility:private"],
 )
 
 py_library(
