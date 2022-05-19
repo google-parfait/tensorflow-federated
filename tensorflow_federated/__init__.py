@@ -31,7 +31,6 @@ from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import templates
 from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core import types
-from tensorflow_federated.python.core.api.computations import check_returns_type
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
 from tensorflow_federated.python.core.impl.computation.computation_base import Computation
@@ -68,6 +67,7 @@ from tensorflow_federated.python.core.impl.types.placements import CLIENTS
 from tensorflow_federated.python.core.impl.types.placements import SERVER
 from tensorflow_federated.python.core.impl.types.type_conversions import structure_from_tensor_type_tree
 from tensorflow_federated.python.core.impl.types.typed_object import TypedObject
+from tensorflow_federated.python.core.impl.wrappers.computation_wrapper import check_returns_type
 
 if sys.version_info[0] < 3 or sys.version_info[1] < 9:
   raise Exception('TFF only supports Python versions 3.9 or later.')

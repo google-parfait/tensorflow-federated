@@ -16,9 +16,6 @@
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
-check_returns_type = computation_wrapper_instances.check_returns_type
-
-
 tf_computation = computation_wrapper_instances.tensorflow_wrapper
 
 federated_computation = computation_wrapper_instances.federated_computation_wrapper
