@@ -67,7 +67,11 @@ def build_uniform_sampling_fn(
       random_state = np.random.RandomState(get_pseudo_random_int(round_num))
     else:
       random_state = np.random.RandomState()
-    return random_state.choice(
-        sample_range, size=size, replace=replace).tolist()
+    try:
+      return random_state.choice(
+          sample_range, size=size, replace=replace).tolist()
+    except ValueError as e:
+      raise ValueError(f'Failed to sample {size} clients from population of '
+                       f'size {len(sample_range)}.') from e
 
   return functools.partial(sample, random_seed=random_seed)
