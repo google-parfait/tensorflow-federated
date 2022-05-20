@@ -24,12 +24,12 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 DEFAULT_GRAPPLER_CONFIG = tf.compat.v1.ConfigProto()
 
@@ -148,9 +148,9 @@ class ConsolidateAndExtractTest(absltest.TestCase):
                                  building_blocks.Reference('x', tf.int32))
     extracted_tf = transformations.consolidate_and_extract_local_processing(
         lam, DEFAULT_GRAPPLER_CONFIG)
-    executable_tf = computation_wrapper_instances.building_block_to_computation(
+    executable_tf = computation_impl.ConcreteComputation.from_building_block(
         extracted_tf)
-    executable_lam = computation_wrapper_instances.building_block_to_computation(
+    executable_lam = computation_impl.ConcreteComputation.from_building_block(
         lam)
     for k in range(10):
       self.assertEqual(executable_tf(k), executable_lam(k))
@@ -176,9 +176,9 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     extracted_tf = transformations.consolidate_and_extract_local_processing(
         mapping_fn, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
-    executable_tf = computation_wrapper_instances.building_block_to_computation(
+    executable_tf = computation_impl.ConcreteComputation.from_building_block(
         extracted_tf)
-    executable_lam = computation_wrapper_instances.building_block_to_computation(
+    executable_lam = computation_impl.ConcreteComputation.from_building_block(
         lam)
     for k in range(10):
       self.assertEqual(executable_tf(k), executable_lam(k))
@@ -193,9 +193,9 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     extracted_tf = transformations.consolidate_and_extract_local_processing(
         mapping_fn, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
-    executable_tf = computation_wrapper_instances.building_block_to_computation(
+    executable_tf = computation_impl.ConcreteComputation.from_building_block(
         extracted_tf)
-    executable_lam = computation_wrapper_instances.building_block_to_computation(
+    executable_lam = computation_impl.ConcreteComputation.from_building_block(
         lam)
     for k in range(10):
       self.assertEqual(executable_tf(k), executable_lam(k))
@@ -208,7 +208,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     federated_value_func = building_blocks.Lambda(None, None, federated_value)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
         federated_value_func, DEFAULT_GRAPPLER_CONFIG)
-    executable_tf = computation_wrapper_instances.building_block_to_computation(
+    executable_tf = computation_impl.ConcreteComputation.from_building_block(
         extracted_tf)
     self.assertEqual(executable_tf(), 0)
 
@@ -221,7 +221,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     federated_value_func = building_blocks.Lambda(None, None, federated_value)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
         federated_value_func, DEFAULT_GRAPPLER_CONFIG)
-    executable_tf = computation_wrapper_instances.building_block_to_computation(
+    executable_tf = computation_impl.ConcreteComputation.from_building_block(
         extracted_tf)
     self.assertEqual(executable_tf(), 0)
 

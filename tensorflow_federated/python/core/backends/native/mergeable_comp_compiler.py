@@ -24,7 +24,6 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
 def _compile_to_tf(fn):
@@ -40,7 +39,7 @@ def _select_output_result_and_wrap_as_noarg_tensorflow(
       None, None,
       building_block_factory.select_output_from_lambda(fn, path).result)
   selected_and_compiled = _compile_to_tf(selected_and_wrapped)
-  return computation_wrapper_instances.building_block_to_computation(
+  return computation_impl.ConcreteComputation.from_building_block(
       selected_and_compiled)
 
 
@@ -50,7 +49,7 @@ def _select_output_result_and_wrap_as_tensorflow(
   selected_fn = building_block_factory.select_output_from_lambda(fn,
                                                                  path).result
   selected_and_compiled = _compile_to_tf(selected_fn)
-  return computation_wrapper_instances.building_block_to_computation(
+  return computation_impl.ConcreteComputation.from_building_block(
       selected_and_compiled)
 
 
@@ -154,15 +153,15 @@ def compile_to_mergeable_comp_form(
   # Construct a report function which accepts the result of merge.
   merge_fn_type = before_agg.type_signature.result['federated_aggregate_param'][
       3]
-  identity_report = computation_wrapper_instances.building_block_to_computation(
+  identity_report = computation_impl.ConcreteComputation.from_building_block(
       building_block_factory.create_compiled_identity(merge_fn_type.result))
 
   zero_comp, accumulate_comp, merge_comp, report_comp = _extract_federated_aggregate_computations(
       before_agg)
 
-  before_agg_callable = computation_wrapper_instances.building_block_to_computation(
+  before_agg_callable = computation_impl.ConcreteComputation.from_building_block(
       before_agg)
-  after_agg_callable = computation_wrapper_instances.building_block_to_computation(
+  after_agg_callable = computation_impl.ConcreteComputation.from_building_block(
       after_agg)
 
   if before_agg.type_signature.parameter is not None:

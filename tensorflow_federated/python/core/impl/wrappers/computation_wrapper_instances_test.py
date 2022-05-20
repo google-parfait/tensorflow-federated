@@ -19,7 +19,6 @@ import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
-from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
@@ -525,21 +524,6 @@ class FederatedComputationWrapperTest(absltest.TestCase):
     except computation_wrapper.ComputationReturnedNoneError:
       self.assertIsInstance(  # pylint: disable=g-assert-in-except
           stack.current, runtime_error_context.RuntimeErrorContext)
-
-
-class ToComputationImplTest(absltest.TestCase):
-
-  def test_raises_on_none(self):
-    with self.assertRaises(TypeError):
-      computation_wrapper_instances.building_block_to_computation(None)
-
-  def test_converts_building_block_to_computation(self):
-    lam = building_blocks.Lambda('x', tf.int32,
-                                 building_blocks.Reference('x', tf.int32))
-    computation_impl_lambda = computation_wrapper_instances.building_block_to_computation(
-        lam)
-    self.assertIsInstance(computation_impl_lambda,
-                          computation_impl.ConcreteComputation)
 
 
 if __name__ == '__main__':

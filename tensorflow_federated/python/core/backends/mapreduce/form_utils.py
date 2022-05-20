@@ -39,10 +39,10 @@ from tensorflow_federated.python.core.impl.compiler import transformations as co
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
 
 _GRAPPLER_DEFAULT_CONFIG = tf.compat.v1.ConfigProto()
@@ -882,7 +882,7 @@ def get_broadcast_form_for_computation(
                                                  grappler_config)
 
   compute_server_context, client_processing = (
-      computation_wrapper_instances.building_block_to_computation(bb)
+      computation_impl.ConcreteComputation.from_building_block(bb)
       for bb in (compute_server_context, client_processing))
 
   comp_param_names = structure.name_list_with_nones(
@@ -962,7 +962,7 @@ def get_map_reduce_form_for_iterative_process(
             secure_sum_bitwidth, secure_sum_max_input, secure_sum_modulus,
             update)
   comps = (
-      computation_wrapper_instances.building_block_to_computation(bb)
+      computation_impl.ConcreteComputation.from_building_block(bb)
       for bb in blocks)
   return forms.MapReduceForm(
       *comps,

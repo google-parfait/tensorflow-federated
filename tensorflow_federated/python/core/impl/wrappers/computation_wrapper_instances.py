@@ -18,8 +18,6 @@
 # information.
 """Definitions of specific computation wrapper instances."""
 
-from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_utils
@@ -256,13 +254,3 @@ federated_computation_wrapper.__doc__ = (
     to be called with the function definition supplied as a parameter. See
     also `tff.tf_computation` for an extended documentation.
   """)
-
-
-def building_block_to_computation(building_block):
-  """Converts a computation building block to a computation impl."""
-  py_typecheck.check_type(building_block,
-                          building_blocks.ComputationBuildingBlock)
-  return computation_impl.ConcreteComputation(
-      building_block.proto,
-      context_stack_impl.context_stack,
-      annotated_type=building_block.type_signature)

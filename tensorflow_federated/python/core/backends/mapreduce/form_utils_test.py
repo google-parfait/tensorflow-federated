@@ -26,11 +26,11 @@ from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
 
 
@@ -591,7 +591,7 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
                                  building_blocks.Reference('x', init_result))
     bad_it = iterative_process.IterativeProcess(
         it.initialize,
-        computation_wrapper_instances.building_block_to_computation(lam))
+        computation_impl.ConcreteComputation.from_building_block(lam))
     with self.assertRaises(TypeError):
       form_utils.get_map_reduce_form_for_iterative_process(bad_it)
 
@@ -612,8 +612,7 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
                                            second_result)
     not_reducible_it = iterative_process.IterativeProcess(
         it.initialize,
-        computation_wrapper_instances.building_block_to_computation(
-            not_reducible))
+        computation_impl.ConcreteComputation.from_building_block(not_reducible))
 
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):
       form_utils.get_map_reduce_form_for_iterative_process(not_reducible_it)

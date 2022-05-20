@@ -24,7 +24,6 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
 def transform_to_native_form(
@@ -87,7 +86,7 @@ def transform_to_native_form(
         'transform_to_native_form', 'transform_tf_add_ids', span=True):
       form_with_ids, _ = tree_transformations.transform_tf_add_ids(
           disabled_grapler_form)
-    return computation_wrapper_instances.building_block_to_computation(
+    return computation_impl.ConcreteComputation.from_building_block(
         form_with_ids)
   except ValueError as e:
     logging.debug('Compilation for native runtime failed with error %s', e)
@@ -116,7 +115,7 @@ def desugar_and_transform_to_native(comp):
   # adds TF cache IDs to them. It is crucial that these transformations execute
   # in this order.
   native_form = transform_to_native_form(
-      computation_wrapper_instances.building_block_to_computation(
+      computation_impl.ConcreteComputation.from_building_block(
           intrinsics_desugared_bb),
       grappler_config=grappler_config)
   return native_form

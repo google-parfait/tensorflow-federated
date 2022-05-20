@@ -26,10 +26,10 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_reductions",
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
-        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )
 

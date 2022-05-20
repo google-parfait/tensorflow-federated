@@ -39,7 +39,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
         "@absl_py//absl/logging",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -109,7 +108,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )
 

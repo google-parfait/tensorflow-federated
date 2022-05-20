@@ -16,6 +16,7 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -82,6 +83,20 @@ class ComputationImplTest(absltest.TestCase):
     with self.assertRaises(computation_types.TypeNotAssignableError):
       computation_impl.ConcreteComputation.with_type(original_comp,
                                                      list_return_type)
+
+
+class FromBuildingBlockTest(absltest.TestCase):
+
+  def test_raises_on_none(self):
+    with self.assertRaises(TypeError):
+      computation_impl.ConcreteComputation.from_building_block(None)
+
+  def test_converts_building_block_to_computation(self):
+    buiding_block = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    computation = computation_impl.ConcreteComputation.from_building_block(
+        buiding_block)
+    self.assertIsInstance(computation, computation_impl.ConcreteComputation)
 
 
 if __name__ == '__main__':

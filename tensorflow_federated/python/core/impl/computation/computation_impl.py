@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 
@@ -56,6 +57,18 @@ class ConcreteComputation(computation_base.Computation):
         value._context_stack,
         annotated_type=type_spec)
     # pylint: enable=protected-access
+
+  @classmethod
+  def from_building_block(
+      cls, building_block: building_blocks.ComputationBuildingBlock
+  ) -> 'ConcreteComputation':
+    """Converts a computation building block to a computation impl."""
+    py_typecheck.check_type(building_block,
+                            building_blocks.ComputationBuildingBlock)
+    return cls(
+        building_block.proto,
+        context_stack_impl.context_stack,
+        annotated_type=building_block.type_signature)
 
   def to_building_block(self):
     # TODO(b/161560999): currently destroys annotated type.

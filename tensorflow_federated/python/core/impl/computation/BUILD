@@ -49,6 +49,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
@@ -63,6 +64,7 @@ py_test(
     deps = [
         ":computation_impl",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",

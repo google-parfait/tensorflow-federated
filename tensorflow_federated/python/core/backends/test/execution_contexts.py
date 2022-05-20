@@ -14,10 +14,10 @@
 """Execution contexts for the test backend."""
 
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
 def replace_secure_intrinsics_with_bodies(comp):
@@ -38,7 +38,7 @@ def replace_secure_intrinsics_with_bodies(comp):
   # TensorFlow computations for testing purposes.
   replaced_intrinsic_bodies, _ = intrinsic_reductions.replace_secure_intrinsics_with_insecure_bodies(
       comp.to_building_block())
-  return computation_wrapper_instances.building_block_to_computation(
+  return computation_impl.ConcreteComputation.from_building_block(
       replaced_intrinsic_bodies)
 
 

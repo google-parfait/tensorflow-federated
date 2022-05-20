@@ -54,6 +54,5 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )

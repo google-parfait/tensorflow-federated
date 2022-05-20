@@ -64,8 +64,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":computation_wrapper",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation_utils",
@@ -100,7 +98,6 @@ py_test(
         ":computation_wrapper",
         ":computation_wrapper_instances",
         "//tensorflow_federated/python/common_libs:golden",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/context_stack:runtime_error_context",
