@@ -254,7 +254,27 @@ class ClientWorkTest(absltest.TestCase):
 
     try:
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
-    except:  # pylint: disable=bare-except
+    except client_works.ClientDataTypeError:
+      self.fail('Could not construct a valid ClientWorkProcess.')
+
+  def test_constructs_with_struct_of_client_data_parameter(self):
+
+    @computations.federated_computation(
+        SERVER_INT, MODEL_WEIGHTS_TYPE,
+        computation_types.at_clients(
+            (computation_types.SequenceType(tf.float32),
+             (computation_types.SequenceType(tf.float32),
+              computation_types.SequenceType(tf.float32)))))
+    def next_fn(state, unused_weights, unused_data):
+      return MeasuredProcessOutput(
+          state,
+          intrinsics.federated_value(
+              client_works.ClientResult((), ()), placements.CLIENTS),
+          server_zero())
+
+    try:
+      client_works.ClientWorkProcess(test_initialize_fn, next_fn)
+    except client_works.ClientDataTypeError:
       self.fail('Could not construct a valid ClientWorkProcess.')
 
   def test_non_clients_placed_next_data_param_raises(self):
@@ -272,7 +292,7 @@ class ClientWorkTest(absltest.TestCase):
     with self.assertRaises(errors.TemplatePlacementError):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
 
-  def test_non_sequence_next_data_param_raises(self):
+  def test_non_sequence_or_struct_next_data_param_raises(self):
 
     @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
                                         CLIENTS_FLOAT)

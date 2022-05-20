@@ -24,6 +24,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 
@@ -172,10 +173,23 @@ class LearningProcess(iterative_process.IterativeProcess):
       raise LearningProcessPlacementError(
           f'The second input argument of `next_fn` must be placed at `CLIENTS`,'
           f' but found placement {next_fn_param[1].placement}.')
-    if not next_fn_param[1].member.is_sequence():
+
+    def is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
+      """Returns `True` if the type is a valid client dataset type."""
+      if type_spec.is_sequence():
+        return type_analysis.is_tensorflow_compatible_type(type_spec.element)
+      elif type_spec.is_struct():
+        return all(
+            is_allowed_client_data_type(element_type)
+            for element_type in type_spec.children())
+      else:
+        return False
+
+    if not is_allowed_client_data_type(next_fn_param[1].member):
       raise LearningProcessSequenceTypeError(
           f'The member type of the second input argument to `next_fn` must be a'
-          f' `tff.SequenceType` but found {next_fn_param[1].member} instead.')
+          f' `tff.SequenceType` or a nested `tff.StructType` of sequence types '
+          f'but found {next_fn_param[1].member} instead.')
     next_fn_result = next_fn.type_signature.result
     if next_fn_result.metrics.placement != placements.SERVER:
       raise LearningProcessPlacementError(

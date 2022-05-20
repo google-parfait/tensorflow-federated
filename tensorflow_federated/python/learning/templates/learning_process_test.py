@@ -163,6 +163,33 @@ class LearningProcessTest(absltest.TestCase):
       self.fail('Could not construct a LearningProcess with state type having '
                 'statically unknown shape.')
 
+  def test_construction_with_nested_datasets_does_not_raise(self):
+
+    @federated_computation
+    def initialize_fn():
+      return intrinsics.federated_eval(
+          tf_computation(lambda: tf.constant(0.0, tf.float32)),
+          placements.SERVER)
+
+    # Test that clients can receive multiple datasets.
+    datasets_type = (SequenceType(tf.string), (SequenceType(tf.string),
+                                               SequenceType(tf.string)))
+
+    @federated_computation(at_server(tf.float32), at_clients(datasets_type))
+    def next_fn(state, datasets):
+      del datasets  # Unused.
+      return LearningProcessOutput(
+          state, intrinsics.federated_value((), placements.SERVER))
+
+    try:
+      learning_process.LearningProcess(
+          initialize_fn, next_fn,
+          create_pass_through_get_model_weights(tf.float32),
+          create_take_arg_set_model_weights(tf.float32, tf.float32))
+    except learning_process.LearningProcessSequenceTypeError:
+      self.fail('Could not construct a LearningProcess with second parameter '
+                'type having nested sequences.')
+
   def test_init_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       init_fn = lambda: 0

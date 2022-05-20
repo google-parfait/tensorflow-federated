@@ -21,7 +21,9 @@
 import attr
 
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -136,10 +138,21 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
       raise errors.TemplatePlacementError(
           f'The third input argument of `next_fn` must be placed at CLIENTS '
           f'but found {client_data_param}.')
-    if not client_data_param.member.is_sequence():
+
+    def is_allowed_client_data_type(type_spec: computation_types.Type) -> bool:
+      if type_spec.is_sequence():
+        return type_analysis.is_tensorflow_compatible_type(type_spec.element)
+      elif type_spec.is_struct():
+        return all(
+            is_allowed_client_data_type(element_type)
+            for element_type in type_spec.children())
+      else:
+        return False
+
+    if not is_allowed_client_data_type(client_data_param.member):
       raise ClientDataTypeError(
-          f'The third input argument of `next_fn` must be a sequence but found '
-          f'{client_data_param}.')
+          f'The third input argument of `next_fn` must be a sequence or '
+          f'a structure of squences, but found {client_data_param}.')
 
     next_fn_result = next_fn.type_signature.result
     if (not next_fn_result.result.is_federated() or
