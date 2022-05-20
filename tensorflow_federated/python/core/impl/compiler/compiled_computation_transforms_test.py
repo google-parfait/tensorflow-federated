@@ -189,6 +189,43 @@ class AddUniqueIDsTest(absltest.TestCase):
           different_transformed_comp.proto.tensorflow.cache_key.id)
 
 
+class VerifyAllowedOpsTest(absltest.TestCase):
+
+  def test_should_transform_tf_computation(self):
+    tuple_type = computation_types.TensorType(tf.int32)
+    compiled_computation = building_block_factory.create_compiled_identity(
+        tuple_type)
+    self.assertTrue(
+        compiled_computation_transforms.VerifyAllowedOps(
+            frozenset()).should_transform(compiled_computation))
+
+  def test_should_not_transform_non_compiled_computations(self):
+    reference = building_blocks.Reference('x', tf.int32)
+    self.assertFalse(
+        compiled_computation_transforms.VerifyAllowedOps(
+            frozenset()).should_transform(reference))
+
+  def test_transform_only_allowed_ops(self):
+    tuple_type = computation_types.TensorType(tf.int32)
+    compiled_computation = building_block_factory.create_compiled_identity(
+        tuple_type)
+    allowed_op_names = frozenset(
+        ['Const', 'PartitionedCall', 'Identity', 'Placeholder'])
+    _, mutated = compiled_computation_transforms.VerifyAllowedOps(
+        allowed_op_names).transform(compiled_computation)
+    self.assertFalse(mutated)
+
+  def test_transform_disallowed_ops(self):
+    tuple_type = computation_types.TensorType(tf.int32)
+    compiled_computation = building_block_factory.create_compiled_identity(
+        tuple_type)
+    allowed_op_names = frozenset(['Identity'])
+    with self.assertRaises(tensorflow_computation_transformations
+                           .DisallowedOpInTensorFlowComputationError):
+      compiled_computation_transforms.VerifyAllowedOps(
+          allowed_op_names).transform(compiled_computation)
+
+
 class RaiseOnDisallowedOpTest(absltest.TestCase):
 
   def test_should_transform_tf_computation(self):
