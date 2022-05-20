@@ -19,6 +19,7 @@ from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import tracing
+from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import transformations
@@ -67,7 +68,7 @@ def transform_to_native_form(
           'transform_to_native_form',
           'compile_local_subcomputations_to_tensorflow',
           span=True):
-        call_dominant_form = transformations.compile_local_subcomputations_to_tensorflow(
+        call_dominant_form = mapreduce_transformations.compile_local_subcomputations_to_tensorflow(
             call_dominant_form)
       logging.debug('Computation compiled to:')
       logging.debug(call_dominant_form.formatted_representation())

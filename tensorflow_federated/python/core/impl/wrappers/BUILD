@@ -3,7 +3,6 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package(default_visibility = [
     ":wrappers_packages",
     "//tensorflow_federated/python/core/impl:impl_visibility",
-    "//tensorflow_federated/python/core/impl/compiler:compiler_packages",
 ])
 
 package_group(

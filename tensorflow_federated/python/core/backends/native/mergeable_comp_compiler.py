@@ -14,6 +14,7 @@
 """Compiler from ConcreteComputation to MergeableCompForm."""
 
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
@@ -29,7 +30,8 @@ from tensorflow_federated.python.core.impl.types import computation_types
 def _compile_to_tf(fn):
   simplified = transformations.to_call_dominant(fn)
   unplaced, _ = tree_transformations.strip_placement(simplified)
-  return transformations.compile_local_subcomputations_to_tensorflow(unplaced)
+  return mapreduce_transformations.compile_local_subcomputations_to_tensorflow(
+      unplaced)
 
 
 def _select_output_result_and_wrap_as_noarg_tensorflow(

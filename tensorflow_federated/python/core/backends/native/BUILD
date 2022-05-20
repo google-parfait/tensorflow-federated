@@ -34,6 +34,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:tracing",
+        "//tensorflow_federated/python/core/backends/mapreduce:transformations",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_reductions",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
@@ -98,6 +99,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/backends/mapreduce:transformations",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_reductions",

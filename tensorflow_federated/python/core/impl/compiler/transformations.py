@@ -23,7 +23,7 @@ an AST either pointwise or serially.
 """
 
 import collections
-from typing import Any, Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
 import attr
 
@@ -35,11 +35,7 @@ from tensorflow_federated.python.core.impl.compiler import compiled_computation_
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
 def to_call_dominant(
@@ -203,208 +199,6 @@ def optimize_tensorflow_graphs(comp, grappler_config_proto):
   tf_optimizer = compiled_computation_transforms.TensorFlowOptimizer(
       grappler_config_proto)
   return transformation_utils.transform_postorder(comp, tf_optimizer.transform)
-
-
-def unpack_compiled_computations(
-    comp: building_blocks.ComputationBuildingBlock
-) -> building_blocks.ComputationBuildingBlock:
-  """Deserializes compiled computations into building blocks where possible."""
-
-  def _unpack(subcomp):
-    if not subcomp.is_compiled_computation():
-      return subcomp, False
-    kind = subcomp.proto.WhichOneof('computation')
-    if kind == 'tensorflow' or kind == 'xla':
-      return subcomp, False
-    return building_blocks.ComputationBuildingBlock.from_proto(
-        subcomp.proto), True
-
-  comp, _ = transformation_utils.transform_postorder(comp, _unpack)
-  return comp
-
-
-class XlaToTensorFlowError(ValueError):
-  """An error indicating an attempt to compile XLA code to TensorFlow."""
-
-
-class ExternalBlockToTensorFlowError(ValueError):
-  """An error indicating an attempt to compile external blocks to TensorFlow."""
-
-
-def _evaluate_to_tensorflow(
-    comp: building_blocks.ComputationBuildingBlock,
-    bindings: Dict[str, Any],
-) -> Any:
-  """Evaluates `comp` within a TensorFlow context, returning a tensor structure.
-
-  Args:
-    comp: A building block to evaluate. In order to evaluate to TensorFlow, this
-      block must not contain any `Intrinsic`, `Data`, or `Placement` blocks, and
-      must not contain `CompiledComputation` blocks of kinds other than
-      `tensorflow`. `comp` must also have unique names.
-    bindings: A mapping from names to values. Since names in `comp` must be
-      unique, all block locals and lambda arguments can be inserted into this
-      flat-level map.
-
-  Returns:
-    A structure of TensorFlow values representing the result of evaluating
-    `comp`. Functional building blocks are represented as callables.
-
-  Raises:
-    XlaToTensorFlowError: If `comp` contains a `CompiledComputation` containing
-      XLA.
-    ExternalBlockToTensorFlowError: If `comp` contains an `Intrinsic`, `Data`,
-      or `Placement` block.
-    ValueError: If `comp` contains `CompiledCompilations` other than
-      TensorFlow or XLA.
-  """
-  if comp.is_block():
-    for name, value in comp.locals:
-      bindings[name] = _evaluate_to_tensorflow(value, bindings)
-    return _evaluate_to_tensorflow(comp.result, bindings)
-  if comp.is_compiled_computation():
-    kind = comp.proto.WhichOneof('computation')
-    if kind == 'tensorflow':
-
-      def call_concrete(*args):
-        concrete = computation_impl.ConcreteComputation(
-            comp.proto, context_stack_impl.context_stack)
-        result = concrete(*args)
-        if comp.type_signature.result.is_struct():
-          return structure.from_container(result, recursive=True)
-        return result
-
-      return call_concrete
-    if kind == 'xla':
-      raise XlaToTensorFlowError(
-          f'Cannot compile XLA subcomptation to TensorFlow:\n{comp}')
-    raise ValueError(f'Unexpected compiled computation kind:\n{kind}')
-  if comp.is_call():
-    function = _evaluate_to_tensorflow(comp.function, bindings)
-    if comp.argument is None:
-      return function()
-    else:
-      return function(_evaluate_to_tensorflow(comp.argument, bindings))
-  if comp.is_lambda():
-    if comp.parameter_type is None:
-      return lambda: _evaluate_to_tensorflow(comp.result, bindings)
-    else:
-
-      def lambda_function(arg):
-        bindings[comp.parameter_name] = arg
-        return _evaluate_to_tensorflow(comp.result, bindings)
-
-      return lambda_function
-  if comp.is_reference():
-    return bindings[comp.name]
-  if comp.is_selection():
-    return _evaluate_to_tensorflow(comp.source, bindings)[comp.as_index()]
-  if comp.is_struct():
-    elements = []
-    for name, element in structure.iter_elements(comp):
-      elements.append((name, _evaluate_to_tensorflow(element, bindings)))
-    return structure.Struct(elements)
-  if comp.is_intrinsic() or comp.is_data() or comp.is_placement():
-    raise ExternalBlockToTensorFlowError(
-        f'Cannot evaluate intrinsic, data, or placement blocks to tensorflow, found {comp}'
-    )
-
-
-def compile_local_computation_to_tensorflow(
-    comp: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.ComputationBuildingBlock:
-  """Compiles a fully specified local computation to TensorFlow.
-
-  Args:
-    comp: A `building_blocks.ComputationBuildingBlock` which can be compiled to
-      TensorFlow. In order to compile a computation to TensorFlow, it must not
-      contain 1. References to values defined outside of comp, 2. `Data`,
-      `Intrinsic`, or `Placement` blocks, or 3. Calls to intrinsics or
-      non-TensorFlow computations.
-
-  Returns:
-    A `building_blocks.ComputationBuildingBlock` containing a TensorFlow-only
-    representation of `comp`. If `comp` is of functional type, this will be
-    a `building_blocks.CompiledComputation`. Otherwise, it will be a
-    `building_blocks.Call` which wraps a `building_blocks.CompiledComputation`.
-  """
-  if not comp.type_signature.is_function():
-    lambda_wrapped = building_blocks.Lambda(None, None, comp)
-    return building_blocks.Call(
-        compile_local_computation_to_tensorflow(lambda_wrapped), None)
-
-  parameter_type = comp.type_signature.parameter
-  type_analysis.check_tensorflow_compatible_type(parameter_type)
-  type_analysis.check_tensorflow_compatible_type(comp.type_signature.result)
-
-  if (comp.is_compiled_computation() and
-      comp.proto.WhichOneof('computation') == 'tensorflow'):
-    return comp
-
-  # Ensure that unused values are removed and that reference bindings have
-  # unique names.
-  comp = unpack_compiled_computations(comp)
-  comp = to_call_dominant(comp)
-
-  if parameter_type is None:
-    to_evaluate = building_blocks.Call(comp)
-
-    @computation_wrapper_instances.tensorflow_wrapper
-    def result_computation():
-      return _evaluate_to_tensorflow(to_evaluate, {})
-  else:
-    name_generator = building_block_factory.unique_name_generator(comp)
-    parameter_name = next(name_generator)
-    to_evaluate = building_blocks.Call(
-        comp, building_blocks.Reference(parameter_name, parameter_type))
-
-    @computation_wrapper_instances.tensorflow_wrapper(parameter_type)
-    def result_computation(arg):
-      if parameter_type.is_struct():
-        arg = structure.from_container(arg, recursive=True)
-      return _evaluate_to_tensorflow(to_evaluate, {parameter_name: arg})
-
-  return result_computation.to_compiled_building_block()
-
-
-def compile_local_subcomputations_to_tensorflow(
-    comp: building_blocks.ComputationBuildingBlock,
-) -> building_blocks.ComputationBuildingBlock:
-  """Compiles subcomputations to TensorFlow where possible."""
-  comp = unpack_compiled_computations(comp)
-  local_cache = {}
-
-  def _is_local(comp):
-    cached = local_cache.get(comp, None)
-    if cached is not None:
-      return cached
-    if (comp.is_intrinsic() or comp.is_data() or comp.is_placement() or
-        type_analysis.contains_federated_types(comp.type_signature)):
-      local_cache[comp] = False
-      return False
-    if (comp.is_compiled_computation() and
-        comp.proto.WhichOneof('computation') == 'xla'):
-      local_cache[comp] = False
-      return False
-    for child in comp.children():
-      if not _is_local(child):
-        local_cache[comp] = False
-        return False
-    return True
-
-  unbound_ref_map = transformation_utils.get_map_of_unbound_references(comp)
-
-  def _compile_if_local(comp):
-    if _is_local(comp) and not unbound_ref_map[comp]:
-      return compile_local_computation_to_tensorflow(comp), True
-    return comp, False
-
-  # Note: this transformation is preorder so that local subcomputations are not
-  # first transformed to TensorFlow if they have a parent local computation
-  # which could have instead been transformed into a larger single block of
-  # TensorFlow.
-  comp, _ = transformation_utils.transform_preorder(comp, _compile_if_local)
-  return comp
 
 
 _NamedBinding = Tuple[str, building_blocks.ComputationBuildingBlock]
