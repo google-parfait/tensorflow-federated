@@ -19,7 +19,7 @@
 """A library of transformation functions for tensorflow computation."""
 
 import itertools
-from typing import FrozenSet
+from typing import FrozenSet, Optional
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -81,17 +81,26 @@ class DisallowedOpInTensorFlowComputationError(Exception):
   """Error raised when a TensorFlow computation contains a disallowed op."""
 
 
-def check_no_disallowed_ops(proto: pb.Computation,
-                            disallowed_op_names: FrozenSet[str]):
-  """Checks the TensorFlow computation for disallowed ops.
+def _check_ops(proto: pb.Computation,
+               allowed_op_names: Optional[FrozenSet[str]] = None,
+               disallowed_op_names: Optional[FrozenSet[str]] = None):
+  """Checks the ops in the TensorFlow computation.
+
+  If allowed_op_names is specified, then _check_ops checks the incoming proto
+  contains only ops in the set. On the other hand, if disallowed_op_names is
+  specified, then _check_ops checks the proto contains no ops contained in the
+  set. One of the two op set arguments must be non-empty, and if both are, then
+  allowed_op_names takes precedent.
 
   Args:
     proto: Instance of `pb.Computation` with the `tensorflow` field populated.
+    allowed_op_names: Set of allowed op names.
     disallowed_op_names: Set of disallowed op names.
 
   Raises:
     DisallowedOpInTensorFlowComputationError: If the computation contains a
       disallowed op.
+    RuntimeError: If both allowed_op_names and disallowed_op_names are empty.
   """
   py_typecheck.check_type(proto, pb.Computation)
   computation_oneof = proto.WhichOneof('computation')
@@ -104,11 +113,49 @@ def check_no_disallowed_ops(proto: pb.Computation,
   all_nodes = itertools.chain(graph_def.node,
                               *[f.node_def for f in graph_def.library.function])
   found_disallowed_op_names = set()
-  for node in all_nodes:
-    if node.op in disallowed_op_names:
-      found_disallowed_op_names.add(node.op)
+
+  if allowed_op_names:
+    for node in all_nodes:
+      if node.op not in allowed_op_names:
+        found_disallowed_op_names.add(node.op)
+  elif disallowed_op_names:
+    for node in all_nodes:
+      if node.op in disallowed_op_names:
+        found_disallowed_op_names.add(node.op)
+  else:
+    raise RuntimeError(
+        'One of allowed_op_names or disallowed_op_names must be non-empty')
 
   if found_disallowed_op_names:
     found_disallowed_op_names_str = ', '.join(found_disallowed_op_names)
     raise DisallowedOpInTensorFlowComputationError(
         f'Found disallowed ops: {found_disallowed_op_names_str}')
+
+
+def check_allowed_ops(proto: pb.Computation, allowed_op_names: FrozenSet[str]):
+  """Checks the TensorFlow computation contains allowed ops.
+
+  Args:
+    proto: Instance of `pb.Computation` with the `tensorflow` field populated.
+    allowed_op_names: Set of allowed op names.
+
+  Raises:
+    DisallowedOpInTensorFlowComputationError: If the computation contains an op
+      not in allowed_op_names.
+  """
+  _check_ops(proto, allowed_op_names=allowed_op_names)
+
+
+def check_no_disallowed_ops(proto: pb.Computation,
+                            disallowed_op_names: FrozenSet[str]):
+  """Checks the TensorFlow computation for disallowed ops.
+
+  Args:
+    proto: Instance of `pb.Computation` with the `tensorflow` field populated.
+    disallowed_op_names: Set of disallowed op names.
+
+  Raises:
+    DisallowedOpInTensorFlowComputationError: If the computation contains a
+      disallowed op.
+  """
+  _check_ops(proto, disallowed_op_names=disallowed_op_names)

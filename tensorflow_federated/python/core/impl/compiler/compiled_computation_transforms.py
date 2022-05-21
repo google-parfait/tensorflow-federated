@@ -145,12 +145,43 @@ class DisableCallOpGrappler(transformation_utils.TransformSpec):
         new_comp_proto, type_signature=comp.type_signature), True
 
 
+class VerifyAllowedOps(transformation_utils.TransformSpec):
+  """Identity transformation that verifies computation contains only allowed ops.
+
+  This tranverses Tensorflow compiled computations and checks each op is
+  permitted. If a disallowed op is found, raises a
+  `DisallowedOpInTensorFlowComputationError`. Otherwise if only allowed ops are
+  found, the original computation is returned.
+
+  This `transformation_utils.TransformSpec` does not alter the TFF structure of
+  the computations on which it is called.
+  """
+
+  def __init__(self, allowed_op_names: FrozenSet[str]):
+    self._allowed_op_names = allowed_op_names
+
+  def should_transform(self,
+                       comp: building_blocks.ComputationBuildingBlock) -> bool:
+    return (comp.is_compiled_computation() and
+            comp.proto.WhichOneof('computation') == 'tensorflow')
+
+  def transform(
+      self, comp: building_blocks.ComputationBuildingBlock
+  ) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+    if not self.should_transform(comp):
+      return comp, False
+    py_typecheck.check_type(comp, building_blocks.CompiledComputation)
+    tensorflow_computation_transformations.check_allowed_ops(
+        comp.proto, self._allowed_op_names)
+    return comp, False
+
+
 class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
   """Identity transformation that raises an error if a disallowed op is found.
 
   This tranverses Tensorflow compiled computations searching for ops that have
   been disallowed. If a disallowed op is found, raises a
-  `DisallowedOpInTensorFlowComputationError`. Otherwise if no disalloed ops are
+  `DisallowedOpInTensorFlowComputationError`. Otherwise if no disallowed ops are
   found, the original computation is returned.
 
   This `transformation_utils.TransformSpec` does not alter the TFF structure of
