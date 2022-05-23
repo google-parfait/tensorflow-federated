@@ -16,7 +16,7 @@ from absl.testing import absltest
 import jax
 import numpy as np
 
-from tensorflow_federated.experimental.python.core.impl.wrappers import computation_wrapper_instances
+from tensorflow_federated.experimental.python.core.impl.jax_context import jax_computation
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 
@@ -25,7 +25,7 @@ class JaxWrapperTest(absltest.TestCase):
 
   def test_invoke_with_single_arg_fn(self):
 
-    @computation_wrapper_instances.jax_wrapper(np.int32)
+    @jax_computation.jax_computation(np.int32)
     def foo(x):
       return jax.numpy.add(x, np.int32(10))
 
@@ -34,7 +34,7 @@ class JaxWrapperTest(absltest.TestCase):
 
   def test_invoke_with_two_arg_fn(self):
 
-    @computation_wrapper_instances.jax_wrapper(np.int32, np.int32)
+    @jax_computation.jax_computation(np.int32, np.int32)
     def foo(x, y):
       return jax.numpy.add(x, y)
 
@@ -43,7 +43,7 @@ class JaxWrapperTest(absltest.TestCase):
 
   def test_arg_ordering(self):
 
-    @computation_wrapper_instances.jax_wrapper(
+    @jax_computation.jax_computation(
         computation_types.TensorType(np.int32, 10), np.int32)
     def foo(b, a):
       return jax.numpy.add(a, jax.numpy.sum(b))

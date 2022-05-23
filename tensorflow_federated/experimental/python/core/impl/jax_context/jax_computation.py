@@ -46,8 +46,8 @@ def _jax_strategy_fn(fn_to_wrap, fn_name, parameter_type, unpack):
   return computation_impl.ConcreteComputation(comp_pb, ctx_stack)
 
 
-jax_wrapper = computation_wrapper.ComputationWrapper(_jax_strategy_fn)
-jax_wrapper.__doc__ = (
+jax_computation = computation_wrapper.ComputationWrapper(_jax_strategy_fn)
+jax_computation.__doc__ = (
     """Decorates/wraps Python functions containing JAX code as TFF computations.
 
   This wrapper can be used in a similar manner to `tff.tf_computation`, with

@@ -30,5 +30,5 @@ py_library(
     name = "computations",
     srcs = ["computations.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/experimental/python/core/impl/wrappers:computation_wrapper_instances"],
+    deps = ["//tensorflow_federated/experimental/python/core/impl/jax_context:jax_computation"],
 )

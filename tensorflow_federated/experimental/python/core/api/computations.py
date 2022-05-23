@@ -13,6 +13,6 @@
 # limitations under the License.
 """Defines experimental functions/classes for constructing TFF computations."""
 
-from tensorflow_federated.experimental.python.core.impl.wrappers import computation_wrapper_instances
+from tensorflow_federated.experimental.python.core.impl.jax_context import jax_computation
 
-jax_computation = computation_wrapper_instances.jax_wrapper
+jax_computation = jax_computation.jax_computation

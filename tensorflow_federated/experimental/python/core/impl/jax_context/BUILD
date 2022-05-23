@@ -21,6 +21,33 @@ py_library(
 )
 
 py_library(
+    name = "jax_computation",
+    srcs = ["jax_computation.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/experimental/python/core/impl/jax_context:jax_serialization",
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
+        "//tensorflow_federated/python/core/impl/computation:function_utils",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+    ],
+)
+
+py_test(
+    name = "jax_computation_test",
+    size = "small",
+    srcs = ["jax_computation_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":jax_computation",
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:absltest",
+    ],
+)
+
+py_library(
     name = "jax_computation_context",
     srcs = ["jax_computation_context.py"],
     srcs_version = "PY3",
