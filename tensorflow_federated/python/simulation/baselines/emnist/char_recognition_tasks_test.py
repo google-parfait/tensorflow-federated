@@ -31,34 +31,58 @@ class CreateCharacterRecognitionModelTest(tf.test.TestCase,
       ('emnist_10', True),
       ('emnist_62', False),
   )
-  @mock.patch.object(emnist_models, 'create_conv_dropout_model')
   def test_get_character_recognition_model_constructs_cnn_dropout(
-      self, only_digits, mock_model_builder):
-    char_recognition_tasks._get_character_recognition_model(
-        model_id='cnn_dropout', only_digits=only_digits)
-    mock_model_builder.assert_called_once_with(only_digits=only_digits)
+      self, only_digits):
+    with mock.patch.object(emnist_models,
+                           'create_conv_dropout_model') as mock_model_builder:
+      char_recognition_tasks._get_character_recognition_model(
+          model_id='cnn_dropout', only_digits=only_digits)
+      mock_model_builder.assert_called_once_with(
+          only_digits=only_digits, debug_seed=None)
+    with mock.patch.object(emnist_models,
+                           'create_conv_dropout_model') as mock_model_builder:
+      char_recognition_tasks._get_character_recognition_model(
+          model_id='cnn_dropout', only_digits=only_digits, debug_seed=42)
+      mock_model_builder.assert_called_once_with(
+          only_digits=only_digits, debug_seed=42)
 
   @parameterized.named_parameters(
       ('emnist_10', True),
       ('emnist_62', False),
   )
-  @mock.patch.object(emnist_models, 'create_original_fedavg_cnn_model')
-  def test_get_character_recognition_model_constructs_cnn(
-      self, only_digits, mock_model_builder):
-    char_recognition_tasks._get_character_recognition_model(
-        model_id='cnn', only_digits=only_digits)
-    mock_model_builder.assert_called_once_with(only_digits=only_digits)
+  def test_get_character_recognition_model_constructs_cnn(self, only_digits):
+    with mock.patch.object(
+        emnist_models,
+        'create_original_fedavg_cnn_model') as mock_model_builder:
+      char_recognition_tasks._get_character_recognition_model(
+          model_id='cnn', only_digits=only_digits)
+      mock_model_builder.assert_called_once_with(
+          only_digits=only_digits, debug_seed=None)
+    with mock.patch.object(
+        emnist_models,
+        'create_original_fedavg_cnn_model') as mock_model_builder:
+      char_recognition_tasks._get_character_recognition_model(
+          model_id='cnn', only_digits=only_digits, debug_seed=42)
+      mock_model_builder.assert_called_once_with(
+          only_digits=only_digits, debug_seed=42)
 
   @parameterized.named_parameters(
       ('emnist_10', True),
       ('emnist_62', False),
   )
-  @mock.patch.object(emnist_models, 'create_two_hidden_layer_model')
-  def test_get_character_recognition_model_constructs_2nn(
-      self, only_digits, mock_model_builder):
-    char_recognition_tasks._get_character_recognition_model(
-        model_id='2nn', only_digits=only_digits)
-    mock_model_builder.assert_called_once_with(only_digits=only_digits)
+  def test_get_character_recognition_model_constructs_2nn(self, only_digits):
+    with mock.patch.object(
+        emnist_models, 'create_two_hidden_layer_model') as mock_model_builder:
+      char_recognition_tasks._get_character_recognition_model(
+          model_id='2nn', only_digits=only_digits)
+      mock_model_builder.assert_called_once_with(
+          only_digits=only_digits, debug_seed=None)
+    with mock.patch.object(
+        emnist_models, 'create_two_hidden_layer_model') as mock_model_builder:
+      char_recognition_tasks._get_character_recognition_model(
+          model_id='2nn', only_digits=only_digits, debug_seed=42)
+      mock_model_builder.assert_called_once_with(
+          only_digits=only_digits, debug_seed=42)
 
   @parameterized.named_parameters(
       ('emnist_10', True),

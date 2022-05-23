@@ -39,9 +39,10 @@ class CharacterRecognitionModel(enum.Enum):
 _CHARACTER_RECOGNITION_MODELS = [e.value for e in CharacterRecognitionModel]
 
 
-def _get_character_recognition_model(model_id: Union[str,
-                                                     CharacterRecognitionModel],
-                                     only_digits: bool) -> tf.keras.Model:
+def _get_character_recognition_model(
+    model_id: Union[str, CharacterRecognitionModel],
+    only_digits: bool,
+    debug_seed: Optional[int] = None) -> tf.keras.Model:
   """Constructs a `tf.keras.Model` for character recognition."""
   try:
     model_enum = CharacterRecognitionModel(model_id)
@@ -51,13 +52,13 @@ def _get_character_recognition_model(model_id: Union[str,
 
   if model_enum == CharacterRecognitionModel.CNN_DROPOUT:
     keras_model = emnist_models.create_conv_dropout_model(
-        only_digits=only_digits)
+        only_digits=only_digits, debug_seed=debug_seed)
   elif model_enum == CharacterRecognitionModel.CNN:
     keras_model = emnist_models.create_original_fedavg_cnn_model(
-        only_digits=only_digits)
+        only_digits=only_digits, debug_seed=debug_seed)
   elif model_enum == CharacterRecognitionModel.TWO_LAYER_DNN:
     keras_model = emnist_models.create_two_hidden_layer_model(
-        only_digits=only_digits)
+        only_digits=only_digits, debug_seed=debug_seed)
   else:
     raise ValueError('The model id must be one of {}, found {}'.format(
         _CHARACTER_RECOGNITION_MODELS, model_id))
@@ -67,9 +68,11 @@ def _get_character_recognition_model(model_id: Union[str,
 def create_character_recognition_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec],
-    model_id: Union[str, CharacterRecognitionModel], only_digits: bool,
+    model_id: Union[str, CharacterRecognitionModel],
+    only_digits: bool,
     train_data: client_data.ClientData,
-    test_data: client_data.ClientData) -> baseline_task.BaselineTask:
+    test_data: client_data.ClientData,
+    debug_seed: Optional[int] = None) -> baseline_task.BaselineTask:
   """Creates a baseline task for character recognition on EMNIST.
 
   Args:
@@ -88,6 +91,9 @@ def create_character_recognition_task_from_datasets(
       dataset with only 10 numeric classes (`False`).
     train_data: A `tff.simulation.datasets.ClientData` used for training.
     test_data: A `tff.simulation.datasets.ClientData` used for testing.
+    debug_seed: An optional integer seed to force deterministic model
+      initialization and dataset shuffle buffers. This is intended for
+      unittesting.
 
   Returns:
     A `tff.simulation.baselines.BaselineTask`.
@@ -99,9 +105,9 @@ def create_character_recognition_task_from_datasets(
         num_epochs=1, batch_size=64, shuffle_buffer_size=1)
 
   train_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-      train_client_spec, emnist_task=emnist_task)
+      train_client_spec, emnist_task=emnist_task, debug_seed=debug_seed)
   eval_preprocess_fn = emnist_preprocessing.create_preprocess_fn(
-      eval_client_spec, emnist_task=emnist_task)
+      eval_client_spec, emnist_task=emnist_task, debug_seed=debug_seed)
 
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=train_data,
@@ -112,7 +118,8 @@ def create_character_recognition_task_from_datasets(
 
   def model_fn() -> model.Model:
     return keras_utils.from_keras_model(
-        keras_model=_get_character_recognition_model(model_id, only_digits),
+        keras_model=_get_character_recognition_model(model_id, only_digits,
+                                                     debug_seed),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         input_spec=task_datasets.element_type_structure,
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
@@ -126,7 +133,8 @@ def create_character_recognition_task(
     model_id: Union[str, CharacterRecognitionModel] = 'cnn_dropout',
     only_digits: bool = False,
     cache_dir: Optional[str] = None,
-    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
+    use_synthetic_data: bool = False,
+    debug_seed: Optional[int] = None) -> baseline_task.BaselineTask:
   """Creates a baseline task for character recognition on EMNIST.
 
   The goal of the task is to minimize the sparse categorical crossentropy
@@ -167,6 +175,8 @@ def create_character_recognition_task(
     use_synthetic_data: A boolean indicating whether to use synthetic EMNIST
       data. This option should only be used for testing purposes, in order to
       avoid downloading the entire EMNIST dataset.
+    debug_seed: An optional integer seed to force deterministic model
+      initialization. This is intended for unittesting.
 
   Returns:
     A `tff.simulation.baselines.BaselineTask`.
@@ -181,4 +191,4 @@ def create_character_recognition_task(
 
   return create_character_recognition_task_from_datasets(
       train_client_spec, eval_client_spec, model_id, only_digits, emnist_train,
-      emnist_test)
+      emnist_test, debug_seed)
