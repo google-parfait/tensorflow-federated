@@ -3,7 +3,6 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package(default_visibility = [
     ":jax_context_packages",
     "//tensorflow_federated/experimental/python/core/impl:impl_visibility",
-    "//tensorflow_federated/experimental/python/core/impl/wrappers:wrappers_packages",
 ])
 
 package_group(
