@@ -60,7 +60,7 @@ is undesired it should be modeled as an empty tuple.
 The type signature of `next`, in the concise TFF type notation (as defined in
 TFF's `computation.proto`), is as follows:
 
-```python
+```
 (<S@SERVER,{D}@CLIENTS> -> <S@SERVER,X@SERVER>)
 ```
 
@@ -96,9 +96,10 @@ while True:
 The logic of `next` in `MapReduceForm` is factored into seven
 variable components `prepare`, `work`, `zero`, `accumulate`, `merge`,
 `report`, and `update` (in addition to `initialize` that produces the server
-state component for the initial round and `bitwidth` that specifies runtime
-parameters for `federated_secure_sum_bitwidth`). The pseudocode below uses
-common syntactic shortcuts (such as implicit zipping) for brevity.
+state component for the initial round and `bitwidth`, `max_input`, and `modulus`
+that specify runtime parameters for `federated_secure_sum_*` intrinsics). The
+pseudocode below uses common syntactic shortcuts (such as implicit zipping) for
+brevity.
 
 For a concise representation of the logic embedded in the discussion below,
 specifying the manner in which an instance `mrf` of `MapReduceForm` maps to
@@ -121,17 +122,23 @@ def next(server_state, client_data):
 
   client_updates = tff.federated_map(work, [client_data, client_input])
 
-  # `client_updates` is a two-tuple, whose first index should be aggregated
-  # with TFF's `federated_aggregate` and whose second index should be passed
-  # to TFF's `federated_secure_sum_bitwidth`.  The  updates are aggregated
-  # across the system into a single global update at the server.
+  # `client_updates` is a 4-tuple whose elements are passed to the following
+  # intrinsics:
+  #    1. `federated_aggregate`
+  #    2. `federated_secure_sum_bitwidth`
+  #    3. `federated_secure_sum`
+  #    4. `federated_secure_modular_sum`
+  # The intrinsics aggregate the updates across the system into a single global
+  # update at the server.
 
-  simple_agg = (
-    tff.federated_aggregate(client_updates[0], zero(), accumulate, merge,
-        report))
-  secure_agg = tff.secure_sum(client_updates[1], bitwidth())
+  simple_agg = tff.federated_aggregate(
+    client_updates[0], zero(), accumulate, merge, report))
+  secure_aggs = [
+    tff.federated_secure_sum_bitwidth(client_updates[1], bitwidth()),
+    tff.federated_secure_sum(client_updates[2], max_input()),
+    tff.federated_secure_modular_sum(client_updates[3], modulus())]
 
-  global_update = [simple_agg, secure_agg]
+  global_update = [simple_agg] + secure_aggs
 
   # Finally, the server produces a new state as well as server-side output to
   # emit from this round.
