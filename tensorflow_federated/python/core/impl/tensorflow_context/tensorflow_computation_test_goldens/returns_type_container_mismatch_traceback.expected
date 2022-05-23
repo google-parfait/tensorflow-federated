@@ -1,11 +1,11 @@
 Traceback (most recent call last):
-  File "python/core/impl/wrappers/computation_wrapper_instances_test.py", in test_check_returns_type_fails_with_mismatched_container_type
+  File "python/core/impl/tensorflow_context/tensorflow_computation_test.py", in test_check_returns_type_fails_with_mismatched_container_type
     def _(a):
-  File "python/core/impl/wrappers/computation_wrapper.py", in __call__
+  File "python/core/impl/computation/computation_wrapper.py", in __call__
     wrapped_func = self._strategy(
-  File "python/core/impl/wrappers/computation_wrapper.py", in __call__
+  File "python/core/impl/computation/computation_wrapper.py", in __call__
     result = fn_to_wrap(*args, **kwargs)
-  File "python/core/impl/wrappers/computation_wrapper.py", in wrapped_func
+  File "python/core/impl/computation/computation_wrapper.py", in wrapped_func
     raise TypeError(
 TypeError: Value returned from `_` did not match asserted type.
 Type

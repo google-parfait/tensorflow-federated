@@ -10,10 +10,6 @@ package(default_visibility = [
 
     # Namespace visibility
     "//tensorflow_federated:__pkg__",
-
-    # TODO(b/181569610): Clean up circular dependency between the `api` and
-    # `impl` packages.
-    "//tensorflow_federated/python/core/impl:impl_packages",
 ])
 
 package_group(
@@ -37,5 +33,8 @@ py_library(
     name = "computations",
     srcs = ["computations.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances"],
+    deps = [
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+    ],
 )

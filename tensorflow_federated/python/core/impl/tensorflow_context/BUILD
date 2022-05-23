@@ -24,6 +24,51 @@ py_library(
 )
 
 py_library(
+    name = "tensorflow_computation",
+    srcs = ["tensorflow_computation.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_serialization",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+    ],
+)
+
+py_test(
+    name = "tensorflow_computation_test",
+    size = "small",
+    srcs = ["tensorflow_computation_test.py"],
+    args = [
+        "--golden",
+        "$(location tensorflow_computation_test_goldens/non_callable_non_type_traceback.expected)",
+        "--golden",
+        "$(location tensorflow_computation_test_goldens/returns_type_container_mismatch_traceback.expected)",
+        "--golden",
+        "$(location tensorflow_computation_test_goldens/tensorflow_computation_traceback.expected)",
+    ],
+    data = [
+        "tensorflow_computation_test_goldens/non_callable_non_type_traceback.expected",
+        "tensorflow_computation_test_goldens/returns_type_container_mismatch_traceback.expected",
+        "tensorflow_computation_test_goldens/tensorflow_computation_traceback.expected",
+    ],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":tensorflow_computation",
+        "//tensorflow_federated/python/common_libs:golden",
+        "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
+        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
+        "//tensorflow_federated/python/core/impl/context_stack:runtime_error_context",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "tensorflow_computation_context",
     srcs = ["tensorflow_computation_context.py"],
     srcs_version = "PY3",

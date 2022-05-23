@@ -13,9 +13,8 @@
 # limitations under the License.
 """Defines functions and classes for constructing TFF computations."""
 
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 
-
-tf_computation = computation_wrapper_instances.tensorflow_wrapper
-
-federated_computation = computation_wrapper_instances.federated_computation_wrapper
+tf_computation = tensorflow_computation.tf_computation
+federated_computation = federated_computation.federated_computation

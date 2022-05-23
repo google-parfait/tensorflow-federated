@@ -78,13 +78,10 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
-
-# TODO(b/233388647): Move transformations from `backends` into `impl` where
-# feasable.
 
 
 class MapReduceFormCompilationError(Exception):
@@ -384,7 +381,7 @@ def compile_local_computation_to_tensorflow(
   if parameter_type is None:
     to_evaluate = building_blocks.Call(comp)
 
-    @computation_wrapper_instances.tensorflow_wrapper
+    @tensorflow_computation.tf_computation
     def result_computation():
       return _evaluate_to_tensorflow(to_evaluate, {})
   else:
@@ -393,7 +390,7 @@ def compile_local_computation_to_tensorflow(
     to_evaluate = building_blocks.Call(
         comp, building_blocks.Reference(parameter_name, parameter_type))
 
-    @computation_wrapper_instances.tensorflow_wrapper(parameter_type)
+    @tensorflow_computation.tf_computation(parameter_type)
     def result_computation(arg):
       if parameter_type.is_struct():
         arg = structure.from_container(arg, recursive=True)

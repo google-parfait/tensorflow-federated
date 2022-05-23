@@ -26,9 +26,9 @@ py_library(
     deps = [
         "//tensorflow_federated/experimental/python/core/impl/jax_context:jax_serialization",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper",
     ],
 )
 

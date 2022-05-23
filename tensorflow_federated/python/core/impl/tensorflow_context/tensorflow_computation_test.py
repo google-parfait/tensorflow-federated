@@ -19,26 +19,25 @@ import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
-from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
 class TensorflowWrapperTest(absltest.TestCase):
 
   def test_invoke_with_typed_lambda(self):
     foo = lambda x: x > 10
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo, tf.int32)
+    foo = tensorflow_computation.tf_computation(foo, tf.int32)
     self.assertEqual(foo.type_signature.compact_representation(),
                      '(int32 -> bool)')
 
   def test_invoke_with_polymorphic_lambda(self):
     foo = lambda x: x > 10
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    foo = tensorflow_computation.tf_computation(foo)
 
     concrete_fn = foo.fn_for_argument_type(
         computation_types.TensorType(tf.int32))
@@ -51,7 +50,7 @@ class TensorflowWrapperTest(absltest.TestCase):
 
   def test_invoke_with_no_arg_lambda(self):
     foo = lambda: 10
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    foo = tensorflow_computation.tf_computation(foo)
     self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
 
   def test_invoke_with_typed_fn(self):
@@ -59,7 +58,7 @@ class TensorflowWrapperTest(absltest.TestCase):
     def foo(x):
       return x > 10
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo, tf.int32)
+    foo = tensorflow_computation.tf_computation(foo, tf.int32)
     self.assertEqual(foo.type_signature.compact_representation(),
                      '(int32 -> bool)')
 
@@ -68,7 +67,7 @@ class TensorflowWrapperTest(absltest.TestCase):
     def foo(x):
       return x > 10
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    foo = tensorflow_computation.tf_computation(foo)
 
     concrete_fn = foo.fn_for_argument_type(
         computation_types.TensorType(tf.int32))
@@ -84,12 +83,12 @@ class TensorflowWrapperTest(absltest.TestCase):
     def foo():
       return 10
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    foo = tensorflow_computation.tf_computation(foo)
     self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
 
   def test_decorate_as_typed_fn(self):
 
-    @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def foo(x):
       return x > 10
 
@@ -98,7 +97,7 @@ class TensorflowWrapperTest(absltest.TestCase):
 
   def test_decorate_as_polymorphic_fn(self):
 
-    @computation_wrapper_instances.tensorflow_wrapper
+    @tensorflow_computation.tf_computation
     def foo(x):
       return x > 10
 
@@ -113,7 +112,7 @@ class TensorflowWrapperTest(absltest.TestCase):
 
   def test_decorate_as_no_arg_fn(self):
 
-    @computation_wrapper_instances.tensorflow_wrapper
+    @tensorflow_computation.tf_computation
     def foo():
       return 10
 
@@ -125,7 +124,7 @@ class TensorflowWrapperTest(absltest.TestCase):
     def foo(x):
       return x > 10
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo, tf.int32)
+    foo = tensorflow_computation.tf_computation(foo, tf.int32)
     self.assertEqual(foo.type_signature.compact_representation(),
                      '(int32 -> bool)')
 
@@ -135,7 +134,7 @@ class TensorflowWrapperTest(absltest.TestCase):
     def foo(x):
       return x > 10
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    foo = tensorflow_computation.tf_computation(foo)
 
     concrete_fn = foo.fn_for_argument_type(
         computation_types.TensorType(tf.int32))
@@ -152,7 +151,7 @@ class TensorflowWrapperTest(absltest.TestCase):
     def foo():
       return 10
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    foo = tensorflow_computation.tf_computation(foo)
     self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
 
   def test_takes_tuple_typed(self):
@@ -161,8 +160,7 @@ class TensorflowWrapperTest(absltest.TestCase):
     def foo(t):
       return t[0] + t[1]
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(
-        foo, (tf.int32, tf.int32))
+    foo = tensorflow_computation.tf_computation(foo, (tf.int32, tf.int32))
     self.assertEqual(foo.type_signature.compact_representation(),
                      '(<int32,int32> -> int32)')
 
@@ -171,7 +169,7 @@ class TensorflowWrapperTest(absltest.TestCase):
     def foo(t):
       return t[0] + t[1]
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    foo = tensorflow_computation.tf_computation(foo)
 
     concrete_fn = foo.fn_for_argument_type(
         computation_types.StructType([
@@ -200,14 +198,13 @@ class TensorflowWrapperTest(absltest.TestCase):
       self.assertIsInstance(my_type, MyType)
       return x + t[0] + l[0] + odict['foo'] + my_type.x
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(
-        foo, [
-            tf.int32,
-            (tf.int32, tf.int32),
-            [tf.int32, tf.int32],
-            collections.OrderedDict([('foo', tf.int32), ('bar', tf.int32)]),
-            MyType(tf.int32, tf.int32),
-        ])
+    foo = tensorflow_computation.tf_computation(foo, [
+        tf.int32,
+        (tf.int32, tf.int32),
+        [tf.int32, tf.int32],
+        collections.OrderedDict([('foo', tf.int32), ('bar', tf.int32)]),
+        MyType(tf.int32, tf.int32),
+    ])
     self.assertEqual(
         foo.type_signature.compact_representation(),
         '(<x=int32,t=<int32,int32>,l=<int32,int32>,odict=<foo=int32,bar=int32>,my_type=<x=int32,y=int32>> -> int32)'
@@ -225,7 +222,7 @@ class TensorflowWrapperTest(absltest.TestCase):
       self.assertIsInstance(my_type, MyType)
       return x + t[0] + l[0] + odict['foo'] + my_type.x
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    foo = tensorflow_computation.tf_computation(foo)
 
     concrete_fn = foo.fn_for_argument_type(
         computation_types.to_type([
@@ -265,7 +262,7 @@ class TensorflowWrapperTest(absltest.TestCase):
           MyType(True, False),
       )
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    foo = tensorflow_computation.tf_computation(foo)
 
     # pyformat: disable
     self.assertEqual(
@@ -282,8 +279,7 @@ class TensorflowWrapperTest(absltest.TestCase):
       self.assertIsInstance(x, MyType)
       return x.x + x.y
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(
-        foo, MyType(tf.int32, tf.int32))
+    foo = tensorflow_computation.tf_computation(foo, MyType(tf.int32, tf.int32))
     self.assertEqual(foo.type_signature.compact_representation(),
                      '(<x=int32,y=int32> -> int32)')
 
@@ -295,7 +291,7 @@ class TensorflowWrapperTest(absltest.TestCase):
       self.assertIsInstance(t, MyType)
       return t.x + t.y
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    foo = tensorflow_computation.tf_computation(foo)
 
     concrete_fn = foo.fn_for_argument_type(
         computation_types.StructWithPythonType([('x', tf.int32),
@@ -319,14 +315,14 @@ class TensorflowWrapperTest(absltest.TestCase):
       v.assign(1)
       return v + x
 
-    foo = computation_wrapper_instances.tensorflow_wrapper(foo, tf.int32)
+    foo = tensorflow_computation.tf_computation(foo, tf.int32)
     self.assertEqual(foo.type_signature.compact_representation(),
                      '(int32 -> int32)')
 
   def test_does_not_raise_type_error_with_sequence_inputs_and_outputs(self):
     try:
 
-      @computation_wrapper_instances.tensorflow_wrapper(
+      @tensorflow_computation.tf_computation(
           computation_types.SequenceType(tf.int32))
       def foo(x):  # pylint: disable=unused-variable
         return x
@@ -346,29 +342,29 @@ class TensorflowWrapperTest(absltest.TestCase):
     with self.assertRaisesRegex(
         TypeError,
         r'you have attempted to create one with the type {int32}@CLIENTS'):
-      computation_wrapper_instances.tensorflow_wrapper(foo, federated)
+      tensorflow_computation.tf_computation(foo, federated)
 
     # pylint: disable=anomalous-backslash-in-string
     with self.assertRaisesRegex(
         TypeError,
         r'you have attempted to create one with the type \( -> int32\)'):
-      computation_wrapper_instances.tensorflow_wrapper(foo, function)
+      tensorflow_computation.tf_computation(foo, function)
 
     with self.assertRaisesRegex(
         TypeError, r'you have attempted to create one with the type placement'):
-      computation_wrapper_instances.tensorflow_wrapper(
-          foo, computation_types.PlacementType())
+      tensorflow_computation.tf_computation(foo,
+                                            computation_types.PlacementType())
 
     with self.assertRaisesRegex(
         TypeError, r'you have attempted to create one with the type T'):
-      computation_wrapper_instances.tensorflow_wrapper(
-          foo, computation_types.AbstractType('T'))
+      tensorflow_computation.tf_computation(foo,
+                                            computation_types.AbstractType('T'))
 
     with self.assertRaisesRegex(
         TypeError,
         r'you have attempted to create one with the type <{int32}@CLIENTS,\( '
         '-> int32\)>'):
-      computation_wrapper_instances.tensorflow_wrapper(foo, tuple_on_function)
+      tensorflow_computation.tf_computation(foo, tuple_on_function)
     # pylint: enable=anomalous-backslash-in-string
 
   def test_stackframes_in_errors(self):
@@ -376,17 +372,17 @@ class TensorflowWrapperTest(absltest.TestCase):
     class DummyError(RuntimeError):
       pass
 
-    with golden.check_raises_traceback('tensorflow_wrapper_traceback.expected',
-                                       DummyError):
+    with golden.check_raises_traceback(
+        'tensorflow_computation_traceback.expected', DummyError):
 
-      @computation_wrapper_instances.tensorflow_wrapper
+      @tensorflow_computation.tf_computation
       def _():
         raise DummyError()
 
   def test_error_on_non_callable_non_type(self):
     with golden.check_raises_traceback(
         'non_callable_non_type_traceback.expected', TypeError):
-      computation_wrapper_instances.tensorflow_wrapper(5)
+      tensorflow_computation.tf_computation(5)
 
   def test_stack_resets_on_none_returned(self):
     stack = get_context_stack.get_context_stack()
@@ -395,7 +391,7 @@ class TensorflowWrapperTest(absltest.TestCase):
 
     try:
 
-      @computation_wrapper_instances.tensorflow_wrapper()
+      @tensorflow_computation.tf_computation()
       def _():
         pass
 
@@ -405,7 +401,7 @@ class TensorflowWrapperTest(absltest.TestCase):
 
   def test_check_returns_type_with_tensorflow_computation_succeeds(self):
 
-    @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     @computation_wrapper.check_returns_type(tf.int32)
     def _(x):
       return x
@@ -413,7 +409,7 @@ class TensorflowWrapperTest(absltest.TestCase):
   def test_check_returns_type_with_tensorflow_computation_fails(self):
     with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
 
-      @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
+      @tensorflow_computation.tf_computation(tf.int32)
       @computation_wrapper.check_returns_type(tf.int32)
       def _(x):
         return (x, x)
@@ -421,7 +417,7 @@ class TensorflowWrapperTest(absltest.TestCase):
   def test_check_returns_type_with_tensorflow_computation_picking_up_named_parameters(
       self):
 
-    @computation_wrapper_instances.tensorflow_wrapper(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     @computation_wrapper.check_returns_type(tf.int32)
     def f(a, b):
       del b
@@ -437,7 +433,7 @@ class TensorflowWrapperTest(absltest.TestCase):
         'returns_type_container_mismatch_traceback.expected', TypeError):
       # This test fails because it `check_returns_type` with a `tuple`,
       # but returns a `list`.
-      @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
+      @tensorflow_computation.tf_computation(tf.int32)
       @computation_wrapper.check_returns_type((tf.int32, tf.int32))
       def _(a):
         return [a, a]
@@ -448,7 +444,7 @@ class TensorflowWrapperTest(absltest.TestCase):
 
     with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
 
-      @computation_wrapper_instances.tensorflow_wrapper(type_with_known_shape)
+      @tensorflow_computation.tf_computation(type_with_known_shape)
       @computation_wrapper.check_returns_type(type_with_unknown_shape)
       def _(a):
         return a
@@ -462,68 +458,10 @@ class TensorflowWrapperTest(absltest.TestCase):
 
     expected_return_type = MyAttrs(a=tf.int32, b=tf.int32)
 
-    @computation_wrapper_instances.tensorflow_wrapper
+    @tensorflow_computation.tf_computation
     @computation_wrapper.check_returns_type(expected_return_type)
     def _():
       return MyAttrs(a=0, b=0)
-
-
-class FederatedComputationWrapperTest(absltest.TestCase):
-
-  def test_federated_computation_wrapper(self):
-
-    @computation_wrapper_instances.federated_computation_wrapper(
-        (computation_types.FunctionType(tf.int32, tf.int32), tf.int32))
-    def foo(f, x):
-      return f(f(x))
-
-    self.assertIsInstance(foo, computation_impl.ConcreteComputation)
-    self.assertEqual(
-        str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
-
-    self.assertEqual(
-        str(foo.to_building_block()),
-        '(foo_arg -> (let fc_foo_symbol_0=foo_arg[0](foo_arg[1]),fc_foo_symbol_1=foo_arg[0](fc_foo_symbol_0) in fc_foo_symbol_1))'
-    )
-
-  def test_stackframes_in_errors(self):
-
-    class DummyError(RuntimeError):
-      pass
-
-    with golden.check_raises_traceback(
-        'federated_computation_wrapper_traceback.expected', DummyError):
-
-      @computation_wrapper_instances.federated_computation_wrapper
-      def _():
-        raise DummyError()
-
-  def test_empty_tuple_arg(self):
-
-    @computation_wrapper_instances.federated_computation_wrapper(
-        computation_types.StructType([]))
-    def foo(x):
-      return x
-
-    self.assertIsInstance(foo, computation_impl.ConcreteComputation)
-    self.assertEqual(str(foo.type_signature), '(<> -> <>)')
-
-    self.assertEqual(str(foo.to_building_block()), '(foo_arg -> foo_arg)')
-
-  def test_stack_resets_on_none_returned(self):
-    stack = get_context_stack.get_context_stack()
-    self.assertIsInstance(stack.current,
-                          runtime_error_context.RuntimeErrorContext)
-
-    try:
-
-      @computation_wrapper_instances.federated_computation_wrapper()
-      def _():
-        pass
-
-    except computation_wrapper.ComputationReturnedNoneError:
-      self.assertIsInstance(  # pylint: disable=g-assert-in-except
-          stack.current, runtime_error_context.RuntimeErrorContext)
 
 
 if __name__ == '__main__':
