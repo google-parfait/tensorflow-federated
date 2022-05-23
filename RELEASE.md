@@ -1,3 +1,33 @@
+# Release 0.25.0
+
+## Major Features and Improvements
+
+*   Adds error message logging to TFF C++ execution context.
+*   Adds test coverage for C++ runtime with aggregators.
+*   Redefines 'workers going down with fixed clients per round' test.
+*   Add complete examples of using `DataBackend` with TFF comps.
+*   Updated the MapReduceForm documentation to include the two additional secure
+    sum intrinsics.
+*   tff.learning
+    *   Relax the type check on LearningProcess from strictly SequenceType to
+        also allow structures of SequenceType.
+
+## Breaking Changes
+
+*   Remove usage of `tff.test.TestCase`, `tff.test.main()`, and delete
+    `test_case` module.
+*   Update test utility docstrings to use consistent vocabulary.
+*   Update to TensorFlow 2.9.0
+*   Rename up `compiler/test_utils` to `compiler/building_block_test_utils`.
+*   Remove some unnecessary usage of `pytype: skip-file`.
+*   Specify the `None` return type of `ReleaseManager.release`.
+*   Remove usage of deprecated numpy types.
+*   Replace depreciated `random_integers` with `randint`.
+
+## Bug Fixes
+
+*   Fix numpy warning.
+
 # Release 0.24.0
 
 ## Major Features and Improvements
