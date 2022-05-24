@@ -16,9 +16,9 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation_context
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -44,20 +44,21 @@ class TensorFlowComputationContextTest(absltest.TestCase):
       context.invoke(non_tf_computation, None)
 
   def test_invoke_returns_result_with_tf_computation(self):
-    make_10 = computations.tf_computation(lambda: tf.constant(10))
-    add_one = computations.tf_computation(lambda x: tf.add(x, 1), tf.int32)
+    make_10 = tensorflow_computation.tf_computation(lambda: tf.constant(10))
+    add_one = tensorflow_computation.tf_computation(lambda x: tf.add(x, 1),
+                                                    tf.int32)
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def add_one_with_v1(x):
       v1 = tf.Variable(1, name='v1')
       return x + v1
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def add_one_with_v2(x):
       v2 = tf.Variable(1, name='v2')
       return x + v2
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo():
       zero = tf.Variable(0, name='zero')
       ten = tf.Variable(make_10())
@@ -79,7 +80,7 @@ class TensorFlowComputationContextTest(absltest.TestCase):
 
   def test_get_session_token(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def get_the_token():
       return tensorflow_computation_context.get_session_token()
 
@@ -94,11 +95,11 @@ class TensorFlowComputationContextTest(absltest.TestCase):
 
   def test_get_session_token_nested(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def get_the_token_nested():
       return tensorflow_computation_context.get_session_token()
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def get_the_token():
       return get_the_token_nested()
 
