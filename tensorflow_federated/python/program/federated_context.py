@@ -145,7 +145,7 @@ class FederatedContext(context_base.Context):
     raise NotImplementedError
 
 
-def check_in_federated_context():
+def check_in_federated_context() -> None:
   """Checks if the current context is a `tff.program.FederatedContext`."""
   context_stack = get_context_stack.get_context_stack()
   if not isinstance(context_stack.current, FederatedContext):

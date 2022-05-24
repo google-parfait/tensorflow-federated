@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utilities for working with structured data."""
 
-from typing import Any, List, Tuple
+from typing import Any, Iterable, List, Tuple
 
 import tree
 
@@ -31,7 +31,7 @@ def flatten_with_name(structure: Any) -> List[Tuple[str, Any]]:
   """
   flattened = tree.flatten_with_path(structure)
 
-  def _name(path):
+  def _name(path: Iterable[Any]) -> str:
     return '/'.join(map(str, path))
 
   return [(_name(path), value) for path, value in flattened]

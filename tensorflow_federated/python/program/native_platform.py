@@ -16,7 +16,7 @@
 import asyncio
 import collections
 import random
-from typing import Any, Coroutine, List, Optional, Sequence
+from typing import Any, Awaitable, Coroutine, List, Optional, Sequence
 
 import tensorflow as tf
 
@@ -77,13 +77,14 @@ def _create_structure_of_coro_references(
 
   if type_signature.is_struct():
 
-    async def _to_structure(coro):
+    async def _to_structure(coro: Coroutine[Any, Any, Any]) -> structure.Struct:
       return structure.from_container(await coro)
 
     coro = _to_structure(coro)
     shared_awaitable = async_utils.SharedAwaitable(coro)
 
-    async def _get_item(awaitable, index: int) -> Any:
+    async def _get_item(awaitable: Awaitable[structure.Struct],
+                        index: int) -> Any:
       value = await awaitable
       return value[index]
 
@@ -110,7 +111,7 @@ async def _materialize_structure_of_value_references(
   """Returns a structure of materialized values."""
   py_typecheck.check_type(type_signature, computation_types.Type)
 
-  async def _materialize(value):
+  async def _materialize(value: Any) -> Any:
     if isinstance(value, value_reference.MaterializableValueReference):
       return await value.get_value()
     else:
@@ -181,7 +182,8 @@ class NativeFederatedContext(federated_context.FederatedContext):
           'structures, server-placed values, or tensors, found '
           f'\'{result_type}\'.')
 
-    async def _invoke(context, comp, arg):
+    async def _invoke(context: context_base.Context,
+                      comp: computation_base.Computation, arg: Any) -> Any:
       if comp.type_signature.parameter is not None:
         arg = await _materialize_structure_of_value_references(
             arg, comp.type_signature.parameter)

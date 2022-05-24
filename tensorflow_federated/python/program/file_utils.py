@@ -48,12 +48,12 @@ rmtree = _create_async_def(tf.io.gfile.rmtree)
 class _ValueModule(tf.Module):
   """A `tf.Module` wrapping a single value."""
 
-  def __init__(self, value):
+  def __init__(self, value: Any):
     super().__init__()
     self._value = value
 
   @tf.function(input_signature=())
-  def __call__(self):
+  def __call__(self) -> Any:
     return self._value
 
 
@@ -73,12 +73,14 @@ async def read_saved_model(path: Union[str, os.PathLike[str]]) -> Any:
 
 async def write_saved_model(value: Any,
                             path: Union[str, os.PathLike[str]],
-                            overwrite: bool = False):
+                            overwrite: bool = False) -> None:
   """Writes `value` to `path` using the SavedModel format."""
   py_typecheck.check_type(path, (str, os.PathLike))
   py_typecheck.check_type(overwrite, bool)
 
-  def _write_saved_model(value, path, overwrite):
+  def _write_saved_model(value: Any,
+                         path: Union[str, os.PathLike[str]],
+                         overwrite: bool = False) -> None:
     if isinstance(path, os.PathLike):
       path = os.fspath(path)
 

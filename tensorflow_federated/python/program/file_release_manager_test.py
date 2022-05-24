@@ -44,7 +44,7 @@ def _read_values_from_csv(
 
 def _write_values_to_csv(file_path: Union[str, os.PathLike[str]],
                          fieldnames: Sequence[str],
-                         values: Iterable[Mapping[str, Any]]):
+                         values: Iterable[Mapping[str, Any]]) -> None:
   with tf.io.gfile.GFile(file_path, 'w') as file:
     writer = csv.DictWriter(file, fieldnames=fieldnames)
     writer.writeheader()
@@ -865,7 +865,7 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       _, args, _ = call
       actual_value, _ = args
 
-      def _normalize(value):
+      def _normalize(value: Any) -> Any:
         if isinstance(value, tf.data.Dataset):
           return list(value)
         return value

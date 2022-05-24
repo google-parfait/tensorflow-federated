@@ -69,7 +69,7 @@ async def materialize_value(value: Any) -> Any:
       values and value references to materialize.
   """
 
-  async def _materialize(value):
+  async def _materialize(value: Any) -> Any:
     if isinstance(value, MaterializableValueReference):
       return await value.get_value()
     else:

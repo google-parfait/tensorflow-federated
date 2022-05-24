@@ -33,7 +33,7 @@ class LoggingReleaseManager(release_manager.ReleaseManager):
   containing value references, each value reference is materialized.
   """
 
-  async def release(self, value: Any, key: Any = None):
+  async def release(self, value: Any, key: Any = None) -> None:  # pytype: disable=signature-mismatch
     """Releases `value` from a federated program.
 
     Args:

@@ -86,7 +86,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
       return None, 0
 
   @abc.abstractmethod
-  async def save(self, program_state: Any, version: int):
+  async def save(self, program_state: Any, version: int) -> None:
     """Saves `program_state` for the given `version`.
 
     Args:

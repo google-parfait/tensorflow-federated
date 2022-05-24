@@ -150,7 +150,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     return fieldnames, values
 
   def _write_values(self, fieldnames: Sequence[str],
-                    values: Iterable[Mapping[str, Any]]):
+                    values: Iterable[Mapping[str, Any]]) -> None:
     """Writes `fieldnames` and `values` to the managed CSV."""
     path = os.fspath(self._file_path)
 
@@ -168,7 +168,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     # Rename the temporary file to the final location atomically.
     tf.io.gfile.rename(temp_path, self._file_path, overwrite=True)
 
-  async def _write_value(self, value: Mapping[str, Any]):
+  async def _write_value(self, value: Mapping[str, Any]) -> None:
     """Writes `value` to the managed CSV."""
     loop = asyncio.get_running_loop()
     fieldnames, values = await loop.run_in_executor(None, self._read_values)
@@ -176,10 +176,10 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     values.append(value)
     await loop.run_in_executor(None, self._write_values, fieldnames, values)
 
-  async def _append_value(self, value: Mapping[str, Any]):
+  async def _append_value(self, value: Mapping[str, Any]) -> None:
     """Appends `value` to the managed CSV."""
 
-    def _read_fieldnames_only():
+    def _read_fieldnames_only() -> List[Any]:
       with tf.io.gfile.GFile(self._file_path, 'r') as file:
         reader = csv.DictReader(file)
         if reader.fieldnames is not None:
@@ -188,7 +188,8 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
           fieldnames = []
       return fieldnames
 
-    def _append_value(fieldnames, value):
+    def _append_value(fieldnames: Sequence[str], value: Mapping[str,
+                                                                Any]) -> None:
       try:
         with tf.io.gfile.GFile(self._file_path, 'a') as file:
           writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -207,7 +208,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     else:
       await self._write_value(value)
 
-  async def _remove_values_greater_than(self, key: int):
+  async def _remove_values_greater_than(self, key: int) -> None:
     """Removes all values greater than `key` from the managed CSV."""
     py_typecheck.check_type(key, int)
 
@@ -234,7 +235,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
                                  filtered_values)
       self._latest_key = key
 
-  async def release(self, value: Any, key: int):
+  async def release(self, value: Any, key: int) -> None:  # pytype: disable=signature-mismatch
     """Releases `value` from a federated program.
 
     This method will atomically update the managed CSV file by removing all
@@ -256,7 +257,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
 
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
-    def _normalize(value):
+    def _normalize(value: Any) -> Any:
       if isinstance(value, tf.data.Dataset):
         value = list(value)
       return np.array(value).tolist()
@@ -329,7 +330,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     basename = f'{self._prefix}{key}'
     return os.path.join(self._root_dir, basename)
 
-  async def release(self, value: Any, key: int):
+  async def release(self, value: Any, key: int) -> None:  # pytype: disable=signature-mismatch
     """Releases `value` from a federated program.
 
     Args:

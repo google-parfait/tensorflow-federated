@@ -186,7 +186,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     logging.info('Program state loaded: %s', path)
     return program_state
 
-  async def _remove(self, version: int):
+  async def _remove(self, version: int) -> None:
     """Removes program state for the given `version`."""
     py_typecheck.check_type(version, int)
 
@@ -195,7 +195,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       await file_utils.rmtree(path)
       logging.info('Program state removed: %s', path)
 
-  async def _remove_old_program_state(self):
+  async def _remove_old_program_state(self) -> None:
     """Removes old program state."""
     if self._keep_total <= 0:
       return
@@ -205,7 +205,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       stop = start - self._keep_total
       await asyncio.gather(*[self._remove(v) for v in versions[start:stop]])
 
-  async def save(self, program_state: Any, version: int):
+  async def save(self, program_state: Any, version: int) -> None:  # pytype: disable=signature-mismatch
     """Saves `program_state` for the given `version`.
 
     Args:

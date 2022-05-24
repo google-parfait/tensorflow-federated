@@ -17,6 +17,7 @@ import os
 import os.path
 import shutil
 import tempfile
+from typing import Any
 import unittest
 from unittest import mock
 
@@ -561,7 +562,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
       _, args, _ = call
       actual_value, _ = args
 
-      def _normalize(value):
+      def _normalize(value: Any) -> Any:
         if isinstance(value, tf.data.Dataset):
           return list(value)
         return value

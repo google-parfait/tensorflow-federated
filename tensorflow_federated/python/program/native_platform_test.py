@@ -14,6 +14,7 @@
 
 import asyncio
 import collections
+from typing import Any
 import unittest
 from unittest import mock
 
@@ -31,7 +32,7 @@ from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import native_platform
 
 
-async def _coro(value):
+async def _coro(value: Any) -> Any:
   return value
 
 

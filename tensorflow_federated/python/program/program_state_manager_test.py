@@ -31,14 +31,14 @@ class _TestProgramStateManager(program_state_manager.ProgramStateManager):
       return None
     return self._values.keys()
 
-  async def save(self, program_state: Any, version: int):
-    del program_state, version  # Unused.
-
   async def load(self, version: int, structure: Any) -> Any:
     del structure  # Unused.
     if self._values is None or version not in self._values:
       raise program_state_manager.ProgramStateManagerStateNotFoundError()
     return self._values[version]
+
+  async def save(self, program_state: Any, version: int) -> None:  # pytype: disable=signature-mismatch
+    del program_state, version  # Unused.
 
 
 class ProgramStateManagerTest(absltest.TestCase,

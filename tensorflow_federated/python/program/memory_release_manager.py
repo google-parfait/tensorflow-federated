@@ -36,7 +36,7 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
     """Returns an initialized `tff.program.MemoryReleaseManager`."""
     self._values = collections.OrderedDict()
 
-  async def release(self, value: Any, key: Hashable):
+  async def release(self, value: Any, key: Hashable) -> None:  # pytype: disable=signature-mismatch
     """Releases `value` from a federated program.
 
     Args:
