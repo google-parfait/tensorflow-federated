@@ -23,11 +23,12 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
@@ -45,7 +46,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_int_arg_and_result(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       return x + 1
 
@@ -57,7 +58,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_float(self):
 
-    @computations.tf_computation(tf.float32)
+    @tensorflow_computation.tf_computation(tf.float32)
     def comp(x):
       return x + 0.5
 
@@ -69,7 +70,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_no_arg_and_int_result(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return 1000
 
@@ -82,7 +83,8 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_embed_tensorflow_computation_with_dataset_arg_and_int_result(self):
 
-    @computations.tf_computation(computation_types.SequenceType(tf.int32))
+    @tensorflow_computation.tf_computation(
+        computation_types.SequenceType(tf.int32))
     def comp(ds):
       return ds.reduce(np.int32(0), lambda p, q: p + q)
 
@@ -94,7 +96,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_tuple_arg_and_result(self):
 
-    @computations.tf_computation([('a', tf.int32), ('b', tf.int32)])
+    @tensorflow_computation.tf_computation([('a', tf.int32), ('b', tf.int32)])
     def comp(a, b):
       return {'sum': a + b}
 
@@ -110,7 +112,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_variable_v1(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       x = tf.Variable(10)
       with tf.control_dependencies([x.initializer]):
@@ -124,7 +126,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_variable_v2(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       v = tf.Variable(10)
       with tf.control_dependencies([v.initializer]):
@@ -139,13 +141,13 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_float_variables_same_name(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp1():
       x = tf.Variable(0.5, name='bob')
       with tf.control_dependencies([x.initializer]):
         return tf.add(x, 0.6)
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp2():
       x = tf.Variable(0.5, name='bob')
       with tf.control_dependencies([x.initializer]):
@@ -194,7 +196,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def _get_embed_tensorflow_computation_succeeds_with_device(self, device):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       return tf.add(x, 1)
 
@@ -225,7 +227,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
     self._skip_in_multi_gpus()
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
 
@@ -243,7 +245,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
     self._skip_in_multi_gpus()
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     @tf.function
     def comp():
       value = tf.constant(0, dtype=tf.int64)
@@ -264,7 +266,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
     self._skip_in_multi_gpus()
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       initial_val = tf.Variable(np.int64(1.0))
       return tf.data.Dataset.range(10).map(lambda x: x + 1).reduce(
@@ -292,14 +294,14 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     def dataset_reduce_fn(ds, initial_val):
       return ds.reduce(initial_val, reduce_fn)
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         computation_types.SequenceType(tf.int64),
         computation_types.TensorType(tf.int64))
     def dataset_reduce_fn_wrapper(ds, whimsy_val):
       initial_val = tf.Variable(np.int64(1.0)) + whimsy_val
       return dataset_reduce_fn(ds, initial_val)
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       ds = tf.data.Dataset.range(10).map(lambda x: x + 1)
       whimsy_val = tf.Variable(np.int64(1.0))
@@ -383,7 +385,7 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   def _get_to_representation_for_type_succeeds_on_device(self, device):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       return tf.add(x, 1)
 
@@ -433,7 +435,7 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   def test_executor_create_value_raises_on_lambda(self):
     ex = eager_tf_executor.EagerTFExecutor()
 
-    @computations.federated_computation(tf.int32)
+    @federated_computation.federated_computation(tf.int32)
     def comp(x):
       return x
 
@@ -484,7 +486,7 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   def test_executor_create_value_no_arg_computation(self):
     ex = eager_tf_executor.EagerTFExecutor()
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return 1000
 
@@ -502,7 +504,7 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   def test_executor_create_value_two_arg_computation(self):
     ex = eager_tf_executor.EagerTFExecutor()
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def comp(a, b):
       return a + b
 
@@ -523,7 +525,7 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_executor_create_call_add_numbers(self):
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def comp(a, b):
       return a + b
 
@@ -541,7 +543,7 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_dynamic_lookup_table_usage(self):
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         computation_types.TensorType(shape=[None], dtype=tf.string),
         computation_types.TensorType(shape=[], dtype=tf.string))
     def comp(table_args, to_lookup):
@@ -572,7 +574,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_call_take_two_int_from_finite_dataset(self):
 
-    @computations.tf_computation(computation_types.SequenceType(tf.int32))
+    @tensorflow_computation.tf_computation(
+        computation_types.SequenceType(tf.int32))
     def comp(ds):
       return ds.take(2)
 
@@ -593,7 +596,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
     vocab = ['a', 'b', 'c', 'd', 'e', 'f']
 
-    @computations.tf_computation(computation_types.SequenceType(tf.string))
+    @tensorflow_computation.tf_computation(
+        computation_types.SequenceType(tf.string))
     def comp(ds):
       table = tf.lookup.StaticVocabularyTable(
           tf.lookup.KeyValueTensorInitializer(
@@ -617,7 +621,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_call_take_three_int_from_infinite_dataset(self):
 
-    @computations.tf_computation(computation_types.SequenceType(tf.int32))
+    @tensorflow_computation.tf_computation(
+        computation_types.SequenceType(tf.int32))
     def comp(ds):
       return ds.take(3)
 
@@ -636,7 +641,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_executor_create_call_reduce_first_five_from_infinite_dataset(self):
 
-    @computations.tf_computation(computation_types.SequenceType(tf.int32))
+    @tensorflow_computation.tf_computation(
+        computation_types.SequenceType(tf.int32))
     def comp(ds):
       return ds.take(5).reduce(np.int32(0), lambda p, q: p + q)
 
@@ -656,7 +662,7 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
     element = collections.namedtuple('_', 'a b')
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         computation_types.SequenceType(element(tf.int32, tf.int32)))
     def comp(ds):
       return ds.reduce(
@@ -718,7 +724,7 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
   def test_with_repeated_variable_assignment(self):
     ex = eager_tf_executor.EagerTFExecutor()
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       v = tf.Variable(10)
       with tf.control_dependencies([v.initializer]):
@@ -735,7 +741,7 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_execution_of_tensorflow(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return tf.math.add(5, 5)
 

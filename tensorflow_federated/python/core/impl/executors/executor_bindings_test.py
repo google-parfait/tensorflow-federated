@@ -20,9 +20,9 @@ import tensorflow as tf
 
 from pybind11_abseil import status
 from tensorflow_federated.proto.v0 import executor_pb2
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -95,7 +95,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllClose(deserialized_value,
                         collections.OrderedDict(a=(1, 2, 3), b=42.0))
     # 3. Test creating a value from a computation.
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def foo(a, b):
       return tf.add(a, b)
 
@@ -125,7 +125,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
         dataset, sequence_type)
     arg = executor.create_value(arg_value_pb)
 
-    @computations.tf_computation(sequence_type)
+    @tensorflow_computation.tf_computation(sequence_type)
     def sum_examples(ds):
       return ds.reduce(
           tf.constant(0, ds.element_spec.dtype),
@@ -152,7 +152,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
         datasets, struct_of_sequence_type)
     arg = executor.create_value(arg_value_pb)
 
-    @computations.tf_computation(struct_of_sequence_type)
+    @tensorflow_computation.tf_computation(struct_of_sequence_type)
     def preprocess(datasets):
 
       def double_value(x):
@@ -240,7 +240,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
     value_ref = executor.create_value(value_pb)
     arg = executor.create_struct((value_ref.ref, value_ref.ref))
 
-    @computations.tf_computation(tf.int64, tf.int64)
+    @tensorflow_computation.tf_computation(tf.int64, tf.int64)
     def foo(a, b):
       return tf.add(a, b)
 
@@ -254,7 +254,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
   def test_call_no_arg(self):
     executor = executor_bindings.create_tensorflow_executor()
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo():
       return tf.constant(123.0)
 
@@ -322,7 +322,7 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     self.assertAllClose(deserialized_value,
                         collections.OrderedDict(a=(1, 2, 3), b=42.0))
     # 3. Test creating a value from a computation.
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def foo(a, b):
       return tf.add(a, b)
 
@@ -405,7 +405,7 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     value_ref = executor.create_value(value_pb)
     arg = executor.create_struct((value_ref.ref, value_ref.ref))
 
-    @computations.tf_computation(tf.int64, tf.int64)
+    @tensorflow_computation.tf_computation(tf.int64, tf.int64)
     def foo(a, b):
       return tf.add(a, b)
 
@@ -420,7 +420,7 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
     executor = executor_bindings.create_reference_resolving_executor(
         executor_bindings.create_tensorflow_executor())
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo():
       return tf.constant(123.0)
 

@@ -22,7 +22,6 @@ import grpc
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
@@ -33,7 +32,9 @@ from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
@@ -41,17 +42,18 @@ from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 def _temperature_sensor_example_next_fn():
 
-  @computations.tf_computation(
+  @tensorflow_computation.tf_computation(
       computation_types.SequenceType(tf.float32), tf.float32)
   def count_over(ds, t):
     return ds.reduce(
         np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32))
 
-  @computations.tf_computation(computation_types.SequenceType(tf.float32))
+  @tensorflow_computation.tf_computation(
+      computation_types.SequenceType(tf.float32))
   def count_total(ds):
     return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_clients(computation_types.SequenceType(tf.float32)),
       computation_types.at_server(tf.float32))
   def comp(temperatures, threshold):
@@ -319,7 +321,8 @@ class ExecutorStacksTest(parameterized.TestCase):
   def test_execution_with_inferred_clients_larger_than_fanout(
       self, executor_factory_fn):
 
-    @computations.federated_computation(computation_types.at_clients(tf.int32))
+    @federated_computation.federated_computation(
+        computation_types.at_clients(tf.int32))
     def foo(x):
       return intrinsics.federated_sum(x)
 
@@ -345,7 +348,7 @@ class ExecutorStacksTest(parameterized.TestCase):
   )
   def test_execution_of_tensorflow(self, executor):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return tf.math.add(5, 5)
 

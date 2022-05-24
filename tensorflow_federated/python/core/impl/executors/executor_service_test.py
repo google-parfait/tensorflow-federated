@@ -24,7 +24,6 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
@@ -32,6 +31,7 @@ from tensorflow_federated.python.core.impl.executors import executor_serializati
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import placements
 
 
@@ -168,7 +168,7 @@ class ExecutorServiceTest(absltest.TestCase):
         lambda _: eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return tf.constant(10)
 
@@ -250,7 +250,7 @@ class ExecutorServiceTest(absltest.TestCase):
         lambda _: eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def comp(x):
       return tf.add(x, 1)
 

@@ -19,10 +19,10 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 
 
 class ExecutorsTest(parameterized.TestCase):
@@ -30,7 +30,7 @@ class ExecutorsTest(parameterized.TestCase):
   @executor_test_utils.executors
   def test_without_arguments(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
@@ -41,7 +41,7 @@ class ExecutorsTest(parameterized.TestCase):
   @executor_test_utils.executors()
   def test_with_no_arguments(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
@@ -53,7 +53,7 @@ class ExecutorsTest(parameterized.TestCase):
       ('local', executor_stacks.local_executor_factory()),)
   def test_with_one_argument(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
@@ -67,7 +67,7 @@ class ExecutorsTest(parameterized.TestCase):
   )
   def test_with_two_argument(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
@@ -82,7 +82,7 @@ class TracingExecutorTest(absltest.TestCase):
     ex = executor_test_utils.TracingExecutor(
         eager_tf_executor.EagerTFExecutor())
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)
 

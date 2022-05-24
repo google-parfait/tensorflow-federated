@@ -27,7 +27,6 @@ import tensorflow as tf
 from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -35,7 +34,9 @@ from tensorflow_federated.python.core.impl.executors import reference_resolving_
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -326,7 +327,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
   def test_no_arg_tf_computation(self):
     with test_context() as context:
 
-      @computations.tf_computation
+      @tensorflow_computation.tf_computation
       def comp():
         return 10
 
@@ -336,7 +337,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
   def test_one_arg_tf_computation(self):
     with test_context() as context:
 
-      @computations.tf_computation(tf.int32)
+      @tensorflow_computation.tf_computation(tf.int32)
       def comp(x):
         return x + 1
 
@@ -346,7 +347,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
   def test_two_arg_tf_computation(self):
     with test_context() as context:
 
-      @computations.tf_computation(tf.int32, tf.int32)
+      @tensorflow_computation.tf_computation(tf.int32, tf.int32)
       def comp(x, y):
         return x + y
 
@@ -359,15 +360,15 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
 
   def _test_with_selection(self, context):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def foo(x):
       return collections.OrderedDict([('A', x + 10), ('B', x + 20)])
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def bar(x, y):
       return x + y
 
-    @computations.federated_computation(tf.int32)
+    @federated_computation.federated_computation(tf.int32)
     def baz(x):
       return bar(foo(x).A, foo(x).B)
 
@@ -382,7 +383,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
 
   def test_execution_of_tensorflow(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return tf.math.add(5, 5)
 
@@ -394,7 +395,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
   def test_with_federated_computations(self):
     with test_context() as context:
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.FederatedType(tf.int32, placements.CLIENTS))
       def foo(x):
         return intrinsics.federated_sum(x)
@@ -402,7 +403,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       result = _invoke(context.executor, foo, [10, 20, 30])
       self.assertEqual(result, 60)
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.FederatedType(tf.int32, placements.SERVER))
       def bar(x):
         return intrinsics.federated_broadcast(x)
@@ -410,11 +411,11 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       result = _invoke(context.executor, bar, 50)
       self.assertEqual(result, 50)
 
-      @computations.tf_computation(tf.int32)
+      @tensorflow_computation.tf_computation(tf.int32)
       def add_one(x):
         return x + 1
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.FederatedType(tf.int32, placements.SERVER))
       def baz(x):
         value = intrinsics.federated_broadcast(x)

@@ -17,12 +17,12 @@ import asyncio
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import transforming_executor
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 
@@ -50,7 +50,7 @@ def _test_create_value(val, transform_fn):
   return asyncio.run(ex.create_value(val))
 
 
-@computations.federated_computation(tf.int32)
+@federated_computation.federated_computation(tf.int32)
 def _identity(x):
   return x
 
@@ -59,7 +59,8 @@ class TransformingExecutorTest(absltest.TestCase):
 
   def test_with_removal_of_identity_mapping(self):
 
-    @computations.federated_computation(computation_types.at_server(tf.int32))
+    @federated_computation.federated_computation(
+        computation_types.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_map(_identity, x)
 
@@ -74,7 +75,8 @@ class TransformingExecutorTest(absltest.TestCase):
 
   def test_with_inlining_of_blocks(self):
 
-    @computations.federated_computation(computation_types.at_server(tf.int32))
+    @federated_computation.federated_computation(
+        computation_types.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_zip([x, x])
 

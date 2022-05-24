@@ -21,11 +21,11 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import sequence_executor
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -138,7 +138,7 @@ class SequenceExecutorTest(absltest.TestCase):
     self.assertEqual(asyncio.run(el_b.compute()), 20)
 
   def test_create_value_with_tf_computation(self):
-    comp = computations.tf_computation(lambda x: x + 1, tf.int32)
+    comp = tensorflow_computation.tf_computation(lambda x: x + 1, tf.int32)
     comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     type_spec = comp.type_signature
     val = asyncio.run(self._sequence_executor.create_value(comp_pb, type_spec))
@@ -156,7 +156,7 @@ class SequenceExecutorTest(absltest.TestCase):
     self.assertEqual(asyncio.run(_fn()), 11)
 
   def test_call_tf_comp_with_int(self):
-    comp = computations.tf_computation(lambda x: x + 1, tf.int32)
+    comp = tensorflow_computation.tf_computation(lambda x: x + 1, tf.int32)
     comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     comp_type = comp.type_signature
     comp_val = asyncio.run(
@@ -171,7 +171,8 @@ class SequenceExecutorTest(absltest.TestCase):
     self.assertEqual(asyncio.run(result_val.compute()), 11)
 
   def test_call_tf_comp_with_int_tuple(self):
-    comp = computations.tf_computation(lambda x, y: x + y, tf.int32, tf.int32)
+    comp = tensorflow_computation.tf_computation(lambda x, y: x + y, tf.int32,
+                                                 tf.int32)
     comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
     comp_type = comp.type_signature
     comp_val = asyncio.run(
@@ -199,7 +200,7 @@ class SequenceExecutorTest(absltest.TestCase):
     self.assertListEqual(result, list(range(5)))
 
   def test_call_tf_comp_with_eager_tf_dataset(self):
-    comp = computations.tf_computation(
+    comp = tensorflow_computation.tf_computation(
         (lambda x: x.reduce(np.int64(0), lambda x, y: x + y)),
         computation_types.SequenceType(tf.int64))
     comp_pb = computation_impl.ConcreteComputation.get_proto(comp)
@@ -226,7 +227,8 @@ class SequenceExecutorTest(absltest.TestCase):
 
   def test_sequence_reduce_tf_dataset(self):
     ds = tf.data.Dataset.range(5)
-    op = computations.tf_computation(lambda x, y: x + y, tf.int64, tf.int64)
+    op = tensorflow_computation.tf_computation(lambda x, y: x + y, tf.int64,
+                                               tf.int64)
     sequence_reduce_val = _make_sequence_reduce_value(self._sequence_executor,
                                                       tf.int64, tf.int64)
     ds_val = asyncio.run(
@@ -246,7 +248,8 @@ class SequenceExecutorTest(absltest.TestCase):
 
   def test_sequence_reduce_list(self):
     ds = list(range(5))
-    op = computations.tf_computation(lambda x, y: x + y, tf.int64, tf.int64)
+    op = tensorflow_computation.tf_computation(lambda x, y: x + y, tf.int64,
+                                               tf.int64)
     sequence_reduce_val = _make_sequence_reduce_value(self._sequence_executor,
                                                       tf.int64, tf.int64)
     ds_val = asyncio.run(
@@ -274,7 +277,7 @@ class SequenceExecutorTest(absltest.TestCase):
 
   def test_sequence_map_tf_dataset(self):
     ds = tf.data.Dataset.range(3)
-    map_fn = computations.tf_computation(lambda x: x + 2, tf.int64)
+    map_fn = tensorflow_computation.tf_computation(lambda x: x + 2, tf.int64)
     sequence_map_val = _make_sequence_map_value(self._sequence_executor,
                                                 tf.int64, tf.int64)
     ds_val = asyncio.run(
@@ -301,11 +304,11 @@ class SequenceExecutorTest(absltest.TestCase):
         self._sequence_executor.create_value(
             ds, computation_types.SequenceType(tf.int64)))
 
-    @computations.tf_computation(tf.int64)
+    @tensorflow_computation.tf_computation(tf.int64)
     def map_fn_1(x):
       return collections.OrderedDict([('a', x + 2), ('b', x + 3)])
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         collections.OrderedDict([('a', tf.int64), ('b', tf.int64)]))
     def map_fn_2(a, b):
       return a + b
@@ -344,7 +347,7 @@ class SequenceExecutorTest(absltest.TestCase):
     ds_val = asyncio.run(
         self._sequence_executor.create_value(
             ds, computation_types.SequenceType(tf.int64)))
-    map_fn = computations.tf_computation(lambda x: x + 2, tf.int64)
+    map_fn = tensorflow_computation.tf_computation(lambda x: x + 2, tf.int64)
     map_fn_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(map_fn),
@@ -356,7 +359,8 @@ class SequenceExecutorTest(absltest.TestCase):
     result_1_val = asyncio.run(
         self._sequence_executor.create_call(sequence_map_val, arg_1_val))
     zero_val = asyncio.run(self._sequence_executor.create_value(0, tf.int64))
-    op = computations.tf_computation(lambda x, y: x + y, tf.int64, tf.int64)
+    op = tensorflow_computation.tf_computation(lambda x, y: x + y, tf.int64,
+                                               tf.int64)
     op_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(op),
@@ -376,7 +380,7 @@ class SequenceExecutorTest(absltest.TestCase):
     ds_val = asyncio.run(
         self._sequence_executor.create_value(
             ds, computation_types.SequenceType(tf.int64)))
-    map_fn = computations.tf_computation(lambda x: x + 2, tf.int64)
+    map_fn = tensorflow_computation.tf_computation(lambda x: x + 2, tf.int64)
     map_fn_val = asyncio.run(
         self._sequence_executor.create_value(
             computation_impl.ConcreteComputation.get_proto(map_fn),
@@ -387,7 +391,7 @@ class SequenceExecutorTest(absltest.TestCase):
         self._sequence_executor.create_struct([map_fn_val, ds_val]))
     result_1_val = asyncio.run(
         self._sequence_executor.create_call(sequence_map_val, arg_1_val))
-    comp = computations.tf_computation(
+    comp = tensorflow_computation.tf_computation(
         (lambda x: x.reduce(np.int64(0), lambda x, y: x + y)),
         computation_types.SequenceType(tf.int64))
     comp_pb = computation_impl.ConcreteComputation.get_proto(comp)

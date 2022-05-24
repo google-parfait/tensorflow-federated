@@ -20,7 +20,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import data_backend_base
 from tensorflow_federated.python.core.impl.executors import data_executor
@@ -28,6 +27,8 @@ from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.federated_context import data as tff_data
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_serialization
 
@@ -92,7 +93,7 @@ class DataExecutorTest(absltest.TestCase):
     ex = data_executor.DataExecutor(eager_tf_executor.EagerTFExecutor(),
                                     TestDataBackend(self, 'none', None, None))
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return tf.constant(10, tf.int32)
 
@@ -117,7 +118,7 @@ class DataExecutorTest(absltest.TestCase):
             collections.OrderedDict([('x', proto), ('y', 10)]),
             computation_types.StructType([('x', type_spec), ('y', tf.int32)])))
 
-    @computations.tf_computation(type_spec, tf.int32)
+    @tensorflow_computation.tf_computation(type_spec, tf.int32)
     def comp(x, y):
       return tf.cast(x.reduce(np.int64(0), lambda p, q: p + q), tf.int32) + y
 
@@ -137,11 +138,11 @@ class DataExecutorTest(absltest.TestCase):
     factory = executor_stacks.local_executor_factory(leaf_executor_fn=ex_fn)
     context = executor_test_utils.TestExecutionContext(factory)
 
-    @computations.tf_computation(type_spec)
+    @tensorflow_computation.tf_computation(type_spec)
     def foo(ds):
       return tf.cast(ds.reduce(np.int64(0), lambda p, q: p + q), tf.int32)
 
-    @computations.federated_computation
+    @federated_computation.federated_computation
     def bar():
       ds = tff_data.data('foo://bar', type_spec)
       return foo(ds)

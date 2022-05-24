@@ -20,10 +20,10 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
@@ -34,7 +34,7 @@ class SizingExecutorTest(parameterized.TestCase):
 
     tensor_type = computation_types.TensorType(tf.int32, 10)
 
-    @computations.tf_computation(tensor_type)
+    @tensorflow_computation.tf_computation(tensor_type)
     def add_one(x):
       return tf.add(x, 1)
 
@@ -72,7 +72,7 @@ class SizingExecutorTest(parameterized.TestCase):
 
     tensor_type = computation_types.TensorType(tf.int32, 10)
 
-    @computations.tf_computation(tensor_type)
+    @tensorflow_computation.tf_computation(tensor_type)
     def return_constant(x):
       del x
       return tf.constant(0, tf.int32)
@@ -93,7 +93,7 @@ class SizingExecutorTest(parameterized.TestCase):
     int_type = computation_types.TensorType(tf.int32, 10)
     float_type = computation_types.TensorType(tf.float64, 10)
 
-    @computations.tf_computation(float_type, int_type)
+    @tensorflow_computation.tf_computation(float_type, int_type)
     def add(x, y):
       x = tf.cast(x, tf.int64)
       y = tf.cast(y, tf.int64)

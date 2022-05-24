@@ -17,11 +17,12 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
@@ -36,12 +37,13 @@ def _create_tff_parallel_clients_with_dataset_reduce():
   def dataset_reduce_fn(ds, initial_val):
     return ds.reduce(initial_val, reduce_fn)
 
-  @computations.tf_computation(computation_types.SequenceType(tf.int64))
+  @tensorflow_computation.tf_computation(
+      computation_types.SequenceType(tf.int64))
   def dataset_reduce_fn_wrapper(ds):
     initial_val = tf.Variable(np.int64(1.0))
     return dataset_reduce_fn(ds, initial_val)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_clients(computation_types.SequenceType(tf.int64)))
   def parallel_client_run(client_datasets):
     return intrinsics.federated_map(dataset_reduce_fn_wrapper, client_datasets)
@@ -61,12 +63,13 @@ def _create_tff_parallel_clients_with_iter_dataset():
       initial_val = reduce_fn(initial_val, batch)
     return initial_val
 
-  @computations.tf_computation(computation_types.SequenceType(tf.int64))
+  @tensorflow_computation.tf_computation(
+      computation_types.SequenceType(tf.int64))
   def dataset_reduce_fn_wrapper(ds):
     initial_val = tf.Variable(np.int64(1.0))
     return dataset_reduce_fn(ds, initial_val)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_clients(computation_types.SequenceType(tf.int64)))
   def parallel_client_run(client_datasets):
     return intrinsics.federated_map(dataset_reduce_fn_wrapper, client_datasets)

@@ -15,11 +15,12 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import data_descriptor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -28,12 +29,12 @@ class DataDescriptorTest(absltest.TestCase):
 
   def test_non_federated(self):
     ds = data_descriptor.DataDescriptor(
-        computations.tf_computation(lambda x: tf.cast(x + 10, tf.float32),
-                                    tf.int32), 20,
+        tensorflow_computation.tf_computation(
+            lambda x: tf.cast(x + 10, tf.float32), tf.int32), 20,
         computation_types.TensorType(tf.int32))
     self.assertEqual(str(ds.type_signature), 'float32')
 
-    @computations.tf_computation(tf.float32)
+    @tensorflow_computation.tf_computation(tf.float32)
     def foo(x):
       return x * 20.0
 
@@ -44,12 +45,12 @@ class DataDescriptorTest(absltest.TestCase):
 
   def test_federated(self):
     ds = data_descriptor.DataDescriptor(
-        computations.federated_computation(
+        federated_computation.federated_computation(
             lambda x: intrinsics.federated_value(x, placements.CLIENTS),
             tf.int32), 1000, computation_types.TensorType(tf.int32), 3)
     self.assertEqual(str(ds.type_signature), 'int32@CLIENTS')
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(
             tf.int32, placements.CLIENTS, all_equal=True))
     def foo(x):
@@ -63,7 +64,7 @@ class DataDescriptorTest(absltest.TestCase):
   def test_raises_with_server_cardinality_specified(self):
     with self.assertRaises(TypeError):
       data_descriptor.DataDescriptor(
-          computations.federated_computation(
+          federated_computation.federated_computation(
               lambda x: intrinsics.federated_value(x, placements.SERVER),
               tf.int32), 1000, computation_types.TensorType(tf.int32), 3)
 
@@ -73,7 +74,7 @@ class DataDescriptorTest(absltest.TestCase):
         computation_types.FederatedType(tf.int32, placements.CLIENTS), 3)
     self.assertEqual(str(ds.type_signature), '{int32}@CLIENTS')
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def foo(x):
       return intrinsics.federated_sum(x)
@@ -85,12 +86,12 @@ class DataDescriptorTest(absltest.TestCase):
 
   def test_cardinality_free_data_descriptor_places_data(self):
     ds = data_descriptor.CardinalityFreeDataDescriptor(
-        computations.federated_computation(
+        federated_computation.federated_computation(
             lambda x: intrinsics.federated_value(x, placements.CLIENTS),
             tf.int32), 1000, computation_types.TensorType(tf.int32))
     self.assertEqual(str(ds.type_signature), 'int32@CLIENTS')
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(
             tf.int32, placements.CLIENTS, all_equal=True))
     def foo(x):

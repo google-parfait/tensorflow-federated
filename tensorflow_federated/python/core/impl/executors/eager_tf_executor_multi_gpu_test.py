@@ -15,9 +15,9 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
@@ -42,7 +42,7 @@ class MultiGPUTest(tf.test.TestCase):
 
   def test_get_no_arg_wrapped_function_multi_gpu_no_reduce(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     @tf.function
     def comp():
       value = tf.constant(0, dtype=tf.int64)
@@ -61,7 +61,7 @@ class MultiGPUTest(tf.test.TestCase):
 
     logical_gpus = tf.config.list_logical_devices('GPU')
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       with tf.device(logical_gpus[0].name):
         return tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)

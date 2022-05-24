@@ -18,7 +18,6 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -26,7 +25,9 @@ from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -43,7 +44,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
 
-    @computations.federated_computation
+    @federated_computation.federated_computation
     def comp():
       return 10
 
@@ -56,11 +57,11 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
-    @computations.federated_computation
+    @federated_computation.federated_computation
     def comp():
       return add_one(10)
 
@@ -73,7 +74,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
 
-    @computations.federated_computation(tf.float32)
+    @federated_computation.federated_computation(tf.float32)
     def comp(x):
       return x
 
@@ -86,11 +87,11 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
-    @computations.federated_computation(tf.int32)
+    @federated_computation.federated_computation(tf.int32)
     def comp(x):
       return add_one(add_one(x))
 
@@ -104,11 +105,11 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def add_numbers(x, y):
       return x + y
 
-    @computations.federated_computation(tf.int32, tf.int32)
+    @federated_computation.federated_computation(tf.int32, tf.int32)
     def comp(x, y):
       return add_numbers(x, x), add_numbers(x, y), add_numbers(y, y)
 
@@ -125,11 +126,11 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FunctionType(tf.int32, tf.int32), tf.int32)
     def comp(f, x):
       return f(f(x))
@@ -146,11 +147,11 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def add_numbers(x, y):
       return x + y
 
-    @computations.federated_computation
+    @federated_computation.federated_computation
     def comp():
       return add_numbers(10, 20)
 
@@ -178,14 +179,14 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     ex = reference_resolving_executor.ReferenceResolvingExecutor(
         eager_tf_executor.EagerTFExecutor())
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def add_numbers(x, y):
       return x + y
 
-    @computations.federated_computation(tf.int32)
+    @federated_computation.federated_computation(tf.int32)
     def comp(x):
 
-      @computations.federated_computation(tf.int32)
+      @federated_computation.federated_computation(tf.int32)
       def nested_comp(y):
         return add_numbers(x, y)
 
@@ -214,7 +215,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
                                             'x', tf.int32))))
     comp = building_blocks.Lambda(a.name, a.type_signature, ret)
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
@@ -233,11 +234,12 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
-    @computations.federated_computation(computation_types.at_server(tf.int32))
+    @federated_computation.federated_computation(
+        computation_types.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_map(add_one, x)
 
@@ -256,11 +258,12 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
-    @computations.federated_computation(computation_types.at_server(tf.int32))
+    @federated_computation.federated_computation(
+        computation_types.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_map(add_one,
                                       intrinsics.federated_broadcast(x))
@@ -279,11 +282,12 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
 
-    @computations.federated_computation(tf.int32,
-                                        computation_types.at_server(tf.int32))
+    @federated_computation.federated_computation(tf.int32,
+                                                 computation_types.at_server(
+                                                     tf.int32))
     def foo(x, y):
 
-      @computations.federated_computation(tf.int32)
+      @federated_computation.federated_computation(tf.int32)
       def bar(z):
         del z
         return x
@@ -302,7 +306,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
   def test_execution_of_tensorflow(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return tf.math.add(5, 5)
 

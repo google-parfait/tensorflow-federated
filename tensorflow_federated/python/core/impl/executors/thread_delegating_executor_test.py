@@ -19,10 +19,10 @@ import time
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 
 
 def _invoke(ex, comp, arg=None):
@@ -108,7 +108,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
 
   def test_with_eager_tf_executor(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)
 
@@ -128,7 +128,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
 
   def use_executor(self, ex):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)
 
@@ -151,7 +151,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
 
   def test_multiple_computations_with_same_executor(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)
 
@@ -178,7 +178,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
 
   def test_end_to_end(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return tf.add(x, 1)
 
