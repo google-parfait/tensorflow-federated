@@ -32,18 +32,18 @@ from tensorflow_federated.python.core.templates import measured_process
 OUTPUT_TF_TYPE = tf.int32
 
 
-class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
+class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
   """Aggregation factory for discretization of floating point tensors.
 
   The created `tff.templates.AggregationProcess` takes an input tensor structure
-  and, for each tensor, scales and rounds the values to integer values.
+  and, for each tensor, scales and rounds the values to the integer grid.
 
   Scaling is parametrized by `step_size` which defines discretized levels
   as `x = round(x / step_size)`. A larger `step_size` produces discretized
   tensors with lower resolution. Higher resolution is achieved with a smaller
   `step_size`.
 
-  This aggregation factory rounds the scaled tensors deterministically to the
+  This aggregation factory rounds the scaled tensors stochastically to the
   nearest integer. It is not compatible with DP as it does not control L2 norm
   inflation.
 
@@ -56,8 +56,8 @@ class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
 
   The process returns `state` from the inner aggregation process, the descaled
   client values in `result` and a dictionary in `measurements` mapping the
-  inner aggregation process measurements to key `deterministic_discretization`
-  and optionally the distortion across clients to key `distortion` using the
+  inner aggregation process measurements to key `stochastic_discretization` and
+  optionally the distortion across clients to key `distortion` using the
   `distortion_aggregation_factory`, if provided.
   """
 
@@ -163,7 +163,7 @@ class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
       new_state = collections.OrderedDict(
           step_size=server_step_size, inner_agg_process=inner_agg_output.state)
       measurements = collections.OrderedDict(
-          deterministic_discretization=inner_agg_output.measurements)
+          stochastic_discretization=inner_agg_output.measurements)
 
       if self._distortion_aggregation_factory is not None:
         distortions = intrinsics.federated_map(distortion_measurement_fn,
@@ -184,8 +184,15 @@ def _discretize_struct(struct, step_size):
   """Scales and rounds each tensor of the structure to the integer grid."""
 
   def discretize_tensor(x):
+    seed = tf.cast(
+        tf.stack([tf.timestamp() * 1e6,
+                  tf.timestamp() * 1e6]), dtype=tf.int64)
     scaled_x = tf.divide(tf.cast(x, tf.float32), step_size)
-    discretized_x = tf.round(scaled_x)
+    prob_x = scaled_x - tf.cast(tf.floor(scaled_x), tf.float32)
+    random_x = tf.random.stateless_uniform(x.shape, seed=seed, dtype=tf.float32)
+    discretized_x = tf.where(
+        tf.less_equal(random_x, prob_x), tf.math.ceil(scaled_x),
+        tf.math.floor(scaled_x))
     return tf.cast(discretized_x, tf.int32)
 
   return tf.nest.map_structure(discretize_tensor, struct)
