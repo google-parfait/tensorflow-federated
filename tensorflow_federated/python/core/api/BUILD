@@ -7,9 +7,6 @@ package(default_visibility = [
     "//tensorflow_federated/python/core/templates:templates_packages",
     "//tensorflow_federated/python/core/test:test_packages",
     "//tensorflow_federated/python/core/types:types_packages",
-
-    # Namespace visibility
-    "//tensorflow_federated:__pkg__",
 ])
 
 package_group(
