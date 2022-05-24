@@ -16,11 +16,12 @@ import asyncio
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executors_errors
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -60,7 +61,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
     factory = executor_stacks.local_executor_factory()
     context = async_execution_context.AsyncExecutionContext(factory)
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
@@ -73,7 +74,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
     factory = executor_stacks.local_executor_factory()
     context = async_execution_context.AsyncExecutionContext(factory)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def repackage_arg(x):
       return [x, x]
@@ -92,7 +93,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
     context = async_execution_context.AsyncExecutionContext(
         factory, cardinality_inference_fn=(lambda x, y: {}))
 
-    @computations.federated_computation(tf.int32)
+    @federated_computation.federated_computation(tf.int32)
     def identity(x):
       return x
 
@@ -115,7 +116,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
 
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
 
-    @computations.federated_computation(arg_type)
+    @federated_computation.federated_computation(arg_type)
     def identity(x):
       return x
 

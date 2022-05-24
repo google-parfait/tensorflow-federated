@@ -11,20 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for mergeable_comp_execution_context."""
+
 import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -35,7 +35,8 @@ def build_sum_client_arg_computation(
     clients_arg_type: computation_types.FederatedType
 ) -> computation_base.Computation:
 
-  @computations.federated_computation(server_arg_type, clients_arg_type)
+  @federated_computation.federated_computation(server_arg_type,
+                                               clients_arg_type)
   def up_to_merge(server_arg, client_arg):
     del server_arg  # Unused
     return intrinsics.federated_sum(client_arg)
@@ -45,7 +46,7 @@ def build_sum_client_arg_computation(
 
 def build_noarg_count_clients_computation() -> computation_base.Computation:
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def up_to_merge():
     return intrinsics.federated_sum(
         intrinsics.federated_value(1, placements.CLIENTS))
@@ -56,7 +57,7 @@ def build_noarg_count_clients_computation() -> computation_base.Computation:
 def build_whimsy_merge_computation(
     arg_type: computation_types.Type) -> computation_base.Computation:
 
-  @computations.federated_computation(arg_type, arg_type)
+  @federated_computation.federated_computation(arg_type, arg_type)
   def merge(arg0, arg1):
     del arg1  # Unused
     return arg0
@@ -67,7 +68,7 @@ def build_whimsy_merge_computation(
 def build_sum_merge_computation(
     arg_type: computation_types.Type) -> computation_base.Computation:
 
-  @computations.tf_computation(arg_type, arg_type)
+  @tensorflow_computation.tf_computation(arg_type, arg_type)
   def merge(arg0, arg1):
     return arg0 + arg1
 
@@ -80,7 +81,7 @@ def build_whimsy_after_merge_computation(
 
   if original_arg_type is not None:
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         original_arg_type, computation_types.at_server(merge_result_type))
     def after_merge(original_arg, merge_result):
       del merge_result  # Unused
@@ -88,7 +89,7 @@ def build_whimsy_after_merge_computation(
 
   else:
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_server(merge_result_type))
     def after_merge(merge_result):
       return merge_result
@@ -100,7 +101,7 @@ def build_return_merge_result_computation(
     original_arg_type: computation_types.Type,
     merge_result_type: computation_types.Type) -> computation_base.Computation:
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       original_arg_type, computation_types.at_server(merge_result_type))
   def after_merge(original_arg, merge_result):
     del original_arg  # Unused
@@ -112,7 +113,7 @@ def build_return_merge_result_computation(
 def build_return_merge_result_with_no_first_arg_computation(
     merge_result_type: computation_types.Type) -> computation_base.Computation:
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_server(merge_result_type))
   def after_merge(merge_result):
     return merge_result
@@ -125,11 +126,12 @@ def build_sum_merge_with_first_arg_computation(
     merge_result_type: computation_types.Type) -> computation_base.Computation:
   """Assumes original_arg_type is federated, and compatible with summing with merge_result_type."""
 
-  @computations.tf_computation(original_arg_type[0].member, merge_result_type)
+  @tensorflow_computation.tf_computation(original_arg_type[0].member,
+                                         merge_result_type)
   def add(x, y):
     return x + y
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       original_arg_type, computation_types.at_server(merge_result_type))
   def after_merge(original_arg, merge_result):
     return intrinsics.federated_map(add, (original_arg[0], merge_result))
@@ -146,9 +148,9 @@ class MergeableCompFormTest(absltest.TestCase):
 
     bad_merge = build_whimsy_merge_computation(tf.float32)
 
-    @computations.federated_computation(up_to_merge.type_signature.parameter,
-                                        computation_types.at_server(
-                                            bad_merge.type_signature.result))
+    @federated_computation.federated_computation(
+        up_to_merge.type_signature.parameter,
+        computation_types.at_server(bad_merge.type_signature.result))
     def after_merge(x, y):
       return (x, y)
 
@@ -162,14 +164,14 @@ class MergeableCompFormTest(absltest.TestCase):
         computation_types.at_server(tf.int32),
         computation_types.at_clients(tf.int32))
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def bad_merge(x, y):
       del x, y  # Unused
       return 1.  # of type float.
 
-    @computations.federated_computation(up_to_merge.type_signature.parameter,
-                                        computation_types.at_server(
-                                            bad_merge.type_signature.result))
+    @federated_computation.federated_computation(
+        up_to_merge.type_signature.parameter,
+        computation_types.at_server(bad_merge.type_signature.result))
     def after_merge(x, y):
       return (x, y)
 
@@ -185,7 +187,7 @@ class MergeableCompFormTest(absltest.TestCase):
 
     merge = build_whimsy_merge_computation(tf.int32)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_server(merge.type_signature.result))
     def bad_after_merge(x):
       return x
@@ -196,7 +198,8 @@ class MergeableCompFormTest(absltest.TestCase):
 
   def test_raises_up_to_merge_returns_non_server_placed_result(self):
 
-    @computations.federated_computation(computation_types.at_server(tf.int32))
+    @federated_computation.federated_computation(
+        computation_types.at_server(tf.int32))
     def bad_up_to_merge(x):
       # Returns non SERVER-placed result.
       return x, x
@@ -217,9 +220,9 @@ class MergeableCompFormTest(absltest.TestCase):
 
     merge = build_whimsy_merge_computation(tf.int32)
 
-    @computations.federated_computation(up_to_merge.type_signature.parameter,
-                                        computation_types.at_server(
-                                            merge.type_signature.result))
+    @federated_computation.federated_computation(
+        up_to_merge.type_signature.parameter,
+        computation_types.at_server(merge.type_signature.result))
     def after_merge_with_sum(original_arg, merged_arg):
       del merged_arg  # Unused
       # Second element in original arg is the clients-placed value.
@@ -385,7 +388,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
 
   def test_invoke_raises_computation_no_compiler(self):
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def return_one():
       return 1
 
@@ -398,7 +401,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
 
   def test_invoke_raises_computation_not_compiled_to_mergeable_comp_form(self):
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def return_one():
       return 1
 
