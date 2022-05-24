@@ -58,7 +58,7 @@ def create_local_cpp_execution_context(
 def create_local_async_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: Optional[int] = None):
-  """Creates a local execution context backed by TFF-C++ runtime.
+  """Creates a local async execution context backed by TFF-C++ runtime.
 
   Args:
     default_num_clients: The number of clients to use as the default
@@ -76,6 +76,24 @@ def create_local_async_cpp_execution_context(
   context = cpp_async_execution_context.AsyncSerializeAndExecuteCPPContext(
       factory=factory, compiler_fn=compiler.desugar_and_transform_to_native)
   return context
+
+
+def set_local_async_cpp_execution_context(
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: Optional[int] = None):
+  """Sets a local execution context backed by TFF-C++ runtime.
+
+  Args:
+    default_num_clients: The number of clients to use as the default
+      cardinality, if thus number cannot be inferred by the arguments of a
+      computation.
+    max_concurrent_computation_calls: The maximum number of concurrent calls to
+      a single computation in the CPP runtime. If `None`, there is no limit.
+  """
+  context = create_local_async_cpp_execution_context(
+      default_num_clients=default_num_clients,
+      max_concurrent_computation_calls=max_concurrent_computation_calls)
+  set_default_context.set_default_context(context)
 
 
 def set_remote_cpp_execution_context(
