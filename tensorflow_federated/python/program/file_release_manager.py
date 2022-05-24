@@ -288,7 +288,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
   `tf.Tensor` (see `tf.convert_to_tensor`), releasing any other values will
   result in an error.
 
-  See https://www.tensorflow.org/guide/saved_model for more infromation about
+  See https://www.tensorflow.org/guide/saved_model for more information about
   the SavedModel format.
   """
 
