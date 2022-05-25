@@ -15,8 +15,8 @@
 from absl.testing import absltest
 import numpy as np
 
+from tensorflow_federated.experimental.python.core.impl.jax_context import jax_computation
 from tensorflow_federated.experimental.python.core.impl.jax_context import jax_computation_context
-from tensorflow_federated.python.core.api import computations
 
 
 class JaxComputationContextTest(absltest.TestCase):
@@ -30,7 +30,7 @@ class JaxComputationContextTest(absltest.TestCase):
 
   def test_invoke_raises_not_implemented_error(self):
 
-    @computations.federated_computation
+    @jax_computation.jax_computation
     def foo():
       return 10
 

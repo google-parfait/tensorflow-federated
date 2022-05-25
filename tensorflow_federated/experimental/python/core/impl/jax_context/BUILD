@@ -60,8 +60,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":jax_computation",
         ":jax_computation_context",
-        "//tensorflow_federated/python/core/api:computations",
         "@absl_py//absl/testing:absltest",
     ],
 )

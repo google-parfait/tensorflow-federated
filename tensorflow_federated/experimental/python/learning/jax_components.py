@@ -21,7 +21,7 @@ import numpy as np
 from tensorflow_federated.experimental.python.core.api import computations as experimental_computations
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -71,7 +71,7 @@ def build_jax_federated_averaging_process(batch_type, model_type, loss_fn,
     model_zeros = structure.map_structure(_tensor_zeros, model_type)
     return type_conversions.type_to_py_container(model_zeros, model_type)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def _create_zero_model_on_server():
     return intrinsics.federated_eval(_create_zero_model, placements.SERVER)
 
@@ -89,11 +89,11 @@ def build_jax_federated_averaging_process(batch_type, model_type, loss_fn,
 
   local_dataset_type = computation_types.SequenceType(batch_type)
 
-  @computations.federated_computation(model_type, local_dataset_type)
+  @federated_computation.federated_computation(model_type, local_dataset_type)
   def _train_on_one_client(model, batches):
     return intrinsics.sequence_reduce(batches, model, _train_on_one_batch)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.FederatedType(model_type, placements.SERVER),
       computation_types.FederatedType(local_dataset_type, placements.CLIENTS))
   def _train_one_round(model, federated_data):
