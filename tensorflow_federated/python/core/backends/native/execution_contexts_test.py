@@ -20,8 +20,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
@@ -39,7 +39,7 @@ class DatasetsTest(parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_takes_dataset(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo(ds):
       return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
 
@@ -52,7 +52,7 @@ class DatasetsTest(parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo():
       return tf.data.Dataset.range(10)
 
@@ -65,7 +65,7 @@ class DatasetsTest(parameterized.TestCase):
 
   def test_takes_dataset_infinite(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo(ds):
       return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
 
@@ -77,7 +77,7 @@ class DatasetsTest(parameterized.TestCase):
 
   def test_returns_dataset_infinite(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo():
       return tf.data.Dataset.range(10).repeat()
 
@@ -91,7 +91,7 @@ class DatasetsTest(parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset_two(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo():
       return [tf.data.Dataset.range(5), tf.data.Dataset.range(10)]
 
@@ -108,7 +108,7 @@ class DatasetsTest(parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_dataset_and_tensor(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo():
       return [tf.data.Dataset.range(5), tf.constant(5)]
 
@@ -123,7 +123,7 @@ class DatasetsTest(parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_gpu
   def test_returns_empty_dataset(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo():
       tensor_slices = collections.OrderedDict([('a', [1, 1]), ('b', [1, 1])])
       ds = tf.data.Dataset.from_tensor_slices(tensor_slices)
@@ -151,7 +151,7 @@ class AsyncLocalExecutionContextTest(absltest.TestCase):
 
   def test_single_coro_invocation(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def return_one():
       return 1
 
@@ -160,11 +160,11 @@ class AsyncLocalExecutionContextTest(absltest.TestCase):
 
   def test_asyncio_gather(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def return_one():
       return 1
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def return_two():
       return 2
 

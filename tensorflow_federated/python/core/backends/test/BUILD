@@ -43,7 +43,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":execution_contexts",
-        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:absltest",

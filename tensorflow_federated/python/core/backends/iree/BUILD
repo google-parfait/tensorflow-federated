@@ -61,8 +61,9 @@ py_test(
         ":compiler",
         ":computation_module",
         ":runtime",
-        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -120,10 +121,10 @@ py_test(
     deps = [
         ":backend_info",
         ":executor",
-        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

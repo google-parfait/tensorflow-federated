@@ -15,9 +15,9 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
@@ -26,12 +26,12 @@ def _test_broadcast_form_computations():
   context_type = tf.int32
   client_data_type = computation_types.SequenceType(tf.float32)
 
-  @computations.tf_computation(server_data_type)
+  @tensorflow_computation.tf_computation(server_data_type)
   def compute_server_context(server_data):
     context_for_clients = server_data[0]
     return context_for_clients
 
-  @computations.tf_computation(context_type, client_data_type)
+  @tensorflow_computation.tf_computation(context_type, client_data_type)
   def client_processing(context, client_data):
     del context
     del client_data
@@ -42,51 +42,52 @@ def _test_broadcast_form_computations():
 
 def _test_map_reduce_form_computations():
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def initialize():
     return tf.constant(0)
 
-  @computations.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(tf.int32)
   def prepare(server_state):
     del server_state  # Unused
     return tf.constant(1.0)
 
-  @computations.tf_computation(
+  @tensorflow_computation.tf_computation(
       computation_types.SequenceType(tf.float32), tf.float32)
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return True, [], [], []
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def zero():
     return tf.constant(0), tf.constant(0)
 
-  @computations.tf_computation((tf.int32, tf.int32), tf.bool)
+  @tensorflow_computation.tf_computation((tf.int32, tf.int32), tf.bool)
   def accumulate(accumulator, client_update):
     del accumulator  # Unused
     del client_update  # Unused
     return tf.constant(1), tf.constant(1)
 
-  @computations.tf_computation((tf.int32, tf.int32), (tf.int32, tf.int32))
+  @tensorflow_computation.tf_computation((tf.int32, tf.int32),
+                                         (tf.int32, tf.int32))
   def merge(accumulator1, accumulator2):
     del accumulator1  # Unused
     del accumulator2  # Unused
     return tf.constant(1), tf.constant(1)
 
-  @computations.tf_computation(tf.int32, tf.int32)
+  @tensorflow_computation.tf_computation(tf.int32, tf.int32)
   def report(accumulator):
     del accumulator  # Unused
     return tf.constant(1.0)
 
-  unit_comp = computations.tf_computation(lambda: [])
+  unit_comp = tensorflow_computation.tf_computation(lambda: [])
   bitwidth = unit_comp
   max_input = unit_comp
   modulus = unit_comp
   unit_type = computation_types.to_type([])
 
-  @computations.tf_computation(tf.int32,
-                               (tf.float32, unit_type, unit_type, unit_type))
+  @tensorflow_computation.tf_computation(
+      tf.int32, (tf.float32, unit_type, unit_type, unit_type))
   def update(server_state, global_update):
     del server_state  # Unused
     del global_update  # Unused
@@ -137,13 +138,13 @@ class BroadcastFormTest(absltest.TestCase):
 
   def test_raises_type_error_with_mismatched_context_type(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def compute_server_context(x):
       return x
 
     # Note: `tf.float32` here is mismatched with the context type `tf.int32`
     # returned above.
-    @computations.tf_computation(tf.float32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.float32, tf.int32)
     def client_processing(context, client_data):
       del context
       del client_data
@@ -165,36 +166,36 @@ class MapReduceFormTest(absltest.TestCase):
     server_state_type = computation_types.TensorType(
         shape=[None], dtype=tf.int32)
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def initialize():
       # Return a value of a type assignable to, but not equal to
       # `server_state_type`
       return tf.constant([1, 2, 3])
 
-    @computations.tf_computation(server_state_type)
+    @tensorflow_computation.tf_computation(server_state_type)
     def prepare(server_state):
       del server_state  # Unused
       return tf.constant(1.0)
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         computation_types.SequenceType(tf.float32), tf.float32)
     def work(client_data, client_input):
       del client_data  # Unused
       del client_input  # Unused
       return True, [], [], []
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def zero():
       return tf.constant([], dtype=tf.string)
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         computation_types.TensorType(shape=[None], dtype=tf.string), tf.bool)
     def accumulate(accumulator, client_update):
       del accumulator  # Unused
       del client_update  # Unused
       return tf.constant(['abc'])
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         computation_types.TensorType(shape=[None], dtype=tf.string),
         computation_types.TensorType(shape=[None], dtype=tf.string))
     def merge(accumulator1, accumulator2):
@@ -202,20 +203,20 @@ class MapReduceFormTest(absltest.TestCase):
       del accumulator2  # Unused
       return tf.constant(['abc'])
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         computation_types.TensorType(shape=[None], dtype=tf.string))
     def report(accumulator):
       del accumulator  # Unused
       return tf.constant(1.0)
 
-    unit_comp = computations.tf_computation(lambda: [])
+    unit_comp = tensorflow_computation.tf_computation(lambda: [])
     bitwidth = unit_comp
     max_input = unit_comp
     modulus = unit_comp
     unit_type = computation_types.to_type([])
 
-    @computations.tf_computation(server_state_type,
-                                 (tf.float32, unit_type, unit_type, unit_type))
+    @tensorflow_computation.tf_computation(
+        server_state_type, (tf.float32, unit_type, unit_type, unit_type))
     def update(server_state, global_update):
       del server_state  # Unused
       del global_update  # Unused
@@ -232,7 +233,7 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_initialize_result_type(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def initialize():
       return tf.constant(0.0)
 
@@ -241,7 +242,7 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_prepare_parameter_type(self):
 
-    @computations.tf_computation(tf.float32)
+    @tensorflow_computation.tf_computation(tf.float32)
     def prepare(server_state):
       del server_state  # Unused
       return tf.constant(1.0)
@@ -251,7 +252,7 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_prepare_result_type(self):
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def prepare(server_state):
       del server_state  # Unused
       return tf.constant(1)
@@ -261,7 +262,7 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_work_second_parameter_type(self):
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         computation_types.SequenceType(tf.float32), tf.int32)
     def work(client_data, client_input):
       del client_data  # Unused
@@ -273,7 +274,7 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_work_result_type(self):
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         computation_types.SequenceType(tf.float32), tf.float32)
     def work(client_data, client_input):
       del client_data  # Unused
@@ -285,7 +286,7 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_zero_result_type(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def zero():
       return tf.constant(0.0), tf.constant(0)
 
@@ -295,7 +296,7 @@ class MapReduceFormTest(absltest.TestCase):
   def test_init_raises_type_error_with_bad_accumulate_first_parameter_type(
       self):
 
-    @computations.tf_computation((tf.float32, tf.int32), tf.bool)
+    @tensorflow_computation.tf_computation((tf.float32, tf.int32), tf.bool)
     def accumulate(accumulator, client_update):
       del accumulator  # Unused
       del client_update  # Unused
@@ -307,7 +308,7 @@ class MapReduceFormTest(absltest.TestCase):
   def test_init_raises_type_error_with_bad_accumulate_second_parameter_type(
       self):
 
-    @computations.tf_computation((tf.float32, tf.float32), tf.string)
+    @tensorflow_computation.tf_computation((tf.float32, tf.float32), tf.string)
     def accumulate(accumulator, client_update):
       del accumulator  # Unused
       del client_update  # Unused
@@ -318,7 +319,7 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_accumulate_result_type(self):
 
-    @computations.tf_computation((tf.float32, tf.float32), tf.bool)
+    @tensorflow_computation.tf_computation((tf.float32, tf.float32), tf.bool)
     def accumulate(accumulator, client_update):
       del accumulator  # Unused
       del client_update  # Unused
@@ -329,7 +330,8 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_merge_first_parameter_type(self):
 
-    @computations.tf_computation((tf.float32, tf.int32), (tf.int32, tf.int32))
+    @tensorflow_computation.tf_computation((tf.float32, tf.int32),
+                                           (tf.int32, tf.int32))
     def merge(accumulator1, accumulator2):
       del accumulator1  # Unused
       del accumulator2  # Unused
@@ -340,7 +342,8 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_merge_second_parameter_type(self):
 
-    @computations.tf_computation((tf.int32, tf.int32), (tf.float32, tf.int32))
+    @tensorflow_computation.tf_computation((tf.int32, tf.int32),
+                                           (tf.float32, tf.int32))
     def merge(accumulator1, accumulator2):
       del accumulator1  # Unused
       del accumulator2  # Unused
@@ -351,7 +354,8 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_merge_result_type(self):
 
-    @computations.tf_computation((tf.int32, tf.int32), (tf.int32, tf.int32))
+    @tensorflow_computation.tf_computation((tf.int32, tf.int32),
+                                           (tf.int32, tf.int32))
     def merge(accumulator1, accumulator2):
       del accumulator1  # Unused
       del accumulator2  # Unused
@@ -362,7 +366,7 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_report_parameter_type(self):
 
-    @computations.tf_computation(tf.float32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.float32, tf.int32)
     def report(accumulator):
       del accumulator  # Unused
       return tf.constant(1.0)
@@ -372,7 +376,7 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_report_result_type(self):
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def report(accumulator):
       del accumulator  # Unused
       return tf.constant(1)
@@ -382,8 +386,8 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_update_first_parameter_type(self):
 
-    @computations.tf_computation(tf.float32,
-                                 (tf.float32, computation_types.StructType([])))
+    @tensorflow_computation.tf_computation(
+        tf.float32, (tf.float32, computation_types.StructType([])))
     def update(server_state, global_update):
       del server_state  # Unused
       del global_update  # Unused
@@ -394,8 +398,8 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_update_second_parameter_type(self):
 
-    @computations.tf_computation(tf.int32,
-                                 (tf.int32, computation_types.StructType([])))
+    @tensorflow_computation.tf_computation(
+        tf.int32, (tf.int32, computation_types.StructType([])))
     def update(server_state, global_update):
       del server_state  # Unused
       del global_update  # Unused
@@ -406,8 +410,8 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_init_raises_type_error_with_bad_update_result_type(self):
 
-    @computations.tf_computation(tf.int32,
-                                 (tf.float32, computation_types.StructType([])))
+    @tensorflow_computation.tf_computation(
+        tf.int32, (tf.float32, computation_types.StructType([])))
     def update(server_state, global_update):
       del server_state  # Unused
       del global_update  # Unused

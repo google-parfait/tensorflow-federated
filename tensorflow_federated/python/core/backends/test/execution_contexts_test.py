@@ -17,8 +17,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 
@@ -48,7 +48,7 @@ class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
 
     modulus = 5
 
-    @computations.federated_computation(tff_type)
+    @federated_computation.federated_computation(tff_type)
     def modular_sum_by_five(arg):
       return intrinsics.federated_secure_modular_sum(arg, modulus)
 
@@ -71,7 +71,7 @@ class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):
 
     modulus = [5, 7]
 
-    @computations.federated_computation(tff_type)
+    @federated_computation.federated_computation(tff_type)
     def modular_sum_by_five(arg):
       return intrinsics.federated_secure_modular_sum(arg, modulus)
 
@@ -99,7 +99,8 @@ class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
 
     expected_result = sum(arg)
 
-    @computations.federated_computation(computation_types.at_clients(tf.int32))
+    @federated_computation.federated_computation(
+        computation_types.at_clients(tf.int32))
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
 
@@ -122,7 +123,7 @@ class SecureSumBitwidthTest(tf.test.TestCase, parameterized.TestCase):
 
     bitwidth = 32
 
-    @computations.federated_computation(tff_type)
+    @federated_computation.federated_computation(tff_type)
     def sum_with_bitwidth(arg):
       return intrinsics.federated_secure_sum_bitwidth(arg, bitwidth)
 
@@ -139,7 +140,8 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
 
     max_value = 1
 
-    @computations.federated_computation(computation_types.at_clients(tf.int32))
+    @federated_computation.federated_computation(
+        computation_types.at_clients(tf.int32))
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
 
@@ -160,7 +162,8 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
 
     expected_result = sum(arg)
 
-    @computations.federated_computation(computation_types.at_clients(tf.int32))
+    @federated_computation.federated_computation(
+        computation_types.at_clients(tf.int32))
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
 
@@ -183,7 +186,7 @@ class SecureSumMaxValueTest(tf.test.TestCase, parameterized.TestCase):
 
     max_value = 100
 
-    @computations.federated_computation(tff_type)
+    @federated_computation.federated_computation(tff_type)
     def secure_sum(arg):
       return intrinsics.federated_secure_sum(arg, max_value)
 

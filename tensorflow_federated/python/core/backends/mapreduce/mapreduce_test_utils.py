@@ -18,10 +18,11 @@ import collections
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
@@ -37,7 +38,7 @@ def get_temperature_sensor_example():
     An instance of `forms.MapReduceForm`.
   """
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def initialize():
     return collections.OrderedDict(num_rounds=tf.constant(0))
 
@@ -45,7 +46,7 @@ def get_temperature_sensor_example():
   # counter `num_rounds`.
   server_state_type = collections.OrderedDict(num_rounds=tf.int32)
 
-  @computations.tf_computation(server_state_type)
+  @tensorflow_computation.tf_computation(server_state_type)
   def prepare(state):
     return collections.OrderedDict(max_temperature=32.0 +
                                    tf.cast(state['num_rounds'], tf.float32))
@@ -57,7 +58,7 @@ def get_temperature_sensor_example():
   # The client data is a sequence of floats.
   client_data_type = computation_types.SequenceType(tf.float32)
 
-  @computations.tf_computation(client_data_type, client_state_type)
+  @tensorflow_computation.tf_computation(client_data_type, client_state_type)
   def work(data, state):
     """See the `forms.MapReduceForm` definition of `work`."""
 
@@ -84,30 +85,30 @@ def get_temperature_sensor_example():
   accumulator_type = collections.OrderedDict(
       num_total=tf.int32, num_over=tf.int32)
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def zero():
     return collections.OrderedDict(
         num_total=tf.constant(0), num_over=tf.constant(0))
 
-  @computations.tf_computation(accumulator_type, client_update_type)
+  @tensorflow_computation.tf_computation(accumulator_type, client_update_type)
   def accumulate(accumulator, update):
     return collections.OrderedDict(
         num_total=accumulator['num_total'] + 1,
         num_over=accumulator['num_over'] + tf.cast(update['is_over'], tf.int32))
 
-  @computations.tf_computation(accumulator_type, accumulator_type)
+  @tensorflow_computation.tf_computation(accumulator_type, accumulator_type)
   def merge(accumulator1, accumulator2):
     return collections.OrderedDict(
         num_total=accumulator1['num_total'] + accumulator2['num_total'],
         num_over=accumulator1['num_over'] + accumulator2['num_over'])
 
-  @computations.tf_computation(merge.type_signature.result)
+  @tensorflow_computation.tf_computation(merge.type_signature.result)
   def report(accumulator):
     return collections.OrderedDict(
         ratio_over_threshold=(tf.cast(accumulator['num_over'], tf.float32) /
                               tf.cast(accumulator['num_total'], tf.float32)))
 
-  unit_comp = computations.tf_computation(lambda: [])
+  unit_comp = tensorflow_computation.tf_computation(lambda: [])
   bitwidth = unit_comp
   max_input = unit_comp
   modulus = unit_comp
@@ -115,7 +116,7 @@ def get_temperature_sensor_example():
   update_type = (collections.OrderedDict(ratio_over_threshold=tf.float32), (),
                  (), ())
 
-  @computations.tf_computation(server_state_type, update_type)
+  @tensorflow_computation.tf_computation(server_state_type, update_type)
   def update(state, update):
     return (collections.OrderedDict(num_rounds=state['num_rounds'] + 1),
             update[0])
@@ -136,17 +137,17 @@ def get_federated_sum_example(*,
     An instance of `forms.MapReduceForm`.
   """
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def initialize():
     return ()
 
   server_state_type = initialize.type_signature.result
 
-  @computations.tf_computation(server_state_type)
+  @tensorflow_computation.tf_computation(server_state_type)
   def prepare(state):
     return state
 
-  @computations.tf_computation(
+  @tensorflow_computation.tf_computation(
       computation_types.SequenceType(tf.int32), prepare.type_signature.result)
   def work(data, _):
     client_sum = data.reduce(initial_state=0, reduce_func=tf.add)
@@ -155,7 +156,7 @@ def get_federated_sum_example(*,
     else:
       return client_sum, [], [], []
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def zero():
     if secure_sum:
       return ()
@@ -165,27 +166,27 @@ def get_federated_sum_example(*,
   client_update_type = work.type_signature.result[0]
   accumulator_type = zero.type_signature.result
 
-  @computations.tf_computation(accumulator_type, client_update_type)
+  @tensorflow_computation.tf_computation(accumulator_type, client_update_type)
   def accumulate(accumulator, update):
     if secure_sum:
       return ()
     else:
       return accumulator + update
 
-  @computations.tf_computation(accumulator_type, accumulator_type)
+  @tensorflow_computation.tf_computation(accumulator_type, accumulator_type)
   def merge(accumulator1, accumulator2):
     if secure_sum:
       return ()
     else:
       return accumulator1 + accumulator2
 
-  @computations.tf_computation(merge.type_signature.result)
+  @tensorflow_computation.tf_computation(merge.type_signature.result)
   def report(accumulator):
     return accumulator
 
-  bitwidth = computations.tf_computation(lambda: 32)
-  max_input = computations.tf_computation(lambda: 0)
-  modulus = computations.tf_computation(lambda: 0)
+  bitwidth = tensorflow_computation.tf_computation(lambda: 32)
+  max_input = tensorflow_computation.tf_computation(lambda: 0)
+  modulus = tensorflow_computation.tf_computation(lambda: 0)
 
   update_type = (
       merge.type_signature.result,
@@ -194,7 +195,7 @@ def get_federated_sum_example(*,
       work.type_signature.result[3],
   )
 
-  @computations.tf_computation(server_state_type, update_type)
+  @tensorflow_computation.tf_computation(server_state_type, update_type)
   def update(state, update):
     if secure_sum:
       return state, update[1]
@@ -215,7 +216,7 @@ def get_mnist_training_example():
   server_state_nt = (collections.namedtuple('ServerState', 'model num_rounds'))
 
   # Start with a model filled with zeros, and the round counter set to zero.
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def initialize():
     return server_state_nt(
         model=model_nt(weights=tf.zeros([784, 10]), bias=tf.zeros([10])),
@@ -229,7 +230,7 @@ def get_mnist_training_example():
 
   # Pass the model to the client, along with a dynamically adjusted learning
   # rate that starts at 0.1 and decays exponentially by a factor of 0.9.
-  @computations.tf_computation(server_state_tff_type)
+  @tensorflow_computation.tf_computation(server_state_tff_type)
   def prepare(state):
     learning_rate = 0.1 * tf.pow(0.9, tf.cast(state.num_rounds, tf.float32))
     return client_state_nt(model=state.model, learning_rate=learning_rate)
@@ -247,7 +248,8 @@ def get_mnist_training_example():
   # Train the model locally, emit the loclaly-trained model and the number of
   # examples as an update, and the average loss and the number of examples as
   # local client stats.
-  @computations.tf_computation(dataset_tff_type, client_state_tff_type)
+  @tensorflow_computation.tf_computation(dataset_tff_type,
+                                         client_state_tff_type)
   def work(data, state):  # pylint: disable=missing-docstring
     model_vars = model_nt(
         weights=tf.Variable(initial_value=state.model.weights, name='weights'),
@@ -286,7 +288,7 @@ def get_mnist_training_example():
   accumulator_nt = update_nt
 
   # Initialize accumulators for aggregation with zero model and zero examples.
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def zero():
     return accumulator_nt(
         model=model_nt(weights=tf.zeros([784, 10]), bias=tf.zeros([10])),
@@ -299,7 +301,7 @@ def get_mnist_training_example():
 
   # We add an update to an accumulator with the update's model multipled by the
   # number of examples, so we can compute a weighted average in the end.
-  @computations.tf_computation(accumulator_tff_type, update_tff_type)
+  @tensorflow_computation.tf_computation(accumulator_tff_type, update_tff_type)
   def accumulate(accumulator, update):
     scaling_factor = tf.cast(update.num_examples, tf.float32)
     scaled_model = tf.nest.map_structure(lambda x: x * scaling_factor,
@@ -310,7 +312,8 @@ def get_mnist_training_example():
         loss=accumulator.loss + update.loss * scaling_factor)
 
   # Merging accumulators does not involve scaling.
-  @computations.tf_computation(accumulator_tff_type, accumulator_tff_type)
+  @tensorflow_computation.tf_computation(accumulator_tff_type,
+                                         accumulator_tff_type)
   def merge(accumulator1, accumulator2):
     return accumulator_nt(
         model=tf.nest.map_structure(tf.add, accumulator1.model,
@@ -322,7 +325,7 @@ def get_mnist_training_example():
 
   # The result of aggregation is produced by dividing the accumulated model by
   # the total number of examples. Same for loss.
-  @computations.tf_computation(accumulator_tff_type)
+  @tensorflow_computation.tf_computation(accumulator_tff_type)
   def report(accumulator):
     scaling_factor = 1.0 / tf.cast(accumulator.num_examples, tf.float32)
     scaled_model = model_nt(
@@ -333,7 +336,7 @@ def get_mnist_training_example():
         num_examples=accumulator.num_examples,
         loss=accumulator.loss * scaling_factor)
 
-  unit_computation = computations.tf_computation(lambda: [])
+  unit_computation = tensorflow_computation.tf_computation(lambda: [])
   secure_sum_bitwidth = unit_computation
   secure_sum_max_input = unit_computation
   secure_sum_modulus = unit_computation
@@ -343,7 +346,7 @@ def get_mnist_training_example():
 
   # Pass the newly averaged model along with an incremented round counter over
   # to the next round, and output the counters and loss as server metrics.
-  @computations.tf_computation(server_state_tff_type, update_type)
+  @tensorflow_computation.tf_computation(server_state_tff_type, update_type)
   def update(state, update):
     report = update[0]
     num_rounds = state.num_rounds + 1
@@ -365,7 +368,7 @@ def get_iterative_process_for_example_with_unused_lambda_arg():
   def _bind_federated_value(unused_input, input_type, federated_output_value):
     federated_input_type = computation_types.FederatedType(
         input_type, placements.CLIENTS)
-    wrapper = computations.federated_computation(
+    wrapper = federated_computation.federated_computation(
         lambda _: federated_output_value, federated_input_type)
     return wrapper(unused_input)
 
@@ -376,12 +379,12 @@ def get_iterative_process_for_example_with_unused_lambda_arg():
         client_data, computation_types.SequenceType(tf.string), client_ones)
     return intrinsics.federated_sum(client_ones)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_value(
         collections.OrderedDict(num_clients=0), placements.SERVER)
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType(server_state_type, placements.SERVER),
       computation_types.FederatedType(
           computation_types.SequenceType(tf.string), placements.CLIENTS)
@@ -409,8 +412,8 @@ def get_iterative_process_for_example_with_unused_tf_computation_arg():
   def _bind_tf_function(unused_input, tf_func):
     tf_wrapper = tf.function(lambda _: tf_func())
     input_federated_type = unused_input.type_signature
-    wrapper = computations.tf_computation(tf_wrapper,
-                                          input_federated_type.member)
+    wrapper = tensorflow_computation.tf_computation(tf_wrapper,
+                                                    input_federated_type.member)
     return intrinsics.federated_map(wrapper, unused_input)
 
   def count_clients_federated(client_data):
@@ -422,12 +425,12 @@ def get_iterative_process_for_example_with_unused_tf_computation_arg():
     client_ones = _bind_tf_function(client_data, client_ones_fn)
     return intrinsics.federated_sum(client_ones)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_value(
         collections.OrderedDict(num_clients=0), placements.SERVER)
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType(server_state_type, placements.SERVER),
       computation_types.FederatedType(
           computation_types.SequenceType(tf.string), placements.CLIENTS)
@@ -454,10 +457,10 @@ def get_iterative_process_for_example_with_lambda_returning_aggregation():
   client_val_type = computation_types.FederatedType(server_state_type,
                                                     placements.CLIENTS)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def computation_returning_lambda():
 
-    @computations.federated_computation(tf.int32)
+    @federated_computation.federated_computation(tf.int32)
     def computation_returning_sum(x):
       tuple_containing_intrinsic = [
           building_blocks.Intrinsic(
@@ -472,12 +475,12 @@ def get_iterative_process_for_example_with_lambda_returning_aggregation():
 
     return computation_returning_sum
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_value(
         collections.OrderedDict(num_clients=0), placements.SERVER)
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType(server_state_type, placements.SERVER),
       client_val_type,
   ])

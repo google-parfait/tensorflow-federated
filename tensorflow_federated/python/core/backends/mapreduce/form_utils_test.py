@@ -18,7 +18,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
@@ -27,7 +26,9 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
@@ -41,27 +42,28 @@ def get_iterative_process_for_sum_example():
   `forms.MapReduceForm`.
   """
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @computations.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
   def prepare(server_state):
     return server_state
 
-  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(tf.int32, [tf.int32, tf.int32])
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1, 1
 
-  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32],
+                                         [tf.int32, tf.int32])
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
@@ -89,33 +91,34 @@ def get_iterative_process_with_nested_broadcasts():
   `forms.MapReduceForm`.
   """
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @computations.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
   def prepare(server_state):
     return server_state
 
-  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(tf.int32, [tf.int32, tf.int32])
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1, 1
 
-  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32],
+                                         [tf.int32, tf.int32])
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER))
   def broadcast_and_return_arg_and_result(x):
     broadcasted = intrinsics.federated_broadcast(x)
     return [broadcasted, x]
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
@@ -144,23 +147,24 @@ def get_iterative_process_for_sum_example_with_no_prepare():
   function before the `federated_broadcast`.
   """
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(tf.int32, [tf.int32, tf.int32])
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1, 1
 
-  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32],
+                                         [tf.int32, tf.int32])
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
@@ -189,22 +193,23 @@ def get_iterative_process_for_sum_example_with_no_broadcast():
   prepare function before the `federated_broadcast`.
   """
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @computations.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(tf.int32)
   def work(client_data):
     del client_data  # Unused
     return 1, 1
 
-  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32],
+                                         [tf.int32, tf.int32])
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
@@ -230,27 +235,27 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
   This iterative process does not have a call to `federated_aggregate`.
   """
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value(0, placements.SERVER)
 
-  @computations.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(tf.int32)
   def prepare(server_state):
     return server_state
 
-  @computations.tf_computation(tf.int32, tf.int32)
+  @tensorflow_computation.tf_computation(tf.int32, tf.int32)
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1
 
-  @computations.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType(tf.int32, placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
@@ -277,27 +282,27 @@ def get_iterative_process_for_sum_example_with_no_federated_secure_sum_bitwidth(
   `federated_secure_sum_bitwidth`.
   """
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value(0, placements.SERVER)
 
-  @computations.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(tf.int32)
   def prepare(server_state):
     return server_state
 
-  @computations.tf_computation(tf.int32, tf.int32)
+  @tensorflow_computation.tf_computation(tf.int32, tf.int32)
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1
 
-  @computations.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType(tf.int32, placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
@@ -323,22 +328,22 @@ def get_iterative_process_for_sum_example_with_no_update():
   function before the `federated_broadcast`.
   """
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @computations.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
   def prepare(server_state):
     return server_state
 
-  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation(tf.int32, [tf.int32, tf.int32])
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
     return 1, 1
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
@@ -370,21 +375,21 @@ def get_iterative_process_for_sum_example_with_no_server_state():
   the `federated_broadcast`.
   """
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([], placements.SERVER)
 
-  @computations.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(tf.int32)
   def work(client_data):
     del client_data  # Unused
     return 1, 1
 
-  @computations.tf_computation([tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32])
   def update(global_update):
     return global_update
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType([], placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
@@ -414,17 +419,18 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
   `forms.MapReduceForm`.
   """
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  @tensorflow_computation.tf_computation([tf.int32, tf.int32],
+                                         [tf.int32, tf.int32])
   def update(server_state, global_update):
     del server_state  # Unused
     return global_update, []
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
@@ -450,18 +456,18 @@ def get_iterative_process_for_minimal_sum_example():
   `forms.MapReduceForm`.
   """
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     """The `init` function for `tff.templates.IterativeProcess`."""
-    zero = computations.tf_computation(lambda: [0, 0, 0, 0])
+    zero = tensorflow_computation.tf_computation(lambda: [0, 0, 0, 0])
     return intrinsics.federated_eval(zero, placements.SERVER)
 
-  @computations.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(tf.int32)
   def work(client_data):
     del client_data  # Unused
     return 1, 1, 1, 1
 
-  @computations.federated_computation([
+  @federated_computation.federated_computation([
       computation_types.at_server([tf.int32, tf.int32, tf.int32, tf.int32]),
       computation_types.at_clients(tf.int32),
   ])
@@ -557,11 +563,11 @@ class CheckMapReduceFormCompatibleWithIterativeProcessTest(
 
   def test_disallows_broadcast_dependent_on_aggregate(self):
 
-    @computations.federated_computation
+    @federated_computation.federated_computation
     def init_comp():
       return intrinsics.federated_value(0, placements.SERVER)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_server(tf.int32), computation_types.at_clients(()))
     def next_comp(server_state, client_data):
       del server_state, client_data
@@ -731,11 +737,11 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
       A `forms.MapReduceForm` which uses the embedded `client_to_server_fn`.
     """
 
-    @computations.federated_computation
+    @federated_computation.federated_computation
     def init_fn():
       return intrinsics.federated_value((), placements.SERVER)
 
-    @computations.federated_computation([
+    @federated_computation.federated_computation([
         computation_types.at_server(()),
         computation_types.at_clients(tf.int32),
     ])
@@ -765,11 +771,12 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
 class BroadcastFormTest(tf.test.TestCase):
 
   def test_roundtrip(self):
-    add = computations.tf_computation(lambda x, y: x + y)
+    add = tensorflow_computation.tf_computation(lambda x, y: x + y)
     server_data_type = computation_types.at_server(tf.int32)
     client_data_type = computation_types.at_clients(tf.int32)
 
-    @computations.federated_computation(server_data_type, client_data_type)
+    @federated_computation.federated_computation(server_data_type,
+                                                 client_data_type)
     def add_server_number_plus_one(server_number, client_numbers):
       one = intrinsics.federated_value(1, placements.SERVER)
       server_context = intrinsics.federated_map(add, (one, server_number))
@@ -797,11 +804,12 @@ class BroadcastFormTest(tf.test.TestCase):
     self.assertEqual([5, 6, 7], round_trip_comp(2, [2, 3, 4]))
 
   def test_roundtrip_no_broadcast(self):
-    add_five = computations.tf_computation(lambda x: x + 5)
+    add_five = tensorflow_computation.tf_computation(lambda x: x + 5)
     server_data_type = computation_types.at_server(())
     client_data_type = computation_types.at_clients(tf.int32)
 
-    @computations.federated_computation(server_data_type, client_data_type)
+    @federated_computation.federated_computation(server_data_type,
+                                                 client_data_type)
     def add_five_at_clients(naught_at_server, client_numbers):
       del naught_at_server
       return intrinsics.federated_map(add_five, client_numbers)

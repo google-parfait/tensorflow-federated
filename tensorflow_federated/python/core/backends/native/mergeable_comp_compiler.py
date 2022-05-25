@@ -13,7 +13,6 @@
 # limitations under the License.
 """Compiler from ConcreteComputation to MergeableCompForm."""
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -23,6 +22,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 
@@ -170,7 +170,8 @@ def compile_to_mergeable_comp_form(
     # TODO(b/147499373): If None-arguments were uniformly represented as empty
     # tuples, we would be able to avoid this (and related) ugly casing.
 
-    @computations.federated_computation(before_agg.type_signature.parameter)
+    @federated_computation.federated_computation(
+        before_agg.type_signature.parameter)
     def up_to_merge_computation(arg):
       federated_aggregate_args = before_agg_callable(
           arg)['federated_aggregate_param']
@@ -180,7 +181,7 @@ def compile_to_mergeable_comp_form(
                                             accumulate_comp, merge_comp,
                                             identity_report)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         before_agg.type_signature.parameter,
         computation_types.at_server(identity_report.type_signature.result))
     def after_merge_computation(top_level_arg, merge_result):
@@ -189,7 +190,7 @@ def compile_to_mergeable_comp_form(
 
   else:
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def up_to_merge_computation():
       federated_aggregate_args = before_agg_callable(
       )['federated_aggregate_param']
@@ -199,7 +200,7 @@ def compile_to_mergeable_comp_form(
                                             accumulate_comp, merge_comp,
                                             identity_report)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_server(identity_report.type_signature.result))
     def after_merge_computation(merge_result):
       reported_result = intrinsics.federated_map(report_comp, merge_result)

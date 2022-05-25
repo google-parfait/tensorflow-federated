@@ -15,11 +15,12 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
@@ -28,11 +29,13 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 def build_whimsy_computation_with_aggregation_and_after(server_arg_type,
                                                         clients_arg_type):
 
-  @computations.tf_computation(server_arg_type.member, clients_arg_type.member)
+  @tensorflow_computation.tf_computation(server_arg_type.member,
+                                         clients_arg_type.member)
   def compute_sum(x, y):
     return x + y
 
-  @computations.federated_computation(server_arg_type, clients_arg_type)
+  @federated_computation.federated_computation(server_arg_type,
+                                               clients_arg_type)
   def aggregation_comp(server_arg, client_arg):
     summed_client_value = intrinsics.federated_sum(client_arg)
     return intrinsics.federated_map(compute_sum,
@@ -44,16 +47,17 @@ def build_whimsy_computation_with_aggregation_and_after(server_arg_type,
 def build_whimsy_computation_with_before_aggregation_work(
     server_arg_type, clients_arg_type):
 
-  @computations.tf_computation(clients_arg_type.member)
+  @tensorflow_computation.tf_computation(clients_arg_type.member)
   def compute_tuple_sum(x):
     return x[0] + x[1]
 
-  @computations.tf_computation(server_arg_type.member,
-                               clients_arg_type.member[0])
+  @tensorflow_computation.tf_computation(server_arg_type.member,
+                                         clients_arg_type.member[0])
   def compute_sum(x, y):
     return x + y
 
-  @computations.federated_computation(server_arg_type, clients_arg_type)
+  @federated_computation.federated_computation(server_arg_type,
+                                               clients_arg_type)
   def aggregation_comp(server_arg, client_arg):
     client_sums = intrinsics.federated_map(compute_tuple_sum, client_arg)
     summed_client_value = intrinsics.federated_sum(client_sums)
@@ -63,17 +67,17 @@ def build_whimsy_computation_with_before_aggregation_work(
   return aggregation_comp
 
 
-@computations.tf_computation(tf.int32, tf.int32)
+@tensorflow_computation.tf_computation(tf.int32, tf.int32)
 def tf_multiply_int(x, y):
   return x * y
 
 
-@computations.federated_computation(tf.int32, tf.int32)
+@federated_computation.federated_computation(tf.int32, tf.int32)
 def return_list(x, y):
   return [x, y]
 
 
-@computations.federated_computation(
+@federated_computation.federated_computation(
     computation_types.at_server([tf.int32, tf.int32]))
 def server_placed_mult(arg):
   return intrinsics.federated_map(tf_multiply_int, arg)
@@ -94,7 +98,8 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_raises_two_dependent_aggregates(self):
 
-    @computations.federated_computation(computation_types.at_server(tf.int32))
+    @federated_computation.federated_computation(
+        computation_types.at_server(tf.int32))
     def dependent_agg_comp(server_arg):
       arg_at_clients = intrinsics.federated_broadcast(server_arg)
       sum_result = intrinsics.federated_sum(arg_at_clients)
@@ -136,7 +141,7 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compiles_simple_noarg_computation(self):
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def return_server_value():
       return intrinsics.federated_value(0, placements.SERVER)
 
@@ -148,7 +153,7 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_preserves_semantics_of_noarg_computation(self):
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def return_server_value():
       return intrinsics.federated_value(0, placements.SERVER)
 

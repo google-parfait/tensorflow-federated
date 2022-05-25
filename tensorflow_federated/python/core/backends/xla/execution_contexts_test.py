@@ -16,11 +16,11 @@ from absl.testing import absltest
 from jax.lib import xla_client
 import numpy as np
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.xla import execution_contexts
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -53,7 +53,7 @@ class ExecutionContextsTest(absltest.TestCase):
 
   def test_federated_sum_in_xla_execution_context(self):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(np.int32, placements.CLIENTS))
     def comp(x):
       return intrinsics.federated_sum(x)
@@ -63,7 +63,7 @@ class ExecutionContextsTest(absltest.TestCase):
 
   def test_unweighted_federated_mean_in_xla_execution_context(self):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(np.float32, placements.CLIENTS))
     def comp(x):
       return intrinsics.federated_mean(x)

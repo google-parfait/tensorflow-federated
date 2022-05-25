@@ -17,12 +17,12 @@ import asyncio
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import executor
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -41,7 +41,7 @@ class ExecutorTest(tf.test.TestCase):
   def test_constant_computation(self):
     ex = executor.IreeExecutor(backend_info.VULKAN_SPIRV)
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return 1000.0
 
@@ -69,7 +69,7 @@ class ExecutorTest(tf.test.TestCase):
   def test_add_one(self):
     ex = executor.IreeExecutor(backend_info.VULKAN_SPIRV)
 
-    @computations.tf_computation(tf.float32)
+    @tensorflow_computation.tf_computation(tf.float32)
     def comp(x):
       return x + 1.0
 
@@ -98,7 +98,7 @@ class ExecutorTest(tf.test.TestCase):
     context = sync_execution_context.ExecutionContext(factory)
     set_default_context.set_default_context(context)
 
-    @computations.tf_computation(tf.float32)
+    @tensorflow_computation.tf_computation(tf.float32)
     def comp(x):
       return x + 1.0
 

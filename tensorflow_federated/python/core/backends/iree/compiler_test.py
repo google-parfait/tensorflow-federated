@@ -17,12 +17,13 @@ import re
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import compiler
 from tensorflow_federated.python.core.backends.iree import computation_module
 from tensorflow_federated.python.core.backends.iree import runtime
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
@@ -30,7 +31,7 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_with_one_constant(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return 99.0
 
@@ -41,7 +42,7 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_with_one_variable_constant(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return tf.Variable(99.0)
 
@@ -52,7 +53,7 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_with_add_one(self):
 
-    @computations.tf_computation(tf.float32)
+    @tensorflow_computation.tf_computation(tf.float32)
     def comp(x):
       return x + 1.0
 
@@ -63,7 +64,7 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_with_variable_add_one(self):
 
-    @computations.tf_computation(tf.float32)
+    @tensorflow_computation.tf_computation(tf.float32)
     def comp(x):
       v = tf.Variable(1.0)
       with tf.control_dependencies([v.initializer]):
@@ -76,7 +77,7 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_with_variable_assign_add_one(self):
 
-    @computations.tf_computation(tf.float32)
+    @tensorflow_computation.tf_computation(tf.float32)
     def comp(x):
       v = tf.Variable(1.0)
       with tf.control_dependencies([v.initializer]):
@@ -91,7 +92,7 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_with_while_loop(self):
 
-    @computations.tf_computation(tf.float32)
+    @tensorflow_computation.tf_computation(tf.float32)
     def comp(x):
       # An example of a loop with variables that computes 2^x by counting from
       # x down to 0, and doubling the result in each iteration.
@@ -115,7 +116,7 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_fails_with_non_tf_comp(self):
 
-    @computations.federated_computation
+    @federated_computation.federated_computation
     def comp():
       return 10.0
 
@@ -124,7 +125,8 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_fails_with_dataset_parameter(self):
 
-    @computations.tf_computation(computation_types.SequenceType(tf.float32))
+    @tensorflow_computation.tf_computation(
+        computation_types.SequenceType(tf.float32))
     def comp(x):
       return x.reduce(np.float32(0), lambda x, y: x + y)
 
@@ -134,7 +136,7 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_fails_with_dataset_result(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return tf.data.Dataset.range(10)
 
@@ -144,7 +146,7 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_fails_with_named_tuple_parameter(self):
 
-    @computations.tf_computation(tf.float32, tf.float32)
+    @tensorflow_computation.tf_computation(tf.float32, tf.float32)
     def comp(x, y):
       return tf.add(x, y)
 
@@ -154,7 +156,7 @@ class CompilerTest(tf.test.TestCase):
 
   def test_import_tf_comp_fails_with_named_tuple_result(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def comp():
       return 10.0, 20.0
 
@@ -166,7 +168,7 @@ class CompilerTest(tf.test.TestCase):
     """Testing helper that compiles `comp` and returns the compiler module.
 
     Args:
-      comp: A computation created with `@computations.tf_computation`.
+      comp: A computation created with `@tensorflow_computation.tf_computation`.
 
     Returns:
       A tuple consisting of the compiler module and MLIR.

@@ -28,7 +28,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -40,6 +39,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -68,7 +68,7 @@ def get_computation_for_broadcast_form(
       (bf.client_data_label, computation_types.at_clients(client_data_type)),
   ])
 
-  @computations.federated_computation(comp_parameter_type)
+  @federated_computation.federated_computation(comp_parameter_type)
   def computation(arg):
     server_data, client_data = arg
     context_at_server = intrinsics.federated_map(bf.compute_server_context,
@@ -96,7 +96,7 @@ def get_iterative_process_for_map_reduce_form(
   """
   py_typecheck.check_type(mrf, forms.MapReduceForm)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_computation():
     return intrinsics.federated_value(mrf.initialize(), placements.SERVER)
 
@@ -107,7 +107,7 @@ def get_iterative_process_for_map_reduce_form(
                                        placements.CLIENTS)),
   ])
 
-  @computations.federated_computation(next_parameter_type)
+  @federated_computation.federated_computation(next_parameter_type)
   def next_computation(arg):
     """The logic of a single MapReduce processing round."""
     server_state, client_data = arg

@@ -19,12 +19,13 @@ import time
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import cpp_execution_contexts
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.executors import executor_bindings
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -46,7 +47,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
 
   def test_returns_same_python_structure(self):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         collections.OrderedDict(a=tf.int32, b=tf.float32))
     def identity(x):
       return x
@@ -59,7 +60,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
 
   def test_runs_tensorflow(self):
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         collections.OrderedDict(x=tf.int32, y=tf.int32))
     def multiply(ordered_dict):
       return ordered_dict['x'] * ordered_dict['y']
@@ -77,7 +78,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
     n_parallel_calls = 10
     sleep_time = 5
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         collections.OrderedDict(x=tf.int32, y=tf.int32))
     @tf.function
     def sleep_and_multiply(ordered_dict):
@@ -119,7 +120,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
 
   def test_returns_datasets(self):
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def create_dataset():
       return tf.data.Dataset.range(5)
 
@@ -132,7 +133,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
         self.assertEqual(tf.data.experimental.cardinality(dataset), 5)
       with self.subTest('federated'):
 
-        @computations.federated_computation
+        @federated_computation.federated_computation
         def create_federated_dataset():
           return intrinsics.federated_eval(create_dataset, placements.SERVER)
 
@@ -142,7 +143,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
         self.assertEqual(tf.data.experimental.cardinality(dataset), 5)
       with self.subTest('struct'):
 
-        @computations.tf_computation()
+        @tensorflow_computation.tf_computation()
         def create_struct_of_datasets():
           return (create_dataset(), create_dataset())
 
@@ -161,7 +162,7 @@ class AsyncCppContextInstallationTest(tf.test.TestCase):
   def test_install_and_execute_in_context(self):
     context = cpp_execution_contexts.create_local_async_cpp_execution_context()
 
-    @computations.tf_computation(tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
@@ -173,7 +174,7 @@ class AsyncCppContextInstallationTest(tf.test.TestCase):
   def test_install_and_execute_computations_with_different_cardinalities(self):
     context = cpp_execution_contexts.create_local_async_cpp_execution_context()
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def repackage_arg(x):
       return [x, x]
