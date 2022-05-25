@@ -8,6 +8,12 @@ package(default_visibility = [
     # building in Kokoro.
     # Third-party package dependencies
     "//tensorflow_federated:__pkg__",
+
+    # TODO(b/233800373): Remove dependency from `test` to `native`.
+    "//tensorflow_federated/python/core/backends/test:test_packages",
+
+    # TODO(b/233800414): Remove dependency from `templates` to `native`.
+    "//tensorflow_federated/python/core/templates:templates_packages",
 ])
 
 package_group(

@@ -7,6 +7,10 @@ package(default_visibility = [
     "//tensorflow_federated/python/core/templates:templates_packages",
     "//tensorflow_federated/python/core/test:test_packages",
     "//tensorflow_federated/python/core/types:types_packages",
+
+    # TODO(b/181569610): Clean up circular dependency between the `api` and
+    # `impl` packages.
+    "//tensorflow_federated/python/core/impl:impl_packages",
 ])
 
 package_group(

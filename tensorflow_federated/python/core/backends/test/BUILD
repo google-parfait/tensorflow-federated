@@ -3,6 +3,9 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package(default_visibility = [
     ":test_packages",
     "//tensorflow_federated/python/core:core_visibility",
+
+    # TODO(b/233801300): Remove dependency from `mapreduce` to `native`.
+    "//tensorflow_federated/python/core/backends/mapreduce:mapreduce_packages",
 ])
 
 package_group(
