@@ -10,7 +10,6 @@ package_group(
 package_group(
     name = "impl_visibility",
     includes = [
-        "//tensorflow_federated/experimental/python/core/api:api_packages",
         "//tensorflow_federated/experimental/python/learning:learning_packages",
     ],
     packages = [

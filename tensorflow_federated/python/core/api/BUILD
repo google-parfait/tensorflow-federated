@@ -14,7 +14,6 @@ package(default_visibility = [
 package_group(
     name = "api_packages",
     packages = [
-        "//tensorflow_federated/experimental/python/core/api/...",
         "//tensorflow_federated/python/core/api/...",
     ],
 )

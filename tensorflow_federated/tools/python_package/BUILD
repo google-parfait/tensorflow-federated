@@ -20,7 +20,6 @@ sh_binary(
         "//tensorflow_federated",
         "//tensorflow_federated/experimental/python",
         "//tensorflow_federated/experimental/python/core",
-        "//tensorflow_federated/experimental/python/core/api",
         "//tensorflow_federated/experimental/python/core/impl",
         "//tensorflow_federated/experimental/python/core/impl/jax_context",
         "//tensorflow_federated/proto",
