@@ -44,7 +44,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":static_assert",
-        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:placements",
         "@absl_py//absl/testing:absltest",
