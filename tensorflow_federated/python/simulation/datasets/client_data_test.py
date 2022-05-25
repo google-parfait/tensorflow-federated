@@ -15,8 +15,8 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.simulation.datasets import client_data as cd
 
 
@@ -359,7 +359,7 @@ class PreprocessClientDataTest(tf.test.TestCase, parameterized.TestCase):
   def test_preprocess_raises_on_tff_computation(self):
     client_data = create_concrete_client_data()
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def foo():
       return 1
 

@@ -22,8 +22,8 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 
 
 class IncompatiblePreprocessFnError(TypeError):
@@ -156,7 +156,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
     if (not hasattr(self, '_cached_dataset_computation')) or (
         self._cached_dataset_computation is None):
 
-      @computations.tf_computation(tf.string)
+      @tensorflow_computation.tf_computation(tf.string)
       def dataset_computation(client_id):
         return self.serializable_dataset_fn(client_id)
 

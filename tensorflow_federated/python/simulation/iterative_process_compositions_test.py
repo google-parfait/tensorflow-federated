@@ -11,13 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import collections
 
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
@@ -27,11 +29,11 @@ from tensorflow_federated.python.simulation import iterative_process_composition
 
 def _create_whimsy_iterative_process():
 
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def init():
     return []
 
-  @computations.tf_computation(init.type_signature.result)
+  @tensorflow_computation.tf_computation(init.type_signature.result)
   def next_fn(x):
     return x
 
@@ -40,15 +42,15 @@ def _create_whimsy_iterative_process():
 
 def _create_federated_int_dataset_identity_iterative_process():
 
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def create_dataset():
     return tf.data.Dataset.range(5)
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def init():
     return intrinsics.federated_eval(create_dataset, placements.CLIENTS)
 
-  @computations.federated_computation(init.type_signature.result)
+  @federated_computation.federated_computation(init.type_signature.result)
   def next_fn(x):
     return x
 
@@ -57,19 +59,20 @@ def _create_federated_int_dataset_identity_iterative_process():
 
 def _create_stateless_int_dataset_reduction_iterative_process():
 
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def make_zero():
     return tf.cast(0, tf.int64)
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def init():
     return intrinsics.federated_eval(make_zero, placements.SERVER)
 
-  @computations.tf_computation(computation_types.SequenceType(tf.int64))
+  @tensorflow_computation.tf_computation(
+      computation_types.SequenceType(tf.int64))
   def reduce_dataset(x):
     return x.reduce(tf.cast(0, tf.int64), lambda x, y: x + y)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       (init.type_signature.result,
        computation_types.FederatedType(
            computation_types.SequenceType(tf.int64), placements.CLIENTS)))
@@ -85,22 +88,22 @@ def _create_stateless_int_vector_unknown_dim_dataset_reduction_iterative_process
 ):
   # Tests handling client data of unknown shape and summing to fixed shape.
 
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def make_zero():
     return tf.reshape(tf.cast(0, tf.int64), shape=[1])
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def init():
     return intrinsics.federated_eval(make_zero, placements.SERVER)
 
-  @computations.tf_computation(
+  @tensorflow_computation.tf_computation(
       computation_types.SequenceType(
           computation_types.TensorType(tf.int64, shape=[None])))
   def reduce_dataset(x):
     return x.reduce(
         tf.cast(tf.constant([0]), tf.int64), lambda x, y: x + tf.reduce_sum(y))
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.FederatedType(
           computation_types.TensorType(tf.int64, shape=[None]),
           placements.SERVER),
@@ -116,30 +119,30 @@ def _create_stateless_int_vector_unknown_dim_dataset_reduction_iterative_process
   return iterative_process.IterativeProcess(initialize_fn=init, next_fn=next_fn)
 
 
-@computations.tf_computation(tf.string)
+@tensorflow_computation.tf_computation(tf.string)
 def int_dataset_computation(x):
   del x  # Unused
   return tf.data.Dataset.range(5)
 
 
-@computations.tf_computation(tf.string)
+@tensorflow_computation.tf_computation(tf.string)
 def vector_int_dataset_computation(x):
   del x  # Unused
   return tf.data.Dataset.range(5).map(lambda x: tf.reshape(x, shape=[1]))
 
 
-@computations.tf_computation(tf.string)
+@tensorflow_computation.tf_computation(tf.string)
 def float_dataset_computation(x):
   del x  # Unused
   return tf.data.Dataset.range(5, output_type=tf.float32)
 
 
-@computations.tf_computation(tf.int32)
+@tensorflow_computation.tf_computation(tf.int32)
 def int_identity(x):
   return x
 
 
-@computations.federated_computation(
+@federated_computation.federated_computation(
     tf.int32,
     computation_types.FederatedType(
         computation_types.SequenceType(tf.int64), placements.CLIENTS),
@@ -149,7 +152,7 @@ def test_int64_sequence_struct_computation(a, dataset, b):
   return a, dataset, b
 
 
-@computations.federated_computation(
+@federated_computation.federated_computation(
     tf.int32,
     computation_types.StructType([
         tf.int64,
@@ -162,7 +165,7 @@ def test_int64_sequence_nested_struct_computation(a, dataset, b):
   return a, dataset, b
 
 
-@computations.federated_computation(
+@federated_computation.federated_computation(
     computation_types.StructType([
         computation_types.at_clients(computation_types.SequenceType(tf.int64)),
     ]),
@@ -172,7 +175,7 @@ def test_int64_sequence_multiple_matching_federated_types_computation(a, b):
   return a, b
 
 
-@computations.federated_computation(
+@federated_computation.federated_computation(
     computation_types.FederatedType(
         computation_types.SequenceType(tf.int64), placements.CLIENTS))
 def test_int64_sequence_computation(dataset):
@@ -200,7 +203,7 @@ class ConstructDatasetsOnClientsComputationTest(absltest.TestCase):
           int_identity, test_int64_sequence_struct_computation)
 
   def test_raises_computation_no_dataset_parameter(self):
-    no_dataset_comp = computations.federated_computation(
+    no_dataset_comp = federated_computation.federated_computation(
         lambda x: x, [tf.int32])
     with self.assertRaises(
         iterative_process_compositions.SequenceTypeNotFoundError):
@@ -353,7 +356,7 @@ class ConstructDatasetsOnClientsIterativeProcessTest(absltest.TestCase):
 
     new_param_elements = [old_param_type[0], tf.int32, old_param_type[1]]
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.StructType(new_param_elements))
     def new_next(param):
       return iterproc.next([param[0], param[2]])
@@ -377,15 +380,15 @@ class ConstructDatasetsOnClientsLearningProcessTest(absltest.TestCase):
 
   def test_returns_iterative_process_with_same_non_next_type_signatures(self):
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def make_zero():
       return tf.cast(0, tf.int64)
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def initialize_fn():
       return intrinsics.federated_eval(make_zero, placements.SERVER)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         (initialize_fn.type_signature.result,
          computation_types.FederatedType(
              computation_types.SequenceType(tf.int64), placements.CLIENTS)))
@@ -395,11 +398,11 @@ class ConstructDatasetsOnClientsLearningProcessTest(absltest.TestCase):
           state=server_state,
           metrics=intrinsics.federated_value((), placements.SERVER))
 
-    @computations.tf_computation(tf.int64)
+    @tensorflow_computation.tf_computation(tf.int64)
     def get_model_weights(server_state):
       return server_state + 1
 
-    @computations.tf_computation(tf.int64, tf.int64)
+    @tensorflow_computation.tf_computation(tf.int64, tf.int64)
     def set_model_weights(state, state_update):
       return state + state_update
 

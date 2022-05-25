@@ -15,8 +15,8 @@
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -121,7 +121,7 @@ def compose_dataset_computation_with_computation(
     new_param_type = computation_types.FederatedType(
         dataset_computation.type_signature.parameter, placements.CLIENTS)
 
-    @computations.federated_computation(new_param_type)
+    @federated_computation.federated_computation(new_param_type)
     def new_computation(param):
       datasets_on_clients = intrinsics.federated_map(dataset_computation, param)
       return computation_body(datasets_on_clients)
@@ -229,7 +229,7 @@ def compose_dataset_computation_with_computation(
               map_at_path(elem, index_path, depth + 1, computation))
       return ret_param
 
-    @computations.federated_computation(new_param_type)
+    @federated_computation.federated_computation(new_param_type)
     def new_computation(param):
       return computation_body(
           map_at_path(param, dataset_index_path, 0, dataset_computation))

@@ -281,8 +281,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "@absl_py//absl/logging",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -296,8 +296,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":client_data",
-        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
