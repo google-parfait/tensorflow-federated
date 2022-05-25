@@ -20,9 +20,10 @@ import tensorflow as tf
 
 from tensorflow_federated.python.analytics import data_processing
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tensor
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -137,7 +138,7 @@ def build_iblt_computation(
   dataset_type = computation_types.SequenceType(
       computation_types.TensorType(shape=[None], dtype=tf.string))
 
-  @computations.tf_computation(dataset_type)
+  @tensorflow_computation.tf_computation(dataset_type)
   @tf.function
   def compute_sketch(dataset):
     """The TF computation to compute the frequency sketches."""
@@ -169,7 +170,7 @@ def build_iblt_computation(
     counts = tf.reshape(counts, shape=[-1, 1])
     return encoder.compute_iblt(k_words, counts)
 
-  @computations.tf_computation(compute_sketch.type_signature.result)
+  @tensorflow_computation.tf_computation(compute_sketch.type_signature.result)
   @tf.function
   def decode_heavy_hitters(sketch, count_tensor):
     """The TF computation to decode the heavy hitters."""
@@ -214,7 +215,7 @@ def build_iblt_computation(
     return intrinsics.federated_secure_sum(
         x, max_input=2**secure_sum_bitwidth - 1)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_clients(dataset_type))
   def one_round_computation(examples):
     """The TFF computation to compute the aggregated IBLT sketch."""
@@ -223,8 +224,8 @@ def build_iblt_computation(
     else:
       sum_fn = intrinsics.federated_sum
     round_timestamp = intrinsics.federated_eval(
-        computations.tf_computation(lambda: tf.cast(tf.timestamp(), tf.int64)),
-        placements.SERVER)
+        tensorflow_computation.tf_computation(
+            lambda: tf.cast(tf.timestamp(), tf.int64)), placements.SERVER)
     clients = sum_fn(intrinsics.federated_value(1, placements.CLIENTS))
     sketch, count_tensor = sum_fn(
         intrinsics.federated_map(compute_sketch, examples))

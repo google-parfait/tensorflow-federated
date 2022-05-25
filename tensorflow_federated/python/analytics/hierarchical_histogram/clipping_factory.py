@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """The private clipping factory for hierarchical histogram computation."""
+
 from typing import Optional
 
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -113,13 +115,12 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
 
     init_fn = inner_agg_process.initialize
 
-    tff_clip_fn = computations.tf_computation(clip_fn)
-    tff_cast_fn = computations.tf_computation(
+    tff_clip_fn = tensorflow_computation.tf_computation(clip_fn)
+    tff_cast_fn = tensorflow_computation.tf_computation(
         lambda x: tf.cast(x, inner_value_type.dtype))
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.at_clients(value_type)
-                                       )
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result, computation_types.at_clients(value_type))
     def next_fn(state, value):
       # Clip values before aggregation.
       clipped_value = intrinsics.federated_map(

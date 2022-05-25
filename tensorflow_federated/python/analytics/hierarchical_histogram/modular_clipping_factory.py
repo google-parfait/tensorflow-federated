@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """The modular clipping factory for hierarchical histogram computation."""
+
 import collections
 from typing import Optional
+
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -103,12 +106,11 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
 
   def _create_next_fn(self, inner_agg_next, state_type, value_type):
 
-    modular_clip_by_value_fn = computations.tf_computation(
+    modular_clip_by_value_fn = tensorflow_computation.tf_computation(
         _modular_clip_by_value)
 
-    @computations.federated_computation(state_type,
-                                        computation_types.at_clients(value_type)
-                                       )
+    @federated_computation.federated_computation(
+        state_type, computation_types.at_clients(value_type))
     def next_fn(state, value):
       clip_lower = intrinsics.federated_value(self._clip_range_lower,
                                               placements.SERVER)

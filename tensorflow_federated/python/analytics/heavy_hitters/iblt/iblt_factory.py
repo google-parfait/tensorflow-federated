@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Factory for string aggregation using IBLT."""
+
 import collections
 from typing import Tuple, Optional
 
@@ -20,12 +21,11 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
-
 from tensorflow_federated.python.analytics import data_processing
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tensor
-
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -160,7 +160,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
                        f'{expected_value_type}. Found {value_type} instead.')
     self._value_shape = tuple(value_type.element[DATASET_VALUE].shape)
 
-    @computations.tf_computation(value_type)
+    @tensorflow_computation.tf_computation(value_type)
     def encode_iblt(dataset):
       """The TF computation to compute the IBLT frequency sketches."""
       input_strings, string_values = _parse_client_dict(dataset,
@@ -173,7 +173,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
           seed=self._seed)
       return iblt_encoder.compute_iblt(input_strings, string_values)
 
-    @computations.tf_computation(encode_iblt.type_signature.result)
+    @tensorflow_computation.tf_computation(encode_iblt.type_signature.result)
     @tf.function
     def decode_iblt(sketch, value_tensor):
       """The TF computation to decode the strings and values from IBLT."""
@@ -195,15 +195,14 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     inner_aggregator_value_tensor = self._value_tensor_agg_factory.create(
         encode_iblt.type_signature.result[1])
 
-    @computations.federated_computation
+    @federated_computation.federated_computation
     def init_fn():
       sketch_state = inner_aggregator_sketch.initialize()
       value_tensor_state = inner_aggregator_value_tensor.initialize()
       return intrinsics.federated_zip((sketch_state, value_tensor_state))
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.at_clients(value_type)
-                                       )
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result, computation_types.at_clients(value_type))
     def next_fn(state, dataset):
       sketch_state, value_tensor_state = state
       sketch, value_tensor = intrinsics.federated_map(encode_iblt, dataset)

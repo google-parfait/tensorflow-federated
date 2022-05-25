@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """The functions for creating the federated computation for hierarchical histogram aggregation."""
+
 import math
 
 import attr
@@ -20,8 +21,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.analytics.hierarchical_histogram import clipping_factory
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
@@ -188,7 +190,8 @@ def build_hierarchical_histogram_computation(
         f'{hierarchical_histogram_factory.DISTRIBUTED_DP_MECHANISMS}, '
         'enable_secure_sum must be set to True to preserve distributed DP.')
 
-  @computations.tf_computation(computation_types.SequenceType(tf.float32))
+  @tensorflow_computation.tf_computation(
+      computation_types.SequenceType(tf.float32))
   def client_work(client_data):
     return _discretized_histogram_counts(client_data, lower_bound, upper_bound,
                                          num_bins)
@@ -206,12 +209,12 @@ def build_hierarchical_histogram_computation(
 
   process = agg_factory.create(client_work.type_signature.result)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_clients(client_work.type_signature.parameter))
   def hierarchical_histogram_computation(federated_client_data):
     round_timestamp = intrinsics.federated_eval(
-        computations.tf_computation(lambda: tf.cast(tf.timestamp(), tf.int64)),
-        placements.SERVER)
+        tensorflow_computation.tf_computation(
+            lambda: tf.cast(tf.timestamp(), tf.int64)), placements.SERVER)
     client_histogram = intrinsics.federated_map(client_work,
                                                 federated_client_data)
 
@@ -324,7 +327,7 @@ def build_hierarchical_histogram_process(
   parameter_type_signature = one_round_computation.type_signature.parameter
   result_type_signature = one_round_computation.type_signature.result
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def initialize():
     value_type, _ = result_type_signature.member
     # Creates a `tf.RaggedTensor` that has the same `type_signature` as the
@@ -344,12 +347,12 @@ def build_hierarchical_histogram_process(
     initial_timestamp = tf.constant(0, dtype=tf.int64)
     return ServerOutput(initial_hierarchical_histogram, initial_timestamp)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_eval(initialize, placements.SERVER)
 
-  @computations.federated_computation(init_fn.type_signature.result,
-                                      parameter_type_signature)
+  @federated_computation.federated_computation(init_fn.type_signature.result,
+                                               parameter_type_signature)
   def next_fn(_, client_data):
     return one_round_computation(client_data), intrinsics.federated_value(
         (), placements.SERVER)
