@@ -30,9 +30,10 @@ from typing import Callable, Optional, Union
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -311,7 +312,7 @@ def build_model_delta_client_work(
 
   if isinstance(optimizer, optimizer_base.Optimizer):
 
-    @computations.tf_computation(weights_type, data_type)
+    @tensorflow_computation.tf_computation(weights_type, data_type)
     def client_update_computation(initial_model_weights, dataset):
       client_update = build_model_delta_update_with_tff_optimizer(
           model_fn=model_fn,
@@ -322,7 +323,7 @@ def build_model_delta_client_work(
 
   else:
 
-    @computations.tf_computation(weights_type, data_type)
+    @tensorflow_computation.tf_computation(weights_type, data_type)
     def client_update_computation(initial_model_weights, dataset):
       keras_optimizer = optimizer()
       client_update = build_model_delta_update_with_keras_optimizer(
@@ -332,11 +333,11 @@ def build_model_delta_client_work(
           use_experimental_simulation_loop=use_experimental_simulation_loop)
       return client_update(keras_optimizer, initial_model_weights, dataset)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_value((), placements.SERVER)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       init_fn.type_signature.result, computation_types.at_clients(weights_type),
       computation_types.at_clients(data_type))
   def next_fn(state, weights, client_data):
@@ -473,7 +474,7 @@ def build_functional_model_delta_client_work(
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[0]),
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]))
 
-  @computations.tf_computation(weights_type, data_type)
+  @tensorflow_computation.tf_computation(weights_type, data_type)
   def client_update_computation(initial_model_weights, dataset):
     # Switch to the tuple expected by FunctionalModel.
     initial_model_weights = (initial_model_weights.trainable,
@@ -484,12 +485,12 @@ def build_functional_model_delta_client_work(
         delta_l2_regularizer=delta_l2_regularizer)
     return client_update(optimizer, initial_model_weights, dataset)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     # Empty tuple means "no state" / stateless.
     return intrinsics.federated_value((), placements.SERVER)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_server(()),
       computation_types.at_clients(weights_type),
       computation_types.at_clients(data_type))

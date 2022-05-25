@@ -17,8 +17,8 @@ import collections
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.learning import model_examples
 
 
@@ -61,7 +61,7 @@ class ModelExamplesTest(tf.test.TestCase, parameterized.TestCase):
   def test_tff(self):
     feature_dim = 2
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def forward_pass_and_output():
       model = model_examples.LinearRegression(feature_dim)
 

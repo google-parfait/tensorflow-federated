@@ -32,8 +32,9 @@ import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -101,16 +102,16 @@ def build_encoded_broadcast_process(value_type, encoders):
 
   initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def initial_state_comp():
     return intrinsics.federated_eval(initial_state_fn, placements.SERVER)
 
   encode_fn, decode_fn = _build_encode_decode_tf_computations_for_broadcast(
       state_type, value_type, encoders)
 
-  @computations.federated_computation(initial_state_comp.type_signature.result,
-                                      computation_types.FederatedType(
-                                          value_type, placements.SERVER))
+  @federated_computation.federated_computation(
+      initial_state_comp.type_signature.result,
+      computation_types.FederatedType(value_type, placements.SERVER))
   def encoded_broadcast_comp(state, value):
     """Encoded broadcast federated_computation."""
     empty_metrics = intrinsics.federated_value((), placements.SERVER)
@@ -128,7 +129,7 @@ def build_encoded_broadcast_process(value_type, encoders):
 def _build_initial_state_tf_computation(encoders):
   """Utility for creating initial_state tf_computation."""
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def initial_state_fn():
     return tf.nest.map_structure(lambda e: e.initial_state(), encoders)
 
@@ -160,7 +161,7 @@ def _build_encode_decode_tf_computations_for_broadcast(state_type, value_type,
                                                        encoders):
   """Utility for creating encode/decode tf_computations for broadcast."""
 
-  @computations.tf_computation(state_type, value_type)
+  @tensorflow_computation.tf_computation(state_type, value_type)
   def encode(state, value):
     """Encode tf_computation."""
     encoded_structure = tree.map_structure_up_to(
@@ -170,7 +171,7 @@ def _build_encode_decode_tf_computations_for_broadcast(state_type, value_type,
     new_state = _slice(encoders, encoded_structure, 1)
     return new_state, encoded_value
 
-  @computations.tf_computation(encode.type_signature.result[1])
+  @tensorflow_computation.tf_computation(encode.type_signature.result[1])
   def decode(encoded_value):
     """Decode tf_computation."""
     return tree.map_structure_up_to(encoders, lambda e, val: e.decode(val),
@@ -198,7 +199,7 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
     A `_NestGatherEncoder` namedtuple holding the relevant tf_computations.
   """
 
-  @computations.tf_computation(state_type)
+  @tensorflow_computation.tf_computation(state_type)
   def get_params_fn(state):
     params = tree.map_structure_up_to(encoders, lambda e, s: e.get_params(s),
                                       encoders, state)
@@ -217,8 +218,8 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
   # of intrinsics.federated_aggregate - in production, this could mean an
   # intermediary aggregator node. So currently, we send the params to clients,
   # and ask them to send them back as part of the encoded structure.
-  @computations.tf_computation(value_type, encode_params_type,
-                               decode_before_sum_params_type)
+  @tensorflow_computation.tf_computation(value_type, encode_params_type,
+                                         decode_before_sum_params_type)
   def encode_fn(x, encode_params, decode_before_sum_params):
     encoded_structure = tree.map_structure_up_to(
         encoders, lambda e, *args: e.encode(*args), encoders, x, encode_params)
@@ -228,9 +229,9 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
 
   state_update_tensors_type = encode_fn.type_signature.result[2]
 
-  # This is not a @computations.tf_computation because it will be used below
-  # when bulding the computations.tf_computations that will compose a
-  # intrinsics.federated_aggregate...
+  # This is not a @tensorflow_computation.tf_computation because it will be used
+  # below when bulding the tensorflow_computation.tf_computations that will
+  # compose a intrinsics.federated_aggregate...
   # @tf.function
   def decode_before_sum_tf_function(encoded_x, decode_before_sum_params):
     part_decoded_x = tree.map_structure_up_to(
@@ -240,15 +241,15 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
     return part_decoded_x, one
 
   # ...however, result type is needed to build the subsequent tf_compuations.
-  @computations.tf_computation(encode_fn.type_signature.result[0:2])
+  @tensorflow_computation.tf_computation(encode_fn.type_signature.result[0:2])
   def tmp_decode_before_sum_fn(encoded_x, decode_before_sum_params):
     return decode_before_sum_tf_function(encoded_x, decode_before_sum_params)
 
   part_decoded_x_type = tmp_decode_before_sum_fn.type_signature.result
   del tmp_decode_before_sum_fn  # Only needed for result type.
 
-  @computations.tf_computation(part_decoded_x_type,
-                               decode_after_sum_params_type)
+  @tensorflow_computation.tf_computation(part_decoded_x_type,
+                                         decode_after_sum_params_type)
   def decode_after_sum_fn(summed_values, decode_after_sum_params):
     part_decoded_aggregated_x, num_summands = summed_values
     return tree.map_structure_up_to(
@@ -256,14 +257,14 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
         lambda e, x, params: e.decode_after_sum(x, params, num_summands),
         encoders, part_decoded_aggregated_x, decode_after_sum_params)
 
-  @computations.tf_computation(state_type, state_update_tensors_type)
+  @tensorflow_computation.tf_computation(state_type, state_update_tensors_type)
   def update_state_fn(state, state_update_tensors):
     return tree.map_structure_up_to(encoders,
                                     lambda e, *args: e.update_state(*args),
                                     encoders, state, state_update_tensors)
 
   # Computations for intrinsics.federated_aggregate.
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def zero_fn():
     values = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype),
@@ -277,8 +278,8 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
   state_update_aggregation_modes = tf.nest.map_structure(
       lambda e: tuple(e.state_update_aggregation_modes), encoders)
 
-  @computations.tf_computation(accumulator_type,
-                               encode_fn.type_signature.result)
+  @tensorflow_computation.tf_computation(accumulator_type,
+                                         encode_fn.type_signature.result)
   def accumulate_fn(acc, encoded_x):
     """Internal accumulate function."""
     value, params, state_update_tensors = encoded_x
@@ -290,7 +291,7 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
         state_update_tensors, state_update_aggregation_modes)
     return _accumulator_value(new_values, new_state_update_tensors)
 
-  @computations.tf_computation(accumulator_type, accumulator_type)
+  @tensorflow_computation.tf_computation(accumulator_type, accumulator_type)
   def merge_fn(acc1, acc2):
     new_values = tf.nest.map_structure(tf.add, acc1['values'], acc2['values'])
     new_state_update_tensors = tf.nest.map_structure(
@@ -298,7 +299,7 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
         acc2['state_update_tensors'], state_update_aggregation_modes)
     return _accumulator_value(new_values, new_state_update_tensors)
 
-  @computations.tf_computation(accumulator_type)
+  @tensorflow_computation.tf_computation(accumulator_type)
   def report_fn(acc):
     return acc
 

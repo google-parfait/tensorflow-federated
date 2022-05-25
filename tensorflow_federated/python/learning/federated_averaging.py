@@ -40,8 +40,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -307,7 +307,7 @@ def build_federated_averaging_process(
 
   server_state_type = iter_proc.state_type.member
 
-  @computations.tf_computation(server_state_type)
+  @tensorflow_computation.tf_computation(server_state_type)
   def get_model_weights(server_state):
     return server_state.model
 

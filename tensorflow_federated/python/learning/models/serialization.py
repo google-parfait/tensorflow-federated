@@ -26,8 +26,8 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_serialization
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -297,7 +297,8 @@ def save(model: model_lib.Model, path: str, input_type=None) -> None:
   m.serialized_metric_finalizers = collections.OrderedDict()
 
   def serialize_metric_finalizer(finalizer, metric_type):
-    finalizer_computation = computations.tf_computation(finalizer, metric_type)
+    finalizer_computation = tensorflow_computation.tf_computation(
+        finalizer, metric_type)
     return tf.Variable(
         computation_serialization.serialize_computation(
             finalizer_computation).SerializeToString(deterministic=True),

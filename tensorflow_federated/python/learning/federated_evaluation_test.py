@@ -20,9 +20,10 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
@@ -395,13 +396,13 @@ class FederatedEvaluationTest(parameterized.TestCase):
   def test_federated_evaluation_fails_stateful_broadcast(self):
     # Create a test stateful measured process that doesn't do anything useful.
 
-    @computations.federated_computation
+    @federated_computation.federated_computation
     def init_fn():
       return intrinsics.federated_eval(
-          computations.tf_computation(
+          tensorflow_computation.tf_computation(
               lambda: tf.zeros(shape=[], dtype=tf.float32)), placements.SERVER)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_server(tf.float32),
         computation_types.at_clients(tf.int32))
     def next_fn(state, value):
@@ -414,7 +415,7 @@ class FederatedEvaluationTest(parameterized.TestCase):
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_fails_non_measured_process_broadcast(self):
-    broadcaster = computations.tf_computation(lambda x: x)
+    broadcaster = tensorflow_computation.tf_computation(lambda x: x)
     with self.assertRaisesRegex(ValueError, '`MeasuredProcess`'):
       federated_evaluation.build_federated_evaluation(
           TestModelQuant, broadcast_process=broadcaster)

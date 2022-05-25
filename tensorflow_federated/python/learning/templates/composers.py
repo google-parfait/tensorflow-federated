@@ -25,9 +25,10 @@ import attr
 
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -130,7 +131,7 @@ def compose_learning_process(
                  client_work, model_update_aggregator, model_finalizer)
   client_data_type = client_work.next.type_signature.parameter[2]
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def init_fn():
     initial_model_weights = intrinsics.federated_eval(initial_model_weights_fn,
                                                       placements.SERVER)
@@ -141,8 +142,8 @@ def compose_learning_process(
                                model_update_aggregator.initialize(),
                                model_finalizer.initialize()))
 
-  @computations.federated_computation(init_fn.type_signature.result,
-                                      client_data_type)
+  @federated_computation.federated_computation(init_fn.type_signature.result,
+                                               client_data_type)
   def next_fn(state, client_data):
     # Compose processes.
     distributor_output = model_weights_distributor.next(
@@ -175,12 +176,12 @@ def compose_learning_process(
 
   state_parameter_type = next_fn.type_signature.parameter[0].member
 
-  @computations.tf_computation(state_parameter_type)
+  @tensorflow_computation.tf_computation(state_parameter_type)
   def get_model_weights_fn(state):
     return state.global_model_weights
 
-  @computations.tf_computation(state_parameter_type,
-                               state_parameter_type.global_model_weights)
+  @tensorflow_computation.tf_computation(
+      state_parameter_type, state_parameter_type.global_model_weights)
   def set_model_weights_fn(state, model_weights):
     return attr.evolve(state, global_model_weights=model_weights)
 
@@ -292,7 +293,7 @@ def build_basic_fedavg_process(model_fn: Callable[[], model_lib.Model],
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(client_learning_rate, float)
 
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def initial_model_weights_fn():
     return model_utils.ModelWeights.from_model(model_fn())
 

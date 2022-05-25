@@ -17,8 +17,9 @@ import collections
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
@@ -47,15 +48,15 @@ def client_one():
 
 def federated_add(a, b):
   return intrinsics.federated_map(
-      computations.tf_computation(lambda x, y: x + y), (a, b))
+      tensorflow_computation.tf_computation(lambda x, y: x + y), (a, b))
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def tf_data_sum(data):
   return data.reduce(0.0, lambda x, y: x + y)
 
 
-@computations.federated_computation()
+@federated_computation.federated_computation()
 def test_initialize_fn():
   return server_zero()
 
@@ -68,8 +69,8 @@ def test_client_result(weights, data):
           update_weight=client_one()))
 
 
-@computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                    CLIENTS_FLOAT_SEQUENCE)
+@federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                             CLIENTS_FLOAT_SEQUENCE)
 def test_next_fn(state, weights, data):
   return MeasuredProcessOutput(state, test_client_result(weights, data),
                                intrinsics.federated_value(1, placements.SERVER))
@@ -84,12 +85,12 @@ class ClientWorkTest(absltest.TestCase):
       self.fail('Could not construct a valid ClientWorkProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
-    initialize_fn = computations.federated_computation()(
+    initialize_fn = federated_computation.federated_computation()(
         lambda: intrinsics.federated_value((), placements.SERVER))
 
-    @computations.federated_computation(initialize_fn.type_signature.result,
-                                        MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(
+        initialize_fn.type_signature.result, MODEL_WEIGHTS_TYPE,
+        CLIENTS_FLOAT_SEQUENCE)
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(
           state, test_client_result(weights, data),
@@ -112,21 +113,21 @@ class ClientWorkTest(absltest.TestCase):
           next_fn=lambda state, w, d: MeasuredProcessOutput(state, w + d, ()))
 
   def test_init_param_not_empty_raises(self):
-    one_arg_initialize_fn = computations.federated_computation(SERVER_INT)(
-        lambda x: x)
+    one_arg_initialize_fn = federated_computation.federated_computation(
+        SERVER_INT)(lambda x: x)
     with self.assertRaises(errors.TemplateInitFnParamNotEmptyError):
       client_works.ClientWorkProcess(one_arg_initialize_fn, test_next_fn)
 
   def test_init_state_not_assignable(self):
-    float_initialize_fn = computations.federated_computation()(
+    float_initialize_fn = federated_computation.federated_computation()(
         lambda: intrinsics.federated_value(0.0, placements.SERVER))
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       client_works.ClientWorkProcess(float_initialize_fn, test_next_fn)
 
   def test_next_state_not_assignable(self):
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                                 CLIENTS_FLOAT_SEQUENCE)
     def float_next_fn(state, weights, data):
       del state
       return MeasuredProcessOutput(
@@ -139,8 +140,8 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_next_return_tuple_raises(self):
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                                 CLIENTS_FLOAT_SEQUENCE)
     def tuple_next_fn(state, weights, data):
       return (state, test_client_result(weights, data), server_zero())
 
@@ -151,8 +152,8 @@ class ClientWorkTest(absltest.TestCase):
     measured_process_output = collections.namedtuple(
         'MeasuredProcessOutput', ['state', 'result', 'measurements'])
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                                 CLIENTS_FLOAT_SEQUENCE)
     def namedtuple_next_fn(state, weights, data):
       return measured_process_output(state, test_client_result(weights, data),
                                      server_zero())
@@ -162,8 +163,8 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_next_return_odict_raises(self):
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                                 CLIENTS_FLOAT_SEQUENCE)
     def odict_next_fn(state, weights, data):
       return collections.OrderedDict(
           state=state,
@@ -176,10 +177,11 @@ class ClientWorkTest(absltest.TestCase):
   # Tests specific only for the ClientWorkProcess contract below.
 
   def test_non_federated_init_next_raises(self):
-    initialize_fn = computations.tf_computation(lambda: 0)
+    initialize_fn = tensorflow_computation.tf_computation(lambda: 0)
 
-    @computations.tf_computation(tf.int32, MODEL_WEIGHTS_TYPE.member,
-                                 computation_types.SequenceType(tf.float32))
+    @tensorflow_computation.tf_computation(tf.int32, MODEL_WEIGHTS_TYPE.member,
+                                           computation_types.SequenceType(
+                                               tf.float32))
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(
           state,
@@ -190,12 +192,12 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(initialize_fn, next_fn)
 
   def test_init_tuple_of_federated_types_raises(self):
-    initialize_fn = computations.federated_computation()(
+    initialize_fn = federated_computation.federated_computation()(
         lambda: (server_zero(), server_zero()))
 
-    @computations.federated_computation(initialize_fn.type_signature.result,
-                                        MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(
+        initialize_fn.type_signature.result, MODEL_WEIGHTS_TYPE,
+        CLIENTS_FLOAT_SEQUENCE)
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(state, test_client_result(weights, data),
                                    server_zero())
@@ -204,12 +206,12 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(initialize_fn, next_fn)
 
   def test_non_server_placed_init_state_raises(self):
-    initialize_fn = computations.federated_computation(
+    initialize_fn = federated_computation.federated_computation(
         lambda: intrinsics.federated_value(0, placements.CLIENTS))
 
-    @computations.federated_computation(initialize_fn.type_signature.result,
-                                        MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(
+        initialize_fn.type_signature.result, MODEL_WEIGHTS_TYPE,
+        CLIENTS_FLOAT_SEQUENCE)
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(state, test_client_result(weights, data),
                                    server_zero())
@@ -219,7 +221,7 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_two_param_next_raises(self):
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE)
     def next_fn(state, weights):
       return MeasuredProcessOutput(state, weights.trainable, server_zero())
 
@@ -228,10 +230,10 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_non_clients_placed_next_weights_param_raises(self):
 
-    @computations.federated_computation(SERVER_INT,
-                                        computation_types.at_server(
-                                            MODEL_WEIGHTS_TYPE.member),
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(SERVER_INT,
+                                                 computation_types.at_server(
+                                                     MODEL_WEIGHTS_TYPE.member),
+                                                 CLIENTS_FLOAT_SEQUENCE)
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(
           state,
@@ -246,8 +248,9 @@ class ClientWorkTest(absltest.TestCase):
         computation_types.to_type(
             collections.OrderedDict(trainable=tf.float32, non_trainable=())))
 
-    @computations.federated_computation(SERVER_INT, non_model_weights_type,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(SERVER_INT,
+                                                 non_model_weights_type,
+                                                 CLIENTS_FLOAT_SEQUENCE)
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(state, test_client_result(weights, data),
                                    server_zero())
@@ -259,7 +262,7 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_constructs_with_struct_of_client_data_parameter(self):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         SERVER_INT, MODEL_WEIGHTS_TYPE,
         computation_types.at_clients(
             (computation_types.SequenceType(tf.float32),
@@ -281,8 +284,8 @@ class ClientWorkTest(absltest.TestCase):
     server_sequence_float_type = computation_types.at_server(
         computation_types.SequenceType(tf.float32))
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                        server_sequence_float_type)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                                 server_sequence_float_type)
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(
           state,
@@ -294,8 +297,8 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_non_sequence_or_struct_next_data_param_raises(self):
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                                 CLIENTS_FLOAT)
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(
           state,
@@ -309,8 +312,8 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_non_clients_placed_next_result_raises(self):
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                                 CLIENTS_FLOAT_SEQUENCE)
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(
           state, intrinsics.federated_sum(test_client_result(weights, data)),
@@ -321,8 +324,8 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_non_zipped_next_result_raises(self):
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                                 CLIENTS_FLOAT_SEQUENCE)
     def next_fn(state, weights, data):
       reduced_data = intrinsics.federated_map(tf_data_sum, data)
       return MeasuredProcessOutput(
@@ -336,8 +339,8 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_incorrect_client_result_container_raises(self):
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                                 CLIENTS_FLOAT_SEQUENCE)
     def next_fn(state, weights, data):
       reduced_data = intrinsics.federated_map(tf_data_sum, data)
       bad_client_result = intrinsics.federated_zip(
@@ -351,8 +354,8 @@ class ClientWorkTest(absltest.TestCase):
 
   def test_non_server_placed_next_measurements_raises(self):
 
-    @computations.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
-                                        CLIENTS_FLOAT_SEQUENCE)
+    @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
+                                                 CLIENTS_FLOAT_SEQUENCE)
     def next_fn(state, weights, data):
       return MeasuredProcessOutput(
           state, test_client_result(weights, data),

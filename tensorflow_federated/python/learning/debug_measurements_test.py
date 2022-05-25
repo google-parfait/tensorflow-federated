@@ -19,8 +19,8 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import debug_measurements
 
@@ -60,7 +60,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
         debug_measurements._build_aggregator_measurement_fns())
     input_type = computation_types.at_server(value_type)
 
-    @computations.federated_computation(input_type)
+    @federated_computation.federated_computation(input_type)
     def get_server_measurements(server_update):
       return server_measurement_fn(server_update)
 
@@ -83,7 +83,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
         weighted_aggregator=False)
     input_type = computation_types.at_clients(value_type)
 
-    @computations.federated_computation(input_type)
+    @federated_computation.federated_computation(input_type)
     def get_client_measurements(client_update):
       return client_measurement_fn(client_update)
 
@@ -107,7 +107,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
     input_type = computation_types.at_clients(value_type)
     weights_type = computation_types.at_clients(tf.float32)
 
-    @computations.federated_computation(input_type, weights_type)
+    @federated_computation.federated_computation(input_type, weights_type)
     def get_client_measurements(client_update, client_weights):
       return client_measurement_fn(client_update, client_weights)
 
@@ -180,7 +180,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
       self, client_updates):
     client_weights = [1.0 for _ in client_updates]
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_clients(tf.float32),
         computation_types.at_clients(tf.float32))
     def compute_client_statistics(client_updates, client_weights):
@@ -209,7 +209,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_correctness_of_weighted_client_update_statistics(
       self, client_updates, client_weights):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_clients(tf.float32),
         computation_types.at_clients(tf.float32))
     def compute_client_statistics(client_updates, client_weights):
@@ -249,7 +249,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_correctness_of_weighted_client_update_statistics_mixed_dtype(
       self, client_updates, client_weights, client_type_spec):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_clients(client_type_spec),
         computation_types.at_clients(tf.float32))
     def compute_client_statistics(client_updates, client_weights):
@@ -288,7 +288,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
                                                  client_weights,
                                                  client_type_spec):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_clients(client_type_spec),
         computation_types.at_clients(tf.float32))
     def compute_client_statistics(client_updates, client_weights):
@@ -310,7 +310,7 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.assertRaises(TypeError):
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.at_clients(client_type_spec),
           computation_types.at_clients(tf.float32))
       def compute_client_statistics(client_updates, client_weights):

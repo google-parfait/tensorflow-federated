@@ -17,9 +17,10 @@ import collections
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
@@ -36,12 +37,12 @@ def server_zero():
   return intrinsics.federated_value(0, placements.SERVER)
 
 
-@computations.federated_computation()
+@federated_computation.federated_computation()
 def test_initialize_fn():
   return server_zero()
 
 
-@computations.federated_computation(SERVER_INT, SERVER_FLOAT)
+@federated_computation.federated_computation(SERVER_INT, SERVER_FLOAT)
 def test_next_fn(state, val):
   return MeasuredProcessOutput(state, intrinsics.federated_broadcast(val),
                                intrinsics.federated_value(1, placements.SERVER))
@@ -56,11 +57,11 @@ class DistributionProcessTest(tf.test.TestCase):
       self.fail('Could not construct a valid DistributionProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
-    initialize_fn = computations.federated_computation()(
+    initialize_fn = federated_computation.federated_computation()(
         lambda: intrinsics.federated_value((), placements.SERVER))
 
-    @computations.federated_computation(initialize_fn.type_signature.result,
-                                        SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        initialize_fn.type_signature.result, SERVER_FLOAT)
     def next_fn(state, val):
       return MeasuredProcessOutput(
           state, intrinsics.federated_broadcast(val),
@@ -83,20 +84,20 @@ class DistributionProcessTest(tf.test.TestCase):
           next_fn=lambda state, val: MeasuredProcessOutput(state, (), ()))
 
   def test_init_param_not_empty_raises(self):
-    one_arg_initialize_fn = computations.federated_computation(SERVER_INT)(
-        lambda x: x)
+    one_arg_initialize_fn = federated_computation.federated_computation(
+        SERVER_INT)(lambda x: x)
     with self.assertRaises(errors.TemplateInitFnParamNotEmptyError):
       distributors.DistributionProcess(one_arg_initialize_fn, test_next_fn)
 
   def test_init_state_not_assignable(self):
-    float_initialize_fn = computations.federated_computation()(
+    float_initialize_fn = federated_computation.federated_computation()(
         lambda: intrinsics.federated_value(0.0, placements.SERVER))
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       distributors.DistributionProcess(float_initialize_fn, test_next_fn)
 
   def test_next_state_not_assignable(self):
 
-    @computations.federated_computation(SERVER_INT, SERVER_FLOAT)
+    @federated_computation.federated_computation(SERVER_INT, SERVER_FLOAT)
     def float_next_fn(state, val):
       del state
       return MeasuredProcessOutput(
@@ -108,7 +109,7 @@ class DistributionProcessTest(tf.test.TestCase):
 
   def test_next_return_tuple_raises(self):
 
-    @computations.federated_computation(SERVER_INT, SERVER_FLOAT)
+    @federated_computation.federated_computation(SERVER_INT, SERVER_FLOAT)
     def tuple_next_fn(state, val):
       return state, intrinsics.federated_broadcast(val), server_zero()
 
@@ -119,7 +120,7 @@ class DistributionProcessTest(tf.test.TestCase):
     measured_process_output = collections.namedtuple(
         'MeasuredProcessOutput', ['state', 'result', 'measurements'])
 
-    @computations.federated_computation(SERVER_INT, SERVER_FLOAT)
+    @federated_computation.federated_computation(SERVER_INT, SERVER_FLOAT)
     def namedtuple_next_fn(state, val):
       return measured_process_output(state, intrinsics.federated_broadcast(val),
                                      server_zero())
@@ -129,7 +130,7 @@ class DistributionProcessTest(tf.test.TestCase):
 
   def test_next_return_odict_raises(self):
 
-    @computations.federated_computation(SERVER_INT, SERVER_FLOAT)
+    @federated_computation.federated_computation(SERVER_INT, SERVER_FLOAT)
     def odict_next_fn(state, val):
       return collections.OrderedDict(
           state=state,
@@ -142,9 +143,10 @@ class DistributionProcessTest(tf.test.TestCase):
   # Tests specific only for the DistributionProcess contract below.
 
   def test_construction_with_value_type_mismatch_does_not_raise(self):
-    bad_cast_fn = computations.tf_computation(lambda x: tf.cast(x, tf.float64))
+    bad_cast_fn = tensorflow_computation.tf_computation(
+        lambda x: tf.cast(x, tf.float64))
 
-    @computations.federated_computation(SERVER_INT, SERVER_FLOAT)
+    @federated_computation.federated_computation(SERVER_INT, SERVER_FLOAT)
     def next_fn(state, val):
       result = intrinsics.federated_map(bad_cast_fn,
                                         intrinsics.federated_broadcast(val))
@@ -158,9 +160,9 @@ class DistributionProcessTest(tf.test.TestCase):
                 'client and server placed types.')
 
   def test_non_federated_init_next_raises(self):
-    initialize_fn = computations.tf_computation(lambda: 0)
+    initialize_fn = tensorflow_computation.tf_computation(lambda: 0)
 
-    @computations.tf_computation(tf.int32, tf.float32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.float32)
     def next_fn(state, val):
       return MeasuredProcessOutput(state, val, ())
 
@@ -168,11 +170,11 @@ class DistributionProcessTest(tf.test.TestCase):
       distributors.DistributionProcess(initialize_fn, next_fn)
 
   def test_init_tuple_of_federated_types_raises(self):
-    initialize_fn = computations.federated_computation()(
+    initialize_fn = federated_computation.federated_computation()(
         lambda: (server_zero(), server_zero()))
 
-    @computations.federated_computation(initialize_fn.type_signature.result,
-                                        SERVER_FLOAT)
+    @federated_computation.federated_computation(
+        initialize_fn.type_signature.result, SERVER_FLOAT)
     def next_fn(state, val):
       return MeasuredProcessOutput(state, intrinsics.federated_broadcast(val),
                                    server_zero())
@@ -181,10 +183,10 @@ class DistributionProcessTest(tf.test.TestCase):
       distributors.DistributionProcess(initialize_fn, next_fn)
 
   def test_non_server_placed_init_state_raises(self):
-    initialize_fn = computations.federated_computation(
+    initialize_fn = federated_computation.federated_computation(
         lambda: intrinsics.federated_value(0, placements.CLIENTS))
 
-    @computations.federated_computation(CLIENTS_INT, SERVER_FLOAT)
+    @federated_computation.federated_computation(CLIENTS_INT, SERVER_FLOAT)
     def next_fn(state, val):
       return MeasuredProcessOutput(state, intrinsics.federated_broadcast(val),
                                    server_zero())
@@ -194,7 +196,7 @@ class DistributionProcessTest(tf.test.TestCase):
 
   def test_single_param_next_raises(self):
 
-    @computations.federated_computation(SERVER_INT)
+    @federated_computation.federated_computation(SERVER_INT)
     def next_fn(state):
       return MeasuredProcessOutput(state, intrinsics.federated_broadcast(state),
                                    server_zero())
@@ -204,7 +206,8 @@ class DistributionProcessTest(tf.test.TestCase):
 
   def test_three_params_next_raises(self):
 
-    @computations.federated_computation(SERVER_INT, SERVER_FLOAT, SERVER_FLOAT)
+    @federated_computation.federated_computation(SERVER_INT, SERVER_FLOAT,
+                                                 SERVER_FLOAT)
     def next_fn(state, value, extra_value):
       return MeasuredProcessOutput(state, intrinsics.federated_broadcast(value),
                                    extra_value)
@@ -213,20 +216,22 @@ class DistributionProcessTest(tf.test.TestCase):
       distributors.DistributionProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_value_param_raises(self):
-    next_fn = computations.federated_computation(SERVER_INT, CLIENTS_INT)(
-        lambda state, val: MeasuredProcessOutput(state, val, server_zero()))
+    next_fn = federated_computation.federated_computation(
+        SERVER_INT, CLIENTS_INT)(
+            lambda state, val: MeasuredProcessOutput(state, val, server_zero()))
     with self.assertRaises(errors.TemplatePlacementError):
       distributors.DistributionProcess(test_initialize_fn, next_fn)
 
   def test_non_clients_placed_next_result_raises(self):
-    next_fn = computations.federated_computation(SERVER_INT, SERVER_INT)(
-        lambda state, val: MeasuredProcessOutput(state, val, server_zero()))
+    next_fn = federated_computation.federated_computation(
+        SERVER_INT, SERVER_INT)(
+            lambda state, val: MeasuredProcessOutput(state, val, server_zero()))
     with self.assertRaises(errors.TemplatePlacementError):
       distributors.DistributionProcess(test_initialize_fn, next_fn)
 
   def test_non_server_placed_next_measurements_raises(self):
 
-    @computations.federated_computation(SERVER_INT, SERVER_FLOAT)
+    @federated_computation.federated_computation(SERVER_INT, SERVER_FLOAT)
     def next_fn(state, val):
       return MeasuredProcessOutput(
           state, intrinsics.federated_broadcast(val),

@@ -30,9 +30,10 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -254,7 +255,7 @@ def _build_initialize_computation(
     with `tff.SERVER` placement.
   """
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def initialize_computation():
     """Orchestration logic for server model initialization."""
     initial_global_model, initial_global_optimizer_state = intrinsics.federated_eval(
@@ -344,8 +345,9 @@ def _build_one_round_computation(
           whimsy_model_for_metadata.metric_finalizers(),
           unfinalized_metrics_type)
 
-  @computations.tf_computation(model_weights_type, model_weights_type.trainable,
-                               optimizer_state_type)
+  @tensorflow_computation.tf_computation(model_weights_type,
+                                         model_weights_type.trainable,
+                                         optimizer_state_type)
   @tf.function
   def server_update(global_model, mean_model_delta, optimizer_state):
     """Updates the global model with the mean model update from clients."""
@@ -386,7 +388,7 @@ def _build_one_round_computation(
   dataset_type = computation_types.SequenceType(
       whimsy_model_for_metadata.input_spec)
 
-  @computations.tf_computation(dataset_type, model_weights_type)
+  @tensorflow_computation.tf_computation(dataset_type, model_weights_type)
   @tf.function
   def _compute_local_training_and_client_delta(dataset, initial_model_weights):
     """Performs client local model optimization.
@@ -413,7 +415,7 @@ def _build_one_round_computation(
       delta_aggregate_state=aggregation_state,
       model_broadcast_state=broadcast_state)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.FederatedType(server_state_type, placements.SERVER),
       computation_types.FederatedType(dataset_type, placements.CLIENTS))
   def one_round_computation(server_state, federated_dataset):
@@ -502,7 +504,7 @@ def is_valid_broadcast_process(
 # ============================================================================
 
 
-@computations.federated_computation()
+@federated_computation.federated_computation()
 def _empty_server_initialization():
   return intrinsics.federated_value((), placements.SERVER)
 
@@ -513,7 +515,7 @@ def build_stateless_broadcaster(
 ) -> measured_process.MeasuredProcess:
   """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.FederatedType((), placements.SERVER),
       computation_types.FederatedType(model_weights_type, placements.SERVER),
   )
@@ -586,7 +588,7 @@ def build_model_delta_optimizer_process(
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(model_to_client_delta_fn)
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def model_and_optimizer_init_fn(
   ) -> Tuple[model_utils.ModelWeights, List[tf.Variable]]:
     """Returns initial model weights and state of the global optimizer."""

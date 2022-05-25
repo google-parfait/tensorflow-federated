@@ -23,7 +23,7 @@ from typing import Any, Iterable, List
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import keras_utils as base_utils
 from tensorflow_federated.python.learning.reconstruction import model as model_lib
@@ -235,7 +235,7 @@ def read_metric_variables(
 # the FedRecon to use the new composable APIs.
 def federated_output_computation_from_metrics(
     metrics: List[tf.keras.metrics.Metric]
-) -> computations.federated_computation:
+) -> federated_computation.federated_computation:
   """Produces a federated computation for aggregating Keras metrics.
 
   This can be used to evaluate both Keras and non-Keras models using Keras
@@ -263,6 +263,6 @@ def federated_output_computation_from_metrics(
   def federated_output(local_outputs):
     return base_utils.federated_aggregate_keras_metric(metrics, local_outputs)
 
-  federated_output_computation = computations.federated_computation(
+  federated_output_computation = federated_computation.federated_computation(
       federated_output, federated_local_outputs_type)
   return federated_output_computation

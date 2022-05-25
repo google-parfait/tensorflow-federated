@@ -41,8 +41,8 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
@@ -170,14 +170,14 @@ def build_weighted_fed_avg(
 
   if model is not None:
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
       return model_utils.ModelWeights(
           tuple(tf.convert_to_tensor(w) for w in model.initial_weights[0]),
           tuple(tf.convert_to_tensor(w) for w in model.initial_weights[1]))
   else:
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
       return model_utils.ModelWeights.from_model(model_fn())
 

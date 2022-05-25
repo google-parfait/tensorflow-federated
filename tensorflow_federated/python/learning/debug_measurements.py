@@ -20,22 +20,23 @@
 
 import collections
 from typing import Any, Callable, Dict
+
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import measurements
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import placements
 
 
-@computations.tf_computation
+@tensorflow_computation.tf_computation
 def _calculate_global_norm(tensor_struct):
   """Calculate the Euclidean norm of a nested structure of tensors."""
   return tf.linalg.global_norm(tf.nest.flatten(tensor_struct))
 
 
-@computations.tf_computation
+@tensorflow_computation.tf_computation
 def _calculate_global_norm_mixed_dtype(tensor_struct):
   """Calculate the Euclidean norm of a nested structure of tensors."""
   norms_squared = [
@@ -45,13 +46,13 @@ def _calculate_global_norm_mixed_dtype(tensor_struct):
   return tf.math.sqrt(tf.reduce_sum(tf.stack(norms_squared)))
 
 
-@computations.tf_computation
+@tensorflow_computation.tf_computation
 def _square_value(tensor_value):
   """Computes the square of a tensor."""
   return tensor_value**2
 
 
-@computations.tf_computation
+@tensorflow_computation.tf_computation
 def _calculate_server_update_statistics_mixed_dtype(server_update):
   """Calculate server update statistics of mixed data types."""
   flattened_struct_max = [
@@ -71,7 +72,7 @@ def _calculate_server_update_statistics_mixed_dtype(server_update):
       server_update_min=min_value)
 
 
-@computations.tf_computation
+@tensorflow_computation.tf_computation
 def _calculate_server_update_statistics(server_update):
   """Calculate the L2 norm, and the max and min values of a server update."""
   flattened_struct = tf.nest.flatten(server_update)
@@ -86,7 +87,7 @@ def _calculate_server_update_statistics(server_update):
       server_update_min=min_value)
 
 
-@computations.tf_computation
+@tensorflow_computation.tf_computation
 def _calculate_unbiased_std_dev(expected_value, expected_squared_value,
                                 sum_of_weights, sum_of_squared_weights):
   """Calculate the standard_deviation of a discrete distribution.

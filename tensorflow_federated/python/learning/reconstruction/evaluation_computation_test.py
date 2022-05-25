@@ -21,8 +21,8 @@ from absl.testing import parameterized
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -398,11 +398,11 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         model_weights_type) -> measured_process_lib.MeasuredProcess:
       """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
 
-      @computations.federated_computation()
+      @federated_computation.federated_computation()
       def test_server_initialization():
         return intrinsics.federated_value((), placements.SERVER)
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.FederatedType((), placements.SERVER),
           computation_types.FederatedType(model_weights_type,
                                           placements.SERVER),
@@ -457,11 +457,11 @@ class FedreconEvaluationTest(tf.test.TestCase, parameterized.TestCase):
         model_weights_type) -> measured_process_lib.MeasuredProcess:
       """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
 
-      @computations.federated_computation()
+      @federated_computation.federated_computation()
       def test_server_initialization():
         return intrinsics.federated_value(2.0, placements.SERVER)
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.FederatedType(tf.float32, placements.SERVER),
           computation_types.FederatedType(model_weights_type,
                                           placements.SERVER),

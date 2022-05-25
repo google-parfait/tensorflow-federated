@@ -15,8 +15,8 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.optimizers import optimizer_test_utils
@@ -56,7 +56,7 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertGreater(fn(weights), 5.0)
     optimizer_fn = lambda: tf.keras.optimizers.SGD(0.1, momentum=momentum)
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def initialize_fn():
       variables = tf.Variable(tf.zeros([5, 1]))
       optimizer = keras_optimizer.KerasOptimizer(
@@ -70,7 +70,7 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       new_state, updated_weights = optimizer.next(state, variables, gradients)
       return new_state, updated_weights
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def next_fn(state, initial_weights):
       variables = tf.Variable(initial_weights)
       optimizer = keras_optimizer.KerasOptimizer(
@@ -116,7 +116,7 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
         state, variables = optimizer.next(state, variables, gradients)
       return state, variables
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def local_training(initial_weights):
       variables = tf.Variable(initial_weights)
       optimizer = keras_optimizer.KerasOptimizer(
@@ -142,7 +142,7 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       # Return also the private variables of the optimizer.
       return state, variables, optimizer._optimizer.variables()
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def test_computation(initial_weights):
       variables = tf.Variable(initial_weights)
       optimizer = keras_optimizer.KerasOptimizer(

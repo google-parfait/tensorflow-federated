@@ -23,8 +23,9 @@ from typing import Callable, Union
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -142,7 +143,7 @@ def _build_tff_optimizer_initialize_and_next(
     optimizer: optimizer_base.Optimizer):
   """Creates finalizer initialize and next functions for TFF optimizers."""
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def init_fn():
     tensor_specs = type_conversions.type_to_tf_tensor_specs(
         model_weights_type.trainable)
@@ -150,9 +151,9 @@ def _build_tff_optimizer_initialize_and_next(
 
   optimizer_state_type = init_fn.type_signature.result
 
-  @computations.tf_computation(optimizer_state_type,
-                               model_weights_type.trainable,
-                               model_weights_type.trainable)
+  @tensorflow_computation.tf_computation(optimizer_state_type,
+                                         model_weights_type.trainable,
+                                         model_weights_type.trainable)
   def next_fn(optimizer_state, trainable_weights, update):
     return optimizer.next(optimizer_state, trainable_weights, update)
 
@@ -164,7 +165,7 @@ def _build_keras_optimizer_initialize_and_next(
     optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer]):
   """Creates finalizer initialize and next functions for Keras optimizers."""
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def init_fn():
     tensor_specs = type_conversions.type_to_tf_tensor_specs(
         model_weights_type.trainable)
@@ -177,9 +178,9 @@ def _build_keras_optimizer_initialize_and_next(
 
   optimizer_state_type = init_fn.type_signature.result
 
-  @computations.tf_computation(optimizer_state_type,
-                               model_weights_type.trainable,
-                               model_weights_type.trainable)
+  @tensorflow_computation.tf_computation(optimizer_state_type,
+                                         model_weights_type.trainable,
+                                         model_weights_type.trainable)
   @tf.function
   def next_fn(optimizer_state, trainable_weights, update):
     with tf.init_scope():
@@ -258,11 +259,11 @@ def build_apply_optimizer_finalizer(
     init_tf, next_tf = _build_keras_optimizer_initialize_and_next(
         model_weights_type, optimizer_fn)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_eval(init_tf, placements.SERVER)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.at_server(model_weights_type),
       computation_types.at_server(model_weights_type.trainable))

@@ -23,9 +23,10 @@ from typing import Callable, Optional
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
@@ -73,7 +74,8 @@ def build_local_evaluation(
     model parameters and sequential data, and returns the evaluation metrics.
   """
 
-  @computations.tf_computation(model_weights_type, SequenceType(batch_type))
+  @tensorflow_computation.tf_computation(model_weights_type,
+                                         SequenceType(batch_type))
   @tf.function
   def client_eval(incoming_model_weights, dataset):
     """Returns local outputs after evaluting `model_weights` on `dataset`."""
@@ -167,7 +169,7 @@ def build_federated_evaluation(
       metrics_aggregation_computation = aggregator.sum_then_finalize(
           model.metric_finalizers(), unfinalized_metrics_type)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_server(model_weights_type),
       computation_types.at_clients(SequenceType(batch_type)))
   def server_eval(server_model_weights, federated_dataset):

@@ -57,9 +57,10 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -127,7 +128,7 @@ def _build_server_init_fn(
       `tff.learning.framework.ServerState`.
   """
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def server_init_tf():
     """Initialize the TensorFlow-only portions of the server state."""
     model_weights = reconstruction_utils.get_global_variables(model_fn())
@@ -140,7 +141,7 @@ def _build_server_init_fn(
     optimizer_state = optimizer.initialize(trainable_tensor_specs)
     return model_weights, optimizer_state
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def server_init_tff():
     """Returns a state placed at `tff.SERVER`."""
     tf_init_tuple = intrinsics.federated_eval(server_init_tf, placements.SERVER)
@@ -180,8 +181,10 @@ def _build_server_update_fn(
     A `tff.Computation` that updates `ServerState`.
   """
 
-  @computations.tf_computation(server_state_type, model_weights_type.trainable,
-                               aggregator_state_type, broadcaster_state_type)
+  @tensorflow_computation.tf_computation(server_state_type,
+                                         model_weights_type.trainable,
+                                         aggregator_state_type,
+                                         broadcaster_state_type)
   @tf.function
   def server_update(server_state, weights_delta, aggregator_state,
                     broadcaster_state):
@@ -292,7 +295,7 @@ def _build_client_update_fn(
     A `tff.Computation` for the local client update.
   """
 
-  @computations.tf_computation(dataset_type, model_weights_type)
+  @tensorflow_computation.tf_computation(dataset_type, model_weights_type)
   @tf.function
   def client_update(dataset, initial_model_weights):
     """Performs client local model optimization.
@@ -467,8 +470,8 @@ def _build_run_one_round_fn(
     A `tff.Computation` for a round of training.
   """
 
-  @computations.federated_computation(federated_server_state_type,
-                                      federated_dataset_type)
+  @federated_computation.federated_computation(federated_server_state_type,
+                                               federated_dataset_type)
   def run_one_round(server_state, federated_dataset):
     """Orchestration logic for one round of computation.
 
@@ -742,7 +745,7 @@ def build_training_process(
   process = iterative_process_lib.IterativeProcess(
       initialize_fn=server_init_tff, next_fn=run_one_round_tff)
 
-  @computations.tf_computation(server_state_type)
+  @tensorflow_computation.tf_computation(server_state_type)
   def get_model_weights(server_state):
     return server_state.model
 

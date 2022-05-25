@@ -17,9 +17,9 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -333,7 +333,7 @@ def _mrfify_aggregator(aggregator):
 
   if aggregator.is_weighted:
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         aggregator.next.type_signature.parameter[0],
         computation_types.at_clients(
             (aggregator.next.type_signature.parameter[1].member,
@@ -344,8 +344,8 @@ def _mrfify_aggregator(aggregator):
           (output.result, output.measurements))
   else:
 
-    @computations.federated_computation(aggregator.next.type_signature.parameter
-                                       )
+    @federated_computation.federated_computation(
+        aggregator.next.type_signature.parameter)
     def next_fn(state, value):
       output = aggregator.next(state, value)
       return output.state, intrinsics.federated_zip(

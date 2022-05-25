@@ -26,8 +26,8 @@ from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -228,22 +228,22 @@ def federated_aggregate_keras_metric(
   member_types = tf.nest.map_structure(lambda t: t.type_signature.member,
                                        federated_values)
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def zeros_fn():
     return type_conversions.structure_from_tensor_type_tree(
         lambda t: tf.zeros(shape=t.shape, dtype=t.dtype), member_types)
 
   zeros = zeros_fn()
 
-  @computations.tf_computation(member_types, member_types)
+  @tensorflow_computation.tf_computation(member_types, member_types)
   def accumulate(accumulators, variables):
     return tf.nest.map_structure(tf.add, accumulators, variables)
 
-  @computations.tf_computation(member_types, member_types)
+  @tensorflow_computation.tf_computation(member_types, member_types)
   def merge(a, b):
     return tf.nest.map_structure(tf.add, a, b)
 
-  @computations.tf_computation(member_types)
+  @tensorflow_computation.tf_computation(member_types)
   def report(accumulators):
     """Insert `accumulators` back into the keras metric to obtain result."""
 

@@ -35,9 +35,10 @@ from typing import Optional
 
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
@@ -145,8 +146,8 @@ def build_federated_evaluation(
                     'state), has state '
                     f'{broadcast_process.initialize.type_signature.result!r}')
 
-  @computations.tf_computation(model_weights_type,
-                               computation_types.SequenceType(batch_type))
+  @tensorflow_computation.tf_computation(
+      model_weights_type, computation_types.SequenceType(batch_type))
   def client_computation(incoming_model_weights: computation_types.Type,
                          client_dataset: computation_types.SequenceType):
     """Reconstructs and evaluates with `incoming_model_weights`."""
@@ -200,7 +201,7 @@ def build_federated_evaluation(
 
     return tf_client_computation(incoming_model_weights, client_dataset)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_server(model_weights_type),
       computation_types.at_clients(computation_types.SequenceType(batch_type)))
   def server_eval(server_model_weights: computation_types.FederatedType,

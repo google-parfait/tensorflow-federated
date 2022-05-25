@@ -20,9 +20,10 @@ import attr
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
@@ -213,13 +214,13 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
     def sum_then_finalize_then_times_two(metric_finalizers,
                                          local_unfinalized_metrics_type):
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.at_clients(local_unfinalized_metrics_type))
       def aggregation_computation(client_local_unfinalized_metrics):
         unfinalized_metrics_sum = intrinsics.federated_sum(
             client_local_unfinalized_metrics)
 
-        @computations.tf_computation(local_unfinalized_metrics_type)
+        @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
         def finalizer_computation(unfinalized_metrics):
           finalized_metrics = collections.OrderedDict()
           for metric_name, metric_finalizer in metric_finalizers.items():
@@ -333,7 +334,7 @@ class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
 
     # Note: we must wrap in a `tf_computation` for the correct graph-context
     # processing of Keras models wrapped as FunctionalModel.
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def client_update_functional_model(model_weights, dataset):
       model_delta_fn = model_delta_client_work.build_functional_model_delta_update(
           model=functional_model, weighting=weighting)

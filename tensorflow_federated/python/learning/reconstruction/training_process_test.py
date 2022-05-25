@@ -27,9 +27,10 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -194,19 +195,18 @@ class _DPMean(factory.UnweightedAggregationFactory):
   ) -> aggregation_process_lib.AggregationProcess:
     self._dp_sum_process = self._dp_sum.create(value_type)
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init():
       # Invoke here to instantiate anything we need
       return self._dp_sum_process.initialize()
 
-    @computations.tf_computation(value_type, tf.int32)
+    @tensorflow_computation.tf_computation(value_type, tf.int32)
     def div(x, y):
       # Opaque shape manipulations
       return [tf.squeeze(tf.math.divide_no_nan(x, tf.cast(y, tf.float32)), 0)]
 
-    @computations.federated_computation(init.type_signature.result,
-                                        computation_types.at_clients(value_type)
-                                       )
+    @federated_computation.federated_computation(
+        init.type_signature.result, computation_types.at_clients(value_type))
     def next_fn(state, value):
       one_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
       dp_sum = self._dp_sum_process.next(state, value)
@@ -883,11 +883,11 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
         model_weights_type) -> measured_process_lib.MeasuredProcess:
       """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
 
-      @computations.federated_computation()
+      @federated_computation.federated_computation()
       def test_server_initialization():
         return intrinsics.federated_value(2.0, placements.SERVER)
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.FederatedType(tf.float32, placements.SERVER),
           computation_types.FederatedType(model_weights_type,
                                           placements.SERVER),

@@ -24,9 +24,10 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -77,7 +78,7 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
         optimizer_output=())
 
 
-@computations.tf_computation(tf.int32)
+@tensorflow_computation.tf_computation(tf.int32)
 def _add_one(x):
   return x + 1
 
@@ -87,11 +88,11 @@ def _build_test_measured_broadcast(
 ) -> measured_process.MeasuredProcess:
   """Builds a test `MeasuredProcess` that has state and metrics."""
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def initialize_comp():
     return intrinsics.federated_value(0, placements.SERVER)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.FederatedType(tf.int32, placements.SERVER),
       computation_types.FederatedType(model_weights_type, placements.SERVER))
   def next_comp(state, value):
@@ -100,7 +101,7 @@ def _build_test_measured_broadcast(
         result=intrinsics.federated_broadcast(value),
         # Arbitrary metrics for testing.
         measurements=intrinsics.federated_map(
-            computations.tf_computation(
+            tensorflow_computation.tf_computation(
                 lambda v: tf.linalg.global_norm(tf.nest.flatten(v)) + 3.0),
             value))
 
@@ -112,11 +113,11 @@ class TestMeasuredMeanFactory(factory.WeightedAggregationFactory):
 
   def create(self, value_type, weight_type):
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def initialize_comp():
       return intrinsics.federated_value(0, placements.SERVER)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(tf.int32, placements.SERVER),
         computation_types.FederatedType(value_type, placements.CLIENTS),
         computation_types.FederatedType(weight_type, placements.CLIENTS))
@@ -190,11 +191,11 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_is_valid_broadcast_process_true(self):
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def stateless_init():
       return intrinsics.federated_value((), placements.SERVER)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType((), placements.SERVER),
         computation_types.FederatedType((), placements.SERVER),
     )
@@ -213,11 +214,11 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_is_valid_broadcast_process_bad_placement(self):
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def stateless_init():
       return intrinsics.federated_value((), placements.SERVER)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType((), placements.SERVER),
         computation_types.FederatedType((), placements.SERVER),
     )
@@ -233,11 +234,11 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertFalse(
         optimizer_utils.is_valid_broadcast_process(stateless_process))
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def stateless_init2():
       return intrinsics.federated_value((), placements.SERVER)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType((), placements.SERVER),
         computation_types.FederatedType((), placements.CLIENTS),
     )
@@ -577,7 +578,7 @@ class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
                                   local_unfinalized_metrics_type):
       """Builds a TFF computation that computes per-client min/max metrics."""
 
-      @computations.tf_computation(local_unfinalized_metrics_type)
+      @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
       def finalizer_computation(unfinalized_metrics):
         finalized_metrics = collections.OrderedDict()
         for metric_name, finalizer in metric_finalizers.items():
@@ -585,7 +586,7 @@ class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
               unfinalized_metrics[metric_name])
         return finalized_metrics
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.at_clients(local_unfinalized_metrics_type))
       def aggregator_computation(client_local_unfinalized_metrics):
         client_local_finalized_metrics = intrinsics.federated_map(

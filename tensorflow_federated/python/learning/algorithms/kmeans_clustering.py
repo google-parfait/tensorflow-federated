@@ -32,8 +32,9 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
@@ -121,15 +122,15 @@ def _build_kmeans_client_work(centroids_type: computation_types.TensorType,
                               data_type: computation_types.SequenceType):
   """Creates a `tff.learning.templates.ClientWorkProcess` for k-means."""
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_value((), placements.SERVER)
 
-  @computations.tf_computation(centroids_type, data_type)
+  @tensorflow_computation.tf_computation(centroids_type, data_type)
   def client_update(centroids, client_data):
     return _compute_kmeans_step(centroids, client_data)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.at_clients(centroids_type),
       computation_types.at_clients(data_type))
@@ -190,18 +191,18 @@ def _build_kmeans_finalizer(centroids_type: computation_types.Type,
                             num_centroids: int):
   """Builds a `tff.learning.templates.FinalizerProcess` for k-means."""
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def initialize_weights():
     return tf.ones((num_centroids,), dtype=_WEIGHT_DTYPE)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_eval(initialize_weights, placements.SERVER)
 
   weights_type = initialize_weights.type_signature.result
 
-  @computations.tf_computation(centroids_type, weights_type, centroids_type,
-                               weights_type)
+  @tensorflow_computation.tf_computation(centroids_type, weights_type,
+                                         centroids_type, weights_type)
   def server_update_tf(current_centroids, current_weights, new_centroid_sums,
                        new_weights):
     return _update_centroids(current_centroids, current_weights,
@@ -210,7 +211,7 @@ def _build_kmeans_finalizer(centroids_type: computation_types.Type,
   summed_updates_type = computation_types.at_server(
       computation_types.to_type((centroids_type, weights_type)))
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.at_server(centroids_type), summed_updates_type)
   def next_fn(state, current_centroids, summed_updates):
@@ -299,7 +300,7 @@ def build_fed_kmeans(
     random_seed = (tf.cast(tf.timestamp() * _MILLIS_PER_SECOND,
                            tf.int64).numpy(), 0)
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def initialize_centers():
     return tf.random.stateless_normal(
         centroids_shape, random_seed, dtype=_POINT_DTYPE)

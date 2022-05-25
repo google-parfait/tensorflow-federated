@@ -25,8 +25,9 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning import model_utils
@@ -133,7 +134,7 @@ def build_personalization_eval(model_fn,
     client_input_type['context'] = context_tff_type
   client_input_type = computation_types.to_type(client_input_type)
 
-  @computations.tf_computation(model_weights_type, client_input_type)
+  @tensorflow_computation.tf_computation(model_weights_type, client_input_type)
   def _client_computation(initial_model_weights, client_input):
     """TFF computation that runs on each client."""
     train_data = client_input['train_data']
@@ -169,7 +170,7 @@ def build_personalization_eval(model_fn,
   aggregation_process = reservoir_sampling_factory.create(
       _client_computation.type_signature.result)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.FederatedType(model_weights_type, placements.SERVER),
       computation_types.FederatedType(client_input_type, placements.CLIENTS))
   def personalization_eval(server_model_weights, federated_client_input):

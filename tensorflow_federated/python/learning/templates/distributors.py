@@ -24,7 +24,7 @@ This module is a minimal stab at structure which will probably live in
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -132,12 +132,12 @@ def build_broadcast_process(value_type: computation_types.Type):
         f'Provided value_type must not contain any tff.types.FederatedType, '
         f'but found: {value_type}')
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_value((), placements.SERVER)
 
-  @computations.federated_computation(init_fn.type_signature.result,
-                                      computation_types.at_server(value_type))
+  @federated_computation.federated_computation(
+      init_fn.type_signature.result, computation_types.at_server(value_type))
   def next_fn(state, value):
     empty_measurements = intrinsics.federated_value((), placements.SERVER)
     return measured_process.MeasuredProcessOutput(

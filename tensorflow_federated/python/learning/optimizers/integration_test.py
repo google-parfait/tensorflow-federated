@@ -16,9 +16,10 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.learning.optimizers import adagrad
@@ -66,8 +67,9 @@ def _run_in_eager_mode(optimizer, spec):
 def _run_in_tf_computation(optimizer, spec):
   weights = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
   gradients = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
-  init_fn = computations.tf_computation(lambda: optimizer.initialize(spec))
-  next_fn = computations.tf_computation(optimizer.next)
+  init_fn = tensorflow_computation.tf_computation(
+      lambda: optimizer.initialize(spec))
+  next_fn = tensorflow_computation.tf_computation(optimizer.next)
 
   state = init_fn()
   state_history = [state]
@@ -84,19 +86,19 @@ def _run_in_federated_computation(optimizer, spec):
   weights = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
   gradients = tf.nest.map_structure(lambda s: tf.ones(s.shape, s.dtype), spec)
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def init_fn():
     return intrinsics.federated_eval(
-        computations.tf_computation(lambda: optimizer.initialize(spec)),
-        placements.SERVER)
+        tensorflow_computation.tf_computation(
+            lambda: optimizer.initialize(spec)), placements.SERVER)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       init_fn.type_signature.result,
       computation_types.at_server(computation_types.to_type(spec)),
       computation_types.at_server(computation_types.to_type(spec)))
   def next_fn(state, weights, gradients):
     return intrinsics.federated_map(
-        computations.tf_computation(optimizer.next),
+        tensorflow_computation.tf_computation(optimizer.next),
         (state, weights, gradients))
 
   state = init_fn()

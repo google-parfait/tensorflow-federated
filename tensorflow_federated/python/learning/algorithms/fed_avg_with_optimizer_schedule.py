@@ -26,9 +26,10 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -107,7 +108,7 @@ def build_scheduled_client_work(
   else:
     build_client_update_fn = model_delta_client_work.build_model_delta_update_with_keras_optimizer
 
-  @computations.tf_computation(weights_type, data_type, tf.int32)
+  @tensorflow_computation.tf_computation(weights_type, data_type, tf.int32)
   def client_update_computation(initial_model_weights, dataset, round_num):
     learning_rate = learning_rate_fn(round_num)
     optimizer = optimizer_fn(learning_rate)
@@ -117,16 +118,16 @@ def build_scheduled_client_work(
         use_experimental_simulation_loop=use_experimental_simulation_loop)
     return client_update(optimizer, initial_model_weights, dataset)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     return intrinsics.federated_value(0, placements.SERVER)
 
-  @computations.tf_computation(tf.int32)
+  @tensorflow_computation.tf_computation(tf.int32)
   @tf.function
   def add_one(x):
     return x + 1
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       init_fn.type_signature.result, computation_types.at_clients(weights_type),
       computation_types.at_clients(data_type))
   def next_fn(state, weights, client_data):
@@ -246,7 +247,7 @@ def build_weighted_fed_avg_with_optimizer_schedule(
   """
   py_typecheck.check_callable(model_fn)
 
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def initial_model_weights_fn():
     return model_utils.ModelWeights.from_model(model_fn())
 

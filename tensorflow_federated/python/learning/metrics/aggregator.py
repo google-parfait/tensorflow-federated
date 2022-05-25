@@ -29,9 +29,10 @@ import tree
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -166,13 +167,13 @@ def sum_then_finalize(
   _check_finalizers_matches_unfinalized_metrics(metric_finalizers,
                                                 local_unfinalized_metrics_type)
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_clients(local_unfinalized_metrics_type))
   def aggregator_computation(client_local_unfinalized_metrics):
     unfinalized_metrics_sum = intrinsics.federated_sum(
         client_local_unfinalized_metrics)
 
-    @computations.tf_computation(local_unfinalized_metrics_type)
+    @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
     def finalizer_computation(unfinalized_metrics):
       finalized_metrics = collections.OrderedDict()
       for metric_name, metric_finalizer in metric_finalizers.items():
@@ -469,7 +470,7 @@ def secure_sum_then_finalize(
     path_list_by_factory_key[factory_key].append(path)
     flattened_path_list.append(path)
 
-  @computations.tf_computation(local_unfinalized_metrics_type)
+  @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
   def group_value_by_factory_key(local_unfinalized_metrics):
     """Groups client local metrics into a map of `factory_key` to value list."""
     # We cannot use `collections.defaultdict(list)` here because its result is
@@ -506,7 +507,7 @@ def secure_sum_then_finalize(
     aggregation_process_by_factory_key[factory_key] = aggregator_factories.get(
         value_range).create(computation_types.to_type(tensor_type_list))
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_clients(local_unfinalized_metrics_type))
   def aggregator_computation(client_local_unfinalized_metrics):
     unused_state = intrinsics.federated_value((), placements.SERVER)
@@ -521,7 +522,7 @@ def secure_sum_then_finalize(
     metrics_aggregation_output = intrinsics.federated_zip(
         metrics_aggregation_output)
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         metrics_aggregation_output.type_signature.member)
     def finalizer_computation(grouped_aggregation_output):
 

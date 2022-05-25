@@ -20,9 +20,10 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
@@ -47,19 +48,19 @@ def empty_at_server():
   return intrinsics.federated_value((), placements.SERVER)
 
 
-@computations.federated_computation()
+@federated_computation.federated_computation()
 def empty_init_fn():
   return empty_at_server()
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def test_init_model_weights_fn():
   return model_utils.ModelWeights(trainable=tf.constant(1.0), non_trainable=())
 
 
 def test_distributor():
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       empty_init_fn.type_signature.result,
       computation_types.at_server(MODEL_WEIGHTS_TYPE))
   def next_fn(state, value):
@@ -71,13 +72,13 @@ def test_distributor():
 
 def test_client_work():
 
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def make_result(value, data):
     return client_works.ClientResult(
         update=value.trainable,
         update_weight=data.reduce(0.0, lambda x, y: x + y))
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       empty_init_fn.type_signature.result,
       computation_types.at_clients(MODEL_WEIGHTS_TYPE),
       CLIENTS_SEQUENCE_FLOAT_TYPE)
@@ -95,13 +96,13 @@ def test_aggregator():
 
 def test_finalizer():
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       empty_init_fn.type_signature.result,
       computation_types.at_server(MODEL_WEIGHTS_TYPE),
       computation_types.at_server(FLOAT_TYPE))
   def next_fn(state, weights, updates):
     new_weights = intrinsics.federated_map(
-        computations.tf_computation(lambda x, y: x + y),
+        tensorflow_computation.tf_computation(lambda x, y: x + y),
         (weights.trainable, updates))
     new_weights = intrinsics.federated_zip(
         model_utils.ModelWeights(new_weights, ()))
@@ -138,7 +139,8 @@ class ComposeLearningProcessTest(tf.test.TestCase):
 
   def test_one_arg_computation_init_raises(self):
 
-    @computations.tf_computation(computation_types.TensorType(tf.float32))
+    @tensorflow_computation.tf_computation(
+        computation_types.TensorType(tf.float32))
     def init_model_weights_fn(x):
       return model_utils.ModelWeights(trainable=x, non_trainable=())
 
@@ -160,7 +162,7 @@ class ComposeLearningProcessTest(tf.test.TestCase):
 
   def test_federated_init_raises(self):
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_model_weights_fn():
       return intrinsics.federated_eval(test_init_model_weights_fn,
                                        placements.SERVER)

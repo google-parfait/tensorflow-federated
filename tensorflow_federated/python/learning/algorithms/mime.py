@@ -36,9 +36,10 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import factory_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -77,7 +78,7 @@ def _build_client_update_fn_for_mime_lite(
     use_experimental_simulation_loop: bool = False):
   """Builds the `tf_computation` for Mime Lite client training."""
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def client_update_fn(global_optimizer_state, initial_weights, data):
     model = model_fn()
     dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
@@ -231,27 +232,27 @@ def _build_mime_lite_client_work(
   full_gradient_aggregator = full_gradient_aggregator.create(
       weights_type.trainable, computation_types.TensorType(tf.float32))
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     specs = weight_tensor_specs.trainable
     optimizer_state = intrinsics.federated_eval(
-        computations.tf_computation(lambda: optimizer.initialize(specs)),
-        placements.SERVER)
+        tensorflow_computation.tf_computation(
+            lambda: optimizer.initialize(specs)), placements.SERVER)
     aggregator_state = full_gradient_aggregator.initialize()
     return intrinsics.federated_zip((optimizer_state, aggregator_state))
 
   client_update_fn = _build_client_update_fn_for_mime_lite(
       model_fn, optimizer, client_weighting, use_experimental_simulation_loop)
 
-  @computations.tf_computation(init_fn.type_signature.result.member[0],
-                               weights_type.trainable)
+  @tensorflow_computation.tf_computation(
+      init_fn.type_signature.result.member[0], weights_type.trainable)
   def update_optimizer_state(state, aggregate_gradient):
     whimsy_weights = tf.nest.map_structure(lambda g: tf.zeros(g.shape, g.dtype),
                                            aggregate_gradient)
     updated_state, _ = optimizer.next(state, whimsy_weights, aggregate_gradient)
     return updated_state
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       init_fn.type_signature.result, computation_types.at_clients(weights_type),
       computation_types.at_clients(data_type))
   def next_fn(state, weights, client_data):
@@ -389,7 +390,7 @@ def build_weighted_mime_lite(
   py_typecheck.check_type(server_optimizer, optimizer_base.Optimizer)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
 
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def initial_model_weights_fn():
     return model_utils.ModelWeights.from_model(model_fn())
 

@@ -17,8 +17,9 @@ import collections
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
@@ -31,8 +32,8 @@ SequenceType = computation_types.SequenceType
 TensorType = computation_types.TensorType
 at_clients = computation_types.at_clients
 at_server = computation_types.at_server
-federated_computation = computations.federated_computation
-tf_computation = computations.tf_computation
+federated_computation = federated_computation.federated_computation
+tf_computation = tensorflow_computation.tf_computation
 
 
 def create_pass_through_get_model_weights(state_type):

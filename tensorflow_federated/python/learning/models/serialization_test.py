@@ -20,8 +20,8 @@ import attr
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -314,7 +314,7 @@ class SerializationTest(tf.test.TestCase, parameterized.TestCase):
     # Creating a TFF computation is needed because the `tf.function`-decorated
     # `metric_finalizers` will create `tf.Variable`s on the non-first call (and
     # hence, will throw an error if it is directly invoked).
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         type_conversions.type_from_tensors(
             model.report_local_unfinalized_metrics()))
     def finalizer_computation(unfinalized_metrics):
@@ -441,7 +441,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     functional_model = model_fn(input_spec=dataset.element_spec)
 
     # The wrapped keras model can only be used inside a `tff.tf_computation`.
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def _predict_on_batch(dataset, model_weights):
       example_batch = get_example_batch(dataset)
       return functional_model.predict_on_batch(model_weights, example_batch[0])
@@ -458,7 +458,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     functional_model = model_fn(input_spec=dataset.element_spec)
 
     # The wrapped keras model can only be used inside a `tff.tf_computation`.
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def _predict_on_batch(dataset):
       tff_model = functional.model_from_functional(functional_model)
       example_batch = get_example_batch(dataset)
@@ -529,7 +529,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     functional_model = model_fn(input_spec=dataset.element_spec)
 
     # The wrapped keras model can only be used inside a `tff.tf_computation`.
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def _predict_on_batch(dataset):
       tff_model = functional.model_from_functional(functional_model)
       example_batch = get_example_batch(dataset)
