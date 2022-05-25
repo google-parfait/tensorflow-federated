@@ -14,4 +14,4 @@
 """The experimental part of the TensorFlow Federated (TFF) library."""
 
 from tensorflow_federated.experimental.python import learning
-from tensorflow_federated.experimental.python.core.api.computations import jax_computation
+from tensorflow_federated.experimental.python.core.impl.jax_context.jax_computation import jax_computation

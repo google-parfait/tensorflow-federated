@@ -10,7 +10,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
-        "//tensorflow_federated/experimental/python/core/api:computations",
+        "//tensorflow_federated/experimental/python/core/impl/jax_context:jax_computation",
         "//tensorflow_federated/experimental/python/learning",
     ],
 )

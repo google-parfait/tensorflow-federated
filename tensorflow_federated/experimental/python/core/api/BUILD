@@ -4,9 +4,6 @@ package(default_visibility = [
     ":api_packages",
     "//tensorflow_federated/experimental/python/core:core_visibility",
 
-    # Namespace visibility
-    "//tensorflow_federated/experimental:__pkg__",
-
     # TODO(b/181569610): Clean up circular dependency between the `api` and
     # `impl` packages.
     "//tensorflow_federated/experimental/python/core/impl:impl_packages",
