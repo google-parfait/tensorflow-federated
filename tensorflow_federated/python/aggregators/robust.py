@@ -29,9 +29,10 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -45,12 +46,12 @@ COUNT_TF_TYPE = tf.int32
 
 def _constant_process(value):
   """Creates an `EstimationProcess` that reports a constant value."""
-  init_fn = computations.federated_computation(
+  init_fn = federated_computation.federated_computation(
       lambda: intrinsics.federated_value((), placements.SERVER))
-  next_fn = computations.federated_computation(
+  next_fn = federated_computation.federated_computation(
       lambda state, value: state, init_fn.type_signature.result,
       computation_types.at_clients(NORM_TF_TYPE))
-  report_fn = computations.federated_computation(
+  report_fn = federated_computation.federated_computation(
       lambda state: intrinsics.federated_value(value, placements.SERVER),
       init_fn.type_signature.result)
   return estimation_process.EstimationProcess(init_fn, next_fn, report_fn)
@@ -151,7 +152,7 @@ def clipping_factory(
 
   def make_clip_fn(value_type):
 
-    @computations.tf_computation(value_type, NORM_TF_TYPE)
+    @tensorflow_computation.tf_computation(value_type, NORM_TF_TYPE)
     def clip_fn(value, clipping_norm):
       clipped_value, global_norm = _clip_by_global_l2_norm(value, clipping_norm)
       was_clipped = tf.cast((global_norm > clipping_norm), COUNT_TF_TYPE)
@@ -228,7 +229,7 @@ def zeroing_factory(
   def make_zero_fn(value_type):
     """Creates a zeroing function for the value_type."""
 
-    @computations.tf_computation(value_type, NORM_TF_TYPE)
+    @tensorflow_computation.tf_computation(value_type, NORM_TF_TYPE)
     def zero_fn(value, zeroing_norm):
       if norm_order == 1.0:
         global_norm = _global_l1_norm(value)
@@ -351,11 +352,11 @@ def _make_wrapper(
         inner_agg_process = inner_agg_factory.create(value_type, weight_type)
         clip_fn = make_clip_fn(value_type)
 
-        @computations.federated_computation()
+        @federated_computation.federated_computation()
         def init_fn():
           return init_fn_impl(inner_agg_process)
 
-        @computations.federated_computation(
+        @federated_computation.federated_computation(
             init_fn.type_signature.result,
             computation_types.at_clients(value_type),
             computation_types.at_clients(weight_type))
@@ -378,11 +379,11 @@ def _make_wrapper(
         inner_agg_process = inner_agg_factory.create(value_type)
         clip_fn = make_clip_fn(value_type)
 
-        @computations.federated_computation()
+        @federated_computation.federated_computation()
         def init_fn():
           return init_fn_impl(inner_agg_process)
 
-        @computations.federated_computation(
+        @federated_computation.federated_computation(
             init_fn.type_signature.result,
             computation_types.at_clients(value_type))
         def next_fn(state, value):

@@ -20,8 +20,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -110,16 +111,16 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
       distortion_aggregation_process = self._distortion_aggregation_factory.create(
           computation_types.to_type(tf.float32))
 
-    @computations.tf_computation(value_type, tf.float32)
+    @tensorflow_computation.tf_computation(value_type, tf.float32)
     def discretize_fn(value, step_size):
       return _discretize_struct(value, step_size)
 
-    @computations.tf_computation(discretize_fn.type_signature.result,
-                                 tf.float32)
+    @tensorflow_computation.tf_computation(discretize_fn.type_signature.result,
+                                           tf.float32)
     def undiscretize_fn(value, step_size):
       return _undiscretize_struct(value, step_size, tf_dtype)
 
-    @computations.tf_computation(value_type, tf.float32)
+    @tensorflow_computation.tf_computation(value_type, tf.float32)
     def distortion_measurement_fn(value, step_size):
       reconstructed_value = undiscretize_fn(
           discretize_fn(value, step_size), step_size)
@@ -136,7 +137,7 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
     inner_agg_process = self._inner_agg_factory.create(
         discretize_fn.type_signature.result)
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       state = collections.OrderedDict(
           step_size=intrinsics.federated_value(self._step_size,
@@ -144,9 +145,8 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
           inner_agg_process=inner_agg_process.initialize())
       return intrinsics.federated_zip(state)
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.at_clients(value_type)
-                                       )
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result, computation_types.at_clients(value_type))
     def next_fn(state, value):
       server_step_size = state['step_size']
       client_step_size = intrinsics.federated_broadcast(server_step_size)

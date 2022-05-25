@@ -19,14 +19,13 @@
 """A package of primitive (stateless) aggregations."""
 
 import attr
-
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.federated_context import value_impl
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -67,11 +66,11 @@ def _federated_reduce_with_func(value, tf_func, zeros):
   """
   value_type = value.type_signature.member
 
-  @computations.tf_computation(value_type, value_type)
+  @tensorflow_computation.tf_computation(value_type, value_type)
   def accumulate(current, value):
     return tf.nest.map_structure(tf_func, current, value)
 
-  @computations.tf_computation(value_type)
+  @tensorflow_computation.tf_computation(value_type)
   def report(value):
     return value
 
@@ -96,7 +95,7 @@ def _initial_values(initial_value_fn, member_type):
     _validate_dtype_is_min_max_compatible(type_spec.dtype)
     return tf.fill(dims=type_spec.shape, value=initial_value_fn(type_spec))
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def zeros_fn():
     return type_conversions.structure_from_tensor_type_tree(
         validate_and_fill, member_type)
@@ -181,7 +180,7 @@ def _zeros_for_sample(member_type):
   def zeros_for_tensor_type(tensor_type):
     return tf.zeros([0] + tensor_type.shape.dims, tensor_type.dtype)
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def accumlator_type_fn():
     """Gets the type for the accumulators."""
     accumulator_zeros = type_conversions.structure_from_tensor_type_tree(
@@ -254,7 +253,8 @@ def federated_sample(value, max_num_samples=100):
     b = tf.expand_dims(b, axis=0)
     return tf.concat([a, b], axis=0)
 
-  @computations.tf_computation(accumulator_type, value.type_signature.member)
+  @tensorflow_computation.tf_computation(accumulator_type,
+                                         value.type_signature.member)
   def accumulate(current, value):
     """Accumulates samples through concatenation."""
     rands = concat_expand_dims(current.rands, tf.random.uniform(shape=()))
@@ -263,7 +263,7 @@ def federated_sample(value, max_num_samples=100):
     accumulators, rands = apply_sampling(accumulators, rands)
     return _Samples(accumulators, rands)
 
-  @computations.tf_computation(accumulator_type, accumulator_type)
+  @tensorflow_computation.tf_computation(accumulator_type, accumulator_type)
   def merge(a, b):
     """Merges accumulators through concatenation."""
 
@@ -274,7 +274,7 @@ def federated_sample(value, max_num_samples=100):
     accumulators, rands = apply_sampling(samples.accumulators, samples.rands)
     return _Samples(accumulators, rands)
 
-  @computations.tf_computation(accumulator_type)
+  @tensorflow_computation.tf_computation(accumulator_type)
   def report(value):
     return value.accumulators
 
@@ -649,7 +649,7 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   # These tf_computations assume the inputs were already validated. In
   # particular, that lower_bnd and upper_bnd have the same structure, and if not
   # scalar, the structure matches the structure of value.
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def client_shift(value, lower_bnd, upper_bnd):
     assert not temp_box
     temp_box.append(tf.nest.map_structure(lambda v: v.dtype, value))
@@ -659,7 +659,7 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
     else:
       return tf.nest.map_structure(fn, value, lower_bnd, upper_bnd)
 
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def server_shift(value, lower_bnd, upper_bnd, summands):
     fn = _server_tensor_shift_for_secure_sum
     if tf.is_tensor(lower_bnd):

@@ -30,8 +30,9 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -124,13 +125,12 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
       raise TypeError('Provided value_type must either be an integer type or'
                       f'a structure of integer types, but found: {value_type}')
 
-    @computations.federated_computation
+    @federated_computation.federated_computation
     def init_fn():
       return intrinsics.federated_value((), placements.SERVER)
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.at_clients(value_type)
-                                       )
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result, computation_types.at_clients(value_type))
     def next_fn(state, value):
       if self._symmetric_range:
         # Sum in [-M+1, M-1].
@@ -142,7 +142,7 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
         summed_value = intrinsics.federated_secure_modular_sum(
             value, 2 * self._modulus - 1)
         summed_value = intrinsics.federated_map(
-            computations.tf_computation(
+            tensorflow_computation.tf_computation(
                 self._mod_clip_after_symmetric_range_sum), summed_value)
       else:
         summed_value = intrinsics.federated_secure_modular_sum(
@@ -344,9 +344,9 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
     self._check_value_type_compatible_with_config_mode(value_type)
 
-    @computations.federated_computation(self._init_fn.type_signature.result,
-                                        computation_types.FederatedType(
-                                            value_type, placements.CLIENTS))
+    @federated_computation.federated_computation(
+        self._init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS))
     def next_fn(state, value):
       # Compute min and max *before* clipping and use it to update the state.
       value_max = intrinsics.federated_map(_reduce_nest_max, value)
@@ -371,13 +371,13 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
                             value_min):
     """Creates measurements to be reported. All values are summed securely."""
     is_max_clipped = intrinsics.federated_map(
-        computations.tf_computation(
+        tensorflow_computation.tf_computation(
             lambda bound, value: tf.cast(bound < value, COUNT_TF_TYPE)),
         (intrinsics.federated_broadcast(upper_bound), value_max))
     max_clipped_count = intrinsics.federated_secure_sum_bitwidth(
         is_max_clipped, bitwidth=1)
     is_min_clipped = intrinsics.federated_map(
-        computations.tf_computation(
+        tensorflow_computation.tf_computation(
             lambda bound, value: tf.cast(bound > value, COUNT_TF_TYPE)),
         (intrinsics.federated_broadcast(lower_bound), value_min))
     min_clipped_count = intrinsics.federated_secure_sum_bitwidth(
@@ -479,45 +479,45 @@ def _is_float(value):
   return isinstance(value, (float, np.floating))
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def _reduce_nest_max(value):
   max_list = tf.nest.map_structure(tf.reduce_max, tf.nest.flatten(value))
   return tf.reduce_max(tf.stack(max_list))
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def _reduce_nest_min(value):
   min_list = tf.nest.map_structure(tf.reduce_min, tf.nest.flatten(value))
   return tf.reduce_min(tf.stack(min_list))
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def _client_shift(value, upper_bound, lower_bound):
   return tf.nest.map_structure(
       lambda v: tf.clip_by_value(v, lower_bound, upper_bound) - lower_bound,
       value)
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def _server_shift(value, lower_bound, num_summands):
   return tf.nest.map_structure(
       lambda v: v + (lower_bound * tf.cast(num_summands, lower_bound.dtype)),
       value)
 
 
-@computations.federated_computation()
+@federated_computation.federated_computation()
 def _empty_state():
   return intrinsics.federated_value((), placements.SERVER)
 
 
 def _client_one():
   return intrinsics.federated_eval(
-      computations.tf_computation(lambda: tf.constant(1, tf.int32)),
+      tensorflow_computation.tf_computation(lambda: tf.constant(1, tf.int32)),
       placements.CLIENTS)
 
 
 def _cast_bounds(upper_bound, lower_bound, dtype):
-  cast_fn = computations.tf_computation(lambda x: tf.cast(x, dtype))
+  cast_fn = tensorflow_computation.tf_computation(lambda x: tf.cast(x, dtype))
   upper_bound = intrinsics.federated_map(cast_fn, upper_bound)
   lower_bound = intrinsics.federated_map(cast_fn, lower_bound)
   return upper_bound, lower_bound
@@ -526,7 +526,7 @@ def _cast_bounds(upper_bound, lower_bound, dtype):
 def _create_initial_state_two_processes(upper_bound_process,
                                         lower_bound_process):
 
-  @computations.federated_computation()
+  @federated_computation.federated_computation()
   def initial_state():
     return intrinsics.federated_zip(
         (upper_bound_process.initialize(), lower_bound_process.initialize()))
@@ -537,7 +537,7 @@ def _create_initial_state_two_processes(upper_bound_process,
 def _create_get_bounds_const(upper_bound, lower_bound, bound_dtype):
   """Gets TFF value bounds when specified as constants."""
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def bounds_fn():
     upper_bound_tf = tf.constant(upper_bound, bound_dtype)
     lower_bound_tf = tf.constant(lower_bound, bound_dtype)
@@ -554,10 +554,11 @@ def _create_get_bounds_single_process(process, bound_dtype):
   """Gets TFF value bounds when specified as single estimation process."""
 
   def get_bounds(state):
-    cast_fn = computations.tf_computation(lambda x: tf.cast(x, bound_dtype))
+    cast_fn = tensorflow_computation.tf_computation(
+        lambda x: tf.cast(x, bound_dtype))
     upper_bound = intrinsics.federated_map(cast_fn, process.report(state))
     lower_bound = intrinsics.federated_map(
-        computations.tf_computation(lambda x: x * -1.0), upper_bound)
+        tensorflow_computation.tf_computation(lambda x: x * -1.0), upper_bound)
     return upper_bound, lower_bound
 
   return get_bounds
@@ -568,7 +569,8 @@ def _create_get_bounds_two_processes(upper_bound_process, lower_bound_process,
   """Gets TFF value bounds when specified as two estimation processes."""
 
   def get_bounds(state):
-    cast_fn = computations.tf_computation(lambda x: tf.cast(x, bound_dtype))
+    cast_fn = tensorflow_computation.tf_computation(
+        lambda x: tf.cast(x, bound_dtype))
     upper_bound = intrinsics.federated_map(cast_fn,
                                            upper_bound_process.report(state[0]))
     lower_bound = intrinsics.federated_map(cast_fn,
@@ -584,7 +586,7 @@ def _create_update_state_single_process(process):
   expected_dtype = process.next.type_signature.parameter[1].member.dtype
 
   def update_state(state, value_min, value_max):
-    abs_max_fn = computations.tf_computation(
+    abs_max_fn = tensorflow_computation.tf_computation(
         lambda x, y: tf.cast(tf.maximum(tf.abs(x), tf.abs(y)), expected_dtype))
     abs_value_max = intrinsics.federated_map(abs_max_fn, (value_min, value_max))
     return process.next(state, abs_value_max)
@@ -601,9 +603,11 @@ def _create_update_state_two_processes(upper_bound_process,
 
   def update_state(state, value_min, value_max):
     value_min = intrinsics.federated_map(
-        computations.tf_computation(lambda x: tf.cast(x, min_dtype)), value_min)
+        tensorflow_computation.tf_computation(lambda x: tf.cast(x, min_dtype)),
+        value_min)
     value_max = intrinsics.federated_map(
-        computations.tf_computation(lambda x: tf.cast(x, max_dtype)), value_max)
+        tensorflow_computation.tf_computation(lambda x: tf.cast(x, max_dtype)),
+        value_max)
     return intrinsics.federated_zip(
         (upper_bound_process.next(state[0], value_max),
          lower_bound_process.next(state[1], value_min)))

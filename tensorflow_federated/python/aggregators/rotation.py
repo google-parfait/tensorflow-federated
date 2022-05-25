@@ -28,8 +28,9 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import hadamard
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -96,7 +97,7 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
     seeds_per_round = self._num_repeats * len(structure.flatten(value_type))
     next_global_seed_fn = _build_next_global_seed_fn(stride=seeds_per_round)
 
-    @computations.tf_computation(value_type, SEED_TFF_TYPE)
+    @tensorflow_computation.tf_computation(value_type, SEED_TFF_TYPE)
     def client_transform(value, global_seed):
 
       @tf.function
@@ -117,8 +118,8 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
     inner_agg_process = self._inner_agg_factory.create(
         client_transform.type_signature.result)
 
-    @computations.tf_computation(client_transform.type_signature.result,
-                                 SEED_TFF_TYPE)
+    @tensorflow_computation.tf_computation(
+        client_transform.type_signature.result, SEED_TFF_TYPE)
     def server_transform(value, global_seed):
 
       @tf.function
@@ -138,16 +139,16 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
       return tf.nest.map_structure(_slice_and_reshape_to_template_spec, value,
                                    value_specs)
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       inner_state = inner_agg_process.initialize()
       my_state = intrinsics.federated_eval(
-          computations.tf_computation(_init_global_seed), placements.SERVER)
+          tensorflow_computation.tf_computation(_init_global_seed),
+          placements.SERVER)
       return intrinsics.federated_zip((inner_state, my_state))
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.at_clients(value_type)
-                                       )
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result, computation_types.at_clients(value_type))
     def next_fn(state, value):
       next_fn_impl = _build_next_fn(client_transform, inner_agg_process,
                                     server_transform, next_global_seed_fn, 'hd')
@@ -215,7 +216,7 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
     seeds_per_round = self._num_repeats * len(structure.flatten(value_type))
     next_global_seed_fn = _build_next_global_seed_fn(stride=seeds_per_round)
 
-    @computations.tf_computation(value_type, SEED_TFF_TYPE)
+    @tensorflow_computation.tf_computation(value_type, SEED_TFF_TYPE)
     def client_transform(value, global_seed):
 
       @tf.function
@@ -239,8 +240,8 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
     inner_agg_process = self._inner_agg_factory.create(
         client_transform.type_signature.result)
 
-    @computations.tf_computation(client_transform.type_signature.result,
-                                 SEED_TFF_TYPE)
+    @tensorflow_computation.tf_computation(
+        client_transform.type_signature.result, SEED_TFF_TYPE)
     def server_transform(value, global_seed):
 
       @tf.function
@@ -263,16 +264,16 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
       return tf.nest.map_structure(_slice_and_reshape_to_template_spec, value,
                                    value_specs)
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       inner_state = inner_agg_process.initialize()
       my_state = intrinsics.federated_eval(
-          computations.tf_computation(_init_global_seed), placements.SERVER)
+          tensorflow_computation.tf_computation(_init_global_seed),
+          placements.SERVER)
       return intrinsics.federated_zip((inner_state, my_state))
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.at_clients(value_type)
-                                       )
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result, computation_types.at_clients(value_type))
     def next_fn(state, value):
       next_fn_impl = _build_next_fn(client_transform, inner_agg_process,
                                     server_transform, next_global_seed_fn,
@@ -342,7 +343,7 @@ def _build_next_global_seed_fn(stride):
     A `tff.Computation` that takes and returns `tf.int64` tensor with shape [2].
   """
 
-  @computations.tf_computation(SEED_TFF_TYPE)
+  @tensorflow_computation.tf_computation(SEED_TFF_TYPE)
   def _next_global_seed(global_seed):
     timestamp_microseconds, sequence_number = global_seed[0], global_seed[1]
     return tf.convert_to_tensor(

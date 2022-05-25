@@ -19,8 +19,8 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import primitives
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -37,7 +37,8 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_min_scalar(self, dtype):
 
-    @computations.federated_computation(computation_types.at_clients(dtype))
+    @federated_computation.federated_computation(
+        computation_types.at_clients(dtype))
     def call_federated_min(value):
       return primitives.federated_min(value)
 
@@ -57,7 +58,7 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
     struct_type = computation_types.at_clients(
         computation_types.to_type([dtype, (dtype, [2])]))
 
-    @computations.federated_computation(struct_type)
+    @federated_computation.federated_computation(struct_type)
     def call_federated_min(value):
       return primitives.federated_min(value)
 
@@ -77,7 +78,7 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
     struct_type = computation_types.at_clients(
         computation_types.to_type(collections.OrderedDict(x=dtype, y=dtype)))
 
-    @computations.federated_computation(struct_type)
+    @federated_computation.federated_computation(struct_type)
     def call_federated_min(value):
       return primitives.federated_min(value)
 
@@ -97,7 +98,7 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
     struct_type = computation_types.at_clients(
         computation_types.to_type([[dtype, dtype], dtype]))
 
-    @computations.federated_computation(struct_type)
+    @federated_computation.federated_computation(struct_type)
     def call_federated_min(value):
       return primitives.federated_min(value)
 
@@ -118,7 +119,8 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
   def test_federated_min_wrong_type(self):
     with self.assertRaisesRegex(TypeError, 'Unsupported dtype.'):
 
-      @computations.federated_computation(computation_types.at_clients(tf.bool))
+      @federated_computation.federated_computation(
+          computation_types.at_clients(tf.bool))
       def call_federated_min(value):
         return primitives.federated_min(value)
 
@@ -128,7 +130,8 @@ class FederatedMinTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(
         TypeError, r'.* argument must be a tff.Value placed at CLIENTS'):
 
-      @computations.federated_computation(computation_types.at_server(tf.int32))
+      @federated_computation.federated_computation(
+          computation_types.at_server(tf.int32))
       def call_federated_min(value):
         return primitives.federated_min(value)
 
@@ -140,7 +143,8 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
   def test_federated_max_scalar(self, dtype):
 
-    @computations.federated_computation(computation_types.at_clients(dtype))
+    @federated_computation.federated_computation(
+        computation_types.at_clients(dtype))
     def call_federated_max(value):
       return primitives.federated_max(value)
 
@@ -160,7 +164,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
     struct_type = computation_types.at_clients(
         computation_types.to_type([dtype, (dtype, [2])]))
 
-    @computations.federated_computation(struct_type)
+    @federated_computation.federated_computation(struct_type)
     def call_federated_max(value):
       return primitives.federated_max(value)
 
@@ -180,7 +184,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
     struct_type = computation_types.at_clients(
         computation_types.to_type(collections.OrderedDict(x=dtype, y=dtype)))
 
-    @computations.federated_computation(struct_type)
+    @federated_computation.federated_computation(struct_type)
     def call_federated_max(value):
       return primitives.federated_max(value)
 
@@ -200,7 +204,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
     struct_type = computation_types.at_clients(
         computation_types.to_type([[dtype, dtype], dtype]))
 
-    @computations.federated_computation(struct_type)
+    @federated_computation.federated_computation(struct_type)
     def call_federated_max(value):
       return primitives.federated_max(value)
 
@@ -221,7 +225,8 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
   def test_federated_max_wrong_type(self):
     with self.assertRaisesRegex(TypeError, 'Unsupported dtype.'):
 
-      @computations.federated_computation(computation_types.at_clients(tf.bool))
+      @federated_computation.federated_computation(
+          computation_types.at_clients(tf.bool))
       def call_federated_max(value):
         return primitives.federated_max(value)
 
@@ -231,7 +236,7 @@ class FederatedMaxTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(
         TypeError, r'.*argument must be a tff.Value placed at CLIENTS.*'):
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.at_server(tf.float32))
       def call_federated_max(value):
         return primitives.federated_max(value)
@@ -243,7 +248,7 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_single_value(self):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -254,7 +259,7 @@ class FederatedSampleTest(tf.test.TestCase):
   def test_federated_sample_on_nested_scalars(self):
     tuple_type = collections.OrderedDict(x=tf.float32, y=tf.float32)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(tuple_type, placements.CLIENTS))
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -279,7 +284,7 @@ class FederatedSampleTest(tf.test.TestCase):
     with self.assertRaisesRegex(
         TypeError, r'.*argument must be a tff.Value placed at CLIENTS.*'):
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.FederatedType(tf.bool, placements.SERVER))
       def call_federated_sample(value):
         return primitives.federated_sample(value)
@@ -288,7 +293,7 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_max_size_is_100(self):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -299,7 +304,7 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_preserves_nan_percentage(self):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -309,7 +314,7 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_preserves_inf_percentage(self):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -321,7 +326,7 @@ class FederatedSampleTest(tf.test.TestCase):
     dict_type = computation_types.to_type(
         collections.OrderedDict([('x', tf.float32), ('y', tf.float32)]))
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(dict_type, placements.CLIENTS))
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -344,7 +349,7 @@ class FederatedSampleTest(tf.test.TestCase):
         tuple_1=tuple_test_type, tuple_2=dict_test_type)
     nested_test_type = collections.namedtuple('Nested', ['tuple_1', 'tuple_2'])
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType(nested_tuple_type, placements.CLIENTS))
     def call_federated_sample(value):
       return primitives.federated_sample(value)
@@ -369,7 +374,7 @@ class SecureQuantizedSumStaticAssertsTest(tf.test.TestCase,
     """Tests that built computation contains at least one secure sum call."""
 
     # Bounds provided as Python constants.
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType((dtype, (2,)), placements.CLIENTS))
     def comp_py_bounds(value):
       return primitives.secure_quantized_sum(
@@ -382,7 +387,7 @@ class SecureQuantizedSumStaticAssertsTest(tf.test.TestCase,
       self.fail('computation contains non-secure aggregation.')
 
     # Bounds provided as tff values.
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.FederatedType((dtype, (2,)), placements.CLIENTS),
         computation_types.FederatedType(dtype, placements.SERVER),
         computation_types.FederatedType(dtype, placements.SERVER))
@@ -1188,7 +1193,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_bounds_different_types_raises(self):
     with self.assertRaises(primitives.BoundsDifferentTypesError):
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.FederatedType(tf.int32, placements.CLIENTS))
       def call_secure_sum(value):  # pylint: disable=unused-variable
         lower_bound = intrinsics.federated_value(0, placements.SERVER)
@@ -1200,7 +1205,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_clients_placed_bounds_raises(self):
     with self.assertRaises(primitives.BoundsNotPlacedAtServerError):
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           computation_types.FederatedType(tf.int32, placements.CLIENTS))
       def call_secure_sum(value):  # pylint: disable=unused-variable
         lower_bound = intrinsics.federated_value(0, placements.CLIENTS)
@@ -1235,7 +1240,7 @@ def _build_test_sum_fn_py_bounds(value_type, lower_bound, upper_bound):
     value_type@SERVER)`.
   """
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.FederatedType(value_type, placements.CLIENTS))
   def call_secure_sum(value):
     summed_value = primitives.secure_quantized_sum(value, lower_bound,
@@ -1263,7 +1268,7 @@ def _build_test_sum_fn_tff_bounds(value_type, lower_bound_type,
     lower_bound_type@SERVER, upper_bound_type@SERVER) -> value_type@SERVER)`.
   """
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.FederatedType(value_type, placements.CLIENTS),
       computation_types.FederatedType(lower_bound_type, placements.SERVER),
       computation_types.FederatedType(upper_bound_type, placements.SERVER))

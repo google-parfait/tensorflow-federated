@@ -22,7 +22,7 @@ import typing
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -46,13 +46,13 @@ class SumFactory(factory.UnweightedAggregationFactory):
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(value_type, type_args)
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       return intrinsics.federated_value((), placements.SERVER)
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.FederatedType(
-                                            value_type, placements.CLIENTS))
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS))
     def next_fn(state, value):
       summed_value = intrinsics.federated_sum(value)
       empty_measurements = intrinsics.federated_value((), placements.SERVER)

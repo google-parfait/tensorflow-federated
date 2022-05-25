@@ -22,9 +22,10 @@ from tensorflow_federated.python.aggregators import aggregator_test_utils
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
@@ -59,19 +60,21 @@ _float_at_server = computation_types.at_server(tf.float32)
 _float_at_clients = computation_types.at_clients(tf.float32)
 
 
-@computations.federated_computation()
+@federated_computation.federated_computation()
 def _test_init_fn():
   return intrinsics.federated_value(1., placements.SERVER)
 
 
-@computations.federated_computation(_float_at_server, _float_at_clients)
+@federated_computation.federated_computation(_float_at_server,
+                                             _float_at_clients)
 def _test_next_fn(state, value):
   del value
   return intrinsics.federated_map(
-      computations.tf_computation(lambda x: x + 1., tf.float32), state)
+      tensorflow_computation.tf_computation(lambda x: x + 1., tf.float32),
+      state)
 
 
-@computations.federated_computation(_float_at_server)
+@federated_computation.federated_computation(_float_at_server)
 def _test_report_fn(state):
   return state
 
@@ -351,7 +354,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_norm_process_result(self, value, placement,
                                              make_factory):
-    report_fn = computations.federated_computation(
+    report_fn = federated_computation.federated_computation(
         lambda s: intrinsics.federated_value(value, placement),
         _float_at_server)
     norm = _test_norm_process(report_fn=report_fn)
@@ -364,8 +367,8 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       ('zero', _zeroed_mean),
   )
   def test_raises_on_bad_process_next_single_param(self, make_factory):
-    next_fn = computations.federated_computation(lambda state: state,
-                                                 _float_at_server)
+    next_fn = federated_computation.federated_computation(
+        lambda state: state, _float_at_server)
     norm = _test_norm_process(next_fn=next_fn)
 
     with self.assertRaisesRegex(TypeError, '.* must take two arguments.'):
@@ -376,7 +379,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       ('zero', _zeroed_mean),
   )
   def test_raises_on_bad_process_next_three_params(self, make_factory):
-    next_fn = computations.federated_computation(
+    next_fn = federated_computation.federated_computation(
         lambda state, value1, value2: state, _float_at_server,
         _float_at_clients, _float_at_clients)
     norm = _test_norm_process(next_fn=next_fn)
@@ -390,9 +393,8 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_process_next_not_float(self, make_factory):
     complex_at_clients = computation_types.at_clients(tf.complex64)
-    next_fn = computations.federated_computation(lambda state, value: state,
-                                                 _float_at_server,
-                                                 complex_at_clients)
+    next_fn = federated_computation.federated_computation(
+        lambda state, value: state, _float_at_server, complex_at_clients)
     norm = _test_norm_process(next_fn=next_fn)
 
     with self.assertRaisesRegex(TypeError,
@@ -404,7 +406,7 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       ('zero', _zeroed_mean),
   )
   def test_raises_on_bad_process_next_two_outputs(self, make_factory):
-    next_fn = computations.federated_computation(
+    next_fn = federated_computation.federated_computation(
         lambda state, val: (state, state), _float_at_server, _float_at_clients)
     norm = _test_norm_process(next_fn=next_fn)
 
@@ -689,17 +691,21 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     # Tests when zeroing and clipping are performed with non-integer clips.
     # Zeroing norm grows by 0.75 each time, clipping norm grows by 0.25.
 
-    @computations.federated_computation(_float_at_server, _float_at_clients)
+    @federated_computation.federated_computation(_float_at_server,
+                                                 _float_at_clients)
     def zeroing_next_fn(state, value):
       del value
       return intrinsics.federated_map(
-          computations.tf_computation(lambda x: x + 0.75, tf.float32), state)
+          tensorflow_computation.tf_computation(lambda x: x + 0.75, tf.float32),
+          state)
 
-    @computations.federated_computation(_float_at_server, _float_at_clients)
+    @federated_computation.federated_computation(_float_at_server,
+                                                 _float_at_clients)
     def clipping_next_fn(state, value):
       del value
       return intrinsics.federated_map(
-          computations.tf_computation(lambda x: x + 0.25, tf.float32), state)
+          tensorflow_computation.tf_computation(lambda x: x + 0.25, tf.float32),
+          state)
 
     zeroing_norm_process = estimation_process.EstimationProcess(
         _test_init_fn, zeroing_next_fn, _test_report_fn)

@@ -25,8 +25,9 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import estimation_process
@@ -125,31 +126,31 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
                               factory.UnweightedAggregationFactory)
 
     # 1. Define tf_computations.
-    initial_state_fn = computations.tf_computation(
+    initial_state_fn = tensorflow_computation.tf_computation(
         quantile_estimator_query.initial_global_state)
     quantile_state_type = initial_state_fn.type_signature.result
-    derive_sample_params = computations.tf_computation(
+    derive_sample_params = tensorflow_computation.tf_computation(
         quantile_estimator_query.derive_sample_params, quantile_state_type)
-    get_quantile_record = computations.tf_computation(
+    get_quantile_record = tensorflow_computation.tf_computation(
         quantile_estimator_query.preprocess_record,
         derive_sample_params.type_signature.result, tf.float32)
     quantile_record_type = get_quantile_record.type_signature.result
-    get_noised_result = computations.tf_computation(
+    get_noised_result = tensorflow_computation.tf_computation(
         quantile_estimator_query.get_noised_result, quantile_record_type,
         quantile_state_type)
     quantile_agg_process = record_aggregation_factory.create(
         quantile_record_type)
 
     # 2. Define federated_computations.
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       return intrinsics.federated_zip(
           (intrinsics.federated_eval(initial_state_fn, placements.SERVER),
            quantile_agg_process.initialize()))
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.FederatedType(
-                                            tf.float32, placements.CLIENTS))
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result,
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def next_fn(state, value):
       quantile_query_state, agg_state = state
 
@@ -167,16 +168,16 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
       return intrinsics.federated_zip(
           (new_quantile_query_state, quantile_agg_output.state))
 
-    report_fn = computations.federated_computation(
+    report_fn = federated_computation.federated_computation(
         lambda state: state[0].current_estimate, init_fn.type_signature.result)
 
     super().__init__(init_fn, next_fn, report_fn)
 
 
 def _affine_transform(multiplier, increment):
-  transform_tf_comp = computations.tf_computation(
+  transform_tf_comp = tensorflow_computation.tf_computation(
       lambda value: multiplier * value + increment, tf.float32)
-  return computations.federated_computation(
+  return federated_computation.federated_computation(
       lambda value: intrinsics.federated_map(transform_tf_comp, value),
       computation_types.at_server(tf.float32))
 

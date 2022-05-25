@@ -29,8 +29,9 @@ import tensorflow_privacy as tfp
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -316,14 +317,14 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(value_type, type_args)
 
-    query_initial_state_fn = computations.tf_computation(
+    query_initial_state_fn = tensorflow_computation.tf_computation(
         self._query.initial_global_state)
 
     query_state_type = query_initial_state_fn.type_signature.result
-    derive_sample_params = computations.tf_computation(
+    derive_sample_params = tensorflow_computation.tf_computation(
         self._query.derive_sample_params, query_state_type)
 
-    get_query_record = computations.tf_computation(
+    get_query_record = tensorflow_computation.tf_computation(
         self._query.preprocess_record,
         derive_sample_params.type_signature.result, value_type)
 
@@ -332,20 +333,20 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         query_record_type)
 
     agg_output_type = record_agg_process.next.type_signature.result.result.member
-    get_noised_result = computations.tf_computation(
+    get_noised_result = tensorflow_computation.tf_computation(
         self._query.get_noised_result, agg_output_type, query_state_type)
-    derive_metrics = computations.tf_computation(self._query.derive_metrics,
-                                                 query_state_type)
+    derive_metrics = tensorflow_computation.tf_computation(
+        self._query.derive_metrics, query_state_type)
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       return intrinsics.federated_zip(
           (intrinsics.federated_eval(query_initial_state_fn, placements.SERVER),
            record_agg_process.initialize()))
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.FederatedType(
-                                            value_type, placements.CLIENTS))
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS))
     def next_fn(state, value):
       query_state, agg_state = state
 

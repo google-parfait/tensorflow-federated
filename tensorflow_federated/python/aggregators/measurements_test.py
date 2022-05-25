@@ -20,9 +20,9 @@ from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import measurements
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.aggregators import sum_factory
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 
 _struct_type = computation_types.to_type([(tf.float32, (3,)), tf.float32])
@@ -30,7 +30,7 @@ _struct_type_clients = computation_types.at_clients(_struct_type)
 _float_type = computation_types.to_type(tf.float32)
 
 
-@computations.tf_computation
+@tensorflow_computation.tf_computation
 def _get_norm(value):
   return tf.linalg.global_norm(tf.nest.flatten(value))
 
@@ -46,7 +46,7 @@ def _get_min_norm(value):
   return collections.OrderedDict(min_norm=min_norm)
 
 
-@computations.tf_computation
+@tensorflow_computation.tf_computation
 def _mul_struct(value, weight):
   return tf.nest.map_structure(lambda x: x * weight, value)
 

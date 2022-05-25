@@ -27,8 +27,9 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -108,14 +109,14 @@ class MeanFactory(factory.WeightedAggregationFactory):
     value_sum_process = self._value_sum_factory.create(value_type)
     weight_sum_process = self._weight_sum_factory.create(weight_type)
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       state = collections.OrderedDict(
           value_sum_process=value_sum_process.initialize(),
           weight_sum_process=weight_sum_process.initialize())
       return intrinsics.federated_zip(state)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         init_fn.type_signature.result,
         computation_types.FederatedType(value_type, placements.CLIENTS),
         computation_types.FederatedType(weight_type, placements.CLIENTS))
@@ -201,14 +202,14 @@ class UnweightedMeanFactory(factory.UnweightedAggregationFactory):
     count_sum_process = self._count_sum_factory.create(
         computation_types.TensorType(tf.int32))
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       return intrinsics.federated_zip(
           (value_sum_process.initialize(), count_sum_process.initialize()))
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.FederatedType(
-                                            value_type, placements.CLIENTS))
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS))
     def next_fn(state, value):
       value_sum_state, count_sum_state = state
       value_sum_output = value_sum_process.next(value_sum_state, value)
@@ -238,19 +239,19 @@ def _check_value_type(value_type):
                     f'dtype. Provided value_type: {value_type}')
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def _mul(value, weight):
   return tf.nest.map_structure(lambda x: x * tf.cast(weight, x.dtype), value)
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def _div(weighted_value_sum, weight_sum):
   return tf.nest.map_structure(
       lambda x: tf.math.divide(x, tf.cast(weight_sum, x.dtype)),
       weighted_value_sum)
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def _div_no_nan(weighted_value_sum, weight_sum):
   return tf.nest.map_structure(
       lambda x: tf.math.divide_no_nan(x, tf.cast(weight_sum, x.dtype)),

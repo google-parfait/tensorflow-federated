@@ -19,8 +19,9 @@ import numbers
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -149,15 +150,15 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
     discretize_fn = _build_discretize_fn(value_type, self._stochastic,
                                          self._beta)
 
-    @computations.tf_computation(discretize_fn.type_signature.result,
-                                 tf.float32)
+    @tensorflow_computation.tf_computation(discretize_fn.type_signature.result,
+                                           tf.float32)
     def undiscretize_fn(value, scale_factor):
       return _undiscretize_struct(value, scale_factor, tf_dtype)
 
     inner_value_type = discretize_fn.type_signature.result
     inner_agg_process = self._inner_agg_factory.create(inner_value_type)
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       state = collections.OrderedDict(
           scale_factor=intrinsics.federated_value(self._scale_factor,
@@ -167,9 +168,8 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
           inner_agg_process=inner_agg_process.initialize())
       return intrinsics.federated_zip(state)
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.at_clients(value_type)
-                                       )
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result, computation_types.at_clients(value_type))
     def next_fn(state, value):
       server_scale_factor = state['scale_factor']
       client_scale_factor = intrinsics.federated_broadcast(server_scale_factor)
@@ -203,7 +203,7 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
 def _build_discretize_fn(value_type, stochastic, beta):
   """Builds a `tff.tf_computation` for discretization."""
 
-  @computations.tf_computation(value_type, tf.float32, tf.float32)
+  @tensorflow_computation.tf_computation(value_type, tf.float32, tf.float32)
   def discretize_fn(value, scale_factor, prior_norm_bound):
     return _discretize_struct(value, scale_factor, stochastic, beta,
                               prior_norm_bound)

@@ -24,8 +24,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -56,18 +57,18 @@ class SumPlusOneFactory(factory.UnweightedAggregationFactory):
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(value_type, type_args)
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       return intrinsics.federated_value(0, placements.SERVER)
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.FederatedType(
-                                            value_type, placements.CLIENTS))
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result,
+        computation_types.FederatedType(value_type, placements.CLIENTS))
     def next_fn(state, value):
       state = intrinsics.federated_map(
-          computations.tf_computation(lambda x: x + 1), state)
+          tensorflow_computation.tf_computation(lambda x: x + 1), state)
       result = intrinsics.federated_map(
-          computations.tf_computation(
+          tensorflow_computation.tf_computation(
               lambda x: tf.nest.map_structure(lambda y: y + 1, x)),
           intrinsics.federated_sum(value))
       measurements = intrinsics.federated_value(MEASUREMENT_CONSTANT,

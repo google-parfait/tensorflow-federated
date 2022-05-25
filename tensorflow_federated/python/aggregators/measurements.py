@@ -24,8 +24,9 @@ from typing import Any, Callable, Dict, Optional
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -90,7 +91,7 @@ def add_measurements(
     if len(inspect.signature(server_measurement_fn).parameters) != 1:
       raise ValueError('`server_measurement_fn` must take a single parameter.')
 
-  @computations.tf_computation()
+  @tensorflow_computation.tf_computation()
   def dict_update(orig_dict, new_values):
     if not orig_dict:
       return new_values
@@ -112,7 +113,7 @@ def add_measurements(
         inner_agg_process = inner_agg_factory.create(value_type, weight_type)
         init_fn = inner_agg_process.initialize
 
-        @computations.federated_computation(
+        @federated_computation.federated_computation(
             init_fn.type_signature.result,
             computation_types.at_clients(value_type),
             computation_types.at_clients(weight_type))
@@ -149,7 +150,7 @@ def add_measurements(
         inner_agg_process = inner_agg_factory.create(value_type)
         init_fn = inner_agg_process.initialize
 
-        @computations.federated_computation(
+        @federated_computation.federated_computation(
             init_fn.type_signature.result,
             computation_types.at_clients(value_type))
         def next_fn(state, value):

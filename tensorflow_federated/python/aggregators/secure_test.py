@@ -20,9 +20,10 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import secure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.test import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -41,18 +42,22 @@ def _test_struct_type(dtype):
 
 
 def _test_float_init_fn(factor):
-  return computations.federated_computation(
+  return federated_computation.federated_computation(
       lambda: intrinsics.federated_value(factor * 1.0, placements.SERVER))
 
 
 def _test_float_next_fn(factor):
-  shift_one = computations.tf_computation(lambda x: x + (factor * 1.0))
-  return computations.federated_computation(
+
+  @tensorflow_computation.tf_computation
+  def shift_one(x):
+    return x + (factor * 1.0)
+
+  return federated_computation.federated_computation(
       lambda state, value: intrinsics.federated_map(shift_one, state),
       _float_at_server, _float_at_clients)
 
 
-_test_float_report_fn = computations.federated_computation(
+_test_float_report_fn = federated_computation.federated_computation(
     lambda state: state, _float_at_server)
 
 

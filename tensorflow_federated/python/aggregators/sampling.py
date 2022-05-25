@@ -25,9 +25,10 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -121,7 +122,7 @@ def _build_initial_sample_reservoir(sample_value_type: computation_types.Type,
     used during reservoir sampling.
   """
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def initialize():
     # Allow fixed seeds, otherwise set a sentinel that signals a seed should be
     # generated upon the first `accumulate` call of the `federated_aggregate`.
@@ -221,7 +222,7 @@ def _build_sample_value_computation(
                                            tf.int64)
     return tf.fill(dims=(2,), value=quantized_fractional_seconds)
 
-  @computations.tf_computation(reservoir_type, value_type)
+  @tensorflow_computation.tf_computation(reservoir_type, value_type)
   @tf.function
   def perform_sampling(reservoir, sample):
     if tf.reduce_all(tf.equal(reservoir['random_seed'], SEED_SENTINEL)):
@@ -257,7 +258,7 @@ def _build_merge_samples_computation(
   """Builds the `merge` computation for a sampling."""
   reservoir_type = _build_reservoir_type(value_type)
 
-  @computations.tf_computation(reservoir_type, reservoir_type)
+  @tensorflow_computation.tf_computation(reservoir_type, reservoir_type)
   @tf.function
   def merge_samples(a, b):
     # First concatenate all the values together. If the size of the resulting
@@ -299,7 +300,7 @@ def _build_finalize_sample_computation(
   """Builds the `report` computation for sampling."""
   reservoir_type = _build_reservoir_type(value_type)
 
-  @computations.tf_computation(reservoir_type)
+  @tensorflow_computation.tf_computation(reservoir_type)
   @tf.function
   def finalize_samples(reservoir):
     # Drop all the container extra data and just return the sampled values.
@@ -333,7 +334,7 @@ def _build_check_non_finite_leaves_computation(
         'client value type to only contain `TensorType`s or '
         f'`StructWithPythonType`s, got a {value_type!r}.')
 
-  @computations.tf_computation(value_type)
+  @tensorflow_computation.tf_computation(value_type)
   @tf.function
   def check_non_finite_leaves(client_value):
 
@@ -400,12 +401,12 @@ class UnweightedReservoirSamplingFactory(factory.UnweightedAggregationFactory):
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
 
-    @computations.federated_computation()
+    @federated_computation.federated_computation()
     def init_fn():
       # Empty/null state, nothing is tracked across invocations.
       return intrinsics.federated_value((), placements.SERVER)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_server(()),
         computation_types.at_clients(value_type))
     def next_fn(unused_state, value):

@@ -15,7 +15,7 @@
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 
@@ -51,7 +51,7 @@ class _UnweightedAsWeightedFactory(factory.WeightedAggregationFactory):
 
     aggregator = self._factory.create(value_type)
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         aggregator.state_type, computation_types.at_clients(value_type),
         computation_types.at_clients(weight_type))
     def next_fn(state, value, weight):

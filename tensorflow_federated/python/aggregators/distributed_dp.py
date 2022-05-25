@@ -31,8 +31,9 @@ from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import rotation
 from tensorflow_federated.python.aggregators import secure
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -438,7 +439,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       The updated agg_state.
     """
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def _update_scale(agg_state, new_l2_clip):
       _, discrete_state, _ = self._unpack_state(agg_state)
       new_central_stddev = new_l2_clip * self._value_noise_mult
@@ -455,7 +456,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       discrete_state['scale_factor'] = tf.cast(new_scale, tf.float32)
       return agg_state
 
-    @computations.tf_computation
+    @tensorflow_computation.tf_computation
     def _update_dp_params(agg_state, new_l2_clip):
       _, discrete_state, dp_state = self._unpack_state(agg_state)
       new_scale = discrete_state['scale_factor']
@@ -543,9 +544,8 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     ddp_agg_process = self._build_aggregation_factory().create(value_type)
     init_fn = ddp_agg_process.initialize
 
-    @computations.federated_computation(init_fn.type_signature.result,
-                                        computation_types.at_clients(value_type)
-                                       )
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result, computation_types.at_clients(value_type))
     def next_fn(state, value):
       agg_output = ddp_agg_process.next(state, value)
       new_measurements = self._derive_measurements(agg_output.state,

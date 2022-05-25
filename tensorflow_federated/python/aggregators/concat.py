@@ -25,9 +25,10 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -92,11 +93,11 @@ def create_concat_fns(
 
   _check_component_dtypes(value_type)
 
-  @computations.tf_computation(value_type)
+  @tensorflow_computation.tf_computation(value_type)
   def concat(struct):
     return _concat_impl(struct)
 
-  @computations.tf_computation(concat.type_signature.result)
+  @tensorflow_computation.tf_computation(concat.type_signature.result)
   def unconcat(concatenated_tensor):
     return _unconcat_impl(concatenated_tensor, original_structure)
 
@@ -131,7 +132,7 @@ def _unweighted_concat_factory(inner_agg_factory):
       init_fn = inner_agg_process.initialize
       state_type = init_fn.type_signature.result
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           state_type, computation_types.at_clients(value_type))
       def next_fn(state, value):
         return _next_fn_impl(state, value, concat_fn, unconcat_fn,
@@ -155,7 +156,7 @@ def _weighted_concat_factory(inner_agg_factory):
           concat_fn.type_signature.result, weight_type)
       init_fn = inner_agg_process.initialize
 
-      @computations.federated_computation(
+      @federated_computation.federated_computation(
           init_fn.type_signature.result,
           computation_types.at_clients(value_type),
           computation_types.at_clients(weight_type))
