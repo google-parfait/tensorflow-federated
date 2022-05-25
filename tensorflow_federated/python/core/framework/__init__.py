@@ -15,6 +15,7 @@
 
 from tensorflow_federated.python.core.impl.compiler.building_blocks import ComputationBuildingBlock
 from tensorflow_federated.python.core.impl.compiler.intrinsic_reductions import replace_intrinsics_with_bodies
+from tensorflow_federated.python.core.impl.compiler.tree_transformations import check_allowed_ops
 from tensorflow_federated.python.core.impl.compiler.tree_transformations import check_disallowed_ops
 from tensorflow_federated.python.core.impl.computation.computation_impl import ConcreteComputation
 from tensorflow_federated.python.core.impl.computation.computation_serialization import deserialize_computation

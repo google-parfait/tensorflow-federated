@@ -410,6 +410,13 @@ def transform_tf_add_ids(comp):
   return _apply_transforms(comp, compiled_computation_transforms.AddUniqueIDs())
 
 
+def check_allowed_ops(comp: building_blocks.ComputationBuildingBlock,
+                      allowed_op_names: FrozenSet[str]) -> TransformReturnType:
+  """Checks any Tensorflow computation contains only allowed ops."""
+  return _apply_transforms(
+      comp, compiled_computation_transforms.VerifyAllowedOps(allowed_op_names))
+
+
 def check_disallowed_ops(
     comp: building_blocks.ComputationBuildingBlock,
     disallowed_op_names: FrozenSet[str]) -> TransformReturnType:
