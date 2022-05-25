@@ -52,7 +52,7 @@ git_repository(
     name = "org_tensorflow",
     patches = ["//third_party/tensorflow:internal_visibility.patch"],
     remote = "https://github.com/tensorflow/tensorflow.git",
-    tag = "v2.9.0",
+    tag = "v2.9.1",
 )
 
 git_repository(

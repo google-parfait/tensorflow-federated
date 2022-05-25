@@ -67,7 +67,7 @@ REQUIRED_PACKAGES = [
     'semantic-version~=2.8.5',
     'tensorflow-model-optimization~=0.7.1',
     'tensorflow-privacy~=0.8.0',
-    'tensorflow~=2.9.0',
+    'tensorflow~=2.9.1',
     'tqdm~=4.28.1',
     'kubernetes~=21.7.0',
 ]
