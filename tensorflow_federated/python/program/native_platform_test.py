@@ -23,9 +23,9 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import federated_context
@@ -392,7 +392,7 @@ class NativeFederatedContextTest(parameterized.TestCase,
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def add(x, y):
       return x + y
 
@@ -418,7 +418,7 @@ class NativeFederatedContextTest(parameterized.TestCase,
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def return_one():
       return 1
 
@@ -435,7 +435,7 @@ class NativeFederatedContextTest(parameterized.TestCase,
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
-    @computations.tf_computation()
+    @tensorflow_computation.tf_computation()
     def return_one():
       return 1
 
@@ -450,7 +450,7 @@ class NativeFederatedContextTest(parameterized.TestCase,
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
-    @computations.tf_computation(tf.int32, tf.int32)
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
     def add(x, y):
       return x + y
 
