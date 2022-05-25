@@ -18,7 +18,7 @@ import collections
 import jax
 import numpy as np
 
-from tensorflow_federated.experimental.python.core.api import computations as experimental_computations
+from tensorflow_federated.experimental.python.core.impl.jax_context import jax_computation
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -66,7 +66,7 @@ def build_jax_federated_averaging_process(batch_type, model_type, loss_fn,
     return jax.numpy.zeros(
         tensor_type.shape.dims, dtype=tensor_type.dtype.as_numpy_dtype)
 
-  @experimental_computations.jax_computation
+  @jax_computation.jax_computation
   def _create_zero_model():
     model_zeros = structure.map_structure(_tensor_zeros, model_type)
     return type_conversions.type_to_py_container(model_zeros, model_type)
@@ -78,7 +78,7 @@ def build_jax_federated_averaging_process(batch_type, model_type, loss_fn,
   def _apply_update(model_param, param_delta):
     return model_param - step_size * param_delta
 
-  @experimental_computations.jax_computation(model_type, batch_type)
+  @jax_computation.jax_computation(model_type, batch_type)
   def _train_on_one_batch(model, batch):
     params = structure.flatten(structure.from_container(model, recursive=True))
     grads = structure.flatten(

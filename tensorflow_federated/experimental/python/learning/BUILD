@@ -30,7 +30,7 @@ py_library(
     srcs = ["jax_components.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/experimental/python/core/api:computations",
+        "//tensorflow_federated/experimental/python/core/impl/jax_context:jax_computation",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
