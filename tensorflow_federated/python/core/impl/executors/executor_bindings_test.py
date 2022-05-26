@@ -18,7 +18,6 @@ from absl.testing import parameterized
 import portpicker
 import tensorflow as tf
 
-from pybind11_abseil import status
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import value_serialization
@@ -267,7 +266,7 @@ class TensorFlowExecutorBindingsTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_materialize_on_unkown_fails(self):
     executor = executor_bindings.create_tensorflow_executor()
-    with self.assertRaisesRegex(status.StatusNotOk, 'NOT_FOUND'):
+    with self.assertRaisesRegex(Exception, 'NOT_FOUND'):
       executor.materialize(0)
 
 
@@ -433,7 +432,7 @@ class ReferenceResolvingExecutorBindingsTest(tf.test.TestCase):
 
   def test_materialize_on_unkown_fails(self):
     executor = executor_bindings.create_tensorflow_executor()
-    with self.assertRaisesRegex(status.StatusNotOk, 'NOT_FOUND'):
+    with self.assertRaisesRegex(Exception, 'NOT_FOUND'):
       executor.materialize(0)
 
 

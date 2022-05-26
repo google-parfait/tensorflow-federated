@@ -16,7 +16,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 
-from pybind11_abseil import status as absl_status
 from tensorflow_federated.python.core.impl.executor_stacks import executor_stack_bindings
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.types import placements
@@ -32,7 +31,7 @@ class ExecutorStackBindingsTest(parameterized.TestCase):
                                   ('from_target_ndarray', np.array))
   def test_executor_construction_raises_no_channels_available(
       self, container_constructor):
-    with self.assertRaisesRegex(absl_status.StatusNotOk, 'UNAVAILABLE'):
+    with self.assertRaisesRegex(Exception, 'UNAVAILABLE'):
       executor_stack_bindings.create_remote_executor_stack(
           channels=container_constructor([
               executor_bindings.create_insecure_grpc_channel(t)
