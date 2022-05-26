@@ -88,7 +88,7 @@ documentation can be found in the [TFF guides](../get_started.md).
     demonstrates how to use TFF to train models with user-level differential
     privacy.
 
-*   [Experimental support for JAX in TFF](../experimental/tutorials/jax_support.ipynb)
-    shows how [JAX](https://github.com/google/jax) computations can be used in
-    TFF, demonstrating how TFF is designed to be able to interoperate with other
+*   [Support for JAX in TFF](../tutorials/jax_support.ipynb) shows how
+    [JAX](https://github.com/google/jax) computations can be used in TFF,
+    demonstrating how TFF is designed to be able to interoperate with other
     frontend and backend ML frameworks.

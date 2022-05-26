@@ -67,7 +67,7 @@ class JaxTrainingTest(absltest.TestCase):
 
   def test_federated_training(self):
     training_data, eval_data = prepare_data(num_clients=2, num_batches=10)
-    trainer = tff.experimental.learning.build_jax_federated_averaging_process(
+    trainer = tff.learning.build_jax_federated_averaging_process(
         BATCH_TYPE, MODEL_TYPE, loss, step_size=0.001)
     model = trainer.initialize()
     losses = []
