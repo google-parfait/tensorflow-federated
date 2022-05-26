@@ -47,7 +47,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
       self, x, serialize_type_spec):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type, serialize_type_spec)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_identical(type_spec, serialize_type_spec)
@@ -62,7 +61,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
       tensor_x = tf.convert_to_tensor(x)
       value_proto, value_type = value_serialization.serialize_value(
           tensor_x, serialize_type_spec)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type, serialize_type_spec)
     y, deserialize_type_spec = value_serialization.deserialize_value(
         value_proto)
@@ -76,7 +74,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
                                                         serialize_type_spec):
     value_proto, value_type = value_serialization.serialize_value(
         x, serialize_type_spec)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type, serialize_type_spec)
     y, deserialize_type_spec = value_serialization.deserialize_value(
         value_proto, type_hint=serialize_type_spec)
@@ -93,7 +90,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     tf_type = tf.as_dtype(x.dtype)
     type_spec = TensorType(tf_type, x.shape)
     value_proto, value_type = value_serialization.serialize_value(x, type_spec)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type,
                                            TensorType(tf_type, x.shape))
     y, type_spec = value_serialization.deserialize_value(
@@ -107,7 +103,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     x = tf.Variable(10.0)
     type_spec = TensorType(tf.as_dtype(x.dtype), x.shape)
     value_proto, value_type = value_serialization.serialize_value(x, type_spec)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type, TensorType(tf.float32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_identical(type_spec, TensorType(tf.float32))
@@ -122,7 +117,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     x = tf.constant(10)
     value_proto, value_type = value_serialization.serialize_value(
         x, TensorType(tf.float32))
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type, TensorType(tf.float32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_identical(type_spec, TensorType(tf.float32))
@@ -132,7 +126,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     x = tf.constant([10, 20, 30])
     value_proto, value_type = value_serialization.serialize_value(
         x, TensorType(tf.int32, [3]))
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type,
                                            TensorType(tf.int32, [3]))
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -175,7 +168,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     ds_repr = ds_repr_fn(ds)
     value_proto, value_type = value_serialization.serialize_value(
         ds_repr, computation_types.SequenceType(tf.int64))
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(
         value_type, computation_types.SequenceType(tf.int64))
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -200,7 +192,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     sequence_type = computation_types.SequenceType(element=element_type)
     value_proto, value_type = value_serialization.serialize_value(
         ds_repr, sequence_type)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assertEqual(value_type, sequence_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_equivalent(type_spec, sequence_type)
@@ -216,7 +207,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
       ds = tf.data.Dataset.range(5).map(lambda x: x * 2)
       value_proto, value_type = value_serialization.serialize_value(
           ds, computation_types.SequenceType(tf.int64))
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(
         value_type, computation_types.SequenceType(tf.int64))
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -236,7 +226,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
             element=(tf.int64, tf.int32, tf.float32)))
     expected_type = computation_types.SequenceType(
         (tf.int64, tf.int32, tf.float32))
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type, expected_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # Only checking for equivalence, we don't have the Python container
@@ -271,7 +260,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     sequence_type = computation_types.SequenceType(element=element_type)
     value_proto, value_type = value_serialization.serialize_value(
         ds_repr, sequence_type)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type, sequence_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # These aren't the same because ser/de destroys the PyContainer
@@ -323,7 +311,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
             b=[tf.int32, tf.int32],
             c=collections.OrderedDict(d=tf.int32)))
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     # Don't assert on the Python container since it is lost in serialization.
@@ -334,7 +321,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     x = (10, 20)
     x_type = computation_types.to_type((tf.int32, tf.int32))
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(value_type, x_type)
     y, type_spec = value_serialization.deserialize_value(value_proto)
     type_test_utils.assert_types_equivalent(type_spec, x_type)
@@ -344,7 +330,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     x = [10, 20]
     x_type = computation_types.at_clients(tf.int32)
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(
         value_type, computation_types.at_clients(tf.int32))
     y, type_spec = value_serialization.deserialize_value(value_proto)
@@ -366,9 +351,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     federated_proto = executor_pb2.Value.Federated(
         type=unspecified_member_federated_type, value=[member_proto])
     federated_value_proto = executor_pb2.Value(federated=federated_proto)
-
-    self.assertIsInstance(member_proto, executor_pb2.Value)
-    self.assertIsInstance(federated_value_proto, executor_pb2.Value)
 
     deserialized_federated_value, deserialized_type_spec = value_serialization.deserialize_value(
         federated_value_proto)
@@ -395,10 +377,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
         type=unspecified_member_federated_type,
         value=[int_member_proto, float_member_proto])
     federated_value_proto = executor_pb2.Value(federated=federated_proto)
-
-    self.assertIsInstance(int_member_proto, executor_pb2.Value)
-    self.assertIsInstance(float_member_proto, executor_pb2.Value)
-    self.assertIsInstance(federated_value_proto, executor_pb2.Value)
 
     with self.assertRaises(TypeError):
       value_serialization.deserialize_value(federated_value_proto)
@@ -445,10 +423,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
         value=[larger_type_member_proto, smaller_type_member_proto])
     federated_value_proto = executor_pb2.Value(federated=federated_proto)
 
-    self.assertIsInstance(smaller_type_member_proto, executor_pb2.Value)
-    self.assertIsInstance(larger_type_member_proto, executor_pb2.Value)
-    self.assertIsInstance(federated_value_proto, executor_pb2.Value)
-
     _, deserialized_type_spec = value_serialization.deserialize_value(
         federated_value_proto)
     type_test_utils.assert_types_identical(
@@ -458,7 +432,6 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     x = 10
     x_type = computation_types.at_server(tf.int32)
     value_proto, value_type = value_serialization.serialize_value(x, x_type)
-    self.assertIsInstance(value_proto, executor_pb2.Value)
     type_test_utils.assert_types_identical(
         value_type, computation_types.at_server(tf.int32))
     y, type_spec = value_serialization.deserialize_value(value_proto)

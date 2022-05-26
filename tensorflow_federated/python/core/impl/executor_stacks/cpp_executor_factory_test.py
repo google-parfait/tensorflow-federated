@@ -14,7 +14,6 @@
 
 from absl.testing import absltest
 
-from pybind11_abseil import status as absl_status
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_factory
@@ -68,7 +67,7 @@ class CPPExecutorFactoryTest(absltest.TestCase):
     remote_cpp_factory = cpp_executor_factory.remote_cpp_executor_factory(
         channels=channels, default_num_clients=0)
     self.assertIsInstance(remote_cpp_factory, executor_factory.ExecutorFactory)
-    with self.assertRaises(absl_status.StatusNotOk):
+    with self.assertRaises(Exception):
       remote_cpp_factory.create_executor({placements.CLIENTS: 1})
 
 

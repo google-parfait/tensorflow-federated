@@ -57,7 +57,7 @@ git_repository(
 
 git_repository(
     name = "pybind11_abseil",
-    commit = "0807a71b53ddbdbb0ff69b8aec813b113de71469",
+    commit = "38111ef06d426f75bb335a3b58aa0342f6ce0ce3",
     remote = "https://github.com/pybind/pybind11_abseil.git",
 )
 
@@ -69,7 +69,7 @@ git_repository(
 
 git_repository(
     name = "pybind11_protobuf",
-    commit = "f20537c3285636716ed86a7ef96baa19a788c944",
+    commit = "a3d93a93387af7fa57d72d56cfc0a4ba7f4a60e4",
     remote = "https://github.com/pybind/pybind11_protobuf.git",
 )
 
@@ -88,7 +88,7 @@ new_git_repository(
     name = "pybind11",
     build_file = "@pybind11_bazel//:pybind11.BUILD",
     remote = "https://github.com/pybind/pybind11.git",
-    tag = "v2.7.1",
+    tag = "v2.9.2",
 )
 
 # Required by pybind11_bazel
@@ -99,11 +99,11 @@ new_git_repository(
 http_archive(
     name = "six",
     build_file = "//third_party:six.BUILD",
-    sha256 = "30639c035cdb23534cd4aa2dd52c3bf48f06e5f4a941509c8bafd8ce11080259",
-    strip_prefix = "six-1.15.0",
+    sha256 = "1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926",
+    strip_prefix = "six-1.16.0",
     urls = [
-        "https://storage.googleapis.com/mirror.tensorflow.org/pypi.python.org/packages/source/s/six/six-1.15.0.tar.gz",
-        "https://pypi.python.org/packages/source/s/six/six-1.15.0.tar.gz",
+        "https://storage.googleapis.com/mirror.tensorflow.org/pypi.python.org/packages/source/s/six/six-1.16.0.tar.gz",
+        "https://pypi.python.org/packages/source/s/six/six-1.16.0.tar.gz",
     ],
 )
 
