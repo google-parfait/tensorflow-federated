@@ -35,7 +35,7 @@ build --define=allow_oversize_protos=true
 # bazel produces an empty __init__.py and hides the symbols from the `.so`
 # python extension. We must ask bazel not to generate these and rely on
 # explicit __init__.py files.
-# build --incompatible_default_to_explicit_init_py
+build --incompatible_default_to_explicit_init_py
 
 # Processor native optimizations (depends on build host capabilities).
 build --copt=-march=native
@@ -162,7 +162,10 @@ build:cuda --action_env=TF_CUDNN_VERSION="8"
 build:cuda --repo_env=TF_CUDA_COMPUTE_CAPABILITIES="sm_60,sm_70,sm_75,compute_80"
 build:cuda --action_env=GCC_HOST_COMPILER_PATH="/dt7/usr/bin/gcc"
 
-build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1
+# GCC >= 5 requires specify this to be ABI compatible with how the TensorFlow
+# pip package is built. More details at
+# https://www.tensorflow.org/guide/create_op#build_the_op_library.
+build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0
 
 # Default startup
 startup --host_jvm_args=-Dbazel.DigestFunction=SHA256
