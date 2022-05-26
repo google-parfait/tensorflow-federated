@@ -14,31 +14,31 @@
 
 from absl.testing import absltest
 
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.test import static_assert
 
 
-@computations.federated_computation
+@federated_computation.federated_computation
 def no_aggregation():
   return ()
 
 
-@computations.federated_computation
+@federated_computation.federated_computation
 def secure_aggregation():
   data_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
   bitwidth = 1
   return intrinsics.federated_secure_sum_bitwidth(data_at_clients, bitwidth)
 
 
-@computations.federated_computation
+@federated_computation.federated_computation
 def unsecure_aggregation():
   data_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
   return intrinsics.federated_sum(data_at_clients)
 
 
-@computations.federated_computation
+@federated_computation.federated_computation
 def secure_and_unsecure_aggregation():
   return (secure_aggregation, unsecure_aggregation)
 
