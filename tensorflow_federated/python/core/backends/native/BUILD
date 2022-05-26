@@ -11,9 +11,6 @@ package(default_visibility = [
 
     # TODO(b/233800373): Remove dependency from `test` to `native`.
     "//tensorflow_federated/python/core/backends/test:test_packages",
-
-    # TODO(b/233800414): Remove dependency from `templates` to `native`.
-    "//tensorflow_federated/python/core/templates:templates_packages",
 ])
 
 package_group(
