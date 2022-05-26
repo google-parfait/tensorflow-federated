@@ -24,8 +24,8 @@ from typing import Any, Optional
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import errors
@@ -179,7 +179,7 @@ def chain_measured_processes(
     the composite function.
   """
   # Concatenate all the initialization computations.
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def composition_initialize():
     try:
       return intrinsics.federated_zip(
@@ -201,8 +201,8 @@ def chain_measured_processes(
           for name, process in measured_processes.items()
       ]))
 
-  @computations.federated_computation(concatenated_state_type_spec,
-                                      first_process_value_type_spec)
+  @federated_computation.federated_computation(concatenated_state_type_spec,
+                                               first_process_value_type_spec)
   def composition_next(state, values):
     new_states = collections.OrderedDict()
     measurements = collections.OrderedDict()
@@ -264,7 +264,7 @@ def concatenate_measured_processes(
     (e.g. F.state@SERVER, G.state@CLIENTS).
   """
   # Concatenate all the initialization computations.
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def concatenation_initialize():
     try:
       return intrinsics.federated_zip(
@@ -286,8 +286,8 @@ def concatenate_measured_processes(
       measured_processes)
 
   # Concatenate all the next computations.
-  @computations.federated_computation(concatenated_state_type_spec,
-                                      concatenated_values_type_spec)
+  @federated_computation.federated_computation(concatenated_state_type_spec,
+                                               concatenated_values_type_spec)
   def concatenation_next(state, values):
     new_states = collections.OrderedDict()
     results = collections.OrderedDict()

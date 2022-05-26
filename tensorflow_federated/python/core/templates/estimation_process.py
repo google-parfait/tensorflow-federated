@@ -20,9 +20,11 @@
 
 from typing import Optional
 
+
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 
@@ -132,12 +134,12 @@ class EstimationProcess(iterative_process.IterativeProcess):
           f'and the argument of `map_fn` is:\n{map_fn_arg_type}')
 
     try:
-      transformed_report_fn = computations.tf_computation(
+      transformed_report_fn = tensorflow_computation.tf_computation(
           lambda state: map_fn(self.report(state)), self.state_type)
     except TypeError:
       # Raised if the computation operates in federated types. However, there is
       # currently no way to distinguish these using the public API.
-      transformed_report_fn = computations.federated_computation(
+      transformed_report_fn = federated_computation.federated_computation(
           lambda state: map_fn(self.report(state)), self.state_type)
 
     return EstimationProcess(

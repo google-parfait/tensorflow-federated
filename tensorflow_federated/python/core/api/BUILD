@@ -3,7 +3,6 @@ load("@rules_python//python:defs.bzl", "py_library")
 package(default_visibility = [
     ":api_packages",
     "//tensorflow_federated/python/core:core_visibility",
-    "//tensorflow_federated/python/core/templates:templates_packages",
 
     # TODO(b/181569610): Clean up circular dependency between the `api` and
     # `impl` packages.

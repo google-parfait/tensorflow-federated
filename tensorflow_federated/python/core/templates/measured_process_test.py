@@ -18,9 +18,10 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -31,12 +32,12 @@ from tensorflow_federated.python.core.templates import measured_process
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def test_initialize_fn():
   return tf.constant(0, tf.int32)
 
 
-@computations.tf_computation(tf.int32, tf.float32)
+@tensorflow_computation.tf_computation(tf.int32, tf.float32)
 def test_next_fn(state, value):
   return MeasuredProcessOutput(state, value, ())
 
@@ -50,8 +51,8 @@ class MeasuredProcessTest(absltest.TestCase):
       self.fail('Could not construct a valid MeasuredProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
-    initialize_fn = computations.tf_computation()(lambda: ())
-    next_fn = computations.tf_computation(
+    initialize_fn = tensorflow_computation.tf_computation()(lambda: ())
+    next_fn = tensorflow_computation.tf_computation(
         ())(lambda x: MeasuredProcessOutput(x, (), ()))
     try:
       measured_process.MeasuredProcess(initialize_fn, next_fn)
@@ -59,10 +60,10 @@ class MeasuredProcessTest(absltest.TestCase):
       self.fail('Could not construct an MeasuredProcess with empty state.')
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
-    initialize_fn = computations.tf_computation()(
+    initialize_fn = tensorflow_computation.tf_computation()(
         lambda: tf.constant([], dtype=tf.string))
 
-    @computations.tf_computation(
+    @tensorflow_computation.tf_computation(
         computation_types.TensorType(shape=[None], dtype=tf.string))
     def next_fn(strings):
       return MeasuredProcessOutput(
@@ -86,35 +87,37 @@ class MeasuredProcessTest(absltest.TestCase):
           next_fn=lambda state: MeasuredProcessOutput(state, (), ()))
 
   def test_init_param_not_empty_raises(self):
-    one_arg_initialize_fn = computations.tf_computation(tf.int32)(lambda x: x)
+    one_arg_initialize_fn = tensorflow_computation.tf_computation(
+        tf.int32)(lambda x: x)
     with self.assertRaises(errors.TemplateInitFnParamNotEmptyError):
       measured_process.MeasuredProcess(one_arg_initialize_fn, test_next_fn)
 
   def test_init_state_not_assignable(self):
-    float_initialize_fn = computations.tf_computation()(lambda: 0.0)
+    float_initialize_fn = tensorflow_computation.tf_computation()(lambda: 0.0)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       measured_process.MeasuredProcess(float_initialize_fn, test_next_fn)
 
   def test_federated_init_state_not_assignable(self):
     zero = lambda: intrinsics.federated_value(0, placements.SERVER)
-    initialize_fn = computations.federated_computation()(zero)
-    next_fn = computations.federated_computation(
+    initialize_fn = federated_computation.federated_computation()(zero)
+    next_fn = federated_computation.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))(
             lambda state: MeasuredProcessOutput(state, zero(), zero()))
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       measured_process.MeasuredProcess(initialize_fn, next_fn)
 
   def test_next_state_not_assignable(self):
-    float_next_fn = computations.tf_computation(tf.float32)(
+    float_next_fn = tensorflow_computation.tf_computation(tf.float32)(
         lambda state: MeasuredProcessOutput(tf.cast(state, tf.float32), (), ()))
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       measured_process.MeasuredProcess(test_initialize_fn, float_next_fn)
 
   def test_federated_next_state_not_assignable(self):
-    initialize_fn = computations.federated_computation()(
+    initialize_fn = federated_computation.federated_computation()(
         lambda: intrinsics.federated_value(0, placements.SERVER))
 
-    @computations.federated_computation(initialize_fn.type_signature.result)
+    @federated_computation.federated_computation(
+        initialize_fn.type_signature.result)
     def next_fn(state):
       return MeasuredProcessOutput(
           intrinsics.federated_broadcast(state), (), ())
@@ -126,19 +129,20 @@ class MeasuredProcessTest(absltest.TestCase):
 
   def test_measured_process_output_as_state_raises(self):
     empty_output = lambda: MeasuredProcessOutput((), (), ())
-    initialize_fn = computations.tf_computation(empty_output)
-    next_fn = computations.tf_computation(
+    initialize_fn = tensorflow_computation.tf_computation(empty_output)
+    next_fn = tensorflow_computation.tf_computation(
         initialize_fn.type_signature.result)(lambda state: empty_output())
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       measured_process.MeasuredProcess(initialize_fn, next_fn)
 
   def test_next_return_tensor_type_raises(self):
-    next_fn = computations.tf_computation(tf.int32)(lambda state: state)
+    next_fn = tensorflow_computation.tf_computation(
+        tf.int32)(lambda state: state)
     with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
       measured_process.MeasuredProcess(test_initialize_fn, next_fn)
 
   def test_next_return_tuple_raises(self):
-    tuple_next_fn = computations.tf_computation(
+    tuple_next_fn = tensorflow_computation.tf_computation(
         tf.int32)(lambda state: (state, (), ()))
     with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
       measured_process.MeasuredProcess(test_initialize_fn, tuple_next_fn)
@@ -146,25 +150,25 @@ class MeasuredProcessTest(absltest.TestCase):
   def test_next_return_namedtuple_raises(self):
     measured_process_output = collections.namedtuple(
         'MeasuredProcessOutput', ['state', 'result', 'measurements'])
-    namedtuple_next_fn = computations.tf_computation(
+    namedtuple_next_fn = tensorflow_computation.tf_computation(
         tf.int32)(lambda state: measured_process_output(state, (), ()))
     with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
       measured_process.MeasuredProcess(test_initialize_fn, namedtuple_next_fn)
 
   def test_next_return_odict_raises(self):
-    odict_next_fn = computations.tf_computation(tf.int32)(
+    odict_next_fn = tensorflow_computation.tf_computation(tf.int32)(
         lambda s: collections.OrderedDict(state=s, result=(), measurements=()))
     with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
       measured_process.MeasuredProcess(test_initialize_fn, odict_next_fn)
 
   def test_federated_measured_process_output_raises(self):
-    initialize_fn = computations.federated_computation()(
+    initialize_fn = federated_computation.federated_computation()(
         lambda: intrinsics.federated_value(0, placements.SERVER))
     empty = lambda: intrinsics.federated_value((), placements.SERVER)
     state_type = initialize_fn.type_signature.result
 
     # Using federated_zip to place FederatedType at the top of the hierarchy.
-    @computations.federated_computation(state_type)
+    @federated_computation.federated_computation(state_type)
     def next_fn(state):
       return intrinsics.federated_zip(
           MeasuredProcessOutput(state, empty(), empty()))
@@ -178,11 +182,11 @@ class MeasuredProcessTest(absltest.TestCase):
 
 def test_measured_process_double(state_type, state_init, values_type):
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def double(x):
     return x * 2
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_server(state_type),
       computation_types.at_clients(values_type))
   def map_double(state, values):
@@ -193,18 +197,18 @@ def test_measured_process_double(state_type, state_init, values_type):
             collections.OrderedDict(a=1), placements.SERVER))
 
   return measured_process.MeasuredProcess(
-      initialize_fn=computations.federated_computation(
+      initialize_fn=federated_computation.federated_computation(
           lambda: intrinsics.federated_value(state_init, placements.SERVER)),
       next_fn=map_double)
 
 
 def test_measured_process_sum(state_type, state_init, values_type):
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def add_one(x):
     return x + 1
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_server(state_type),
       computation_types.at_clients(values_type))
   def map_sum(state, values):
@@ -215,14 +219,14 @@ def test_measured_process_sum(state_type, state_init, values_type):
             collections.OrderedDict(b=2), placements.SERVER))
 
   return measured_process.MeasuredProcess(
-      initialize_fn=computations.federated_computation(
+      initialize_fn=federated_computation.federated_computation(
           lambda: intrinsics.federated_value(state_init, placements.SERVER)),
       next_fn=map_sum)
 
 
 def test_measured_process_state_at_clients():
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_clients(tf.int32),
       computation_types.at_clients(tf.int32))
   def next_fn(state, values):
@@ -231,7 +235,7 @@ def test_measured_process_state_at_clients():
         intrinsics.federated_value(1, placements.SERVER))
 
   return measured_process.MeasuredProcess(
-      initialize_fn=computations.federated_computation(
+      initialize_fn=federated_computation.federated_computation(
           lambda: intrinsics.federated_value(0, placements.CLIENTS)),
       next_fn=next_fn)
 
@@ -243,7 +247,7 @@ def test_measured_process_state_missing_placement():
 
 def test_aggregation_process(state_type, state_init, values_type):
 
-  @computations.federated_computation(
+  @federated_computation.federated_computation(
       computation_types.at_server(state_type),
       computation_types.at_clients(values_type))
   def next_fn(state, values):
@@ -252,19 +256,19 @@ def test_aggregation_process(state_type, state_init, values_type):
         intrinsics.federated_value(1, placements.SERVER))
 
   return aggregation_process.AggregationProcess(
-      initialize_fn=computations.federated_computation(
+      initialize_fn=federated_computation.federated_computation(
           lambda: intrinsics.federated_value(state_init, placements.SERVER)),
       next_fn=next_fn)
 
 
 def test_iterative_process(state_type, state_init):
 
-  @computations.tf_computation(state_type)
+  @tensorflow_computation.tf_computation(state_type)
   def next_fn(state):
     return state
 
   return iterative_process.IterativeProcess(
-      initialize_fn=computations.tf_computation(
+      initialize_fn=tensorflow_computation.tf_computation(
           lambda: tf.constant(state_init)),
       next_fn=next_fn)
 

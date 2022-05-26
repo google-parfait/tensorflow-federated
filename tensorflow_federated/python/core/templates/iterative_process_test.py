@@ -16,8 +16,9 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -32,12 +33,12 @@ StructWithPythonType = computation_types.StructWithPythonType
 TensorType = computation_types.TensorType
 
 
-@computations.tf_computation()
+@tensorflow_computation.tf_computation()
 def test_initialize_fn():
   return tf.constant(0, tf.int32)
 
 
-@computations.tf_computation(tf.int32)
+@tensorflow_computation.tf_computation(tf.int32)
 def test_next_fn(state):
   return state
 
@@ -51,18 +52,19 @@ class IterativeProcessTest(absltest.TestCase):
       self.fail('Could not construct a valid IterativeProcess.')
 
   def test_construction_with_empty_state_does_not_raise(self):
-    initialize_fn = computations.tf_computation()(lambda: ())
-    next_fn = computations.tf_computation(())(lambda x: (x, 1.0))
+    initialize_fn = tensorflow_computation.tf_computation()(lambda: ())
+    next_fn = tensorflow_computation.tf_computation(())(lambda x: (x, 1.0))
     try:
       iterative_process.IterativeProcess(initialize_fn, next_fn)
     except:  # pylint: disable=bare-except
       self.fail('Could not construct an IterativeProcess with empty state.')
 
   def test_construction_with_unknown_dimension_does_not_raise(self):
-    initialize_fn = computations.tf_computation()(
+    initialize_fn = tensorflow_computation.tf_computation()(
         lambda: tf.constant([], dtype=tf.string))
 
-    @computations.tf_computation(TensorType(shape=[None], dtype=tf.string))
+    @tensorflow_computation.tf_computation(
+        TensorType(shape=[None], dtype=tf.string))
     def next_fn(strings):
       return tf.concat([strings, tf.constant(['abc'])], axis=0)
 
@@ -83,40 +85,41 @@ class IterativeProcessTest(absltest.TestCase):
           initialize_fn=test_initialize_fn, next_fn=lambda state: state)
 
   def test_init_param_not_empty_raises(self):
-    one_arg_initialize_fn = computations.tf_computation(tf.int32)(lambda x: x)
+    one_arg_initialize_fn = tensorflow_computation.tf_computation(
+        tf.int32)(lambda x: x)
     with self.assertRaises(errors.TemplateInitFnParamNotEmptyError):
       iterative_process.IterativeProcess(one_arg_initialize_fn, test_next_fn)
 
   def test_init_state_not_assignable(self):
-    float_initialize_fn = computations.tf_computation()(lambda: 0.0)
+    float_initialize_fn = tensorflow_computation.tf_computation()(lambda: 0.0)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       iterative_process.IterativeProcess(float_initialize_fn, test_next_fn)
 
   def test_federated_init_state_not_assignable(self):
-    initialize_fn = computations.federated_computation()(
+    initialize_fn = federated_computation.federated_computation()(
         lambda: intrinsics.federated_value(0, placements.SERVER))
-    next_fn = computations.federated_computation(
+    next_fn = federated_computation.federated_computation(
         FederatedType(tf.int32, placements.CLIENTS))(lambda state: state)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       iterative_process.IterativeProcess(initialize_fn, next_fn)
 
   def test_next_state_not_assignable(self):
-    float_next_fn = computations.tf_computation(
+    float_next_fn = tensorflow_computation.tf_computation(
         tf.float32)(lambda state: tf.cast(state, tf.float32))
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       iterative_process.IterativeProcess(test_initialize_fn, float_next_fn)
 
   def test_federated_next_state_not_assignable(self):
-    initialize_fn = computations.federated_computation()(
+    initialize_fn = federated_computation.federated_computation()(
         lambda: intrinsics.federated_value(0, placements.SERVER))
-    next_fn = computations.federated_computation(
+    next_fn = federated_computation.federated_computation(
         initialize_fn.type_signature.result)(
             intrinsics.federated_broadcast)
     with self.assertRaises(errors.TemplateStateNotAssignableError):
       iterative_process.IterativeProcess(initialize_fn, next_fn)
 
   def test_next_state_not_assignable_tuple_result(self):
-    float_next_fn = computations.tf_computation(
+    float_next_fn = tensorflow_computation.tf_computation(
         tf.float32,
         tf.float32)(lambda state, x: (tf.cast(state, tf.float32), x))
     with self.assertRaises(errors.TemplateStateNotAssignableError):
@@ -126,20 +129,21 @@ class IterativeProcessTest(absltest.TestCase):
 def create_test_process(
     type_spec: computation_types.Type) -> iterative_process.IterativeProcess:
 
-  @computations.tf_computation
+  @tensorflow_computation.tf_computation
   def create_value():
     return type_conversions.structure_from_tensor_type_tree(
         lambda t: tf.zeros(dtype=t.dtype, shape=t.shape),
         type_spec.member if type_spec.is_federated() else type_spec)
 
-  @computations.federated_computation
+  @federated_computation.federated_computation
   def init_fn():
     if type_spec.is_federated():
       return intrinsics.federated_eval(create_value, type_spec.placement)
     else:
       return create_value()
 
-  @computations.federated_computation(init_fn.type_signature.result, tf.int32)
+  @federated_computation.federated_computation(init_fn.type_signature.result,
+                                               tf.int32)
   def next_fn(state, arg):
     return state, arg
 
