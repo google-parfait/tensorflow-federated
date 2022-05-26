@@ -8,10 +8,7 @@ package(default_visibility = [
 
 package_group(
     name = "learning_packages",
-    packages = [
-        "//tensorflow_federated/experimental/python/learning/...",
-        "//tensorflow_federated/python/learning/...",
-    ],
+    packages = ["//tensorflow_federated/python/learning/..."],
 )
 
 package_group(
@@ -31,6 +28,7 @@ py_library(
         ":debug_measurements",
         ":federated_averaging",
         ":federated_evaluation",
+        ":jax_components",
         ":keras_utils",
         ":model",
         ":model_update_aggregator",
@@ -177,6 +175,36 @@ py_cpu_gpu_test(
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "jax_components",
+    srcs = ["jax_components.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/jax_context:jax_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:iterative_process",
+    ],
+)
+
+py_test(
+    name = "jax_components_test",
+    srcs = ["jax_components_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":jax_components",
+        "//tensorflow_federated/python/core/backends/xla:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 

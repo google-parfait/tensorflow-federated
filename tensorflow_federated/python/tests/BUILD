@@ -67,6 +67,17 @@ py_test(
 )
 
 py_test(
+    name = "jax_training_test",
+    srcs = ["jax_training_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated",
+        "@absl_py//absl/testing:absltest",
+    ],
+)
+
+py_test(
     name = "map_reduce_form_test",
     size = "medium",
     srcs = ["map_reduce_form_test.py"],

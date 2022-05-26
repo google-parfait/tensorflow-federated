@@ -13,11 +13,11 @@
 # limitations under the License.
 """Definitions of experimental computation wrapper instances."""
 
-from tensorflow_federated.experimental.python.core.impl.jax_context import jax_serialization
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.jax_context import jax_serialization
 
 
 def _jax_strategy_fn(fn_to_wrap, fn_name, parameter_type, unpack):
@@ -63,7 +63,7 @@ jax_computation.__doc__ = (
   Example:
 
   ```
-  @tff.experimental.jax_computation(tf.int32)
+  @tff.jax_computation(tf.int32)
   def comp(x):
     return jax.numpy.add(x, np.int32(10))
   ```
