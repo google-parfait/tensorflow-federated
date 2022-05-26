@@ -18,6 +18,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -358,38 +359,38 @@ class MeasuredProcessCompositionComputationTest(parameterized.TestCase):
       measured_process.chain_measured_processes(measured_processes)
 
 
-class MeasuredProcessCompositionExecutionTest(absltest.TestCase):
+# We verify the AST (Abstract Syntax Trees) of the `initialize` and `next`
+# of the composite process. So the tests don't need to actually invoke these
+# computations and depend on the execution context.
+class MeasuredProcessCompositionASTTest(absltest.TestCase):
 
-  def test_composition_gets_expected_output(self):
-    self.skipTest('b/234016763: Refactor to not rely on execution.')
-
+  def test_composition_with_measured_processes(self):
     measured_processes = collections.OrderedDict(
         double=_create_test_measured_process_double(tf.int32, 1, tf.int32),
         sum=_create_test_measured_process_sum(tf.int32, 0, tf.int32))
     composite_process = measured_process.chain_measured_processes(
         measured_processes)
-    output = composite_process.next(composite_process.initialize(),
-                                    [1, 2, 3, 4])
-    self.assertEqual(output.state, collections.OrderedDict(double=2, sum=1))
-    self.assertEqual(output.result, 20)
-    self.assertEqual(output.measurements,
-                     collections.OrderedDict(double={'a': 1}, sum={'b': 2}))
 
-  def test_composition_with_aggregation_process(self):
-    self.skipTest('b/234016763: Refactor to not rely on execution.')
+    actual_initialize_ast = composite_process.initialize.to_building_block()
+    actual_next_ast = composite_process.next.to_building_block()
+    golden.check_string(
+        'composition_with_measured_processes.expected',
+        f'initialize:\n\n{actual_initialize_ast.formatted_representation()}\n\n'
+        f'next:\n\n{actual_next_ast.formatted_representation()}')
 
+  def test_composition_with_aggregation_processes(self):
     measured_processes = collections.OrderedDict(
         double=_create_test_measured_process_double(tf.int32, 1, tf.int32),
         aggregate=_create_test_aggregation_process(tf.int32, 0, tf.int32))
     composite_process = measured_process.chain_measured_processes(
         measured_processes)
-    output = composite_process.next(composite_process.initialize(),
-                                    [1, 2, 3, 4])
-    self.assertEqual(output.state,
-                     collections.OrderedDict(double=2, aggregate=0))
-    self.assertEqual(output.result, 20)
-    self.assertEqual(output.measurements,
-                     collections.OrderedDict(double={'a': 1}, aggregate=1))
+
+    actual_initialize_ast = composite_process.initialize.to_building_block()
+    actual_next_ast = composite_process.next.to_building_block()
+    golden.check_string(
+        'composition_with_aggregation_processes.expected',
+        f'initialize:\n\n{actual_initialize_ast.formatted_representation()}\n\n'
+        f'next:\n\n{actual_next_ast.formatted_representation()}')
 
 
 class MeasuredProcessConcatenationComputationTest(parameterized.TestCase):
@@ -468,42 +469,38 @@ class MeasuredProcessConcatenationComputationTest(parameterized.TestCase):
       measured_process.concatenate_measured_processes(measured_processes)
 
 
-class MeasuredProcessConcatenationExecutionTest(absltest.TestCase):
+# We verify the AST (Abstract Syntax Trees) of the `initialize` and `next`
+# of the concatednated process. So the tests don't need to actually invoke these
+# computations and depend on the execution context.
+class MeasuredProcessConcatenationASTTest(absltest.TestCase):
 
-  def test_concatenation_gets_expected_output(self):
-    self.skipTest('b/234016763: Refactor to not rely on execution.')
-
+  def test_concatenation_with_measured_processes(self):
     measured_processes = collections.OrderedDict(
         double=_create_test_measured_process_double(tf.int32, 1, tf.int32),
         sum=_create_test_measured_process_sum(tf.int32, 0, tf.int32))
     concatenated_process = measured_process.concatenate_measured_processes(
         measured_processes)
-    values = collections.OrderedDict(double=[1, 2, 3], sum=[4, 5, 6])
-    output = concatenated_process.next(concatenated_process.initialize(),
-                                       values)
-    self.assertEqual(output.state, collections.OrderedDict(double=2, sum=1))
-    self.assertEqual(output.result,
-                     collections.OrderedDict(double=[2, 4, 6], sum=15))
-    self.assertEqual(output.measurements,
-                     collections.OrderedDict(double={'a': 1}, sum={'b': 2}))
 
-  def test_concatenation_with_aggregation_process(self):
-    self.skipTest('b/234016763: Refactor to not rely on execution.')
+    actual_initialize_ast = concatenated_process.initialize.to_building_block()
+    actual_next_ast = concatenated_process.next.to_building_block()
+    golden.check_string(
+        'concatenation_with_measured_processes.expected',
+        f'initialize:\n\n{actual_initialize_ast.formatted_representation()}\n\n'
+        f'next:\n\n{actual_next_ast.formatted_representation()}')
 
+  def test_concatenation_with_aggregation_processes(self):
     measured_processes = collections.OrderedDict(
         double=_create_test_measured_process_double(tf.int32, 1, tf.int32),
         aggregate=_create_test_aggregation_process(tf.int32, 0, tf.int32))
     concatenated_process = measured_process.concatenate_measured_processes(
         measured_processes)
-    values = collections.OrderedDict(double=[1, 2, 3], aggregate=[4, 5, 6])
-    output = concatenated_process.next(concatenated_process.initialize(),
-                                       values)
-    self.assertEqual(output.state,
-                     collections.OrderedDict(double=2, aggregate=0))
-    self.assertEqual(output.result,
-                     collections.OrderedDict(double=[2, 4, 6], aggregate=15))
-    self.assertEqual(output.measurements,
-                     collections.OrderedDict(double={'a': 1}, aggregate=1))
+
+    actual_initialize_ast = concatenated_process.initialize.to_building_block()
+    actual_next_ast = concatenated_process.next.to_building_block()
+    golden.check_string(
+        'concatenation_with_aggregation_processes.expected',
+        f'initialize:\n\n{actual_initialize_ast.formatted_representation()}\n\n'
+        f'next:\n\n{actual_next_ast.formatted_representation()}')
 
 
 if __name__ == '__main__':
