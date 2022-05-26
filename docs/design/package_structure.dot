@@ -97,7 +97,6 @@ digraph {
     core_test [label="test", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/test" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     core_api [label="api", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/api" target="_parent"]
     core_framework [label="framework", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/framework" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    core_types [label="types", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/types" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
   // Impl

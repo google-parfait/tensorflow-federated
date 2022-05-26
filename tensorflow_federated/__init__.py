@@ -30,7 +30,7 @@ from tensorflow_federated.python.core import backends
 from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import templates
 from tensorflow_federated.python.core import test
-from tensorflow_federated.python.core import types
+from tensorflow_federated.python.core.impl import types
 from tensorflow_federated.python.core.impl.computation.computation_base import Computation
 from tensorflow_federated.python.core.impl.computation.computation_wrapper import check_returns_type
 from tensorflow_federated.python.core.impl.federated_context.data import data

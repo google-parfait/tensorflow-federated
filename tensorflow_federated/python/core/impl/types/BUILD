@@ -27,7 +27,13 @@ py_library(
     name = "types",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
+    visibility = ["//tensorflow_federated:__pkg__"],
+    deps = [
+        ":computation_types",
+        ":type_analysis",
+        ":type_conversions",
+        ":type_serialization",
+    ],
 )
 
 py_library(
