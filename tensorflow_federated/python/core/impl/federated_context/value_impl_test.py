@@ -23,8 +23,9 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 from tensorflow_federated.python.core.impl.federated_context import value_impl
@@ -246,10 +247,17 @@ class ValueTest(parameterized.TestCase):
     self.assertEqual(str(clients), 'CLIENTS')
 
   def test_to_value_for_computations(self):
-    val = value_impl.to_value(
-        computations.tf_computation(lambda: tf.constant(10)), None)
-    self.assertIsInstance(val, value_impl.Value)
-    self.assertEqual(str(val.type_signature), '( -> int32)')
+    tensor_type = computation_types.TensorType(tf.int32)
+    computation_proto, _ = tensorflow_computation_factory.create_constant(
+        10, tensor_type)
+    computation = computation_impl.ConcreteComputation(
+        computation_proto, context_stack_impl.context_stack)
+
+    value = value_impl.to_value(computation, None)
+
+    self.assertIsInstance(value, value_impl.Value)
+    self.assertEqual(value.type_signature.compact_representation(),
+                     '( -> int32)')
 
   def test_to_value_with_string(self):
     value = value_impl.to_value('a', tf.string)

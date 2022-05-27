@@ -17,9 +17,11 @@ import collections
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -29,17 +31,23 @@ from tensorflow_federated.python.core.impl.types import placements
 class FederatedComputationContextTest(absltest.TestCase):
 
   def test_invoke_returns_value_with_correct_type(self):
+    tensor_type = computation_types.TensorType(tf.int32)
+    computation_proto, _ = tensorflow_computation_factory.create_constant(
+        10, tensor_type)
+    computation = computation_impl.ConcreteComputation(
+        computation_proto, context_stack_impl.context_stack)
     context = federated_computation_context.FederatedComputationContext(
         context_stack_impl.context_stack)
-    comp = computations.tf_computation(lambda: tf.constant(10))
+
     with context_stack_impl.context_stack.install(context):
-      result = context.invoke(comp, None)
+      result = context.invoke(computation, None)
+
     self.assertIsInstance(result, value_impl.Value)
     self.assertEqual(str(result.type_signature), 'int32')
 
   def test_ingest_zips_value_when_necessary_to_match_federated_type(self):
     # Expects `{<int, int>}@C`
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.at_clients((tf.int32, tf.int32)))
     def fn(_):
       return ()
@@ -59,7 +67,7 @@ class FederatedComputationContextTest(absltest.TestCase):
 
   def test_ingest_zips_federated_under_struct(self):
 
-    @computations.federated_computation(
+    @federated_computation.federated_computation(
         computation_types.StructType([
             (None,
              collections.OrderedDict(

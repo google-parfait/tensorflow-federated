@@ -21,8 +21,10 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
@@ -31,7 +33,56 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_test_utils
+
+
+def _create_computation_add() -> computation_base.Computation:
+  operand_type = computation_types.TensorType(tf.int32)
+  computation_proto, _ = tensorflow_computation_factory.create_binary_operator(
+      tf.add, operand_type, operand_type)
+  return computation_impl.ConcreteComputation(computation_proto,
+                                              context_stack_impl.context_stack)
+
+
+def _create_computation_random() -> computation_base.Computation:
+  computation_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+      lambda: tf.random.normal([]), None)
+  return computation_impl.ConcreteComputation(computation_proto,
+                                              context_stack_impl.context_stack)
+
+
+def _create_computation_greater_than_10() -> computation_base.Computation:
+  parameter_type = computation_types.TensorType(tf.int32)
+  computation_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+      lambda x: x > 10, parameter_type)
+  return computation_impl.ConcreteComputation(computation_proto,
+                                              context_stack_impl.context_stack)
+
+
+def _create_computation_greater_than_10_with_unused_parameter(
+) -> computation_base.Computation:
+  parameter_type = computation_types.StructType([
+      computation_types.TensorType(tf.int32),
+      computation_types.TensorType(tf.int32),
+  ])
+  computation_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+      lambda arg: arg[0] > 10, parameter_type)
+  return computation_impl.ConcreteComputation(computation_proto,
+                                              context_stack_impl.context_stack)
+
+
+def _create_computation_reduce() -> computation_base.Computation:
+  parameter_type = computation_types.SequenceType(tf.int32)
+  computation_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+      lambda ds: ds.reduce(np.int32(0), lambda x, y: x + y), parameter_type)
+  return computation_impl.ConcreteComputation(computation_proto,
+                                              context_stack_impl.context_stack)
+
+
+def _mock_data_of_type(type_spec, name='mock'):
+  type_spec = computation_types.to_type(type_spec)
+  return value_impl.Value(building_blocks.Data(name, type_spec))
 
 
 class OutsideFederatedComputationTest(absltest.TestCase):
@@ -43,20 +94,16 @@ class OutsideFederatedComputationTest(absltest.TestCase):
         intrinsics.federated_value(2, placements.SERVER)
 
   def test_intrinsic_construction_raises_outside_symbol_binding_context(self):
-
-    @computations.tf_computation
-    def return_2():
-      return 2
+    type_signature = computation_types.TensorType(tf.int32)
+    computation_proto, _ = tensorflow_computation_factory.create_constant(
+        2, type_signature)
+    return_2 = computation_impl.ConcreteComputation(
+        computation_proto, context_stack_impl.context_stack)
 
     with context_stack_impl.context_stack.install(
         runtime_error_context.RuntimeErrorContext()):
       with self.assertRaises(context_base.ContextError):
         intrinsics.federated_eval(return_2, placements.SERVER)
-
-
-def _mock_data_of_type(type_spec, name='mock'):
-  type_spec = computation_types.to_type(type_spec)
-  return value_impl.Value(building_blocks.Data(name, type_spec))
 
 
 class IntrinsicTestBase(absltest.TestCase):
@@ -88,63 +135,55 @@ class FederatedBroadcastTest(IntrinsicTestBase):
 class FederatedEvalTest(IntrinsicTestBase):
 
   def test_federated_eval_rand_on_clients(self):
-
-    @computations.tf_computation
-    def rand():
-      return tf.random.normal([])
-
-    val = intrinsics.federated_eval(rand, placements.CLIENTS)
-    self.assert_value(val, '{float32}@CLIENTS')
+    random = _create_computation_random()
+    value = intrinsics.federated_eval(random, placements.CLIENTS)
+    self.assert_value(value, '{float32}@CLIENTS')
 
   def test_federated_eval_rand_on_server(self):
-
-    @computations.tf_computation
-    def rand():
-      return tf.random.normal([])
-
-    val = intrinsics.federated_eval(rand, placements.SERVER)
-    self.assert_value(val, 'float32@SERVER')
+    random = _create_computation_random()
+    value = intrinsics.federated_eval(random, placements.SERVER)
+    self.assert_value(value, 'float32@SERVER')
 
 
 class FederatedMapTest(IntrinsicTestBase):
 
   def test_federated_map_with_client_all_equal_int(self):
+    computation = _create_computation_greater_than_10()
     x = _mock_data_of_type(
         computation_types.at_clients(tf.int32, all_equal=True))
-    val = intrinsics.federated_map(
-        computations.tf_computation(lambda x: x > 10), x)
-    self.assert_value(val, '{bool}@CLIENTS')
+    value = intrinsics.federated_map(computation, x)
+    self.assert_value(value, '{bool}@CLIENTS')
 
   def test_federated_map_with_client_non_all_equal_int(self):
+    computation = _create_computation_greater_than_10()
     x = _mock_data_of_type(
         computation_types.at_clients(tf.int32, all_equal=False))
-    val = intrinsics.federated_map(
-        computations.tf_computation(lambda x: x > 10), x)
-    self.assert_value(val, '{bool}@CLIENTS')
+    value = intrinsics.federated_map(computation, x)
+    self.assert_value(value, '{bool}@CLIENTS')
 
   def test_federated_map_with_server_int(self):
+    computation = _create_computation_greater_than_10()
     x = _mock_data_of_type(computation_types.at_server(tf.int32))
-    val = intrinsics.federated_map(
-        computations.tf_computation(lambda x: x > 10), x)
-    self.assert_value(val, 'bool@SERVER')
+    value = intrinsics.federated_map(computation, x)
+    self.assert_value(value, 'bool@SERVER')
 
   def test_federated_map_with_client_dataset_reduce(self):
+    computation = _create_computation_reduce()
     ds = _mock_data_of_type(
         computation_types.at_clients(
             computation_types.SequenceType(tf.int32), all_equal=True))
-    val = intrinsics.federated_map(
-        computations.tf_computation(
-            lambda ds: ds.reduce(np.int32(0), lambda x, y: x + y)), ds)
-    self.assert_value(val, '{int32}@CLIENTS')
+    value = intrinsics.federated_map(computation, ds)
+    self.assert_value(value, '{int32}@CLIENTS')
 
   def test_federated_map_injected_zip_with_server_int(self):
+    computation = _create_computation_greater_than_10_with_unused_parameter()
     x = _mock_data_of_type(computation_types.at_server(tf.int32))
     y = _mock_data_of_type(computation_types.at_server(tf.int32))
-    val = intrinsics.federated_map(
-        computations.tf_computation(lambda x, y: x > 10), [x, y])
-    self.assert_value(val, 'bool@SERVER')
+    value = intrinsics.federated_map(computation, [x, y])
+    self.assert_value(value, 'bool@SERVER')
 
   def test_federated_map_injected_zip_fails_different_placements(self):
+    computation = _create_computation_greater_than_10_with_unused_parameter()
     x = _mock_data_of_type(computation_types.at_server(tf.int32))
     y = _mock_data_of_type(computation_types.at_clients(tf.int32))
 
@@ -152,13 +191,14 @@ class FederatedMapTest(IntrinsicTestBase):
         TypeError,
         'The value to be mapped must be a FederatedType or implicitly '
         'convertible to a FederatedType.'):
-      intrinsics.federated_map(
-          computations.tf_computation(lambda x, y: x > 10), [x, y])
+      intrinsics.federated_map(computation, [x, y])
 
   def test_federated_map_with_non_federated_val(self):
+    computation = _create_computation_greater_than_10()
     x = _mock_data_of_type(tf.int32)
+
     with self.assertRaises(TypeError):
-      intrinsics.federated_map(computations.tf_computation(lambda x: x > 10), x)
+      intrinsics.federated_map(computation, x)
 
 
 class FederatedSecureModularSumTest(IntrinsicTestBase):
@@ -338,23 +378,36 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
     max_key_py = len(values)
     max_key = intrinsics.federated_value(max_key_py, placements.SERVER)
 
-    @computations.tf_computation
-    def get_three_random_keys():
+    def get_three_random_keys_fn():
       return tf.random.uniform(
           shape=[3], minval=0, maxval=max_key_py, dtype=tf.int32)
 
+    get_three_random_keys_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        get_three_random_keys_fn, None)
+    get_three_random_keys = computation_impl.ConcreteComputation(
+        get_three_random_keys_proto, context_stack_impl.context_stack)
     client_keys = intrinsics.federated_eval(get_three_random_keys,
                                             placements.CLIENTS)
 
-    @computations.tf_computation
-    def select_fn(state, key):
+    state_type = server_val.type_signature.member
+
+    def _select_fn(arg):
+      state = type_conversions.type_to_py_container(arg[0], state_type)
+      key = arg[1]
       return tf.gather(state, key)
+
+    select_fn_type = computation_types.StructType([state_type, tf.int32])
+    select_fn_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        _select_fn, select_fn_type)
+    select_fn = computation_impl.ConcreteComputation(
+        select_fn_proto, context_stack_impl.context_stack)
 
     return (client_keys, max_key, server_val, select_fn)
 
   @parameterized.named_parameters(
       ('non_secure', intrinsics.federated_select),
-      ('secure', intrinsics.federated_secure_select))
+      ('secure', intrinsics.federated_secure_select),
+  )
   def test_federated_select_succeeds(self, federated_select):
     result = federated_select(*self.basic_federated_select_args())
     self.assert_value(result, '{string*}@CLIENTS')
@@ -368,11 +421,14 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
         self.basic_federated_select_args())
     del server_val
 
-    bad_server_val = computations.tf_computation(
-        lambda: tf.constant(['first', 'second', 'third']))()
+    bad_server_val_proto, _ = tensorflow_computation_factory.create_constant(
+        tf.constant(['first', 'second', 'third']),
+        computation_types.TensorType(dtype=tf.string, shape=[3]))
+    bad_server_val = computation_impl.ConcreteComputation(
+        bad_server_val_proto, context_stack_impl.context_stack)
+    bad_server_val = bad_server_val()
 
-    with self.assertRaisesRegex(TypeError,
-                                'server_val must be a FederatedType'):
+    with self.assertRaises(TypeError):
       federated_select(client_keys, max_key, bad_server_val, select_fn)
 
   @parameterized.named_parameters(
@@ -388,9 +444,21 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
     server_val_dict = collections.OrderedDict(
         e1=server_val_element, e2=server_val_element)
 
-    @computations.tf_computation
-    def select_fn_dict(state, key):
+    state_type = computation_types.StructType([
+        ('e1', server_val_element.type_signature.member),
+        ('e2', server_val_element.type_signature.member),
+    ])
+
+    def _select_fn_dict(arg):
+      state = type_conversions.type_to_py_container(arg[0], state_type)
+      key = arg[1]
       return (tf.gather(state['e1'], key), tf.gather(state['e2'], key))
+
+    select_fn_dict_type = computation_types.StructType([state_type, tf.int32])
+    select_fn_dict_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        _select_fn_dict, select_fn_dict_type)
+    select_fn_dict = computation_impl.ConcreteComputation(
+        select_fn_dict_proto, context_stack_impl.context_stack)
 
     result = federated_select(client_keys, max_key, server_val_dict,
                               select_fn_dict)
@@ -404,14 +472,18 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
         self.basic_federated_select_args())
     del client_keys
 
-    @computations.tf_computation
-    def get_three_random_keys():
+    def get_three_random_keys_fn():
       return tf.random.uniform(shape=[3], minval=0, maxval=3, dtype=tf.int32)
 
-    bad_keys = intrinsics.federated_eval(get_three_random_keys,
-                                         placements.SERVER)
+    get_three_random_keys_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        get_three_random_keys_fn, None)
+    get_three_random_keys = computation_impl.ConcreteComputation(
+        get_three_random_keys_proto, context_stack_impl.context_stack)
+    bad_client_keys = intrinsics.federated_eval(get_three_random_keys,
+                                                placements.SERVER)
+
     with self.assertRaises(TypeError):
-      federated_select(bad_keys, max_key, server_val, select_fn)
+      federated_select(bad_client_keys, max_key, server_val, select_fn)
 
   @parameterized.named_parameters(
       ('non_secure', intrinsics.federated_select),
@@ -421,14 +493,18 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
         self.basic_federated_select_args())
     del client_keys
 
-    @computations.tf_computation
-    def get_three_random_int64_keys():
+    def get_three_random_keys_fn():
       return tf.random.uniform(shape=[3], minval=0, maxval=3, dtype=tf.int64)
 
-    bad_keys = intrinsics.federated_eval(get_three_random_int64_keys,
-                                         placements.CLIENTS)
+    get_three_random_keys_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        get_three_random_keys_fn, None)
+    get_three_random_keys = computation_impl.ConcreteComputation(
+        get_three_random_keys_proto, context_stack_impl.context_stack)
+    bad_client_keys = intrinsics.federated_eval(get_three_random_keys,
+                                                placements.CLIENTS)
+
     with self.assertRaises(TypeError):
-      federated_select(bad_keys, max_key, server_val, select_fn)
+      federated_select(bad_client_keys, max_key, server_val, select_fn)
 
   @parameterized.named_parameters(
       ('non_secure', intrinsics.federated_select),
@@ -437,9 +513,11 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
     client_keys, max_key, server_val, select_fn = (
         self.basic_federated_select_args())
     del client_keys
-    bad_keys = intrinsics.federated_value(1, placements.CLIENTS)
+
+    bad_client_keys = intrinsics.federated_value(1, placements.CLIENTS)
+
     with self.assertRaises(TypeError):
-      federated_select(bad_keys, max_key, server_val, select_fn)
+      federated_select(bad_client_keys, max_key, server_val, select_fn)
 
   @parameterized.named_parameters(
       ('non_secure', intrinsics.federated_select),
@@ -448,13 +526,15 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
     client_keys, max_key, server_val, select_fn = (
         self.basic_federated_select_args())
 
-    @computations.tf_computation(computation_types.TensorType(tf.int32, [None]))
-    def unshape(x):
-      return x
+    unshape_type = computation_types.TensorType(tf.int32, [None])
+    unshape_proto, _ = tensorflow_computation_factory.create_identity(
+        unshape_type)
+    unshape = computation_impl.ConcreteComputation(
+        unshape_proto, context_stack_impl.context_stack)
+    bad_client_keys = intrinsics.federated_map(unshape, client_keys)
 
-    bad_keys = intrinsics.federated_map(unshape, client_keys)
     with self.assertRaises(TypeError):
-      federated_select(bad_keys, max_key, server_val, select_fn)
+      federated_select(bad_client_keys, max_key, server_val, select_fn)
 
   @parameterized.named_parameters(
       ('non_secure', intrinsics.federated_select),
@@ -464,9 +544,18 @@ class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):
         self.basic_federated_select_args())
     del select_fn
 
-    @computations.tf_computation(server_val.type_signature.member, tf.int64)
-    def bad_select_fn(server_value, key):
-      return tf.gather(server_value, key)
+    state_type = server_val.type_signature.member
+
+    def _bad_select_fn(arg):
+      state = type_conversions.type_to_py_container(arg[0], state_type)
+      key = arg[1]
+      return tf.gather(state, key)
+
+    bad_select_fn_type = computation_types.StructType([state_type, tf.int64])
+    bad_select_fn_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        _bad_select_fn, bad_select_fn_type)
+    bad_select_fn = computation_impl.ConcreteComputation(
+        bad_select_fn_proto, context_stack_impl.context_stack)
 
     with self.assertRaises(TypeError):
       federated_select(client_keys, max_key, server_val, bad_select_fn)
@@ -680,53 +769,72 @@ class FederatedMeanTest(IntrinsicTestBase):
 
 class FederatedAggregateTest(IntrinsicTestBase):
 
+  # def _create_federated_aggregate_computaitons(self):
+  #   return None
+
   def test_federated_aggregate_with_client_int(self):
     # The representation used during the aggregation process will be a named
     # tuple with 2 elements - the integer 'total' that represents the sum of
     # elements encountered, and the integer element 'count'.
-    # pylint: disable=invalid-name
-    Accumulator = collections.namedtuple('Accumulator', 'total count')
-    # pylint: enable=invalid-name
+    Accumulator = collections.namedtuple('Accumulator', 'total count')  # pylint: disable=invalid-name
+    accumulator_type = computation_types.to_type(
+        Accumulator(
+            total=computation_types.TensorType(dtype=tf.int32),
+            count=computation_types.TensorType(dtype=tf.int32)))
+
+    x = _mock_data_of_type(computation_types.at_clients(tf.int32))
+    zero = Accumulator(0, 0)
 
     # The operator to use during the first stage simply adds an element to the
     # total and updates the count.
-    @computations.tf_computation
-    def accumulate(accu, elem):
-      return Accumulator(accu.total + elem, accu.count + 1)
+    def _accumulate(arg):
+      return Accumulator(arg[0].total + arg[1], arg[0].count + 1)
+
+    accumulate_type = computation_types.StructType([accumulator_type, tf.int32])
+    accumulate_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        _accumulate, accumulate_type)
+    accumulate = computation_impl.ConcreteComputation(
+        accumulate_proto, context_stack_impl.context_stack)
 
     # The operator to use during the second stage simply adds total and count.
-    @computations.tf_computation
-    def merge(x, y):
-      return Accumulator(x.total + y.total, x.count + y.count)
+    def _merge(arg):
+      return Accumulator(arg[0].total + arg[1].total,
+                         arg[0].count + arg[1].count)
+
+    merge_type = computation_types.StructType(
+        [accumulator_type, accumulator_type])
+    merge_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        _merge, merge_type)
+    merge = computation_impl.ConcreteComputation(
+        merge_proto, context_stack_impl.context_stack)
 
     # The operator to use during the final stage simply computes the ratio.
-    @computations.tf_computation
-    def report(accu):
-      return tf.cast(accu.total, tf.float32) / tf.cast(accu.count, tf.float32)
+    def _report(arg):
+      return tf.cast(arg.total, tf.float32) / tf.cast(arg.count, tf.float32)
 
-    x = _mock_data_of_type(computation_types.at_clients(tf.int32))
-    val = intrinsics.federated_aggregate(x, Accumulator(0, 0), accumulate,
-                                         merge, report)
-    self.assert_value(val, 'float32@SERVER')
+    report_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        _report, accumulator_type)
+    report = computation_impl.ConcreteComputation(
+        report_proto, context_stack_impl.context_stack)
+
+    value = intrinsics.federated_aggregate(x, zero, accumulate, merge, report)
+    self.assert_value(value, 'float32@SERVER')
 
   def test_federated_aggregate_with_federated_zero_fails(self):
+    x = _mock_data_of_type(computation_types.at_clients(tf.int32))
     zero = intrinsics.federated_value(0, placements.SERVER)
-
-    @computations.tf_computation([tf.int32, tf.int32])
-    def accumulate(accu, elem):
-      return accu + elem
+    accumulate = _create_computation_add()
 
     # The operator to use during the second stage simply adds total and count.
-    @computations.tf_computation([tf.int32, tf.int32])
-    def merge(x, y):
-      return x + y
+    merge = _create_computation_add()
 
     # The operator to use during the final stage simply computes the ratio.
-    @computations.tf_computation(tf.int32)
-    def report(accu):
-      return accu
+    report_type = computation_types.TensorType(tf.int32)
+    report_proto, _ = tensorflow_computation_factory.create_identity(
+        report_type)
+    report = computation_impl.ConcreteComputation(
+        report_proto, context_stack_impl.context_stack)
 
-    x = _mock_data_of_type(computation_types.at_clients(tf.int32))
     with self.assertRaisesRegex(
         TypeError, 'Expected `zero` to be assignable to type int32, '
         'but was of incompatible type int32@SERVER'):
@@ -738,53 +846,89 @@ class FederatedAggregateTest(IntrinsicTestBase):
         Accumulator(
             samples=computation_types.TensorType(dtype=tf.int32, shape=[None])))
 
-    @computations.tf_computation
-    def build_empty_accumulator():
+    x = _mock_data_of_type(computation_types.at_clients(tf.int32))
+
+    def initialize_fn():
       return Accumulator(samples=tf.zeros(shape=[0], dtype=tf.int32))
+
+    initialize_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        initialize_fn, None)
+    initialize = computation_impl.ConcreteComputation(
+        initialize_proto, context_stack_impl.context_stack)
+    zero = initialize()
 
     # The operator to use during the first stage simply adds an element to the
     # tensor, increasing its size.
-    @computations.tf_computation([accumulator_type, tf.int32])
-    def accumulate(accu, elem):
+    def _accumulate(arg):
       return Accumulator(
           samples=tf.concat(
-              [accu.samples, tf.expand_dims(elem, axis=0)], axis=0))
+              [arg[0].samples, tf.expand_dims(arg[1], axis=0)], axis=0))
+
+    accumulate_type = computation_types.StructType([accumulator_type, tf.int32])
+    accumulate_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        _accumulate, accumulate_type)
+    accumulate = computation_impl.ConcreteComputation(
+        accumulate_proto, context_stack_impl.context_stack)
 
     # The operator to use during the second stage simply adds total and count.
-    @computations.tf_computation([accumulator_type, accumulator_type])
-    def merge(x, y):
-      return Accumulator(samples=tf.concat([x.samples, y.samples], axis=0))
+    def _merge(arg):
+      return Accumulator(
+          samples=tf.concat([arg[0].samples, arg[1].samples], axis=0))
+
+    merge_type = computation_types.StructType(
+        [accumulator_type, accumulator_type])
+    merge_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        _merge, merge_type)
+    merge = computation_impl.ConcreteComputation(
+        merge_proto, context_stack_impl.context_stack)
 
     # The operator to use during the final stage simply computes the ratio.
-    @computations.tf_computation(accumulator_type)
-    def report(accu):
-      return accu
+    report_proto, _ = tensorflow_computation_factory.create_identity(
+        accumulator_type)
+    report = computation_impl.ConcreteComputation(
+        report_proto, context_stack_impl.context_stack)
 
-    x = _mock_data_of_type(computation_types.at_clients(tf.int32))
-    val = intrinsics.federated_aggregate(x, build_empty_accumulator(),
-                                         accumulate, merge, report)
-    self.assert_value(val, '<samples=int32[?]>@SERVER')
+    value = intrinsics.federated_aggregate(x, zero, accumulate, merge, report)
+    self.assert_value(value, '<samples=int32[?]>@SERVER')
 
   def test_infers_accumulate_return_as_merge_arg_merge_return_as_report_arg(
       self):
+    type_spec = computation_types.TensorType(dtype=tf.int64, shape=[None])
     x = _mock_data_of_type(computation_types.at_clients(tf.int64))
 
-    @computations.tf_computation
-    def nil_stack():
+    def initialize_fn():
       return tf.constant([], dtype=tf.int64, shape=[0])
 
-    @computations.tf_computation(
-        computation_types.TensorType(tf.int64, [None]), tf.int64)
-    def append(stack, num):
-      return tf.concat([stack, [num]], 0)
+    initialize_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        initialize_fn, None)
+    initialize = computation_impl.ConcreteComputation(
+        initialize_proto, context_stack_impl.context_stack)
+    zero = initialize()
 
-    @computations.tf_computation
-    def merge(stack_a, stack_b):
-      return tf.concat([stack_a, stack_b], 0)
+    def _accumulate(arg):
+      return tf.concat([arg[0], [arg[1]]], 0)
 
-    report = computations.tf_computation(lambda a: a)
-    val = intrinsics.federated_aggregate(x, nil_stack(), append, merge, report)
-    self.assert_value(val, 'int64[?]@SERVER')
+    accumulate_type = computation_types.StructType([type_spec, tf.int64])
+    accumulate_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        _accumulate, accumulate_type)
+    accumulate = computation_impl.ConcreteComputation(
+        accumulate_proto, context_stack_impl.context_stack)
+
+    def _merge(arg):
+      return tf.concat([arg[0], arg[1]], 0)
+
+    merge_type = computation_types.StructType([type_spec, type_spec])
+    merge_proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+        _merge, merge_type)
+    merge = computation_impl.ConcreteComputation(
+        merge_proto, context_stack_impl.context_stack)
+
+    report_proto, _ = tensorflow_computation_factory.create_identity(type_spec)
+    report = computation_impl.ConcreteComputation(
+        report_proto, context_stack_impl.context_stack)
+
+    value = intrinsics.federated_aggregate(x, zero, accumulate, merge, report)
+    self.assert_value(value, 'int64[?]@SERVER')
 
 
 class FederatedValueTest(IntrinsicTestBase):
@@ -826,45 +970,37 @@ class FederatedValueTest(IntrinsicTestBase):
 
 class SequenceMapTest(IntrinsicTestBase):
 
-  def over_ten_fn(self):
-    return computations.tf_computation(tf.int32)(lambda x: x > 10)
-
   def test_unplaced(self):
+    computation = _create_computation_greater_than_10()
     x = _mock_data_of_type(computation_types.SequenceType(tf.int32))
-    val = intrinsics.sequence_map(self.over_ten_fn(), x)
-    self.assert_value(val, 'bool*')
+    value = intrinsics.sequence_map(computation, x)
+    self.assert_value(value, 'bool*')
 
   def test_server_placed(self):
+    computation = _create_computation_greater_than_10()
     x = _mock_data_of_type(
         computation_types.at_server(computation_types.SequenceType(tf.int32)))
-    val = intrinsics.sequence_map(self.over_ten_fn(), x)
-    self.assert_value(val, 'bool*@SERVER')
+    value = intrinsics.sequence_map(computation, x)
+    self.assert_value(value, 'bool*@SERVER')
 
   def test_clients_placed(self):
+    computation = _create_computation_greater_than_10()
     x = _mock_data_of_type(
         computation_types.at_clients(computation_types.SequenceType(tf.int32)))
-    val = intrinsics.sequence_map(self.over_ten_fn(), x)
-    self.assert_value(val, '{bool*}@CLIENTS')
+    value = intrinsics.sequence_map(computation, x)
+    self.assert_value(value, '{bool*}@CLIENTS')
 
 
 class SequenceReduceTest(IntrinsicTestBase):
 
   def test_with_non_federated_type(self):
-
-    @computations.tf_computation(np.int32, np.int32)
-    def add(x, y):
-      return x + y
-
+    add = _create_computation_add()
     value = _mock_data_of_type(computation_types.SequenceType(np.int32))
     result = intrinsics.sequence_reduce(value, 0, add)
     self.assert_value(result, 'int32')
 
   def test_with_federated_type(self):
-
-    @computations.tf_computation(np.int32, np.int32)
-    def add(x, y):
-      return x + y
-
+    add = _create_computation_add()
     value = _mock_data_of_type(
         computation_types.at_clients(computation_types.SequenceType(np.int32)))
     zero = intrinsics.federated_value(0, placements.CLIENTS)
