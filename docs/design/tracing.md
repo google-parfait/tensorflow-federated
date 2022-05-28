@@ -16,7 +16,7 @@ At a high level, there are three components to tracing a Federated computation.
 
 Internally, a TFF computation only ever have zero or one argument. The arguments
 provided to the
-[computations.federated_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/api/computations.py)
+[federated_computation.federated_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context/federated_computation.py)
 decorator describe type signature of the arguments to the TFF computation. TFF
 uses this information to to determine how to pack the arguments of the Python
 function into a single

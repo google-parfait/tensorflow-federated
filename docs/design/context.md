@@ -35,7 +35,7 @@ is a
 [context_base.Context](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/context_stack/context_base.py)
 that constructs federated computations. This context is used trace Python
 functions decorated with the
-[computations.federated_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/api/computations.py)
+[federated_computation.federated_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context/federated_computation.py)
 decorator.
 
 ### `TensorFlowComputationContext`
@@ -46,7 +46,7 @@ is a
 [context_base.Context](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/context_stack/context_base.py)
 that constructs TensorFlow computations. This context is used to serialize
 Python functions decorated with the
-[computations.tf_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/api/computations.py)
+[tensorflow_computation.tf_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/tensorflow_context/tensorflow_computation.py)
 decorator.
 
 ## `ContextStack`
@@ -69,9 +69,9 @@ You can set the context TFF will use to [construct](tracing.md),
     to get the current context stack and then invoking
     [context_stack_base.ContextStack.install](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/context_stack/context_stack_base.py)
     to temporarily install a context onto the top of the stack. For example, the
-    [computations.federated_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/api/computations.py)
+    [federated_computation.federated_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context/federated_computation.py)
     and
-    [computations.tf_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/api/computations.py)
+    [tensorflow_computation.tf_computation](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/tensorflow_context/tensorflow_computation.py)
     decorators push the corresponding contexts onto the current context stack
     while the decorated function is being traced.
 
