@@ -13,5 +13,5 @@
 # limitations under the License.
 """Libraries for interacting with test backends."""
 
-from tensorflow_federated.python.core.backends.test.execution_contexts import create_test_execution_context
-from tensorflow_federated.python.core.backends.test.execution_contexts import set_test_execution_context
+from tensorflow_federated.python.core.backends.test.execution_contexts import create_test_python_execution_context
+from tensorflow_federated.python.core.backends.test.execution_contexts import set_test_python_execution_context

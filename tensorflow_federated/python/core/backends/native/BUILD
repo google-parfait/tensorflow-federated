@@ -4,8 +4,8 @@ package(default_visibility = [
     ":native_packages",
     "//tensorflow_federated/python/core:core_visibility",
 
-    # TODO(b/193543632): Remove this visibility once C++ execution context is
-    # building in Kokoro.
+    # TODO(b/193543632): Remove this visibility once C++ execution is fully
+    # supported in OSS.
     # Third-party package dependencies
     "//tensorflow_federated:__pkg__",
 

@@ -44,7 +44,7 @@ def _get_all_contexts():
   # pylint: disable=unnecessary-lambda
   # pyformat: disable
   return [
-      ('native_local',
+      ('native_local_python',
        lambda: tff.backends.native.create_local_python_execution_context()),
       ('native_mergeable',
        lambda: _create_local_mergeable_comp_context()),
@@ -58,8 +58,8 @@ def _get_all_contexts():
        lambda: tff.backends.native.create_sizing_execution_context()),
       ('native_thread_debug',
        lambda: tff.backends.native.create_thread_debugging_execution_context()),
-      ('test',
-       lambda: tff.backends.test.create_test_execution_context()),
+      ('test_python',
+       lambda: tff.backends.test.create_test_python_execution_context()),
   ]
   # pyformat: enable
   # pylint: enable=unnecessary-lambda

@@ -160,5 +160,5 @@ class MapReduceFormTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tff.backends.test.set_test_execution_context()
+  tff.backends.test.set_test_python_execution_context()
   tf.test.main()

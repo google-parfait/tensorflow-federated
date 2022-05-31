@@ -40,7 +40,9 @@ py_library(
     name = "data_backend_example_py",
     srcs = ["data_backend_example.py"],
     srcs_version = "PY3",
-    tags = ["nokokoro"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
         "//tensorflow_federated",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -53,7 +55,9 @@ py_test(
     data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
         ":data_backend_example_py",
         "//tensorflow_federated",
