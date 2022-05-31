@@ -1,0 +1,75 @@
+initialize:
+
+( -> (let
+  fc_concatenation_initialize_symbol_0=( -> (let
+    fc_<lambda>_symbol_0=comp#1(),
+    fc_<lambda>_symbol_1=federated_value_at_server(fc_<lambda>_symbol_0)
+   in fc_<lambda>_symbol_1))(),
+  fc_concatenation_initialize_symbol_1=( -> (let
+    fc_<lambda>_symbol_0=comp#2(),
+    fc_<lambda>_symbol_1=federated_value_at_server(fc_<lambda>_symbol_0)
+   in fc_<lambda>_symbol_1))(),
+  fc_concatenation_initialize_symbol_2=federated_zip_at_server(<
+    double=fc_concatenation_initialize_symbol_0,
+    aggregate=fc_concatenation_initialize_symbol_1
+  >)
+ in fc_concatenation_initialize_symbol_2))
+
+next:
+
+(concatenation_next_arg -> (let
+  fc_concatenation_next_symbol_0=(map_double_arg -> (let
+    fc_map_double_symbol_0=federated_apply(<
+      comp#1,
+      map_double_arg[0]
+    >),
+    fc_map_double_symbol_1=federated_map(<
+      comp#2,
+      map_double_arg[1]
+    >),
+    fc_map_double_symbol_2=comp#3(),
+    fc_map_double_symbol_3=federated_value_at_server(<
+      a=fc_map_double_symbol_2
+    >)
+   in <
+    state=fc_map_double_symbol_0,
+    result=fc_map_double_symbol_1,
+    measurements=fc_map_double_symbol_3
+  >))(<
+    state=federated_apply(<
+      (x -> x[0]),
+      concatenation_next_arg[0]
+    >),
+    values=concatenation_next_arg[1][0]
+  >),
+  fc_concatenation_next_symbol_1=(next_fn_arg -> (let
+    fc_next_fn_symbol_0=federated_sum(next_fn_arg[1]),
+    fc_next_fn_symbol_1=comp#4(),
+    fc_next_fn_symbol_2=federated_value_at_server(fc_next_fn_symbol_1)
+   in <
+    state=next_fn_arg[0],
+    result=fc_next_fn_symbol_0,
+    measurements=fc_next_fn_symbol_2
+  >))(<
+    state=federated_apply(<
+      (x -> x[1]),
+      concatenation_next_arg[0]
+    >),
+    values=concatenation_next_arg[1][1]
+  >),
+  fc_concatenation_next_symbol_2=federated_zip_at_server(<
+    double=fc_concatenation_next_symbol_0[0],
+    aggregate=fc_concatenation_next_symbol_1[0]
+  >),
+  fc_concatenation_next_symbol_3=federated_zip_at_server(<
+    double=fc_concatenation_next_symbol_0[2],
+    aggregate=fc_concatenation_next_symbol_1[2]
+  >)
+ in <
+  state=fc_concatenation_next_symbol_2,
+  result=<
+    double=fc_concatenation_next_symbol_0[1],
+    aggregate=fc_concatenation_next_symbol_1[1]
+  >,
+  measurements=fc_concatenation_next_symbol_3
+>))
