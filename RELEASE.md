@@ -1,3 +1,25 @@
+# Release 0.26.0
+
+## Major Features and Improvements
+
+*   Updated TensorFlow to `2.9.1`.
+*   Update pybind11 to `2.9.2`.
+*   Re-enable cpp_fast_protos.
+*   Introduces container class to run coroutines in a dedicated thread, allowing
+    TFF’s synchronous execution interfaces to be used in conjunction with other
+    asyncio code.
+*   Use latest TFF version in Colab notebook links.
+*   Rename the helper functions that create test `MeasuredProcess`es.
+*   Add a compiler transform checking Tensorflow computations against list of
+    allowed ops.
+*   Explicitly specify return types in the `program` package.
+*   Adds convenience function for setting a local async CPP execution context.
+*   Move jax components into a non-experimental namespace.
+
+## Breaking Changes
+
+*   Switch compilation flag `_GLIBCXX_USE_CXX11_ABI` to `1`.
+
 # Release 0.25.0
 
 ## Major Features and Improvements

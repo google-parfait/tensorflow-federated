@@ -4,6 +4,12 @@ These [colab-based](https://colab.research.google.com/) tutorials walk you
 through the main TFF concepts and APIs using practical examples. Reference
 documentation can be found in the [TFF guides](../get_started.md).
 
+Note: TFF currently requires Python 3.9 or later, but
+[Google Colaboratory](https://research.google.com/colaboratory/)'s hosted
+runtimes currently use Python 3.7, and so in order to run these notebooks you
+will need to use a
+[custom local runtime](https://research.google.com/colaboratory/local-runtimes.html).
+
 **Getting started with federated learning**
 
 *   [Federated Learning for image classification](federated_learning_for_image_classification.ipynb)
