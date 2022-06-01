@@ -130,6 +130,26 @@ grpc::Status ExecutorService::RequireExecutor(
                    "`. No executor found for ID: '", executor.id(), "'."));
 }
 
+void ExecutorService::DestroyExecutor(const v0::ExecutorId& executor) {
+  absl::WriterMutexLock lock(&executors_mutex_);
+  int elements_erased = executors_.erase(executor.id());
+  if (elements_erased > 1) {
+    VLOG(2) << "More elements erased than expected while destroying executor; "
+               "expected 0 or 1, erased "
+            << elements_erased;
+  }
+}
+
+grpc::Status ExecutorService::HandleNotOK(const absl::Status& status,
+                                          const v0::ExecutorId& executor_id) {
+  if (status.code() == absl::StatusCode::kFailedPrecondition) {
+    VLOG(1) << "Destroying executor " << executor_id.Utf8DebugString();
+    DestroyExecutor(executor_id);
+  }
+  VLOG(1) << status.message();
+  return absl_to_grpc(status);
+}
+
 grpc::Status ExecutorService::CreateValue(grpc::ServerContext* context,
                                           const v0::CreateValueRequest* request,
                                           v0::CreateValueResponse* response) {
@@ -138,8 +158,7 @@ grpc::Status ExecutorService::CreateValue(grpc::ServerContext* context,
       RequireExecutor("CreateValue", request->executor(), executor));
   absl::StatusOr<OwnedValueId> id = executor->CreateValue(request->value());
   if (!id.ok()) {
-    LOG(ERROR) << id.status().message();
-    return absl_to_grpc(id.status());
+    return HandleNotOK(id.status(), request->executor());
   }
   *response->mutable_value_ref() = IdToRemoteValue(id.value());
   // We must call forget on the embedded id to prevent the destructor from
@@ -165,8 +184,7 @@ grpc::Status ExecutorService::CreateCall(grpc::ServerContext* context,
   absl::StatusOr<OwnedValueId> called_fn =
       executor->CreateCall(embedded_fn, embedded_arg);
   if (!called_fn.ok()) {
-    LOG(ERROR) << called_fn.status().message();
-    return absl_to_grpc(called_fn.status());
+    return HandleNotOK(called_fn.status(), request->executor());
   }
   *response->mutable_value_ref() = IdToRemoteValue(called_fn.value());
   // We must prevent this destructor from running similarly to CreateValue.
@@ -190,8 +208,7 @@ grpc::Status ExecutorService::CreateStruct(
   absl::StatusOr<OwnedValueId> created_struct =
       executor->CreateStruct(requested_ids);
   if (!created_struct.ok()) {
-    LOG(ERROR) << created_struct.status().message();
-    return absl_to_grpc(created_struct.status());
+    return HandleNotOK(created_struct.status(), request->executor());
   }
   *response->mutable_value_ref() = IdToRemoteValue(created_struct.value());
   // We must prevent this destructor from running similarly to CreateValue.
@@ -210,8 +227,7 @@ grpc::Status ExecutorService::CreateSelection(
   absl::StatusOr<OwnedValueId> selected_element =
       executor->CreateSelection(selection_source, request->index());
   if (!selected_element.ok()) {
-    LOG(ERROR) << selected_element.status().message();
-    return absl_to_grpc(selected_element.status());
+    return HandleNotOK(selected_element.status(), request->executor());
   }
   *response->mutable_value_ref() = IdToRemoteValue(selected_element.value());
   // We must prevent this destructor from running similarly to CreateValue.
@@ -228,7 +244,10 @@ grpc::Status ExecutorService::Compute(grpc::ServerContext* context,
   TFF_TRYLOG_GRPC(RemoteValueToId(request->value_ref(), requested_value));
   absl::Status status =
       executor->Materialize(requested_value, response->mutable_value());
-  return absl_to_grpc(status);
+  if (status.ok()) {
+    return absl_to_grpc(status);
+  }
+  return HandleNotOK(status, request->executor());
 }
 
 grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
@@ -270,6 +289,9 @@ grpc::Status ExecutorService::DisposeExecutor(
     }
     return grpc::Status::OK;
   } else {
+    // TODO(b/183942515): This case is expected to be potentially hit during
+    // normal execution. Perhaps we can think of a better manner of handling to
+    // avoid spamming client logs.
     return grpc::Status(
         grpc::StatusCode::INVALID_ARGUMENT,
         absl::StrCat("Error evaluating `ExecutorService::DisposeExecutor`. ",

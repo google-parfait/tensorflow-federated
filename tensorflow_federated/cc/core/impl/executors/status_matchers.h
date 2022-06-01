@@ -438,9 +438,10 @@ class GrpcStatusMatcher {
       return false;
     }
     if (expected_message_.has_value() &&
-        status.error_message().find(expected_message_.value()) !=
+        status.error_message().find(expected_message_.value()) ==
             std::string::npos) {
       *os << "the error message is " << status.error_message();
+      return false;
     }
     return true;
   }

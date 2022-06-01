@@ -199,6 +199,112 @@ TEST_F(ExecutorServiceTest, CreateValueReturnsZeroRef) {
   EXPECT_THAT(response_pb, testing::EqualsProto("value_ref { id: '0' }"));
 }
 
+TEST_F(ExecutorServiceTest, CreateValueFailedPreconditionDestroysExecutor) {
+  // If an executor returns FailedPrecondition, the service must invalidate any
+  // outstanding references to this executor. This test asserts that once the
+  // underlying executor indicates it needs configuring, the service will fail
+  // to resolve requests for this executor.
+  auto request_pb = CreateValueFloatRequest(2.0f);
+  v0::CreateValueResponse response_pb;
+  grpc::ServerContext server_context;
+
+  EXPECT_CALL(*executor_ptr_, CreateValue(::testing::_)).WillOnce([] {
+    return absl::FailedPreconditionError("Needs setting");
+  });
+
+  auto value_response_status =
+      executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
+  ASSERT_THAT(
+      value_response_status,
+      GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION, "Needs setting"));
+  auto no_executor_status =
+      executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
+  ASSERT_THAT(no_executor_status,
+              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
+                           "No executor found for ID"));
+}
+
+TEST_F(ExecutorServiceTest, CreateCallFailedPreconditionDestroysExecutor) {
+  auto request_pb = CreateCallRequestForIds("0", absl::nullopt);
+  v0::CreateCallResponse response_pb;
+  grpc::ServerContext server_context;
+
+  EXPECT_CALL(*executor_ptr_, CreateCall(::testing::_, ::testing::_))
+      .WillOnce([] { return absl::FailedPreconditionError("Needs setting"); });
+
+  auto value_response_status =
+      executor_service_.CreateCall(&server_context, &request_pb, &response_pb);
+  ASSERT_THAT(
+      value_response_status,
+      GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION, "Needs setting"));
+  auto no_executor_status =
+      executor_service_.CreateCall(&server_context, &request_pb, &response_pb);
+  ASSERT_THAT(no_executor_status,
+              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
+                           "No executor found for ID"));
+}
+
+TEST_F(ExecutorServiceTest, CreateSelectionFailedPreconditionDestroysExecutor) {
+  auto request_pb = CreateSelectionRequestForIndex("0", 0);
+  v0::CreateSelectionResponse response_pb;
+  grpc::ServerContext server_context;
+
+  EXPECT_CALL(*executor_ptr_, CreateSelection(::testing::_, ::testing::_))
+      .WillOnce([] { return absl::FailedPreconditionError("Needs setting"); });
+
+  auto value_response_status = executor_service_.CreateSelection(
+      &server_context, &request_pb, &response_pb);
+  ASSERT_THAT(
+      value_response_status,
+      GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION, "Needs setting"));
+  auto no_executor_status = executor_service_.CreateSelection(
+      &server_context, &request_pb, &response_pb);
+  ASSERT_THAT(no_executor_status,
+              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
+                           "No executor found for ID"));
+}
+
+TEST_F(ExecutorServiceTest, CreateStructFailedPreconditionDestroysExecutor) {
+  auto request_pb = CreateStructForIds({"0"});
+  v0::CreateStructResponse response_pb;
+  grpc::ServerContext server_context;
+
+  EXPECT_CALL(*executor_ptr_, CreateStruct(::testing::_)).WillOnce([] {
+    return absl::FailedPreconditionError("Needs setting");
+  });
+
+  auto value_response_status = executor_service_.CreateStruct(
+      &server_context, &request_pb, &response_pb);
+  ASSERT_THAT(
+      value_response_status,
+      GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION, "Needs setting"));
+  auto no_executor_status = executor_service_.CreateStruct(
+      &server_context, &request_pb, &response_pb);
+  ASSERT_THAT(no_executor_status,
+              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
+                           "No executor found for ID"));
+}
+
+TEST_F(ExecutorServiceTest, ComputeFailedPreconditionDestroysExecutor) {
+  auto request_pb = ComputeRequestForId("0");
+  v0::ComputeResponse response_pb;
+  grpc::ServerContext server_context;
+
+  EXPECT_CALL(*executor_ptr_, Materialize(::testing::_, ::testing::_))
+      .WillOnce([] { return absl::FailedPreconditionError("Needs setting"); });
+
+  auto value_response_status =
+      executor_service_.Compute(&server_context, &request_pb, &response_pb);
+  ASSERT_THAT(
+      value_response_status,
+      GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION, "Needs setting"));
+  auto no_executor_status =
+      executor_service_.Compute(&server_context, &request_pb, &response_pb);
+  ASSERT_THAT(no_executor_status,
+              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
+                           "No executor found for ID"));
+}
+
 TEST_F(ExecutorServiceTest, GetExecutorReturnsCardinalitySpecificIds) {
   grpc::ServerContext context;
 
@@ -233,9 +339,11 @@ TEST_F(ExecutorServiceTest, ComputeWithMalformedRefFails) {
 
   auto compute_response_status = executor_service_.Compute(
       &server_context, &compute_request_pb, &compute_response_pb);
-  ASSERT_THAT(compute_response_status,
-              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
-                           "Remote value ID malformed_id malformed"));
+  ASSERT_THAT(
+      compute_response_status,
+      GrpcStatusIs(
+          grpc::StatusCode::INVALID_ARGUMENT,
+          "Expected value ref to be an integer id, found malformed_id"));
 }
 
 TEST_F(ExecutorServiceTest, ComputeUnknownRefForwardsFromMock) {
@@ -271,7 +379,7 @@ TEST_F(ExecutorServiceTest, ComputeInvalidExecutorFails) {
       &server_context, &compute_request_pb, &compute_response_pb);
   ASSERT_THAT(compute_response_status,
               GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
-                           "icky sticky hope it doesn't lick me"));
+                           "No executor found for ID: 'booyeah'."));
 }
 
 TEST_F(ExecutorServiceTest, ComputeReturnsMockValue) {
@@ -455,7 +563,8 @@ TEST_F(ExecutorServiceTest, CreateCallNoArgFnArgumentSetToEmptyString) {
       &server_context, &call_request, &create_call_response_pb);
 
   ASSERT_THAT(create_call_response_status,
-              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT, "malformed"));
+              GrpcStatusIs(grpc::StatusCode::INVALID_ARGUMENT,
+                           "Expected value ref to be an integer id"));
 }
 
 TEST_F(ExecutorServiceTest, CreateCallNoArgFn) {

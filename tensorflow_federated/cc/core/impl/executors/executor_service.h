@@ -67,10 +67,10 @@ class ExecutorService : public v0::ExecutorGroup::Service {
   // Constructor takes a function which will return a
   // tensorflow_federated::Executor when invoked with a mapping from TFF
   // placements to integers. After the service is constructed, it must be
-  // configured with a `SetCardinalities` request (which instantiates an
+  // configured with a `GetExecutor` request (which instantiates an
   // underlying concrete tensorflow_federated::Executor) before it can start
-  // executing other arbitrary requests.
-  explicit ExecutorService(ExecutorFactory executor_factory) {
+  // executing other requests.
+  explicit ExecutorService(const ExecutorFactory& executor_factory) {
     executor_factory_ = executor_factory;
   }
   ExecutorService(ExecutorService&& other) {
@@ -136,6 +136,20 @@ class ExecutorService : public v0::ExecutorGroup::Service {
   grpc::Status RequireExecutor(absl::string_view method_name,
                                const v0::ExecutorId& executor_id,
                                std::shared_ptr<Executor>& executor_out);
+
+  // Destroys executor associated to `executor_id`, resetting refcount to 0.
+  // Invoked by error-handling logic in internal methods, e.g. in the case that
+  // the associated executor indicates it needs to be reconfigured. This
+  // function should only be called when all potentially outstanding references
+  // to this executor are necessarily invalid, e.g. in the case that the
+  // executor must be configured with cardinalities before it can handle any new
+  // requests.
+  void DestroyExecutor(const v0::ExecutorId& executor_id);
+
+  // Function which contains switching logic, determining e.g. whether to
+  // destroy an underlying executor.
+  grpc::Status HandleNotOK(const absl::Status& status,
+                           const v0::ExecutorId& executor_id);
 
   ExecutorFactory executor_factory_;
   absl::Mutex executors_mutex_;
