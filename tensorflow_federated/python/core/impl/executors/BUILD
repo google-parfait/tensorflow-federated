@@ -95,10 +95,12 @@ py_library(
     deps = [
         ":cardinality_carrying_base",
         ":ingestable_base",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
 )
 
@@ -108,7 +110,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":data_backend_base",
         ":data_descriptor",
+        ":data_executor",
+        ":eager_tf_executor",
         ":executor_stacks",
         ":executor_test_utils",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",

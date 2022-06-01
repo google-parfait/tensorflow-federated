@@ -19,14 +19,38 @@
 """Helper class for representing fully-specified data-yeilding computations."""
 
 import asyncio
-from typing import Any, Mapping, Optional
+from typing import Any, List, Mapping, Optional
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.executors import cardinality_carrying_base
 from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types.type_serialization import serialize_type
+
+
+def CreateDataDescriptor(arg_uris: List[str], arg_type: computation_types.Type):
+  """Constructs a `DataDescriptor` instance targeting a `tff.DataBackend`.
+
+  Args:
+    arg_uris: List of URIs compatible with the data backend embedded in the
+      given `tff.framework.ExecutionContext`.
+    arg_type: The type of data referenced by the URIs. An instance of
+      `tff.Type`.
+
+  Returns:
+    Instance of `DataDescriptor`
+  """
+  arg_type_proto = serialize_type(arg_type)
+  args = [
+      pb.Computation(data=pb.Data(uri=uri), type=arg_type_proto)
+      for uri in arg_uris
+  ]
+  return DataDescriptor(
+      None, args, computation_types.FederatedType(arg_type, placements.CLIENTS),
+      len(args))
 
 
 class CardinalityFreeDataDescriptor(ingestable_base.Ingestable):

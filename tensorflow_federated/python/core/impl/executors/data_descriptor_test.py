@@ -15,7 +15,10 @@
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.core.impl.executors import data_backend_base
 from tensorflow_federated.python.core.impl.executors import data_descriptor
+from tensorflow_federated.python.core.impl.executors import data_executor
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -108,6 +111,38 @@ class DataDescriptorTest(absltest.TestCase):
         executor_stacks.local_executor_factory(default_num_clients=3)):
       result = foo(ds)
     self.assertEqual(result, 3000)
+
+  def test_create_data_descriptor_for_data_backend(self):
+
+    class TestDataBackend(data_backend_base.DataBackend):
+
+      def __init__(self, value):
+        self._value = value
+
+      async def materialize(self, data, type_spec):
+        return self._value
+
+    data_constant = 1
+    type_spec = computation_types.TensorType(tf.int32)
+
+    def ex_fn(device):
+      return data_executor.DataExecutor(
+          eager_tf_executor.EagerTFExecutor(device),
+          TestDataBackend(data_constant))
+
+    factory = executor_stacks.local_executor_factory(leaf_executor_fn=ex_fn)
+
+    @federated_computation.federated_computation(
+        computation_types.FederatedType(type_spec, placements.CLIENTS))
+    def foo(dd):
+      return intrinsics.federated_sum(dd)
+
+    with executor_test_utils.install_executor(factory):
+      uris = [f'foo://bar{i}' for i in range(3)]
+      dd = data_descriptor.CreateDataDescriptor(uris, type_spec)
+      result = foo(dd)
+
+    self.assertEqual(result, 3)
 
 
 if __name__ == '__main__':
