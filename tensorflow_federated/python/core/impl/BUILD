@@ -4,10 +4,7 @@ package(default_visibility = ["//visibility:private"])
 
 package_group(
     name = "impl_packages",
-    packages = [
-        "//tensorflow_federated/experimental/python/core/impl/...",
-        "//tensorflow_federated/python/core/impl/...",
-    ],
+    packages = ["//tensorflow_federated/python/core/impl/..."],
 )
 
 package_group(

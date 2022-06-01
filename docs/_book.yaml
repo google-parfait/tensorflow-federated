@@ -63,7 +63,7 @@ upper_tabs:
       - title: "Federated Learning with Differential Privacy in TFF"
         path: /federated/tutorials/federated_learning_with_differential_privacy
       - title: "Experimental support for JAX in TFF"
-        path: /federated/experimental/tutorials/jax_support
+        path: /federated/tutorials/jax_support
 
 
     - name: Guide

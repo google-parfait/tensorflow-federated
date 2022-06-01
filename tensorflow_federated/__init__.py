@@ -17,7 +17,6 @@ import sys
 
 from tensorflow_federated.version import __version__  # pylint: disable=g-bad-import-order
 
-from tensorflow_federated import experimental
 from tensorflow_federated.python import aggregators
 from tensorflow_federated.python import analytics
 from tensorflow_federated.python import learning
@@ -53,6 +52,7 @@ from tensorflow_federated.python.core.impl.federated_context.intrinsics import s
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import sequence_sum
 from tensorflow_federated.python.core.impl.federated_context.value_impl import to_value
 from tensorflow_federated.python.core.impl.federated_context.value_impl import Value
+from tensorflow_federated.python.core.impl.jax_context.jax_computation import jax_computation
 from tensorflow_federated.python.core.impl.tensorflow_context.tensorflow_computation import tf_computation
 from tensorflow_federated.python.core.impl.types.computation_types import at_clients as type_at_clients
 from tensorflow_federated.python.core.impl.types.computation_types import at_server as type_at_server
@@ -68,6 +68,7 @@ from tensorflow_federated.python.core.impl.types.placements import CLIENTS
 from tensorflow_federated.python.core.impl.types.placements import SERVER
 from tensorflow_federated.python.core.impl.types.type_conversions import structure_from_tensor_type_tree
 from tensorflow_federated.python.core.impl.types.typed_object import TypedObject
+
 
 if sys.version_info[0] < 3 or sys.version_info[1] < 9:
   raise Exception('TFF only supports Python versions 3.9 or later.')

@@ -2,7 +2,6 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":types_packages",
-    "//tensorflow_federated/experimental/python/core/impl/jax_context:jax_context_packages",
     "//tensorflow_federated/python/core/impl:impl_visibility",
     "//tensorflow_federated/python/core/impl/compiler:compiler_packages",
     "//tensorflow_federated/python/core/impl/computation:computation_packages",
@@ -11,6 +10,7 @@ package(default_visibility = [
     "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
     "//tensorflow_federated/python/core/impl/executors:executors_packages",
     "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
+    "//tensorflow_federated/python/core/impl/jax_context:jax_context_packages",
     "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_context_packages",
     "//tensorflow_federated/python/core/impl/utils:utils_packages",
     "//tensorflow_federated/python/core/impl/xla_context:xla_context_packages",

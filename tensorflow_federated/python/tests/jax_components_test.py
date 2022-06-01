@@ -17,18 +17,17 @@ import collections
 from absl.testing import absltest
 import jax
 import numpy as np
+import tensorflow_federated as tff
 
-from tensorflow_federated.experimental.python.learning import jax_components
-from tensorflow_federated.python.core.backends.xla import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.tests import jax_components
 
 
 class JaxComponentsTest(absltest.TestCase):
 
   def test_build_jax_federated_averaging_process(self):
     batch_type = collections.OrderedDict([
-        ('pixels', computation_types.TensorType(np.float32, (50, 784))),
-        ('labels', computation_types.TensorType(np.int32, (50,)))
+        ('pixels', tff.TensorType(np.float32, (50, 784))),
+        ('labels', tff.TensorType(np.int32, (50,)))
     ])
 
     def random_batch():
@@ -38,8 +37,8 @@ class JaxComponentsTest(absltest.TestCase):
       return collections.OrderedDict([('pixels', pixels), ('labels', labels)])
 
     model_type = collections.OrderedDict([
-        ('weights', computation_types.TensorType(np.float32, (784, 10))),
-        ('bias', computation_types.TensorType(np.float32, (10,)))
+        ('weights', tff.TensorType(np.float32, (784, 10))),
+        ('bias', tff.TensorType(np.float32, (10,)))
     ])
 
     def loss(model, batch):
@@ -57,5 +56,5 @@ class JaxComponentsTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_local_python_execution_context()
+  tff.backends.xla.set_local_python_execution_context()
   absltest.main()

@@ -66,6 +66,37 @@ py_test(
     ],
 )
 
+py_library(
+    name = "jax_components",
+    srcs = ["jax_components.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
+    name = "jax_components_test",
+    srcs = ["jax_components_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":jax_components",
+        "//tensorflow_federated",
+        "@absl_py//absl/testing:absltest",
+    ],
+)
+
+py_test(
+    name = "jax_training_test",
+    srcs = ["jax_training_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":jax_components",
+        "//tensorflow_federated",
+        "@absl_py//absl/testing:absltest",
+    ],
+)
+
 py_test(
     name = "map_reduce_form_test",
     size = "medium",

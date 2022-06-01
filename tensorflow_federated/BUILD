@@ -15,7 +15,6 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":version",
-        "//tensorflow_federated/experimental",
         "//tensorflow_federated/python/aggregators",
         "//tensorflow_federated/python/analytics",
         "//tensorflow_federated/python/common_libs:async_utils",
@@ -29,6 +28,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/federated_context:value_impl",
+        "//tensorflow_federated/python/core/impl/jax_context:jax_computation",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types",
         "//tensorflow_federated/python/core/impl/types:computation_types",
