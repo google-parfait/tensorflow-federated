@@ -71,6 +71,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import compiled_computation_transforms
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
@@ -473,7 +474,7 @@ def parse_tff_to_tf(comp, grappler_config_proto):
   )
   if not should_skip_grappler:
     logging.info('Using Grappler on `MapReduceForm` TensorFlow graphs.')
-    tf_parsed, _ = transformations.optimize_tensorflow_graphs(
+    tf_parsed, _ = compiled_computation_transforms.optimize_tensorflow_graphs(
         tf_parsed, grappler_config_proto)
 
   return tf_parsed

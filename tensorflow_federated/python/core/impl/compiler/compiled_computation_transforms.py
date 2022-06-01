@@ -121,6 +121,13 @@ class TensorFlowOptimizer(transformation_utils.TransformSpec):
     return optimize_tensorflow_comp(comp, self._config_proto), True
 
 
+def optimize_tensorflow_graphs(comp, grappler_config_proto):
+  """Performs any static optimization on TensorFlow subcomputations."""
+  transform_spec = TensorFlowOptimizer(grappler_config_proto)
+  return transformation_utils.transform_postorder(comp,
+                                                  transform_spec.transform)
+
+
 class DisableCallOpGrappler(transformation_utils.TransformSpec):
   """Disables grappler in Call ops in `building_blocks.CompiledComputation`s.
 
@@ -143,6 +150,13 @@ class DisableCallOpGrappler(transformation_utils.TransformSpec):
         comp.proto)
     return building_blocks.CompiledComputation(
         new_comp_proto, type_signature=comp.type_signature), True
+
+
+def transform_tf_call_ops_to_disable_grappler(comp):
+  """Performs grappler disabling on TensorFlow subcomputations."""
+  transform_spec = DisableCallOpGrappler()
+  return transformation_utils.transform_postorder(comp,
+                                                  transform_spec.transform)
 
 
 class VerifyAllowedOps(transformation_utils.TransformSpec):
@@ -176,6 +190,16 @@ class VerifyAllowedOps(transformation_utils.TransformSpec):
     return comp, False
 
 
+def check_allowed_ops(
+    comp: building_blocks.ComputationBuildingBlock,
+    allowed_op_names: FrozenSet[str]
+) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+  """Checks any Tensorflow computation contains only allowed ops."""
+  transform_spec = VerifyAllowedOps(allowed_op_names)
+  return transformation_utils.transform_postorder(comp,
+                                                  transform_spec.transform)
+
+
 class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
   """Identity transformation that raises an error if a disallowed op is found.
 
@@ -205,6 +229,16 @@ class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
     tensorflow_computation_transformations.check_no_disallowed_ops(
         comp.proto, self._disallowed_op_names)
     return comp, False
+
+
+def check_disallowed_ops(
+    comp: building_blocks.ComputationBuildingBlock,
+    disallowed_op_names: FrozenSet[str]
+) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+  """Raises error on disallowed ops in any Tensorflow computation."""
+  transform_spec = RaiseOnDisallowedOp(disallowed_op_names)
+  return transformation_utils.transform_postorder(comp,
+                                                  transform_spec.transform)
 
 
 class AddUniqueIDs(transformation_utils.TransformSpec):
@@ -240,3 +274,10 @@ class AddUniqueIDs(transformation_utils.TransformSpec):
         type=comp.proto.type, tensorflow=new_tf_proto)
     return building_blocks.CompiledComputation(
         new_comp_proto, type_signature=comp.type_signature), True
+
+
+def transform_tf_add_ids(comp):
+  """Adds unique IDs to each TensorFlow subcomputations."""
+  transform_spec = AddUniqueIDs()
+  return transformation_utils.transform_postorder(comp,
+                                                  transform_spec.transform)

@@ -22,6 +22,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_block_test_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -222,8 +223,8 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     input_data = building_blocks.Data('b', tf.int32)
     blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
                                 input_data)
-    data, modified = tree_transformations._apply_transforms(
-        blk, self._unused_block_remover)
+    data, modified = transformation_utils.transform_postorder(
+        blk, self._unused_block_remover.transform)
     self.assertTrue(modified)
     self.assertEqual(data.compact_representation(),
                      input_data.compact_representation())
@@ -231,8 +232,8 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
   def test_unwraps_block_with_empty_locals(self):
     input_data = building_blocks.Data('b', tf.int32)
     blk = building_blocks.Block([], input_data)
-    data, modified = tree_transformations._apply_transforms(
-        blk, self._unused_block_remover)
+    data, modified = transformation_utils.transform_postorder(
+        blk, self._unused_block_remover.transform)
     self.assertTrue(modified)
     self.assertEqual(data.compact_representation(),
                      input_data.compact_representation())
@@ -242,8 +243,8 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
                                 input_data)
     higher_level_blk = building_blocks.Block([('y', input_data)], blk)
-    data, modified = tree_transformations._apply_transforms(
-        higher_level_blk, self._unused_block_remover)
+    data, modified = transformation_utils.transform_postorder(
+        higher_level_blk, self._unused_block_remover.transform)
     self.assertTrue(modified)
     self.assertEqual(data.compact_representation(),
                      input_data.compact_representation())
@@ -251,8 +252,8 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
   def test_leaves_single_used_reference(self):
     blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
                                 building_blocks.Reference('x', tf.int32))
-    transformed_blk, modified = tree_transformations._apply_transforms(
-        blk, self._unused_block_remover)
+    transformed_blk, modified = transformation_utils.transform_postorder(
+        blk, self._unused_block_remover.transform)
     self.assertFalse(modified)
     self.assertEqual(transformed_blk.compact_representation(),
                      blk.compact_representation())
@@ -262,8 +263,8 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
         [('x', building_blocks.Data('a', tf.int32)),
          ('y', building_blocks.Reference('x', tf.int32))],
         building_blocks.Reference('y', tf.int32))
-    transformed_blk, modified = tree_transformations._apply_transforms(
-        blk, self._unused_block_remover)
+    transformed_blk, modified = transformation_utils.transform_postorder(
+        blk, self._unused_block_remover.transform)
     self.assertFalse(modified)
     self.assertEqual(transformed_blk.compact_representation(),
                      blk.compact_representation())
@@ -274,8 +275,8 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     blk = building_blocks.Block(
         [('x', building_blocks.Data('a', tf.int32)),
          ('y', building_blocks.Reference('x', tf.int32))], input_data)
-    transformed_blk, modified = tree_transformations._apply_transforms(
-        blk, self._unused_block_remover)
+    transformed_blk, modified = transformation_utils.transform_postorder(
+        blk, self._unused_block_remover.transform)
     self.assertTrue(modified)
     self.assertEqual(transformed_blk.compact_representation(),
                      input_data.compact_representation())
@@ -285,8 +286,8 @@ class RemoveUnusedBlockLocalsTest(absltest.TestCase):
     blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32)),
                                  ('y', building_blocks.Data('b', tf.int32))],
                                 ref)
-    transformed_blk, modified = tree_transformations._apply_transforms(
-        blk, self._unused_block_remover)
+    transformed_blk, modified = transformation_utils.transform_postorder(
+        blk, self._unused_block_remover.transform)
     self.assertTrue(modified)
     self.assertEqual(transformed_blk.compact_representation(), '(let y=b in y)')
 

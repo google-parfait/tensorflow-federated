@@ -18,57 +18,13 @@
 # information.
 """A library of transformation functions for ASTs."""
 
-from typing import FrozenSet, Tuple
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import compiled_computation_transforms
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.types import type_transformations
-
-TransformReturnType = Tuple[building_blocks.ComputationBuildingBlock, bool]
-
-
-def _apply_transforms(comp, transforms):
-  """Applies all `transforms` in a single walk of `comp`.
-
-  This function is private for a reason; TFF does not intend to expose the
-  capability to chain arbitrary transformations in this way, since the
-  application of one transformation may cause the resulting AST to violate the
-  assumptions of another. This function should be used quite selectively and
-  considered extensively in order to avoid such subtle issues.
-
-  Args:
-    comp: An instance of `building_blocks.ComputationBuildingBlock` to transform
-      with all elements of `transforms`.
-    transforms: An instance of `transformation_utils.TransformSpec` or iterable
-      thereof, the transformations to apply to `comp`.
-
-  Returns:
-    A transformed version of `comp`, with all transformations in `transforms`
-    applied.
-
-  Raises:
-    TypeError: If the types don't match.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if isinstance(transforms, transformation_utils.TransformSpec):
-    transforms = [transforms]
-  else:
-    for transform in transforms:
-      py_typecheck.check_type(transform, transformation_utils.TransformSpec)
-
-  def _transform(comp):
-    modified = False
-    for transform in transforms:
-      comp, transform_modified = transform.transform(comp)
-      modified = modified or transform_modified
-    return comp, modified
-
-  return transformation_utils.transform_postorder(comp, _transform)
 
 
 def remove_mapped_or_applied_identity(comp):
@@ -155,7 +111,9 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
 
 
 def remove_unused_block_locals(comp):
-  return _apply_transforms(comp, RemoveUnusedBlockLocals())
+  transform_spec = RemoveUnusedBlockLocals()
+  return transformation_utils.transform_postorder(comp,
+                                                  transform_spec.transform)
 
 
 def uniquify_reference_names(comp, name_generator=None):
@@ -397,30 +355,3 @@ def strip_placement(comp):
     return comp, False
 
   return transformation_utils.transform_postorder(comp, _transform)
-
-
-def transform_tf_call_ops_to_disable_grappler(comp):
-  """Performs grappler disabling on TensorFlow subcomputations."""
-  return _apply_transforms(
-      comp, compiled_computation_transforms.DisableCallOpGrappler())
-
-
-def transform_tf_add_ids(comp):
-  """Adds unique IDs to each TensorFlow subcomputations."""
-  return _apply_transforms(comp, compiled_computation_transforms.AddUniqueIDs())
-
-
-def check_allowed_ops(comp: building_blocks.ComputationBuildingBlock,
-                      allowed_op_names: FrozenSet[str]) -> TransformReturnType:
-  """Checks any Tensorflow computation contains only allowed ops."""
-  return _apply_transforms(
-      comp, compiled_computation_transforms.VerifyAllowedOps(allowed_op_names))
-
-
-def check_disallowed_ops(
-    comp: building_blocks.ComputationBuildingBlock,
-    disallowed_op_names: FrozenSet[str]) -> TransformReturnType:
-  """Raises error on disallowed ops in any Tensorflow computation."""
-  return _apply_transforms(
-      comp,
-      compiled_computation_transforms.RaiseOnDisallowedOp(disallowed_op_names))
