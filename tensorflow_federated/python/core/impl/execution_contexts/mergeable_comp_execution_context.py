@@ -24,7 +24,7 @@ import math
 from typing import Any, Callable, List, Optional, Sequence, Union
 
 import attr
-
+from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -459,11 +459,12 @@ class MergeableCompExecutionContext(context_base.Context):
                executor_factories: Sequence[executor_factory.ExecutorFactory],
                compiler_fn: Optional[Callable[[computation_base.Computation],
                                               MergeableCompForm]] = None):
+    self._async_runner = async_utils.AsyncThreadRunner()
     self._async_execution_contexts = [
         async_execution_context.AsyncExecutionContext(ex_factory)
         for ex_factory in executor_factories
     ]
-    self._event_loop = asyncio.new_event_loop()
+
     if compiler_fn is not None:
       self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
     else:
@@ -491,7 +492,7 @@ class MergeableCompExecutionContext(context_base.Context):
           len(self._async_execution_contexts))
 
     return type_conversions.type_to_py_container(
-        self._event_loop.run_until_complete(
+        self._async_runner.run_coro_and_return_result(
             _invoke_mergeable_comp_form(comp, arg,
                                         self._async_execution_contexts)),
         comp.after_merge.type_signature.result)

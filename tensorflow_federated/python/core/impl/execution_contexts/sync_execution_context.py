@@ -18,13 +18,11 @@
 # information.
 """A context for execution based on an embedded executor instance."""
 
-import asyncio
 from typing import Any
 from typing import Callable
 from typing import Optional
-
+from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -59,15 +57,12 @@ class ExecutionContext(context_base.Context):
         executor_fn=executor_fn,
         compiler_fn=compiler_fn,
         cardinality_inference_fn=cardinality_inference_fn)
-
-    self._event_loop = asyncio.new_event_loop()
-    self._event_loop.set_task_factory(
-        tracing.propagate_trace_context_task_factory)
+    self._async_runner = async_utils.AsyncThreadRunner()
 
   @property
   def executor_factory(self):
     return self._executor_factory
 
   def invoke(self, comp, arg):
-    return self._event_loop.run_until_complete(
+    return self._async_runner.run_coro_and_return_result(
         self._async_context.invoke(comp, arg))

@@ -878,10 +878,10 @@ py_library(
     deps = [
         ":executor_base",
         ":executor_value_base",
+        "//tensorflow_federated/python/common_libs:async_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",
-        "@absl_py//absl/logging",
     ],
 )
 

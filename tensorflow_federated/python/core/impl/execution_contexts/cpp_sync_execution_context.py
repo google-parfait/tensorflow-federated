@@ -13,8 +13,7 @@
 # limitations under the License.
 """A context for execution based on an embedded executor instance."""
 
-import asyncio
-
+from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.execution_contexts import cpp_async_execution_context
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
@@ -32,8 +31,8 @@ class SyncSerializeAndExecuteCPPContext(context_base.Context):
       .CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities):
     self._async_execution_context = cpp_async_execution_context.AsyncSerializeAndExecuteCPPContext(
         factory, compiler_fn, cardinality_inference_fn=cardinality_inference_fn)
-    self._loop = asyncio.new_event_loop()
+    self._async_runner = async_utils.AsyncThreadRunner()
 
   def invoke(self, comp, arg):
-    return self._loop.run_until_complete(
+    return self._async_runner.run_coro_and_return_result(
         self._async_execution_context.invoke(comp, arg))

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import collections
 
 from absl.testing import absltest
@@ -212,6 +213,23 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       data = [0, 1]
       with self.assertRaises(executors_errors.CardinalityError):
         identity(data)
+
+  def test_sync_interface_interops_with_asyncio(self):
+
+    @tensorflow_computation.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    async def sleep_and_add_one(x):
+      await asyncio.sleep(0.1)
+      return add_one(x)
+
+    factory = executor_stacks.local_executor_factory()
+    context = sync_execution_context.ExecutionContext(
+        factory, cardinality_inference_fn=lambda x, y: {placements.CLIENTS: 1})
+    with context_stack_impl.context_stack.install(context):
+      one = asyncio.run(sleep_and_add_one(0))
+      self.assertEqual(one, 1)
 
 
 if __name__ == '__main__':

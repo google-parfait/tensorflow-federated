@@ -18,14 +18,9 @@
 # information.
 """A concurrent executor that does work asynchronously in multiple threads."""
 
-import asyncio
-import functools
-import threading
 from typing import Optional
-import weakref
 
-from absl import logging
-
+from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
@@ -33,18 +28,18 @@ from tensorflow_federated.python.core.impl.executors import executor_base as eb
 from tensorflow_federated.python.core.impl.executors import executor_value_base as evb
 
 
-def _delegate_with_trace_ctx(coro, event_loop):
+def _delegate_with_trace_ctx(coro, async_runner):
   coro_with_trace_ctx = tracing.wrap_coroutine_in_current_trace_context(coro)
-  return asyncio.wrap_future(
-      asyncio.run_coroutine_threadsafe(coro_with_trace_ctx, event_loop))
+  return async_runner.await_coro_and_return_result(coro_with_trace_ctx)
 
 
 class ThreadDelegatingExecutorValue(evb.ExecutorValue):
   """An ExecutorValue which delegates `compute` to an external event loop."""
 
-  def __init__(self, value: evb.ExecutorValue, event_loop):
+  def __init__(self, value: evb.ExecutorValue,
+               async_runner: async_utils.AsyncThreadRunner):
     self._value = value
-    self._event_loop = event_loop
+    self._async_runner = async_runner
 
   @property
   def internal_representation(self) -> evb.ExecutorValue:
@@ -56,7 +51,7 @@ class ThreadDelegatingExecutorValue(evb.ExecutorValue):
 
   async def compute(self):
     return await _delegate_with_trace_ctx(self._value.compute(),
-                                          self._event_loop)
+                                          self._async_runner)
 
 
 class ThreadDelegatingExecutor(eb.Executor):
@@ -77,25 +72,7 @@ class ThreadDelegatingExecutor(eb.Executor):
     """
     py_typecheck.check_type(target_executor, eb.Executor)
     self._target_executor = target_executor
-    self._event_loop = asyncio.new_event_loop()
-    self._event_loop.set_task_factory(
-        tracing.propagate_trace_context_task_factory)
-
-    def run_loop(loop):
-      loop.run_forever()
-      loop.close()
-
-    self._thread = threading.Thread(
-        target=functools.partial(run_loop, self._event_loop), daemon=True)
-    self._thread.start()
-
-    def finalizer(loop, thread):
-      logging.debug('Finalizing, joining thread.')
-      loop.call_soon_threadsafe(loop.stop)
-      thread.join()
-      logging.debug('Thread joined.')
-
-    weakref.finalize(self, finalizer, self._event_loop, self._thread)
+    self._async_runner = async_utils.AsyncThreadRunner()
 
   def close(self):
     # Close does not clean up the event loop or thread.
@@ -107,8 +84,8 @@ class ThreadDelegatingExecutor(eb.Executor):
 
   async def _delegate(self, coro):
     """Runs a coroutine which returns an executor value on the event loop."""
-    result_value = await _delegate_with_trace_ctx(coro, self._event_loop)
-    return ThreadDelegatingExecutorValue(result_value, self._event_loop)
+    result_value = await _delegate_with_trace_ctx(coro, self._async_runner)
+    return ThreadDelegatingExecutorValue(result_value, self._async_runner)
 
   @tracing.trace
   async def create_value(self, value, type_spec=None) -> evb.ExecutorValue:
