@@ -44,8 +44,8 @@ upper_tabs:
         path: /federated/tutorials/custom_aggregators
 
       - heading: Simulation Runtime
-      - title: "High-performance Simulations with TFF"
-        path: /federated/tutorials/simulations
+      - title: "High-performance Simulations with Kubernetes"
+        path: /federated/tutorials/high_performance_simulation_with_kubernetes
       - title: "TFF Simulation with Accelerators (GPU)"
         path: /federated/tutorials/simulations_with_accelerators
       - title: "Working with ClientData"
@@ -62,6 +62,8 @@ upper_tabs:
         path: /federated/tutorials/tff_for_federated_learning_research_compression
       - title: "Federated Learning with Differential Privacy in TFF"
         path: /federated/tutorials/federated_learning_with_differential_privacy
+      - title: "Loading Remote Data with TFF"
+        path: /federated/tutorials/loading_remote_data
       - title: "Experimental support for JAX in TFF"
         path: /federated/tutorials/jax_support
 
