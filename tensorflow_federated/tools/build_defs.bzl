@@ -57,6 +57,35 @@ def py_cpu_gpu_test(name, main = None, tags = [], **kwargs):
         ],
     )
 
+def tff_cc_binary_with_tf_deps(name, tf_deps = [], **kwargs):
+    """A version of `cc_binary` that links against TF statically or dynamically.
+
+    Args:
+      name: A unique name for this target.
+      tf_deps: List of TensorFlow static dependencies.
+      **kwargs: `cc_test` keyword arguments.
+    """
+    srcs = kwargs.pop("srcs", [])
+    deps = kwargs.pop("deps", [])
+    native.cc_binary(
+        name = name,
+        srcs = srcs + if_static(
+            [],
+            framework_shared_object = [
+                "@org_tensorflow//tensorflow:libtensorflow_framework.so.2",
+                "@org_tensorflow//tensorflow:libtensorflow_cc.so.2",
+            ],
+        ),
+        deps = deps + if_static(
+            tf_deps,
+            framework_shared_object = [
+                "@org_tensorflow//tensorflow:libtensorflow_framework.so.2.9.1",
+                "@org_tensorflow//tensorflow:libtensorflow_cc.so.2.9.1",
+            ],
+        ),
+        **kwargs
+    )
+
 def tff_cc_test_with_tf_deps(name, tf_deps = [], **kwargs):
     """A version of `cc_test` that links against TF statically or dynamically.
 

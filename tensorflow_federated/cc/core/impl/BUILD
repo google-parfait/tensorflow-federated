@@ -8,6 +8,9 @@ package_group(
     ],
 )
 
-package_group(name = "impl_visibility")
+package_group(
+    name = "impl_visibility",
+    includes = ["//tensorflow_federated/cc/simulation:simulation_packages"],
+)
 
 licenses(["notice"])
