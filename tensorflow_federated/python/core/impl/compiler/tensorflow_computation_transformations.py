@@ -16,13 +16,14 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""A library of transformation functions for tensorflow computation."""
+"""A library of transformations for tensorflow computations."""
 
 import itertools
 from typing import FrozenSet, Optional
+
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 
@@ -41,12 +42,14 @@ def disable_grappler_for_partitioned_calls(proto):
   configproto, setting the `disable_meta_optimizer` field to `True.
 
   Args:
-    proto: Instance of `pb.Computation` with the `tensorflow` field populated.
+    proto: Instance of `computation_pb2.Computation` with the `tensorflow` field
+      populated.
 
   Returns:
-    A transformed instance of `pb.Computation` with a `tensorflow` field.
+    A transformed instance of `computation_pb2.Computation` with a `tensorflow`
+    field.
   """
-  py_typecheck.check_type(proto, pb.Computation)
+  py_typecheck.check_type(proto, computation_pb2.Computation)
   computation_oneof = proto.WhichOneof('computation')
   if computation_oneof != 'tensorflow':
     raise TypeError('`prune_tensorflow_proto` only accepts `Computation` '
@@ -66,14 +69,14 @@ def disable_grappler_for_partitioned_calls(proto):
       config_proto = tf.compat.v1.ConfigProto.FromString(attr_str.s)
     config_proto.graph_options.rewrite_options.disable_meta_optimizer = True
     attr_str.s = config_proto.SerializeToString(deterministic=True)
-  tf_block = pb.TensorFlow(
+  tf_block = computation_pb2.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph_def),
       initialize_op=original_tf.initialize_op
       if original_tf.initialize_op else None,
       parameter=original_tf.parameter
       if original_tf.HasField('parameter') else None,
       result=original_tf.result)
-  new_proto = pb.Computation(type=proto.type, tensorflow=tf_block)
+  new_proto = computation_pb2.Computation(type=proto.type, tensorflow=tf_block)
   return new_proto
 
 
@@ -81,7 +84,7 @@ class DisallowedOpInTensorFlowComputationError(Exception):
   """Error raised when a TensorFlow computation contains a disallowed op."""
 
 
-def _check_ops(proto: pb.Computation,
+def _check_ops(proto: computation_pb2.Computation,
                allowed_op_names: Optional[FrozenSet[str]] = None,
                disallowed_op_names: Optional[FrozenSet[str]] = None):
   """Checks the ops in the TensorFlow computation.
@@ -93,7 +96,8 @@ def _check_ops(proto: pb.Computation,
   allowed_op_names takes precedent.
 
   Args:
-    proto: Instance of `pb.Computation` with the `tensorflow` field populated.
+    proto: Instance of `computation_pb2.Computation` with the `tensorflow` field
+      populated.
     allowed_op_names: Set of allowed op names.
     disallowed_op_names: Set of disallowed op names.
 
@@ -102,14 +106,13 @@ def _check_ops(proto: pb.Computation,
       disallowed op.
     RuntimeError: If both allowed_op_names and disallowed_op_names are empty.
   """
-  py_typecheck.check_type(proto, pb.Computation)
+  py_typecheck.check_type(proto, computation_pb2.Computation)
   computation_oneof = proto.WhichOneof('computation')
   if computation_oneof != 'tensorflow':
     raise TypeError('`prune_tensorflow_proto` only accepts `Computation` '
                     'protos of the "tensorflow" variety; you have passed '
                     'one of variety {}.'.format(computation_oneof))
-  tensorflow_pb = proto.tensorflow
-  graph_def = serialization_utils.unpack_graph_def(tensorflow_pb.graph_def)
+  graph_def = serialization_utils.unpack_graph_def(proto.tensorflow.graph_def)
   all_nodes = itertools.chain(graph_def.node,
                               *[f.node_def for f in graph_def.library.function])
   found_disallowed_op_names = set()
@@ -132,11 +135,13 @@ def _check_ops(proto: pb.Computation,
         f'Found disallowed ops: {found_disallowed_op_names_str}')
 
 
-def check_allowed_ops(proto: pb.Computation, allowed_op_names: FrozenSet[str]):
+def check_allowed_ops(proto: computation_pb2.Computation,
+                      allowed_op_names: FrozenSet[str]):
   """Checks the TensorFlow computation contains allowed ops.
 
   Args:
-    proto: Instance of `pb.Computation` with the `tensorflow` field populated.
+    proto: Instance of `computation_pb2.Computation` with the `tensorflow` field
+      populated.
     allowed_op_names: Set of allowed op names.
 
   Raises:
@@ -146,12 +151,13 @@ def check_allowed_ops(proto: pb.Computation, allowed_op_names: FrozenSet[str]):
   _check_ops(proto, allowed_op_names=allowed_op_names)
 
 
-def check_no_disallowed_ops(proto: pb.Computation,
+def check_no_disallowed_ops(proto: computation_pb2.Computation,
                             disallowed_op_names: FrozenSet[str]):
   """Checks the TensorFlow computation for disallowed ops.
 
   Args:
-    proto: Instance of `pb.Computation` with the `tensorflow` field populated.
+    proto: Instance of `computation_pb2.Computation` with the `tensorflow` field
+      populated.
     disallowed_op_names: Set of disallowed op names.
 
   Raises:

@@ -16,12 +16,12 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""Holds library of transformations for on compiled computations."""
+"""A library of transformations for compiled computations."""
 
 import ctypes
 from typing import FrozenSet, Tuple
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -84,7 +84,7 @@ def optimize_tensorflow_comp(tf_computation, config_proto):
       graph_spec_obj, config_proto)
   graph_def = serialization_utils.pack_graph_def(optimized_graph_spec.graph_def)
   original_tf = tf_proto.tensorflow
-  tf_result_proto = pb.TensorFlow(
+  tf_result_proto = computation_pb2.TensorFlow(
       graph_def=graph_def,
       initialize_op=(original_tf.initialize_op
                      if original_tf.initialize_op else None),
@@ -94,7 +94,7 @@ def optimize_tensorflow_comp(tf_computation, config_proto):
       parameter=(original_tf.parameter
                  if original_tf.HasField('parameter') else None),
       result=original_tf.result)
-  optimized_proto = pb.Computation(
+  optimized_proto = computation_pb2.Computation(
       type=tf_proto.type, tensorflow=tf_result_proto)
   return building_blocks.CompiledComputation(
       optimized_proto, type_signature=tf_computation.type_signature)
@@ -260,7 +260,7 @@ class AddUniqueIDs(transformation_utils.TransformSpec):
     if not self.should_transform(comp):
       return comp, False
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
-    new_tf_proto = pb.TensorFlow()
+    new_tf_proto = computation_pb2.TensorFlow()
     new_tf_proto.CopyFrom(comp.proto.tensorflow)
     # Important: we must also serialize the type_signature because TFF might
     # produce (<> -> <>) or (<> -> <<>>) functions, which both could be
@@ -270,7 +270,7 @@ class AddUniqueIDs(transformation_utils.TransformSpec):
     hash_value = hash(
         (comp.type_signature, comp.proto.tensorflow.graph_def.value))
     new_tf_proto.cache_key.id = ctypes.c_uint64(hash_value).value
-    new_comp_proto = pb.Computation(
+    new_comp_proto = computation_pb2.Computation(
         type=comp.proto.type, tensorflow=new_tf_proto)
     return building_blocks.CompiledComputation(
         new_comp_proto, type_signature=comp.type_signature), True

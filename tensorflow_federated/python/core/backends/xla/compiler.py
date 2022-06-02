@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A library of helper functions for constructing XLA computations."""
+"""A compiler for the xla backend."""
 
 from jax.lib import xla_client
 import numpy as np

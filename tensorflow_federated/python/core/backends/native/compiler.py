@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Library of compiler functions for usage in the native execution context."""
+"""A native form compiler for the native backend."""
 
 from typing import Optional
 
@@ -19,11 +19,11 @@ from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import tracing
-from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
+from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import compiled_computation_transforms
-from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
+from tensorflow_federated.python.core.impl.compiler import compiled_computation_transformations
 from tensorflow_federated.python.core.impl.compiler import transformations
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 
 
@@ -68,24 +68,24 @@ def transform_to_native_form(
           'transform_to_native_form',
           'compile_local_subcomputations_to_tensorflow',
           span=True):
-        call_dominant_form = mapreduce_transformations.compile_local_subcomputations_to_tensorflow(
+        call_dominant_form = compiler.compile_local_subcomputations_to_tensorflow(
             call_dominant_form)
       logging.debug('Computation compiled to:')
       logging.debug(call_dominant_form.formatted_representation())
     if grappler_config is not None:
       with tracing.span(
           'transform_to_native_form', 'optimize_tf_graphs', span=True):
-        call_dominant_form, _ = compiled_computation_transforms.optimize_tensorflow_graphs(
+        call_dominant_form, _ = compiled_computation_transformations.optimize_tensorflow_graphs(
             call_dominant_form, grappler_config)
     with tracing.span(
         'transform_to_native_form',
         'transform_tf_call_ops_disable_grappler',
         span=True):
-      disabled_grapler_form, _ = compiled_computation_transforms.transform_tf_call_ops_to_disable_grappler(
+      disabled_grapler_form, _ = compiled_computation_transformations.transform_tf_call_ops_to_disable_grappler(
           call_dominant_form)
     with tracing.span(
         'transform_to_native_form', 'transform_tf_add_ids', span=True):
-      form_with_ids, _ = compiled_computation_transforms.transform_tf_add_ids(
+      form_with_ids, _ = compiled_computation_transformations.transform_tf_add_ids(
           disabled_grapler_form)
     return computation_impl.ConcreteComputation.from_building_block(
         form_with_ids)
@@ -110,7 +110,7 @@ def desugar_and_transform_to_native(comp):
   rewrite_options.loop_optimization = aggressive
   rewrite_options.function_optimization = aggressive
 
-  intrinsics_desugared_bb, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
+  intrinsics_desugared_bb, _ = tree_transformations.replace_intrinsics_with_bodies(
       comp.to_building_block())
   # Desugaring intrinsics injects TF computations; transforming to native form
   # adds TF cache IDs to them. It is crucial that these transformations execute

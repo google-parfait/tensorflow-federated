@@ -105,7 +105,7 @@ module for more information about the nature of these functions.
 ### Compiler
 
 The
-[transformations](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce/transformations.py)
+[compiler](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce/compiler.py)
 module contains [Building Block](compilation.md#building-block) and
 [TensorFlow Computation](compilation.md#tensorflow-computation) transformations
 required to compile an AST to a [MapReduceForm](#canonicalform).

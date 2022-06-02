@@ -16,9 +16,9 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
+from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import mapreduce_test_utils
-from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -65,10 +65,10 @@ class CheckExtractionResultTest(absltest.TestCase):
 
   def test_raises_on_none_args(self):
     with self.assertRaisesRegex(TypeError, 'None'):
-      transformations.check_extraction_result(
-          None, building_blocks.Reference('x', tf.int32))
+      compiler.check_extraction_result(None,
+                                       building_blocks.Reference('x', tf.int32))
     with self.assertRaisesRegex(TypeError, 'None'):
-      transformations.check_extraction_result(
+      compiler.check_extraction_result(
           building_blocks.Reference('x', tf.int32), None)
 
   def test_raises_function_and_call(self):
@@ -76,18 +76,18 @@ class CheckExtractionResultTest(absltest.TestCase):
         'f', computation_types.FunctionType(tf.int32, tf.int32))
     integer_ref = building_blocks.Reference('x', tf.int32)
     call = building_blocks.Call(function, integer_ref)
-    with self.assertRaisesRegex(transformations.MapReduceFormCompilationError,
+    with self.assertRaisesRegex(compiler.MapReduceFormCompilationError,
                                 'we have the functional type'):
-      transformations.check_extraction_result(function, call)
+      compiler.check_extraction_result(function, call)
 
   def test_raises_non_function_and_compiled_computation(self):
     init = form_utils.get_iterative_process_for_map_reduce_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = self.compiled_computation_for_initialize(init)
     integer_ref = building_blocks.Reference('x', tf.int32)
-    with self.assertRaisesRegex(transformations.MapReduceFormCompilationError,
+    with self.assertRaisesRegex(compiler.MapReduceFormCompilationError,
                                 'we have the non-functional type'):
-      transformations.check_extraction_result(integer_ref, compiled_computation)
+      compiler.check_extraction_result(integer_ref, compiled_computation)
 
   def test_raises_function_and_compiled_computation_of_different_type(self):
     init = form_utils.get_iterative_process_for_map_reduce_form(
@@ -95,18 +95,18 @@ class CheckExtractionResultTest(absltest.TestCase):
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference(
         'f', computation_types.FunctionType(tf.int32, tf.int32))
-    with self.assertRaisesRegex(transformations.MapReduceFormCompilationError,
+    with self.assertRaisesRegex(compiler.MapReduceFormCompilationError,
                                 'incorrect TFF type'):
-      transformations.check_extraction_result(function, compiled_computation)
+      compiler.check_extraction_result(function, compiled_computation)
 
   def test_raises_tensor_and_call_to_not_compiled_computation(self):
     function = building_blocks.Reference(
         'f', computation_types.FunctionType(tf.int32, tf.int32))
     ref_to_int = building_blocks.Reference('x', tf.int32)
     called_fn = building_blocks.Call(function, ref_to_int)
-    with self.assertRaisesRegex(transformations.MapReduceFormCompilationError,
+    with self.assertRaisesRegex(compiler.MapReduceFormCompilationError,
                                 'missing'):
-      transformations.check_extraction_result(ref_to_int, called_fn)
+      compiler.check_extraction_result(ref_to_int, called_fn)
 
   def test_passes_function_and_compiled_computation_of_same_type(self):
     init = form_utils.get_iterative_process_for_map_reduce_form(
@@ -114,14 +114,14 @@ class CheckExtractionResultTest(absltest.TestCase):
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference('f',
                                          compiled_computation.type_signature)
-    transformations.check_extraction_result(function, compiled_computation)
+    compiler.check_extraction_result(function, compiled_computation)
 
 
 class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      transformations.consolidate_and_extract_local_processing(
+      compiler.consolidate_and_extract_local_processing(
           None, DEFAULT_GRAPPLER_CONFIG)
 
   def test_already_reduced_case(self):
@@ -130,7 +130,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
     comp = init.to_building_block()
 
-    result = transformations.consolidate_and_extract_local_processing(
+    result = compiler.consolidate_and_extract_local_processing(
         comp, DEFAULT_GRAPPLER_CONFIG)
 
     self.assertIsInstance(result, building_blocks.CompiledComputation)
@@ -140,7 +140,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
   def test_reduces_unplaced_lambda_leaving_type_signature_alone(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', tf.int32))
-    extracted_tf = transformations.consolidate_and_extract_local_processing(
+    extracted_tf = compiler.consolidate_and_extract_local_processing(
         lam, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     self.assertEqual(extracted_tf.type_signature, lam.type_signature)
@@ -148,7 +148,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
   def test_reduces_unplaced_lambda_to_equivalent_tf(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', tf.int32))
-    extracted_tf = transformations.consolidate_and_extract_local_processing(
+    extracted_tf = compiler.consolidate_and_extract_local_processing(
         lam, DEFAULT_GRAPPLER_CONFIG)
     executable_tf = computation_impl.ConcreteComputation.from_building_block(
         extracted_tf)
@@ -161,7 +161,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     fed_int_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     lam = building_blocks.Lambda('x', fed_int_type,
                                  building_blocks.Reference('x', fed_int_type))
-    extracted_tf = transformations.consolidate_and_extract_local_processing(
+    extracted_tf = compiler.consolidate_and_extract_local_processing(
         lam, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     unplaced_function_type = computation_types.FunctionType(
@@ -175,7 +175,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     arg = building_blocks.Reference('arg', arg_type)
     map_block = building_block_factory.create_federated_map_or_apply(lam, arg)
     mapping_fn = building_blocks.Lambda('arg', arg_type, map_block)
-    extracted_tf = transformations.consolidate_and_extract_local_processing(
+    extracted_tf = compiler.consolidate_and_extract_local_processing(
         mapping_fn, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     executable_tf = computation_impl.ConcreteComputation.from_building_block(
@@ -192,7 +192,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     arg = building_blocks.Reference('arg', arg_type)
     map_block = building_block_factory.create_federated_map_or_apply(lam, arg)
     mapping_fn = building_blocks.Lambda('arg', arg_type, map_block)
-    extracted_tf = transformations.consolidate_and_extract_local_processing(
+    extracted_tf = compiler.consolidate_and_extract_local_processing(
         mapping_fn, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     executable_tf = computation_impl.ConcreteComputation.from_building_block(
@@ -208,7 +208,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     federated_value = building_block_factory.create_federated_value(
         zero, placements.SERVER)
     federated_value_func = building_blocks.Lambda(None, None, federated_value)
-    extracted_tf = transformations.consolidate_and_extract_local_processing(
+    extracted_tf = compiler.consolidate_and_extract_local_processing(
         federated_value_func, DEFAULT_GRAPPLER_CONFIG)
     executable_tf = computation_impl.ConcreteComputation.from_building_block(
         extracted_tf)
@@ -221,7 +221,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     federated_value = building_block_factory.create_federated_value(
         zero, placements.CLIENTS)
     federated_value_func = building_blocks.Lambda(None, None, federated_value)
-    extracted_tf = transformations.consolidate_and_extract_local_processing(
+    extracted_tf = compiler.consolidate_and_extract_local_processing(
         federated_value_func, DEFAULT_GRAPPLER_CONFIG)
     executable_tf = computation_impl.ConcreteComputation.from_building_block(
         extracted_tf)
@@ -230,7 +230,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
   def test_reduces_lambda_returning_empty_tuple_to_tf(self):
     empty_tuple = building_blocks.Struct([])
     lam = building_blocks.Lambda('x', tf.int32, empty_tuple)
-    extracted_tf = transformations.consolidate_and_extract_local_processing(
+    extracted_tf = compiler.consolidate_and_extract_local_processing(
         lam, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
 
@@ -239,7 +239,7 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
 
   def assert_compiles_to_tensorflow(
       self, comp: building_blocks.ComputationBuildingBlock):
-    result = transformations.compile_local_computation_to_tensorflow(comp)
+    result = compiler.compile_local_computation_to_tensorflow(comp)
     if comp.type_signature.is_function():
       result.check_compiled_computation()
     else:
@@ -310,8 +310,7 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
   def test_passes_on_tf(self):
     tf_comp = building_block_factory.create_compiled_identity(
         computation_types.TensorType(tf.int32))
-    transformed = transformations.compile_local_computation_to_tensorflow(
-        tf_comp)
+    transformed = compiler.compile_local_computation_to_tensorflow(tf_comp)
     self.assertEqual(tf_comp, transformed)
 
   def test_raises_on_xla(self):
@@ -325,8 +324,8 @@ class CompileLocalComputationToTensorFlow(absltest.TestCase):
     compiled_comp = building_blocks.CompiledComputation(
         proto=empty_xla_computation_proto)
 
-    with self.assertRaises(transformations.XlaToTensorFlowError):
-      transformations.compile_local_computation_to_tensorflow(compiled_comp)
+    with self.assertRaises(compiler.XlaToTensorFlowError):
+      compiler.compile_local_computation_to_tensorflow(compiled_comp)
 
   def test_generates_tf_with_lambda(self):
     ref_to_x = building_blocks.Reference(
@@ -363,7 +362,7 @@ class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):
     identity_lambda = building_blocks.Lambda(ref_to_federated_x.name,
                                              ref_to_federated_x.type_signature,
                                              ref_to_federated_x)
-    transformed = transformations.compile_local_subcomputations_to_tensorflow(
+    transformed = compiler.compile_local_subcomputations_to_tensorflow(
         identity_lambda)
     self.assertEqual(transformed, identity_lambda)
 
@@ -380,8 +379,7 @@ class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):
     applied = building_block_factory.create_federated_apply(
         identity_lambda, federated_data)
 
-    transformed = transformations.compile_local_subcomputations_to_tensorflow(
-        applied)
+    transformed = compiler.compile_local_subcomputations_to_tensorflow(applied)
 
     self.assertIsInstance(transformed, building_blocks.Call)
     self.assertIsInstance(transformed.function, building_blocks.Intrinsic)
@@ -397,7 +395,7 @@ class CompileLocalSubcomputationsToTensorFlowTest(absltest.TestCase):
     lambda_with_unbound_ref = building_blocks.Lambda(ref_to_x.name,
                                                      ref_to_x.type_signature,
                                                      ref_to_z)
-    transformed = transformations.compile_local_subcomputations_to_tensorflow(
+    transformed = compiler.compile_local_subcomputations_to_tensorflow(
         lambda_with_unbound_ref)
 
     self.assertEqual(transformed, lambda_with_unbound_ref)
@@ -409,18 +407,18 @@ class ConcatenateFunctionOutputsTest(absltest.TestCase):
     reference = building_blocks.Reference('x', tf.int32)
     tff_lambda = building_blocks.Lambda('x', tf.int32, reference)
     with self.assertRaises(TypeError):
-      transformations.concatenate_function_outputs(tff_lambda, reference)
+      compiler.concatenate_function_outputs(tff_lambda, reference)
     with self.assertRaises(TypeError):
-      transformations.concatenate_function_outputs(reference, tff_lambda)
+      compiler.concatenate_function_outputs(reference, tff_lambda)
 
   def test_raises_on_non_unique_names(self):
     reference = building_blocks.Reference('x', tf.int32)
     good_lambda = building_blocks.Lambda('x', tf.int32, reference)
     bad_lambda = building_blocks.Lambda('x', tf.int32, good_lambda)
     with self.assertRaises(ValueError):
-      transformations.concatenate_function_outputs(good_lambda, bad_lambda)
+      compiler.concatenate_function_outputs(good_lambda, bad_lambda)
     with self.assertRaises(ValueError):
-      transformations.concatenate_function_outputs(bad_lambda, good_lambda)
+      compiler.concatenate_function_outputs(bad_lambda, good_lambda)
 
   def test_raises_on_different_parameter_types(self):
     int_reference = building_blocks.Reference('x', tf.int32)
@@ -428,15 +426,14 @@ class ConcatenateFunctionOutputsTest(absltest.TestCase):
     float_reference = building_blocks.Reference('x', tf.float32)
     float_lambda = building_blocks.Lambda('x', tf.float32, float_reference)
     with self.assertRaises(TypeError):
-      transformations.concatenate_function_outputs(int_lambda, float_lambda)
+      compiler.concatenate_function_outputs(int_lambda, float_lambda)
 
   def test_parameters_are_mapped_together(self):
     x_reference = building_blocks.Reference('x', tf.int32)
     x_lambda = building_blocks.Lambda('x', tf.int32, x_reference)
     y_reference = building_blocks.Reference('y', tf.int32)
     y_lambda = building_blocks.Lambda('y', tf.int32, y_reference)
-    concatenated = transformations.concatenate_function_outputs(
-        x_lambda, y_lambda)
+    concatenated = compiler.concatenate_function_outputs(x_lambda, y_lambda)
     parameter_name = concatenated.parameter_name
 
     def _raise_on_other_name_reference(comp):
@@ -454,8 +451,7 @@ class ConcatenateFunctionOutputsTest(absltest.TestCase):
     x_lambda = building_blocks.Lambda('x', tf.int32, x_reference)
     y_reference = building_blocks.Reference('y', tf.int32)
     y_lambda = building_blocks.Lambda('y', tf.int32, y_reference)
-    concatenated = transformations.concatenate_function_outputs(
-        x_lambda, y_lambda)
+    concatenated = compiler.concatenate_function_outputs(x_lambda, y_lambda)
     self.assertEqual(str(concatenated), '(y -> <y,y>)')
 
 
@@ -463,12 +459,12 @@ class NormalizedBitTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      transformations.normalize_all_equal_bit(None)
+      compiler.normalize_all_equal_bit(None)
 
   def test_converts_all_equal_at_clients_reference_to_not_equal(self):
     fed_type_all_equal = computation_types.FederatedType(
         tf.int32, placements.CLIENTS, all_equal=True)
-    normalized_comp = transformations.normalize_all_equal_bit(
+    normalized_comp = compiler.normalize_all_equal_bit(
         building_blocks.Reference('x', fed_type_all_equal))
     self.assertEqual(
         normalized_comp.type_signature,
@@ -480,7 +476,7 @@ class NormalizedBitTest(absltest.TestCase):
   def test_converts_not_all_equal_at_server_reference_to_equal(self):
     fed_type_not_all_equal = computation_types.FederatedType(
         tf.int32, placements.SERVER, all_equal=False)
-    normalized_comp = transformations.normalize_all_equal_bit(
+    normalized_comp = compiler.normalize_all_equal_bit(
         building_blocks.Reference('x', fed_type_not_all_equal))
     self.assertEqual(
         normalized_comp.type_signature,
@@ -496,7 +492,7 @@ class NormalizedBitTest(absltest.TestCase):
         tf.int32, placements.CLIENTS)
     ref = building_blocks.Reference('x', fed_type_all_equal)
     lam = building_blocks.Lambda('x', fed_type_all_equal, ref)
-    normalized_lambda = transformations.normalize_all_equal_bit(lam)
+    normalized_lambda = compiler.normalize_all_equal_bit(lam)
     self.assertEqual(
         lam.type_signature,
         computation_types.FunctionType(fed_type_all_equal, fed_type_all_equal))
@@ -514,7 +510,7 @@ class NormalizedBitTest(absltest.TestCase):
         tf.int32, placements.SERVER)
     ref = building_blocks.Reference('x', fed_type_not_all_equal)
     lam = building_blocks.Lambda('x', fed_type_not_all_equal, ref)
-    normalized_lambda = transformations.normalize_all_equal_bit(lam)
+    normalized_lambda = compiler.normalize_all_equal_bit(lam)
     self.assertEqual(
         lam.type_signature,
         computation_types.FunctionType(fed_type_not_all_equal,
@@ -536,7 +532,7 @@ class NormalizedBitTest(absltest.TestCase):
     federated_int_ref = building_blocks.Reference('y', fed_type_all_equal)
     called_federated_map_all_equal = building_block_factory.create_federated_map_all_equal(
         int_identity, federated_int_ref)
-    normalized_federated_map = transformations.normalize_all_equal_bit(
+    normalized_federated_map = compiler.normalize_all_equal_bit(
         called_federated_map_all_equal)
     self.assertEqual(called_federated_map_all_equal.function.uri,
                      intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri)

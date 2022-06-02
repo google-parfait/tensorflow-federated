@@ -34,7 +34,7 @@ py_library(
     srcs = ["compiler.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/core/impl/compiler:intrinsic_reductions",
+        "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
     ],
 )

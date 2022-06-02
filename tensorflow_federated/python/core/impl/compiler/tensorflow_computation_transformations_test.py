@@ -18,7 +18,7 @@ from typing import Iterator
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_transformations
@@ -27,7 +27,8 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
-def _extract_call_ops(comp: pb.Computation) -> Iterator[tf.compat.v1.NodeDef]:
+def _extract_call_ops(
+    comp: computation_pb2.Computation) -> Iterator[tf.compat.v1.NodeDef]:
   computation_oneof = comp.WhichOneof('computation')
   if computation_oneof != 'tensorflow':
     raise TypeError('`prune_tensorflow_proto` only accepts `Computation` '
@@ -63,11 +64,11 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
       tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
           comp)
 
-  def assertCallOpsGrapplerNotDisabled(self, comp: pb.Computation):
+  def assertCallOpsGrapplerNotDisabled(self, comp: computation_pb2.Computation):
     call_ops = _extract_call_ops(comp)
     self.assertFalse(all(_is_grappler_disabled(op) for op in call_ops))
 
-  def assertCallOpsGrapplerDisabled(self, comp: pb.Computation):
+  def assertCallOpsGrapplerDisabled(self, comp: computation_pb2.Computation):
     call_ops = _extract_call_ops(comp)
     self.assertTrue(all(_is_grappler_disabled(op) for op in call_ops))
 
@@ -83,9 +84,9 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
-    proto = pb.Computation(
+    proto = computation_pb2.Computation(
         type=serialized_function_type,
-        tensorflow=pb.TensorFlow(
+        tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
             result=result_binding))
@@ -109,9 +110,9 @@ class DisableGrapplerForPartitionedCalls(absltest.TestCase):
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
-    proto = pb.Computation(
+    proto = computation_pb2.Computation(
         type=serialized_function_type,
-        tensorflow=pb.TensorFlow(
+        tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
             result=result_binding))
@@ -136,9 +137,9 @@ class CheckAllowedOps(absltest.TestCase):
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
-    proto = pb.Computation(
+    proto = computation_pb2.Computation(
         type=serialized_function_type,
-        tensorflow=pb.TensorFlow(
+        tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
             result=result_binding))
@@ -159,9 +160,9 @@ class CheckAllowedOps(absltest.TestCase):
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
-    proto = pb.Computation(
+    proto = computation_pb2.Computation(
         type=serialized_function_type,
-        tensorflow=pb.TensorFlow(
+        tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
             result=result_binding))
@@ -187,9 +188,9 @@ class CheckNoDisallowedOps(absltest.TestCase):
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
-    proto = pb.Computation(
+    proto = computation_pb2.Computation(
         type=serialized_function_type,
-        tensorflow=pb.TensorFlow(
+        tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
             result=result_binding))
@@ -210,9 +211,9 @@ class CheckNoDisallowedOps(absltest.TestCase):
 
     function_type = computation_types.FunctionType(None, result_type)
     serialized_function_type = type_serialization.serialize_type(function_type)
-    proto = pb.Computation(
+    proto = computation_pb2.Computation(
         type=serialized_function_type,
-        tensorflow=pb.TensorFlow(
+        tensorflow=computation_pb2.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             parameter=None,
             result=result_binding))

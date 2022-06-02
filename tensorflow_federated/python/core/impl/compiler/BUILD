@@ -202,8 +202,8 @@ py_test(
 )
 
 py_library(
-    name = "compiled_computation_transforms",
-    srcs = ["compiled_computation_transforms.py"],
+    name = "compiled_computation_transformations",
+    srcs = ["compiled_computation_transformations.py"],
     srcs_version = "PY3",
     deps = [
         ":building_blocks",
@@ -219,15 +219,15 @@ py_library(
 )
 
 py_test(
-    name = "compiled_computation_transforms_test",
+    name = "compiled_computation_transformations_test",
     size = "small",
-    srcs = ["compiled_computation_transforms_test.py"],
+    srcs = ["compiled_computation_transformations_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
         ":building_block_factory",
         ":building_blocks",
-        ":compiled_computation_transforms",
+        ":compiled_computation_transformations",
         ":tensorflow_computation_factory",
         ":tensorflow_computation_test_utils",
         ":tensorflow_computation_transformations",
@@ -273,44 +273,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_factory",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
-    name = "intrinsic_reductions",
-    srcs = ["intrinsic_reductions.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":building_block_factory",
-        ":building_blocks",
-        ":intrinsic_defs",
-        ":transformation_utils",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_test(
-    name = "intrinsic_reductions_test",
-    size = "small",
-    srcs = ["intrinsic_reductions_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":building_blocks",
-        ":intrinsic_defs",
-        ":intrinsic_reductions",
-        ":tree_analysis",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -538,7 +500,13 @@ py_library(
         ":intrinsic_defs",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 

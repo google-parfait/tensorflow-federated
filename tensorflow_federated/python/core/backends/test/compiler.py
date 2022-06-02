@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Execution contexts for the test backend."""
+"""A compiler for the test backend."""
 
-from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 
 
@@ -33,7 +33,7 @@ def replace_secure_intrinsics_with_bodies(comp):
   """
   # Compile secure_sum and secure_sum_bitwidth intrinsics to insecure
   # TensorFlow computations for testing purposes.
-  replaced_intrinsic_bodies, _ = intrinsic_reductions.replace_secure_intrinsics_with_insecure_bodies(
+  replaced_intrinsic_bodies, _ = tree_transformations.replace_secure_intrinsics_with_insecure_bodies(
       comp.to_building_block())
   return computation_impl.ConcreteComputation.from_building_block(
       replaced_intrinsic_bodies)

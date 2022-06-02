@@ -16,7 +16,7 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""A collection of utilities for compiling TFF code for execution on IREE."""
+"""A compiler for the IREE backend."""
 
 import tempfile
 

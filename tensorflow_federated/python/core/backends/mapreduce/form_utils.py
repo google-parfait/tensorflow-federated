@@ -28,13 +28,12 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.backends.mapreduce import compiler
 from tensorflow_federated.python.core.backends.mapreduce import forms
-from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
+from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -139,8 +138,7 @@ def get_iterative_process_for_map_reduce_form(
 def _check_len(
     target,
     length,
-    err_fn: Callable[[str],
-                     Exception] = transformations.MapReduceFormCompilationError,
+    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
   py_typecheck.check_type(length, int)
   if len(target) != length:
@@ -150,8 +148,7 @@ def _check_len(
 def _check_placement(
     target,
     placement: placements.PlacementLiteral,
-    err_fn: Callable[[str],
-                     Exception] = transformations.MapReduceFormCompilationError,
+    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
   py_typecheck.check_type(target, computation_types.FederatedType)
   py_typecheck.check_type(placement, placements.PlacementLiteral)
@@ -164,8 +161,7 @@ def _check_placement(
 def _check_type_equal(
     actual,
     expected,
-    err_fn: Callable[[str],
-                     Exception] = transformations.MapReduceFormCompilationError,
+    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
   py_typecheck.check_type(actual, computation_types.Type)
   py_typecheck.check_type(expected, computation_types.Type)
@@ -176,8 +172,7 @@ def _check_type_equal(
 def _check_type(
     target,
     type_spec,
-    err_fn: Callable[[str],
-                     Exception] = transformations.MapReduceFormCompilationError,
+    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
   py_typecheck.check_type(type_spec, type)
   if not isinstance(target, type_spec):
@@ -188,8 +183,7 @@ def _check_type(
 def _check_type_is_fn(
     target: computation_types.Type,
     name: str,
-    err_fn: Callable[[str],
-                     Exception] = transformations.MapReduceFormCompilationError,
+    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
   if not target.is_function():
     raise err_fn(f'Expected {name} to be a function, but {name} had type '
@@ -199,8 +193,7 @@ def _check_type_is_fn(
 def _check_type_is_no_arg_fn(
     target: computation_types.Type,
     name: str,
-    err_fn: Callable[[str],
-                     Exception] = transformations.MapReduceFormCompilationError,
+    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
   _check_type_is_fn(target, name, err_fn)
   if target.parameter is not None:
@@ -288,9 +281,9 @@ def check_iterative_process_compatible_with_map_reduce_form(
     raise TypeError('Expected `next` to return two values, found result '
                     f'type:\n{next_type.result}')
 
-  initialize_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
+  initialize_tree, _ = tree_transformations.replace_intrinsics_with_bodies(
       initialize_tree)
-  next_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(next_tree)
+  next_tree, _ = tree_transformations.replace_intrinsics_with_bodies(next_tree)
   next_tree = _replace_lambda_body_with_call_dominant_form(next_tree)
 
   tree_analysis.check_contains_only_reducible_intrinsics(initialize_tree)
@@ -342,7 +335,7 @@ def _split_ast_on_broadcast(bb):
     argument of broadcast, and the second of which maps comp's input and
     broadcast's output to comp's output.
   """
-  before, after = compiler_transformations.force_align_and_split_by_intrinsics(
+  before, after = transformations.force_align_and_split_by_intrinsics(
       bb, [building_block_factory.create_null_federated_broadcast()])
   return _untuple_broadcast_only_before_after(before, after)
 
@@ -361,7 +354,7 @@ def _split_ast_on_aggregate(bb):
     second of which maps comp's input and the output of `federated_aggregate`
     and `federated_secure_sum_bitwidth` to comp's output.
   """
-  return compiler_transformations.force_align_and_split_by_intrinsics(
+  return transformations.force_align_and_split_by_intrinsics(
       bb, [
           building_block_factory.create_null_federated_aggregate(),
           building_block_factory.create_null_federated_secure_sum_bitwidth(),
@@ -372,9 +365,9 @@ def _split_ast_on_aggregate(bb):
 
 def _prepare_for_rebinding(bb):
   """Replaces `bb` with semantically equivalent version for rebinding."""
-  bb = transformations.normalize_all_equal_bit(bb)
+  bb = compiler.normalize_all_equal_bit(bb)
   bb, _ = tree_transformations.remove_mapped_or_applied_identity(bb)
-  bb = compiler_transformations.to_call_dominant(bb)
+  bb = transformations.to_call_dominant(bb)
   bb, _ = tree_transformations.remove_unused_block_locals(bb)
   return bb
 
@@ -558,7 +551,7 @@ def _extract_compute_server_context(before_broadcast, grappler_config):
   server_data_index_in_before_broadcast = 0
   compute_server_context = _as_function_of_single_subparameter(
       before_broadcast, server_data_index_in_before_broadcast)
-  return transformations.consolidate_and_extract_local_processing(
+  return compiler.consolidate_and_extract_local_processing(
       compute_server_context, grappler_config)
 
 
@@ -575,7 +568,7 @@ def _extract_client_processing(after_broadcast, grappler_config):
           context_from_server_index_in_after_broadcast,
           client_data_index_in_after_broadcast
       ])
-  return transformations.consolidate_and_extract_local_processing(
+  return compiler.consolidate_and_extract_local_processing(
       client_processing, grappler_config)
 
 
@@ -598,13 +591,13 @@ def _extract_prepare(before_broadcast, grappler_config):
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.MapReduceFormCompilationError: If we extract an AST of the
-      wrong type.
+    compiler.MapReduceFormCompilationError: If we extract an AST of the wrong
+      type.
   """
   server_state_index_in_before_broadcast = 0
   prepare = _as_function_of_single_subparameter(
       before_broadcast, server_state_index_in_before_broadcast)
-  return transformations.consolidate_and_extract_local_processing(
+  return compiler.consolidate_and_extract_local_processing(
       prepare, grappler_config)
 
 
@@ -627,8 +620,8 @@ def _extract_work(before_aggregate, grappler_config):
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.MapReduceFormCompilationError: If we extract an AST of the
-      wrong type.
+    compiler.MapReduceFormCompilationError: If we extract an AST of the wrong
+      type.
   """
   # Indices of `work` args in `before_aggregate` parameter
   client_data_index = ('original_arg', 1)
@@ -651,7 +644,7 @@ def _extract_work(before_aggregate, grappler_config):
   work = building_blocks.Lambda(
       work_unzipped.parameter_name, work_unzipped.parameter_type,
       building_block_factory.create_federated_zip(work_unzipped.result))
-  return transformations.consolidate_and_extract_local_processing(
+  return compiler.consolidate_and_extract_local_processing(
       work, grappler_config)
 
 
@@ -661,7 +654,7 @@ def _compile_selected_output_to_no_argument_tensorflow(
   """Compiles the independent value result of `comp` at `path` to TensorFlow."""
   extracted = building_block_factory.select_output_from_lambda(comp,
                                                                path).result
-  return transformations.consolidate_and_extract_local_processing(
+  return compiler.consolidate_and_extract_local_processing(
       building_blocks.Lambda(None, None, extracted), grappler_config)
 
 
@@ -671,7 +664,7 @@ def _compile_selected_output_as_tensorflow_function(
   """Compiles the functional result of `comp` at `path` to TensorFlow."""
   extracted = building_block_factory.select_output_from_lambda(comp,
                                                                path).result
-  return transformations.consolidate_and_extract_local_processing(
+  return compiler.consolidate_and_extract_local_processing(
       extracted, grappler_config)
 
 
@@ -695,8 +688,8 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.MapReduceFormCompilationError: If we extract an ASTs of the
-      wrong type.
+    compiler.MapReduceFormCompilationError: If we extract an ASTs of the wrong
+      type.
   """
   federated_aggregate = building_block_factory.select_output_from_lambda(
       before_aggregate, 'federated_aggregate_param')
@@ -731,8 +724,8 @@ def _extract_update(after_aggregate, grappler_config):
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.MapReduceFormCompilationError: If we extract an AST of the
-      wrong type.
+    compiler.MapReduceFormCompilationError: If we extract an AST of the wrong
+      type.
   """
   after_aggregate_zipped = building_blocks.Lambda(
       after_aggregate.parameter_name, after_aggregate.parameter_type,
@@ -791,7 +784,7 @@ def _extract_update(after_aggregate, grappler_config):
           update_with_flat_inputs,
           building_block_factory.create_federated_map_or_apply(
               unpack, param_ref)))
-  return transformations.consolidate_and_extract_local_processing(
+  return compiler.consolidate_and_extract_local_processing(
       update, grappler_config)
 
 
@@ -814,7 +807,7 @@ def _replace_lambda_body_with_call_dominant_form(
     A transformed version of `comp`, whose body is call-dominant.
   """
   comp.check_lambda()
-  transformed = compiler_transformations.to_call_dominant(comp)
+  transformed = transformations.to_call_dominant(comp)
   transformed.check_lambda()
   return transformed
 
@@ -863,7 +856,7 @@ def get_broadcast_form_for_computation(
   bb = comp.to_building_block()
   if tff_internal_preprocessing:
     bb = tff_internal_preprocessing(bb)
-  bb, _ = intrinsic_reductions.replace_intrinsics_with_bodies(bb)
+  bb, _ = tree_transformations.replace_intrinsics_with_bodies(bb)
   bb = _replace_lambda_body_with_call_dominant_form(bb)
 
   tree_analysis.check_contains_only_reducible_intrinsics(bb)
@@ -925,8 +918,7 @@ def get_map_reduce_form_for_iterative_process(
 
   Raises:
     TypeError: If the arguments are of the wrong types.
-    transformations.MapReduceFormCompilationError: If the compilation
-      process fails.
+    compiler.MapReduceFormCompilationError: If the compilation process fails.
   """
   py_typecheck.check_type(ip, iterative_process.IterativeProcess)
   initialize_bb, next_bb = (
@@ -939,7 +931,7 @@ def get_map_reduce_form_for_iterative_process(
   before_broadcast, after_broadcast = _split_ast_on_broadcast(next_bb)
   before_aggregate, after_aggregate = _split_ast_on_aggregate(after_broadcast)
 
-  initialize = transformations.consolidate_and_extract_local_processing(
+  initialize = compiler.consolidate_and_extract_local_processing(
       initialize_bb, grappler_config)
   prepare = _extract_prepare(before_broadcast, grappler_config)
   work = _extract_work(before_aggregate, grappler_config)

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A library of TFF transformations specific to MapReduce backends.
+"""A compiler for the mapreduce backend.
 
 In a nutshell, our overall strategy for compiling TFF computations for use with
 MapReduce backends involves a three-stage process:
@@ -64,14 +64,13 @@ divide-and-conquer.
 
 from typing import Any, Dict
 
-
 from absl import logging
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import compiled_computation_transforms
+from tensorflow_federated.python.core.impl.compiler import compiled_computation_transformations
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
@@ -474,7 +473,7 @@ def parse_tff_to_tf(comp, grappler_config_proto):
   )
   if not should_skip_grappler:
     logging.info('Using Grappler on `MapReduceForm` TensorFlow graphs.')
-    tf_parsed, _ = compiled_computation_transforms.optimize_tensorflow_graphs(
+    tf_parsed, _ = compiled_computation_transformations.optimize_tensorflow_graphs(
         tf_parsed, grappler_config_proto)
 
   return tf_parsed

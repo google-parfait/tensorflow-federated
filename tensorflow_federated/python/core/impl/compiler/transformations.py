@@ -16,7 +16,7 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""A library of composite transformation functions.
+"""A library of composite transformations.
 
 A composite transformation is one that applies multiple atomic transformation to
 an AST either pointwise or serially.

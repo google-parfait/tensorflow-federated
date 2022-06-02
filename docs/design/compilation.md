@@ -79,7 +79,7 @@ module contains atomic [TensorFlow computation](#tensorflow-computation)
 transformations.
 
 The
-[compiled_computation_transforms](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/compiled_computation_transforms.py)
+[compiled_computation_transformations](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler/compiled_computation_transformations.py)
 module contains atomic and composite
 [Compiled Computation](#compiled-computation) transformations.
 
