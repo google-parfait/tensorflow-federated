@@ -23,6 +23,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federated_composing_strategy
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
@@ -80,23 +81,9 @@ def _invoke(ex, comp, arg=None):
 class FederatedComposingStrategyTest(parameterized.TestCase):
 
   def test_recovers_from_raising(self):
-
-    class _RaisingExecutor(eager_tf_executor.EagerTFExecutor):
-      """An executor which can be configured to raise on `create_value`."""
-
-      def __init__(self):
-        self._should_raise = True
-        super().__init__()
-
-      def stop_raising(self):
-        self._should_raise = False
-
-      async def create_value(self, *args, **kwargs):
-        if self._should_raise:
-          raise AssertionError
-        return await super().create_value(*args, **kwargs)
-
-    raising_executors = [_RaisingExecutor() for _ in range(2)]
+    raising_executors = [
+        executor_test_utils.RaisingExecutor() for _ in range(2)
+    ]
 
     factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
         placements.SERVER: _create_worker_stack(),

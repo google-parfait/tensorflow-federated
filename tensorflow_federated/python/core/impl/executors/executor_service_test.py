@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_serialization
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import placements
@@ -350,6 +351,41 @@ class ExecutorServiceTest(absltest.TestCase):
     env.stub.DisposeExecutor(
         executor_pb2.DisposeExecutorRequest(executor=env.executor_pb))
     mock_executor.close.assert_called_once()
+
+  def test_raising_failed_precondition_destroys_executor(self):
+
+    # A simple clas to mock out the exceptions raised by GRPC.
+    class GrpcFailedPrecondition(grpc.RpcError):
+      pass
+
+      def code(self):
+        return grpc.StatusCode.FAILED_PRECONDITION
+
+    def _return_error():
+      return GrpcFailedPrecondition('Raising failed precondition')
+
+    raising_ex = executor_test_utils.RaisingExecutor(_return_error)
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
+        lambda _: raising_ex)
+    env = TestEnv(ex_factory)
+    value_proto, _ = executor_serialization.serialize_value(10, tf.int32)
+    value_id = env.stub.CreateValue(
+        executor_pb2.CreateValueRequest(
+            executor=env.executor_pb, value=value_proto))
+    # When CreateValue is forced to run, the executor's error will be raised. We
+    # raise lazily because the service operates future-to-future.
+    with self.assertRaises(grpc.RpcError):
+      env.get_value(value_id.value_ref.id)
+
+    with self.assertRaises(grpc.RpcError) as rpc_err:
+      # The next CreateValue call, or indeed any call, should eagerly raise,
+      # since the executor has been destroyed.
+      env.stub.CreateValue(
+          executor_pb2.CreateValueRequest(
+              executor=env.executor_pb, value=value_proto))
+    self.assertEqual(rpc_err.exception.code(),
+                     grpc.StatusCode.FAILED_PRECONDITION)
+    self.assertIn('No executor found', rpc_err.exception.exception().details())
 
 
 if __name__ == '__main__':

@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.impl.compiler import tensorflow_computatio
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_value_base
@@ -684,3 +685,24 @@ def create_whimsy_value_unplaced():
   value = 10.0
   type_signature = computation_types.TensorType(tf.float32)
   return value, type_signature
+
+
+def _return_assertion_error():
+  return AssertionError
+
+
+class RaisingExecutor(eager_tf_executor.EagerTFExecutor):
+  """An executor which can be configured to raise on `create_value`."""
+
+  def __init__(self, error_fn=_return_assertion_error):
+    self._should_raise = True
+    self._error_fn = error_fn
+    super().__init__()
+
+  def stop_raising(self):
+    self._should_raise = False
+
+  async def create_value(self, *args, **kwargs):
+    if self._should_raise:
+      raise self._error_fn()
+    return await super().create_value(*args, **kwargs)

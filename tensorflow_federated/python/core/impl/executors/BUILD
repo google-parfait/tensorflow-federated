@@ -283,6 +283,7 @@ py_library(
     srcs = ["executor_service.py"],
     srcs_version = "PY3",
     deps = [
+        ":executor_base",
         ":executor_factory",
         ":executor_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
@@ -307,6 +308,7 @@ py_test(
         ":executor_serialization",
         ":executor_service",
         ":executor_stacks",
+        ":executor_test_utils",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
@@ -449,6 +451,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":cardinalities_utils",
+        ":eager_tf_executor",
         ":executor_base",
         ":executor_stacks",
         ":executor_value_base",
@@ -587,6 +590,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":eager_tf_executor",
+        ":executor_test_utils",
         ":federated_composing_strategy",
         ":federated_resolving_strategy",
         ":federating_executor",
