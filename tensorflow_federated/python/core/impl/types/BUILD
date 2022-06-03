@@ -5,7 +5,6 @@ package(default_visibility = [
     "//tensorflow_federated/python/core/impl:impl_visibility",
     "//tensorflow_federated/python/core/impl/compiler:compiler_packages",
     "//tensorflow_federated/python/core/impl/computation:computation_packages",
-    "//tensorflow_federated/python/core/impl/context_stack:context_stack_packages",
     "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
     "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
     "//tensorflow_federated/python/core/impl/executors:executors_packages",
@@ -73,9 +72,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_types",
+        ":placements",
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -220,7 +219,7 @@ py_library(
     name = "type_test_utils",
     srcs = ["type_test_utils.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
+    deps = [":computation_types"],
 )
 
 py_library(

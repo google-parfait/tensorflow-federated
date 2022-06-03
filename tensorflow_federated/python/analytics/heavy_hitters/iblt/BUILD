@@ -3,6 +3,9 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package(default_visibility = [
     ":iblt_packages",
     "//tensorflow_federated/python/analytics:analytics_visibility",
+
+    # Python package namespace
+    "//tensorflow_federated/python/analytics:__pkg__",
 ])
 
 package_group(
@@ -159,7 +162,6 @@ py_test(
 py_library(
     name = "iblt_factory",
     srcs = ["iblt_factory.py"],
-    visibility = ["//tensorflow_federated/python/analytics:__pkg__"],
     deps = [
         ":iblt_tensor",
         "//tensorflow_federated/python/aggregators:factory",

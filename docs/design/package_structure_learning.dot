@@ -1,0 +1,46 @@
+digraph {
+  graph [style="dotted,rounded"]
+  node [shape="box", style="rounded,filled", fillcolor="#efefef", color="#bdbdbd"]
+  edge [color="#616161"]
+
+  subgraph cluster_learning {
+    graph [label="Learning", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
+    reconstruction [label="reconstruction", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/reconstruction" target="_parent"]
+    algorithms [label="algorithms", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/algorithms" target="_parent"]
+    templates [label="templates", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/templates" target="_parent"]
+    optimizers [label="optimizers", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/optimizers" target="_parent"]
+    models [label="models", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/models" target="_parent"]
+    metrics [label="metrics", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/metrics" target="_parent"]
+    framework [label="framework", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/framework" target="_parent"]
+    learning [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
+  }
+
+  algorithms -> templates
+  algorithms -> metrics
+  algorithms -> models
+  algorithms -> optimizers
+  algorithms -> framework
+  algorithms -> learning
+  templates -> optimizers
+  templates -> metrics
+  templates -> models
+  templates -> framework
+  templates -> learning
+  reconstruction -> optimizers
+  reconstruction -> metrics
+  reconstruction -> framework
+  reconstruction -> learning
+  models -> metrics
+  models -> learning
+  framework -> optimizers
+  framework -> learning
+  framework -> metrics
+  optimizers -> learning
+  metrics -> learning
+
+  // TODO(b/151441025): This visibility is temporary and can be removed once the
+  // circular dependencies between `learning` and its subpackages are removed.
+  framework -> learning [dir=back, color="#ff0000"]
+  optimizers -> learning [dir=back, color="#ff0000"]
+  metrics -> learning [dir=back, color="#ff0000"]
+}

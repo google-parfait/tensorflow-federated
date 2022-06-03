@@ -1,0 +1,19 @@
+digraph {
+  graph [style="dotted,rounded"]
+  node [shape="box", style="rounded,filled", fillcolor="#efefef", color="#bdbdbd"]
+  edge [color="#616161"]
+
+  subgraph cluster_simulation {
+    graph [label="Simulation", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/simulation" target="_parent"]
+    baselines [label="baselines", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/simulation/baselines" target="_parent"]
+    datasets [label="datasets", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/simulation/datasets" target="_parent"]
+    models [label="models", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/simulation/models" target="_parent"]
+    simulation [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/simulation" target="_parent"]
+  }
+
+  baselines -> datasets
+  baselines -> models
+  baselines -> simulation
+  datasets -> simulation
+  models -> simulation
+}

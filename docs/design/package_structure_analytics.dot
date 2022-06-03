@@ -1,0 +1,17 @@
+digraph {
+  graph [style="dotted,rounded"]
+  node [shape="box", style="rounded,filled", fillcolor="#efefef", color="#bdbdbd"]
+  edge [color="#616161"]
+
+  subgraph cluster_analytics {
+    graph [label="Analytics", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics" target="_parent"]
+    iblt [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics/heavy_hitters/iblt" target="_parent"]
+    heavy_hitters [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics/heavy_hitters" target="_parent"]
+    hierarchical_histogram [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics/hierarchical_histogram" target="_parent"]
+    analytics [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/analytics" target="_parent"]
+  }
+
+  iblt -> heavy_hitters
+  heavy_hitters -> analytics
+  hierarchical_histogram -> analytics
+}

@@ -1,6 +1,17 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = ["//tensorflow_federated/python/analytics:__subpackages__"])
+package(default_visibility = [
+    ":hierarchical_histogram_packages",
+    "//tensorflow_federated/python/analytics:analytics_visibility",
+
+    # Python package namespace
+    "//tensorflow_federated/python/analytics:__pkg__",
+])
+
+package_group(
+    name = "hierarchical_histogram_packages",
+    packages = ["//tensorflow_federated/python/analytics/hierarchical_histogram/..."],
+)
 
 licenses(["notice"])
 
@@ -49,7 +60,6 @@ py_library(
     name = "hierarchical_histogram_lib",
     srcs = ["hierarchical_histogram_lib.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/python/analytics:__pkg__"],
     deps = [
         ":clipping_factory",
         ":hierarchical_histogram_factory",

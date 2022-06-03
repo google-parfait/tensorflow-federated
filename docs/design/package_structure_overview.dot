@@ -1,0 +1,36 @@
+digraph {
+  graph [style="dotted,rounded"]
+  node [shape="box", style="rounded,filled", fillcolor="#efefef", color="#bdbdbd"]
+  edge [color="#616161"]
+
+  subgraph cluster_users {
+    research [href="https://github.com/google-research/federated/blob/master" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+    examples [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/examples" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+    tests [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/tests" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+  }
+
+  research -> simulation [arrowhead="none", style="invisible"]
+  examples -> simulation [arrowhead="none", style="invisible"]
+  tests -> simulation [arrowhead="none", style="invisible"]
+
+  subgraph cluster_tff {
+    graph [label="TFF", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated" target="_parent"]
+    simulation [href="#simulation" target="_parent"]
+    learning [href="#learning" target="_parent"]
+    analytics [href="#analytics" target="_parent"]
+    aggregators [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/aggregators" target="_parent"]
+    program [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/program" target="_parent"]
+    core [href="#core" target="_parent"]
+  }
+
+  simulation -> analytics
+  simulation -> learning
+  learning -> aggregators
+  learning -> program
+  learning -> core
+  analytics -> aggregators
+  analytics -> program
+  analytics -> core
+  aggregators -> core
+  program -> core
+}

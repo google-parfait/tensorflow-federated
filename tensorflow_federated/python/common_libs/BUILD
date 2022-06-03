@@ -4,7 +4,7 @@ package(default_visibility = [
     ":common_libs_packages",
     "//tensorflow_federated/python:internal_packages",
 
-    # Namespace visibility
+    # Python package namespace
     "//tensorflow_federated:__pkg__",
 ])
 

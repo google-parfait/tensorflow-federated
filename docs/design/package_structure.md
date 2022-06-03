@@ -53,18 +53,34 @@ Therefore, it is useful to keep the
 [TFF API documentation](https://www.tensorflow.org/federated/api_docs/python/tff)
 in mind when using TFF.
 
-### Diagram
+### Diagrams
+
+#### Overview
 
 ```dot
-<!--#include file="package_structure.dot"-->
+<!--#include file="package_structure_overview.dot"-->
 ```
 
-The **green** nodes indicate directories that are part of the
-[TFF repository](https://github.com/tensorflow/federated) on
-[GitHub](https://github.com) that use the [public TFF API](#public-tff-api).
+#### Simulation
 
-The **blue** nodes indicate packages that are part of the
-[public TFF API](#public-tff-api).
+```dot
+<!--#include file="package_structure_simulation.dot"-->
+```
 
-The **grey** nodes indicate directories or packages that are not part of the
-[public TFF API](#public-tff-api).
+#### Learning
+
+```dot
+<!--#include file="package_structure_learning.dot"-->
+```
+
+#### Analytics
+
+```dot
+<!--#include file="package_structure_analytics.dot"-->
+```
+
+#### Core
+
+```dot
+<!--#include file="package_structure_core.dot"-->
+```

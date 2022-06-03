@@ -6,10 +6,8 @@ package(default_visibility = [
     "//tensorflow_federated/python/core/impl:impl_visibility",
     "//tensorflow_federated/python/core/impl/computation:computation_packages",
     "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
-    "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
     "//tensorflow_federated/python/core/impl/executors:executors_packages",
     "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
-    "//tensorflow_federated/python/core/impl/jax_context:jax_context_packages",
 ])
 
 package_group(

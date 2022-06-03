@@ -1,0 +1,103 @@
+digraph {
+  graph [style="dotted,rounded"]
+  node [shape="box", style="rounded,filled", fillcolor="#efefef", color="#bdbdbd"]
+  edge [color="#616161"]
+
+  subgraph cluster_core_0 {
+    iree [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/iree" target="_parent",]
+    mapreduce [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce" target="_parent",]
+    native [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/native" target="_parent",]
+    backends_test [label="test", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/test" target="_parent",]
+    xla [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/xla" target="_parent",]
+    backends [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends" target="_parent"]
+    templates [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/templates" target="_parent"]
+  }
+
+  iree -> backends
+  mapreduce -> backends
+  native -> backends
+  backends_test -> backends
+  xla -> backends
+  backends -> templates
+  templates -> execution_contexts [arrowhead="none", style="invisible"]
+
+  // TODO(b/233800075): Remove dependency from `native` to `mapreduce`.
+  mapreduce -> native [dir=back, color="#ff0000"]
+  // TODO(b/233800373): Remove dependency from `test` to `native`.
+  native -> backends_test [dir=back, color="#ff0000"]
+  // TODO(b/233801300): Remove dependency from `mapreduce` to `test`.
+  mapreduce -> backends_test [color="#ff0000"]
+
+  subgraph cluster_core_1 {
+    framework [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/framework" target="_parent"]
+    test [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/test" target="_parent"]
+  }
+
+  framework -> executor_stacks [arrowhead="none", style="invisible"]
+  test -> executor_stacks [arrowhead="none", style="invisible"]
+
+  subgraph cluster_core_2 {
+    execution_contexts [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/execution_contexts" target="_parent"]
+    executor_stacks [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executor_stacks" target="_parent"]
+    executors [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executors" target="_parent"]
+    federated_context [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/federated_context" target="_parent"]
+    tensorflow_context [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/tensorflow_context" target="_parent"]
+    jax_context [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/jax_context" target="_parent"]
+    computation [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/computation" target="_parent"]
+    compiler [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/compiler" target="_parent"]
+    utils [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/utils" target="_parent"]
+    types [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/types" target="_parent"]
+    context_stack [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/context_stack" target="_parent"]
+  }
+
+  execution_contexts -> executors
+  execution_contexts -> federated_context
+  execution_contexts -> jax_context
+  execution_contexts -> tensorflow_context
+  execution_contexts -> computation
+  execution_contexts -> compiler
+  execution_contexts -> types
+  execution_contexts -> context_stack
+  executor_stacks -> executors
+  executor_stacks -> types
+  executors -> federated_context
+  executors -> jax_context
+  executors -> tensorflow_context
+  executors -> computation
+  executors -> compiler
+  executors -> utils
+  executors -> types
+  executors -> context_stack
+  federated_context -> computation
+  federated_context -> compiler
+  federated_context -> utils
+  federated_context -> types
+  federated_context -> context_stack
+  tensorflow_context -> computation
+  tensorflow_context -> utils
+  tensorflow_context -> types
+  tensorflow_context -> context_stack
+  jax_context -> computation
+  jax_context -> types
+  jax_context -> context_stack
+  jax_context -> context_stack
+  computation -> utils
+  computation -> types
+  computation -> context_stack
+  compiler -> utils
+  compiler -> types
+  utils -> types
+  types -> tensorflow_libs [arrowhead="none", style="invisible"]
+  types -> proto [arrowhead="none", style="invisible"]
+
+  subgraph cluster_core_3 {
+    tensorflow_libs [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/tensorflow_libs" target="_parent"]
+    common_libs [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/common_libs" target="_parent"]
+  }
+
+  tensorflow_libs -> common_libs
+
+  subgraph cluster_core_4 {
+    proto [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/proto" target="_parent"]
+  }
+}

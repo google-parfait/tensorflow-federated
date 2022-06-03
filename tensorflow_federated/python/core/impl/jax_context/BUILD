@@ -3,6 +3,8 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package(default_visibility = [
     ":jax_context_packages",
     "//tensorflow_federated/python/core/impl:impl_visibility",
+    "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+    "//tensorflow_federated/python/core/impl/executors:executors_packages",
 ])
 
 package_group(
@@ -24,11 +26,11 @@ py_library(
     srcs = ["jax_computation.py"],
     srcs_version = "PY3",
     deps = [
+        ":jax_serialization",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/jax_context:jax_serialization",
     ],
 )
 

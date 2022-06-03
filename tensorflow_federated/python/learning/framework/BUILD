@@ -9,8 +9,7 @@ package(default_visibility = [
     "//tensorflow_federated/python/learning/templates:templates_packages",
 
     # TODO(b/151441025): This visibility is temporary and can be removed once
-    # the dependencies between `tff.learning` and `tff.learning.framework` are
-    # cleaned up.
+    # the circular dependency between `learning` and `framework` is removed.
     "//tensorflow_federated/python/learning:__pkg__",
 ])
 

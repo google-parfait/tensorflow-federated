@@ -6,7 +6,7 @@ package(default_visibility = [
 
     # TODO(b/193543632): Remove this visibility once C++ execution is fully
     # supported in OSS.
-    # Third-party package dependencies
+    # Python package namespace
     "//tensorflow_federated:__pkg__",
 
     # TODO(b/233800373): Remove dependency from `test` to `native`.
