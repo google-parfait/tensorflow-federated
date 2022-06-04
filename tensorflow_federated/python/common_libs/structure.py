@@ -14,48 +14,34 @@
 """Container for structures with named and/or unnamed fields."""
 
 import collections
+import functools
 import typing
-from typing import Any, Callable, Dict, Optional, Iterable, Iterator, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple, Union
 
 import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
+# The list of field names that are not allowed in `Struct` objects. These
+# are reserved for fields used in the internal implementation.
+_STRUCT_FORBIDDEN_FIELDS = frozenset(['_element_array', '_asdict'])
 
-class Struct(object):
-  """Represents a struct-like structure with named and/or unnamed fields.
+# WARNING: The order of the types here is important! During conversion by
+# TensorFlow, the types in the union will be tested in the order they appear
+# in this list. If 'Struct' is not first, its possible that a sequence of
+# values is first converted to a tensor of values, which is undesirable.
+_LeafType = Union[int, float, str, bytes, tf.Tensor, tf.RaggedTensor,
+                  tf.SparseTensor]
+_StructElement = Union[str, bytes, 'Struct',
+                       Mapping[str, Union['_StructElement', _LeafType]],
+                       Tuple['_StructElement',
+                             ...], Tuple[str, _LeafType], _LeafType]
 
-  `Struct`s are similar to `collections.namedtuple` in that their elements can
-  be accessed by name or by index. However, `Struct`s provide a performance
-  improvement over `collections.namedtuple` by using a single class to
-  represent values with many different possible structures, rather than
-  creating a brand new class for every new instance.
 
-  `Struct`s are commonly used inside Tensorflow Federated as a standard
-  intermediate representation of other structure types, including `list`s,
-  `tuple`s, `dict`s, `namedtuple`s, and `attr.s` classes.
-
-  Example:
-
-  ```python
-  x = Struct([('foo', 10), (None, 20), ('bar', 30)])
-
-  len(x) == 3
-  x[0] == 10
-  x[1] == 20
-  x[2] == 30
-  list(iter(x)) == [10, 20, 30]
-  dir(x) == ['bar', 'foo']
-  x.foo == 10
-  x['bar'] == 30
-  ```
-
-  Note that field names are optional, allowing `Struct` to be used like an
-  ordinary positional tuple.
-  """
-  __slots__ = ('_hash', '_element_array', '_name_to_index', '_name_array',
-               '_elements_cache')
+class Struct(tf.experimental.ExtensionType):
+  """A structure of values."""
+  _element_array: Tuple[Tuple[Optional[str], _StructElement], ...]
 
   @classmethod
   def named(cls, **kwargs) -> 'Struct':
@@ -79,46 +65,32 @@ class Struct(object):
       TypeError: if the `elements` are not a list, or if any of the items on
         the list is not a pair with a string at the first position.
     """
-    py_typecheck.check_type(elements, collections.abc.Iterable)
+    # `elements` might only support one iteration, so we store the values in
+    # `values` while iterating.
     values = []
-    names = []
-    name_to_index = {}
-    reserved_names = frozenset(('_asdict',) + Struct.__slots__)
-    for idx, e in enumerate(elements):
-      if not py_typecheck.is_name_value_pair(e, name_required=False):
-        raise TypeError(
-            'Expected every item on the list to be a pair in which the first '
-            'element is a string, found {!r}.'.format(e))
-      name, value = e
-      if name in reserved_names:
-        raise ValueError(
-            'The names in {} are reserved. You passed the name {}.'.format(
-                reserved_names, name))
-      elif name in name_to_index:
-        raise ValueError('`Struct` does not support duplicated names, '
-                         'found {}.'.format([e[0] for e in elements]))
-      names.append(name)
-      values.append(value)
+    seen_names = set([])
+    for e in elements:
+      name, _ = e
       if name is not None:
-        name_to_index[name] = idx
+        if name.startswith('__') or name in _STRUCT_FORBIDDEN_FIELDS:
+          raise ValueError(
+              f'The names in {_STRUCT_FORBIDDEN_FIELDS} or starting with '
+              f'double underscores are reserved. Tried to create a structure '
+              f'with the name {name} which is not allowed.')
+        elif name in seen_names:
+          raise ValueError('`Struct` does not support duplicated names, '
+                           'found {}.'.format([e[0] for e in elements]))
+      seen_names.add(name)
+      values.append(e)
     self._element_array = tuple(values)
-    self._name_to_index = name_to_index
-    self._name_array = names
-    self._hash = None
-    self._elements_cache = None
 
-  def _elements(self):
-    if self._elements_cache is None:
-      self._elements_cache = list(zip(self._name_array, self._element_array))
-    return self._elements_cache
-
-  def __len__(self):
+  def __len__(self) -> int:
     return len(self._element_array)
 
-  def __iter__(self):
-    return iter(self._element_array)
+  def __iter__(self) -> Iterator[Tuple[Optional[str], _StructElement]]:
+    return (value for _, value in self._element_array)
 
-  def __dir__(self):
+  def __dir__(self) -> List[str]:
     """The list of names.
 
     IMPORTANT: `len(self)` may be greater than `len(dir(self))`, since field
@@ -130,61 +102,61 @@ class Struct(object):
     Returns:
       A `list` of `str`.
     """
-    return list(self._name_to_index.keys())
+    return [name for name, _ in self._element_array if name is not None]
 
   def __getitem__(self, key: Union[int, str, slice]):
-    py_typecheck.check_type(key, (int, str, slice))
     if isinstance(key, str):
       return self.__getattr__(key)
-    if isinstance(key, int):
+    elif isinstance(key, int):
       if key < 0 or key >= len(self._element_array):
         raise IndexError(
             'Element index {} is out of range, `Struct` has {} elements.'
             .format(key, len(self._element_array)))
-    return self._element_array[key]
+      return self._element_array[key][1]
+    elif isinstance(key, slice):
+      return tuple(e[1] for e in self._element_array[key])
 
   def __getattr__(self, name):
-    if name not in self._name_to_index:
+    for elem_name, elem_value in self._element_array:
+      if name == elem_name:
+        return elem_value
+    else:
       raise AttributeError(
           'The `Struct` of length {:d} does not have named field "{!s}". '
           'Fields (up to first 10): {!s}'.format(
               len(self._element_array), name,
-              list(self._name_to_index.keys())[:10]))
-    return self._element_array[self._name_to_index[name]]
+              [name for name, _ in self._element_array[:10]]))
 
   def __eq__(self, other):
     if self is other:
       return True
-    # pylint: disable=protected-access
     return (isinstance(other, Struct) and
-            (self._element_array == other._element_array) and
-            (self._name_array == other._name_array))
-    # pylint: enable=protected-access
+            (self._element_array == other._element_array))
 
   def __ne__(self, other):
     return not self == other
 
   def __repr__(self):
     return 'Struct([{}])'.format(', '.join(
-        '({!r}, {!r})'.format(n, v) for n, v in iter_elements(self)))
+        f'({n!r}, {v!r})' for n, v in self._element_array))
 
   def __str__(self):
 
     def _element_str(element):
       name, value = element
       if name is not None:
-        return '{}={}'.format(name, value)
+        return f'{name}={value}'
+      if tf.is_tensor(value):
+        value = value.numpy()
       return str(value)
 
-    return '<{}>'.format(','.join(_element_str(e) for e in iter_elements(self)))
+    return '<{}>'.format(','.join(_element_str(e) for e in self._element_array))
 
   def __hash__(self):
-    if self._hash is None:
-      self._hash = hash((
-          'Struct',  # salting to avoid type mismatch.
-          self._element_array,
-          tuple(self._name_array)))
-    return self._hash
+    return hash((
+        'TFFStruct',  # salting to avoid type mismatch.
+        tuple((name, value.ref()) if tf.is_tensor(value) else (name, value)
+              for name, value in self._element_array)))
 
   def _asdict(self, recursive=False):
     """Returns an `collections.OrderedDict` mapping field names to their values.
@@ -206,16 +178,16 @@ def name_list(struct: Struct) -> List[str]:
     order, skipping names that are `None`.
   """
   py_typecheck.check_type(struct, Struct)
-  names = struct._name_array  # pylint: disable=protected-access
+  names = [n for n, _ in struct._element_array]  # pylint: disable=protected-access
   return [n for n in names if n is not None]
 
 
 def name_list_with_nones(struct: Struct) -> List[Optional[str]]:
   """Returns an iterator over the names of all fields in `struct`."""
-  return struct._name_array  # pylint: disable=protected-access
+  return [n for n, _ in struct._element_array]  # pylint: disable=protected-access
 
 
-def to_elements(struct: Struct) -> List[Tuple[Optional[str], Any]]:
+def to_elements(struct: Struct) -> List[Tuple[Optional[str], _StructElement]]:
   """Retrieves the list of (name, value) pairs from a `Struct`.
 
   Modeled as a module function rather than a method of `Struct` to avoid
@@ -234,11 +206,12 @@ def to_elements(struct: Struct) -> List[Tuple[Optional[str], Any]]:
   """
   py_typecheck.check_type(struct, Struct)
   # pylint: disable=protected-access
-  return struct._elements().copy()
+  return list(struct._element_array)
   # pylint: enable=protected-access
 
 
-def iter_elements(struct: Struct) -> Iterator[Tuple[Optional[str], Any]]:
+def iter_elements(
+    struct: Struct) -> Any:  # Iterator[Tuple[Optional[str], _StructElement]]:
   """Returns an iterator over (name, value) pairs from a `Struct`.
 
   Modeled as a module function rather than a method of `Struct` to avoid
@@ -257,7 +230,7 @@ def iter_elements(struct: Struct) -> Iterator[Tuple[Optional[str], Any]]:
   """
   py_typecheck.check_type(struct, Struct)
   # pylint: disable=protected-access
-  return iter(struct._elements())
+  return iter(struct._element_array)
   # pylint: enable=protected-access
 
 
@@ -375,14 +348,12 @@ def pack_sequence_as(structure, flat_sequence: List[Any]):
     """Pack a leaf element or recurvisely iterate over an `Struct`."""
     if not isinstance(structure, Struct):
       # Ensure that our leaf values are not structures.
-      if (isinstance(structure,
-                     (list, dict)) or py_typecheck.is_named_tuple(structure) or
+      if (isinstance(structure, collections.abc.Collection) or
+          py_typecheck.is_named_tuple(structure) or
           py_typecheck.is_attrs(structure)):
         raise TypeError(
-            'Cannot pack sequence into type {!s}, only structures of '
-            '`Struct` are supported, found a structure with types '
-            '{!s}).'.format(type(structure), structure))
-
+            f'Cannot pack sequence into type {type(structure)}, only '
+            f'structures of `Struct` are supported')
       return flat_sequence[position], position + 1
     else:
       elements = []
@@ -391,7 +362,12 @@ def pack_sequence_as(structure, flat_sequence: List[Any]):
         elements.append((k, packed_v))
       return Struct(elements), position
 
-  result, _ = _pack(structure, flat_sequence, 0)
+  try:
+    result, _ = _pack(structure, flat_sequence, 0)
+  except TypeError as e:
+    raise TypeError(
+        'Cannot pack sequence as `Struct` that contains non-`Struct`'
+        'python containers.') from e
   # Note: trailing elements are currently ignored.
   return result
 
@@ -412,11 +388,9 @@ def is_same_structure(a: Struct, b: Struct) -> bool:
   Raises:
     TypeError: if `a` or `b` are not of type `Struct`.
   """
-  elems_a = to_elements(a)
-  elems_b = to_elements(b)
-  if len(elems_a) != len(elems_b):
+  if len(a) != len(b):
     return False
-  for elem_a, elem_b in zip(elems_a, elems_b):
+  for elem_a, elem_b in zip(iter_elements(a), iter_elements(b)):
     val_a = elem_a[1]
     val_b = elem_b[1]
     if elem_a[0] != elem_b[0]:
@@ -535,7 +509,7 @@ def from_container(value: Any, recursive=False) -> Struct:
       else:
         return Struct(items)
     elif isinstance(value, dict):
-      items = sorted(list(value.items()))
+      items = sorted(value.items())
       if recursive:
         return Struct((k, _convert(v, True)) for k, v in items)
       else:
@@ -613,8 +587,9 @@ def has_field(structure: Struct, field: str) -> bool:
   return field in names
 
 
+@functools.cache
 def name_to_index_map(structure: Struct) -> Dict[str, int]:
-  """Returns map from names in `structure` to their indices.
+  """Returns dict from names in `structure` to their indices.
 
   Args:
     structure: An instance of `Struct`.
@@ -623,7 +598,13 @@ def name_to_index_map(structure: Struct) -> Dict[str, int]:
     Mapping from names in `structure` to their indices.
   """
   py_typecheck.check_type(structure, Struct)
-  return structure._name_to_index  # pylint: disable=protected-access
+  # pylint: disable=protected-access
+  return {
+      key: i
+      for i, (key, value) in enumerate(structure._element_array)
+      if key is not None
+  }
+  # pylint: enable=protected-access
 
 
 def update_struct(structure, **kwargs):
