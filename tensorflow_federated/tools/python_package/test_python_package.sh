@@ -71,6 +71,8 @@ main() {
   # Test pip package
   pip install --upgrade "${package}"
   pip freeze
+
+  python -c "import tensorflow_federated as tff; print('Make sure this is the new TFF version: ', tff.__version__)"
   python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"
 
   # Cleanup
