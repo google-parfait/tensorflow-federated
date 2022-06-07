@@ -35,7 +35,7 @@ The TFF API that that is *not* exposed in the TFF
 #### TFF Python package
 
 The Python [package](https://pypi.org/project/tensorflow-federated/) distributed
-on [PyPI](https://pypi.org).
+on https://pypi.org.
 
 Please be aware, the Python package contains both
 [public TFF API](#public-tff-api) and [private TFF API](#private-tff-api) and it

@@ -56,7 +56,7 @@ information on using pull requests.
 
 ### Coding Style
 
-*   Fromat your changes.
+#### Fromat your changes
 
     *   Install [yapf](https://pypi.org/project/yapf/).
 
@@ -68,7 +68,7 @@ information on using pull requests.
         | xargs yapf --in-place
     ```
 
-*   Lint your changes.
+#### Lint your changes
 
     *   Install [pylint](https://pypi.org/project/pylint/).
 
