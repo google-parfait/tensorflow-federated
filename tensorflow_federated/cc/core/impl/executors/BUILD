@@ -3,7 +3,7 @@ load("@rules_python//python:defs.bzl", "py_binary")
 
 package(default_visibility = [
     ":executors_packages",
-    "//tensorflow_federated/cc/core/impl:impl_visibility",
+    "//tensorflow_federated/cc/core/impl:impl_users",
     "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stacks_packages",
 ])
 

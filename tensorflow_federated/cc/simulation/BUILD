@@ -2,11 +2,11 @@ load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_binary_with_tf_deps"
 
 package(default_visibility = [
     ":simulation_packages",
-    ":simulation_visibility",
+    ":simulation_users",
 ])
 
 package_group(
-    name = "simulation_visibility",
+    name = "simulation_users",
     includes = [
         "//tensorflow_federated/python/simulation:simulation_packages",
         "//tensorflow_federated/python/tests:tests_packages",

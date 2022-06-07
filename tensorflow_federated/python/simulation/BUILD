@@ -2,7 +2,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":simulation_packages",
-    ":simulation_visibility",
+    ":simulation_users",
 ])
 
 package_group(
@@ -11,7 +11,7 @@ package_group(
 )
 
 package_group(
-    name = "simulation_visibility",
+    name = "simulation_users",
     includes = ["//tensorflow_federated/tools:tools_packages"],
 )
 

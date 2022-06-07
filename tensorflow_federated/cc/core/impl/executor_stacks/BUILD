@@ -2,7 +2,7 @@ load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_test_with_tf_deps", 
 
 package(default_visibility = [
     ":executor_stacks_packages",
-    "//tensorflow_federated/cc/core/impl:impl_visibility",
+    "//tensorflow_federated/cc/core/impl:impl_users",
 ])
 
 package_group(

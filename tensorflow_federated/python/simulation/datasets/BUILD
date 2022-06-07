@@ -2,7 +2,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":datasets_packages",
-    "//tensorflow_federated/python/simulation:simulation_visibility",
+    "//tensorflow_federated/python/simulation:simulation_users",
     "//tensorflow_federated/python/simulation/baselines:baselines_packages",
 ])
 

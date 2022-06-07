@@ -6,7 +6,7 @@ package(default_visibility = [
     "//tensorflow_federated/python/learning/framework:framework_packages",
     "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
     "//tensorflow_federated/python/learning/templates:templates_packages",
-    "//tensorflow_federated/python/learning:learning_visibility",
+    "//tensorflow_federated/python/learning:learning_users",
 
     # TODO(b/151441025): This visibility is temporary and can be removed once
     # the circular dependency between `learning` and `optimizers` is removed.

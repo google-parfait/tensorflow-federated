@@ -2,7 +2,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":templates_packages",
-    "//tensorflow_federated/python/learning:learning_visibility",
+    "//tensorflow_federated/python/learning:learning_users",
     "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
 ])
 

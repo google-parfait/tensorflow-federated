@@ -2,7 +2,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":shakespeare_packages",
-    "//tensorflow_federated/python/simulation:simulation_visibility",
+    "//tensorflow_federated/python/simulation:simulation_users",
 ])
 
 package_group(

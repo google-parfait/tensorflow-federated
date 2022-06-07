@@ -2,7 +2,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":native_packages",
-    "//tensorflow_federated/python/core:core_visibility",
+    "//tensorflow_federated/python/core:core_users",
 
     # TODO(b/193543632): Remove this visibility once C++ execution is fully
     # supported in OSS.

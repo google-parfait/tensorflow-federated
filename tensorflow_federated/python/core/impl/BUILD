@@ -8,7 +8,7 @@ package_group(
 )
 
 package_group(
-    name = "impl_visibility",
+    name = "impl_users",
     includes = [
         "//tensorflow_federated/python/aggregators:aggregators_packages",
         "//tensorflow_federated/python/analytics:analytics_packages",

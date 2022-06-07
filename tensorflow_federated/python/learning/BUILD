@@ -3,7 +3,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":learning_packages",
-    ":learning_visibility",
+    ":learning_users",
 ])
 
 package_group(
@@ -12,7 +12,7 @@ package_group(
 )
 
 package_group(
-    name = "learning_visibility",
+    name = "learning_users",
     includes = ["//tensorflow_federated/python/simulation:simulation_packages"],
 )
 

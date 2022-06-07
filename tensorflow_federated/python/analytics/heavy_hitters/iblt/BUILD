@@ -2,7 +2,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":iblt_packages",
-    "//tensorflow_federated/python/analytics:analytics_visibility",
+    "//tensorflow_federated/python/analytics:analytics_users",
 
     # Python package namespace
     "//tensorflow_federated/python/analytics:__pkg__",

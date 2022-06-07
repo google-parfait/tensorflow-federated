@@ -9,7 +9,7 @@ package_group(
 )
 
 package_group(
-    name = "impl_visibility",
+    name = "impl_users",
     includes = ["//tensorflow_federated/cc/simulation:simulation_packages"],
 )
 
