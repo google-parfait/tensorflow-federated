@@ -1,0 +1,46 @@
+computation_1:
+
+(arg -> (let
+  y=a,
+  z=b
+ in <
+  (let
+    v=<
+      (let
+        t=c
+       in d),
+      (let
+        u=e
+       in f)
+    >[0]
+   in g),
+  (let
+    x=h
+   in (let
+    w=i
+   in j))
+>))(k)
+
+computation_2:
+
+(arg -> (let
+  y=a,
+  z=b
+ in <
+  (let
+    v=<
+      (let
+        t=c
+       in d),
+      (let
+        u=e
+       in f)
+    >[0]
+   in g),
+  (let
+    x=h
+   in (let
+    w=i
+   in j))
+>))(k)
+

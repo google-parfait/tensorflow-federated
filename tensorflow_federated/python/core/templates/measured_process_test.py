@@ -18,9 +18,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import golden
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import compiler_test_utils
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -275,28 +273,6 @@ def _create_test_iterative_process(state_type, state_init):
       next_fn=next_fn)
 
 
-# Name the compiled computations to avoid the issue that the TF graphs being
-# generated are different at HEAD vs in OSS, resulting in different hash values
-# for the computation name which fail to compare.
-# TODO(b/234016763): Extend `golden` to be able to take Computation arguments
-# directly, and call this method on them.
-def _name_compiled_computations(
-    tree: building_blocks.ComputationBuildingBlock
-) -> building_blocks.ComputationBuildingBlock:
-  counter = 1
-
-  def _transform(building_block):
-    nonlocal counter
-    if building_block.is_compiled_computation():
-      new_name = str(counter)
-      counter += 1
-      return building_blocks.CompiledComputation(
-          proto=building_block.proto, name=new_name), True
-    return building_block, False
-
-  return transformation_utils.transform_postorder(tree, _transform)[0]
-
-
 class MeasuredProcessCompositionComputationTest(parameterized.TestCase):
 
   @parameterized.named_parameters([
@@ -394,15 +370,11 @@ class MeasuredProcessCompositionASTTest(absltest.TestCase):
         sum=_create_test_measured_process_sum(tf.int32, 0, tf.int32))
     composite_process = measured_process.chain_measured_processes(
         measured_processes)
-
-    actual_initialize_ast = _name_compiled_computations(
-        composite_process.initialize.to_building_block())
-    actual_next_ast = _name_compiled_computations(
-        composite_process.next.to_building_block())
-    golden.check_string(
-        'composition_with_measured_processes.expected',
-        f'initialize:\n\n{actual_initialize_ast.formatted_representation()}\n\n'
-        f'next:\n\n{actual_next_ast.formatted_representation()}')
+    computations = collections.OrderedDict(
+        initialize=composite_process.initialize.to_building_block(),
+        next=composite_process.next.to_building_block())
+    compiler_test_utils.check_computations(
+        'composition_with_measured_processes.expected', computations)
 
   def test_composition_with_aggregation_processes(self):
     measured_processes = collections.OrderedDict(
@@ -410,15 +382,11 @@ class MeasuredProcessCompositionASTTest(absltest.TestCase):
         aggregate=_create_test_aggregation_process(tf.int32, 0, tf.int32))
     composite_process = measured_process.chain_measured_processes(
         measured_processes)
-
-    actual_initialize_ast = _name_compiled_computations(
-        composite_process.initialize.to_building_block())
-    actual_next_ast = _name_compiled_computations(
-        composite_process.next.to_building_block())
-    golden.check_string(
-        'composition_with_aggregation_processes.expected',
-        f'initialize:\n\n{actual_initialize_ast.formatted_representation()}\n\n'
-        f'next:\n\n{actual_next_ast.formatted_representation()}')
+    computations = collections.OrderedDict(
+        initialize=composite_process.initialize.to_building_block(),
+        next=composite_process.next.to_building_block())
+    compiler_test_utils.check_computations(
+        'composition_with_aggregation_processes.expected', computations)
 
 
 class MeasuredProcessConcatenationComputationTest(parameterized.TestCase):
@@ -508,15 +476,11 @@ class MeasuredProcessConcatenationASTTest(absltest.TestCase):
         sum=_create_test_measured_process_sum(tf.int32, 0, tf.int32))
     concatenated_process = measured_process.concatenate_measured_processes(
         measured_processes)
-
-    actual_initialize_ast = _name_compiled_computations(
-        concatenated_process.initialize.to_building_block())
-    actual_next_ast = _name_compiled_computations(
-        concatenated_process.next.to_building_block())
-    golden.check_string(
-        'concatenation_with_measured_processes.expected',
-        f'initialize:\n\n{actual_initialize_ast.formatted_representation()}\n\n'
-        f'next:\n\n{actual_next_ast.formatted_representation()}')
+    computations = collections.OrderedDict(
+        initialize=concatenated_process.initialize.to_building_block(),
+        next=concatenated_process.next.to_building_block())
+    compiler_test_utils.check_computations(
+        'concatenation_with_measured_processes.expected', computations)
 
   def test_concatenation_with_aggregation_processes(self):
     measured_processes = collections.OrderedDict(
@@ -524,15 +488,11 @@ class MeasuredProcessConcatenationASTTest(absltest.TestCase):
         aggregate=_create_test_aggregation_process(tf.int32, 0, tf.int32))
     concatenated_process = measured_process.concatenate_measured_processes(
         measured_processes)
-
-    actual_initialize_ast = _name_compiled_computations(
-        concatenated_process.initialize.to_building_block())
-    actual_next_ast = _name_compiled_computations(
-        concatenated_process.next.to_building_block())
-    golden.check_string(
-        'concatenation_with_aggregation_processes.expected',
-        f'initialize:\n\n{actual_initialize_ast.formatted_representation()}\n\n'
-        f'next:\n\n{actual_next_ast.formatted_representation()}')
+    computations = collections.OrderedDict(
+        initialize=concatenated_process.initialize.to_building_block(),
+        next=concatenated_process.next.to_building_block())
+    compiler_test_utils.check_computations(
+        'concatenation_with_aggregation_processes.expected', computations)
 
 
 if __name__ == '__main__':

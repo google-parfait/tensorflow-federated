@@ -539,3 +539,38 @@ py_test(
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
+
+py_library(
+    name = "compiler_test_utils",
+    testonly = True,
+    srcs = ["compiler_test_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":building_blocks",
+        ":transformation_utils",
+        "//tensorflow_federated/python/common_libs:golden",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "compiler_test_utils_test",
+    size = "small",
+    srcs = ["compiler_test_utils_test.py"],
+    args = [
+        "--golden",
+        "$(location compiler_test_utils_test_goldens/test_check_computations.expected)",
+    ],
+    data = [
+        "compiler_test_utils_test_goldens/test_check_computations.expected",
+    ],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":building_block_test_utils",
+        ":compiler_test_utils",
+        "//tensorflow_federated/python/common_libs:golden",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+    ],
+)
