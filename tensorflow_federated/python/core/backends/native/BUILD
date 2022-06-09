@@ -43,8 +43,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "@absl_py//absl/logging",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -59,8 +57,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -68,6 +64,9 @@ py_library(
     name = "cpp_execution_contexts",
     srcs = ["cpp_execution_contexts.py"],
     srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
         ":compiler",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
@@ -82,6 +81,9 @@ py_library(
     name = "cpp_execution_contexts_test",
     srcs = ["cpp_execution_contexts_test.py"],
     srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
         ":cpp_execution_contexts",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
@@ -92,8 +94,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -132,8 +132,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -153,7 +151,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:remote_executor",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/logging",
     ],
 )
 
@@ -168,8 +165,5 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

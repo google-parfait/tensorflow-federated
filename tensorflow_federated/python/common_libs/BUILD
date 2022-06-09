@@ -26,20 +26,14 @@ py_library(
     name = "async_utils",
     srcs = ["async_utils.py"],
     srcs_version = "PY3",
-    deps = [
-        ":tracing",
-        "@absl_py//absl/logging",
-    ],
+    deps = [":tracing"],
 )
 
 py_test(
     name = "async_utils_test",
     srcs = ["async_utils_test.py"],
     srcs_version = "PY3",
-    deps = [
-        ":async_utils",
-        "@absl_py//absl/testing:absltest",
-    ],
+    deps = [":async_utils"],
 )
 
 py_library(
@@ -55,11 +49,7 @@ py_test(
     srcs = ["named_containers_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":named_containers",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-    ],
+    deps = [":named_containers"],
 )
 
 py_library(
@@ -67,7 +57,6 @@ py_library(
     testonly = True,
     srcs = ["golden.py"],
     srcs_version = "PY3",
-    deps = ["@absl_py//absl/flags"],
 )
 
 py_test(
@@ -92,11 +81,7 @@ py_test(
     ],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":golden",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:flagsaver",
-    ],
+    deps = [":golden"],
 )
 
 py_library(
@@ -114,8 +99,6 @@ py_test(
     deps = [
         ":py_typecheck",
         ":structure",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -134,10 +117,7 @@ py_test(
     srcs = ["retrying_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":retrying",
-        "@absl_py//absl/testing:absltest",
-    ],
+    deps = [":retrying"],
 )
 
 py_library(
@@ -147,7 +127,6 @@ py_library(
     deps = [
         ":py_typecheck",
         "@com_google_protobuf//:protobuf_python",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -159,9 +138,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":serialization_utils",
-        "@absl_py//absl/testing:absltest",
         "@com_google_protobuf//:protobuf_python",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -169,10 +146,7 @@ py_library(
     name = "structure",
     srcs = ["structure.py"],
     srcs_version = "PY3",
-    deps = [
-        ":py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":py_typecheck"],
 )
 
 py_test(
@@ -181,21 +155,14 @@ py_test(
     srcs = ["structure_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":structure",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":structure"],
 )
 
 py_library(
     name = "tracing",
     srcs = ["tracing.py"],
     srcs_version = "PY3",
-    deps = [
-        ":py_typecheck",
-        "@absl_py//absl/logging",
-    ],
+    deps = [":py_typecheck"],
 )
 
 py_test(
@@ -204,9 +171,5 @@ py_test(
     srcs = ["tracing_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":tracing",
-        "@absl_py//absl/logging",
-        "@absl_py//absl/testing:absltest",
-    ],
+    deps = [":tracing"],
 )

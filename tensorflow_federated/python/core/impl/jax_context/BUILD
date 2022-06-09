@@ -44,7 +44,6 @@ py_test(
         ":jax_computation",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -64,7 +63,6 @@ py_test(
     deps = [
         ":jax_computation",
         ":jax_computation_context",
-        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -100,7 +98,5 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

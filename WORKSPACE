@@ -8,12 +8,6 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_r
 #
 
 git_repository(
-    name = "absl_py",
-    remote = "https://github.com/abseil/abseil-py.git",
-    tag = "v1.0.0",
-)
-
-git_repository(
     name = "bazel_skylib",
     remote = "https://github.com/bazelbuild/bazel-skylib.git",
     tag = "1.0.3",

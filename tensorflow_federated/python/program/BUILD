@@ -64,9 +64,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -79,8 +76,6 @@ py_library(
         ":program_state_manager",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@absl_py//absl/logging",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -94,9 +89,6 @@ py_test(
         ":file_utils",
         ":program_state_manager",
         ":program_test_utils",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -111,7 +103,6 @@ py_library(
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -125,9 +116,6 @@ py_test(
         ":file_utils",
         ":program_test_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -135,10 +123,7 @@ py_library(
     name = "file_utils",
     srcs = ["file_utils.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
 py_test(
@@ -146,12 +131,7 @@ py_test(
     srcs = ["file_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":file_utils",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":file_utils"],
 )
 
 py_library(
@@ -163,7 +143,6 @@ py_library(
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/logging",
     ],
 )
 
@@ -176,9 +155,6 @@ py_test(
         ":logging_release_manager",
         ":program_test_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -203,9 +179,6 @@ py_test(
         ":memory_release_manager",
         ":program_test_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -225,7 +198,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -243,9 +215,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -260,10 +229,7 @@ py_test(
     srcs = ["program_state_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":program_state_manager",
-        "@absl_py//absl/testing:absltest",
-    ],
+    deps = [":program_state_manager"],
 )
 
 py_library(
@@ -274,7 +240,6 @@ py_library(
     deps = [
         ":value_reference",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -296,9 +261,6 @@ py_test(
         ":program_test_utils",
         ":release_manager",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -316,9 +278,6 @@ py_test(
     deps = [
         ":program_test_utils",
         ":structure_utils",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -332,7 +291,6 @@ py_library(
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -345,9 +303,6 @@ py_test(
         ":program_test_utils",
         ":tensorboard_release_manager",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -369,8 +324,5 @@ py_test(
     deps = [
         ":program_test_utils",
         ":value_reference",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

@@ -25,7 +25,6 @@ py_library(
     name = "group_norm",
     srcs = ["group_norm.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_test(
@@ -34,31 +33,21 @@ py_test(
     srcs = ["group_norm_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":group_norm",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":group_norm"],
 )
 
 py_library(
     name = "mnist",
     srcs = ["mnist.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/learning/metrics:counters",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = ["//tensorflow_federated/python/learning/metrics:counters"],
 )
 
 py_library(
     name = "mobilenet_v2",
     srcs = ["mobilenet_v2.py"],
     srcs_version = "PY3",
-    deps = [
-        ":group_norm",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":group_norm"],
 )
 
 py_test(
@@ -66,20 +55,14 @@ py_test(
     srcs = ["mobilenet_v2_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":mobilenet_v2",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":mobilenet_v2"],
 )
 
 py_library(
     name = "resnet_models",
     srcs = ["resnet_models.py"],
     srcs_version = "PY3",
-    deps = [
-        ":group_norm",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":group_norm"],
 )
 
 py_test(
@@ -87,8 +70,5 @@ py_test(
     srcs = ["resnet_models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":resnet_models",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":resnet_models"],
 )

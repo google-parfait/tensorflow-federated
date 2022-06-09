@@ -37,10 +37,7 @@ py_library(
     name = "data_processing",
     srcs = ["data_processing.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
 py_test(
@@ -51,8 +48,6 @@ py_test(
     deps = [
         ":data_processing",
         ":histogram_test_utils",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -61,14 +56,12 @@ py_library(
     testonly = True,
     srcs = ["histogram_test_utils.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_library(
     name = "histogram_processing",
     srcs = ["histogram_processing.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_test(
@@ -79,8 +72,6 @@ py_test(
     deps = [
         ":histogram_processing",
         ":histogram_test_utils",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -95,9 +86,5 @@ py_test(
     srcs = ["differential_privacy_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":differential_privacy",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-    ],
+    deps = [":differential_privacy"],
 )

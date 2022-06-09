@@ -25,13 +25,15 @@ py_library(
     name = "cpp_executor_factory",
     srcs = ["cpp_executor_factory.py"],
     srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
         ":executor_stack_bindings",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/logging",
     ],
 )
 
@@ -40,26 +42,30 @@ py_test(
     srcs = ["cpp_executor_factory_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
         ":cpp_executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:absltest",
     ],
 )
 
 py_library(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.py"],
-    data = ["//tensorflow_federated/cc/core/impl/executor_stacks:executor_stack_bindings.so"],
     srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
+        "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stack_bindings",
         "//tensorflow_federated/python/core/impl/executors:data_conversions",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
         "@com_google_protobuf//:protobuf_python",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -68,12 +74,13 @@ py_test(
     srcs = ["executor_stack_bindings_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
         ":executor_stack_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -100,8 +107,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:sizing_executor",
         "//tensorflow_federated/python/core/impl/executors:thread_delegating_executor",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/logging",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -129,9 +134,6 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -150,8 +152,5 @@ py_test(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

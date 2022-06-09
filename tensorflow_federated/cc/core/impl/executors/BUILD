@@ -234,6 +234,9 @@ tff_cc_library_with_tf_deps(
 tff_pybind_extension_with_tf_deps(
     name = "executor_bindings",
     srcs = ["executor_bindings.cc"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     tf_deps = [
         "@org_tensorflow//tensorflow/c:tf_status",
         "@org_tensorflow//tensorflow/c:tf_tensor",
@@ -403,11 +406,6 @@ py_binary(
     srcs = ["make_reduce_lambda_test_graph.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        "@absl_py//absl:app",
-        "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
 )
 
 genrule(
@@ -427,11 +425,6 @@ py_binary(
     srcs = ["make_structural_reduce_test_graph.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        "@absl_py//absl:app",
-        "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
 )
 
 tff_cc_library_with_tf_deps(

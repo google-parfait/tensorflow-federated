@@ -18,6 +18,9 @@ licenses(["notice"])
 tff_pybind_extension_with_tf_deps(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.cc"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     tf_python_dependency = True,
     deps = [
         ":remote_stacks",
