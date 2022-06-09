@@ -163,9 +163,9 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('as_dataset', lambda x: x),
                                   ('as_list', list))
-  def test_serialize_deserialize_sequence_of_scalars(self, ds_repr_fn):
+  def test_serialize_deserialize_sequence_of_scalars(self, dataset_fn):
     ds = tf.data.Dataset.range(5).map(lambda x: x * 2)
-    ds_repr = ds_repr_fn(ds)
+    ds_repr = dataset_fn(ds)
     value_proto, value_type = value_serialization.serialize_value(
         ds_repr, computation_types.SequenceType(tf.int64))
     type_test_utils.assert_types_identical(
@@ -178,7 +178,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('as_dataset', lambda x: x),
                                   ('as_list', list))
   def test_serialize_deserialize_sequence_of_namedtuples_alphabetical_order(
-      self, ds_repr_fn):
+      self, dataset_fn):
     test_tuple_type = collections.namedtuple('TestTuple', ['a', 'b', 'c'])
 
     def make_test_tuple(x):
@@ -186,7 +186,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
           a=x * 2, b=tf.cast(x, tf.int32), c=tf.cast(x - 1, tf.float32))
 
     ds = tf.data.Dataset.range(5).map(make_test_tuple)
-    ds_repr = ds_repr_fn(ds)
+    ds_repr = dataset_fn(ds)
     element_type = computation_types.to_type(
         test_tuple_type(tf.int64, tf.int32, tf.float32))
     sequence_type = computation_types.SequenceType(element=element_type)
@@ -216,10 +216,10 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('as_dataset', lambda x: x),
                                   ('as_list', list))
-  def test_serialize_deserialize_sequence_of_tuples(self, ds_repr_fn):
+  def test_serialize_deserialize_sequence_of_tuples(self, dataset_fn):
     ds = tf.data.Dataset.range(5).map(
         lambda x: (x * 2, tf.cast(x, tf.int32), tf.cast(x - 1, tf.float32)))
-    ds_repr = ds_repr_fn(ds)
+    ds_repr = dataset_fn(ds)
     value_proto, value_type = value_serialization.serialize_value(
         ds_repr,
         computation_types.SequenceType(
@@ -235,8 +235,43 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('as_dataset', lambda x: x),
                                   ('as_list', list))
+  def test_serialize_deserialize_sequence_of_sparse_tensors(self, dataset_fn):
+    self.skipTest('b/235492749')
+    sparse_tensor = tf.SparseTensor([[0, i] for i in range(5)], list(range(5)),
+                                    [1, 10])
+    ds = tf.data.Dataset.from_tensor_slices(sparse_tensor)
+    ds_repr = dataset_fn(ds)
+    value_proto, value_type = value_serialization.serialize_value(
+        ds_repr, computation_types.SequenceType(element=ds.element_spec))
+    expected_type = computation_types.SequenceType(element=ds.element_spec)
+    type_test_utils.assert_types_identical(value_type, expected_type)
+    y, type_spec = value_serialization.deserialize_value(
+        value_proto, type_hint=expected_type)
+    # SparseTensor types lose the size of the first dimension, so check for
+    # assignability.
+    type_test_utils.assert_type_assignable_from(expected_type, type_spec)
+    deserialized_sparse_tensor = tf.concat(list(y), axis=0)
+    self.assertAllEqual(deserialized_sparse_tensor, sparse_tensor)
+
+  @parameterized.named_parameters(('as_dataset', lambda x: x),
+                                  ('as_list', list))
+  def test_serialize_deserialize_sequence_of_ragged_tensors(self, dataset_fn):
+    self.skipTest('b/235492749')
+    ds = tf.data.Dataset.from_tensor_slices(tf.strings.split(['a b c', 'd e']))
+    ds_repr = dataset_fn(ds)
+    value_proto, value_type = value_serialization.serialize_value(
+        ds_repr, computation_types.SequenceType(element=ds.element_spec))
+    expected_type = computation_types.SequenceType(ds.element_spec)
+    type_test_utils.assert_types_identical(value_type, expected_type)
+    _, type_spec = value_serialization.deserialize_value(value_proto)
+    # Only checking for equivalence, we don't have the Python container
+    # after deserialization.
+    type_test_utils.assert_types_equivalent(type_spec, expected_type)
+
+  @parameterized.named_parameters(('as_dataset', lambda x: x),
+                                  ('as_list', list))
   def test_serialize_deserialize_sequence_of_nested_structures(
-      self, ds_repr_fn):
+      self, dataset_fn):
 
     def _make_nested_tf_structure(x):
       return collections.OrderedDict(
@@ -248,7 +283,7 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
           ]))
 
     ds = tf.data.Dataset.range(5).map(_make_nested_tf_structure)
-    ds_repr = ds_repr_fn(ds)
+    ds_repr = dataset_fn(ds)
     element_type = computation_types.to_type(
         collections.OrderedDict(
             b=tf.int32,
