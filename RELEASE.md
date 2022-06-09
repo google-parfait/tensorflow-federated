@@ -1,3 +1,17 @@
+# Release 0.27.0
+
+## Major Features and Improvements
+
+*   New Colab notebook illustrating how to use `DataBackend` to load remote
+    datasets.
+*   Added a CreateDataDescriptor helper function.
+*   Added a worker binary serving the TFF-C++ executor service.
+
+## Bug Fixes
+
+*   Fixed bug with intermediate aggregation and controller failures, causing
+    hangs.
+
 # Release 0.26.0
 
 ## Major Features and Improvements
