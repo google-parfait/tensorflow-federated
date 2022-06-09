@@ -15,15 +15,20 @@
 
 import contextlib
 import functools
+import os
 
 from absl.testing import parameterized
 import portpicker
+import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.tests import remote_runtime_test_utils
 
 WORKER_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
+_TFF_SERVICE_BINARY_PATH = os.path.join(
+    tf.compat.v1.resource_loader.get_root_dir_with_all_resources(),
+    'third_party/tensorflow_federated/cc/simulation/worker_binary.so')
 
 
 def _create_local_mergeable_comp_context():
@@ -39,27 +44,28 @@ def create_sequence_op_supporting_context():
       compiler_fn=tff.backends.native.compiler.transform_to_native_form)  # pytype: disable=wrong-arg-types
 
 
+def create_localhost_cpp_context():
+  return tff.backends.native.create_localhost_server_cpp_execution_context(
+      _TFF_SERVICE_BINARY_PATH)
+
+
 def _get_all_contexts():
   """Returns a list containing a (name, context_fn) tuple for each context."""
   # pylint: disable=unnecessary-lambda
   # pyformat: disable
   return [
-      ('native_local_python',
-       lambda: tff.backends.native.create_local_python_execution_context()),
-      ('native_mergeable',
-       lambda: _create_local_mergeable_comp_context()),
+      ('native_local_python', tff.backends.native.create_local_python_execution_context),
+      ('native_localhost_cpp', create_localhost_cpp_context),
+      ('native_mergeable', _create_local_mergeable_comp_context),
       ('native_remote',
        lambda: remote_runtime_test_utils.create_localhost_remote_context(WORKER_PORTS),
        lambda: remote_runtime_test_utils.create_inprocess_worker_contexts(WORKER_PORTS)),
       ('native_remote_intermediate_aggregator',
        lambda: remote_runtime_test_utils.create_localhost_remote_context(AGGREGATOR_PORTS),
        lambda: remote_runtime_test_utils.create_inprocess_aggregator_contexts(WORKER_PORTS, AGGREGATOR_PORTS)),
-      ('native_sizing',
-       lambda: tff.backends.native.create_sizing_execution_context()),
-      ('native_thread_debug',
-       lambda: tff.backends.native.create_thread_debugging_execution_context()),
-      ('test_python',
-       lambda: tff.backends.test.create_test_python_execution_context()),
+      ('native_sizing', tff.backends.native.create_sizing_execution_context),
+      ('native_thread_debug', tff.backends.native.create_thread_debugging_execution_context),
+      ('test_python', tff.backends.test.create_test_python_execution_context),
   ]
   # pyformat: enable
   # pylint: enable=unnecessary-lambda
