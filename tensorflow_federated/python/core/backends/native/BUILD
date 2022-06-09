@@ -149,6 +149,10 @@ py_library(
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:remote_executor",
+        "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "@absl_py//absl/logging",
     ],
 )
 
@@ -159,6 +163,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":execution_contexts",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
         "@absl_py//absl/testing:absltest",
