@@ -15,7 +15,6 @@ sh_binary(
     name = "build_python_package",
     srcs = ["build_python_package.sh"],
     data = [
-        ":common",
         ":setup",
         "//tensorflow_federated",
         "//tensorflow_federated/proto",
@@ -38,11 +37,6 @@ sh_binary(
     ],
 )
 
-sh_binary(
-    name = "common",
-    srcs = ["common.sh"],
-)
-
 filegroup(
     name = "setup",
     srcs = ["setup.py"],
@@ -52,15 +46,9 @@ filegroup(
 sh_binary(
     name = "publish_python_package",
     srcs = ["publish_python_package.sh"],
-    data = [
-        ":common",
-    ],
 )
 
 sh_binary(
     name = "test_python_package",
     srcs = ["test_python_package.sh"],
-    data = [
-        ":common",
-    ],
 )

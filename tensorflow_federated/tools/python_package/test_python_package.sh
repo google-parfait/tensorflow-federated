@@ -16,10 +16,6 @@
 # Tool to test the TensorFlow Federated pip package.
 set -e
 
-script="$(readlink -f "$0")"
-script_dir="$(dirname "${script}")"
-source "${script_dir}/common.sh"
-
 usage() {
   local script_name=$(basename "${0}")
   local options=(
@@ -31,7 +27,7 @@ usage() {
 }
 
 main() {
-  # Parse arguments
+  # Parse the arguments.
   local package=""
 
   while [[ "$#" -gt 0 ]]; do
@@ -42,40 +38,39 @@ main() {
         shift
         ;;
       *)
-        error_unrecognized "${option}"
+        echo "error: unrecognized option '${option}'" 1>&2
         usage
         ;;
     esac
   done
 
   if [[ -z "${package}" ]]; then
-    error_required "--package"
+    echo "error: required option `--package`" 1>&2
     usage
   elif [[ ! -f "${package}" ]]; then
-    error_file_does_not_exist "${package}"
+    echo "error: the file '${package}' does not exist" 1>&2
     usage
   fi
 
-  # Create working directory
+  # Create a working directory.
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
   pushd "${temp_dir}"
 
-  # Create a virtual environment
+  # Create a Python environment.
   python3.9 -m venv "venv"
   source "venv/bin/activate"
   python --version
   pip install --upgrade pip
   pip --version
 
-  # Test pip package
+  # Test the Python package.
   pip install --upgrade "${package}"
   pip freeze
-
-  python -c "import tensorflow_federated as tff; print('Make sure this is the new TFF version: ', tff.__version__)"
   python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"
+  python -c "import tensorflow_federated as tff; print(tff.__version__)"
 
-  # Cleanup
+  # Cleanup.
   deactivate
   popd
 }

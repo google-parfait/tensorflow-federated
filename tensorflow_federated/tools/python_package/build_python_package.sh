@@ -16,10 +16,6 @@
 # Tool to build the TensorFlow Federated pip package.
 set -e
 
-script="$(readlink -f "$0")"
-script_dir="$(dirname "${script}")"
-source "${script_dir}/common.sh"
-
 usage() {
   local script_name=$(basename "${0}")
   local options=(
@@ -31,7 +27,7 @@ usage() {
 }
 
 main() {
-  # Parse arguments
+  # Parse the arguments.
   local output_dir=""
 
   while [[ "$#" -gt 0 ]]; do
@@ -42,40 +38,40 @@ main() {
         shift
         ;;
       *)
-        error_unrecognized "${option}"
+        echo "error: unrecognized option '${option}'" 1>&2
         usage
         ;;
     esac
   done
 
   if [[ -z "${output_dir}" ]]; then
-    error_required "--output_dir"
+    echo "error: required option `--output_dir`" 1>&2
     usage
   elif [[ ! -d "${output_dir}" ]]; then
-    error_directory_does_not_exist "${output_dir}"
+    echo "error: the directory '${output_dir}' does not exist" 1>&2
     usage
   fi
 
-  # Create working directory
+  # Create a working directory.
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
   cp -LR "tensorflow_federated" "${temp_dir}"
   pushd "${temp_dir}"
 
-  # Create a virtual environment
+  # Create a Python environment.
   python3.9 -m venv "venv"
   source "venv/bin/activate"
   python --version
   pip install --upgrade pip
   pip --version
 
-  # Build pip package
+  # Build the Python package.
   pip install --upgrade setuptools wheel
   python "tensorflow_federated/tools/python_package/setup.py" bdist_wheel \
       --universal
   cp "${temp_dir}/dist/"* "${output_dir}"
 
-  # Cleanup
+  # Cleanup.
   deactivate
   popd
 }
