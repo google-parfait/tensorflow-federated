@@ -67,6 +67,38 @@ def build_whimsy_computation_with_before_aggregation_work(
   return aggregation_comp
 
 
+def build_whimsy_computation_with_false_aggregation_dependence(
+    server_arg_type, clients_arg_type):
+
+  @tensorflow_computation.tf_computation(clients_arg_type.member)
+  def compute_tuple_sum(x):
+    return x[0] + x[1]
+
+  @tensorflow_computation.tf_computation(server_arg_type.member,
+                                         clients_arg_type.member[0])
+  def compute_sum(x, y):
+    return x + y
+
+  @federated_computation.federated_computation
+  def package_args_as_tuple(x, y):
+    return [x, y]
+
+  @federated_computation.federated_computation(server_arg_type,
+                                               clients_arg_type)
+  def aggregation_comp(server_arg, client_arg):
+    client_sums = intrinsics.federated_map(compute_tuple_sum, client_arg)
+    summed_client_value = intrinsics.federated_sum(client_sums)
+    broadcast_sum = intrinsics.federated_broadcast(summed_client_value)
+    # Adding a function call here requires normalization into CDF before
+    # checking the aggregation-dependence condition.
+    client_tuple = package_args_as_tuple(client_sums, broadcast_sum)
+    summed_client_value = intrinsics.federated_sum(client_tuple[0])
+    return intrinsics.federated_map(compute_sum,
+                                    (server_arg, summed_client_value))
+
+  return aggregation_comp
+
+
 @tensorflow_computation.tf_computation(tf.int32, tf.int32)
 def tf_multiply_int(x, y):
   return x * y
@@ -206,6 +238,16 @@ class MergeableCompCompilerTest(absltest.TestCase):
 
   def test_compiles_computation_with_before_aggregation_work(self):
     incoming_comp = build_whimsy_computation_with_before_aggregation_work(
+        computation_types.at_server(tf.int32),
+        computation_types.at_clients([tf.int32, tf.int32]))
+    mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(
+        incoming_comp)
+
+    self.assertIsInstance(mergeable_form,
+                          mergeable_comp_execution_context.MergeableCompForm)
+
+  def test_compiles_computation_with_false_aggregation_dependence(self):
+    incoming_comp = build_whimsy_computation_with_false_aggregation_dependence(
         computation_types.at_server(tf.int32),
         computation_types.at_clients([tf.int32, tf.int32]))
     mergeable_form = mergeable_comp_compiler.compile_to_mergeable_comp_form(

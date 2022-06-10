@@ -137,14 +137,16 @@ def compile_to_mergeable_comp_form(
   lam = _ensure_lambda(building_block)
   lowered_bb, _ = tree_transformations.replace_intrinsics_with_bodies(lam)
 
-  tree_analysis.check_aggregate_not_dependent_on_aggregate(lowered_bb)
-
   # We transform the body of this computation to easily preserve the top-level
   # lambda required by force-aligning.
   call_dominant_body_bb = transformations.to_call_dominant(lowered_bb.result)
   call_dominant_bb = building_blocks.Lambda(lowered_bb.parameter_name,
                                             lowered_bb.parameter_type,
                                             call_dominant_body_bb)
+
+  # This check should not throw false positives because we just ensured we are
+  # in call-dominant form.
+  tree_analysis.check_aggregate_not_dependent_on_aggregate(call_dominant_bb)
 
   before_agg, after_agg = transformations.force_align_and_split_by_intrinsics(
       call_dominant_bb,
