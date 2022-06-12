@@ -386,7 +386,6 @@ class _KerasModel(model_lib.Model):
   def get_metrics(self):
     return self._metrics
 
-  @tf.function
   def reset_metrics(self):
     for metric in self.get_metrics():
       metric.reset_state()
@@ -395,7 +394,6 @@ class _KerasModel(model_lib.Model):
   def input_spec(self):
     return self._input_spec
 
-  @tf.function
   def predict_on_batch(self, x, training=True):
     return self._keras_model(x, training=training)
 
@@ -452,11 +450,9 @@ class _KerasModel(model_lib.Model):
         predictions=predictions,
         num_examples=nrows(tf.nest.flatten(inputs)[0]))
 
-  @tf.function
   def forward_pass(self, batch_input, training=True):
     return self._forward_pass(batch_input, training=training)
 
-  @tf.function
   def report_local_unfinalized_metrics(
       self) -> OrderedDict[str, List[tf.Tensor]]:
     """Creates an `OrderedDict` of metric names to unfinalized values.
