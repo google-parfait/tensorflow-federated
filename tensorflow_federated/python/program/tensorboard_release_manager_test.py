@@ -122,17 +122,18 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
 
       self.assertEqual(len(mock_scalar.mock_calls), len(expected_calls))
       for call, expected_args in zip(mock_scalar.mock_calls, expected_calls):
-        _, actual_args, _ = call
-        actual_name, actual_value = actual_args
+        _, args, kwargs = call
+        actual_name, actual_value = args
         expected_name, expected_value = expected_args
         self.assertEqual(actual_name, expected_name)
         self.assertEqual(actual_value, expected_value)
+        self.assertEqual(kwargs, {'step': 1})
 
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('tensor_2d', tf.ones((2, 3)), [('', tf.ones((2, 3)))]),
-      ('numpy_2d', np.ones((2, 3)), [('', np.ones((2, 3)))]),
+      ('tensor_array', tf.ones([3], tf.int32), [('', tf.ones([3], tf.int32))]),
+      ('numpy_array', np.ones([3], np.int32), [('', np.ones([3], np.int32))]),
 
       # value references
       ('materializable_value_reference_sequence',
@@ -151,11 +152,12 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
 
       self.assertEqual(len(mock_histogram.mock_calls), len(expected_calls))
       for call, expected_args in zip(mock_histogram.mock_calls, expected_calls):
-        _, actual_args, _ = call
-        actual_name, actual_value = actual_args
+        _, args, kwargs = call
+        actual_name, actual_value = args
         expected_name, expected_value = expected_args
         self.assertEqual(actual_name, expected_name)
         self.assertAllEqual(actual_value, expected_value)
+        self.assertEqual(kwargs, {'step': 1})
 
   async def test_writes_value_scalar_and_histogram(self):
     summary_dir = self.create_tempdir()
@@ -165,10 +167,17 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     patched_scalar = mock.patch.object(tf.summary, 'scalar')
     patched_histogram = mock.patch.object(tf.summary, 'histogram')
     with patched_scalar as mock_scalar, patched_histogram as mock_histogram:
-      await release_mngr.release([1, tf.ones([1])], 1)
+      await release_mngr.release([1, tf.ones([3], tf.int32)], 1)
 
       mock_scalar.assert_called_once_with('0', 1, step=1)
-      mock_histogram.assert_called_once_with('1', tf.ones([1]), step=1)
+      self.assertLen(mock_histogram.mock_calls, 1)
+      call = mock_histogram.mock_calls[0]
+      _, args, kwargs = call
+      actual_name, actual_value = args
+      expected_name, expected_value = '1', tf.ones([3], tf.int32)
+      self.assertEqual(actual_name, expected_name)
+      self.assertAllEqual(actual_value, expected_value)
+      self.assertEqual(kwargs, {'step': 1})
 
   @parameterized.named_parameters(
       # materialized values
@@ -198,7 +207,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       ('0', 0),
       ('1', 1),
   )
-  async def test_does_not_raise_with_key(self, key):
+  async def test_does_not_raise_type_error_with_key(self, key):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=summary_dir)

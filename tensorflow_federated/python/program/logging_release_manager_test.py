@@ -37,13 +37,14 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
       ('str', 'a', 'a'),
       ('tensor_int', tf.constant(1), tf.constant(1)),
       ('tensor_str', tf.constant('a'), tf.constant('a')),
-      ('tensor_2d', tf.ones((2, 3)), tf.ones((2, 3))),
+      ('tensor_array', tf.ones([3], tf.int32), tf.ones([3], tf.int32)),
       ('numpy_int', np.int32(1), np.int32(1)),
-      ('numpy_2d', np.ones((2, 3)), np.ones((2, 3))),
+      ('numpy_array', np.ones([3], int), np.ones([3], int)),
 
       # value references
       ('materializable_value_reference_tensor',
-       program_test_utils.TestMaterializableValueReference(1), 1),
+       program_test_utils.TestMaterializableValueReference(1),
+       1),
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
@@ -90,19 +91,20 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
 
       mock_info.assert_called_once()
       call = mock_info.mock_calls[0]
-      _, args, _ = call
+      _, args, kwargs = call
       _, actual_value = args
       if isinstance(actual_value, tf.data.Dataset):
         actual_value = list(actual_value)
       if isinstance(expected_value, tf.data.Dataset):
         expected_value = list(expected_value)
       self.assertAllEqual(actual_value, expected_value)
+      self.assertEqual(kwargs, {})
 
   @parameterized.named_parameters(
       ('bool', True),
       ('int', 1),
       ('str', 'a'),
-      ('list', [True, 1, 'a']),
+      ('list', []),
   )
   async def test_release_logs_key(self, key):
     release_mngr = logging_release_manager.LoggingReleaseManager()
@@ -110,12 +112,7 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
     with mock.patch('absl.logging.info') as mock_info:
       await release_mngr.release(1, key)
 
-      mock_info.assert_called_once()
-      call = mock_info.mock_calls[0]
-      _, args, _ = call
-      _, actual_key, actual_value = args
-      self.assertEqual(actual_key, key)
-      self.assertEqual(actual_value, 1)
+      mock_info.assert_called_once_with(mock.ANY, key, 1)
 
 if __name__ == '__main__':
   absltest.main()

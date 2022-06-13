@@ -32,9 +32,9 @@ class FlattenWithNameTest(parameterized.TestCase, tf.test.TestCase):
       ('str', 'a', [('', 'a')]),
       ('tensor_int', tf.constant(1), [('', tf.constant(1))]),
       ('tensor_str', tf.constant('a'), [('', tf.constant('a'))]),
-      ('tensor_2d', tf.ones((2, 3)), [('', tf.ones((2, 3)))]),
+      ('tensor_array', tf.ones([3]), [('', tf.ones([3]))]),
       ('numpy_int', np.int32(1), [('', np.int32(1))]),
-      ('numpy_2d', np.ones((2, 3)), [('', np.ones((2, 3)))]),
+      ('numpy_array', np.ones([3]), [('', np.ones([3]))]),
 
       # value references
       ('materializable_value_reference_tensor',

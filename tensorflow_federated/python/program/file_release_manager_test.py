@@ -534,7 +534,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
         return_value=future) as mock_remove_values_greater_than:
       await release_mngr.release({'a': 11, 'b': 21}, 1)
 
-      mock_remove_values_greater_than.assert_called_with(0)
+      mock_remove_values_greater_than.assert_called_once_with(0)
 
     self.assertEqual(release_mngr._latest_key, 1)
 
@@ -558,17 +558,11 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
         return_value=future) as mock_remove_values_greater_than:
       await release_mngr.release({'a': 11, 'b': 21}, 1)
 
-      mock_remove_values_greater_than.assert_called_with(0)
+      mock_remove_values_greater_than.assert_called_once_with(0)
 
     self.assertEqual(release_mngr._latest_key, 1)
 
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('empty', {}, 1),
-      ('more_fields', {'a': 10, 'b': 20}, 1),
-  )
-  # pyformat: enable
-  async def test_calls_append_value(self, value, key):
+  async def test_calls_append_value(self):
     file_path = self.create_tempfile()
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
@@ -579,29 +573,13 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     with mock.patch.object(
         release_mngr, '_append_value',
         return_value=future) as mock_append_value:
-      await release_mngr.release(value, key)
+      await release_mngr.release({'a': 11, 'b': 21}, 1)
 
-      mock_append_value.assert_called_once()
-      call = mock_append_value.mock_calls[0]
-      _, args, _ = call
-      actual_value, = args
-      expected_fieldnames = ['key']
-      expected_fieldnames.extend(
-          [x for x in value.keys() if x not in expected_fieldnames])
-      expected_value = {name: '' for name in expected_fieldnames}
-      expected_value.update({'key': key})
-      expected_value.update(value)
-      self.assertEqual(actual_value, expected_value)
+      mock_append_value.assert_called_once_with({'key': 1, 'a': 11, 'b': 21})
 
-    self.assertEqual(release_mngr._latest_key, key)
+    self.assertEqual(release_mngr._latest_key, 1)
 
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('empty', {}, 1),
-      ('more_fields', {'a': 10, 'b': 20}, 1),
-  )
-  # pyformat: enable
-  async def test_calls_write_value(self, value, key):
+  async def test_calls_write_value(self):
     file_path = self.create_tempfile()
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
@@ -611,21 +589,11 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     future.set_result(None)
     with mock.patch.object(
         release_mngr, '_write_value', return_value=future) as mock_write_value:
-      await release_mngr.release(value, key)
+      await release_mngr.release({'a': 11, 'b': 21}, 1)
 
-      mock_write_value.assert_called_once()
-      call = mock_write_value.mock_calls[0]
-      _, args, _ = call
-      actual_value, = args
-      expected_fieldnames = ['key']
-      expected_fieldnames.extend(
-          [x for x in value.keys() if x not in expected_fieldnames])
-      expected_value = {name: '' for name in expected_fieldnames}
-      expected_value.update({'key': key})
-      expected_value.update(value)
-      self.assertEqual(actual_value, expected_value)
+      mock_write_value.assert_called_once_with({'key': 1, 'a': 11, 'b': 21})
 
-    self.assertEqual(release_mngr._latest_key, key)
+    self.assertEqual(release_mngr._latest_key, 1)
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -636,13 +604,9 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
       ('str', 'a', [{'key': '1', '': 'a'}]),
       ('tensor_int', tf.constant(1), [{'key': '1', '': '1'}]),
       ('tensor_str', tf.constant('a'), [{'key': '1', '': 'b\'a\''}]),
-      ('tensor_2d',
-       tf.ones((2, 3)),
-       [{'key': '1', '': '[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]'}]),
+      ('tensor_array', tf.ones([3], tf.int32), [{'key': '1', '': '[1, 1, 1]'}]),
       ('numpy_int', np.int32(1), [{'key': '1', '': '1'}]),
-      ('numpy_2d',
-       np.ones((2, 3)),
-       [{'key': '1', '': '[[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]'}]),
+      ('numpy_array', np.ones([3], int), [{'key': '1', '': '[1, 1, 1]'}]),
 
       # value references
       ('materializable_value_reference_tensor',
@@ -696,6 +660,22 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
+      ('negative_1', -1),
+      ('0', 0),
+      ('1', 1),
+  )
+  async def test_does_not_raise_type_error_with_key(self, key):
+    file_path = self.create_tempfile()
+    os.remove(file_path)
+    release_mngr = file_release_manager.CSVFileReleaseManager(
+        file_path=file_path)
+
+    try:
+      await release_mngr.release(1, key)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
+
+  @parameterized.named_parameters(
       ('none', None),
       ('str', 'a'),
       ('list', []),
@@ -707,7 +687,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
         file_path=file_path)
 
     with self.assertRaises(TypeError):
-      await release_mngr.release({}, key)
+      await release_mngr.release(1, key)
 
 
 class SavedModelFileReleaseManagerInitTest(parameterized.TestCase):
@@ -802,9 +782,9 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       ('str', 'a', ['a']),
       ('tensor_int', tf.constant(1), [tf.constant(1)]),
       ('tensor_str', tf.constant('a'), [tf.constant('a')]),
-      ('tensor_2d', tf.ones((2, 3)), [tf.ones((2, 3))]),
+      ('tensor_array', tf.ones([3], tf.int32), [tf.ones([3])]),
       ('numpy_int', np.int32(1), [np.int32(1)]),
-      ('numpy_2d', np.ones((2, 3)), [np.ones((2, 3))]),
+      ('numpy_array', np.ones([3], int), [np.ones([3], int)]),
 
       # value references
       ('materializable_value_reference_tensor',
@@ -851,8 +831,6 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
         root_dir=root_dir, prefix='a_')
 
-    await release_mngr.release(value, 1)
-
     future = asyncio.Future()
     future.set_result(None)
     with mock.patch.object(
@@ -862,8 +840,8 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
 
       mock_write_saved_model.assert_called_once()
       call = mock_write_saved_model.mock_calls[0]
-      _, args, _ = call
-      actual_value, _ = args
+      _, args, kwargs = call
+      actual_value, actual_path = args
 
       def _normalize(value: Any) -> Any:
         if isinstance(value, tf.data.Dataset):
@@ -873,6 +851,24 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       actual_value = tree.map_structure(_normalize, actual_value)
       expected_value = tree.map_structure(_normalize, expected_value)
       self.assertAllEqual(actual_value, expected_value)
+      expected_path = os.path.join(root_dir, 'a_1')
+      self.assertEqual(actual_path, expected_path)
+      self.assertEqual(kwargs, {'overwrite': True})
+
+  @parameterized.named_parameters(
+      ('negative_1', -1),
+      ('0', 0),
+      ('1', 1),
+  )
+  async def test_does_not_raise_type_error_with_key(self, key):
+    root_dir = self.create_tempdir()
+    release_mngr = file_release_manager.SavedModelFileReleaseManager(
+        root_dir=root_dir, prefix='a_')
+
+    try:
+      await release_mngr.release(1, key)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import unittest
 
 from absl.testing import absltest
@@ -37,13 +36,14 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
       ('str', 'a', 'a'),
       ('tensor_int', tf.constant(1), tf.constant(1)),
       ('tensor_str', tf.constant('a'), tf.constant('a')),
-      ('tensor_2d', tf.ones((2, 3)), tf.ones((2, 3))),
+      ('tensor_array', tf.ones([3], tf.int32), tf.ones([3], tf.int32)),
       ('numpy_int', np.int32(1), np.int32(1)),
-      ('numpy_2d', np.ones((2, 3)), np.ones((2, 3))),
+      ('numpy_array', np.ones([3], int), np.ones([3], int)),
 
       # value references
       ('materializable_value_reference_tensor',
-       program_test_utils.TestMaterializableValueReference(1), 1),
+       program_test_utils.TestMaterializableValueReference(1),
+       1),
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
@@ -101,18 +101,16 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
       ('int', 1),
       ('str', 'a'),
   )
-  async def test_release_saves_key(self, key):
+  async def test_release_does_not_raise_type_error_with_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
-    await release_mngr.release(1, key)
-
-    self.assertLen(release_mngr._values, 1)
-    self.assertIn(key, release_mngr._values)
+    try:
+      await release_mngr.release(1, key)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
 
   @parameterized.named_parameters(
       ('list', []),
-      ('dict', {}),
-      ('orderd_dict', collections.OrderedDict()),
   )
   async def test_release_raises_type_error_with_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
