@@ -43,7 +43,7 @@ class InternalError(Exception):
   """An error internal to TFF. File a bug report."""
 
 
-def _check_finalizers_matches_unfinalized_metrics(
+def check_finalizers_matches_unfinalized_metrics(
     metric_finalizers: model_lib.MetricFinalizersType,
     local_unfinalized_metrics_type: computation_types.StructWithPythonType):
   """Verifies that compatibility of variables and finalizers.
@@ -79,7 +79,7 @@ def _check_finalizers_matches_unfinalized_metrics(
         f'{metric_names_in_local_unfinalized_metrics}.')
 
 
-def _check_metric_finalizers(metric_finalizers: model_lib.MetricFinalizersType):
+def check_metric_finalizers(metric_finalizers: model_lib.MetricFinalizersType):
   """Validates `metric_finalizers` raising error on failure.
 
   Args:
@@ -96,7 +96,7 @@ def _check_metric_finalizers(metric_finalizers: model_lib.MetricFinalizersType):
     py_typecheck.check_callable(value, f'metric_finalizers value {value}')
 
 
-def _check_local_unfinalzied_metrics_type(
+def check_local_unfinalzied_metrics_type(
     local_unfinalized_metrics_type: computation_types.StructWithPythonType):
   """Validates `local_unfinalized_metrics_type` raising error on failure.
 
@@ -162,10 +162,10 @@ def sum_then_finalize(
     ValueError: If the keys (i.e., metric names) in `metric_finalizers` are not
       the same as those expected by `local_unfinalized_metrics_type`.
   """
-  _check_metric_finalizers(metric_finalizers)
-  _check_local_unfinalzied_metrics_type(local_unfinalized_metrics_type)
-  _check_finalizers_matches_unfinalized_metrics(metric_finalizers,
-                                                local_unfinalized_metrics_type)
+  check_metric_finalizers(metric_finalizers)
+  check_local_unfinalzied_metrics_type(local_unfinalized_metrics_type)
+  check_finalizers_matches_unfinalized_metrics(metric_finalizers,
+                                               local_unfinalized_metrics_type)
 
   @federated_computation.federated_computation(
       computation_types.at_clients(local_unfinalized_metrics_type))
@@ -397,10 +397,10 @@ def secure_sum_then_finalize(
     ValueError: If the keys (i.e., metric names) in `metric_finalizers` are not
       the same as those expected by `local_unfinalized_metrics_type`.
   """
-  _check_metric_finalizers(metric_finalizers)
-  _check_local_unfinalzied_metrics_type(local_unfinalized_metrics_type)
-  _check_finalizers_matches_unfinalized_metrics(metric_finalizers,
-                                                local_unfinalized_metrics_type)
+  check_metric_finalizers(metric_finalizers)
+  check_local_unfinalzied_metrics_type(local_unfinalized_metrics_type)
+  check_finalizers_matches_unfinalized_metrics(metric_finalizers,
+                                               local_unfinalized_metrics_type)
 
   default_metric_value_ranges = create_default_secure_sum_quantization_ranges(
       local_unfinalized_metrics_type)
