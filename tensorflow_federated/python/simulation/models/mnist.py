@@ -14,6 +14,8 @@
 """An example of an MNIST model function for use with TensorFlow Federated."""
 
 import collections
+import random
+from typing import Type
 
 import tensorflow as tf
 
@@ -63,6 +65,22 @@ def keras_dataset_from_emnist(dataset):
   return dataset.map(map_fn)
 
 
+# TODO(b/235837441): Move this functionality to a more general location.
+class _DeterministicInitializer():
+  """Wrapper to produce different deterministic initialization values."""
+
+  def __init__(self, initializer_type: Type[tf.keras.initializers.Initializer],
+               base_seed: int):
+    self._initializer_type = initializer_type
+    if base_seed is None:
+      base_seed = random.randint(1, 1e9)
+    self._base_seed = base_seed
+
+  def __call__(self):
+    self._base_seed += 1
+    return self._initializer_type(seed=self._base_seed)
+
+
 def create_keras_model(compile_model=False):
   """Returns an instance of `tf.keras.Model` for use with the MNIST example.
 
@@ -80,7 +98,8 @@ def create_keras_model(compile_model=False):
   # TODO(b/120157713): Find a way to import this code.
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
-  initializer = tf.keras.initializers.RandomNormal(seed=0)
+  initializer = _DeterministicInitializer(
+      tf.keras.initializers.RandomNormal, base_seed=0)
   max_pool = tf.keras.layers.MaxPooling2D((2, 2), (2, 2),
                                           padding='same',
                                           data_format=data_format)
@@ -92,7 +111,7 @@ def create_keras_model(compile_model=False):
           padding='same',
           data_format=data_format,
           activation=tf.nn.relu,
-          kernel_initializer=initializer),
+          kernel_initializer=initializer()),
       max_pool,
       tf.keras.layers.Conv2D(
           64,
@@ -100,13 +119,13 @@ def create_keras_model(compile_model=False):
           padding='same',
           data_format=data_format,
           activation=tf.nn.relu,
-          kernel_initializer=initializer),
+          kernel_initializer=initializer()),
       max_pool,
       tf.keras.layers.Flatten(),
       tf.keras.layers.Dense(
-          1024, activation=tf.nn.relu, kernel_initializer=initializer),
+          1024, activation=tf.nn.relu, kernel_initializer=initializer()),
       tf.keras.layers.Dropout(0.4, seed=1),
-      tf.keras.layers.Dense(10, kernel_initializer=initializer),
+      tf.keras.layers.Dense(10, kernel_initializer=initializer()),
   ])
   if compile_model:
     model.compile(
