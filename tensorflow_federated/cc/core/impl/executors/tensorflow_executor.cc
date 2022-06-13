@@ -912,13 +912,13 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
                                 ParallelTasks& tasks) {
     switch (value.type()) {
       case ExecutorValue::ValueType::TENSOR: {
-        tasks.add_task([value, value_pb]() {
+        tasks.add_task([&value, value_pb]() {
           return SerializeTensorValue(value.tensor(), value_pb);
         });
         return absl::OkStatus();
       }
       case ExecutorValue::ValueType::SEQUENCE: {
-        tasks.add_task([value, value_pb]() {
+        tasks.add_task([&value, value_pb]() {
           return MaterializeSequence(value.sequence(),
                                      value_pb->mutable_sequence());
         });
