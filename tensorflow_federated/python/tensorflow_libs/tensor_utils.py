@@ -89,7 +89,6 @@ def to_odict(d):
   return collections.OrderedDict(sorted(items))
 
 
-@tf.function
 def zero_all_if_any_non_finite(structure):
   """Zeroes out all entries in input if any are not finite.
 
@@ -105,10 +104,14 @@ def zero_all_if_any_non_finite(structure):
     return (structure, tf.constant(0))
   flat_bools = [tf.reduce_all(tf.math.is_finite(t)) for t in flat]
   all_finite = functools.reduce(tf.logical_and, flat_bools)
-  if all_finite:
-    return (structure, tf.constant(0))
-  else:
-    return (tf.nest.map_structure(tf.zeros_like, structure), tf.constant(1))
+
+  def true_fn():
+    return structure, tf.constant(0)
+
+  def false_fn():
+    return tf.nest.map_structure(tf.zeros_like, structure), tf.constant(1)
+
+  return tf.cond(all_finite, true_fn=true_fn, false_fn=false_fn)
 
 
 def is_scalar(tensor):
