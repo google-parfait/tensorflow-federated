@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import os
 import os.path
 import shutil
@@ -554,11 +553,8 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_', keep_total=0)
 
-    future = asyncio.Future()
-    future.set_result(None)
-    with mock.patch.object(
-        file_utils, 'write_saved_model',
-        return_value=future) as mock_write_saved_model:
+    with mock.patch.object(file_utils,
+                           'write_saved_model') as mock_write_saved_model:
       await program_state_mngr.save(program_state, 1)
 
       mock_write_saved_model.assert_called_once()
@@ -583,11 +579,9 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_')
 
-    future = asyncio.Future()
-    future.set_result(None)
     with mock.patch.object(
-        program_state_mngr, '_remove_old_program_state',
-        return_value=future) as mock_remove_old_program_state:
+        program_state_mngr,
+        '_remove_old_program_state') as mock_remove_old_program_state:
       await program_state_mngr.save('state_1', 1)
 
       mock_remove_old_program_state.assert_called_once()

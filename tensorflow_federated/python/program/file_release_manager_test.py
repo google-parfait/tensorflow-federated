@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import csv
 import os
 import os.path
@@ -527,11 +526,9 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path)
 
-    future = asyncio.Future()
-    future.set_result(None)
     with mock.patch.object(
-        release_mngr, '_remove_values_greater_than',
-        return_value=future) as mock_remove_values_greater_than:
+        release_mngr,
+        '_remove_values_greater_than') as mock_remove_values_greater_than:
       await release_mngr.release({'a': 11, 'b': 21}, 1)
 
       mock_remove_values_greater_than.assert_called_once_with(0)
@@ -551,11 +548,9 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path)
 
-    future = asyncio.Future()
-    future.set_result(None)
     with mock.patch.object(
-        release_mngr, '_remove_values_greater_than',
-        return_value=future) as mock_remove_values_greater_than:
+        release_mngr,
+        '_remove_values_greater_than') as mock_remove_values_greater_than:
       await release_mngr.release({'a': 11, 'b': 21}, 1)
 
       mock_remove_values_greater_than.assert_called_once_with(0)
@@ -568,11 +563,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path, save_mode=file_release_manager.CSVSaveMode.APPEND)
 
-    future = asyncio.Future()
-    future.set_result(None)
-    with mock.patch.object(
-        release_mngr, '_append_value',
-        return_value=future) as mock_append_value:
+    with mock.patch.object(release_mngr, '_append_value') as mock_append_value:
       await release_mngr.release({'a': 11, 'b': 21}, 1)
 
       mock_append_value.assert_called_once_with({'key': 1, 'a': 11, 'b': 21})
@@ -585,10 +576,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path, save_mode=file_release_manager.CSVSaveMode.WRITE)
 
-    future = asyncio.Future()
-    future.set_result(None)
-    with mock.patch.object(
-        release_mngr, '_write_value', return_value=future) as mock_write_value:
+    with mock.patch.object(release_mngr, '_write_value') as mock_write_value:
       await release_mngr.release({'a': 11, 'b': 21}, 1)
 
       mock_write_value.assert_called_once_with({'key': 1, 'a': 11, 'b': 21})
@@ -831,11 +819,8 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
         root_dir=root_dir, prefix='a_')
 
-    future = asyncio.Future()
-    future.set_result(None)
-    with mock.patch.object(
-        file_utils, 'write_saved_model',
-        return_value=future) as mock_write_saved_model:
+    with mock.patch.object(file_utils,
+                           'write_saved_model') as mock_write_saved_model:
       await release_mngr.release(value, 1)
 
       mock_write_saved_model.assert_called_once()
