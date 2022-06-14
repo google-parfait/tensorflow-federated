@@ -26,7 +26,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_test_utils
-from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
@@ -469,24 +468,6 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('tf_function', create_test_functional_model),
       ('keras_model', create_test_keras_functional_model))
-  def test_construct_tff_model_from_functional_and_train(
-      self, functional_model_fn):
-    dataset = get_dataset()
-    functional_model = functional_model_fn(input_spec=dataset.element_spec)
-
-    def model_fn():
-      return functional.model_from_functional(functional_model)
-
-    training_process = federated_averaging.build_federated_averaging_process(
-        model_fn, lambda: tf.keras.optimizers.SGD(learning_rate=0.1))
-
-    state = training_process.initialize()
-    for _ in range(2):
-      state, _ = training_process.next(state, [dataset])
-
-  @parameterized.named_parameters(
-      ('tf_function', create_test_functional_model),
-      ('keras_model', create_test_keras_functional_model))
   def test_save_functional_model(self, model_fn):
     dataset = get_dataset()
     functional_model = model_fn(input_spec=dataset.element_spec)
@@ -524,16 +505,20 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('tf_function', create_test_functional_model),
       ('keras_model', create_test_keras_functional_model))
-  def test_convert_to_tff_model(self, model_fn):
+  def test_convert_loaded_model_to_tff_model_within_tf_computation(
+      self, model_fn):
     dataset = get_dataset()
     functional_model = model_fn(input_spec=dataset.element_spec)
+    path = self.get_temp_dir()
+    serialization.save_functional_model(functional_model, path)
+    loaded_model = serialization.load_functional_model(path)
 
     # The wrapped keras model can only be used inside a `tff.tf_computation`.
     @tensorflow_computation.tf_computation
     def _predict_on_batch(dataset):
-      tff_model = functional.model_from_functional(functional_model)
+      tff_model = functional.model_from_functional(loaded_model)
       example_batch = get_example_batch(dataset)
-      return tff_model.predict_on_batch(x=example_batch[0])
+      return tff_model.predict_on_batch(example_batch[0])
 
     self.assertAllClose(_predict_on_batch(dataset), [[0.]] * 5)
 
@@ -558,35 +543,6 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
           tff_model.forward_pass(batch_input=example_batch, training=training),
           model_lib.BatchOutput(
               loss=74.250, predictions=np.zeros(shape=[5, 1]), num_examples=5))
-
-  @parameterized.named_parameters(
-      ('tf_function', create_test_functional_model),
-      ('keras_model', create_test_keras_functional_model))
-  def test_save_load_convert_to_tff_model_and_train_to_convergence(
-      self, functional_model_fn):
-    dataset = get_dataset()
-    functional_model = functional_model_fn(input_spec=dataset.element_spec)
-    path = self.get_temp_dir()
-    serialization.save_functional_model(functional_model, path)
-    loaded_model = serialization.load_functional_model(path)
-
-    def model_fn():
-      return functional.model_from_functional(loaded_model)
-
-    training_process = federated_averaging.build_federated_averaging_process(
-        model_fn, lambda: tf.keras.optimizers.SGD(learning_rate=0.05))
-    state = training_process.initialize()
-    self.assertAllClose(state.model.trainable,
-                        [np.zeros([3, 1]), np.zeros([1])])
-    num_rounds = 50
-    for _ in range(num_rounds):
-      state, _ = training_process.next(state, [dataset])
-    # Test that we came close to convergence.
-    self.assertAllClose(
-        state.model.trainable,
-        [np.asarray([[1.0], [2.0], [3.0]]),
-         np.asarray([5.0])],
-        atol=0.5)
 
 
 if __name__ == '__main__':
