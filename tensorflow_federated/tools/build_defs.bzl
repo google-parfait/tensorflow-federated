@@ -126,10 +126,18 @@ def tff_cc_library_with_tf_deps(name, tf_deps = [], **kwargs):
     deps = kwargs.pop("deps", [])
     native.cc_library(
         name = name,
+        features = [
+            "-use_header_modules",  # Required for pybind11.
+            "-parse_headers",
+        ],
+        copts = ["-fexceptions"],
         deps = deps + if_static(
             tf_deps,
             framework_shared_object = ["@org_tensorflow//tensorflow:libtensorflow_framework.so.2.9.1"],
-        ),
+        ) + [
+            "@pybind11",
+            "@local_config_python//:python_headers",
+        ],
         **kwargs
     )
 
