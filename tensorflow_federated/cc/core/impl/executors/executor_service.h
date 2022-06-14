@@ -23,6 +23,7 @@ limitations under the License
 
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/random/random.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/numbers.h"
@@ -70,12 +71,9 @@ class ExecutorService : public v0::ExecutorGroup::Service {
   // configured with a `GetExecutor` request (which instantiates an
   // underlying concrete tensorflow_federated::Executor) before it can start
   // executing other requests.
-  explicit ExecutorService(const ExecutorFactory& executor_factory) {
-    executor_factory_ = executor_factory;
-  }
-  ExecutorService(ExecutorService&& other) {
-    executor_factory_ = other.executor_factory_;
-  }
+  explicit ExecutorService(const ExecutorFactory& executor_factory)
+      : executor_resolver_(executor_factory) {}
+
   ~ExecutorService() override {}
 
   // Configure the underlying executor stack to host a particular executor
@@ -122,12 +120,16 @@ class ExecutorService : public v0::ExecutorGroup::Service {
                                v0::DisposeExecutorResponse* response) override;
 
  private:
+  // A cheaply-copyable struct used to track executors and pass handles to them
+  // between the executor resolver and the service.
   struct ExecutorEntry {
     std::shared_ptr<Executor> executor;
     // The number of current external connections to this executor.
     // This is `count(times returned by GetExecutor) -
     // count(times passed to DisposeExecutor)`.
     uint32_t remote_refcount;
+    // The unique identifier of this executor returned to clients.
+    const std::string executor_id;
   };
 
   // Writes the `std::shared_ptr<Executor>` corresponding to `executor_id` into
@@ -137,24 +139,91 @@ class ExecutorService : public v0::ExecutorGroup::Service {
                                const v0::ExecutorId& executor_id,
                                std::shared_ptr<Executor>& executor_out);
 
-  // Destroys executor associated to `executor_id`, resetting refcount to 0.
-  // Invoked by error-handling logic in internal methods, e.g. in the case that
-  // the associated executor indicates it needs to be reconfigured. This
-  // function should only be called when all potentially outstanding references
-  // to this executor are necessarily invalid, e.g. in the case that the
-  // executor must be configured with cardinalities before it can handle any new
-  // requests.
-  void DestroyExecutor(const v0::ExecutorId& executor_id);
-
   // Function which contains switching logic, determining e.g. whether to
   // destroy an underlying executor.
   grpc::Status HandleNotOK(const absl::Status& status,
                            const v0::ExecutorId& executor_id);
 
-  ExecutorFactory executor_factory_;
-  absl::Mutex executors_mutex_;
-  absl::flat_hash_map<std::string, ExecutorEntry> executors_
-      ABSL_GUARDED_BY(executors_mutex_);
+  using ExecutorId = std::string;
+
+  struct ExecutorRequirements {
+    CardinalityMap cardinalities;
+  };
+
+  // Internal class providing logic for managing Executors in the service.
+  // This class has three main responsibilities:
+  // * Return an executor when the service requires one, via a GetExecutor
+  // request, managing the relationship between Executor requirements (IE, the
+  // data carrying semantic meaning by which clients wish to request an
+  // executor), and the identifiers used to refer to a consistent executor
+  // instance (in order to use the stateful Executor interface).
+  // * Resolve the identifiers handed back to clients to concrete Executor
+  // instances, on which calls to the Executor interface may be made by the
+  // service.
+  // * Manage validity of these executors. In particular, this requires managing
+  // refcounts to these executors, and providing the service a way to invalidate
+  // all outstanding references to an executor which the service determines to
+  // be in an invalid state.
+  class ExecutorResolver {
+   public:
+    explicit ExecutorResolver(ExecutorFactory factory) : ex_factory_(factory) {}
+
+    // Indicates to the ExecutorResolver that the executor associated to the
+    // ExecutorId argument is no longer valid or no longer necessary, and should
+    // not be returned to future callers. This function may be called
+    // repeatedly, and will not err; it makes the guarantee that after
+    // invocation, this object no longer holds a handle to an executor entry
+    // with this ID. Future calls to ExecutorForId with this ID will return
+    // FAILED_PRECONDITION.
+    void DestroyExecutor(const ExecutorId&);
+
+    // Indicates that a client has released a handle to the executor identified
+    // by the argument. May trigger a DisposeExecutor, if the ExecutorResolver
+    // can determine that there are no clients with outstanding handles to the
+    // executor associated to this ID.
+    absl::Status DisposeExecutor(const ExecutorId&);
+
+    // Returns an executor for the given ID, or an absl Status if no executor
+    // can be found. Returns FailedPrecondition if the executor does not exist
+    // (since existence of the executor is a precondition for returning it), and
+    // InternalError if an implementation error has caused the maps held
+    // internally to be out of sync. This error indicates a bug in the
+    // implementation.
+    absl::StatusOr<ExecutorEntry> ExecutorForId(const ExecutorId&);
+    // Returns an executor ID with the specified requirements. May construct a
+    // new executor; only returns a no-OK status if this construction fails or
+    // another internal error occurs.
+    absl::StatusOr<ExecutorId> ExecutorIDForRequirements(
+        const ExecutorRequirements&);
+
+   private:
+    absl::Mutex executors_mutex_;
+    void DestroyExecutorImpl(const ExecutorId&)
+        ABSL_EXCLUSIVE_LOCKS_REQUIRED(executors_mutex_);
+    ExecutorFactory ex_factory_;
+
+    // We key this map by the cardinalities of the associated executors.
+    absl::flat_hash_map<std::string, ExecutorEntry> executors_
+        ABSL_GUARDED_BY(executors_mutex_);
+    // This map is keyed by the executor ids returned to clients, and used to
+    // resolve executor IDs to concrete executor instances via the executors_
+    // map. Every entry in this map must correspond to a cardinalities key for
+    // an executor in the executors_ map.
+    absl::flat_hash_map<std::string, std::string> keys_to_cardinalities_
+        ABSL_GUARDED_BY(executors_mutex_);
+
+    // Provide a unique identifier to each service, as well as each executor
+    // generated within a given service instance. These are used to disambiguate
+    // calls to Dispose which are simply 'late' (e.g., occur after a service has
+    // already been rebooted) from those which are true errors in operation
+    // (explicitly deleting a single value twice, for example).
+    static constexpr int kServiceIndexRange = 100000;
+    absl::BitGen gen_;
+    int service_id_ = absl::Uniform(gen_, 0, kServiceIndexRange);
+    int executor_index_ ABSL_GUARDED_BY(executors_mutex_);
+  };
+
+  ExecutorResolver executor_resolver_;
 };
 }  // namespace tensorflow_federated
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_EXECUTOR_SERVICE_H_

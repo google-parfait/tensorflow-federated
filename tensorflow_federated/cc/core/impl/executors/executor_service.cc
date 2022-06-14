@@ -17,6 +17,7 @@ limitations under the License
 
 #include <grpcpp/support/status.h>
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -32,6 +33,7 @@ limitations under the License
 #include "absl/types/optional.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/status_conversion.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -74,6 +76,114 @@ grpc::Status RemoteValueToId(const v0::ValueRef& remote_value_ref,
 
 }  // namespace
 
+using ExecutorId = std::string;
+
+absl::StatusOr<ExecutorId>
+ExecutorService::ExecutorResolver::ExecutorIDForRequirements(
+    const ExecutorRequirements& requirements) {
+  absl::MutexLock lock(&executors_mutex_);
+  std::string cardinalities_string =
+      CardinalitiesToString(requirements.cardinalities);
+  auto it = executors_.find(cardinalities_string);
+  bool executor_exists = (it != executors_.end());
+  if (!executor_exists) {
+    absl::StatusOr<std::shared_ptr<Executor>> new_executor =
+        ex_factory_(requirements.cardinalities);
+    if (!new_executor.ok()) {
+      LOG(ERROR) << "Failure to construct executor in executor service: ";
+      LOG(ERROR) << new_executor.status().message();
+      return new_executor.status();
+    }
+    // Give the executor a unique key, incrementing the executor index so that
+    // the next construction call yields another unique ID.
+    std::string executor_key = absl::StrCat(
+        cardinalities_string, "/", service_id_, "/", executor_index_++);
+    // Ensure keys_to_cardinalities_ key corresponds to an executor in
+    // executors_.
+    keys_to_cardinalities_.emplace(executor_key, cardinalities_string);
+    // Initialize the refcount to one, and the ID to the one constructed above.
+    ExecutorEntry entry({std::move(*new_executor), 1, executor_key});
+    executors_.emplace(cardinalities_string, entry);
+    VLOG(2) << "ExecutorService created new Executor for cardinalities: "
+            << cardinalities_string;
+    VLOG(2) << "Returning to clients executor ID: " << executor_key;
+    return entry.executor_id;
+  } else {
+    // Just increment the refcount of the entry.
+    it->second.remote_refcount++;
+    ExecutorEntry entry = it->second;
+    return entry.executor_id;
+  }
+}
+
+absl::StatusOr<ExecutorService::ExecutorEntry>
+ExecutorService::ExecutorResolver::ExecutorForId(const ExecutorId& ex_id) {
+  absl::MutexLock lock(&executors_mutex_);
+  auto ex_cardinalities_it = keys_to_cardinalities_.find(ex_id);
+  if (ex_cardinalities_it == keys_to_cardinalities_.end()) {
+    // A lack of executor in the expected slot is retryable, but clients must
+    // ensure the service state is adjusted (e.g. with a GetExecutor call)
+    // before retrying. Following
+    // https://grpc.github.io/grpc/core/md_doc_statuscodes.html we raise
+    // FailedPrecondition.
+    return absl::FailedPreconditionError(
+        absl::StrCat("No executor found for ID: '", ex_id, "'."));
+  }
+  auto ex_it = executors_.find(ex_cardinalities_it->second);
+  if (ex_it == executors_.end()) {
+    return absl::InternalError(absl::StrCat(
+        "No executor found for cardinalities string: ",
+        ex_cardinalities_it->second, ", referred to by executor id ", ex_id));
+  }
+  return ex_it->second;
+}
+
+absl::Status ExecutorService::ExecutorResolver::DisposeExecutor(
+    const ExecutorId& ex_id) {
+  bool should_destroy;
+  // We take a writer lock here because we must decrement the refcount.
+  absl::MutexLock lock(&executors_mutex_);
+  auto ex_cardinalities_it = keys_to_cardinalities_.find(ex_id);
+  if (ex_cardinalities_it == keys_to_cardinalities_.end()) {
+    // DisposeExecutor can occur on a deleted executor in the case of a worker
+    // failure, since Python GC will trigger a DisposeExecutor call while the
+    // execution context attempts to retry the call. We may, however, want to
+    // rather 'mark' executors deleted in this manner, so that
+    // double-DisposeExecutor does not pass, as that indicates a potential
+    // client-side bug.
+    return absl::OkStatus();
+  }
+  auto ex_it = executors_.find(ex_cardinalities_it->second);
+  if (ex_it == executors_.end()) {
+    return absl::InternalError(absl::StrCat(
+        "No executor found for cardinalities string: ",
+        ex_cardinalities_it->second, ", referred to by executor id ", ex_id));
+  }
+  ex_it->second.remote_refcount--;
+  should_destroy = ex_it->second.remote_refcount == 0;
+  if (should_destroy) {
+    DestroyExecutorImpl(ex_id);
+  }
+  return absl::OkStatus();
+}
+
+void ExecutorService::ExecutorResolver::DestroyExecutor(const ExecutorId& id) {
+  absl::MutexLock lock(&executors_mutex_);
+  DestroyExecutorImpl(id);
+}
+
+void ExecutorService::ExecutorResolver::DestroyExecutorImpl(
+    const ExecutorId& id) {
+  VLOG(3) << "Destroying executor: " << id;
+  auto ex_cardinalities = keys_to_cardinalities_.find(id);
+  if (ex_cardinalities != keys_to_cardinalities_.end()) {
+    executors_.erase(ex_cardinalities->second);
+    keys_to_cardinalities_.erase(id);
+  } else {
+    VLOG(2) << "Attempted to double-destroy executor of key: " << id;
+  }
+}
+
 grpc::Status ExecutorService::GetExecutor(grpc::ServerContext* context,
                                           const v0::GetExecutorRequest* request,
                                           v0::GetExecutorResponse* response) {
@@ -82,69 +192,40 @@ grpc::Status ExecutorService::GetExecutor(grpc::ServerContext* context,
     cardinalities.insert(
         {cardinality.placement().uri(), cardinality.cardinality()});
   }
-  std::string executor_key = CardinalitiesToString(cardinalities);
-  {
-    absl::WriterMutexLock lock(&executors_mutex_);
-    auto entry = executors_.find(executor_key);
-    bool executor_exists = (entry != executors_.end());
-    if (!executor_exists) {
-      // Initialize the `std::shared_ptr<Executor>` added to the map.
-      absl::StatusOr<std::shared_ptr<Executor>> new_executor =
-          executor_factory_(cardinalities);
-      if (!new_executor.ok()) {
-        LOG(ERROR) << "Failure to construct executor in executor service: ";
-        LOG(ERROR) << new_executor.status().message();
-        return absl_to_grpc(new_executor.status());
-      }
-      // Initialize the refcount to one.
-      executors_.insert(
-          {executor_key, ExecutorEntry{std::move(*new_executor), 1}});
-      LOG(INFO) << "ExecutorService created new Executor for cardinalities: "
-                << executor_key;
-    } else {
-      // Just increment the refcount of the entry.
-      entry->second.remote_refcount++;
-    }
+  absl::StatusOr<std::string> id_or =
+      executor_resolver_.ExecutorIDForRequirements({cardinalities});
+  if (!id_or.ok()) {
+    return absl_to_grpc(id_or.status());
   }
-  response->mutable_executor()->set_id(executor_key);
+  std::string id = id_or.value();
+  *response->mutable_executor()->mutable_id() = id;
   return grpc::Status::OK;
 }
 
 grpc::Status ExecutorService::RequireExecutor(
     absl::string_view method_name, const v0::ExecutorId& executor,
     std::shared_ptr<Executor>& executor_out) {
-  absl::ReaderMutexLock lock(&executors_mutex_);
-  auto it = executors_.find(executor.id());
-  if (it != executors_.end()) {
-    executor_out = it->second.executor;
-    return grpc::Status::OK;
+  absl::StatusOr<ExecutorEntry> ex =
+      executor_resolver_.ExecutorForId({executor.id()});
+  if (!ex.ok()) {
+    absl::Status status_to_return(
+        ex.status().code(), absl::StrCat("Error calling `", method_name, "`. ",
+                                         ex.status().message()));
+    return absl_to_grpc(status_to_return);
   }
-  // A lack of executor in the expected slot is retryable, but clients must
-  // ensure the service state is adjusted (e.g. with a GetExecutor call) before
-  // retrying. Following
-  // https://grpc.github.io/grpc/core/md_doc_statuscodes.html we raise
-  // FailedPrecondition.
-  return grpc::Status(
-      grpc::StatusCode::FAILED_PRECONDITION,
-      absl::StrCat("Error evaluating `ExecutorService::", method_name,
-                   "`. No executor found for ID: '", executor.id(), "'."));
-}
-
-void ExecutorService::DestroyExecutor(const v0::ExecutorId& executor) {
-  absl::WriterMutexLock lock(&executors_mutex_);
-  int elements_erased = executors_.erase(executor.id());
-  if (elements_erased > 1) {
-    VLOG(2) << "More elements erased than expected while destroying executor; "
-               "expected 0 or 1, erased "
-            << elements_erased;
-  }
+  executor_out = ex.value().executor;
+  return grpc::Status::OK;
 }
 
 grpc::Status ExecutorService::HandleNotOK(const absl::Status& status,
                                           const v0::ExecutorId& executor_id) {
   if (status.code() == absl::StatusCode::kFailedPrecondition) {
+    // TODO(b/193900393): With increased reliance on the semantics of
+    // FAILED_PRECONDITION, we would likely prefer to define a custom error code
+    // for Executors to declare that they are missing semantically necessary
+    // requirements.
     VLOG(1) << "Destroying executor " << executor_id.Utf8DebugString();
-    DestroyExecutor(executor_id);
+    executor_resolver_.DestroyExecutor({executor_id.id()});
   }
   VLOG(1) << status.message();
   return absl_to_grpc(status);
@@ -254,13 +335,21 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
                                       const v0::DisposeRequest* request,
                                       v0::DisposeResponse* response) {
   std::shared_ptr<Executor> executor;
-  TFF_TRYLOG_GRPC(RequireExecutor("Dispose", request->executor(), executor));
+  grpc::Status executor_status =
+      RequireExecutor("Dispose", request->executor(), executor);
+  if (!executor_status.ok()) {
+    LOG_FIRST_N(WARNING, 10) << "Received a dispose request for ["
+                             << request->executor().id() << "], but it was not "
+                             << "found.";
+    // There may be no executor corresponding to this Dispose request, if the
+    // underlying executor was destroyed before this request came in (e.g., in
+    // the case of an executor returning FAILED_PRECONDITION). We consider the
+    // Dispose request to have succeeded in this case; the value has certainly
+    // been destroyed.
+    return grpc::Status::OK;
+  }
   std::vector<ValueId> embedded_ids_to_dispose;
   embedded_ids_to_dispose.reserve(request->value_ref().size());
-  // Filter the requested IDs to those corresponding to the currently live
-  // executors. Clients are free to batch these requests however they want or
-  // let them be called by a GC mechanism, so we do not force the client to only
-  // dispose of values in the live executor.
   for (const v0::ValueRef& disposed_value_ref : request->value_ref()) {
     ValueId embedded_value;
     grpc::Status status = RemoteValueToId(disposed_value_ref, embedded_value);
@@ -278,25 +367,8 @@ grpc::Status ExecutorService::Dispose(grpc::ServerContext* context,
 grpc::Status ExecutorService::DisposeExecutor(
     grpc::ServerContext* context, const v0::DisposeExecutorRequest* request,
     v0::DisposeExecutorResponse* response) {
-  absl::WriterMutexLock lock(&executors_mutex_);
-  const std::string& id = request->executor().id();
-  auto it = executors_.find(id);
-  if (it != executors_.end()) {
-    ExecutorEntry& entry = it->second;
-    entry.remote_refcount--;
-    if (entry.remote_refcount == 0) {
-      executors_.erase(it);
-    }
-    return grpc::Status::OK;
-  } else {
-    // TODO(b/183942515): This case is expected to be potentially hit during
-    // normal execution. Perhaps we can think of a better manner of handling to
-    // avoid spamming client logs.
-    return grpc::Status(
-        grpc::StatusCode::INVALID_ARGUMENT,
-        absl::StrCat("Error evaluating `ExecutorService::DisposeExecutor`. ",
-                     "No executor found for ID: '", id, "'."));
-  }
+  return absl_to_grpc(
+      executor_resolver_.DisposeExecutor({request->executor().id()}));
 }
 
 }  // namespace tensorflow_federated

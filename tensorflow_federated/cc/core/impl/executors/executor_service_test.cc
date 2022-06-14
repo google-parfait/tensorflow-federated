@@ -55,8 +55,8 @@ absl::Status ReturnOk() { return absl::OkStatus(); }
 
 TEST(ExecutorServiceFailureTest, CreateValueWithoutExecutorFails) {
   auto executor_ptr = std::make_shared<::testing::StrictMock<MockExecutor>>();
-  ExecutorService executor_service_ =
-      ExecutorService([&](auto cardinalities) { return executor_ptr; });
+  ExecutorService executor_service_(
+      [&](auto cardinalities) { return executor_ptr; });
 
   v0::CreateValueRequest request_pb;
   request_pb.mutable_value()->MergeFrom(testing::TensorV(1.0));
@@ -73,6 +73,12 @@ TEST(ExecutorServiceFailureTest, CreateValueWithoutExecutorFails) {
 
 class ExecutorServiceTest : public ::testing::Test {
  public:
+  ExecutorServiceTest()
+      : executor_ptr_(std::make_shared<::testing::StrictMock<MockExecutor>>()),
+        executor_service_([&](const CardinalityMap& cardinalities)
+                              -> std::shared_ptr<Executor> {
+          return *(&this->executor_ptr_);
+        }) {}
   absl::StatusOr<OwnedValueId> TestId(uint64_t id) {
     return OwnedValueId(executor_ptr_, id);
   }
@@ -89,10 +95,8 @@ class ExecutorServiceTest : public ::testing::Test {
   }
 
  protected:
-  ExecutorService executor_service_ = ExecutorService(
-      [&](auto cardinalities) { return *(&this->executor_ptr_); });
-  std::shared_ptr<MockExecutor> executor_ptr_ =
-      std::make_shared<::testing::StrictMock<MockExecutor>>();
+  std::shared_ptr<MockExecutor> executor_ptr_;
+  ExecutorService executor_service_;
   v0::ExecutorId executor_pb_;
 
   v0::CreateValueRequest CreateValueFloatRequest(float float_value) {
@@ -319,15 +323,11 @@ TEST_F(ExecutorServiceTest, GetExecutorReturnsCardinalitySpecificIds) {
   TFF_EXPECT_OK(grpc_to_absl(executor_service_.GetExecutor(
       &context, &get_executor_request_2, &get_executor_response_2)));
 
-  v0::GetExecutorResponse expected_response_1;
-  expected_response_1.mutable_executor()->set_id("clients=1");
-  EXPECT_THAT(get_executor_response_1,
-              testing::EqualsProto(expected_response_1));
+  std::string first_ex_id = get_executor_response_1.executor().id();
+  ASSERT_THAT(first_ex_id, ::testing::HasSubstr("clients=1"));
 
-  v0::GetExecutorResponse expected_response_2;
-  expected_response_2.mutable_executor()->set_id("clients=2");
-  EXPECT_THAT(get_executor_response_2,
-              testing::EqualsProto(expected_response_2));
+  std::string second_ex_id = get_executor_response_2.executor().id();
+  ASSERT_THAT(second_ex_id, ::testing::HasSubstr("clients=2"));
 }
 
 TEST_F(ExecutorServiceTest, ComputeWithMalformedRefFails) {
@@ -483,6 +483,19 @@ TEST_F(ExecutorServiceTest, DisposePassesCallsDown) {
   TFF_ASSERT_OK(grpc_to_absl(dispose_status));
 }
 
+TEST_F(ExecutorServiceTest, DisposeOnNonexistetExecutor) {
+  auto dispose_request = DisposeRequestForIds({"0", "1"});
+  *dispose_request.mutable_executor()->mutable_id() =
+      "this_executor_does_not_exist";
+  v0::DisposeResponse dispose_response;
+  grpc::ServerContext server_context;
+
+  // Nothing is passed down, but the call succeeds.
+  auto dispose_status = executor_service_.Dispose(
+      &server_context, &dispose_request, &dispose_response);
+  TFF_ASSERT_OK(grpc_to_absl(dispose_status));
+}
+
 TEST_F(ExecutorServiceTest, DisposeExecutorThenCreateValueFails) {
   v0::DisposeExecutorRequest dispose_executor_request;
   *dispose_executor_request.mutable_executor() = executor_pb_;
@@ -531,9 +544,23 @@ TEST_F(ExecutorServiceTest, DisposeExecutorDoesntRemoveUnlessItsTheLastRef) {
   v0::CreateValueResponse response_pb;
   TFF_ASSERT_OK(grpc_to_absl(executor_service_.CreateValue(
       &server_context, &request_pb, &response_pb)));
+  {
+    // A second DisposeEx, however, should remove the executor.
+    v0::DisposeExecutorRequest request_pb;
+    *request_pb.mutable_executor() = executor_pb_;
+    v0::DisposeExecutorResponse response_pb;
+    TFF_ASSERT_OK(grpc_to_absl(executor_service_.DisposeExecutor(
+        &server_context, &request_pb, &response_pb)));
+  }
+  // So that this CreateValue call should fail.
+  auto create_value_response_status =
+      executor_service_.CreateValue(&server_context, &request_pb, &response_pb);
+  ASSERT_THAT(create_value_response_status,
+              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
+                           "No executor found for ID"));
 }
 
-TEST_F(ExecutorServiceTest, DisposeExecutorThenDisposeFails) {
+TEST_F(ExecutorServiceTest, DisposeExecutorThenDisposeSucceeds) {
   v0::DisposeExecutorRequest dispose_executor_request;
   *dispose_executor_request.mutable_executor() = executor_pb_;
   v0::DisposeExecutorResponse dispose_executor_response;
@@ -544,12 +571,10 @@ TEST_F(ExecutorServiceTest, DisposeExecutorThenDisposeFails) {
   TFF_ASSERT_OK(grpc_to_absl(executor_service_.DisposeExecutor(
       &server_context, &dispose_executor_request, &dispose_executor_response)));
 
-  auto dispose_response_status = executor_service_.Dispose(
-      &server_context, &dispose_request, &dispose_response);
-
-  ASSERT_THAT(dispose_response_status,
-              GrpcStatusIs(grpc::StatusCode::FAILED_PRECONDITION,
-                           "No executor found for ID"));
+  // Second disposal succeeds; TFF service declares its clients free to
+  // call dispose on a nonexistent executor.
+  TFF_ASSERT_OK(grpc_to_absl(executor_service_.DisposeExecutor(
+      &server_context, &dispose_executor_request, &dispose_executor_response)));
 }
 
 TEST_F(ExecutorServiceTest, CreateCallNoArgFnArgumentSetToEmptyString) {
