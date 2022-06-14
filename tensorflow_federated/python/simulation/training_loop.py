@@ -36,64 +36,6 @@ EVALUATION_METRICS_PREFIX = 'evaluation/'
 EVALUATION_TIME_KEY = 'evaluation_time_in_seconds'
 
 
-def run_stateless_simulation(computation: computation_base.Computation,
-                             client_selection_fn: Callable[[int], Any],
-                             total_rounds: int,
-                             metrics_managers: Optional[Iterable[
-                                 release_manager_lib.ReleaseManager]] = None):
-  """Runs a federated computation on a given set of client data.
-
-  This method performs `total_rounds` calls to the `computation`. At each round,
-  this method samples client data via `client_selection_fn(round_num)`, and uses
-  this as input to `computation`. The output of `computation` is assumed to be
-  a mutable mapping with string-valued keys.
-
-  This method also records how long it takes (in seconds) to call
-  `client_selection_fn` and `computation` at each round and adds this to a
-  dictionary of  round metrics with key `tff.simulation.ROUND_TIME_KEY`.
-
-  Args:
-    computation: A `tff.Computation` to be executed. Must accept a single
-      argument (placed or unplaced).
-    client_selection_fn: Callable accepting an integer round number, and
-      returning a list of client data to use as federated data for that round.
-    total_rounds: The number of federated training rounds to perform.
-    metrics_managers: An optional list of `tff.program.ReleaseManagers`s to use
-      to save metrics.
-
-  Returns:
-    An dictionary, keyed by round number, with values corresponding to the
-      outputs of each round's computation, with extra keys for timing
-      information.
-  """
-  loop = asyncio.get_event_loop()
-  # TODO(b/194841884): Add an optional checkpoint manager argument once the
-  # checkpoint managers have compatibility with "stateless" structures.
-  start_round = 0
-
-  all_metrics = collections.OrderedDict()
-  for round_num in range(start_round, total_rounds):
-    round_metrics = collections.OrderedDict(round_num=round_num)
-    computation_start_time = time.time()
-
-    federated_data = client_selection_fn(round_num)
-    output = computation(federated_data)
-    computation_time = time.time() - computation_start_time
-    logging.info('Computation completed, took %.4f seconds', computation_time)
-
-    round_metrics.update(output)
-    round_metrics[ROUND_TIME_KEY] = computation_time
-
-    if metrics_managers is not None:
-      loop.run_until_complete(
-          asyncio.gather(
-              *[m.release(round_metrics, round_num) for m in metrics_managers]))
-
-    all_metrics[round_num] = round_metrics
-
-  return all_metrics
-
-
 def _run_training(training_fn: computation_base.Computation,
                   client_selection_fn: Callable[[int], Any], state: Any,
                   round_num: int) -> Tuple[Any, Mapping[str, Any]]:

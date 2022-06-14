@@ -142,7 +142,6 @@ py_test(
         ":training_loop",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/templates:iterative_process",
-        "//tensorflow_federated/python/program:release_manager",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
     ],
