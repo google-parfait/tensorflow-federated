@@ -281,11 +281,12 @@ def _build_client_update_fn(
       no-arg function that returns a `tf.keras.optimizers.Optimizer` for
       reconstructing the local variables with global variables frozen. This
       optimizer is used before the one given by `client_optimizer_fn`.
-    dataset_split_fn: A `reconstruction_utils.DatasetSplitFn` taking in a client
-      dataset and producing two TF datasets. The first is iterated over during
-      reconstruction, and the second is iterated over post-reconstruction. This
-      can be used to preprocess datasets to e.g. iterate over them for multiple
-      epochs or use disjoint data for reconstruction and post-reconstruction.
+    dataset_split_fn: A `tff.learning.reconstruction.DatasetSplitFn` taking in
+      a client dataset and producing two TF datasets. The first is iterated over
+      during reconstruction, and the second is iterated over
+      post-reconstruction. This can be used to preprocess datasets to e.g.
+      iterate over them for multiple epochs or use disjoint data for
+      reconstruction and post-reconstruction.
     client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
       built-in weighting method, or a callable that takes the local metrics of
       the model and returns a tensor that provides the weight in the federated
@@ -624,14 +625,15 @@ def build_training_process(
       no-arg function that returns a `tf.keras.optimizers.Optimizer` used to
       reconstruct the local variables, with the global ones frozen, or the first
       stage described above.
-    dataset_split_fn: A `reconstruction_utils.DatasetSplitFn` taking in a single
-      TF dataset and producing two TF datasets. The first is iterated over
-      during reconstruction, and the second is iterated over
+    dataset_split_fn: A `tff.learning.reconstruction.DatasetSplitFn` taking in a
+      single TF dataset and producing two TF datasets. The first is iterated
+      over during reconstruction, and the second is iterated over
       post-reconstruction. This can be used to preprocess datasets to e.g.
       iterate over them for multiple epochs or use disjoint data for
       reconstruction and post-reconstruction. If None, split client data in half
       for each user, using one half for reconstruction and the other for
-      evaluation. See `reconstruction_utils.build_dataset_split_fn` for options.
+      evaluation. See `tff.learning.reconstruction.build_dataset_split_fn` for
+      options.
     client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
       built-in weighting method, or a callable that takes the local metrics of
       the model and returns a tensor that provides the weight in the federated

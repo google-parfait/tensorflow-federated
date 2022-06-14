@@ -69,7 +69,7 @@ def build_federated_evaluation(
 
   Usage of returned computation:
     eval_comp = build_federated_evaluation(...)
-    metrics = eval_comp(reconstruction_utils.get_global_variables(model),
+    metrics = eval_comp(tff.learning.reconstruction.get_global_variables(model),
                         federated_data)
 
   Args:
@@ -90,14 +90,14 @@ def build_federated_evaluation(
     reconstruction_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer` used to reconstruct the local variables
       with the global ones frozen.
-    dataset_split_fn: A `reconstruction_utils.DatasetSplitFn` taking in a single
-      TF dataset and producing two TF datasets. The first is iterated over
-      during reconstruction, and the second is iterated over during evaluation.
-      This can be used to preprocess datasets to e.g. iterate over them for
-      multiple epochs or use disjoint data for reconstruction and evaluation. If
-      None, split client data in half for each user, using one half for
-      reconstruction and the other for evaluation. See
-      `reconstruction_utils.build_dataset_split_fn` for options.
+    dataset_split_fn: A `tff.learning.reconstruction.DatasetSplitFn` taking in a
+      single TF dataset and producing two TF datasets. The first is iterated
+      over during reconstruction, and the second is iterated over during
+      evaluation. This can be used to preprocess datasets to e.g. iterate over
+      them for multiple epochs or use disjoint data for reconstruction and
+      evaluation. If None, split client data in half for each user, using one
+      half for reconstruction and the other for evaluation. See
+      `tff.learning.reconstruction.build_dataset_split_fn` for options.
     broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)` and have empty state. If
