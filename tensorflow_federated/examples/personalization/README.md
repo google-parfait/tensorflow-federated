@@ -17,7 +17,7 @@ clients into two groups: one has 2500 clients and the other has 900 clients.
 *   We use the [Federated Averaging](https://arxiv.org/abs/1602.05629) algorithm
     to train a global model using the training examples from the first 2500
     clients. This step is done by the standard
-    [`tff.learning.build_federated_averaging_process`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_federated_averaging_process)
+    [`tff.learning.algorithms.build_weighted_fed_avg`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/algorithms/build_weighted_fed_avg)
     API.
 *   Given a trained global model, we now evaluate multiple personalization
     strategies using (50 clients randomly selected from) the rest 900 clients. A

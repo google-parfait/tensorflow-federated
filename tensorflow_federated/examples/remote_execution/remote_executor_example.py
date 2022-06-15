@@ -79,7 +79,7 @@ def main(argv):
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
-  iterative_process = tff.learning.build_federated_averaging_process(
+  iterative_process = tff.learning.algorithms.build_weighted_fed_avg(
       model_fn,
       client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02))
 
@@ -93,11 +93,10 @@ def main(argv):
 
   state = iterative_process.initialize()
 
-  state, metrics = iterative_process.next(state, federated_train_data)
-  print('round  1, metrics={}'.format(metrics))
-
-  for round_num in range(2, FLAGS.n_rounds + 1):
-    state, metrics = iterative_process.next(state, federated_train_data)
+  for round_num in range(1, FLAGS.n_rounds + 1):
+    next_output = iterative_process.next(state, federated_train_data)
+    state = next_output.state
+    metrics = next_output.metrics
     print('round {:2d}, metrics={}'.format(round_num, metrics))
 
 

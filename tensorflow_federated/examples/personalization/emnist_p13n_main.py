@@ -132,13 +132,13 @@ def main(argv):
   # Build a standard federated averaging process for training the global model.
   client_opt = lambda: tf.keras.optimizers.SGD(learning_rate=0.02)
   server_opt = lambda: tf.keras.optimizers.SGD(learning_rate=1.0, momentum=0.9)
-  iterative_process = tff.learning.build_federated_averaging_process(
+  learning_process = tff.learning.algorithms.build_weighted_fed_avg(
       model_fn=model_fn,
       client_optimizer_fn=client_opt,
       server_optimizer_fn=server_opt)
 
   # Initialize the server state of the FedAvg process.
-  server_state = iterative_process.initialize()
+  server_state = learning_process.initialize()
 
   # Create a dictionary of two personalization strategies: one uses SGD while
   # the other one uses Adam optimizer to train a personalized model.
@@ -183,7 +183,8 @@ def main(argv):
     sampled_train_data = list(
         np.random.choice(
             federated_train_data, num_clients_per_round, replace=False))
-    server_state, _ = iterative_process.next(server_state, sampled_train_data)
+    next_output = learning_process.next(server_state, sampled_train_data)
+    server_state = next_output.state
 
   print('Evaluating the personalization strategies on the global model...')
   # Run `p13n_eval` on a federated dataset of 50 randomly sampled clients.
@@ -193,7 +194,8 @@ def main(argv):
   sampled_p13n_data = list(
       np.random.choice(
           federated_p13n_data, num_clients_do_p13n_eval, replace=False))
-  p13n_metrics = p13n_eval(server_state.model, sampled_p13n_data)
+  model_weights = learning_process.get_model_weights(server_state)
+  p13n_metrics = p13n_eval(model_weights, sampled_p13n_data)
   # Specifically, `p13n_metrics` is an `OrderedDict` that maps
   # key 'baseline_metrics' to the evaluation metrics of the initial global
   # model (computed by `baseline_evaluate_fn` argument in `p13n_eval`), and

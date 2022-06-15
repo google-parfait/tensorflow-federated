@@ -15,7 +15,7 @@
 
 This is intended to be a minimal stand-alone implementation of Federated
 Averaging, suitable for branching as a starting point for algorithm
-modifications; see `tff.learning.build_federated_averaging_process` for a
+modifications; see `tff.learning.algorithms.build_weighted_fed_avg` for a
 more full-featured implementation.
 
 Based on the paper:
