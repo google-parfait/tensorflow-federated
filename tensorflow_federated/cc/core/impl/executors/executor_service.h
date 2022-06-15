@@ -220,7 +220,7 @@ class ExecutorService : public v0::ExecutorGroup::Service {
     static constexpr int kServiceIndexRange = 100000;
     absl::BitGen gen_;
     int service_id_ = absl::Uniform(gen_, 0, kServiceIndexRange);
-    int executor_index_ ABSL_GUARDED_BY(executors_mutex_);
+    int executor_index_ ABSL_GUARDED_BY(executors_mutex_) = 0;
   };
 
   ExecutorResolver executor_resolver_;
