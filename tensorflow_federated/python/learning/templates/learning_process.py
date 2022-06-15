@@ -71,6 +71,10 @@ class LearningProcessOutput:
   state = attr.ib()
   metrics = attr.ib()
 
+  def __iter__(self):
+    yield self.state
+    yield self.metrics
+
 
 class LearningProcess(iterative_process.IterativeProcess):
   """A stateful process for learning tasks that produces metrics.

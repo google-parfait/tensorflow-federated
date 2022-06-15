@@ -90,6 +90,14 @@ test_set_model_weights_fn = create_take_arg_set_model_weights(
     tf.int32, tf.int32)
 
 
+class LearningProcessOutputTest(absltest.TestCase):
+
+  def test_iter_yields_expected_objects(self):
+    output = learning_process.LearningProcessOutput(state='state', metrics=0)
+    output_iter = iter(output)
+    self.assertEqual(list(output_iter), ['state', 0])
+
+
 class LearningProcessTest(absltest.TestCase):
 
   def test_construction_does_not_raise(self):
