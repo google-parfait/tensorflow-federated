@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import collections
 from unittest import mock
 
@@ -154,18 +153,12 @@ class RunTrainingProcessTest(parameterized.TestCase):
   def test_program_state_manager_called(self, total_rounds,
                                         rounds_per_saving_program_state,
                                         program_state, version):
-    loop = asyncio.get_event_loop()
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 0})
     training_selection_fn = mock.MagicMock()
-    program_state_manager = mock.MagicMock()
-    future = loop.create_future()
-    future.set_result((program_state, version))
-    program_state_manager.load_latest.return_value = future
-    future = loop.create_future()
-    future.set_result(None)
-    program_state_manager.save.return_value = future
+    program_state_manager = mock.AsyncMock()
+    program_state_manager.load_latest.return_value = (program_state, version)
 
     training_loop.run_training_process(
         training_process=training_process,
@@ -192,19 +185,13 @@ class RunTrainingProcessTest(parameterized.TestCase):
       ('10', 10),
   )
   def test_metrics_managers_called_without_evaluation(self, total_rounds):
-    loop = asyncio.get_event_loop()
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 0})
     training_selection_fn = mock.MagicMock()
-    future = loop.create_future()
-    future.set_result(None)
-    metrics_manager_1 = mock.MagicMock()
-    metrics_manager_1.release.return_value = future
-    metrics_manager_2 = mock.MagicMock()
-    metrics_manager_2.release.return_value = future
-    metrics_manager_3 = mock.MagicMock()
-    metrics_manager_3.release.return_value = future
+    metrics_manager_1 = mock.AsyncMock()
+    metrics_manager_2 = mock.AsyncMock()
+    metrics_manager_3 = mock.AsyncMock()
 
     training_loop.run_training_process(
         training_process=training_process,
@@ -238,7 +225,6 @@ class RunTrainingProcessTest(parameterized.TestCase):
   )
   def test_metrics_managers_called_with_evaluation(self, total_rounds,
                                                    rounds_per_evaluation):
-    loop = asyncio.get_event_loop()
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 0})
@@ -246,14 +232,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
     evaluation_fn = mock.MagicMock()
     evaluation_fn.return_value = {'metric': 0}
     evaluation_selection_fn = mock.MagicMock()
-    future = loop.create_future()
-    future.set_result(None)
-    metrics_manager_1 = mock.MagicMock()
-    metrics_manager_1.release.return_value = future
-    metrics_manager_2 = mock.MagicMock()
-    metrics_manager_2.release.return_value = future
-    metrics_manager_3 = mock.MagicMock()
-    metrics_manager_3.release.return_value = future
+    metrics_manager_1 = mock.AsyncMock()
+    metrics_manager_2 = mock.AsyncMock()
+    metrics_manager_3 = mock.AsyncMock()
 
     training_loop.run_training_process(
         training_process=training_process,
@@ -291,7 +272,6 @@ class RunTrainingProcessTest(parameterized.TestCase):
     self.assertEqual(metrics_manager_3.release.call_args_list, calls)
 
   def test_performance_metrics_with_training_and_evaluation_time_10(self):
-    loop = asyncio.get_event_loop()
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 0})
@@ -299,10 +279,7 @@ class RunTrainingProcessTest(parameterized.TestCase):
     evaluation_fn = mock.MagicMock()
     evaluation_fn.return_value = {'metric': 0}
     evaluation_selection_fn = mock.MagicMock()
-    metrics_manager = mock.MagicMock()
-    future = loop.create_future()
-    future.set_result(None)
-    metrics_manager.release.return_value = future
+    metrics_manager = mock.AsyncMock()
 
     with mock.patch('time.time') as mock_time:
       # Since absl.logging.info uses a call to time.time, we mock it out.
@@ -340,18 +317,12 @@ class RunTrainingProcessTest(parameterized.TestCase):
   )
   def test_program_state_manager_calls_on_existing_program_state(
       self, version, total_rounds):
-    loop = asyncio.get_event_loop()
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
     training_process.next.return_value = ('update', {'metric': 0})
     training_selection_fn = mock.MagicMock()
-    program_state_manager = mock.MagicMock()
-    future = loop.create_future()
-    future.set_result(('program_state', version))
-    program_state_manager.load_latest.return_value = future
-    future = loop.create_future()
-    future.set_result(None)
-    program_state_manager.save.return_value = future
+    program_state_manager = mock.AsyncMock()
+    program_state_manager.load_latest.return_value = ('program_state', version)
 
     training_loop.run_training_process(
         training_process=training_process,
