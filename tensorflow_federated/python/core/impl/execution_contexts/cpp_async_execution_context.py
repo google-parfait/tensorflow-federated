@@ -15,6 +15,7 @@
 
 import asyncio
 import concurrent
+import contextlib
 import pprint
 import textwrap
 
@@ -22,7 +23,7 @@ from absl import logging
 
 from pybind11_abseil import status as absl_status
 from tensorflow_federated.python.common_libs import retrying
-from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
+from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import value_serialization
@@ -39,10 +40,7 @@ def _is_retryable_absl_status(exception):
           ])
 
 
-# TODO(b/223898183): Inherit directly from Context when remote workers support
-# hosting several executors concurrently.
-class AsyncSerializeAndExecuteCPPContext(
-    async_execution_context.SingleCardinalityAsyncContext):
+class AsyncSerializeAndExecuteCPPContext(context_base.Context):
   """An async execution context delegating to CPP Executor bindings."""
 
   def __init__(
@@ -60,6 +58,15 @@ class AsyncSerializeAndExecuteCPPContext(
         max_workers=max_workers)
     self._cardinality_inference_fn = cardinality_inference_fn
 
+  @contextlib.contextmanager
+  def _reset_factory_on_error(self, ex_factory, cardinalities):
+    try:
+      # We pass a copy down to prevent the caller from mutating.
+      yield ex_factory.create_executor({**cardinalities})
+    except Exception:
+      ex_factory.clean_up_executor({**cardinalities})
+      raise
+
   @retrying.retry(
       retry_on_exception_filter=_is_retryable_absl_status,
       wait_max_ms=300_000,  # 5 minutes.
@@ -73,8 +80,8 @@ class AsyncSerializeAndExecuteCPPContext(
         arg, comp.type_signature.parameter)
 
     try:
-      async with self._reset_factory_on_error(self._executor_factory,
-                                              cardinalities) as executor:
+      with self._reset_factory_on_error(self._executor_factory,
+                                        cardinalities) as executor:
         fn = executor.create_value(serialized_comp)
         if arg is not None:
           try:

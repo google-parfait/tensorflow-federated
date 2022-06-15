@@ -61,11 +61,16 @@ class ExecutorFactory(metaclass=abc.ABCMeta):
     pass
 
   @abc.abstractmethod
-  def clean_up_executors(self):
-    """Releases any resources held by the factory.
+  def clean_up_executor(self, cardinalities: CardinalitiesType):
+    """Releases any resources associated to the given cardinalities.
 
     Note that calling this method may invalidate the state of any executors
-    which have previously been returned by the factory; `create_executor`
-    should be called again if a new executor which is safe to use is desired.
+    which have previously been returned by the factory with the `cardinalities`
+    argument ; `create_executor` should be called again if a new executor which
+    is safe to use is desired.
+
+    Args:
+      cardinalities: The cardinalities of the executor whose state we wish to
+        clear.
     """
     pass

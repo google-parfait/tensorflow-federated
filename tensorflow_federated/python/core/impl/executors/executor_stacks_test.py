@@ -107,23 +107,6 @@ def _create_concurrent_maxthread_tuples():
   return tuples
 
 
-class ResourceManagingExecutorFactoryTest(absltest.TestCase):
-
-  @mock.patch.object(
-      eager_tf_executor, 'EagerTFExecutor', return_value=ExecutorMock())
-  def test_ensure_closed_closes_executor_passed_at_initialization(
-      self, mock_ex):
-
-    def _stack_fn(x):
-      del x  # Unused
-      return ExecutorMock()
-
-    resource_manager = executor_stacks.ResourceManagingExecutorFactory(
-        _stack_fn, ensure_closed=[mock_ex])
-    resource_manager.clean_up_executors()
-    mock_ex.close.assert_called_once()
-
-
 class ConcreteExecutorFactoryTest(parameterized.TestCase):
 
   def _maybe_wrap_stack_fn(self, stack_fn, ex_factory):
@@ -148,7 +131,7 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
 
     class NotCallable(executor_factory.ExecutorFactory):
 
-      def clean_up_executors(self):
+      def clean_up_executor(self, x):
         pass
 
     with self.assertRaisesRegex(TypeError, 'instantiate abstract class'):
@@ -171,7 +154,7 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
       def create_executor(self, x):
         pass
 
-      def clean_up_executors(self):
+      def clean_up_executor(self, x):
         pass
 
     Fine()
@@ -217,7 +200,7 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
 
     maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
     factory = ex_factory(maybe_wrapped_stack_fn)
-    factory.clean_up_executors()
+    factory.clean_up_executor({placements.CLIENTS: 1})
 
   @parameterized.named_parameters(
       ('SizingExecutorFactory', executor_stacks.SizingExecutorFactory),
@@ -234,7 +217,7 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
     maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
     factory = ex_factory(maybe_wrapped_stack_fn)
     factory.create_executor({})
-    factory.clean_up_executors()
+    factory.clean_up_executor({})
     ex.close.assert_called_once()
 
   @parameterized.named_parameters(
