@@ -61,11 +61,9 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
 class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
   """Implementation of executor factory holding an executor per cardinality."""
 
-  def __init__(
-      self,
-      executor_stack_fn: Callable[[executor_factory.CardinalitiesType],
-                                  executor_base.Executor],
-      ensure_closed: Optional[Sequence[executor_base.Executor]] = None):
+  def __init__(self,
+               executor_stack_fn: Callable[[executor_factory.CardinalitiesType],
+                                           executor_base.Executor]):
     """Initializes `ResourceManagingExecutorFactory`.
 
     `ResourceManagingExecutorFactory` manages a mapping from `cardinalities`
@@ -77,16 +75,11 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
         `placements.PlacementLiteral` to integers, and returning an
         `executor_base.Executor`. The returned executor will be configured to
         handle these cardinalities.
-      ensure_closed: Optional sequence of `executor_base.Excutors` which should
-        always be closed on a `clean_up_executors` call. Defaults to empty.
     """
 
     py_typecheck.check_callable(executor_stack_fn)
     self._executor_stack_fn = executor_stack_fn
     self._executors = cachetools.LRUCache(_EXECUTOR_CACHE_SIZE)
-    if ensure_closed is None:
-      ensure_closed = ()
-    self._ensure_closed = ensure_closed
 
   def create_executor(
       self, cardinalities: executor_factory.CardinalitiesType
@@ -116,19 +109,25 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
     self._executors[key] = ex
     return ex
 
-  def clean_up_executors(self):
-    """Calls `close` on all constructed executors, resetting internal cache.
+  def clean_up_executor(self,
+                        cardinalities: executor_factory.CardinalitiesType):
+    """Calls `close` on constructed executors, resetting internal cache.
 
     If a caller holds a name bound to any of the executors returned from
-    `create_executor`, this executor should be assumed to be in an invalid
-    state, and should not be used after this method is called. Instead, callers
-    should again invoke `create_executor`.
+    `create_executor` with the specified cardinalities, this executor
+    should be assumed to be in an invalid state, and should not be used after
+    this method is called. Instead, callers should again invoke
+    `create_executor`.
+
+    Args:
+      cardinalities: The cardinalities of the executor to be cleaned up.
     """
-    for _, ex in self._executors.items():
-      ex.close()
-    for ex in self._ensure_closed:
-      ex.close()
-    self._executors = {}
+    key = _get_hashable_key(cardinalities)
+    ex = self._executors.get(key)
+    if ex is None:
+      return
+    ex.close()
+    del self._executors[key]
 
 
 @attr.s(auto_attribs=True, eq=False, order=False, frozen=True)
@@ -325,7 +324,8 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
         support_sequence_ops=self._support_sequence_ops,
         can_resolve_references=self._can_resolve_references)
 
-  def clean_up_executors(self):
+  def clean_up_executor(self,
+                        cardinalities: executor_factory.CardinalitiesType):
     # Does not hold any executors internally, so nothing to clean up.
     pass
 
@@ -438,7 +438,8 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
         federating_strategy_factory, unplaced_executor)
     return _wrap_executor_in_threading_stack(executor)
 
-  def clean_up_executors(self):
+  def clean_up_executor(self,
+                        cardinalities: executor_factory.CardinalitiesType):
     # Does not hold any executors internally, so nothing to clean up.
     pass
 
@@ -535,7 +536,8 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     executors = self._flat_stack_fn(cardinalities)
     return self._aggregate_stacks(executors)
 
-  def clean_up_executors(self):
+  def clean_up_executor(self,
+                        cardinalities: executor_factory.CardinalitiesType):
     """Holds no executors internally, so passes on cleanup."""
     pass
 
@@ -836,15 +838,11 @@ class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
 
   def __init__(self,
                underlying_stack: executor_factory.ExecutorFactory,
-               ensure_closed: Optional[Sequence[executor_base.Executor]] = None,
                change_query: Callable[[executor_factory.CardinalitiesType],
                                       bool] = lambda _: True):
     self._change_query = change_query
     self._underlying_stack = underlying_stack
     self._executors = cachetools.LRUCache(_EXECUTOR_CACHE_SIZE)
-    if ensure_closed is None:
-      ensure_closed = ()
-    self._ensure_closed = ensure_closed
 
   def create_executor(
       self, cardinalities: executor_factory.CardinalitiesType
@@ -875,13 +873,15 @@ class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
       self._executors[key] = constructed
       return constructed
 
-  def clean_up_executors(self):
-    for _, ex in self._executors.items():
-      ex.close()
-    self._executors = {}
-    for ex in self._ensure_closed:
-      ex.close()
-    self._underlying_stack.clean_up_executors()
+  def clean_up_executor(self,
+                        cardinalities: executor_factory.CardinalitiesType):
+    key = _get_hashable_key(cardinalities)
+    ex = self._executors.get(key)
+    if ex is None:
+      return
+    ex.close()
+    del self._executors[key]
+    self._underlying_stack.clean_up_executor(cardinalities)
 
 
 class _CardinalitiesOrReadyListChanged():
@@ -907,7 +907,7 @@ class _CardinalitiesOrReadyListChanged():
 
 
 def _configure_remote_workers(default_num_clients, stubs, thread_pool_executor,
-                              dispose_batch_size, executors_to_close):
+                              dispose_batch_size):
   """"Configures `default_num_clients` across `remote_executors`."""
   available_stubs = [stub for stub in stubs if stub.is_ready]
   logging.info('%s TFF workers available out of a total of %s.',
@@ -924,7 +924,6 @@ def _configure_remote_workers(default_num_clients, stubs, thread_pool_executor,
     if default_num_clients_to_host > 0:
       ex = remote_executor.RemoteExecutor(stub, thread_pool_executor,
                                           dispose_batch_size)
-      executors_to_close.append(ex)
       ex.set_cardinalities({placements.CLIENTS: default_num_clients_to_host})
       live_workers.append(ex)
   return [
@@ -1028,12 +1027,10 @@ def remote_executor_factory_from_stubs(
   py_typecheck.check_type(max_fanout, int)
   py_typecheck.check_type(default_num_clients, int)
 
-  executors_to_close = []
-
   def _flat_stack_fn(cardinalities):
     num_clients = cardinalities.get(placements.CLIENTS, default_num_clients)
     return _configure_remote_workers(num_clients, stubs, thread_pool_executor,
-                                     dispose_batch_size, executors_to_close)
+                                     dispose_batch_size)
 
   unplaced_ex_factory = UnplacedExecutorFactory()
   composing_executor_factory = ComposingExecutorFactory(
@@ -1044,5 +1041,4 @@ def remote_executor_factory_from_stubs(
 
   return ReconstructOnChangeExecutorFactory(
       underlying_stack=composing_executor_factory,
-      ensure_closed=executors_to_close,
       change_query=_CardinalitiesOrReadyListChanged(maybe_ready_list=stubs))

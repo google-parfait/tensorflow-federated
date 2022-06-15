@@ -19,7 +19,7 @@
 """A collection of constructors for basic types of executor stacks."""
 
 import math
-from typing import Sequence
+from typing import Callable, Sequence
 
 from absl import logging
 import cachetools
@@ -44,12 +44,17 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
 class CPPExecutorFactory(executor_factory.ExecutorFactory):
   """An ExcutorFactory which wraps a simple executor_fn."""
 
-  def __init__(self, executor_fn, executor_cache_size: int = 5):
+  def __init__(self,
+               executor_fn: Callable[[executor_factory.CardinalitiesType],
+                                     executor_bindings.Executor],
+               executor_cache_size: int = 5):
     self._executor_fn = executor_fn
     self._cache_size = executor_cache_size
     self._executors = cachetools.LRUCache(self._cache_size)
 
-  def create_executor(self, cardinalities):
+  def create_executor(
+      self, cardinalities: executor_factory.CardinalitiesType
+  ) -> executor_bindings.Executor:
     cardinalities_key = _get_hashable_key(cardinalities)
     if self._executors.get(cardinalities_key):
       return self._executors[cardinalities_key]
@@ -57,8 +62,13 @@ class CPPExecutorFactory(executor_factory.ExecutorFactory):
     self._executors[cardinalities_key] = executor
     return executor
 
-  def clean_up_executors(self):
-    self._executors = cachetools.LRUCache(self._cache_size)
+  def clean_up_executor(self,
+                        cardinalities: executor_factory.CardinalitiesType):
+    cardinalities_key = _get_hashable_key(cardinalities)
+    ex = self._executors.get(cardinalities_key)
+    if ex is None:
+      return
+    del self._executors[cardinalities_key]
 
 
 def _log_and_warn_on_sequential_execution(max_concurrent_computation_calls: int,

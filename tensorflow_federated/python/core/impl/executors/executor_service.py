@@ -67,6 +67,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
     self._ex_factory = ex_factory
     self._executors = {}
     self._executor_ref_counts = collections.defaultdict(lambda: 0)
+    self._ids_to_cardinalities = {}
     self._lock = threading.Lock()
 
     # The keys in this dictionary are value ids (the same as what we return
@@ -127,6 +128,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
           self._executors[key] = self._ex_factory.create_executor(
               cardinalities_dict)
         self._executor_ref_counts[key] += 1
+        self._ids_to_cardinalities[key] = cardinalities_dict
       return executor_pb2.GetExecutorResponse(
           executor=executor_pb2.ExecutorId(id=key))
     except (ValueError, TypeError) as err:
@@ -138,6 +140,9 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
       key = request.executor.id
       if self._executors.get(key):
         del self._executors[key]
+        cardinalities = self._ids_to_cardinalities[key]
+        self._ex_factory.clean_up_executor(cardinalities)
+        del self._ids_to_cardinalities[key]
         self._executor_ref_counts[key] = 0
 
   def DisposeExecutor(
@@ -153,8 +158,9 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
       if self._executor_ref_counts[key] == 0:
         del self._executors[key]
         del self._executor_ref_counts[key]
-      if not self._executors:
-        self._ex_factory.clean_up_executors()
+        cardinalities = self._ids_to_cardinalities[key]
+        self._ex_factory.clean_up_executor(cardinalities)
+        del self._ids_to_cardinalities[key]
     return executor_pb2.DisposeExecutorResponse()
 
   @contextlib.contextmanager
