@@ -281,12 +281,14 @@ corresponding to the initialization and iteration, respectively.
 
 ### Available builders
 
-At the moment, TFF provides two builder functions that generate the federated
-computations for federated training and evaluation:
+At the moment, TFF provides various builder functions that generate federated
+computations for federated training and evaluation. Two notable examples
+include:
 
-*   `tff.learning.build_federated_averaging_process` takes a *model function*
-    and a *client optimizer*, and returns a stateful
-    `tff.templates.IterativeProcess`.
+*   `tff.learning.algorithms.build_weighted_fed_avg`, which takes as input a
+    *model function* and a *client optimizer*, and returns a stateful
+    `tff.learning.templates.LearningProcess` (which subclasses
+    `tff.templates.IterativeProcess`).
 
 *   `tff.learning.build_federated_evaluation` takes a *model function* and
     returns a single federated computation for federated evaluation of models,
@@ -321,7 +323,7 @@ In order to simulate a realistic deployment of your federated learning code, you
 will generally write a training loop that looks like this:
 
 ```python
-trainer = tff.learning.build_federated_averaging_process(...)
+trainer = tff.learning.algorithms.build_weighted_fed_avg(...)
 state = trainer.initialize()
 federated_training_data = ...
 
@@ -330,7 +332,8 @@ def sample(federate_data):
 
 while True:
   data_for_this_round = sample(federated_training_data)
-  state, metrics = trainer.next(state, data_for_this_round)
+  result = trainer.next(state, data_for_this_round)
+  state = result.state
 ```
 
 In order to facilitate this, when using TFF in simulations, federated data is

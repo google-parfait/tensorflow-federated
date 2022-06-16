@@ -85,12 +85,14 @@ landing_page:
               metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
         # Simulate a few rounds of training with the selected client devices.
-        trainer = tff.learning.build_federated_averaging_process(
+        trainer = tff.learning.algorithms.build_weighted_fed_avg(
           model_fn,
           client_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1))
         state = trainer.initialize()
         for _ in range(5):
-          state, metrics = trainer.next(state, train_data)
+          result = trainer.next(state, train_data)
+          state = result.state
+          metrics = result.metrics
           print(metrics['train']['loss'])
         </pre>
 
