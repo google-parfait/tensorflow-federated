@@ -17,6 +17,7 @@ from typing import Any
 
 from absl import logging
 
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
 
@@ -33,17 +34,24 @@ class LoggingReleaseManager(release_manager.ReleaseManager):
   containing value references, each value reference is materialized.
   """
 
-  async def release(self, value: Any, key: Any = None) -> None:  # pytype: disable=signature-mismatch
+  # pytype: disable=signature-mismatch
+  async def release(self,
+                    value: Any,
+                    type_signature: computation_types.Type,
+                    key: Any = None) -> None:
+    # pytype: enable=signature-mismatch
     """Releases `value` from a federated program.
 
     Args:
       value: A materialized value, a value reference, or a structure of
         materialized values and value references representing the value to
         release.
+      type_signature: The `tff.Type` of `value`.
       key: An optional value used to reference the released `value`.
     """
     materialized_value = await value_reference.materialize_value(value)
+    logging.info('Releasing')
+    logging.info('  value: %s', materialized_value)
+    logging.info('  type: %s', type_signature)
     if key is not None:
-      logging.info('Releasing value for key %d: %s', key, materialized_value)
-    else:
-      logging.info('Releasing value: %s', materialized_value)
+      logging.info('  key: %s', key)

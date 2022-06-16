@@ -26,6 +26,7 @@ import numpy as np
 import tensorflow as tf
 import tree
 
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import file_release_manager
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_test_utils
@@ -525,11 +526,16 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path)
+    value = {'a': 11, 'b': 21}
+    type_signature = computation_types.StructType([
+        ('a', tf.int32),
+        ('b', tf.int32),
+    ])
 
     with mock.patch.object(
         release_mngr,
         '_remove_values_greater_than') as mock_remove_values_greater_than:
-      await release_mngr.release({'a': 11, 'b': 21}, 1)
+      await release_mngr.release(value, type_signature, 1)
 
       mock_remove_values_greater_than.assert_called_once_with(0)
 
@@ -547,11 +553,16 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
         }])
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path)
+    value = {'a': 11, 'b': 21}
+    type_signature = computation_types.StructType([
+        ('a', tf.int32),
+        ('b', tf.int32),
+    ])
 
     with mock.patch.object(
         release_mngr,
         '_remove_values_greater_than') as mock_remove_values_greater_than:
-      await release_mngr.release({'a': 11, 'b': 21}, 1)
+      await release_mngr.release(value, type_signature, 1)
 
       mock_remove_values_greater_than.assert_called_once_with(0)
 
@@ -562,9 +573,14 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path, save_mode=file_release_manager.CSVSaveMode.APPEND)
+    value = {'a': 11, 'b': 21}
+    type_signature = computation_types.StructType([
+        ('a', tf.int32),
+        ('b', tf.int32),
+    ])
 
     with mock.patch.object(release_mngr, '_append_value') as mock_append_value:
-      await release_mngr.release({'a': 11, 'b': 21}, 1)
+      await release_mngr.release(value, type_signature, 1)
 
       mock_append_value.assert_called_once_with({'key': 1, 'a': 11, 'b': 21})
 
@@ -575,9 +591,14 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path, save_mode=file_release_manager.CSVSaveMode.WRITE)
+    value = {'a': 11, 'b': 21}
+    type_signature = computation_types.StructType([
+        ('a', tf.int32),
+        ('b', tf.int32),
+    ])
 
     with mock.patch.object(release_mngr, '_write_value') as mock_write_value:
-      await release_mngr.release({'a': 11, 'b': 21}, 1)
+      await release_mngr.release(value, type_signature, 1)
 
       mock_write_value.assert_called_once_with({'key': 1, 'a': 11, 'b': 21})
 
@@ -586,63 +607,105 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, [{'key': '1', '': ''}]),
-      ('bool', True, [{'key': '1', '': 'True'}]),
-      ('int', 1, [{'key': '1', '': '1'}]),
-      ('str', 'a', [{'key': '1', '': 'a'}]),
-      ('tensor_int', tf.constant(1), [{'key': '1', '': '1'}]),
-      ('tensor_str', tf.constant('a'), [{'key': '1', '': 'b\'a\''}]),
-      ('tensor_array', tf.ones([3], tf.int32), [{'key': '1', '': '[1, 1, 1]'}]),
-      ('numpy_int', np.int32(1), [{'key': '1', '': '1'}]),
-      ('numpy_array', np.ones([3], int), [{'key': '1', '': '[1, 1, 1]'}]),
+      ('none',
+       None,
+       computation_types.StructType([]),
+       [{'key': '1', '': ''}]),
+      ('bool',
+       True,
+       computation_types.TensorType(tf.bool),
+       [{'key': '1', '': 'True'}]),
+      ('int',
+       1,
+       computation_types.TensorType(tf.int32),
+       [{'key': '1', '': '1'}]),
+      ('str',
+       'a',
+       computation_types.TensorType(tf.string),
+       [{'key': '1', '': 'a'}]),
+      ('tensor_int',
+       tf.constant(1),
+       computation_types.TensorType(tf.int32),
+       [{'key': '1', '': '1'}]),
+      ('tensor_str',
+       tf.constant('a'),
+       computation_types.TensorType(tf.string),
+       [{'key': '1', '': 'b\'a\''}]),
+      ('tensor_array',
+       tf.ones([3], tf.int32),
+       computation_types.TensorType(tf.int32, [3]),
+       [{'key': '1', '': '[1, 1, 1]'}]),
+      ('numpy_int',
+       np.int32(1),
+       computation_types.TensorType(tf.int32),
+       [{'key': '1', '': '1'}]),
+      ('numpy_array',
+       np.ones([3], int),
+       computation_types.TensorType(tf.int32, [3]),
+       [{'key': '1', '': '[1, 1, 1]'}]),
 
       # value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
+       computation_types.TensorType(tf.int32),
        [{'key': '1', '': '1'}]),
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       computation_types.SequenceType(tf.int32),
        [{'key': '1', '': '[1, 2, 3]'}]),
 
       # structures
       ('list',
        [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
+       computation_types.SequenceType([tf.bool, tf.int32, tf.string]),
        [{'key': '1', '0': 'True', '1': '1', '2': 'a'}]),
-      ('list_empty', [], [{'key': '1'}]),
+      ('list_empty', [], computation_types.SequenceType([]), [{'key': '1'}]),
       ('list_nested',
        [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
+       computation_types.SequenceType([[tf.bool, tf.int32], [tf.string]]),
        [{'key': '1', '0/0': 'True', '0/1': '1', '1/0': 'a'}]),
       ('dict',
        {'a': True,
         'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a'},
+       computation_types.SequenceType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string)]),
        [{'key': '1', 'a': 'True', 'b': '1', 'c': 'a'}]),
-      ('dict_empty', {}, [{'key': '1'}]),
+      ('dict_empty', {}, computation_types.SequenceType([]), [{'key': '1'}]),
       ('dict_nested',
        {'x': {'a': True,
               'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
+       computation_types.SequenceType([
+           ('x', [('a', tf.bool), ('b', tf.int32)]),
+           ('y', [('c', tf.string)])]),
        [{'key': '1', 'x/a': 'True', 'x/b': '1', 'y/c': 'a'}]),
       ('attr',
        program_test_utils.TestAttrObject2(
            True, program_test_utils.TestMaterializableValueReference(1)),
+       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
        [{'key': '1', 'a': 'True', 'b': '1'}]),
       ('attr_nested',
        program_test_utils.TestAttrObject2(
            program_test_utils.TestAttrObject2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestAttrObject1('a')),
+       computation_types.SequenceType([
+           ('a', [('a', tf.bool), ('b', tf.int32)]),
+           ('b', [('c', tf.string)])]),
        [{'key': '1', 'a/a': 'True', 'a/b': '1', 'b/a': 'a'}]),
   )
   # pyformat: enable
-  async def test_writes_value(self, value, expected_value):
+  async def test_writes_value(self, value, type_signature, expected_value):
     file_path = self.create_tempfile()
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path)
 
-    await release_mngr.release(value, 1)
+    await release_mngr.release(value, type_signature, 1)
 
     _, actual_value = _read_values_from_csv(file_path)
     self.assertEqual(actual_value, expected_value)
@@ -657,9 +720,11 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path)
+    value = 1
+    type_signature = computation_types.TensorType(tf.int32)
 
     try:
-      await release_mngr.release(1, key)
+      await release_mngr.release(value, type_signature, key)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -673,9 +738,11 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     os.remove(file_path)
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path)
+    value = 1
+    type_signature = computation_types.TensorType(tf.int32)
 
     with self.assertRaises(TypeError):
-      await release_mngr.release(1, key)
+      await release_mngr.release(value, type_signature, key)
 
 
 class SavedModelFileReleaseManagerInitTest(parameterized.TestCase):
@@ -764,64 +831,94 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, [None]),
-      ('bool', True, [True]),
-      ('int', 1, [1]),
-      ('str', 'a', ['a']),
-      ('tensor_int', tf.constant(1), [tf.constant(1)]),
-      ('tensor_str', tf.constant('a'), [tf.constant('a')]),
-      ('tensor_array', tf.ones([3], tf.int32), [tf.ones([3])]),
-      ('numpy_int', np.int32(1), [np.int32(1)]),
-      ('numpy_array', np.ones([3], int), [np.ones([3], int)]),
+      ('none', None, computation_types.StructType([]), [None]),
+      ('bool', True, computation_types.TensorType(tf.bool), [True]),
+      ('int', 1, computation_types.TensorType(tf.int32), [1]),
+      ('str', 'a', computation_types.TensorType(tf.string), ['a']),
+      ('tensor_int',
+       tf.constant(1),
+       computation_types.TensorType(tf.int32),
+       [tf.constant(1)]),
+      ('tensor_str',
+       tf.constant('a'),
+       computation_types.TensorType(tf.string),
+       [tf.constant('a')]),
+      ('tensor_array',
+       tf.ones([3], tf.int32),
+       computation_types.TensorType(tf.int32, [3]),
+       [tf.ones([3])]),
+      ('numpy_int',
+       np.int32(1),
+       computation_types.TensorType(tf.int32),
+       [np.int32(1)]),
+      ('numpy_array',
+       np.ones([3], int),
+       computation_types.TensorType(tf.int32, [3]),
+       [np.ones([3], int)]),
 
       # value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
+       computation_types.TensorType(tf.int32),
        [1]),
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
+       computation_types.SequenceType(tf.int32),
        [tf.data.Dataset.from_tensor_slices([1, 2, 3])]),
 
       # structures
       ('list',
        [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
+       computation_types.SequenceType([tf.bool, tf.int32, tf.string]),
        [True, 1, 'a']),
-      ('list_empty', [], []),
+      ('list_empty', [], computation_types.SequenceType([]), []),
       ('list_nested',
        [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
+       computation_types.SequenceType([[tf.bool, tf.int32], [tf.string]]),
        [True, 1, 'a']),
       ('dict',
        {'a': True,
         'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a'},
+       computation_types.SequenceType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string)]),
        [True, 1, 'a']),
-      ('dict_empty', {}, []),
+      ('dict_empty', {}, computation_types.SequenceType([]), []),
       ('dict_nested',
        {'x': {'a': True,
               'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
+       computation_types.SequenceType([
+           ('x', [('a', tf.bool), ('b', tf.int32)]),
+           ('y', [('c', tf.string)])]),
        [True, 1, 'a']),
       ('attr',
        program_test_utils.TestAttrObject2(
            True, program_test_utils.TestMaterializableValueReference(1)),
+       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
        [True, 1]),
       ('attr_nested',
        program_test_utils.TestAttrObject2(
            program_test_utils.TestAttrObject2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestAttrObject1('a')),
+       computation_types.SequenceType([
+           ('a', [('a', tf.bool), ('b', tf.int32)]),
+           ('b', [('c', tf.string)])]),
        [True, 1, 'a']),
   )
   # pyformat: enable
-  async def test_writes_value(self, value, expected_value):
+  async def test_writes_value(self, value, type_signature, expected_value):
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
         root_dir=root_dir, prefix='a_')
 
     with mock.patch.object(file_utils,
                            'write_saved_model') as mock_write_saved_model:
-      await release_mngr.release(value, 1)
+      await release_mngr.release(value, type_signature, 1)
 
       mock_write_saved_model.assert_called_once()
       call = mock_write_saved_model.mock_calls[0]
@@ -849,9 +946,11 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
         root_dir=root_dir, prefix='a_')
+    value = 1
+    type_signature = computation_types.TensorType(tf.int32)
 
     try:
-      await release_mngr.release(1, key)
+      await release_mngr.release(value, type_signature, key)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -864,9 +963,11 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
     root_dir = self.create_tempdir()
     release_mngr = file_release_manager.SavedModelFileReleaseManager(
         root_dir=root_dir, prefix='a_')
+    value = 1
+    type_signature = computation_types.TensorType(tf.int32)
 
     with self.assertRaises(TypeError):
-      await release_mngr.release(1, key)
+      await release_mngr.release(value, type_signature, key)
 
 
 if __name__ == '__main__':

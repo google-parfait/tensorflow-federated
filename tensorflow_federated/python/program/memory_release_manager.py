@@ -16,6 +16,7 @@
 import collections
 from typing import Any, OrderedDict, Hashable
 
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
 
@@ -36,15 +37,19 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
     """Returns an initialized `tff.program.MemoryReleaseManager`."""
     self._values = collections.OrderedDict()
 
-  async def release(self, value: Any, key: Hashable) -> None:  # pytype: disable=signature-mismatch
+  async def release(
+      self, value: Any, type_signature: computation_types.Type,
+      key: Hashable) -> None:  # pytype: disable=signature-mismatch
     """Releases `value` from a federated program.
 
     Args:
       value: A materialized value, a value reference, or a structure of
         materialized values and value references representing the value to
         release.
+      type_signature: The `tff.Type` of `value`.
       key: A hashable value used to reference the released `value`.
     """
+    del type_signature  # Unused.
     materialized_value = await value_reference.materialize_value(value)
     self._values[key] = materialized_value
 

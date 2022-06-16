@@ -134,8 +134,11 @@ async def train_federated_model(
 
       # Release the training metrics.
       if train_output_managers is not None:
-        tasks.add_all(
-            *[m.release(metrics, round_number) for m in train_output_managers])
+        _, metrics_type = train.type_signature.result
+        tasks.add_all(*[
+            m.release(metrics, metrics_type, round_number)
+            for m in train_output_managers
+        ])
 
       # Save the current program state.
       if program_state_manager is not None:
@@ -156,11 +159,13 @@ async def train_federated_model(
 
     # Release the evaluation metrics.
     if evaluation_output_managers is not None:
+      evaluation_metrics_type = evaluation.type_signature.result
       tasks.add_all(*[
-          m.release(evaluation_metrics, round_number)
+          m.release(evaluation_metrics, evaluation_metrics_type, round_number)
           for m in train_output_managers
       ])
 
     # Release the model output.
     if model_output_manager is not None:
-      tasks.add(model_output_manager.release(state))
+      state_type, _ = train.type_signature.result
+      tasks.add(model_output_manager.release(state, state_type))

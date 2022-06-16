@@ -218,7 +218,8 @@ def train_federated_model(
 
     if output_managers is not None:
       for output_manager in output_managers:
-        output_manager.release(metrics, round_number)
+        _, type_signature = train.type_signature.release
+        output_manager.release(metrics, type_signature, round_number)
 ```
 
 ## Roles
