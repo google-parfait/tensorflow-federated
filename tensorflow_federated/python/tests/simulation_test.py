@@ -13,13 +13,17 @@
 # limitations under the License.
 """End-to-end tests for simulations using TFF."""
 
+from typing import Callable, List
+
 from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_federated as tff
 
 
-def iterative_process_builder(model_fn):
-  return tff.learning.build_federated_averaging_process(
+def learning_process_builder(
+    model_fn: Callable[[], tff.learning.Model]
+) -> tff.learning.templates.LearningProcess:
+  return tff.learning.algorithms.build_weighted_fed_avg(
       model_fn=model_fn,
       client_optimizer_fn=tf.keras.optimizers.SGD,
       server_optimizer_fn=tf.keras.optimizers.SGD)
@@ -42,9 +46,9 @@ class FederatedTasksTest(tf.test.TestCase, parameterized.TestCase):
         num_epochs=1, batch_size=32)
     baseline_task = baseline_task_fn(train_client_spec, use_synthetic_data=True)
 
-    process = iterative_process_builder(baseline_task.model_fn)
+    process = learning_process_builder(baseline_task.model_fn)
 
-    def client_selection_fn(round_num):
+    def client_selection_fn(round_num: int) -> List[tf.data.Dataset]:
       del round_num
       return baseline_task.datasets.sample_train_clients(num_clients=1)
 

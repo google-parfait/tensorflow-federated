@@ -19,8 +19,8 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-def construct_example_training_comp():
-  """Constructs a `tff.templates.IterativeProcess` via the FL API."""
+def construct_example_training_comp() -> tff.learning.templates.LearningProcess:
+  """Constructs a `tff.learning.templates.LearningProcess` via the FL API."""
   np.random.seed(0)
 
   input_spec = collections.OrderedDict(
@@ -43,7 +43,7 @@ def construct_example_training_comp():
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
-  return tff.learning.build_federated_averaging_process(
+  return tff.learning.algorithms.build_weighted_fed_avg(
       model_fn,
       client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
 
@@ -79,11 +79,6 @@ class MapReduceFormTest(tf.test.TestCase):
         '> -> <\n'
         '  <\n'
         '    <\n'
-        '      float32[2,1],\n'
-        '      float32[1]\n'
-        '    >,\n'
-        '    float32,\n'
-        '    <\n'
         '      sparse_categorical_accuracy=<\n'
         '        float32,\n'
         '        float32\n'
@@ -98,7 +93,12 @@ class MapReduceFormTest(tf.test.TestCase):
         '      num_batches=<\n'
         '        int64\n'
         '      >\n'
-        '    >\n'
+        '    >,\n'
+        '    <\n'
+        '      float32[2,1],\n'
+        '      float32[1]\n'
+        '    >,\n'
+        '    float32\n'
         '  >,\n'
         '  <>,\n'
         '  <>,\n'
@@ -127,8 +127,11 @@ class MapReduceFormTest(tf.test.TestCase):
     # appended an empty tuple as client side-channel outputs if none existed.
     ip_1.next.type_signature.parameter.check_equivalent_to(
         ip_2.next.type_signature.parameter)
-    ip_1.next.type_signature.result.check_equivalent_to(
-        ip_2.next.type_signature.result)
+    # Map reduce form can strip out python structures, so we check equivalence
+    # against StructType.
+    ip_1_result_type = ip_1.next.type_signature.result
+    ip_2_result_type = ip_2.next.type_signature.result
+    tff.types.StructType(ip_1_result_type).check_equivalent_to(ip_2_result_type)
 
     sample_batch = collections.OrderedDict(
         x=np.array([[1., 1.]], dtype=np.float32),
@@ -136,7 +139,9 @@ class MapReduceFormTest(tf.test.TestCase):
     )
     client_data = [sample_batch]
     state_1 = ip_1.initialize()
-    server_state_1, server_output_1 = ip_1.next(state_1, [client_data])
+    ip_1_next_result = ip_1.next(state_1, [client_data])
+    server_state_1 = ip_1_next_result.state
+    server_output_1 = ip_1_next_result.metrics
     # The serialized representation of `ip` loses the Python containers, so we
     # assert that it matches the odict_or_tuple-ified representations.
     server_state_1 = tff.structure.to_odict_or_tuple(
@@ -150,7 +155,7 @@ class MapReduceFormTest(tf.test.TestCase):
     server_state_2_arrays = tf.nest.flatten(server_state_2)
     server_output_2_arrays = tf.nest.flatten(server_output_2)
 
-    self.assertEqual(server_state_1['model_broadcast_state'], ())
+    self.assertEqual(server_state_1['distributor'], ())
     # Note that we cannot simply use assertEqual because the values may differ
     # due to floating point issues.
     tf.nest.assert_same_structure(server_state_1, server_state_2)

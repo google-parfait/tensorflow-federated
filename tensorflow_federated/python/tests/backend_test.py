@@ -617,12 +617,12 @@ class KerasIntegrationTest(parameterized.TestCase):
       )
       return tff_model
 
-    trainer = tff.learning.build_federated_averaging_process(
+    trainer = tff.learning.algorithms.build_weighted_fed_avg(
         model_fn, client_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1))
 
     state = trainer.initialize()
     for _ in range(2):
-      state, _ = trainer.next(state, train_data)
+      state = trainer.next(state, train_data).state
 
 
 if __name__ == '__main__':
