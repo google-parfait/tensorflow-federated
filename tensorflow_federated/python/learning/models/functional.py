@@ -22,7 +22,7 @@ This version of the model parameterizes its `forward_pass` and
 `predict_on_batch` methods by model weights, rather than storing them in the
 model. This allows for greater flexibility in model portability.
 
-To use with `tff.learning.build_federated_averaging_process` and other APIs that
+To use with `tff.learning.algorithms` and other APIs that
 construct learning processes expecting stateful models, wrap the functional
 model with `tff.learning.models.model_from_functional`.
 """
