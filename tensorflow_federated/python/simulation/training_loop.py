@@ -16,7 +16,7 @@
 import asyncio
 import collections
 import time
-from typing import Any, Callable, Iterable, Mapping, MutableMapping, Optional, Tuple
+from typing import Any, Callable, Iterable, MutableMapping, Optional, Tuple
 
 from absl import logging
 
@@ -36,36 +36,33 @@ EVALUATION_METRICS_PREFIX = 'evaluation/'
 EVALUATION_TIME_KEY = 'evaluation_time_in_seconds'
 
 
-def _run_training(training_fn: computation_base.Computation,
-                  client_selection_fn: Callable[[int], Any], state: Any,
-                  round_num: int) -> Tuple[Any, Mapping[str, Any]]:
+def _run_training(
+    training_fn: computation_base.Computation,
+    client_selection_fn: Callable[[int], Any], state: Any,
+    round_num: int) -> Tuple[Any, collections.OrderedDict[str, Any]]:
   """Runs one round of federated training."""
   logging.info('Running training at round %d', round_num)
-  metrics = collections.OrderedDict()
   training_time_start = time.time()
   training_data = client_selection_fn(round_num)
-  state, training_metrics = structure.from_container(
-      training_fn(state, training_data))
+  state, metrics = structure.from_container(training_fn(state, training_data))
   training_time = time.time() - training_time_start
-  metrics.update(training_metrics)
   metrics[TRAINING_TIME_KEY] = training_time
   metrics[ROUND_NUMBER_KEY] = round_num
-  return state, metrics
+  return state, collections.OrderedDict(metrics)
 
 
 def _run_evaluation(evaluation_fn: Callable[[Any, Any], MetricsType],
                     client_selection_fn: Callable[[int], Any], state: Any,
-                    round_num: int) -> Mapping[str, Any]:
+                    round_num: int) -> collections.OrderedDict[str, Any]:
   """Runs one round of federated evaluation."""
   logging.info('Running evaluation at round %d', round_num)
-  metrics = collections.OrderedDict()
   evaluation_time_start = time.time()
   evaluation_data = client_selection_fn(round_num)
-  evaluation_metrics = evaluation_fn(state, evaluation_data)
+  metrics = evaluation_fn(state, evaluation_data)
   evaluation_time = time.time() - evaluation_time_start
-  metrics.update(evaluation_metrics)
   metrics[EVALUATION_TIME_KEY] = evaluation_time
-  return {EVALUATION_METRICS_PREFIX + k: v for (k, v) in metrics.items()}
+  return collections.OrderedDict(
+      {EVALUATION_METRICS_PREFIX + k: v for (k, v) in metrics.items()})
 
 
 def run_training_process(
