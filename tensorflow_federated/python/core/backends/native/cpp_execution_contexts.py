@@ -13,7 +13,7 @@
 # limitations under the License.
 """Execution contexts for the native backend."""
 
-from typing import Optional, Sequence
+from typing import Sequence
 
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
@@ -23,9 +23,8 @@ from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_f
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
-def set_local_cpp_execution_context(
-    default_num_clients: int = 0,
-    max_concurrent_computation_calls: Optional[int] = None):
+def set_local_cpp_execution_context(default_num_clients: int = 0,
+                                    max_concurrent_computation_calls: int = -1):
   context = create_local_cpp_execution_context(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls)
@@ -33,8 +32,7 @@ def set_local_cpp_execution_context(
 
 
 def create_local_cpp_execution_context(
-    default_num_clients: int = 0,
-    max_concurrent_computation_calls: Optional[int] = None):
+    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1):
   """Creates a local execution context backed by TFF-C++ runtime.
 
   Args:
@@ -42,7 +40,8 @@ def create_local_cpp_execution_context(
       cardinality, if thus number cannot be inferred by the arguments of a
       computation.
     max_concurrent_computation_calls: The maximum number of concurrent calls to
-      a single computation in the CPP runtime. If `None`, there is no limit.
+      a single computation in the CPP runtime. If nonpositive, there is no
+      limit.
 
   Returns:
     An instance of `context_base.Context` representing the TFF-C++ runtime.
@@ -56,8 +55,7 @@ def create_local_cpp_execution_context(
 
 
 def create_local_async_cpp_execution_context(
-    default_num_clients: int = 0,
-    max_concurrent_computation_calls: Optional[int] = None):
+    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1):
   """Creates a local async execution context backed by TFF-C++ runtime.
 
   Args:
@@ -65,7 +63,8 @@ def create_local_async_cpp_execution_context(
       cardinality, if thus number cannot be inferred by the arguments of a
       computation.
     max_concurrent_computation_calls: The maximum number of concurrent calls to
-      a single computation in the CPP runtime. If `None`, there is no limit.
+      a single computation in the CPP runtime. If nonpositive, there is no
+      limit.
 
   Returns:
     An instance of `context_base.Context` representing the TFF-C++ runtime.
@@ -79,8 +78,7 @@ def create_local_async_cpp_execution_context(
 
 
 def set_local_async_cpp_execution_context(
-    default_num_clients: int = 0,
-    max_concurrent_computation_calls: Optional[int] = None):
+    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1):
   """Sets a local execution context backed by TFF-C++ runtime.
 
   Args:
@@ -88,7 +86,8 @@ def set_local_async_cpp_execution_context(
       cardinality, if thus number cannot be inferred by the arguments of a
       computation.
     max_concurrent_computation_calls: The maximum number of concurrent calls to
-      a single computation in the CPP runtime. If `None`, there is no limit.
+      a single computation in the CPP runtime. If nonpositive, there is no
+      limit.
   """
   context = create_local_async_cpp_execution_context(
       default_num_clients=default_num_clients,

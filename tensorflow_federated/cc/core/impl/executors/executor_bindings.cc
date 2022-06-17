@@ -151,7 +151,7 @@ PYBIND11_MODULE(executor_bindings, m) {
 
   // Executor construction methods.
   m.def("create_tensorflow_executor", &CreateTensorFlowExecutor,
-        py::arg("max_concurrent_computation_calls") = py::none(),
+        py::arg("max_concurrent_computation_calls") = -1,
         "Creates a TensorFlowExecutor.");
   m.def("create_reference_resolving_executor",
         &CreateReferenceResolvingExecutor,

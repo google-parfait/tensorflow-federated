@@ -24,9 +24,11 @@ limitations under the License
 namespace tensorflow_federated {
 
 // Returns an executor that can resolve TensorFlow computations and structures
-// of tensors.
+// of tensors. `max_concurrent_computation_calls` can be used to limit the
+// maximum number of TensorFlow sessions executing in parallel; non-positive
+// values indicate no max.
 std::shared_ptr<Executor> CreateTensorFlowExecutor(
-    absl::optional<int> max_concurrent_computation_calls = absl::nullopt);
+    int32_t max_concurrent_computation_calls = -1);
 
 }  // namespace tensorflow_federated
 

@@ -23,11 +23,11 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/simulation/servers.h"
 
-ABSL_FLAG(uint32_t, port, 10000, "Port to run the executor service on");
-ABSL_FLAG(uint32_t, grpc_max_message_length_megabytes, 10000,
+ABSL_FLAG(int32_t, port, 10000, "Port to run the executor service on");
+ABSL_FLAG(int32_t, grpc_max_message_length_megabytes, 10000,
           "Max gRPC message length in megabytes");
 
-ABSL_FLAG(uint32_t, max_concurrent_computation_calls, -1,
+ABSL_FLAG(int32_t, max_concurrent_computation_calls, -1,
           "The maximum number of parallel calls to a given computation. This"
           " will limit the number of parallel executions for intrinsics such"
           " as `federated_map(computation, value)`. This can be especially "

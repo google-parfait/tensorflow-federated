@@ -35,8 +35,7 @@ namespace tensorflow_federated {
 // instance of Executor if construction succeeds.
 absl::StatusOr<std::shared_ptr<Executor>> CreateLocalExecutor(
     const CardinalityMap& cardinalities,
-    std::function<
-        absl::StatusOr<std::shared_ptr<Executor>>(absl::optional<int>)>
+    std::function<absl::StatusOr<std::shared_ptr<Executor>>(int32_t)>
         leaf_executor_fn = CreateTensorFlowExecutor);
 }  // namespace tensorflow_federated
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_LOCAL_STACKS_H_

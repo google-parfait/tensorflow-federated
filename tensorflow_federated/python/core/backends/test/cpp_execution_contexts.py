@@ -13,8 +13,6 @@
 # limitations under the License.
 """Execution contexts for the test backend."""
 
-from typing import Optional
-
 from tensorflow_federated.python.core.backends.native import compiler as native_compiler
 from tensorflow_federated.python.core.backends.test import compiler as test_compiler
 from tensorflow_federated.python.core.impl.context_stack import context_base
@@ -26,8 +24,7 @@ from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_f
 def create_test_cpp_execution_context(
     *,
     default_num_clients: int = 0,
-    max_concurrent_computation_calls: Optional[int] = None
-) -> context_base.Context:
+    max_concurrent_computation_calls: int = -1) -> context_base.Context:
   """Creates an execution context for local testing of computations.
 
   Test execution contexts are useful for simulating the behavior of secure
@@ -38,8 +35,8 @@ def create_test_cpp_execution_context(
     default_num_clients: The number of clients to be used if the number of
       clients cannot be inferred from the arguments to a computation.
     max_concurrent_computation_calls: The maximum number of concurrent calls
-      to a single computation in the C++ runtime. If `None`, there is no limit.
-      This argument must not be provided if `use_cpp=False`.
+      to a single computation in the C++ runtime. If nonpositive, there is no
+      limit.
 
   Returns:
     An execution context for local testing of computations.
@@ -63,10 +60,9 @@ def create_test_cpp_execution_context(
   return context
 
 
-def set_test_cpp_execution_context(
-    *,
-    default_num_clients: int = 0,
-    max_concurrent_computation_calls: Optional[int] = None):
+def set_test_cpp_execution_context(*,
+                                   default_num_clients: int = 0,
+                                   max_concurrent_computation_calls: int = -1):
   """Sets an execution context for local testing of computations.
 
   Test execution contexts are useful for simulating the behavior of secure
@@ -77,8 +73,8 @@ def set_test_cpp_execution_context(
     default_num_clients: The number of clients to be used if the number of
       clients cannot be inferred from the arguments to a computation.
     max_concurrent_computation_calls: The maximum number of concurrent calls
-      to a single computation in the C++ runtime. If `None`, there is no limit.
-      This argument must not be provided if `use_cpp=False`.
+      to a single computation in the C++ runtime. If nonpositive, there is no
+      limit.
 
   Raises:
     ValueError: If invalid parameters are provided to either the C++ or Python

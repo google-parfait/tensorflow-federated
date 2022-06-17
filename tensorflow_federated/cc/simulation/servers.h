@@ -41,10 +41,9 @@ void RunServer(std::function<absl::StatusOr<std::shared_ptr<Executor>>(
 
 // Runs a specialized version of RunServer above; the running executor service
 // will execute federated computations on the local machine.
-void RunWorker(
-    int port, std::shared_ptr<grpc::ServerCredentials> credentials,
-    int grpc_max_message_length_megabytes,
-    absl::optional<uint32_t> max_concurrent_computation_calls = absl::nullopt);
+void RunWorker(int port, std::shared_ptr<grpc::ServerCredentials> credentials,
+               int grpc_max_message_length_megabytes,
+               int32_t max_concurrent_computation_calls = -1);
 
 }  // namespace tensorflow_federated
 #endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_SIMULATION_SERVERS_H_

@@ -356,7 +356,7 @@ absl::Status AddDatasetSerializationToSequenceBindings(
 class Computation {
  public:
   static absl::StatusOr<std::shared_ptr<Computation>> FromProto(
-      const v0::TensorFlow& comp_pb, absl::optional<int> max_active_sessions) {
+      const v0::TensorFlow& comp_pb, int32_t max_active_sessions) {
     tensorflow::GraphDef graphdef_pb;
     if (!comp_pb.graph_def().UnpackTo(&graphdef_pb)) {
       return absl::InternalError(ERR_LOG("Could not unpack graphdef proto"));
@@ -382,7 +382,7 @@ class Computation {
               absl::optional<v0::TensorFlow::Binding> parameter_shape,
               v0::TensorFlow::Binding output_shape,
               std::vector<std::string> output_tensor_names,
-              absl::optional<int> max_active_sessions = absl::nullopt)
+              int32_t max_active_sessions = -1)
       : session_provider_(std::move(graph), max_active_sessions),
         init_op_(std::move(init_op)),
         parameter_shape_(std::move(parameter_shape)),
@@ -787,8 +787,10 @@ absl::Status MaterializeSequence(const tensorflow::Tensor& graph_def_tensor,
 
 class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
  public:
-  explicit TensorFlowExecutor(
-      absl::optional<int> max_concurrent_computation_calls)
+  // Setting max_concurrent_computation_calls to a positive value limits the
+  // concurrent invocations of session.run to that number. Zero or negative
+  // provides effectively unlimited concurrency.
+  explicit TensorFlowExecutor(int32_t max_concurrent_computation_calls)
       : max_concurrent_computation_calls_(max_concurrent_computation_calls) {}
 
  private:
@@ -797,7 +799,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   absl::flat_hash_map<uint64_t, std::shared_ptr<Computation>> function_cache_
       ABSL_GUARDED_BY(function_cache_mutex_);
   absl::Mutex function_cache_mutex_;
-  absl::optional<uint16_t> max_concurrent_computation_calls_;
+  int32_t max_concurrent_computation_calls_;
 
   absl::StatusOr<ExecutorValue> CreateValueAny(const v0::Value& value_pb) {
     VLOG(2) << "Creating value: " << value_pb.Utf8DebugString();
@@ -1015,7 +1017,7 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 }  // namespace
 
 std::shared_ptr<Executor> CreateTensorFlowExecutor(
-    absl::optional<int> max_concurrent_computation_calls) {
+    int32_t max_concurrent_computation_calls) {
   return std::make_shared<TensorFlowExecutor>(max_concurrent_computation_calls);
 }
 

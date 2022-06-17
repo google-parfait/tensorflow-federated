@@ -34,6 +34,8 @@ namespace tensorflow_federated {
 
 namespace {
 
+constexpr int32_t kUnlimitedParallelism = -1;
+
 namespace tf = ::tensorflow;
 using TensorStructuresSpan =
     ::absl::Span<const std::vector<::tensorflow::Tensor>>;
@@ -212,7 +214,7 @@ absl::StatusOr<tf::Tensor> DatasetFromTensorStructures(
                                       structure[element_index]));
     }
   }
-  SessionProvider session_provider(std::move(graph_def), absl::nullopt);
+  SessionProvider session_provider(std::move(graph_def), kUnlimitedParallelism);
   auto session = TFF_TRY(session_provider.BorrowSession());
   std::vector<tf::Tensor> outputs;
   tensorflow::Status status =

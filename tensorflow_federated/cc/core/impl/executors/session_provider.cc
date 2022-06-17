@@ -38,9 +38,9 @@ namespace tensorflow_federated {
 // but we need to ability to clear an individual Session's container after
 // each call.
 ABSL_CONST_INIT static absl::Mutex function_id_mutex(absl::kConstInit);
-uint32_t GetNextFunctionId() {
+int32_t GetNextFunctionId() {
   absl::MutexLock function_id_lock(&function_id_mutex);
-  static uint32_t function_id = 0;
+  static int32_t function_id = 0;
   return function_id++;
 }
 
@@ -194,16 +194,21 @@ tensorflow::GraphDef ReplaceContainers(
 }
 
 SessionProvider::SessionProvider(tensorflow::GraphDef&& graph,
-                                 absl::optional<uint16_t> max_active_sessions)
-    : max_active_sessions_(max_active_sessions),
-      active_sessions_(0),
-      graph_(graph),
-      function_id_(GetNextFunctionId()) {
+                                 int32_t max_active_sessions)
+    : active_sessions_(0), graph_(graph), function_id_(GetNextFunctionId()) {
+  if (max_active_sessions > 0) {
+    max_active_sessions_ = max_active_sessions;
+  } else {
+    // Treat 0 and lower as unlimited, otherwise any lower number would result
+    // in permanent runtime hangs.
+    max_active_sessions_ = std::numeric_limits<int32_t>::max();
+  }
+
   maybe_open_cpus_ = std::thread::hardware_concurrency();
 }
 
 absl::StatusOr<std::unique_ptr<tensorflow::Session>>
-SessionProvider::CreateSession(const uint16_t session_id) {
+SessionProvider::CreateSession(const int16_t session_id) {
   const std::string container = absl::StrCat(function_id_, "/", session_id);
   std::unique_ptr<tensorflow::Session> session;
   {
@@ -228,7 +233,7 @@ SessionProvider::CreateSession(const uint16_t session_id) {
   if (devices.num_gpus > 0) {
     // If we have GPUs, round robin the session by explicitly setting the
     // `device` attr of the GPU-capable kernels.
-    const uint16_t device_id = session_id % devices.num_gpus;
+    const int16_t device_id = session_id % devices.num_gpus;
     const std::string& device =
         absl::StrCat("/device:", tensorflow::DEVICE_GPU, ":", device_id);
     VLOG(2) << "Pinning function [" << function_id_ << "] session ["
@@ -238,7 +243,7 @@ SessionProvider::CreateSession(const uint16_t session_id) {
   if (devices.num_tpus > 0) {
     // If we have TPUs, round robin the session by explicitly setting the
     // `device` attr of the TPU-capable kernels.
-    const uint16_t device_id = session_id % devices.num_tpus;
+    const int16_t device_id = session_id % devices.num_tpus;
     const std::string& device =
         absl::StrCat("/device:", tensorflow::DEVICE_TPU, ":", device_id);
     VLOG(2) << "Pinning function [" << function_id_ << "] session ["
@@ -271,9 +276,9 @@ SessionProvider::TakeSession() {
     return std::move(session);
   }
   maybe_open_cpus_--;
-  // Build a container name based on the number of sessions created so that each
-  // session gets its own container.
-  const uint16_t session_id = session_creation_counter_++;
+  // Build a container name based on the number of sessions created so that
+  // each session gets its own container.
+  const int16_t session_id = session_creation_counter_++;
   lock_.Unlock();
   auto session = CreateSession(session_id);
   lock_.Lock();

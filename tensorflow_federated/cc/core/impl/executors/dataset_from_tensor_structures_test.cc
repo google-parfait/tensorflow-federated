@@ -126,7 +126,7 @@ TEST(DatasetFromTensorStructuresTest, ReturnsReducibleDataset) {
       LoadGraph(FLAGS_reduce_graph_path.CurrentValue().c_str());
 
   // Attempt to reduce the dataset using a pre-made graph.
-  SessionProvider session_provider(std::move(reduce_graph_def), absl::nullopt);
+  SessionProvider session_provider(std::move(reduce_graph_def), -1);
   auto session = TFF_ASSERT_OK(session_provider.BorrowSession());
   std::vector<tf::Tensor> outputs;
   std::string reduce_dataset_input_name = "serialized_dataset_input";

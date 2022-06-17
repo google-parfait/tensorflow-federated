@@ -54,13 +54,12 @@ namespace tensorflow_federated {
 // TensorFlowExecutor.
 class SessionProvider {
  public:
-  SessionProvider(tensorflow::GraphDef&& graph,
-                  absl::optional<uint16_t> max_active_sessions);
+  SessionProvider(tensorflow::GraphDef&& graph, int32_t max_active_sessions);
 
   class SessionWithResourceContainer {
    public:
     SessionWithResourceContainer(std::unique_ptr<tensorflow::Session> session,
-                                 uint32_t function_id, uint16_t session_id)
+                                 uint32_t function_id, int16_t session_id)
         : session_(std::move(session)),
           container_name_(absl::StrCat(function_id, "/", session_id)) {
       tensorflow::Status status = session_->LocalDeviceManager(&device_mgr_);
@@ -120,9 +119,7 @@ class SessionProvider {
   }
 
   bool SessionOrCpuAvailable() {
-    bool under_active_session_limit =
-        !max_active_sessions_.has_value() ||
-        active_sessions_ < max_active_sessions_.value();
+    bool under_active_session_limit = active_sessions_ < max_active_sessions_;
     return under_active_session_limit &&
            (!sessions_.empty() || maybe_open_cpus_ > 0);
   }
@@ -132,7 +129,7 @@ class SessionProvider {
 
  private:
   absl::StatusOr<std::unique_ptr<tensorflow::Session>> CreateSession(
-      const uint16_t session_id);
+      const int16_t session_id);
 
   // Move-only.
   SessionProvider(SessionProvider&& other) = default;
@@ -142,9 +139,9 @@ class SessionProvider {
 
   absl::Mutex lock_;
   std::vector<SessionWithResourceContainer> sessions_;
-  uint16_t maybe_open_cpus_;
-  absl::optional<uint16_t> max_active_sessions_;
-  uint16_t active_sessions_;
+  int16_t maybe_open_cpus_;
+  int32_t max_active_sessions_;
+  int32_t active_sessions_;
   const tensorflow::GraphDef graph_;
   // A prefix for all containers used by sessions created by this provider.
   const uint32_t function_id_;
@@ -155,7 +152,7 @@ class SessionProvider {
   // - The accelerator device to pin this computation on. If a machine has
   //   multiple accelerators, sessions will be pinned to the
   //   `session_creation_counter_ % num_accelerators` device.
-  uint16_t session_creation_counter_ ABSL_GUARDED_BY(lock_) = 0;
+  int16_t session_creation_counter_ ABSL_GUARDED_BY(lock_) = 0;
 };
 
 }  // namespace tensorflow_federated

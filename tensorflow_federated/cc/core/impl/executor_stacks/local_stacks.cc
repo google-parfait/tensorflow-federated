@@ -15,6 +15,8 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executor_stacks/local_stacks.h"
 
+#include <functional>
+
 #include "absl/status/statusor.h"
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
@@ -25,12 +27,10 @@ namespace tensorflow_federated {
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateLocalExecutor(
     const CardinalityMap& cardinalities,
-    std::function<
-        absl::StatusOr<std::shared_ptr<Executor>>(absl::optional<int>)>
+    std::function<absl::StatusOr<std::shared_ptr<Executor>>(int32_t)>
         leaf_executor_fn) {
-  return CreateReferenceResolvingExecutor(
-      TFF_TRY(CreateFederatingExecutor(CreateReferenceResolvingExecutor(TFF_TRY(
-                                           leaf_executor_fn(absl::nullopt))),
-                                       cardinalities)));
+  return CreateReferenceResolvingExecutor(TFF_TRY(CreateFederatingExecutor(
+      CreateReferenceResolvingExecutor(TFF_TRY(leaf_executor_fn(-1))),
+      cardinalities)));
 }
 }  // namespace tensorflow_federated

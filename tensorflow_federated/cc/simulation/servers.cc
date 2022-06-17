@@ -73,10 +73,10 @@ void RunServer(std::function<absl::StatusOr<std::shared_ptr<Executor>>(
 
 void RunWorker(int port, std::shared_ptr<grpc::ServerCredentials> credentials,
                int grpc_max_message_length_megabytes,
-               absl::optional<uint32_t> max_concurrent_computation_calls) {
+               int32_t max_concurrent_computation_calls) {
   auto create_tf_executor_fn =
       [max_concurrent_computation_calls](
-          absl::optional<int> unused) -> std::shared_ptr<Executor> {
+          int32_t unused) -> std::shared_ptr<Executor> {
     return CreateTensorFlowExecutor(max_concurrent_computation_calls);
   };
   auto create_local_executor_fn =

@@ -15,6 +15,8 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 
+#include <utility>
+
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
@@ -25,7 +27,7 @@ namespace {
 
 TEST(SessionProviderTest, TestStandaloneTakeSession) {
   tensorflow::GraphDef graphdef_pb;
-  SessionProvider session_provider(std::move(graphdef_pb), absl::nullopt);
+  SessionProvider session_provider(std::move(graphdef_pb), 1);
   TFF_ASSERT_OK(session_provider.TakeSession());
 }
 
@@ -39,7 +41,7 @@ TEST(SessionProviderTest, TestSessionNotAvailableConcurrencyLimited) {
 
 TEST(SessionProviderTest, TestSessionAvailableConcurrencyUnlimited) {
   tensorflow::GraphDef graphdef_pb;
-  SessionProvider session_provider(std::move(graphdef_pb), absl::nullopt);
+  SessionProvider session_provider(std::move(graphdef_pb), -1);
   TFF_ASSERT_OK(session_provider.TakeSession());
   EXPECT_EQ(session_provider.SessionOrCpuAvailable(), true);
 }

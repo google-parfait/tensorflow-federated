@@ -19,7 +19,7 @@
 """A collection of constructors for basic types of executor stacks."""
 
 import math
-from typing import Optional, Sequence
+from typing import Sequence
 
 from absl import logging
 import cachetools
@@ -86,7 +86,7 @@ def _log_and_warn_on_sequential_execution(max_concurrent_computation_calls: int,
 
 def local_cpp_executor_factory(
     default_num_clients: int = 0,
-    max_concurrent_computation_calls: Optional[int] = None
+    max_concurrent_computation_calls: int = -1
 ) -> executor_factory.ExecutorFactory:
   """Local ExecutorFactory backed by C++ Executor bindings."""
   py_typecheck.check_type(default_num_clients, int)
@@ -97,7 +97,7 @@ def local_cpp_executor_factory(
     if cardinalities.get(placements.CLIENTS) is None:
       cardinalities[placements.CLIENTS] = default_num_clients
     num_clients = cardinalities[placements.CLIENTS]
-    if max_concurrent_computation_calls is not None and num_clients > max_concurrent_computation_calls:
+    if max_concurrent_computation_calls > 0 and num_clients > max_concurrent_computation_calls:
       expected_concurrency_factor = math.ceil(num_clients /
                                               max_concurrent_computation_calls)
       _log_and_warn_on_sequential_execution(max_concurrent_computation_calls,
