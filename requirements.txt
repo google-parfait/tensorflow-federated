@@ -14,4 +14,3 @@ semantic-version~=2.6.0
 tensorflow-model-optimization~=0.7.2
 tensorflow-privacy~=0.8.0
 tqdm~=4.64.0
-kubernetes~=21.7.0

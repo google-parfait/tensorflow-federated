@@ -69,7 +69,6 @@ REQUIRED_PACKAGES = [
     'tensorflow-privacy~=0.8.0',
     'tensorflow~=2.9.1',
     'tqdm~=4.64.0',
-    'kubernetes~=21.7.0',
 ]
 
 with open('tensorflow_federated/version.py') as fp:
