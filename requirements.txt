@@ -3,7 +3,7 @@
 # https://github.com/tensorflow/federated/blob/main/tensorflow_federated/tools/development/setup.py.
 attrs~=21.2.0
 cachetools~=3.1.1
-dm-tree~=0.1.1
+dm-tree~=0.1.7
 farmhashpy~=0.4.0
 grpcio~=1.46.3
 jaxlib~=0.3.10
