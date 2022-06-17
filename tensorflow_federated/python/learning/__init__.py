@@ -21,7 +21,7 @@ Currently, `tff.learning` provides a few types of functionality.
     steps of a federated algorithms, and are intended to compose in a somewhat
     modular fashion.
 *   End-to-end federated learning algorithms (such as
-    `tff.learning.build_federated_averaging_process`) that combine broadcast,
+    `tff.learning.algorithms.build_weighted_fed_avg`) that combine broadcast,
     client work, aggregation, and server update logic into a single algorithm
     (often by composing the building blocks discussed above). This library also
     provides end-to-end algorithms for federated evaluation (see

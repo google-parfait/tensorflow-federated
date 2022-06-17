@@ -142,16 +142,14 @@ def state_with_new_model_weights(
   on the created process.
 
   Args:
-    server_state: A server state object returned by an iterative training
-      process like `tff.learning.build_federated_averaging_process`.
+    server_state: A `tff.learning.framework.ServerState`.
     trainable_weights: A list of `numpy` values in the order of the original
       model's `trainable_variables`.
     non_trainable_weights: A list of `numpy` values in the order of the original
       model's `non_trainable_variables`.
 
   Returns:
-    A new server `ServerState` object which can be passed to the `next` method
-    of the iterative process.
+    A `tff.learning.framework.ServerState`.
   """
   py_typecheck.check_type(server_state, ServerState)
   tensor_leaf_types = (np.ndarray, tf.Tensor, np.number)
