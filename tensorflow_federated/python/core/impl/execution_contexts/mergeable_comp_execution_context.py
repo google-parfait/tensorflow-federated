@@ -250,7 +250,7 @@ def _partition_value(
       # In this case we simply replicate the argument for every subround.
       return val
 
-    py_typecheck.check_type(val.payload, (list, tuple))
+    py_typecheck.check_type(val.payload, Sequence)
     num_clients_for_subround = math.ceil(val.num_remaining_clients /
                                          val.num_remaining_partitions)
     num_remaining_clients = val.num_remaining_clients - num_clients_for_subround
