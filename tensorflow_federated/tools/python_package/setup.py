@@ -68,7 +68,7 @@ REQUIRED_PACKAGES = [
     'tensorflow-model-optimization~=0.7.2',
     'tensorflow-privacy~=0.8.0',
     'tensorflow~=2.9.1',
-    'tqdm~=4.28.1',
+    'tqdm~=4.64.0',
     'kubernetes~=21.7.0',
 ]
 
