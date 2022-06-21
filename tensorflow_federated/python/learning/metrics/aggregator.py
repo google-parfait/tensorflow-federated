@@ -26,6 +26,7 @@ from typing import Optional, OrderedDict, Tuple, Union
 import tensorflow as tf
 import tree
 
+from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -127,6 +128,23 @@ def check_local_unfinalzied_metrics_type(
     )
 
 
+def _create_finalizer_computation(
+    metric_finalizers: model_lib.MetricFinalizersType,
+    local_unfinalized_metrics_type: computation_types.StructWithPythonType
+) -> computation_base.Computation:
+  """Creates a local TFF computation that applies finalizers to unfinalized metrics."""
+
+  @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
+  def finalizer_computation(unfinalized_metrics):
+    finalized_metrics = collections.OrderedDict()
+    for metric_name, metric_finalizer in metric_finalizers.items():
+      finalized_metrics[metric_name] = metric_finalizer(
+          unfinalized_metrics[metric_name])
+    return finalized_metrics
+
+  return finalizer_computation
+
+
 def sum_then_finalize(
     metric_finalizers: model_lib.MetricFinalizersType,
     local_unfinalized_metrics_type: computation_types.StructWithPythonType
@@ -173,13 +191,8 @@ def sum_then_finalize(
     unfinalized_metrics_sum = intrinsics.federated_sum(
         client_local_unfinalized_metrics)
 
-    @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
-    def finalizer_computation(unfinalized_metrics):
-      finalized_metrics = collections.OrderedDict()
-      for metric_name, metric_finalizer in metric_finalizers.items():
-        finalized_metrics[metric_name] = metric_finalizer(
-            unfinalized_metrics[metric_name])
-      return finalized_metrics
+    finalizer_computation = _create_finalizer_computation(
+        metric_finalizers, local_unfinalized_metrics_type)
 
     return intrinsics.federated_map(finalizer_computation,
                                     unfinalized_metrics_sum)
@@ -548,5 +561,72 @@ def secure_sum_then_finalize(
 
     return intrinsics.federated_map(finalizer_computation,
                                     metrics_aggregation_output)
+
+  return aggregator_computation
+
+
+def finalize_then_sample(
+    metric_finalizers: model_lib.MetricFinalizersType,
+    local_unfinalized_metrics_type: computation_types.StructWithPythonType,
+    max_num_samples: int = 100) -> computation_base.Computation:
+  """Creates a TFF computation that aggregates metrics via `finalize_then_sample`.
+
+  The returned federated TFF computation has the following type signature:
+  `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`, where the
+  input is given by `tff.learning.Model.report_local_unfinalized_metrics()` at
+  `CLIENTS`, and the output is computed by first finalizing the unfinalized
+  metrics locally at `CLIENTS`, and then sampling the finalized metrics using
+  reservoir sampling (https://en.wikipedia.org/wiki/Reservoir_sampling). The
+  metric samples are collected at `SERVER`.
+
+  Args:
+    metric_finalizers: An `OrderedDict` of `string` metric names to finalizer
+      functions returned by `tff.learning.Model.metric_finalizers()`. It should
+      have the same keys (i.e., metric names) as the `OrderedDict` returned by
+      `tff.learning.Model.report_local_unfinalized_metrics()`. A finalizer is a
+      callable (typically `tf.function` or `tff.tf_computation` decoreated
+      function) that takes in a metric's unfinalized values, and returns the
+      finalized values.
+    local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
+      `OrderedDict` as the Python container) of a client's local unfinalized
+      metrics. Let `local_unfinalized_metrics` be the output of
+      `tff.learning.Model.report_local_unfinalized_metrics()`. Its type can be
+      obtained by `tff.framework.type_from_tensors(local_unfinalized_metrics)`.
+    max_num_samples: An integer that specifies the maximum number of samples
+      (per metric) to collect from client. Default is 100. If `max_num_samples`
+      is larger than the number of participating clients, then all the clients'
+      metrics will be collected.
+
+  Returns:
+    A federated TFF computation that finalizes the unfinalized metrics locally
+    at `CLIENTS`, samples the finalized metrics using reservoir sampling, and
+    outputs the samples at `SERVER`.
+
+  Raises:
+    TypeError: If the inputs are of the wrong types.
+    ValueError: If the keys (i.e., metric names) in `metric_finalizers` are not
+      the same as those expected by `local_unfinalized_metrics_type`.
+  """
+  check_metric_finalizers(metric_finalizers)
+  check_local_unfinalzied_metrics_type(local_unfinalized_metrics_type)
+  check_finalizers_matches_unfinalized_metrics(metric_finalizers,
+                                               local_unfinalized_metrics_type)
+
+  reservoir_sampling_factory = sampling.UnweightedReservoirSamplingFactory(
+      sample_size=max_num_samples)
+  finalizer_computation = _create_finalizer_computation(
+      metric_finalizers, local_unfinalized_metrics_type)
+  sampling_process = reservoir_sampling_factory.create(
+      finalizer_computation.type_signature.result)
+
+  @federated_computation.federated_computation(
+      computation_types.at_clients(local_unfinalized_metrics_type))
+  def aggregator_computation(client_local_unfinalized_metrics):
+    client_local_finalized_metrics = intrinsics.federated_map(
+        finalizer_computation, client_local_unfinalized_metrics)
+    sampling_output = sampling_process.next(
+        sampling_process.initialize(),  # Empty state
+        client_local_finalized_metrics)
+    return sampling_output.result
 
   return aggregator_computation
