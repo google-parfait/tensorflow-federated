@@ -25,6 +25,8 @@ from tensorflow_federated.python.core.impl.context_stack.context_stack_base impo
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts.sync_execution_context import ExecutionContext
+from tensorflow_federated.python.core.impl.executor_stacks.cpp_executor_factory import local_cpp_executor_factory
+from tensorflow_federated.python.core.impl.executor_stacks.cpp_executor_factory import remote_cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors.cardinalities_utils import merge_cardinalities
 from tensorflow_federated.python.core.impl.executors.cardinality_carrying_base import CardinalityCarrying
