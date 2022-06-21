@@ -29,13 +29,13 @@ import zipfile
 import numpy as np
 import tensorflow as tf
 
+from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.computation import computation_impl
-from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -68,6 +68,15 @@ def _serialize_computation(
   type_spec = executor_utils.reconcile_value_type_with_type_spec(
       type_serialization.deserialize_type(comp.type), type_spec)
   return executor_pb2.Value(computation=comp), type_spec
+
+
+def _value_proto_for_np_array(
+    value: np.ndarray, type_spec: computation_types.Type) -> executor_pb2.Value:
+  tensor_proto = tf.make_tensor_proto(
+      value, dtype=type_spec.dtype, shape=type_spec.shape, verify_shape=True)
+  any_pb = any_pb2.Any()
+  any_pb.Pack(tensor_proto)
+  return executor_pb2.Value(tensor=any_pb)
 
 
 @tracing.trace
@@ -120,7 +129,9 @@ def _serialize_tensor_value(
       raise TypeError(
           f'Failed to serialize value of Python type {value_type_string} to '
           f'a tensor of type {type_spec}.\nValue: {original_value}') from te
-  return executor_bindings.serialize_tensor_value(value), type_spec
+
+  value_proto = _value_proto_for_np_array(value, type_spec)
+  return value_proto, type_spec
 
 
 def _serialize_dataset(
@@ -353,6 +364,14 @@ def _deserialize_computation(
           type_serialization.deserialize_type(value_proto.computation.type))
 
 
+def _tensor_for_value(value_proto: executor_pb2.Value) -> tf.Tensor:
+  tensor_proto = tf.make_tensor_proto(values=0)
+  if not value_proto.tensor.Unpack(tensor_proto):
+    raise ValueError('Unable to unpack the received tensor value.')
+  tensor_value = tf.make_ndarray(tensor_proto)
+  return tensor_value
+
+
 @tracing.trace
 def _deserialize_tensor_value(
     value_proto: executor_pb2.Value) -> _DeserializeReturnType:
@@ -370,7 +389,7 @@ def _deserialize_tensor_value(
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
-  value = executor_bindings.deserialize_tensor_value(value_proto)
+  value = _tensor_for_value(value_proto)
   value_type = computation_types.TensorType(
       dtype=value.dtype, shape=value.shape)
   if not value.shape:

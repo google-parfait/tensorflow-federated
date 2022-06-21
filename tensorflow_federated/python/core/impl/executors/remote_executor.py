@@ -29,10 +29,10 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_serialization
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
+from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -72,7 +72,7 @@ class RemoteValue(executor_value_base.ExecutorValue):
 
   @tracing.trace(span=True)
   async def compute(self):
-    return await self._executor._compute(self._value_ref)  # pylint: disable=protected-access
+    return await self._executor._compute(self._value_ref, self._type_signature)  # pylint: disable=protected-access
 
   @property
   def value_ref(self):
@@ -145,7 +145,7 @@ class RemoteExecutor(executor_base.Executor):
                                                int]):
     if self._executor_id is not None:
       self._clear_executor()
-    serialized_cardinalities = executor_serialization.serialize_cardinalities(
+    serialized_cardinalities = value_serialization.serialize_cardinalities(
         cardinalities)
     request = executor_pb2.GetExecutorRequest(
         cardinalities=serialized_cardinalities)
@@ -174,7 +174,7 @@ class RemoteExecutor(executor_base.Executor):
 
     @tracing.trace
     def serialize_value():
-      return executor_serialization.serialize_value(value, type_spec)
+      return value_serialization.serialize_value(value, type_spec)
 
     value_proto, type_spec = serialize_value()
     create_value_request = executor_pb2.CreateValueRequest(
@@ -231,12 +231,12 @@ class RemoteExecutor(executor_base.Executor):
     return RemoteValue(response.value_ref, result_type, self)
 
   @tracing.trace(span=True)
-  async def _compute(self, value_ref):
+  async def _compute(self, value_ref, type_spec):
     self._check_has_executor_id()
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
     request = executor_pb2.ComputeRequest(
         executor=self._executor_id, value_ref=value_ref)
     response = self._stub.compute(request)
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
-    value, _ = executor_serialization.deserialize_value(response.value)
+    value, _ = value_serialization.deserialize_value(response.value, type_spec)
     return value

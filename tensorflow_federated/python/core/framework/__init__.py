@@ -37,8 +37,6 @@ from tensorflow_federated.python.core.impl.executors.eager_tf_executor import Ea
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_factory import CardinalitiesType
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
-from tensorflow_federated.python.core.impl.executors.executor_serialization import deserialize_value
-from tensorflow_federated.python.core.impl.executors.executor_serialization import serialize_value
 from tensorflow_federated.python.core.impl.executors.executor_service import ExecutorService
 from tensorflow_federated.python.core.impl.executors.executor_stacks import ComposingExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import local_executor_factory
@@ -62,6 +60,8 @@ from tensorflow_federated.python.core.impl.executors.remote_executor import Remo
 from tensorflow_federated.python.core.impl.executors.remote_executor_stub import RemoteExecutorStub
 from tensorflow_federated.python.core.impl.executors.thread_delegating_executor import ThreadDelegatingExecutor
 from tensorflow_federated.python.core.impl.executors.transforming_executor import TransformingExecutor
+from tensorflow_federated.python.core.impl.executors.value_serialization import deserialize_value
+from tensorflow_federated.python.core.impl.executors.value_serialization import serialize_value
 from tensorflow_federated.python.core.impl.tensorflow_context.tensorflow_computation_context import get_session_token
 from tensorflow_federated.python.core.impl.types.placements import PlacementLiteral
 from tensorflow_federated.python.core.impl.types.type_conversions import type_from_tensors

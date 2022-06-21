@@ -38,7 +38,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_serialization
+from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
 def _set_invalid_arg_err(context: grpc.ServicerContext, err):
@@ -119,7 +119,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
     """Returns an identifier for an executor with the provided requirements."""
     py_typecheck.check_type(request, executor_pb2.GetExecutorRequest)
     try:
-      cardinalities_dict = executor_serialization.deserialize_cardinalities(
+      cardinalities_dict = value_serialization.deserialize_cardinalities(
           request.cardinalities)
       key = _get_hashable_key(cardinalities_dict)
       with self._lock:
@@ -183,7 +183,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
                                           executor_pb2.CreateValueResponse):
       with tracing.span('ExecutorService.CreateValue', 'deserialize_value'):
         value, value_type = (
-            executor_serialization.deserialize_value(request.value))
+            value_serialization.deserialize_value(request.value))
       value_id = str(uuid.uuid4())
       coro = self.executor(request, context).create_value(value, value_type)
       future_val = self._run_coro_threadsafe_with_tracing(coro)
@@ -301,8 +301,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
       val = await future_val
       result_val = await val.compute()
       val_type = val.type_signature
-      value_proto, _ = executor_serialization.serialize_value(
-          result_val, val_type)
+      value_proto, _ = value_serialization.serialize_value(result_val, val_type)
       return executor_pb2.ComputeResponse(value=value_proto)
 
   def Dispose(

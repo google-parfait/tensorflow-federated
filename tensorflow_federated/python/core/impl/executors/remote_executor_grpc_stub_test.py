@@ -23,9 +23,9 @@ import tensorflow as tf
 from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
-from tensorflow_federated.python.core.impl.executors import executor_serialization
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
+from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
 def create_stub():
@@ -81,7 +81,7 @@ class RemoteExecutorGrpcStubTest(absltest.TestCase):
 
     instance.Compute.assert_called_once()
 
-    value, _ = executor_serialization.deserialize_value(result.value)
+    value, _ = value_serialization.deserialize_value(result.value)
     self.assertEqual(value, 1)
 
   def test_compute_raises_retryable_error_on_grpc_error_unavailable(
