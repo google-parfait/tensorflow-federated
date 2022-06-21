@@ -82,52 +82,6 @@ py_test(
 )
 
 py_library(
-    name = "federated_averaging",
-    srcs = ["federated_averaging.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":client_weight_lib",
-        ":model",
-        ":model_utils",
-        "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/templates:iterative_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/learning/framework:dataset_reduce",
-        "//tensorflow_federated/python/learning/framework:optimizer_utils",
-        "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
-        "//tensorflow_federated/python/learning/optimizers:optimizer",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_cpu_gpu_test(
-    name = "federated_averaging_test",
-    timeout = "long",
-    srcs = ["federated_averaging_test.py"],
-    python_version = "PY3",
-    shard_count = 10,
-    srcs_version = "PY3",
-    deps = [
-        ":client_weight_lib",
-        ":federated_averaging",
-        ":model_examples",
-        ":model_update_aggregator",
-        ":model_utils",
-        "//tensorflow_federated/python/core/test:static_assert",
-        "//tensorflow_federated/python/learning/framework:dataset_reduce",
-        "//tensorflow_federated/python/learning/metrics:aggregator",
-        "//tensorflow_federated/python/learning/optimizers:sgdm",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
     name = "federated_evaluation",
     srcs = ["federated_evaluation.py"],
     srcs_version = "PY3",
@@ -322,6 +276,37 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "federated_averaging",
+    srcs = ["federated_averaging.py"],
+    deps = [
+        ":client_weight_lib",
+        ":model",
+        ":model_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "//tensorflow_federated/python/learning/framework:optimizer_utils",
+        "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "//third_party/py/tensorflow:tensorflow_no_contrib",
+    ],
+)
+
+py_test(
+    name = "federated_averaging_test",
+    srcs = ["federated_averaging_test.py"],
+    deps = [
+        ":client_weight_lib",
+        ":federated_averaging",
+        ":model_examples",
+        ":model_utils",
+        "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "//third_party/py/tensorflow:tensorflow_no_contrib",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
