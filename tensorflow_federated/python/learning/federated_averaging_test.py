@@ -11,31 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for local client training implemented in ClientFedAvg.
-
-Integration tests that include server averaging and alternative tff.aggregator
-factories are in found in
-tensorflow_federated/python/tests/federated_averaging_integration_test.py.
-"""
+"""Tests for local client training implemented in ClientFedAvg."""
 
 import collections
-import itertools
 from unittest import mock
-import warnings
 
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import model_examples
-from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
-from tensorflow_federated.python.learning.metrics import aggregator
-from tensorflow_federated.python.learning.optimizers import sgdm
 
 
 class FederatedAveragingClientTest(tf.test.TestCase, parameterized.TestCase):
@@ -138,59 +127,6 @@ class FederatedAveragingClientTest(tf.test.TestCase, parameterized.TestCase):
       mock_method.assert_not_called()
     else:
       mock_method.assert_called()
-
-
-class FederatedAveragingTest(tf.test.TestCase, parameterized.TestCase):
-  """Tests construction of FedAvg training process."""
-
-  def test_deprecation_warning_raises(self):
-    mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
-      federated_averaging.build_federated_averaging_process(
-          model_fn=mock_model_fn,
-          client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1))
-      self.assertNotEmpty(w)
-      self.assertEqual(w[0].category, DeprecationWarning)
-      self.assertRegex(
-          str(w[0].message),
-          'tff.learning.build_federated_averaging_process is deprecated')
-
-  # pylint: disable=g-complex-comprehension
-  @parameterized.named_parameters((
-      '_'.join(name for name, _ in named_params),
-      *(param for _, param in named_params),
-  ) for named_params in itertools.product([
-      ('keras_optimizer', tf.keras.optimizers.SGD),
-      ('tff_optimizer', sgdm.build_sgdm(learning_rate=0.1)),
-  ], [
-      ('robust_aggregator', model_update_aggregator.robust_aggregator),
-      ('dp_aggregator', lambda: model_update_aggregator.dp_aggregator(1e-3, 3)),
-      ('compression_aggregator',
-       model_update_aggregator.compression_aggregator),
-      ('secure_aggreagtor', model_update_aggregator.secure_aggregator),
-  ]))
-  # pylint: enable=g-complex-comprehension
-  def test_construction_calls_model_fn(self, optimizer_fn, aggregation_factory):
-    # Assert that the the process building does not call `model_fn` too many
-    # times. `model_fn` can potentially be expensive (loading weights,
-    # processing, etc).
-    mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
-    federated_averaging.build_federated_averaging_process(
-        model_fn=mock_model_fn,
-        client_optimizer_fn=optimizer_fn,
-        model_update_aggregation_factory=aggregation_factory())
-    # TODO(b/186451541): reduce the number of calls to model_fn.
-    self.assertEqual(mock_model_fn.call_count, 3)
-
-  def test_no_unsecure_aggregation_with_secure_aggregator(self):
-    fed_avg = federated_averaging.build_federated_averaging_process(
-        model_examples.LinearRegression,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(1.0),
-        model_update_aggregation_factory=model_update_aggregator
-        .secure_aggregator(),
-        metrics_aggregator=aggregator.secure_sum_then_finalize)
-    static_assert.assert_not_contains_unsecure_aggregation(fed_avg.next)
 
 if __name__ == '__main__':
   tf.test.main()

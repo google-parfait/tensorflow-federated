@@ -16,7 +16,7 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""An implementation of the Federated Averaging algorithm.
+"""An implementation of the client logic in the Federated Averaging algorithm.
 
 The original Federated Averaging algorithm is proposed by the paper:
 
@@ -24,27 +24,13 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     H. Brendan McMahan, Eider Moore, Daniel Ramage,
     Seth Hampson, Blaise Aguera y Arcas. AISTATS 2017.
     https://arxiv.org/abs/1602.05629
-
-This file implements a generalized version of the Federated Averaging algorithm:
-
-Adaptive Federated Optimization
-    Sashank Reddi, Zachary Charles, Manzil Zaheer, Zachary Garrett, Keith Rush,
-    Jakub Konečný, Sanjiv Kumar, H. Brendan McMahan. ICLR 2021.
-    https://arxiv.org/abs/2003.00295
 """
 
-from typing import Callable, Optional, Union
-import warnings
+from typing import Callable, Union
 
 import tensorflow as tf
 
-from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
-from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.templates import iterative_process
-from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
@@ -159,157 +145,3 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
       weights_delta_weight = self._client_weighting(model_output)
     return optimizer_utils.ClientOutput(
         weights_delta, weights_delta_weight, model_output, optimizer_output=())
-
-
-DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
-
-
-def build_federated_averaging_process(
-    model_fn: Callable[[], model_lib.Model],
-    client_optimizer_fn: Union[optimizer_base.Optimizer,
-                               Callable[[], tf.keras.optimizers.Optimizer]],
-    server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
-        [], tf.keras.optimizers.Optimizer]] = DEFAULT_SERVER_OPTIMIZER_FN,
-    *,  # Require named (non-positional) parameters for the following kwargs:
-    client_weighting: Optional[client_weight_lib.ClientWeightType] = None,
-    broadcast_process: Optional[measured_process.MeasuredProcess] = None,
-    model_update_aggregation_factory: Optional[
-        factory.AggregationFactory] = None,
-    metrics_aggregator: Optional[Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation]] = None,
-    use_experimental_simulation_loop: bool = False
-) -> iterative_process.IterativeProcess:
-  """Builds an iterative process that performs federated averaging.
-
-  This function creates a `tff.templates.IterativeProcess` that performs
-  federated averaging on client models. The iterative process has the following
-  methods inherited from `tff.templates.IterativeProcess`:
-
-  *   `initialize`: A `tff.Computation` with the functional type signature
-      `( -> S@SERVER)`, where `S` is a `tff.learning.framework.ServerState`
-      representing the initial state of the server.
-  *   `next`: A `tff.Computation` with the functional type signature
-      `(<S@SERVER, {B*}@CLIENTS> -> <S@SERVER, T@SERVER>)` where `S` is a
-      `tff.learning.framework.ServerState` whose type matches that of the output
-      of `initialize`, and `{B*}@CLIENTS` represents the client datasets, where
-      `B` is the type of a single batch. This computation returns a
-      `tff.learning.framework.ServerState` representing the updated server state
-      and aggregated metrics at the server, including client training metrics
-      and any other metrics from broadcast and aggregation processes.
-
-  The iterative process also has the following method not inherited from
-  `tff.templates.IterativeProcess`:
-
-  *   `get_model_weights`: A `tff.Computation` that takes as input the
-      a `tff.learning.framework.ServerState`, and returns a
-      `tff.learning.ModelWeights` containing the state's model weights.
-
-  Each time the `next` method is called, the server model is broadcast to each
-  client using a broadcast function. For each client, local training on one
-  pass of the pre-processed client dataset (multiple epochs are possible if the
-  dataset is pre-processed with `repeat` operation) is performed via the
-  `tf.keras.optimizers.Optimizer.apply_gradients` method of the client
-  optimizer. Each client computes the difference between the client model after
-  training and the initial broadcast model. These model deltas are then
-  aggregated at the server using some aggregation function. The aggregate model
-  delta is applied at the server by using the
-  `tf.keras.optimizers.Optimizer.apply_gradients` method of the server
-  optimizer.
-
-  Note: the default server optimizer function is `tf.keras.optimizers.SGD`
-  with a learning rate of 1.0, which corresponds to adding the model delta to
-  the current server model. This recovers the original FedAvg algorithm in
-  [McMahan et al., 2017](https://arxiv.org/abs/1602.05629). More
-  sophisticated federated averaging procedures may use different learning rates
-  or server optimizers (this generalized FedAvg algorithm is described in
-  [Reddi et al., 2021](https://arxiv.org/abs/2003.00295)).
-
-  WARNING: This method is deprecated. Please use
-  `tff.learning.algorithms.build_weighted_fed_avg` or
-  `tff.learning.algorithms.build_unweighted_fed_avg` instead (depending on the
-  client weighting being used).
-
-  Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
-    client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      callable that returns a `tf.keras.Optimizer`.
-    server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      callable that returns a `tf.keras.Optimizer`. By default, this uses
-      `tf.keras.optimizers.SGD` with a learning rate of 1.0.
-    client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
-      built-in weighting method, or a callable that takes the output of
-      `model.report_local_unfinalized_metrics` and returns a tensor that
-      provides the weight in the federated average of model deltas. If `None`,
-      this will default base on `model_update_aggregation_factory`: If the
-      factory is a `tff.aggregators.UnweightedAggregationFactory`, this defaults
-      to a uniform weighting, otherwise it will weight clients by their number
-      of examples. An error will be raised if `client_weighting` is not uniform,
-      but `model_update_aggregation_factory` is unweighted.
-    broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
-      model weights on the server to the clients. It must support the signature
-      `(input_values@SERVER -> output_values@CLIENT)`. If set to default None,
-      the server model is broadcast to the clients using the default
-      tff.federated_broadcast.
-    model_update_aggregation_factory: An optional
-      `tff.aggregators.WeightedAggregationFactory` or
-      `tff.aggregators.UnweightedAggregationFactory` that constructs
-      `tff.templates.AggregationProcess` for aggregating the client model
-      updates on the server. If `None`, uses `tff.aggregators.MeanFactory`.
-    metrics_aggregator: An optional function that takes in the metric finalizers
-      (i.e., `tff.learning.Model.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a federated TFF computation of the following type signature
-      `local_unfinalized_metrics@CLIENTS -> aggregated_metrics@SERVER`. If
-      `None`, uses `tff.learning.metrics.sum_then_finalize`, which returns a
-      federated TFF computation that sums the unfinalized metrics from
-      `CLIENTS`, and then applies the corresponding metric finalizers at
-      `SERVER`.
-    use_experimental_simulation_loop: Controls the reduce loop function for
-      input dataset. An experimental reduce loop is used for simulation. It is
-      currently necessary to set this flag to True for performant GPU
-      simulations.
-
-  Returns:
-    A `tff.templates.IterativeProcess`.
-  """
-  warnings.warn(
-      'tff.learning.build_federated_averaging_process is deprecated. Please '
-      'use tff.learning.algorithms.build_weighted_fed_avg or '
-      'tff.learning.algorithms.build_unweighted_fed_avg instead.',
-      DeprecationWarning)
-
-  if isinstance(model_update_aggregation_factory,
-                factory.UnweightedAggregationFactory):
-    if client_weighting is None:
-      client_weighting = client_weight_lib.ClientWeighting.UNIFORM
-    elif client_weighting is not client_weight_lib.ClientWeighting.UNIFORM:
-      raise ValueError('Cannot use non-uniform client weighting with '
-                       'unweighted aggregation.')
-  elif client_weighting is None:
-    client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
-
-  def client_fed_avg(model_fn: Callable[[], model_lib.Model]) -> ClientFedAvg:
-    return ClientFedAvg(model_fn(), client_optimizer_fn, client_weighting,
-                        use_experimental_simulation_loop)
-
-  iter_proc = optimizer_utils.build_model_delta_optimizer_process(
-      model_fn,
-      model_to_client_delta_fn=client_fed_avg,
-      server_optimizer_fn=server_optimizer_fn,
-      broadcast_process=broadcast_process,
-      model_update_aggregation_factory=model_update_aggregation_factory,
-      metrics_aggregator=metrics_aggregator)
-
-  server_state_type = iter_proc.state_type.member
-
-  @tensorflow_computation.tf_computation(server_state_type)
-  def get_model_weights(server_state):
-    return server_state.model
-
-  iter_proc.get_model_weights = get_model_weights
-  return iter_proc
