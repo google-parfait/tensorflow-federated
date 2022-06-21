@@ -22,6 +22,7 @@ from absl import logging
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.program import program_state_manager as program_state_manager_lib
 from tensorflow_federated.python.program import release_manager as release_manager_lib
@@ -151,32 +152,40 @@ def run_training_process(
                                            evaluation_selection_fn, state, 0)
 
       if metrics_managers is not None:
+        metrics_type = type_conversions.infer_type(evaluation_metrics)
         loop.run_until_complete(
-            asyncio.gather(
-                *[m.release(evaluation_metrics, 0) for m in metrics_managers]))
+            asyncio.gather(*[
+                m.release(evaluation_metrics, metrics_type, 0)
+                for m in metrics_managers
+            ]))
 
     if program_state_manager is not None:
       loop.run_until_complete(program_state_manager.save(state, 0))
 
   for round_num in range(start_round, total_rounds + 1):
     logging.info('Starting round %d', round_num)
-    round_metrics = collections.OrderedDict()
+    metrics = collections.OrderedDict()
     state, training_metrics = _run_training(training_process.next,
                                             training_selection_fn, state,
                                             round_num)
-    round_metrics.update(training_metrics)
+    if metrics_managers is not None:
+      metrics.update(training_metrics)
 
     if evaluation_fn is not None and evaluation_selection_fn is not None:
       if round_num % rounds_per_evaluation == 0:
         evaluation_metrics = _run_evaluation(evaluation_fn,
                                              evaluation_selection_fn, state,
                                              round_num)
-        round_metrics.update(evaluation_metrics)
+        if metrics_managers is not None:
+          metrics.update(evaluation_metrics)
 
     if metrics_managers is not None:
+      metrics_type = type_conversions.infer_type(metrics)
       loop.run_until_complete(
-          asyncio.gather(
-              *[m.release(round_metrics, round_num) for m in metrics_managers]))
+          asyncio.gather(*[
+              m.release(metrics, metrics_type, round_num)
+              for m in metrics_managers
+          ]))
 
     if program_state_manager is not None:
       if round_num % rounds_per_saving_program_state == 0:

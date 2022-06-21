@@ -111,6 +111,7 @@ py_library(
         ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -124,6 +125,7 @@ py_test(
         ":file_release_manager",
         ":file_utils",
         ":program_test_utils",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -160,6 +162,7 @@ py_library(
     deps = [
         ":release_manager",
         ":value_reference",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/logging",
     ],
 )
@@ -172,6 +175,7 @@ py_test(
     deps = [
         ":logging_release_manager",
         ":program_test_utils",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -185,6 +189,7 @@ py_library(
     deps = [
         ":release_manager",
         ":value_reference",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
 
@@ -196,6 +201,7 @@ py_test(
     deps = [
         ":memory_release_manager",
         ":program_test_utils",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -275,6 +281,7 @@ py_library(
     name = "release_manager",
     srcs = ["release_manager.py"],
     srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
 )
 
 py_library(
@@ -306,6 +313,7 @@ py_library(
         ":structure_utils",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -318,6 +326,7 @@ py_test(
     deps = [
         ":program_test_utils",
         ":tensorboard_release_manager",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
