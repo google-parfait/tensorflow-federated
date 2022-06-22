@@ -53,6 +53,17 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
     self.assertAllEqual(x, y)
 
+  def test_serialize_deserialize_tensor_value_unk_shape_without_hint(self):
+    x = np.asarray([1., 2.])
+    serialize_type_spec = TensorType(tf.float32, [None])
+    value_proto, value_type = value_serialization.serialize_value(
+        x, serialize_type_spec)
+    type_test_utils.assert_type_assignable_from(value_type, serialize_type_spec)
+    y, type_spec = value_serialization.deserialize_value(value_proto)
+    type_test_utils.assert_type_assignable_from(serialize_type_spec, type_spec)
+    self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
+    self.assertAllEqual(x, y)
+
   @parameterized.named_parameters(TENSOR_SERIALIZATION_TEST_PARAMS)
   def test_serialize_deserialize_tensor_value_without_hint_graph_mode(
       self, x, serialize_type_spec):
@@ -616,6 +627,31 @@ class SerializeCardinalitiesTest(tf.test.TestCase):
     reconstructed_cardinalities = value_serialization.deserialize_cardinalities(
         cardinalities_list)
     self.assertEqual(client_cardinalities, reconstructed_cardinalities)
+
+
+class SerializeNpArrayTest(tf.test.TestCase, parameterized.TestCase):
+
+  def test_serialize_deserialize_value_proto_for_array_undefined_shape(self):
+    ndarray = np.array([10])
+    type_spec = computation_types.TensorType(dtype=ndarray.dtype, shape=[None])
+    value_proto = value_serialization._value_proto_for_np_array(
+        ndarray, type_spec)
+    deserialized_array, deserialized_type = value_serialization.deserialize_value(
+        value_proto)
+    type_test_utils.assert_type_assignable_from(type_spec, deserialized_type)
+    self.assertAllEqual(ndarray, deserialized_array)
+
+  @parameterized.named_parameters(('str_generic', np.str_('abc')),
+                                  ('bytes_generic', np.bytes_('def')))
+  def test_serialize_deserialize_value_proto_for_generic(self, np_generic):
+    type_spec = computation_types.TensorType(
+        dtype=np_generic.dtype, shape=np_generic.shape)
+    value_proto = value_serialization._value_proto_for_np_array(
+        np_generic, type_spec)
+    deserialized_array, deserialized_type = value_serialization.deserialize_value(
+        value_proto)
+    type_test_utils.assert_type_assignable_from(type_spec, deserialized_type)
+    self.assertAllEqual(np_generic, deserialized_array)
 
 
 if __name__ == '__main__':

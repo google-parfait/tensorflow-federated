@@ -18,6 +18,7 @@ import concurrent
 import contextlib
 import pprint
 import textwrap
+from typing import Set
 
 from absl import logging
 
@@ -30,14 +31,21 @@ from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
+def get_absl_retryable_error_codes() -> Set[absl_status.StatusCode]:
+  """Returns Absl retryable error codes."""
+  # TODO(b/237122326): Move this function into executors_errors when
+  # absl_status works in OSS.
+  return set([
+      absl_status.StatusCode.UNAVAILABLE,
+      absl_status.StatusCode.FAILED_PRECONDITION
+  ])
+
+
 # TODO(b/193900393): Define a custom error in CPP and expose to python to
 # more easily localize and control retries.
 def _is_retryable_absl_status(exception):
   return (isinstance(exception, absl_status.StatusNotOk) and
-          exception.status.code() in [
-              absl_status.StatusCode.UNAVAILABLE,
-              absl_status.StatusCode.FAILED_PRECONDITION
-          ])
+          exception.status.code() in get_absl_retryable_error_codes())
 
 
 class AsyncSerializeAndExecuteCPPContext(context_base.Context):

@@ -251,7 +251,6 @@ py_test(
     name = "executor_bindings_test",
     timeout = "moderate",
     srcs = ["executor_bindings_test.py"],
-    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
@@ -285,6 +284,7 @@ py_library(
     deps = [
         ":executor_base",
         ":executor_factory",
+        ":executors_errors",
         ":value_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",

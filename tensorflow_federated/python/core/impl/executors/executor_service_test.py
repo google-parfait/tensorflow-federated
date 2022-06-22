@@ -377,9 +377,9 @@ class ExecutorServiceTest(absltest.TestCase):
     with self.assertRaises(grpc.RpcError):
       env.get_value(value_id.value_ref.id)
 
+    # The next CreateValue call, or indeed any call, should eagerly raise,
+    # since the executor has been destroyed.
     with self.assertRaises(grpc.RpcError) as rpc_err:
-      # The next CreateValue call, or indeed any call, should eagerly raise,
-      # since the executor has been destroyed.
       env.stub.CreateValue(
           executor_pb2.CreateValueRequest(
               executor=env.executor_pb, value=value_proto))

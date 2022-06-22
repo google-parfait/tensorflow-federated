@@ -71,9 +71,10 @@ def _serialize_computation(
 
 
 def _value_proto_for_np_array(
-    value: np.ndarray, type_spec: computation_types.Type) -> executor_pb2.Value:
+    value, type_spec: computation_types.Type) -> executor_pb2.Value:
+  """Creates value proto for np array, assumed to be assignable to type_spec."""
   tensor_proto = tf.make_tensor_proto(
-      value, dtype=type_spec.dtype, shape=type_spec.shape, verify_shape=True)
+      value, dtype=type_spec.dtype, verify_shape=True)
   any_pb = any_pb2.Any()
   any_pb.Pack(tensor_proto)
   return executor_pb2.Value(tensor=any_pb)

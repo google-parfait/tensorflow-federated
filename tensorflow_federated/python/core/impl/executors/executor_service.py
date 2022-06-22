@@ -38,6 +38,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
@@ -50,6 +51,18 @@ def _set_invalid_arg_err(context: grpc.ServicerContext, err):
 def _set_unknown_err(context: grpc.ServicerContext, err):
   logging.error(traceback.format_exc())
   context.set_code(grpc.StatusCode.UNKNOWN)
+  context.set_details(str(err))
+
+
+def _set_unavailable_error(context: grpc.ServicerContext, err):
+  logging.error(traceback.format_exc())
+  context.set_code(grpc.StatusCode.UNAVAILABLE)
+  context.set_details(str(err))
+
+
+def _propagate_grpc_code_err(context: grpc.ServicerContext, err: grpc.RpcError):
+  logging.error(traceback.format_exc())
+  context.set_code(err.code())
   context.set_details(str(err))
 
 
@@ -119,7 +132,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   ) -> executor_pb2.GetExecutorResponse:
     """Returns an identifier for an executor with the provided requirements."""
     py_typecheck.check_type(request, executor_pb2.GetExecutorRequest)
-    try:
+    with self._try_handle_request_context(request, context,
+                                          executor_pb2.GetExecutorResponse):
       cardinalities_dict = value_serialization.deserialize_cardinalities(
           request.cardinalities)
       key = _get_hashable_key(cardinalities_dict)
@@ -131,9 +145,6 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
         self._ids_to_cardinalities[key] = cardinalities_dict
       return executor_pb2.GetExecutorResponse(
           executor=executor_pb2.ExecutorId(id=key))
-    except (ValueError, TypeError) as err:
-      _set_invalid_arg_err(context, err)
-      return executor_pb2.GetExecutorResponse()
 
   def DestroyExecutor(self, request):
     with self._lock:
@@ -168,12 +179,23 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
     try:
       yield
     except grpc.RpcError as grpc_err:
-      logging.info('Raised an RPC error')
-      if grpc_err.code() == grpc.StatusCode.FAILED_PRECONDITION:
-        logging.info('Executor underneath service raised FailedPrecondition; '
-                     'invalidating references to this executor.')
-        self.DestroyExecutor(request)
-      raise grpc_err
+      if grpc_err.code() in executors_errors.get_grpc_retryable_error_codes():
+        # If a retryable error is raised to us directly, ensure we propagate the
+        # proper code to the other side of the service.
+        _propagate_grpc_code_err(context, grpc_err)
+        logging.info('Raised an RPC error')
+        if grpc_err.code() == grpc.StatusCode.FAILED_PRECONDITION:
+          logging.info('Executor underneath service raised FailedPrecondition; '
+                       'invalidating references to this executor.')
+          self.DestroyExecutor(request)
+        return blank_response_fn()
+      else:
+        # Unknown; just reraise, see if anyone else can handle.
+        raise grpc_err
+    except (executors_errors.RetryableError) as err:
+      # Raised if a worker goes down during an invocation
+      _set_unavailable_error(context, err)
+      return blank_response_fn()
     except (ValueError, TypeError) as err:
       _set_invalid_arg_err(context, err)
       return blank_response_fn()

@@ -11,7 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Custom exceptions for TFF executors."""
+"""Custom exceptions and symbols for TFF executors."""
+from typing import Set
+
+import grpc
 
 
 class RetryableError(Exception):
@@ -20,3 +23,11 @@ class RetryableError(Exception):
 
 class CardinalityError(Exception):
   """Raised when a value in a stack does not match the stack's cardinality."""
+
+
+def get_grpc_retryable_error_codes() -> Set[grpc.StatusCode]:
+  """Returns gRPC retryable error codes."""
+  return set([
+      grpc.StatusCode.UNAVAILABLE,
+      grpc.StatusCode.FAILED_PRECONDITION,
+  ])
