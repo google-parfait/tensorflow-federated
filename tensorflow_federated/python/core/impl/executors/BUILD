@@ -285,6 +285,7 @@ py_library(
     deps = [
         ":executor_base",
         ":executor_factory",
+        ":executors_errors",
         ":value_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
@@ -510,6 +511,7 @@ py_library(
     name = "executors_errors",
     srcs = ["executors_errors.py"],
     srcs_version = "PY3",
+    deps = ["//third_party/pybind11_abseil:status"],
 )
 
 py_library(

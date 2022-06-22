@@ -38,6 +38,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import value_serialization
 
 
@@ -129,6 +130,12 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
         self._executor_ref_counts[key] += 1
       return executor_pb2.GetExecutorResponse(
           executor=executor_pb2.ExecutorId(id=key))
+    except (executors_errors.RetryableError) as err:
+      # Raised during executor construction if no workers are ready; we rewrap
+      # as unavailable code to signal that this error is retryable.
+      context.set_code(grpc.StatusCode.UNAVAILABLE)
+      context.set_details(str(err))
+      return executor_pb2.GetExecutorResponse()
     except (ValueError, TypeError) as err:
       _set_invalid_arg_err(context, err)
       return executor_pb2.GetExecutorResponse()

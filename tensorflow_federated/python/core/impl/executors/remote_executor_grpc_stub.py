@@ -27,24 +27,11 @@ from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import remote_executor_stub
 
-_RETRYABLE_GRPC_ERRORS = frozenset([
-    grpc.StatusCode.INVALID_ARGUMENT,
-    grpc.StatusCode.NOT_FOUND,
-    grpc.StatusCode.ALREADY_EXISTS,
-    grpc.StatusCode.PERMISSION_DENIED,
-    grpc.StatusCode.FAILED_PRECONDITION,
-    grpc.StatusCode.ABORTED,
-    grpc.StatusCode.OUT_OF_RANGE,
-    grpc.StatusCode.UNIMPLEMENTED,
-    grpc.StatusCode.DATA_LOSS,
-    grpc.StatusCode.UNAUTHENTICATED,
-])
-
 
 def _is_retryable_grpc_error(error):
   """Predicate defining what is a retryable gRPC error."""
   return (isinstance(error, grpc.RpcError) and
-          error.code() not in _RETRYABLE_GRPC_ERRORS)
+          error.code() in executors_errors.get_grpc_retryable_error_codes())
 
 
 @tracing.trace(span=True)

@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import retrying
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import type_conversions
 
@@ -33,10 +34,8 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 # more easily localize and control retries.
 def _is_retryable_absl_status(exception):
   return (isinstance(exception, absl_status.StatusNotOk) and
-          exception.status.code() in [
-              absl_status.StatusCode.UNAVAILABLE,
-              absl_status.StatusCode.FAILED_PRECONDITION
-          ])
+          exception.status.code()
+          in executors_errors.get_absl_retryable_error_codes())
 
 
 # TODO(b/223898183): Inherit directly from Context when remote workers support
