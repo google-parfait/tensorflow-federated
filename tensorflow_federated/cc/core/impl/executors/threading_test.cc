@@ -21,6 +21,8 @@ limitations under the License
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
+#include "absl/synchronization/barrier.h"
+#include "absl/time/time.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -56,14 +58,40 @@ TEST_F(ThreadingTest, ParallelTasksOneOkOneErrorIsError) {
 }
 
 TEST_F(ThreadingTest, ParallelTasksWaitsForAll) {
-  const uint32_t NUM_TASKS = 5000;
-  std::atomic<uint32_t> counter(0);
+  constexpr int32_t NUM_TASKS = 5000;
+  std::atomic<int32_t> counter(0);
   ParallelTasks tasks;
-  for (uint32_t i = 0; i < NUM_TASKS; i++) {
+  absl::Barrier barrier(NUM_TASKS + 1);
+  for (int32_t i = 0; i < NUM_TASKS; i++) {
+    tasks.add_task([&counter, &barrier]() {
+      barrier.Block();  // Block until all threads have hit here.
+      counter.fetch_add(1);
+      return absl::OkStatus();
+    });
+  }
+  // Since all tasks will block until the main thread also blocks on the
+  // barrier, we can assert they are all still 0 here. If new threads were not
+  // spawned the test would timeout above, being blocked.
+  EXPECT_THAT(counter.load(), 0);
+  barrier.Block();  // Release the threads to increment the counter.
+  EXPECT_THAT(tasks.WaitAll(), IsOk());
+  EXPECT_EQ(counter.load(), NUM_TASKS);
+}
+
+TEST_F(ThreadingTest, ParallelTasksDebugNoNewThreads) {
+  constexpr int32_t NUM_TASKS = 10;
+  std::atomic<int32_t> counter(0);
+  ParallelTasks tasks(/*debug_mode=*/true);
+  for (int32_t i = 0; i < NUM_TASKS; i++) {
+    EXPECT_THAT(tasks.WaitAll(), IsOk());
     tasks.add_task([&counter]() {
       counter.fetch_add(1);
       return absl::OkStatus();
     });
+    // Assert that the counter was incremented (task was run immediately)
+    // every loop iteration. This is non-deterministic when debug_mode is false.
+    EXPECT_THAT(counter.load(), i);
+    EXPECT_THAT(tasks.WaitAll(), IsOk());
   }
   EXPECT_THAT(tasks.WaitAll(), IsOk());
   EXPECT_EQ(counter.load(), NUM_TASKS);

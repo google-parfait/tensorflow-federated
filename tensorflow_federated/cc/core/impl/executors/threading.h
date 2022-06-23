@@ -172,8 +172,8 @@ class ParallelTasksInner_ {
 // A group of `absl::Status`-returning functions to be run in parallel.
 class ParallelTasks {
  public:
-  // Default constructor.
-  ParallelTasks() : shared_inner_(std::make_shared<ParallelTasksInner_>()) {}
+  ParallelTasks();
+  explicit ParallelTasks(bool debug_mode) : debug_mode_(debug_mode) {}
 
   // Move constructor.
   ParallelTasks(ParallelTasks&& other)
@@ -207,7 +207,11 @@ class ParallelTasks {
   absl::Status WaitAll();
 
  private:
-  std::shared_ptr<ParallelTasksInner_> shared_inner_;
+  std::shared_ptr<ParallelTasksInner_> shared_inner_ =
+      std::make_shared<ParallelTasksInner_>();
+  // Iff `true`, ParallelTasks will _not_ spawn new threads during `add_task`
+  // calls, and will run the `task` argument immediately and block on it.
+  const bool debug_mode_ = false;
 };
 
 }  // namespace tensorflow_federated
