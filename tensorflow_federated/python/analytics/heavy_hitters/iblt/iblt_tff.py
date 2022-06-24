@@ -16,9 +16,11 @@
 from typing import Callable, Optional, Tuple
 
 import attr
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics import data_processing
+from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_lib
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tensor
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -86,9 +88,13 @@ def build_iblt_computation(
       which means all the clients contribute all their words.
     k_anonymity: Only return words that appear in at least k clients. Must be a
       positive integer. Defaults to `1`.
-    secure_sum_bitwidth: The bitwidth used for secure sum. The default value is
-      `None`, which disables secure sum. If not `None`, must be in the range
-      `[1,62]`. See `tff.federated_secure_sum_bitwidth`.
+    secure_sum_bitwidth: The bitwidth used for federated secure sum. The default
+      value is `None`, which disables secure sum. If not `None`, must be in the
+      range `[1,62]`. Note that when this parameter is not `None`, the IBLT
+      sketches are summed via `federated_secure_modular_sum` with modulus equal
+      to IBLT's default field size, and other values (client count, string count
+      tensor) are aggregated via `federated_secure_sum` with
+      `max_input=2**secure_sum_bitwidth - 1`.
     batch_size: The number of elements in each batch of the dataset.  Defaults
       to `1`, means the input dataset is processed by
       `tf.data.Dataset.batch(1)`.  Must be a positive.
@@ -215,20 +221,29 @@ def build_iblt_computation(
     return intrinsics.federated_secure_sum(
         x, max_input=2**secure_sum_bitwidth - 1)
 
+  def secure_modular_sum(x):
+    return intrinsics.federated_secure_modular_sum(
+        x, modulus=np.int64(iblt_lib.DEFAULT_FIELD_SIZE))
+
   @federated_computation.federated_computation(
       computation_types.at_clients(dataset_type))
   def one_round_computation(examples):
     """The TFF computation to compute the aggregated IBLT sketch."""
     if secure_sum_bitwidth is not None:
-      sum_fn = secure_sum
+      # Use federated secure modular sum for IBLT sketches, because IBLT
+      # sketches are decoded by taking modulo over the field size.
+      sketch_sum_fn = secure_modular_sum
+      count_sum_fn = secure_sum
     else:
-      sum_fn = intrinsics.federated_sum
+      sketch_sum_fn = intrinsics.federated_sum
+      count_sum_fn = intrinsics.federated_sum
     round_timestamp = intrinsics.federated_eval(
         tensorflow_computation.tf_computation(
             lambda: tf.cast(tf.timestamp(), tf.int64)), placements.SERVER)
-    clients = sum_fn(intrinsics.federated_value(1, placements.CLIENTS))
-    sketch, count_tensor = sum_fn(
-        intrinsics.federated_map(compute_sketch, examples))
+    clients = count_sum_fn(intrinsics.federated_value(1, placements.CLIENTS))
+    sketch, count_tensor = intrinsics.federated_map(compute_sketch, examples)
+    sketch = sketch_sum_fn(sketch)
+    count_tensor = count_sum_fn(count_tensor)
 
     (heavy_hitters, heavy_hitters_unique_counts, heavy_hitters_counts,
      num_not_decoded) = intrinsics.federated_map(decode_heavy_hitters,
