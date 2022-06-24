@@ -1076,7 +1076,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         input_spec=_create_whimsy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[tf.keras.metrics.MeanAbsoluteError()])
+        metrics=[tf.keras.metrics.MeanAbsoluteError])
     self.assertIsInstance(tff_model, model_lib.Model)
 
     # Metrics should be zero, though the model wrapper internally executes the

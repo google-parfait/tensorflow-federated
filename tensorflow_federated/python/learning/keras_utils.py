@@ -490,6 +490,13 @@ class _KerasModel(model_lib.Model):
       training processes or evaluation computations.
     """
     finalizers = collections.OrderedDict()
-    for metric in self.get_metrics():
-      finalizers[metric.name] = finalizer.create_keras_metric_finalizer(metric)
+    if self._metric_constructors:
+      for metric, metric_constructor in zip(self._metrics,
+                                            self._metric_constructors):
+        finalizers[metric.name] = finalizer.create_keras_metric_finalizer(
+            metric_constructor)
+    else:
+      for metric in self.get_metrics():
+        finalizers[metric.name] = finalizer.create_keras_metric_finalizer(
+            metric)
     return finalizers
