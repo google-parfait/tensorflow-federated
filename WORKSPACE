@@ -50,7 +50,13 @@ git_repository(
 
 git_repository(
     name = "org_tensorflow",
-    patches = ["//third_party/tensorflow:internal_visibility.patch"],
+    patches = [
+        "//third_party/tensorflow:internal_visibility.patch",
+        # TODO(b/237009597): Remove this LLVM URL patch when TFF upgrades to
+        # TF 2.10.0. GitHub infra was failing to download the old LLVM
+        # versions TFF pointed to via TF 2.9.1, thus the need for the patch.
+        "//third_party/tensorflow:llvm_url.patch",
+    ],
     remote = "https://github.com/tensorflow/tensorflow.git",
     tag = "v2.9.1",
 )
