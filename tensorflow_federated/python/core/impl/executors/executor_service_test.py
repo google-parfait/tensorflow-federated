@@ -219,11 +219,11 @@ class ExecutorServiceTest(absltest.TestCase):
       def create_executor(self, *args, **kwargs):
         return mock.MagicMock()
 
-      def clean_up_executors(self):
+      def clean_up_executor(self):
         return
 
     ex_factory = MockFactory()
-    ex_factory.clean_up_executors = mock.MagicMock()
+    ex_factory.clean_up_executor = mock.MagicMock()
 
     env = TestEnv(ex_factory)
     value_proto, _ = value_serialization.serialize_value(
@@ -244,7 +244,7 @@ class ExecutorServiceTest(absltest.TestCase):
     # would close the bidi stream and cause a hang in the streaming case with
     # intermediate aggregation. Python GC takes care of pushing Dispose requests
     # from the aggregators to the workers.
-    ex_factory.clean_up_executors.assert_not_called()
+    ex_factory.clean_up_executor.assert_not_called()
 
   def test_executor_service_create_one_arg_computation_value_and_call(self):
     ex_factory = executor_stacks.ResourceManagingExecutorFactory(

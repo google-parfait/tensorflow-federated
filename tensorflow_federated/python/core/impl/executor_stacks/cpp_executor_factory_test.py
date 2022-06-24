@@ -37,10 +37,11 @@ class CPPExecutorFactoryTest(absltest.TestCase):
   def test_clean_up_executors_clears_state(self):
     local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
         default_num_clients=0)
-    local_cpp_factory.create_executor({placements.CLIENTS: 1})
+    cardinalities = {placements.CLIENTS: 1}
+    local_cpp_factory.create_executor(cardinalities)
     for executor in local_cpp_factory._executors.values():
       self._assert_cpp_executor_interface(executor)
-    local_cpp_factory.clean_up_executors()
+    local_cpp_factory.clean_up_executor(cardinalities)
     self.assertEmpty(local_cpp_factory._executors)
 
   def test_create_local_cpp_factory_constructs_executor_implementation(self):

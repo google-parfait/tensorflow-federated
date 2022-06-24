@@ -144,81 +144,7 @@ async def _invoke(executor, comp, arg, result_type: computation_types.Type):
   return type_conversions.type_to_py_container(result_val, result_type)
 
 
-# TODO(b/223898183): If we implement support for multiple concurrent executors
-# in Python as well as C++, this locking context will have no use and can be
-# deleted.
-class SingleCardinalityAsyncContext(context_base.Context):
-  """Implements shared logic to ensure instance-consistent cardinalities.
-
-  This context holds a stack which represents ongoing computations, as well as
-  an integer representing the cardinalities of these computations. An
-  asynchronous context manager is used to control access to the underlying
-  executor factory, ensuring that computations which are of the same
-  cardinalities can run concurrently, but computations of different
-  cardinalities must wait until all existing invocations are finished.
-  Therefore the concurrency mechanisms notify under two conditions: an
-  invocation has completed (so the invocation stack may be empty, and thus
-  computations with new cardinalities may be executed) or cardinalities have
-  changed (so that a computation which could not run before due to conflicting
-  cardinalities with the underway invocations may now run).
-  """
-
-  def __init__(self):
-    # Delay instantiation of the cardinalities condition to allow it to be
-    # instantiated only when an event loop is set to running.
-    self._cardinalities_condition = None
-    self._invocation_stack = []
-    self._current_cardinalities = None
-
-  @property
-  def cardinalities_condition(self):
-    if self._cardinalities_condition is None:
-      self._cardinalities_condition = asyncio.Condition()
-    return self._cardinalities_condition
-
-  async def _acquire_and_set_cardinalities(self, cardinalities):
-    async with self.cardinalities_condition:
-      if self._current_cardinalities == cardinalities:
-        return
-      else:
-        # We need to change the cardinalities; wait until all the underway
-        # invocations are finished or the current_cardinalities value matches
-        # ours.
-
-        def _condition():
-          return (not self._invocation_stack or
-                  self._current_cardinalities == cardinalities)
-
-        await self.cardinalities_condition.wait_for(_condition)
-
-        if self._current_cardinalities == cardinalities:
-          # No need to update.
-          return
-        self._current_cardinalities = cardinalities
-        # Notify other waiting tasks that we have changed cardinalities, and
-        # they may be interested in waking back up.
-        self.cardinalities_condition.notify_all()
-
-  @contextlib.asynccontextmanager
-  async def _reset_factory_on_error(self, ex_factory, cardinalities):
-    try:
-      await self._acquire_and_set_cardinalities(cardinalities)
-      # There is now invocation underway; add to the stack.
-      self._invocation_stack.append(1)
-      # We pass a copy down to prevent the caller from mutating.
-      yield ex_factory.create_executor({**cardinalities})
-    except Exception:
-      ex_factory.clean_up_executors()
-      raise
-    finally:
-      self._invocation_stack.pop()
-      async with self.cardinalities_condition:
-        # Notify all the wait_fors that their conditions to execute might be
-        # True, since we popped from the invocation stack.
-        self.cardinalities_condition.notify_all()
-
-
-class AsyncExecutionContext(SingleCardinalityAsyncContext):
+class AsyncExecutionContext(context_base.Context):
   """An asynchronous execution context backed by an `executor_base.Executor`.
 
   This context's `ingest` and `invoke` methods return Python coroutine objects
@@ -258,6 +184,15 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
     py_typecheck.check_callable(cardinality_inference_fn)
     self._cardinality_inference_fn = cardinality_inference_fn
 
+  @contextlib.contextmanager
+  def _reset_factory_on_error(self, ex_factory, cardinalities):
+    try:
+      # We pass a copy down to prevent the caller from mutating.
+      yield ex_factory.create_executor({**cardinalities})
+    except Exception:
+      ex_factory.clean_up_executor({**cardinalities})
+      raise
+
   @retrying.retry(
       retry_on_exception_filter=_is_retryable_error,
       wait_max_ms=30 * 1000,
@@ -285,8 +220,8 @@ class AsyncExecutionContext(SingleCardinalityAsyncContext):
       else:
         cardinalities = {}
 
-      async with self._reset_factory_on_error(self._executor_factory,
-                                              cardinalities) as executor:
+      with self._reset_factory_on_error(self._executor_factory,
+                                        cardinalities) as executor:
         py_typecheck.check_type(executor, executor_base.Executor)
 
         if arg is not None:
