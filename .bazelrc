@@ -98,6 +98,7 @@ build --define=no_hdfs_support=true
 # TF now has `cc_shared_library` targets, so it needs the experimental flag
 # Remove when `cc_shared_library` is enabled by default
 build --experimental_cc_shared_library
+build --experimental_link_static_libraries_once=false
 
 # Default options should come above this line.
 
@@ -116,9 +117,9 @@ build:linux --define=LIBDIR=$(PREFIX)/lib
 build:linux --define=INCLUDEDIR=$(PREFIX)/include
 build:linux --define=PROTOBUF_INCLUDE_PATH=$(PREFIX)/include
 
-# By default, build TF in C++ 14 mode.
-build:linux --cxxopt=-std=c++14
-build:linux --host_cxxopt=-std=c++14
+# By default, build TF in C++ 17 mode.
+build:linux --cxxopt=-std=c++17
+build:linux --host_cxxopt=-std=c++17
 
 # On linux, we dynamically link small amount of kernels
 build:linux --config=dynamic_kernels
@@ -155,7 +156,7 @@ build --distinct_host_configuration=false
 build:cuda --action_env=TF_CUDA_VERSION="11.2"
 build:cuda --action_env=TF_CUDNN_VERSION="8"
 build:cuda --repo_env=TF_CUDA_COMPUTE_CAPABILITIES="sm_60,sm_70,sm_75,compute_80"
-build:cuda --action_env=GCC_HOST_COMPILER_PATH="/dt7/usr/bin/gcc"
+build:cuda --action_env=GCC_HOST_COMPILER_PATH="/dt9/usr/bin/gcc"
 
 build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=1
 
