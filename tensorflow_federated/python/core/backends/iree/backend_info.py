@@ -45,6 +45,6 @@ class BackendInfo(object):
     return self._target_name
 
 
-VMVX = BackendInfo('vmvx', 'vmvx')
+VMVX = BackendInfo('local-task', 'vmvx')
 
 VULKAN_SPIRV = BackendInfo('vulkan', 'vulkan-spirv')

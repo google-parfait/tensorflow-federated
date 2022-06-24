@@ -25,7 +25,7 @@ class BackendInfoTest(absltest.TestCase):
 
   def test_vmvx(self):
     self.assertIsInstance(backend_info.VMVX, backend_info.BackendInfo)
-    self.assertEqual(backend_info.VMVX.driver_name, 'vmvx')
+    self.assertEqual(backend_info.VMVX.driver_name, 'local-task')
     self.assertEqual(backend_info.VMVX.target_name, 'vmvx')
 
 
