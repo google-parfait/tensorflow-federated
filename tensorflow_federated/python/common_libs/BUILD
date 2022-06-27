@@ -147,7 +147,7 @@ py_library(
     deps = [
         ":py_typecheck",
         "@com_google_protobuf//:protobuf_python",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -161,7 +161,7 @@ py_test(
         ":serialization_utils",
         "@absl_py//absl/testing:absltest",
         "@com_google_protobuf//:protobuf_python",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -171,7 +171,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -184,7 +184,7 @@ py_test(
     deps = [
         ":structure",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 

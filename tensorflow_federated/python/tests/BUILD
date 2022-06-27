@@ -19,7 +19,7 @@ py_test(
     deps = [
         "//tensorflow_federated",
         "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -36,7 +36,7 @@ py_test(
         "//tensorflow_federated",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -49,7 +49,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -62,7 +62,7 @@ py_test(
     deps = [
         "//tensorflow_federated",
         "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -105,7 +105,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -120,7 +120,7 @@ py_test(
         "//tensorflow_federated",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -133,7 +133,7 @@ py_library(
     deps = [
         "//tensorflow_federated",
         "@absl_py//absl/logging",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -148,7 +148,7 @@ py_test(
     deps = [
         "//tensorflow_federated",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -158,7 +158,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 

@@ -48,7 +48,7 @@ py_library(
     name = "client_weight_lib",
     srcs = ["client_weight_lib.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_library(
@@ -61,7 +61,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -77,7 +77,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -95,7 +95,7 @@ py_library(
         "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -113,7 +113,7 @@ py_cpu_gpu_test(
         ":model_utils",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -134,7 +134,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/metrics:aggregator",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -163,7 +163,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -182,7 +182,7 @@ py_library(
         "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/metrics:finalizer",
         "@absl_py//absl/logging",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -205,7 +205,7 @@ py_test(
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/metrics:counters",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -213,7 +213,7 @@ py_library(
     name = "model",
     srcs = ["model.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_library(
@@ -222,7 +222,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":model",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -237,7 +237,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -252,7 +252,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -293,7 +293,7 @@ py_test(
         "//tensorflow_federated/python/core/test:static_assert",
         "@absl_py//absl/testing:absltest",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -311,7 +311,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -325,7 +325,7 @@ py_test(
         ":model_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -344,6 +344,6 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

@@ -39,7 +39,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -52,7 +52,7 @@ py_test(
         ":data_processing",
         ":histogram_test_utils",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -61,14 +61,14 @@ py_library(
     testonly = True,
     srcs = ["histogram_test_utils.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_library(
     name = "histogram_processing",
     srcs = ["histogram_processing.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_test(
@@ -80,7 +80,7 @@ py_test(
         ":histogram_processing",
         ":histogram_test_utils",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 

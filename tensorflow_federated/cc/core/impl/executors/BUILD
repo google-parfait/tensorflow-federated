@@ -406,7 +406,7 @@ py_binary(
     deps = [
         "@absl_py//absl:app",
         "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -430,7 +430,7 @@ py_binary(
     deps = [
         "@absl_py//absl:app",
         "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 

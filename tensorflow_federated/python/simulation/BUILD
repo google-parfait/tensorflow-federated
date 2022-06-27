@@ -67,7 +67,7 @@ py_test(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/learning/templates:learning_process",
         "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -86,7 +86,7 @@ py_test(
     deps = [
         ":sampling_utils",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 

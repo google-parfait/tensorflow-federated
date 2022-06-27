@@ -13,6 +13,6 @@ py_binary(
         "//tensorflow_federated",
         "@absl_py//absl:app",
         "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

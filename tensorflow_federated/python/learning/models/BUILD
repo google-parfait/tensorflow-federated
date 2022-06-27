@@ -35,7 +35,7 @@ py_library(
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning/metrics:finalizer",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -51,7 +51,7 @@ py_test(
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -70,7 +70,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/learning:model",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -93,7 +93,7 @@ py_test(
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_examples",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -105,6 +105,6 @@ py_library(
     deps = [
         ":functional",
         "//tensorflow_federated/python/learning:model",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

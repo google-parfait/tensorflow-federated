@@ -32,7 +32,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":function",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -55,7 +55,7 @@ py_test(
     deps = [
         ":graph_optimizations",
         ":graph_spec",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -63,7 +63,7 @@ py_library(
     name = "graph_spec",
     srcs = ["graph_spec.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_test(
@@ -73,7 +73,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":graph_spec",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -81,7 +81,7 @@ py_library(
     name = "graph_utils",
     srcs = ["graph_utils.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_test(
@@ -92,7 +92,7 @@ py_test(
     deps = [
         ":graph_utils",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -102,7 +102,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -114,7 +114,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -123,14 +123,14 @@ py_library(
     testonly = True,
     srcs = ["tensorflow_test_utils.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_library(
     name = "variable_utils",
     srcs = ["variable_utils.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_test(
@@ -143,7 +143,7 @@ py_test(
     deps = [
         ":variable_utils",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -161,6 +161,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":version_check",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

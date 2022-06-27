@@ -41,11 +41,11 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":cpp_executor_factory",
+        "@absl_py//absl/testing:absltest",
+        # build_cleaner: keep
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",  # build_cleaner: keep
     ],
 )
 
@@ -59,7 +59,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
         "@com_google_protobuf//:protobuf_python",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 

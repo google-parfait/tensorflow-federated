@@ -10,7 +10,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -22,7 +22,7 @@ py_test(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -35,6 +35,6 @@ py_binary(
         ":p13n_utils",
         "//tensorflow_federated",
         "@absl_py//absl:app",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

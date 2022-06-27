@@ -11,7 +11,7 @@ py_binary(
         "//tensorflow_federated",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "@absl_py//absl:app",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -24,7 +24,7 @@ py_binary(
         "//tensorflow_federated",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "@absl_py//absl:app",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -37,6 +37,6 @@ py_binary(
         "//tensorflow_federated",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "@absl_py//absl:app",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

@@ -43,7 +43,7 @@ py_library(
     deps = [
         ":download",
         ":sql_client_data",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -56,7 +56,7 @@ py_test(
     deps = [
         ":celeba",
         "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -68,7 +68,7 @@ py_library(
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -81,7 +81,7 @@ py_test(
     deps = [
         ":cifar100",
         "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -89,7 +89,7 @@ py_library(
     name = "dataset_utils",
     srcs = ["dataset_utils.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_test(
@@ -101,7 +101,7 @@ py_test(
     deps = [
         ":dataset_utils",
         ":from_tensor_slices_client_data",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -109,7 +109,7 @@ py_library(
     name = "download",
     srcs = ["download.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_test(
@@ -122,7 +122,7 @@ py_test(
         ":download",
         "@absl_py//absl/flags",
         "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -134,7 +134,7 @@ py_library(
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -147,7 +147,7 @@ py_test(
     deps = [
         ":emnist",
         "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -160,7 +160,7 @@ py_library(
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -174,7 +174,7 @@ py_test(
         ":shakespeare",
         "@absl_py//absl/flags",
         "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -186,7 +186,7 @@ py_library(
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -200,7 +200,7 @@ py_test(
         ":stackoverflow",
         "@absl_py//absl/flags",
         "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -211,7 +211,7 @@ py_library(
     deps = [
         ":client_data",
         ":vision_datasets_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -224,7 +224,7 @@ py_test(
     deps = [
         ":gldv2",
         ":vision_datasets_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -236,7 +236,7 @@ py_library(
         ":client_data",
         ":from_tensor_slices_client_data",
         ":vision_datasets_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -249,7 +249,7 @@ py_test(
     deps = [
         ":inaturalist",
         ":vision_datasets_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -260,7 +260,7 @@ py_library(
     deps = [
         ":client_data",
         ":file_per_user_client_data",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -271,7 +271,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":vision_datasets_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -284,7 +284,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "@absl_py//absl/logging",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -299,7 +299,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -311,7 +311,7 @@ py_library(
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -325,7 +325,7 @@ py_test(
         ":file_per_user_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -336,7 +336,7 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -352,7 +352,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -364,7 +364,7 @@ py_library(
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@absl_py//absl/logging",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -378,7 +378,7 @@ py_test(
         ":sql_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -389,7 +389,7 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -402,7 +402,7 @@ py_test(
         ":from_tensor_slices_client_data",
         ":transforming_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -414,7 +414,7 @@ py_library(
         ":client_data",
         ":sql_client_data",
         "@absl_py//absl/logging",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -426,6 +426,6 @@ py_test(
     deps = [
         ":sql_client_data_utils",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

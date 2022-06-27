@@ -15,7 +15,7 @@ py_binary(
         "//tensorflow_federated",
         "@absl_py//absl:app",
         "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -25,7 +25,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -36,7 +36,7 @@ py_library(
     deps = [
         ":simple_fedavg_tf",
         "//tensorflow_federated",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -52,6 +52,6 @@ py_cpu_gpu_test(
         ":simple_fedavg_tff",
         "//tensorflow_federated",
         "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
