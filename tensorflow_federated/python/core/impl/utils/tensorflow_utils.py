@@ -244,18 +244,18 @@ def capture_result_from_graph(
       with graph.as_default():
         result = tf.identity(result)
     # `tf.is_tensor` returns true for some things that are not actually single
-    # `tf.Tensor`s, including `tf.SparseTensor`s and `tf.RaggedTensor`s.
+    # `tf.Tensor`s, including `tf.sparse.SparseTensor`s and `tf.RaggedTensor`s.
     if isinstance(result, tf.RaggedTensor):
       name_value_pairs = (('flat_values', result.flat_values),
                           ('nested_row_splits', result.nested_row_splits))
       return _get_bindings_for_elements(name_value_pairs, graph,
                                         tf.RaggedTensor)
-    elif isinstance(result, tf.SparseTensor):
+    elif isinstance(result, tf.sparse.SparseTensor):
       name_value_pairs = (('indices', result.indices),
                           ('values', result.values), ('dense_shape',
                                                       result.dense_shape))
       return _get_bindings_for_elements(name_value_pairs, graph,
-                                        tf.SparseTensor)
+                                        tf.sparse.SparseTensor)
     else:
       return (computation_types.TensorType(result.dtype.base_dtype,
                                            result.shape),
@@ -983,7 +983,9 @@ def add_control_deps_for_init_op(graph_def, init_op):
   return new_graph_def
 
 
-def coerce_dataset_elements_to_tff_type_spec(dataset, element_type):
+def coerce_dataset_elements_to_tff_type_spec(
+    dataset: tf.data.Dataset,
+    element_type: computation_types.Type) -> tf.data.Dataset:
   """Map the elements of a dataset to a specified type.
 
   This is used to coerce a `tf.data.Dataset` that may have lost the ordering
@@ -1007,6 +1009,11 @@ def coerce_dataset_elements_to_tff_type_spec(dataset, element_type):
   py_typecheck.check_type(element_type, computation_types.Type)
   if element_type.is_tensor():
     return dataset
+  elif element_type.is_struct_with_python():
+    py_type = computation_types.StructWithPythonType.get_container_type(
+        element_type)
+    if py_type is tf.RaggedTensor or py_type is tf.sparse.SparseTensor:
+      return dataset
   # This is a similar to `reference_context.to_representation_for_type`,
   # look for opportunities to consolidate?
   def _to_representative_value(type_spec, elements):
@@ -1020,6 +1027,9 @@ def coerce_dataset_elements_to_tff_type_spec(dataset, element_type):
         elements = [elements]
       py_type = computation_types.StructWithPythonType.get_container_type(
           type_spec)
+      if py_type is tf.RaggedTensor or py_type is tf.sparse.SparseTensor:
+        return elements
+
       field_types = structure.iter_elements(type_spec)
       if (issubclass(py_type, collections.abc.Mapping) or
           py_typecheck.is_attrs(py_type)):

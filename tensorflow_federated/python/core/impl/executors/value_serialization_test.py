@@ -253,10 +253,43 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
     deserialized_sparse_tensor = tf.concat(list(y), axis=0)
     self.assertAllEqual(deserialized_sparse_tensor, sparse_tensor)
 
+  def test_serialize_deserialize_dataset_of_ragged_tensors_with_type_hint(self):
+    ragged_tensor = tf.RaggedTensor.from_row_splits(
+        values=[3, 1, 4], row_splits=[0, 2, 2, 3])
+    ds = tf.data.Dataset.from_tensors(ragged_tensor)
+    value_proto, value_type = value_serialization.serialize_value(
+        ds, computation_types.SequenceType(element=ds.element_spec))
+    expected_type = computation_types.SequenceType(ds.element_spec)
+    type_test_utils.assert_types_identical(value_type, expected_type)
+    # We remove the `element_type` field from the proto in order to ensure
+    # that the type hint we pass to deserialize_value is used, as this contains
+    # the information that the dataset uses RaggedTensors as python containers
+    value_proto.sequence.ClearField('element_type')
+    _, type_spec = value_serialization.deserialize_value(
+        value_proto, value_type)
+    type_test_utils.assert_types_identical(type_spec, expected_type)
+
+  def test_serialize_deserialize_dataset_of_sparse_tensors_with_type_hint(self):
+    self.skipTest('b/235492749')
+    sparse_tensor = tf.sparse.SparseTensor(
+        indices=[[0, 0], [1, 2]], values=[1, 2], dense_shape=[3, 4])
+    ds = tf.data.Dataset.from_tensors(sparse_tensor)
+    value_proto, value_type = value_serialization.serialize_value(
+        ds, computation_types.SequenceType(element=ds.element_spec))
+    expected_type = computation_types.SequenceType(ds.element_spec)
+    type_test_utils.assert_types_identical(value_type, expected_type)
+    # We remove the `element_type` field from the proto in order to ensure
+    # that the type hint we pass to deserialize_value is used, as this contains
+    # the information that the dataset uses SparseTensors as python containers
+    value_proto.sequence.ClearField('element_type')
+    _, type_spec = value_serialization.deserialize_value(
+        value_proto, value_type)
+    type_test_utils.assert_types_identical(type_spec, expected_type)
+
   @parameterized.named_parameters(('as_dataset', lambda x: x),
                                   ('as_list', list))
   def test_serialize_deserialize_sequence_of_ragged_tensors(self, dataset_fn):
-    self.skipTest('b/235492749')
+    self.skipTest('b/237423976')
     ds = tf.data.Dataset.from_tensor_slices(tf.strings.split(['a b c', 'd e']))
     ds_repr = dataset_fn(ds)
     value_proto, value_type = value_serialization.serialize_value(
