@@ -16,13 +16,13 @@
 from tensorflow_federated.python.core.backends.test import compiler
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
-from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 
 
 def create_test_python_execution_context(default_num_clients=0,
                                          clients_per_thread=1):
   """Creates an execution context that executes computations locally."""
-  factory = executor_stacks.local_executor_factory(
+  factory = python_executor_stacks.local_executor_factory(
       default_num_clients=default_num_clients,
       clients_per_thread=clients_per_thread)
 

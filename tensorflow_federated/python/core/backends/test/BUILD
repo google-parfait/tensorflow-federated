@@ -81,7 +81,7 @@ py_library(
         ":compiler",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
+        "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
     ],
 )
 

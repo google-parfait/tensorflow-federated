@@ -19,7 +19,6 @@ from tensorflow_federated.python.core.impl.executors import data_backend_base
 from tensorflow_federated.python.core.impl.executors import data_descriptor
 from tensorflow_federated.python.core.impl.executors import data_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
-from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -42,7 +41,7 @@ class DataDescriptorTest(absltest.TestCase):
       return x * 20.0
 
     with executor_test_utils.install_executor(
-        executor_stacks.local_executor_factory()):
+        executor_test_utils.LocalTestExecutorFactory()):
       result = foo(ds)
     self.assertEqual(result, 600.0)
 
@@ -60,7 +59,7 @@ class DataDescriptorTest(absltest.TestCase):
       return intrinsics.federated_sum(x)
 
     with executor_test_utils.install_executor(
-        executor_stacks.local_executor_factory()):
+        executor_test_utils.LocalTestExecutorFactory()):
       result = foo(ds)
     self.assertEqual(result, 3000)
 
@@ -83,7 +82,7 @@ class DataDescriptorTest(absltest.TestCase):
       return intrinsics.federated_sum(x)
 
     with executor_test_utils.install_executor(
-        executor_stacks.local_executor_factory()):
+        executor_test_utils.LocalTestExecutorFactory()):
       result = foo(ds)
     self.assertEqual(result, 6)
 
@@ -103,12 +102,12 @@ class DataDescriptorTest(absltest.TestCase):
     # Since this DataDescriptor does not specify its cardinality, the number of
     # values placed is inferred from the decault setting for the executor.
     with executor_test_utils.install_executor(
-        executor_stacks.local_executor_factory(default_num_clients=1)):
+        executor_test_utils.LocalTestExecutorFactory(default_num_clients=1)):
       result = foo(ds)
     self.assertEqual(result, 1000)
 
     with executor_test_utils.install_executor(
-        executor_stacks.local_executor_factory(default_num_clients=3)):
+        executor_test_utils.LocalTestExecutorFactory(default_num_clients=3)):
       result = foo(ds)
     self.assertEqual(result, 3000)
 
@@ -130,7 +129,8 @@ class DataDescriptorTest(absltest.TestCase):
           eager_tf_executor.EagerTFExecutor(device),
           TestDataBackend(data_constant))
 
-    factory = executor_stacks.local_executor_factory(leaf_executor_fn=ex_fn)
+    factory = executor_test_utils.LocalTestExecutorFactory(
+        leaf_executor_fn=ex_fn)
 
     @federated_computation.federated_computation(
         computation_types.FederatedType(type_spec, placements.CLIENTS))

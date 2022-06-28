@@ -17,8 +17,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -91,9 +91,8 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
     tf_devices = tf.config.list_logical_devices(tf_device)
     server_tf_device = None if not tf_devices else tf_devices[0]
     gpu_devices = tf.config.list_logical_devices('GPU')
-    unplaced_factory = executor_stacks.UnplacedExecutorFactory(
-        server_device=server_tf_device,
-        client_devices=gpu_devices)
+    unplaced_factory = python_executor_stacks.UnplacedExecutorFactory(
+        server_device=server_tf_device, client_devices=gpu_devices)
     unplaced_executor = unplaced_factory.create_executor()
     self.assertIsInstance(unplaced_executor, executor_base.Executor)
 
@@ -105,7 +104,7 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
     tf_devices = tf.config.list_logical_devices(tf_device)
     server_tf_device = None if not tf_devices else tf_devices[0]
     gpu_devices = tf.config.list_logical_devices('GPU')
-    local_executor = executor_stacks.local_executor_factory(
+    local_executor = python_executor_stacks.local_executor_factory(
         server_tf_device=server_tf_device, client_tf_devices=gpu_devices)
     with executor_test_utils.install_executor(local_executor):
       parallel_client_run = _create_tff_parallel_clients_with_iter_dataset()
@@ -124,7 +123,7 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
     tf_devices = tf.config.list_logical_devices(tf_device)
     server_tf_device = None if not tf_devices else tf_devices[0]
     gpu_devices = tf.config.list_logical_devices('GPU')
-    local_executor = executor_stacks.local_executor_factory(
+    local_executor = python_executor_stacks.local_executor_factory(
         server_tf_device=server_tf_device, client_tf_devices=gpu_devices)
     with executor_test_utils.install_executor(local_executor):
       parallel_client_run = _create_tff_parallel_clients_with_dataset_reduce()

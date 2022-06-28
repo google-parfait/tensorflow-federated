@@ -23,7 +23,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
-from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -45,7 +45,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     def comp():
       return tf.constant(10)
 
-    executor = executor_stacks.local_executor_factory()
+    executor = python_executor_stacks.local_executor_factory()
     with _install_executor_in_synchronous_context(executor):
       result = comp()
 
@@ -57,7 +57,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     def comp(x):
       return tf.add(x, 10)
 
-    executor = executor_stacks.local_executor_factory()
+    executor = python_executor_stacks.local_executor_factory()
     with _install_executor_in_synchronous_context(executor):
       result = comp(3)
 
@@ -69,7 +69,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     def comp(x, y, z):
       return tf.multiply(tf.add(x, y), z)
 
-    executor = executor_stacks.local_executor_factory()
+    executor = python_executor_stacks.local_executor_factory()
     with _install_executor_in_synchronous_context(executor):
       result = comp(3, 4, 5)
 
@@ -82,7 +82,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     def comp(ds):
       return ds.reduce(np.int32(0), lambda x, y: x + y)
 
-    executor = executor_stacks.local_executor_factory()
+    executor = python_executor_stacks.local_executor_factory()
     with _install_executor_in_synchronous_context(executor):
       ds = tf.data.Dataset.range(10).map(lambda x: tf.cast(x, tf.int32))
       result = comp(ds)
@@ -98,7 +98,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
           ('b', tf.constant(20)),
       ])
 
-    executor = executor_stacks.local_executor_factory()
+    executor = python_executor_stacks.local_executor_factory()
     with _install_executor_in_synchronous_context(executor):
       result = comp()
 
@@ -106,9 +106,10 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     self.assertDictEqual(result, {'a': 10, 'b': 20})
 
   @parameterized.named_parameters(
-      ('local_executor_none_clients', executor_stacks.local_executor_factory()),
+      ('local_executor_none_clients',
+       python_executor_stacks.local_executor_factory()),
       ('local_executor_three_clients',
-       executor_stacks.local_executor_factory(default_num_clients=3)),
+       python_executor_stacks.local_executor_factory(default_num_clients=3)),
   )
   def test_with_temperature_sensor_example(self, executor):
 
@@ -157,7 +158,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     five_ints = list(range(5))
     ten_ints = list(range(10))
 
-    executor = executor_stacks.local_executor_factory()
+    executor = python_executor_stacks.local_executor_factory()
     with _install_executor_in_synchronous_context(executor):
       five = comp(five_ints)
       ten = comp(ten_ints)
@@ -177,7 +178,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     five_ints = list(range(5))
     ten_ints = list(range(10))
 
-    executor = executor_stacks.local_executor_factory()
+    executor = python_executor_stacks.local_executor_factory()
     with _install_executor_in_synchronous_context(executor):
       with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
         comp([five_ints, ten_ints])
@@ -188,7 +189,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     def foo(x, y):
       return x + y
 
-    executor = executor_stacks.local_executor_factory()
+    executor = python_executor_stacks.local_executor_factory()
     with _install_executor_in_synchronous_context(executor):
       # pylint:disable=no-value-for-parameter
       result = foo(structure.Struct([(None, 2), (None, 3)]))
@@ -197,7 +198,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     self.assertEqual(result, 5)
 
   def test_raises_cardinality_mismatch(self):
-    factory = executor_stacks.local_executor_factory()
+    factory = python_executor_stacks.local_executor_factory()
 
     arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
 
@@ -224,7 +225,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       await asyncio.sleep(0.1)
       return add_one(x)
 
-    factory = executor_stacks.local_executor_factory()
+    factory = python_executor_stacks.local_executor_factory()
     context = sync_execution_context.ExecutionContext(
         factory, cardinality_inference_fn=lambda x, y: {placements.CLIENTS: 1})
     with context_stack_impl.context_stack.install(context):

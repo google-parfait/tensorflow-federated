@@ -15,65 +15,12 @@
 import asyncio
 
 from absl.testing import absltest
-from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
-from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
-
-
-class ExecutorsTest(parameterized.TestCase):
-
-  @executor_test_utils.executors
-  def test_without_arguments(self):
-
-    @tensorflow_computation.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    result = add_one(5)
-
-    self.assertEqual(result, 6)
-
-  @executor_test_utils.executors()
-  def test_with_no_arguments(self):
-
-    @tensorflow_computation.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    result = add_one(5)
-
-    self.assertEqual(result, 6)
-
-  @executor_test_utils.executors(
-      ('local', executor_stacks.local_executor_factory()),)
-  def test_with_one_argument(self):
-
-    @tensorflow_computation.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    result = add_one(5)
-
-    self.assertEqual(result, 6)
-
-  @executor_test_utils.executors(
-      ('local', executor_stacks.local_executor_factory()),
-      ('sizing', executor_stacks.sizing_executor_factory()),
-  )
-  def test_with_two_argument(self):
-
-    @tensorflow_computation.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    result = add_one(5)
-
-    self.assertEqual(result, 6)
 
 
 class TracingExecutorTest(absltest.TestCase):

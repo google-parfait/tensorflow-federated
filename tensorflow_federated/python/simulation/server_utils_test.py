@@ -18,9 +18,9 @@ from unittest import mock
 from absl.testing import absltest
 import portpicker
 
+from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_service
-from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.simulation import server_utils
 
 
@@ -31,7 +31,8 @@ class ServerUtilsTest(absltest.TestCase):
       self, mock_logging_info):
 
     ex = eager_tf_executor.EagerTFExecutor()
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
+    ex_factory = python_executor_stacks.ResourceManagingExecutorFactory(
+        lambda _: ex)
 
     with server_utils.server_context(ex_factory, 1,
                                      portpicker.pick_unused_port()):
@@ -48,7 +49,8 @@ class ServerUtilsTest(absltest.TestCase):
                                                         mock_logging_info):
 
     ex = eager_tf_executor.EagerTFExecutor()
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
+    ex_factory = python_executor_stacks.ResourceManagingExecutorFactory(
+        lambda _: ex)
 
     with self.assertRaises(TypeError):
       with server_utils.server_context(ex_factory, 1,
@@ -60,7 +62,8 @@ class ServerUtilsTest(absltest.TestCase):
 
   def test_failure_on_construction_fails_as_expected(self):
     ex = eager_tf_executor.EagerTFExecutor()
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
+    ex_factory = python_executor_stacks.ResourceManagingExecutorFactory(
+        lambda _: ex)
 
     with mock.patch.object(
         executor_service, 'ExecutorService', side_effect=ValueError):

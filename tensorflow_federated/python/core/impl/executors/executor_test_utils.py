@@ -21,7 +21,6 @@
 import asyncio
 
 from absl.testing import absltest
-from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -36,9 +35,12 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
+from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import ingestable_base
+from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -47,11 +49,66 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
+class LocalTestExecutorFactory(executor_factory.ExecutorFactory):
+  """Minimal implementation of a full local executor factory."""
+
+  def __init__(self,
+               default_num_clients: int = 0,
+               leaf_executor_fn=eager_tf_executor.EagerTFExecutor):
+    self._default_num_clients = default_num_clients
+    self._leaf_executor_fn = leaf_executor_fn
+
+  def create_executor(self, cardinalities):
+    device = tf.config.list_logical_devices(device_type='CPU')[0]
+    num_requested_clients = cardinalities.get(placements.CLIENTS)
+    if num_requested_clients is None:
+      num_clients = self._default_num_clients
+    else:
+      num_clients = num_requested_clients
+    client_stacks = [
+        self._leaf_executor_fn(device=device) for _ in range(num_clients)
+    ]
+
+    federating_strategy_factory = federated_resolving_strategy.FederatedResolvingStrategy.factory(
+        {
+            placements.CLIENTS: client_stacks,
+            placements.SERVER: self._leaf_executor_fn(device=device),
+        },
+        local_computation_factory=tensorflow_computation_factory
+        .TensorFlowComputationFactory())
+    executor = federating_executor.FederatingExecutor(
+        federating_strategy_factory, self._leaf_executor_fn(device=device))
+    return reference_resolving_executor.ReferenceResolvingExecutor(executor)
+
+  def clean_up_executor(self, cardinalities):
+    pass
+
+
+class BasicTestExFactory(executor_factory.ExecutorFactory):
+  """Minimal implementation of a parameterized executor factory."""
+
+  def __init__(self, executor):
+    if isinstance(executor, executor_base.Executor):
+      self._executor = executor
+    else:
+      self._executor = None
+      self._executor_fn = executor
+
+  def create_executor(self, cardinalities):
+    if self._executor is not None:
+      return self._executor
+    else:
+      return self._executor_fn(cardinalities)
+
+  def clean_up_executor(self, cardinalities):
+    pass
+
+
 class TestExecutionContext(context_base.Context):
   """Minimal execution context for testing executors."""
 
-  def __init__(self, executor_factory):
-    self._executor_factory = executor_factory
+  def __init__(self, ex_factory):
+    self._executor_factory = ex_factory
     self._loop = asyncio.new_event_loop()
 
   def _unwrap_tensors(self, value):
@@ -88,76 +145,6 @@ class TestExecutionContext(context_base.Context):
 def install_executor(executor_factory_instance):
   context = TestExecutionContext(executor_factory_instance)
   return context_stack_impl.context_stack.install(context)
-
-
-def executors(*args):
-  """A decorator for creating tests parameterized by executors.
-
-  Note: To use this decorator your test is required to inherit from
-  `parameterized.TestCase`.
-
-  The decorator can be called without arguments:
-
-  ```
-  @executors
-  def foo(self):
-    ...
-  ```
-
-  or with arguments:
-
-  ```
-  @executors(
-      ('label', executor),
-      ...
-  )
-  def foo(self):
-    ...
-  ```
-
-  If the decorator is specified without arguments or is called with no
-  arguments, the default this decorator with parameterize the test by the
-  following executors:
-
-  *   local executor
-  *   sizing executor
-
-  If the decorator is called with arguments the arguments must be in a form that
-  is accepted by `parameterized.named_parameters`.
-
-  Args:
-    *args: Either a test function to be decorated or named executors for the
-      decorated method, either a single iterable, or a list of tuples or dicts.
-
-  Returns:
-     A test generator to be handled by `parameterized.TestGeneratorMetaclass`.
-  """
-
-  def decorator(fn, *named_executors):
-    if isinstance(fn, type):
-      raise TypeError('Do not directly decorate classes with the executors '
-                      'decorator; this will cause the tests to be skipped. '
-                      'Decorate the member test functions instead.')
-
-    if not named_executors:
-      named_executors = [
-          ('local', executor_stacks.local_executor_factory()),
-          ('sizing', executor_stacks.sizing_executor_factory()),
-      ]
-
-    @parameterized.named_parameters(*named_executors)
-    def wrapped_fn(self, executor):
-      """Install a particular execution context before running `fn`."""
-      context = TestExecutionContext(executor)
-      with context_stack_impl.context_stack.install(context):
-        fn(self)
-
-    return wrapped_fn
-
-  if len(args) == 1 and callable(args[0]):
-    return decorator(args[0])
-  else:
-    return lambda fn: decorator(fn, *args)
 
 
 class AsyncTestCase(absltest.TestCase):

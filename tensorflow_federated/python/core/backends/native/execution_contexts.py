@@ -24,8 +24,8 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
+from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
 def _make_basic_python_execution_context(*, executor_fn, compiler_fn,
@@ -51,7 +51,7 @@ def create_local_python_execution_context(
     reference_resolving_clients=False
 ) -> sync_execution_context.ExecutionContext:
   """Creates an execution context that executes computations locally."""
-  factory = executor_stacks.local_executor_factory(
+  factory = python_executor_stacks.local_executor_factory(
       default_num_clients=default_num_clients,
       max_fanout=max_fanout,
       clients_per_thread=clients_per_thread,
@@ -95,7 +95,7 @@ def create_local_async_python_execution_context(
     reference_resolving_clients: bool = False
 ) -> async_execution_context.AsyncExecutionContext:
   """Creates a context that executes computations locally as coro functions."""
-  factory = executor_stacks.local_executor_factory(
+  factory = python_executor_stacks.local_executor_factory(
       default_num_clients=default_num_clients,
       max_fanout=max_fanout,
       clients_per_thread=clients_per_thread,
@@ -134,7 +134,7 @@ def create_sizing_execution_context(default_num_clients: int = 0,
                                     max_fanout: int = 100,
                                     clients_per_thread: int = 1):
   """Creates an execution context that executes computations locally."""
-  factory = executor_stacks.sizing_executor_factory(
+  factory = python_executor_stacks.sizing_executor_factory(
       default_num_clients=default_num_clients,
       max_fanout=max_fanout,
       clients_per_thread=clients_per_thread)
@@ -145,7 +145,7 @@ def create_sizing_execution_context(default_num_clients: int = 0,
 def create_thread_debugging_execution_context(default_num_clients: int = 0,
                                               clients_per_thread=1):
   """Creates a simple execution context that executes computations locally."""
-  factory = executor_stacks.thread_debugging_executor_factory(
+  factory = python_executor_stacks.thread_debugging_executor_factory(
       default_num_clients=default_num_clients,
       clients_per_thread=clients_per_thread,
   )
@@ -174,7 +174,7 @@ def create_remote_python_execution_context(
     default_num_clients: int = 0,
 ) -> sync_execution_context.ExecutionContext:
   """Creates context to execute computations with workers on `channels`."""
-  factory = executor_stacks.remote_executor_factory(
+  factory = python_executor_stacks.remote_executor_factory(
       channels=channels,
       thread_pool_executor=thread_pool_executor,
       dispose_batch_size=dispose_batch_size,
@@ -214,7 +214,7 @@ def create_remote_async_python_execution_context(
     default_num_clients: int = 0
 ) -> async_execution_context.AsyncExecutionContext:
   """Creates context executing computations async via workers on `channels`."""
-  factory = executor_stacks.remote_executor_factory(
+  factory = python_executor_stacks.remote_executor_factory(
       channels=channels,
       thread_pool_executor=thread_pool_executor,
       dispose_batch_size=dispose_batch_size,

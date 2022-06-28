@@ -17,7 +17,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
-from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -118,7 +118,8 @@ def server_placed_mult(arg):
 class MergeableCompCompilerTest(absltest.TestCase):
 
   def setUp(self):
-    ex_factory = executor_stacks.local_executor_factory(default_num_clients=0)
+    ex_factory = python_executor_stacks.local_executor_factory(
+        default_num_clients=0)
     self._mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
         [ex_factory])
     super().setUp()

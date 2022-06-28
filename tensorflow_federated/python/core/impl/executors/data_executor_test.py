@@ -24,7 +24,6 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.executors import data_backend_base
 from tensorflow_federated.python.core.impl.executors import data_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
-from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.federated_context import data as tff_data
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -135,7 +134,8 @@ class DataExecutorTest(absltest.TestCase):
         eager_tf_executor.EagerTFExecutor(),
         TestDataBackend(self, 'foo://bar', tf.data.Dataset.range(5), type_spec))
     ex_fn = lambda device: ex
-    factory = executor_stacks.local_executor_factory(leaf_executor_fn=ex_fn)
+    factory = executor_test_utils.LocalTestExecutorFactory(
+        leaf_executor_fn=ex_fn)
     context = executor_test_utils.TestExecutionContext(factory)
 
     @tensorflow_computation.tf_computation(type_spec)

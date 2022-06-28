@@ -51,19 +51,19 @@ is to infer the number of clients at execution time.
 ## Execution Stack
 
 An execution stack is a hierarchy of [Executors](#executor). The
-[executor_stacks](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executors/executor_stacks.py)
-module contains logic for constructing and composing specific execution stacks.
+[executor_stacks](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executor_stacks)
+package contains logic for constructing and composing specific execution stacks.
 
 ### Local Execution Stack
 
 The
-[executor_stacks.local_executor_factory](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executors/executor_stacks.py)
+[python_executor_stacks.local_executor_factory](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executor_stacks/python_executor_stacks.py)
 function constructs a local execution stack that executes an
 [AST](compilation.md#ast) on some number of clients.
 
 ### Remote Execution Stack
 
 The
-[executor_stacks.remote_executor_factory](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executors/executor_stacks.py)
+[python_executor_stacks.remote_executor_factory](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/impl/executor_stacks/python_executor_stacks.py)
 function constructs a remote execution stack that executes an
 [AST](compilation.md#ast) on some service.

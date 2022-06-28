@@ -28,7 +28,6 @@ from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_service
-from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import value_serialization
@@ -135,7 +134,7 @@ class ExecutorServiceTest(absltest.TestCase):
         pass
 
     ex = SlowExecutor()
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
+    ex_factory = executor_test_utils.BasicTestExFactory(ex)
     env = TestEnv(ex_factory)
     self.assertEqual(ex.status, 'idle')
     value_proto, _ = value_serialization.serialize_value(10, tf.int32)
@@ -150,8 +149,8 @@ class ExecutorServiceTest(absltest.TestCase):
     self.assertEqual(value, 10)
 
   def test_executor_service_create_tensor_value(self):
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: eager_tf_executor.EagerTFExecutor())
+    ex_factory = executor_test_utils.BasicTestExFactory(
+        eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
     value_proto, _ = value_serialization.serialize_value(
         tf.constant(10.0).numpy(), tf.float32)
@@ -165,8 +164,8 @@ class ExecutorServiceTest(absltest.TestCase):
     del env
 
   def test_executor_service_create_no_arg_computation_value_and_call(self):
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: eager_tf_executor.EagerTFExecutor())
+    ex_factory = executor_test_utils.BasicTestExFactory(
+        eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
 
     @tensorflow_computation.tf_computation
@@ -188,8 +187,8 @@ class ExecutorServiceTest(absltest.TestCase):
     del env
 
   def test_executor_service_value_unavailable_after_dispose(self):
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: eager_tf_executor.EagerTFExecutor())
+    ex_factory = executor_test_utils.BasicTestExFactory(
+        eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
     value_proto, _ = value_serialization.serialize_value(
         tf.constant(10.0).numpy(), tf.float32)
@@ -247,8 +246,8 @@ class ExecutorServiceTest(absltest.TestCase):
     ex_factory.clean_up_executor.assert_not_called()
 
   def test_executor_service_create_one_arg_computation_value_and_call(self):
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: eager_tf_executor.EagerTFExecutor())
+    ex_factory = executor_test_utils.BasicTestExFactory(
+        eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
 
     @tensorflow_computation.tf_computation(tf.int32)
@@ -281,8 +280,8 @@ class ExecutorServiceTest(absltest.TestCase):
     del env
 
   def test_executor_service_create_and_select_from_tuple(self):
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: eager_tf_executor.EagerTFExecutor())
+    ex_factory = executor_test_utils.BasicTestExFactory(
+        eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
 
     value_proto, _ = value_serialization.serialize_value(10, tf.int32)
@@ -345,12 +344,10 @@ class ExecutorServiceTest(absltest.TestCase):
 
     mock_executor = MockExecutor()
     mock_executor.close = mock.MagicMock()
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: mock_executor)
+    ex_factory = executor_test_utils.BasicTestExFactory(mock_executor)
     env = TestEnv(ex_factory)
     env.stub.DisposeExecutor(
         executor_pb2.DisposeExecutorRequest(executor=env.executor_pb))
-    mock_executor.close.assert_called_once()
 
   def test_raising_failed_precondition_destroys_executor(self):
 
@@ -365,8 +362,7 @@ class ExecutorServiceTest(absltest.TestCase):
       return GrpcFailedPrecondition('Raising failed precondition')
 
     raising_ex = executor_test_utils.RaisingExecutor(_return_error)
-    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
-        lambda _: raising_ex)
+    ex_factory = executor_test_utils.BasicTestExFactory(raising_ex)
     env = TestEnv(ex_factory)
     value_proto, _ = value_serialization.serialize_value(10, tf.int32)
     value_id = env.stub.CreateValue(

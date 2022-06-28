@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
-from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -392,7 +392,9 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     def return_one():
       return 1
 
-    ex_factories = [executor_stacks.local_executor_factory() for _ in range(1)]
+    ex_factories = [
+        python_executor_stacks.local_executor_factory() for _ in range(1)
+    ]
     no_compiler_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
         ex_factories)
 
@@ -405,7 +407,9 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     def return_one():
       return 1
 
-    ex_factories = [executor_stacks.local_executor_factory() for _ in range(1)]
+    ex_factories = [
+        python_executor_stacks.local_executor_factory() for _ in range(1)
+    ]
     context = mergeable_comp_execution_context.MergeableCompExecutionContext(
         ex_factories, compiler_fn=lambda x: x)
 
@@ -425,7 +429,9 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     # Simply returns the original argument
     mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
         up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
-    ex_factories = [executor_stacks.local_executor_factory() for _ in range(5)]
+    ex_factories = [
+        python_executor_stacks.local_executor_factory() for _ in range(5)
+    ]
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
         ex_factories)
     # We preemptively package as a struct to work around shortcircuiting in
@@ -452,7 +458,9 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
 
     mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
         up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
-    ex_factories = [executor_stacks.local_executor_factory() for _ in range(5)]
+    ex_factories = [
+        python_executor_stacks.local_executor_factory() for _ in range(5)
+    ]
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
         ex_factories)
 
@@ -475,7 +483,9 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
 
     mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
         up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
-    ex_factories = [executor_stacks.local_executor_factory() for _ in range(5)]
+    ex_factories = [
+        python_executor_stacks.local_executor_factory() for _ in range(5)
+    ]
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
         ex_factories)
 
@@ -495,7 +505,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
         up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
     ex_factories = [
-        executor_stacks.local_executor_factory(
+        python_executor_stacks.local_executor_factory(
             default_num_clients=int(num_clients / num_executors))
         for _ in range(num_executors)
     ]

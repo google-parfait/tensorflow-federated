@@ -18,7 +18,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
-from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -58,7 +58,7 @@ class UnwrapValueTest(tf.test.TestCase):
 class AsyncContextInstallationTest(tf.test.TestCase):
 
   def test_install_and_execute_in_context(self):
-    factory = executor_stacks.local_executor_factory()
+    factory = python_executor_stacks.local_executor_factory()
     context = async_execution_context.AsyncExecutionContext(factory)
 
     @tensorflow_computation.tf_computation(tf.int32)
@@ -71,7 +71,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       self.assertEqual(asyncio.run(val_coro), 2)
 
   def test_install_and_execute_computations_with_different_cardinalities(self):
-    factory = executor_stacks.local_executor_factory()
+    factory = python_executor_stacks.local_executor_factory()
     context = async_execution_context.AsyncExecutionContext(factory)
 
     @federated_computation.federated_computation(
@@ -89,7 +89,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
            asyncio.run(second_val_coro)], [[[1], [1]], [[1, 2], [1, 2]]])
 
   def test_runs_cardinality_free(self):
-    factory = executor_stacks.local_executor_factory()
+    factory = python_executor_stacks.local_executor_factory()
     context = async_execution_context.AsyncExecutionContext(
         factory, cardinality_inference_fn=(lambda x, y: {}))
 
@@ -105,7 +105,7 @@ class AsyncContextInstallationTest(tf.test.TestCase):
       self.assertEqual(asyncio.run(val_coro), 0)
 
   def test_raises_cardinality_mismatch(self):
-    factory = executor_stacks.local_executor_factory()
+    factory = python_executor_stacks.local_executor_factory()
 
     def _cardinality_fn(x, y):
       del x, y  # Unused

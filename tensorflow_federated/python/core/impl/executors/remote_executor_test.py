@@ -28,7 +28,6 @@ from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.core.impl.executors import executor_service
-from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor
@@ -47,7 +46,8 @@ def test_context():
   server_pool = logging_pool.pool(max_workers=1)
   server = grpc.server(server_pool)
   server.add_insecure_port('[::]:{}'.format(port))
-  target_factory = executor_stacks.local_executor_factory(default_num_clients=3)
+  target_factory = executor_test_utils.LocalTestExecutorFactory(
+      default_num_clients=3)
   tracers = []
 
   def _tracer_fn(cardinalities):
@@ -57,7 +57,7 @@ def test_context():
     return tracer
 
   service = executor_service.ExecutorService(
-      executor_stacks.ResourceManagingExecutorFactory(_tracer_fn))
+      executor_test_utils.BasicTestExFactory(_tracer_fn))
   executor_pb2_grpc.add_ExecutorGroupServicer_to_server(service, server)
   server.start()
 

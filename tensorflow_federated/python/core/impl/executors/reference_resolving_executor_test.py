@@ -20,7 +20,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
-from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
@@ -35,7 +34,7 @@ from tensorflow_federated.python.core.impl.types import placements
 def create_test_executor_factory():
   executor = eager_tf_executor.EagerTFExecutor()
   executor = reference_resolving_executor.ReferenceResolvingExecutor(executor)
-  return executor_stacks.ResourceManagingExecutorFactory(lambda _: executor)
+  return executor_test_utils.BasicTestExFactory(executor)
 
 
 class ReferenceResolvingExecutorTest(absltest.TestCase):

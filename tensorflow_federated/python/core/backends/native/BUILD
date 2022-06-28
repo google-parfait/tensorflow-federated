@@ -124,7 +124,7 @@ py_test(
     deps = [
         ":mergeable_comp_compiler",
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
+        "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
@@ -147,8 +147,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:mergeable_comp_execution_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
+        "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )
 
