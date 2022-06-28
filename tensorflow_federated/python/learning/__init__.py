@@ -45,7 +45,6 @@ from tensorflow_federated.python.learning import templates
 from tensorflow_federated.python.learning.client_weight_lib import ClientWeighting
 from tensorflow_federated.python.learning.debug_measurements import add_debug_measurements
 from tensorflow_federated.python.learning.debug_measurements import add_debug_measurements_with_mixed_dtype
-from tensorflow_federated.python.learning.federated_averaging import ClientFedAvg
 from tensorflow_federated.python.learning.federated_evaluation import build_federated_evaluation
 from tensorflow_federated.python.learning.federated_evaluation import build_local_evaluation
 from tensorflow_federated.python.learning.framework.optimizer_utils import state_with_new_model_weights

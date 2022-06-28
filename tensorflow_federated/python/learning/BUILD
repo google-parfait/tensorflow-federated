@@ -26,7 +26,6 @@ py_library(
     deps = [
         ":client_weight_lib",
         ":debug_measurements",
-        ":federated_averaging",
         ":federated_evaluation",
         ":keras_utils",
         ":model",
@@ -76,42 +75,6 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
-)
-
-py_library(
-    name = "federated_averaging",
-    srcs = ["federated_averaging.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":client_weight_lib",
-        ":model",
-        ":model_utils",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/learning/framework:dataset_reduce",
-        "//tensorflow_federated/python/learning/framework:optimizer_utils",
-        "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
-        "//tensorflow_federated/python/learning/optimizers:optimizer",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
-)
-
-py_cpu_gpu_test(
-    name = "federated_averaging_test",
-    timeout = "long",
-    srcs = ["federated_averaging_test.py"],
-    python_version = "PY3",
-    shard_count = 10,
-    srcs_version = "PY3",
-    deps = [
-        ":client_weight_lib",
-        ":federated_averaging",
-        ":model_examples",
-        ":model_utils",
-        "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
