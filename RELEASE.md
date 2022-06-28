@@ -1,3 +1,37 @@
+# Release 0.28.0
+
+## Major Features and Improvements
+
+*   Updated tutorials to use `tff.learning.algorithms` API.
+*   Asynchronous TFF execution contexts no longer assume a single global
+    cardinality; they concurrently invoke any computation for which concurrency
+    is requested.
+
+## Breaking Changes
+
+*   Removed `tff.learning.build_federated_averaging_process`; users should
+    migrate to `tff.learning.algorithms.build_weighted_fed_avg`.
+
+## Bug Fixes
+
+*   Clarified semantics for TFF-C++ multimachine `Dispose`, `DisposeExecutor`,
+    and executor keying, to avoid raising exceptions and spamming logs in the
+    course of normal operation.
+*   Fixed unsigned integer overflow for TFF-C++
+    `max_concurrent_computation_calls`.
+*   Normalizes on call-dominant form before attempting to compile to
+    `MergeableCompForm`, removing spurious failures on dependent-aggregation
+    checking.
+
+## Known Bugs
+
+*   Serialization / deserialization of tf.data.Datasets yielding non-dense
+    tensors for multimachine runtime may encounter issues:
+    *   `tff.framework.deserialize_value` may fail to deserialize
+        tf.data.Datasets yielding RaggedTensors or SparseTensors.
+    *   `tff.framework.serialize_value` may fail to serialize tf.data.Datasets
+        yielding SparseTensors.
+
 # Release 0.27.0
 
 ## Major Features and Improvements
