@@ -289,6 +289,40 @@ class FederatedComputationTest(parameterized.TestCase):
     result = bar([collections.OrderedDict(x=1, y=2)])
     self.assertEqual(result, [1])
 
+  @test_contexts.with_contexts
+  def test_bad_type_coercion_raises(self):
+    tensor_type = tff.TensorType(shape=[None], dtype=tf.float32)
+
+    @tff.tf_computation(tensor_type)
+    def foo(x):
+      # We will pass in a tensor which passes the TFF type check, but fails the
+      # reshape.
+      return tf.reshape(x, [])
+
+    @tff.federated_computation(tff.type_at_clients(tensor_type))
+    def map_foo_at_clients(x):
+      return tff.federated_map(foo, x)
+
+    @tff.federated_computation(tff.type_at_server(tensor_type))
+    def map_foo_at_server(x):
+      return tff.federated_map(foo, x)
+
+    bad_tensor = tf.constant([1.] * 10, dtype=tf.float32)
+    good_tensor = tf.constant([1.], dtype=tf.float32)
+    # Ensure running this computation at both placements, or unplaced, still
+    # raises.
+    with self.assertRaises(Exception):
+      foo(bad_tensor)
+    with self.assertRaises(Exception):
+      map_foo_at_server(bad_tensor)
+    with self.assertRaises(Exception):
+      map_foo_at_clients([bad_tensor] * 10)
+    # We give the distributed runtime a chance to clean itself up, otherwise
+    # workers may be getting SIGABRT while they are handling another exception,
+    # causing the test infra to crash. Making a successful call ensures that
+    # cleanup happens after failures have been handled.
+    map_foo_at_clients([good_tensor] * 10)
+
 
 class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
