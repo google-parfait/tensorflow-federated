@@ -163,6 +163,7 @@ def compression_aggregator(
     weighted: bool = True,
     debug_measurements_fn: Optional[Callable[
         factory.AggregationFactory, factory.AggregationFactory]] = None,
+    **kwargs,
 ) -> factory.AggregationFactory:
   """Creates aggregator with compression and adaptive zeroing and clipping.
 
@@ -185,12 +186,13 @@ def compression_aggregator(
       learning algorithms, with possible values as None,
       `tff.learning.add_debug_measurements` or
       `tff.learning.add_debug_measurements_with_mixed_dtype`.
+    **kwargs: Keyword arguments.
 
   Returns:
     A `tff.aggregators.AggregationFactory`.
   """
   factory_ = encoded.EncodedSumFactory.quantize_above_threshold(
-      quantization_bits=8, threshold=20000)
+      quantization_bits=8, threshold=20000, **kwargs)
 
   factory_ = (
       mean.MeanFactory(factory_)

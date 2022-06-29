@@ -91,7 +91,10 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
     self._encoder_fn = encoder_fn
 
   @classmethod
-  def quantize_above_threshold(cls, quantization_bits=8, threshold=20000):
+  def quantize_above_threshold(cls,
+                               quantization_bits=8,
+                               threshold=20000,
+                               **kwargs):
     """Quantization of values with at least `threshold` elements.
 
     Given a `value_type` in the `create` method, this classmethod configures the
@@ -109,6 +112,7 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
       quantization_bits: A integer specifying the quantization bitwidth.
       threshold: A non-negative integer. Only tensors with more than this number
         of elements are quantized.
+      **kwargs: Keyword arguments.
 
     Returns:
       An `EncodedSumFactory`.
@@ -119,7 +123,8 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
     def encoder_fn(value_spec):
       if value_spec.shape.num_elements() > threshold:
         return te.encoders.as_gather_encoder(
-            te.encoders.uniform_quantization(quantization_bits), value_spec)
+            te.encoders.uniform_quantization(quantization_bits, **kwargs),
+            value_spec)
       return te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
 
     return cls(encoder_fn)
