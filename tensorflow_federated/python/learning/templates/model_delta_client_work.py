@@ -293,8 +293,8 @@ def build_model_delta_client_work(
   if not (isinstance(optimizer, optimizer_base.Optimizer) or
           callable(optimizer)):
     raise TypeError(
-        'Provided optimizer must a either a tff.learning.optimziers.Optimizer '
-        'or a no-arg callable returning an tf.keras.optimziers.Optimizer.')
+        'Provided optimizer must a either a tff.learning.optimizers.Optimizer '
+        'or a no-arg callable returning an tf.keras.optimizers.Optimizer.')
 
   if metrics_aggregator is None:
     metrics_aggregator = aggregator.sum_then_finalize

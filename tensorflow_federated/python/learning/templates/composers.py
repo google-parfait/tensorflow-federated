@@ -64,8 +64,6 @@ class LearningAlgorithmState:
 
 
 # pyformat: disable
-# TODO(b/190334722): Add a visualization of how the 4 components fit together,
-# and/or a pointer to a more detailed public tutiorial.
 def compose_learning_process(
     initial_model_weights_fn: computation_base.Computation,
     model_weights_distributor: distributors.DistributionProcess,
@@ -75,10 +73,10 @@ def compose_learning_process(
 ) -> learning_process.LearningProcess:
   """Composes specialized measured processes into a learning process.
 
-  Given the 4 specialized measured processes that make a learning process as
-  documented in [TODO(b/190334722)], and a computation that returns initial
-  model weights to be used for training, this method validates that the
-  processes fit together, and returns a `LearningProcess`.
+  Given 4 specialized measured processes (described below) that make a learning
+  process, and a computation that returns initial model weights to be used for
+  training, this method validates that the processes fit together, and returns a
+  `LearningProcess`.
 
   The main purpose of the 4 measured processes are:
     * `model_weights_distributor`: Make global model weights at server available

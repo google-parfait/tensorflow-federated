@@ -136,7 +136,8 @@ def build_weighted_fed_avg(
       is used.
     model_distributor: An optional `DistributionProcess` that distributes the
       model weights on the server to the clients. If set to `None`, the
-      distributor is constructed via `distributors.build_broadcast_process`.
+      distributor is constructed via
+      `tff.learning.templates.build_broadcast_process`.
     model_aggregator: An optional `tff.aggregators.WeightedAggregationFactory`
       used to aggregate client updates on the server. If `None`, this is set to
       `tff.aggregators.MeanFactory`.
