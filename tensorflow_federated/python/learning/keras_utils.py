@@ -295,7 +295,7 @@ class _KerasModel(model_lib.Model):
     self._loss_weights = loss_weights
 
     self._metrics = []
-    self._metric_constructors = []
+    self._metric_constructors = collections.OrderedDict()
 
     metric_names = set([])
     if metrics:
@@ -315,7 +315,7 @@ class _KerasModel(model_lib.Model):
                 'creates a `tf.keras.metrics.Metric`, it created a '
                 f'{type(constructed_metric).__name__}.')
           metric_names.add(constructed_metric.name)
-          self._metric_constructors.append(metric)
+          self._metric_constructors[constructed_metric.name] = metric
           self._metrics.append(constructed_metric)
           has_keras_metric_constructor = True
         else:
@@ -366,7 +366,8 @@ class _KerasModel(model_lib.Model):
       extra_metrics_constructors.append(counters.NumBatchesCounter)
     self._metrics.extend(m() for m in extra_metrics_constructors)
     if not metrics or self._metric_constructors:
-      self._metric_constructors.extend(extra_metrics_constructors)
+      for m in extra_metrics_constructors:
+        self._metric_constructors[m().name] = m
 
   @property
   def trainable_variables(self):
@@ -490,6 +491,12 @@ class _KerasModel(model_lib.Model):
       training processes or evaluation computations.
     """
     finalizers = collections.OrderedDict()
-    for metric in self.get_metrics():
-      finalizers[metric.name] = finalizer.create_keras_metric_finalizer(metric)
+    if self._metric_constructors:
+      for metric_name, metric_constructor in self._metric_constructors.items():
+        finalizers[metric_name] = finalizer.create_keras_metric_finalizer(
+            metric_constructor)
+    else:
+      for metric in self.get_metrics():
+        finalizers[metric.name] = finalizer.create_keras_metric_finalizer(
+            metric)
     return finalizers

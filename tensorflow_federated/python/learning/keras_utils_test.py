@@ -1015,7 +1015,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         self._arg1 = arg1
 
       def update_state(self, y_true, y_pred, sample_weight=None):
-        return super().update_state(1, sample_weight)
+        return super().update_state(self._arg1, sample_weight)
 
     feature_dims = 3
     keras_model = model_examples.build_linear_regression_keras_functional_model(
@@ -1043,7 +1043,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
         self._arg1 = arg1
 
       def update_state(self, y_true, y_pred, sample_weight=None):
-        return super().update_state(1, sample_weight)
+        return super().update_state(self._arg1, sample_weight)
 
       def get_config(self):
         config = super().get_config()
@@ -1071,18 +1071,33 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
       # Test cases for the cartesian product of all parameter values.
       *_create_tff_model_from_keras_model_tuples())
   def test_keras_model_with_metric_constructors(self, feature_dims, model_fn):
+
+    class CustomCounter(tf.keras.metrics.Sum):
+      """A custom `tf.keras.metrics.Metric` with extra args in `__init__`."""
+
+      def __init__(self, name='new_counter', arg1=0, dtype=tf.int64):
+        super().__init__(name, dtype)
+        self._arg1 = arg1
+
+      def update_state(self, y_true, y_pred, sample_weight=None):
+        return super().update_state(self._arg1, sample_weight)
+
     keras_model = model_fn(feature_dims)
     tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,
         input_spec=_create_whimsy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[tf.keras.metrics.MeanAbsoluteError()])
+        # Verify passing constructor of custom Keras metric with extra args in
+        # `__init__` works.
+        metrics=[
+            tf.keras.metrics.MeanAbsoluteError, lambda: CustomCounter(arg1=1)
+        ])
     self.assertIsInstance(tff_model, model_lib.Model)
 
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
     self.assertSequenceEqual(tff_model.local_variables,
-                             [0.0, 0.0, 0.0, 0.0, 0, 0])
+                             [0.0, 0.0, 0, 0.0, 0.0, 0, 0])
 
     batch = _create_test_batch(feature_dims)
     # from_model() was called without an optimizer which creates a tff.Model.
@@ -1115,6 +1130,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['loss'][1], 2)
     self.assertGreater(metrics['mean_absolute_error'][0], 0)
     self.assertEqual(metrics['mean_absolute_error'][1], 2)
+    self.assertEqual(metrics['new_counter'], [1])
 
   @parameterized.named_parameters(
       # Test cases for the cartesian product of all parameter values.
