@@ -7,18 +7,25 @@ collaborations and joint development in the open between Google and the OSS
 community and industry partners.
 
 The purpose of this GitHub directory, and documents linked from here, is to
-bootstrap an initial lightweight and open process for jointly evolving TFF. We
-will capture here conversations about project scoping, planning, logistics, and
-design, product and development roadmaps jointly developed with partners, and
-pointers to components maintained by community contributors. Notes from these
-conversations will be incorporated here on a weekly basis, and made open and
-publicly accessible by all interested parties. We will eventually evolve and
-scale out the process, form workgroups, etc., as needed.
+bootstrap an initial lightweight and open process for jointly evolving TFF.
 
-If you'd like to join these conversations, please email tff-hello(at)google.com
-to introduce yourself and tell us a few words about how you would like to
-contribute to the TFF ecosystem. The expectation of all participants is to make
-regular engineering contributions.
+To join conversations with other developers contributing to the TFF ecosystem,
+please join our [Discord server](https://discord.com/invite/5shux83qZ5).
+
+Additionally, here (in this directory) we will accumulate artifacts (proposals,
+notes, etc.) from conversations about project scoping, planning, logistics, and
+design, product and development roadmaps jointly developed with partners, and
+pointers to components maintained by community contributors.
+
+Content included here and on the Discord server is publicly accessible by all
+interested parties. We will eventually evolve and scale out the process, form
+workgroups, etc., as needed.
+
+If you'd like to participate in these conversations, please join conversations
+in workstreas that interest you on our Discord server, introduce yourself, and
+tell us a few words about how you would like to contribute to the TFF ecosystem.
+The expectation of all workstream participants is to make regular engineering
+contributions.
 
 ## Active workstreams
 
@@ -38,9 +45,8 @@ Shared goals:
 
 *   (to be added shortly)
 
-Links to related artifacts (docs, code, meeting notes, etc.):
+Links to artifacts:
 
-*   [Shared living document with agenda and notes](https://docs.google.com/document/d/1RwiCILXSoWmNiQQ3Nn_B8BZly2RecYJXKxY3h7TNvtk/edit?resourcekey=0-fK0BG1Gukki7LoXoyYEzHg)
-    (available by invitation; please introduce yourself to gain access)
-
-*   (to be added shortly)
+*   [notes from past conversations](https://docs.google.com/document/d/1RwiCILXSoWmNiQQ3Nn_B8BZly2RecYJXKxY3h7TNvtk/edit?resourcekey=0-fK0BG1Gukki7LoXoyYEzHg)
+    (Available by invitation; please introduce yourself to gain access. All
+    conversations now being hosted on the Discord server - see link above.)

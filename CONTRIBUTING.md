@@ -34,6 +34,14 @@ use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
 
+## Collaborations
+
+If you are interested in collaborating to grow the TFF ecosystem, please see the
+[collaborations page](https://github.com/tensorflow/federated/blob/main/docs/collaborations/README.md)
+and/or join our [Discord server](https://discord.com/invite/5shux83qZ5) to
+engage in conversations with other developers building on or contributing to the
+TFF ecosystem.
+
 ## Guidelines
 
 ### General Guidelines and Philosophy
