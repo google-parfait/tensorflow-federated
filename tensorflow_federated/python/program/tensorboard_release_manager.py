@@ -92,13 +92,13 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
 
     with self._summary_writer.as_default():
       for name, value in flattened_value:
-        value = _normalize(value)
+        normalized_value = _normalize(value)
 
         # Summary data can only contain booleans, integers, unsigned integers,
         # and floats, releasing any other values will be silently ignored.
-        value_array = np.array(value)
+        value_array = np.array(normalized_value)
         if value_array.dtype.kind in ('b', 'i', 'u', 'f'):
           if value_array.shape:
-            tf.summary.histogram(name, value, step=key)
+            tf.summary.histogram(name, normalized_value, step=key)
           else:
-            tf.summary.scalar(name, value, step=key)
+            tf.summary.scalar(name, normalized_value, step=key)

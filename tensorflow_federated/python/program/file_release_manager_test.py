@@ -640,7 +640,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
        computation_types.TensorType(tf.int32),
        [{'key': '1', '': '1'}]),
       ('numpy_array',
-       np.ones([3], int),
+       np.ones([3], np.int32),
        computation_types.TensorType(tf.int32, [3]),
        [{'key': '1', '': '[1, 1, 1]'}]),
 
@@ -708,6 +708,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     await release_mngr.release(value, type_signature, 1)
 
     _, actual_value = _read_values_from_csv(file_path)
+    program_test_utils.assert_types_equal(actual_value, expected_value)
     self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
@@ -852,9 +853,9 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
        computation_types.TensorType(tf.int32),
        [np.int32(1)]),
       ('numpy_array',
-       np.ones([3], int),
+       np.ones([3], np.int32),
        computation_types.TensorType(tf.int32, [3]),
-       [np.ones([3], int)]),
+       [np.ones([3], np.int32)]),
 
       # value references
       ('materializable_value_reference_tensor',
@@ -924,6 +925,7 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       call = mock_write_saved_model.mock_calls[0]
       _, args, kwargs = call
       actual_value, actual_path = args
+      program_test_utils.assert_types_equal(actual_value, expected_value)
 
       def _normalize(value: Any) -> Any:
         if isinstance(value, tf.data.Dataset):
