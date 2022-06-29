@@ -34,6 +34,7 @@ import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
@@ -235,7 +236,8 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
                                  filtered_values)
       self._latest_key = key
 
-  async def release(self, value: Any, key: int) -> None:  # pytype: disable=signature-mismatch
+  async def release(self, value: Any, type_signature: computation_types.Type,
+                    key: int) -> None:  # pytype: disable=signature-mismatch
     """Releases `value` from a federated program.
 
     This method will atomically update the managed CSV file by removing all
@@ -246,6 +248,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
       value: A materialized value, a value reference, or a structure of
         materialized values and value references representing the value to
         release.
+      type_signature: The `tff.Type` of `value`.
       key: An integer used to reference the released `value`, `key` represents a
         step in a federated program.
     """
@@ -330,15 +333,18 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     basename = f'{self._prefix}{key}'
     return os.path.join(self._root_dir, basename)
 
-  async def release(self, value: Any, key: int) -> None:  # pytype: disable=signature-mismatch
+  async def release(self, value: Any, type_signature: computation_types.Type,
+                    key: int) -> None:  # pytype: disable=signature-mismatch
     """Releases `value` from a federated program.
 
     Args:
       value: A materialized value, a value reference, or a structure of
         materialized values and value references representing the value to
         release.
+      type_signature: The `tff.Type` of `value`.
       key: An integer used to reference the released `value`.
     """
+    del type_signature  # Unused.
     py_typecheck.check_type(key, int)
 
     path = self._get_path_for_key(key)

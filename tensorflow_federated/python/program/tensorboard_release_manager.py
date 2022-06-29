@@ -20,6 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
@@ -66,16 +67,19 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
       summary_dir = os.fspath(summary_dir)
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
-  async def release(self, value: Any, key: int) -> None:  # pytype: disable=signature-mismatch
+  async def release(self, value: Any, type_signature: computation_types.Type,
+                    key: int) -> None:  # pytype: disable=signature-mismatch
     """Releases `value` from a federated program.
 
     Args:
       value: A materialized value, a value reference, or a structure of
         materialized values and value references representing the value to
         release.
+      type_signature: The `tff.Type` of `value`.
       key: A integer used to reference the released `value`, `key` represents a
         step in a federated program.
     """
+    del type_signature  # Unused.
     py_typecheck.check_type(key, int)
 
     materialized_value = await value_reference.materialize_value(value)

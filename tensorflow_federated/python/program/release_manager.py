@@ -16,6 +16,8 @@
 import abc
 from typing import Any
 
+from tensorflow_federated.python.core.impl.types import computation_types
+
 
 class ReleaseManager(metaclass=abc.ABCMeta):
   """An interface for releasing values from a federated program.
@@ -25,7 +27,10 @@ class ReleaseManager(metaclass=abc.ABCMeta):
   """
 
   @abc.abstractmethod
-  async def release(self, value: Any, key: Any = None) -> None:
+  async def release(self,
+                    value: Any,
+                    type_signature: computation_types.Type,
+                    key: Any = None) -> None:
     """Releases `value` from a federated program.
 
     An implementation of this interface should be specific about the types of
@@ -41,6 +46,7 @@ class ReleaseManager(metaclass=abc.ABCMeta):
         materialized values and value references representing the value to
         release. The exact structure of `value` is left up to the implementation
         of `tff.program.ReleaseManager`.
+      type_signature: The `tff.Type` of `value`.
       key: An optional value used to reference the released `value`, the exact
         type and structure of `key` and how `key` is used is left up to the
         implementation of `tff.program.ReleaseManager`.

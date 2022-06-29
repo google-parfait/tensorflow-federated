@@ -17,10 +17,43 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.simulation import training_loop
+
+
+@federated_computation.federated_computation
+def _test_init_fn():
+  return intrinsics.federated_value(0, placements.SERVER)
+
+
+@federated_computation.federated_computation([
+    computation_types.FederatedType(tf.int32, placements.SERVER),
+    computation_types.FederatedType(tf.int32, placements.CLIENTS),
+])
+def _test_next_fn(state, client_data):
+  del state, client_data  # Unused
+  updated_state = intrinsics.federated_value(1, placements.SERVER)
+  metrics = collections.OrderedDict([('metric', 1.0)])
+  output = intrinsics.federated_value(metrics, placements.SERVER)
+  return updated_state, output
+
+
+@federated_computation.federated_computation([
+    computation_types.FederatedType(tf.int32, placements.SERVER),
+    computation_types.FederatedType(tf.int32, placements.CLIENTS),
+])
+def _test_evaluation_fn(state, client_data):
+  del state, client_data  # Unused
+  metrics = collections.OrderedDict([('metric', 2.0)])
+  output = intrinsics.federated_value(metrics, placements.SERVER)
+  return output
 
 
 class RunTrainingProcessTest(parameterized.TestCase):
@@ -223,7 +256,9 @@ class RunTrainingProcessTest(parameterized.TestCase):
   def test_metrics_managers_called_without_evaluation(self, total_rounds):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
+    training_process.initialize.type_signature.return_value = _test_init_fn.type_signature
     training_process.next.return_value = ('update', {'metric': 1.0})
+    training_process.next.type_signature = _test_next_fn.type_signature
     training_selection_fn = mock.MagicMock()
     metrics_manager_1 = mock.AsyncMock()
     metrics_manager_2 = mock.AsyncMock()
@@ -243,7 +278,12 @@ class RunTrainingProcessTest(parameterized.TestCase):
           ('training_time_in_seconds', mock.ANY),
           ('round_number', round_num),
       ])
-      call = mock.call(metrics, round_num)
+      metrics_type = computation_types.StructWithPythonType([
+          ('metric', tf.float32),
+          ('training_time_in_seconds', tf.float32),
+          ('round_number', tf.int32),
+      ], collections.OrderedDict)
+      call = mock.call(metrics, metrics_type, round_num)
       expected_calls.append(call)
     for metrics_manager in metrics_managers:
       self.assertEqual(metrics_manager.release.call_args_list, expected_calls)
@@ -285,20 +325,40 @@ class RunTrainingProcessTest(parameterized.TestCase):
         ('evaluation/metric', 1.0),
         ('evaluation/evaluation_time_in_seconds', mock.ANY),
     ])
-    call = mock.call(metrics, 0)
+    metrics_type = computation_types.StructWithPythonType([
+        ('evaluation/metric', tf.float32),
+        ('evaluation/evaluation_time_in_seconds', tf.float32),
+    ], collections.OrderedDict)
+    call = mock.call(metrics, metrics_type, 0)
     expected_calls.append(call)
     for round_num in range(1, total_rounds + 1):
-      metrics = collections.OrderedDict([
-          ('metric', 1.0),
-          ('training_time_in_seconds', mock.ANY),
-          ('round_number', round_num),
-      ])
       if round_num % rounds_per_evaluation == 0:
-        metrics.update([
+        metrics = collections.OrderedDict([
+            ('metric', 1.0),
+            ('training_time_in_seconds', mock.ANY),
+            ('round_number', round_num),
             ('evaluation/metric', 1.0),
             ('evaluation/evaluation_time_in_seconds', mock.ANY),
         ])
-      call = mock.call(metrics, round_num)
+        metrics_type = computation_types.StructWithPythonType([
+            ('metric', tf.float32),
+            ('training_time_in_seconds', tf.float32),
+            ('round_number', tf.int32),
+            ('evaluation/metric', tf.float32),
+            ('evaluation/evaluation_time_in_seconds', tf.float32),
+        ], collections.OrderedDict)
+      else:
+        metrics = collections.OrderedDict([
+            ('metric', 1.0),
+            ('training_time_in_seconds', mock.ANY),
+            ('round_number', round_num),
+        ])
+        metrics_type = computation_types.StructWithPythonType([
+            ('metric', tf.float32),
+            ('training_time_in_seconds', tf.float32),
+            ('round_number', tf.int32),
+        ], collections.OrderedDict)
+      call = mock.call(metrics, metrics_type, round_num)
       expected_calls.append(call)
     for metrics_manager in metrics_managers:
       self.assertEqual(metrics_manager.release.call_args_list, expected_calls)
@@ -306,10 +366,13 @@ class RunTrainingProcessTest(parameterized.TestCase):
   def test_metrics_managers_called_with_training_and_evaluation_time_10(self):
     training_process = mock.create_autospec(iterative_process.IterativeProcess)
     training_process.initialize.return_value = 'initialize'
+    training_process.initialize.type_signature.return_value = _test_init_fn.type_signature
     training_process.next.return_value = ('update', {'metric': 1.0})
+    training_process.next.type_signature = _test_next_fn.type_signature
     training_selection_fn = mock.MagicMock()
     evaluation_fn = mock.MagicMock()
     evaluation_fn.return_value = {'metric': 1.0}
+    evaluation_fn.type_signature = _test_evaluation_fn.type_signature
     evaluation_selection_fn = mock.MagicMock()
     metrics_manager = mock.AsyncMock()
 
@@ -327,19 +390,30 @@ class RunTrainingProcessTest(parameterized.TestCase):
 
     expected_calls = []
     metrics = collections.OrderedDict([
-        ('evaluation/metric', mock.ANY),
+        ('evaluation/metric', 1.0),
         ('evaluation/evaluation_time_in_seconds', 10.0),
     ])
-    call = mock.call(metrics, 0)
+    metrics_type = computation_types.StructWithPythonType([
+        ('evaluation/metric', tf.float32),
+        ('evaluation/evaluation_time_in_seconds', tf.float32),
+    ], collections.OrderedDict)
+    call = mock.call(metrics, metrics_type, 0)
     expected_calls.append(call)
     metrics = collections.OrderedDict([
-        ('metric', mock.ANY),
+        ('metric', 1.0),
         ('training_time_in_seconds', 10.0),
         ('round_number', 1),
-        ('evaluation/metric', mock.ANY),
+        ('evaluation/metric', 1.0),
         ('evaluation/evaluation_time_in_seconds', 10.0),
     ])
-    call = mock.call(metrics, 1)
+    metrics_type = computation_types.StructWithPythonType([
+        ('metric', tf.float32),
+        ('training_time_in_seconds', tf.float32),
+        ('round_number', tf.int32),
+        ('evaluation/metric', tf.float32),
+        ('evaluation/evaluation_time_in_seconds', tf.float32),
+    ], collections.OrderedDict)
+    call = mock.call(metrics, metrics_type, 1)
     expected_calls.append(call)
     self.assertEqual(metrics_manager.release.call_args_list, expected_calls)
 

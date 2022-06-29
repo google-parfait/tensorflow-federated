@@ -44,13 +44,14 @@ TF_DATASET_REPRESENTATION_TYPES = (
 def infer_type(arg: Any) -> Optional[computation_types.Type]:
   """Infers the TFF type of the argument (a `computation_types.Type` instance).
 
-  WARNING: This function is only partially implemented.
+  Warning: This function is only partially implemented.
 
   The kinds of arguments that are currently correctly recognized:
-  - tensors, variables, and data sets,
-  - things that are convertible to tensors (including numpy arrays, builtin
-    types, as well as lists and tuples of any of the above, etc.),
-  - nested lists, tuples, namedtuples, anonymous tuples, dict, and OrderedDicts.
+  * tensors, variables, and data sets
+  * things that are convertible to tensors (including `numpy` arrays, builtin
+    types, as well as `list`s and `tuple`s of any of the above, etc.)
+  * nested lists, `tuple`s, `namedtuple`s, anonymous `tuple`s, `dict`,
+    `OrderedDict`s, `dataclasses`, `attrs` classes, and `tff.TypedObject`s
 
   Args:
     arg: The argument, the TFF type of which to infer.
