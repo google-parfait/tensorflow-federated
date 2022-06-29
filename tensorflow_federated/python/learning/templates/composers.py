@@ -76,7 +76,9 @@ def compose_learning_process(
   Given 4 specialized measured processes (described below) that make a learning
   process, and a computation that returns initial model weights to be used for
   training, this method validates that the processes fit together, and returns a
-  `LearningProcess`.
+  `LearningProcess`. Please see the tutorial at
+  https://www.tensorflow.org/federated/tutorials/composing_learning_algorithms
+  for more details on composing learning processes.
 
   The main purpose of the 4 measured processes are:
     * `model_weights_distributor`: Make global model weights at server available
