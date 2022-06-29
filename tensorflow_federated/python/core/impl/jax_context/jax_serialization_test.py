@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import unittest
 
 from absl.testing import absltest
 import jax
@@ -30,9 +29,9 @@ from tensorflow_federated.python.core.impl.xla_context import xla_serialization
 
 class JaxSerializationTest(absltest.TestCase):
 
-  @unittest.skip('HLO pattern matching broken by '
-                 'https://github.com/google/jax/pull/10232')
   def test_serialize_jax_with_noarg_to_int32(self):
+    self.skipTest('HLO pattern matching broken by '
+                  'https://github.com/google/jax/pull/10232')
 
     def traced_fn():
       return 10
@@ -52,9 +51,9 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertEqual(str(comp_pb.xla.parameter), '')
     self.assertEqual(str(comp_pb.xla.result), 'tensor {\n' '  index: 0\n' '}\n')
 
-  @unittest.skip('HLO pattern matching broken by '
-                 'https://github.com/google/jax/pull/10232')
   def test_serialize_jax_with_int32_to_int32(self):
+    self.skipTest('HLO pattern matching broken by '
+                  'https://github.com/google/jax/pull/10232')
 
     def traced_fn(x):
       return x + 10
@@ -73,9 +72,9 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertEqual(str(comp_pb.xla.result), str(comp_pb.xla.parameter))
     self.assertEqual(str(comp_pb.xla.result), 'tensor {\n' '  index: 0\n' '}\n')
 
-  @unittest.skip('HLO pattern matching broken by '
-                 'https://github.com/google/jax/pull/10232')
   def test_serialize_jax_with_2xint32_to_2xint32(self):
+    self.skipTest('HLO pattern matching broken by '
+                  'https://github.com/google/jax/pull/10232')
 
     def traced_fn(x):
       return collections.OrderedDict([('sum', x['foo'] + x['bar']),
@@ -119,9 +118,9 @@ class JaxSerializationTest(absltest.TestCase):
         '  }\n'
         '}\n')
 
-  @unittest.skip('HLO pattern matching broken by '
-                 'https://github.com/google/jax/pull/10232')
   def test_serialize_jax_with_two_args(self):
+    self.skipTest('HLO pattern matching broken by '
+                  'https://github.com/google/jax/pull/10232')
 
     def traced_fn(x, y):
       return x + y
@@ -210,6 +209,21 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     self.assertEqual(str(type_spec), '(<int32[10],int32> -> int32)')
+
+  def test_tracing_with_float64_input(self):
+    self.skipTest('b/237566862')
+
+    param_type = computation_types.TensorType(np.int64)
+    identity_fn = lambda x: x
+    arg_fn = function_utils.create_argument_unpacking_fn(
+        identity_fn, param_type)
+    ctx_stack = context_stack_impl.context_stack
+    comp_pb = jax_serialization.serialize_jax_computation(
+        identity_fn, arg_fn, param_type, ctx_stack)
+    self.assertIsInstance(comp_pb, pb.Computation)
+    self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
+    type_spec = type_serialization.deserialize_type(comp_pb.type)
+    self.assertEqual(str(type_spec), '(float64 -> float64)')
 
 
 if __name__ == '__main__':
