@@ -908,3 +908,24 @@ tff_cc_test_with_tf_deps(
         "@com_google_absl//absl/types:span",
     ],
 )
+
+tff_cc_library_with_tf_deps(
+    name = "xla_executor",
+    srcs = ["xla_executor.cc"],
+    hdrs = ["xla_executor.h"],
+    deps = [
+        ":executor",
+    ],
+)
+
+tff_cc_test_with_tf_deps(
+    name = "xla_executor_test",
+    timeout = "short",
+    srcs = ["xla_executor_test.cc"],
+    deps = [
+        ":status_matchers",
+        ":value_test_utils",
+        ":xla_executor",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+    ],
+)
