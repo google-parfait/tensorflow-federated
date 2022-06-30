@@ -81,6 +81,12 @@ using ExecutorId = std::string;
 absl::StatusOr<ExecutorId>
 ExecutorService::ExecutorResolver::ExecutorIDForRequirements(
     const ExecutorRequirements& requirements) {
+  // TODO(b/236264677): This direct executor caching can cause unevenly
+  // partitioned work in the presence of aggregators. The TFF RemoteExecutor
+  // currently proxies for a physical (as opposed to logical) machine; therefore
+  // this caching essentially 'freezes' the remote machines available at the
+  // time of executor construction as the only ones receiving work, if this
+  // service represents an aggregation service.
   absl::MutexLock lock(&executors_mutex_);
   std::string cardinalities_string =
       CardinalitiesToString(requirements.cardinalities);
