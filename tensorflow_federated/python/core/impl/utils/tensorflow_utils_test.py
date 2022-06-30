@@ -1115,6 +1115,33 @@ class GraphUtilsTest(tf.test.TestCase):
         x, computation_types.TensorType(tf.int64))
     self.assertEqual(x.element_spec, y.element_spec)
 
+  def test_coerce_ragged_tensor_dataset_elements_noop(self):
+    ragged_tensor = tf.RaggedTensor.from_row_splits(
+        values=[3, 1, 4], row_splits=[0, 2, 2, 3])
+    dataset = tf.data.Dataset.from_tensors(ragged_tensor)
+    element_type = computation_types.StructWithPythonType(
+        [('flat_values', computation_types.TensorType(tf.int32)),
+         ('nested_row_splits',
+          computation_types.StructWithPythonType(
+              [computation_types.TensorType(tf.int64, [None])], tuple))],
+        tf.RaggedTensor)
+    result = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
+        dataset, element_type)
+    self.assertEqual(dataset.element_spec, result.element_spec)
+
+  def test_coerce_sparse_tensor_dataset_elements_noop(self):
+    sparse_tensor = tf.sparse.SparseTensor(
+        indices=[[0, 0], [1, 2]], values=[1, 2], dense_shape=[3, 4])
+    dataset = tf.data.Dataset.from_tensors(sparse_tensor)
+    element_type = computation_types.StructWithPythonType([
+        ('indices', computation_types.TensorType(tf.int64, shape=[None, 2])),
+        ('values', computation_types.TensorType(tf.int32, shape=[None])),
+        ('dense_shape', computation_types.TensorType(tf.int64, shape=[2])),
+    ], tf.sparse.SparseTensor)
+    result = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
+        dataset, element_type)
+    self.assertEqual(dataset.element_spec, result.element_spec)
+
   def test_coerce_dataset_elements_nested_structure(self):
     test_tuple_type = collections.namedtuple('TestTuple', ['u', 'v'])
 

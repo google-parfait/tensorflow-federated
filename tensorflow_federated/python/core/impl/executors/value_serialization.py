@@ -490,11 +490,9 @@ def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
     # `TensorType` here and will use as-is.
     tf_compatible_type = element_type
 
-  def type_to_tensorspec(t: computation_types.TensorType) -> tf.TensorSpec:
-    return tf.TensorSpec(shape=t.shape, dtype=t.dtype)
-
-  element_spec = type_conversions.structure_from_tensor_type_tree(
-      type_to_tensorspec, tf_compatible_type)
+  tf_type_spec = type_conversions.type_to_tf_structure(tf_compatible_type)
+  element_spec = type_conversions.type_to_py_container(tf_type_spec,
+                                                       element_type)
   ds = tf.data.experimental.from_variant(
       tf.raw_ops.DatasetFromGraph(graph_def=serialized_graph_def),
       structure=element_spec)
@@ -507,7 +505,7 @@ def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
   # TFF understand), using the field order stored in the TFF type stored during
   # serialization.
   return tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
-      ds, tf_compatible_type)
+      ds, element_type)
 
 
 @tracing.trace
