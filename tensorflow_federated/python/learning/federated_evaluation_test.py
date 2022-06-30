@@ -241,7 +241,6 @@ def _build_expected_test_quant_model_eval_signature():
 
 class FederatedEvaluationTest(parameterized.TestCase):
 
-  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_local_evaluation(self):
     model_weights_type = model_utils.weights_type_from_model(TestModel)
     batch_type = computation_types.to_type(TestModel().input_spec)
@@ -275,7 +274,6 @@ class FederatedEvaluationTest(parameterized.TestCase):
             local_outputs=collections.OrderedDict(num_over=4.0),
             num_examples=6))
 
-  @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation(self):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
     model_weights_type = model_utils.weights_type_from_model(TestModel)
