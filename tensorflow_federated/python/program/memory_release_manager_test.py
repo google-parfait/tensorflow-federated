@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import unittest
 
 from absl.testing import absltest
@@ -113,19 +114,21 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
            program_test_utils.TestAttrObject1('a'))),
   )
   # pyformat: enable
-  async def test_release_saves_value(self, value, type_signature,
-                                     expected_value):
+  async def test_release_saves_value_and_type_signature(self, value,
+                                                        type_signature,
+                                                        expected_value):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
     await release_mngr.release(value, type_signature, 1)
 
     self.assertLen(release_mngr._values, 1)
-    actual_value = release_mngr._values[1]
+    actual_value, actual_type_signature = release_mngr._values[1]
     if isinstance(actual_value, tf.data.Dataset):
       actual_value = list(actual_value)
     if isinstance(expected_value, tf.data.Dataset):
       expected_value = list(expected_value)
     self.assertAllEqual(actual_value, expected_value)
+    self.assertEqual(actual_type_signature, type_signature)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -159,14 +162,16 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
       ('1', 1),
       ('10', 10),
   )
-  def test_values_returns_values(self, count):
+  def test_values_returns_values_and_type_signatures(self, count):
+    expected_values = collections.OrderedDict([
+        (i, (i, computation_types.TensorType(tf.int32))) for i in range(count)
+    ])
     release_mngr = memory_release_manager.MemoryReleaseManager()
-    for i in range(count):
-      release_mngr._values[i] = i * 10
+    release_mngr._values = expected_values
 
-    values = release_mngr.values()
+    actual_values = release_mngr.values()
 
-    self.assertEqual(values, {i: i * 10 for i in range(count)})
+    self.assertEqual(actual_values, expected_values)
 
   def test_values_returns_copy(self):
     release_mngr = memory_release_manager.MemoryReleaseManager()

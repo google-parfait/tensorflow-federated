@@ -114,8 +114,9 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
            program_test_utils.TestAttrObject1('a'))),
   )
   # pyformat: enable
-  async def test_release_logs_value(self, value, type_signature,
-                                    expected_value):
+  async def test_release_logs_value_and_type_signature(self, value,
+                                                       type_signature,
+                                                       expected_value):
     release_mngr = logging_release_manager.LoggingReleaseManager()
 
     with mock.patch('absl.logging.info') as mock_info:

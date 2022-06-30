@@ -252,6 +252,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
       key: An integer used to reference the released `value`, `key` represents a
         step in a federated program.
     """
+    del type_signature  # Unused.
     py_typecheck.check_type(key, int)
 
     _, materialized_value = await asyncio.gather(
