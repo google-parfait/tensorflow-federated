@@ -153,6 +153,17 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
   def _write_values(self, fieldnames: Sequence[str],
                     values: Iterable[Mapping[str, Any]]) -> None:
     """Writes `fieldnames` and `values` to the managed CSV."""
+    py_typecheck.check_type(fieldnames, collections.abc.Sequence)
+    if isinstance(fieldnames, str):
+      raise TypeError('Expected `Sequence` of `str`, found `str`')
+    for fieldname in fieldnames:
+      py_typecheck.check_type(fieldname, str)
+    py_typecheck.check_type(values, collections.abc.Iterable)
+    for value in values:
+      py_typecheck.check_type(value, collections.abc.Mapping)
+      for key in value.keys():
+        py_typecheck.check_type(key, str)
+
     path = os.fspath(self._file_path)
 
     # Create a temporary file.
@@ -171,6 +182,10 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
 
   async def _write_value(self, value: Mapping[str, Any]) -> None:
     """Writes `value` to the managed CSV."""
+    py_typecheck.check_type(value, collections.abc.Mapping)
+    for key in value.keys():
+      py_typecheck.check_type(key, str)
+
     loop = asyncio.get_running_loop()
     fieldnames, values = await loop.run_in_executor(None, self._read_values)
     fieldnames.extend([x for x in value.keys() if x not in fieldnames])
@@ -179,6 +194,9 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
 
   async def _append_value(self, value: Mapping[str, Any]) -> None:
     """Appends `value` to the managed CSV."""
+    py_typecheck.check_type(value, collections.abc.Mapping)
+    for key in value.keys():
+      py_typecheck.check_type(key, str)
 
     def _read_fieldnames_only() -> List[Any]:
       with tf.io.gfile.GFile(self._file_path, 'r') as file:

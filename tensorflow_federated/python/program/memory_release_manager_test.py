@@ -135,6 +135,19 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
       ('bool', True),
       ('int', 1),
       ('str', 'a'),
+      ('list', []),
+  )
+  async def test_raises_type_error_with_type_signature(self, type_signature):
+    release_mngr = memory_release_manager.MemoryReleaseManager()
+
+    with self.assertRaises(TypeError):
+      await release_mngr.release(1, type_signature, 1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('bool', True),
+      ('int', 1),
+      ('str', 'a'),
   )
   async def test_release_does_not_raise_type_error_with_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()

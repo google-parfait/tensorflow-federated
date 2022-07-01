@@ -16,6 +16,7 @@
 import collections
 from typing import Any, Hashable, OrderedDict, Tuple
 
+from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
@@ -49,6 +50,9 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
       type_signature: The `tff.Type` of `value`.
       key: A hashable value used to reference the released `value`.
     """
+    py_typecheck.check_type(type_signature, computation_types.Type)
+    py_typecheck.check_type(key, collections.abc.Hashable)
+
     materialized_value = await value_reference.materialize_value(value)
     self._values[key] = (materialized_value, type_signature)
 

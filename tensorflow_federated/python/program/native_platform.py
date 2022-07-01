@@ -16,6 +16,7 @@
 import asyncio
 import collections
 import random
+import typing
 from typing import Any, Awaitable, Coroutine, List, Optional, Sequence
 
 import tensorflow as tf
@@ -42,8 +43,7 @@ class CoroValueReference(value_reference.MaterializableValueReference):
     if not asyncio.iscoroutine(coro):
       raise TypeError(f'Expected a `Coroutine`, found {type(coro)}')
     py_typecheck.check_type(
-        type_signature,
-        (computation_types.TensorType, computation_types.SequenceType))
+        type_signature, typing.get_args(value_reference.MaterializableTffType))
 
     self._coro = coro
     self._type_signature = type_signature
@@ -73,6 +73,8 @@ def _create_structure_of_coro_references(
     coro: Coroutine[Any, Any,
                     Any], type_signature: computation_types.Type) -> Any:
   """Returns a structure of `tff.program.CoroValueReference`s."""
+  if not asyncio.iscoroutine(coro):
+    raise TypeError(f'Expected a `Coroutine`, found {type(coro)}')
   py_typecheck.check_type(type_signature, computation_types.Type)
 
   if type_signature.is_struct():
@@ -248,6 +250,8 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
       ValueError: If `number_of_clients` is not a positive integer or if
         `number_of_clients` is not less than the number of `datasets`.
     """
+    if number_of_clients is not None:
+      py_typecheck.check_type(number_of_clients, int)
     if (number_of_clients is None or number_of_clients < 0 or
         number_of_clients > len(self._datasets)):
       raise ValueError('Expected `number_of_clients` to be a positive integer '

@@ -162,6 +162,7 @@ py_library(
     deps = [
         ":release_manager",
         ":value_reference",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "@absl_py//absl/logging",
     ],
@@ -189,6 +190,7 @@ py_library(
     deps = [
         ":release_manager",
         ":value_reference",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )

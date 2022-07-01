@@ -193,6 +193,20 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
       ('str', 'a'),
       ('list', []),
   )
+  def test_raises_type_error_with_coro(self, coro):
+    type_signature = computation_types.TensorType(tf.int32)
+
+    with self.assertRaises(TypeError):
+      native_platform._create_structure_of_coro_references(
+          coro=coro, type_signature=type_signature)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('bool', True),
+      ('int', 1),
+      ('str', 'a'),
+      ('list', []),
+  )
   def test_raises_type_error_with_type_signature(self, type_signature):
     coro = _coro(1)
 
@@ -552,11 +566,27 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
       self.assertSameElements(actual_dataset, expected_dataset)
 
   @parameterized.named_parameters(
+      ('str', 'a'),
+      ('list', []),
+  )
+  def test_select_raises_type_error_with_number_of_clients(
+      self, number_of_clients):
+    datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
+    federated_type = computation_types.FederatedType(
+        computation_types.SequenceType(tf.int32), placements.CLIENTS)
+    iterator = native_platform.DatasetDataSourceIterator(
+        datasets=datasets, federated_type=federated_type)
+
+    with self.assertRaises(TypeError):
+      iterator.select(number_of_clients)
+
+  @parameterized.named_parameters(
       ('none', None),
       ('negative', -1),
-      ('length', 4),
+      ('greater', 4),
   )
-  def test_select_raises_value_error(self, number_of_clients):
+  def test_select_raises_value_error_with_number_of_clients(
+      self, number_of_clients):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
     federated_type = computation_types.FederatedType(
         computation_types.SequenceType(tf.int32), placements.CLIENTS)

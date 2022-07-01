@@ -160,5 +160,19 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
           mock.call(mock.ANY, key)
       ])
 
+  @parameterized.named_parameters(
+      ('none', None),
+      ('bool', True),
+      ('int', 1),
+      ('str', 'a'),
+      ('list', []),
+  )
+  async def test_raises_type_error_with_type_signature(self, type_signature):
+    release_mngr = logging_release_manager.LoggingReleaseManager()
+
+    with self.assertRaises(TypeError):
+      await release_mngr.release(1, type_signature, 1)
+
+
 if __name__ == '__main__':
   absltest.main()
