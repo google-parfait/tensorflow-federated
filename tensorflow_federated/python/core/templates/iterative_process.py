@@ -122,8 +122,10 @@ class IterativeProcess:
       initialize_fn: A no-arg `tff.Computation` that returns the initial state
         of the iterative process. Let the type of this state be called `S`.
       next_fn: A `tff.Computation` that represents the iterated function. The
-        first or only argument must match the state type `S`. The first or only
-        return value must also match state type `S`.
+        first or only argument must be a type that is assignable from the state
+        type `S` (`tff.types.Type.is_assignable_from` must return `True`). The
+        first or only return value must also be assignable to the first or only
+        argument, the same requirement as the `S` type.
       next_is_multi_arg: An optional boolean indicating that `next_fn` will
         receive more than just the state argument (if `True`) or only the state
         argument (if `False`). This parameter is primarily used to provide
@@ -163,7 +165,7 @@ class IterativeProcess:
           f'The first return argument of `next_fn` must be '
           f'assignable to its first input argument, but found\n'
           f'`next_fn` which returns type:\n{next_result_type}\n'
-          f'which does not match its first input argument:\n{state_type}')
+          f'which is not assignable to its first input argument:\n{state_type}')
 
     self._state_type = state_type
     self._initialize_fn = initialize_fn

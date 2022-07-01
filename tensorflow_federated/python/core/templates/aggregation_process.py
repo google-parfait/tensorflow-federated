@@ -86,11 +86,11 @@ class AggregationProcess(measured_process.MeasuredProcess):
         of the aggregation process. The returned state must be a server-placed
         federated value. Let the type of this state be called `S@SERVER`.
       next_fn: A `tff.Computation` that represents the iterated function.
-        `next_fn` must accept at least two arguments, the first of which is of
-        state type `S@SERVER` and the second of which is client-placed data of
-        type `V@CLIENTS`. `next_fn` must return a  `MeasuredProcessOutput` where
-        the `state` attribute matches the type `S@SERVER` and the `result`
-        attribute matches type `V@SERVER`.
+        `next_fn` must accept at least two arguments, the first of which is of a
+        type assignable from the state type `S@SERVER` and the second of which
+        is client-placed data of type `V@CLIENTS`. `next_fn` must return a
+        `MeasuredProcessOutput` where the `state` attribute is assignable to the
+        first argument and the `result` is value placed at `SERVER`.
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
