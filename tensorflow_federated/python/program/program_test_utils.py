@@ -18,6 +18,7 @@ from typing import Any
 
 import attr
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import value_reference
@@ -69,3 +70,16 @@ class TestMaterializableValueReference(
       return list(self._value) == list(other._value)
     else:
       return self._value == other._value
+
+
+def assert_types_equal(a, b):
+
+  def _assert_type_equal(a, b):
+    if not isinstance(a, type(b)):
+      raise AssertionError(f'{type(a)} != {type(b)}')
+
+  try:
+    tree.map_structure(_assert_type_equal, a, b)
+  except (TypeError, ValueError) as e:
+    raise AssertionError(
+        'The two structures don\'t have the same nested structure.') from e

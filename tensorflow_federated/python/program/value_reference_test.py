@@ -37,7 +37,7 @@ class MaterializeValueTest(parameterized.TestCase,
       ('tensor_str', tf.constant('a'), tf.constant('a')),
       ('tensor_array', tf.ones([3]), tf.ones([3])),
       ('numpy_int', np.int32(1), np.int32(1)),
-      ('numpy_array', np.ones([3]), tf.ones([3])),
+      ('numpy_array', np.ones([3]), np.ones([3])),
 
       # value references
       ('materializable_value_reference_tensor',
@@ -83,9 +83,10 @@ class MaterializeValueTest(parameterized.TestCase,
   async def test_returns_value(self, value, expected_value):
     actual_value = await value_reference.materialize_value(value)
 
-    if isinstance(actual_value, tf.data.Dataset):
+    program_test_utils.assert_types_equal(actual_value, expected_value)
+    if (isinstance(actual_value, tf.data.Dataset) and
+        isinstance(expected_value, tf.data.Dataset)):
       actual_value = list(actual_value)
-    if isinstance(expected_value, tf.data.Dataset):
       expected_value = list(expected_value)
     self.assertAllEqual(actual_value, expected_value)
 

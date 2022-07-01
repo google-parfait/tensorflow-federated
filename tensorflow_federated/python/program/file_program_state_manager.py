@@ -183,8 +183,26 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
           f'{structure}\n'
           f'does not match the value of type {type(flattened_state)}:\n'
           f'{flattened_state}\n') from e
+
+    def _normalize(value: Any) -> Any:
+      """Returns a normalize the value.
+
+      Because this implementation saves program state to the file system using
+      the SavedModel format, when the program state is loaded, the values will
+      be TF-native types. This function normalizes those values as numpy values
+      so that when program state is loaded, those values can be used more
+      naturally.
+
+      Args:
+        value: The value to normalize.
+      """
+      if tf.is_tensor(value):
+        return value.numpy()
+      return value
+
+    normalized_value = tree.map_structure(_normalize, program_state)
     logging.info('Program state loaded: %s', path)
-    return program_state
+    return normalized_value
 
   async def _remove(self, version: int) -> None:
     """Removes program state for the given `version`."""
@@ -228,4 +246,5 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     materialized_state = await value_reference.materialize_value(program_state)
     flattened_state = tree.flatten(materialized_state)
     await file_utils.write_saved_model(flattened_state, path)
+    logging.info('Program state saved: %s', path)
     await self._remove_old_program_state()

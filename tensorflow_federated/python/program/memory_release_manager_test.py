@@ -53,9 +53,9 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
        computation_types.TensorType(tf.int32),
        np.int32(1)),
       ('numpy_array',
-       np.ones([3], int),
+       np.ones([3], np.int32),
        computation_types.TensorType(tf.int32, [3]),
-       np.ones([3], int)),
+       np.ones([3], np.int32)),
 
       # value references
       ('value_reference_tensor',
@@ -123,9 +123,10 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
 
     self.assertLen(release_mngr._values, 1)
     actual_value, actual_type_signature = release_mngr._values[1]
-    if isinstance(actual_value, tf.data.Dataset):
+    program_test_utils.assert_types_equal(actual_value, expected_value)
+    if (isinstance(actual_value, tf.data.Dataset) and
+        isinstance(expected_value, tf.data.Dataset)):
       actual_value = list(actual_value)
-    if isinstance(expected_value, tf.data.Dataset):
       expected_value = list(expected_value)
     self.assertAllEqual(actual_value, expected_value)
     self.assertEqual(actual_type_signature, type_signature)

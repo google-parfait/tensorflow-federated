@@ -267,19 +267,19 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase,
   @parameterized.named_parameters(
       # materialized values
       ('none', None, None),
-      ('bool', True, tf.constant(True)),
-      ('int', 1, tf.constant(1)),
-      ('str', 'a', tf.constant('a')),
-      ('tensor_int', tf.constant(1), tf.constant(1)),
-      ('tensor_str', tf.constant('a'), tf.constant('a')),
-      ('tensor_array', tf.ones([3], tf.int32), tf.ones([3], tf.int32)),
-      ('numpy_int', np.int32(1), tf.constant(1)),
-      ('numpy_array', np.ones([3], int), tf.ones([3], tf.int32)),
+      ('bool', True, np.bool_(True)),
+      ('int', 1, np.int32(1)),
+      ('str', 'a', b'a'),
+      ('tensor_int', tf.constant(1), np.int32(1)),
+      ('tensor_str', tf.constant('a'), b'a'),
+      ('tensor_array', tf.ones([3], tf.int32), np.ones([3], np.int32)),
+      ('numpy_int', np.int32(1), np.int32(1)),
+      ('numpy_array', np.ones([3], np.int32), np.ones([3], np.int32)),
 
       # value references
       ('materializable_value_reference_tensor',
        program_test_utils.TestMaterializableValueReference(1),
-       tf.constant(1)),
+       np.int32(1)),
       ('materializable_value_reference_sequence',
        program_test_utils.TestMaterializableValueReference(
            tf.data.Dataset.from_tensor_slices([1, 2, 3])),
@@ -288,53 +288,57 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase,
       # structures
       ('list',
        [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
-       [tf.constant(True), tf.constant(1), tf.constant('a')]),
+       [np.bool_(True), np.int32(1), b'a']),
       ('list_empty', [], []),
       ('list_nested',
        [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
-       [[tf.constant(True), tf.constant(1)], [tf.constant('a')]]),
+       [[np.bool_(True), np.int32(1)], [b'a']]),
       ('dict',
        {'a': True,
         'b': program_test_utils.TestMaterializableValueReference(1),
-        'c': 'a'},
-       {'a': tf.constant(True), 'b': tf.constant(1), 'c': tf.constant('a')}),
+        'c': b'a'},
+       {'a': np.bool_(True), 'b': np.int32(1), 'c': b'a'}),
       ('dict_empty', {}, {}),
       ('dict_nested',
        {'x': {'a': True,
               'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
-       {'x': {'a': tf.constant(True), 'b': tf.constant(1)},
-        'y': {'c': tf.constant('a')}}),
+       {'x': {'a': np.bool_(True), 'b': np.int32(1)}, 'y': {'c': b'a'}}),
       ('attr',
        program_test_utils.TestAttrObject2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       program_test_utils.TestAttrObject2(tf.constant(True), tf.constant(1))),
+       program_test_utils.TestAttrObject2(np.bool_(True), np.int32(1))),
       ('attr_nested',
        program_test_utils.TestAttrObject2(
            program_test_utils.TestAttrObject2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestAttrObject1('a')),
        program_test_utils.TestAttrObject2(
-           program_test_utils.TestAttrObject2(
-               tf.constant(True), tf.constant(1)),
-           program_test_utils.TestAttrObject1(tf.constant('a')))),
+           program_test_utils.TestAttrObject2(np.bool_(True), np.int32(1)),
+           program_test_utils.TestAttrObject1(b'a'))),
   )
   # pyformat: enable
   async def test_returns_saved_program_state(self, program_state,
-                                             expected_program_state):
+                                             expected_state):
     root_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_')
     await program_state_mngr.save(program_state, 1)
     structure = program_state
 
-    actual_program_state = await program_state_mngr.load(1, structure)
+    actual_state = await program_state_mngr.load(1, structure)
 
-    if isinstance(actual_program_state, tf.data.Dataset):
-      actual_program_state = list(actual_program_state)
-    if isinstance(expected_program_state, tf.data.Dataset):
-      expected_program_state = list(expected_program_state)
-    self.assertAllEqual(actual_program_state, expected_program_state)
+    if (isinstance(actual_state, tf.data.Dataset) and
+        isinstance(expected_state, tf.data.Dataset)):
+      actual_state = list(actual_state)
+      expected_state = list(expected_state)
+    else:
+      program_test_utils.assert_types_equal(actual_state, expected_state)
+    if (isinstance(actual_state, np.ndarray) and
+        isinstance(expected_state, np.ndarray)):
+      np.testing.assert_equal(actual_state, expected_state)
+    else:
+      self.assertEqual(actual_state, expected_state)
 
   @parameterized.named_parameters(
       ('0', 0),
@@ -349,10 +353,10 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase,
       await program_state_mngr.save(f'state_{i}', i)
     structure = 'state'
 
-    actual_program_state = await program_state_mngr.load(version, structure)
+    actual_state = await program_state_mngr.load(version, structure)
 
-    expected_program_state = f'state_{version}'
-    self.assertEqual(actual_program_state, expected_program_state)
+    expected_state = f'state_{version}'.encode()
+    self.assertEqual(actual_state, expected_state)
 
   async def test_raises_version_not_found_error_with_no_saved_program_state(
       self):
@@ -507,7 +511,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
       ('tensor_str', tf.constant('a'), [tf.constant('a')]),
       ('tensor_array', tf.ones([3], tf.int32), [tf.ones([3], tf.int32)]),
       ('numpy_int', np.int32(1), [np.int32(1)]),
-      ('numpy_array', np.ones([3], int), [np.ones([3], int)]),
+      ('numpy_array', np.ones([3], np.int32), [np.ones([3], np.int32)]),
 
       # value references
       ('materializable_value_reference_tensor',
@@ -561,6 +565,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
       call = mock_write_saved_model.mock_calls[0]
       _, args, kwargs = call
       actual_value, actual_path = args
+      program_test_utils.assert_types_equal(actual_value, expected_value)
 
       def _normalize(value: Any) -> Any:
         if isinstance(value, tf.data.Dataset):
