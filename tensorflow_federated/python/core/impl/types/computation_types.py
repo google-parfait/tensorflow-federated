@@ -133,11 +133,11 @@ class TypesNotIdenticalError(TypeError):
 class Type(object, metaclass=abc.ABCMeta):
   """An abstract interface for all classes that represent TFF types."""
 
-  def compact_representation(self):
+  def compact_representation(self) -> str:
     """Returns the compact string representation of this type."""
     return _string_representation(self, formatted=False)
 
-  def formatted_representation(self):
+  def formatted_representation(self) -> str:
     """Returns the formatted string representation of this type."""
     return _string_representation(self, formatted=True)
 
@@ -146,7 +146,7 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns a generator yielding immediate child types."""
     raise NotImplementedError
 
-  def check_abstract(self):
+  def check_abstract(self) -> None:
     """Check that this is a `tff.AbstractType`."""
     if not self.is_abstract():
       raise UnexpectedTypeError(AbstractType, self)
@@ -155,7 +155,7 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns whether or not this type is a `tff.AbstractType`."""
     return False
 
-  def check_federated(self):
+  def check_federated(self) -> None:
     """Check that this is a `tff.FederatedType`."""
     if not self.is_federated():
       raise UnexpectedTypeError(FederatedType, self)
@@ -164,7 +164,7 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns whether or not this type is a `tff.FederatedType`."""
     return False
 
-  def check_function(self):
+  def check_function(self) -> None:
     """Check that this is a `tff.FunctionType`."""
     if not self.is_function():
       raise UnexpectedTypeError(FunctionType, self)
@@ -173,7 +173,7 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns whether or not this type is a `tff.FunctionType`."""
     return False
 
-  def check_placement(self):
+  def check_placement(self) -> None:
     """Check that this is a `tff.PlacementType`."""
     if not self.is_placement():
       raise UnexpectedTypeError(PlacementType, self)
@@ -182,7 +182,7 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns whether or not this type is a `tff.PlacementType`."""
     return False
 
-  def check_sequence(self):
+  def check_sequence(self) -> None:
     """Check that this is a `tff.SequenceType`."""
     if not self.is_sequence():
       raise UnexpectedTypeError(SequenceType, self)
@@ -191,25 +191,25 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns whether or not this type is a `tff.SequenceType`."""
     return False
 
-  def check_struct(self):
+  def check_struct(self) -> None:
     """Check that this is a `tff.StructType`."""
     if not self.is_struct():
       raise UnexpectedTypeError(StructType, self)
 
-  def is_struct(self):
+  def is_struct(self) -> bool:
     """Returns whether or not this type is a `tff.StructType`."""
     return False
 
-  def check_struct_with_python(self):
+  def check_struct_with_python(self) -> None:
     """Check that this is a `tff.StructWithPythonType`."""
     if not self.is_struct_with_python():
       raise UnexpectedTypeError(StructWithPythonType, self)
 
-  def is_struct_with_python(self):
+  def is_struct_with_python(self) -> bool:
     """Returns whether or not this type is a `tff.StructWithPythonType`."""
     return False
 
-  def check_tensor(self):
+  def check_tensor(self) -> None:
     """Check that this is a `tff.TensorType`."""
     if not self.is_tensor():
       UnexpectedTypeError(TensorType, self)
@@ -255,7 +255,7 @@ class Type(object, metaclass=abc.ABCMeta):
   def __ne__(self, other):
     return not self == other
 
-  def check_assignable_from(self, source_type: 'Type'):
+  def check_assignable_from(self, source_type: 'Type') -> None:
     """Raises if values of `source_type` cannot be cast to this type."""
     if not self.is_assignable_from(source_type):
       raise TypeNotAssignableError(source_type=source_type, target_type=self)
@@ -265,7 +265,7 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns whether values of `source_type` can be cast to this type."""
     raise NotImplementedError
 
-  def check_equivalent_to(self, other: 'Type'):
+  def check_equivalent_to(self, other: 'Type') -> None:
     """Raises if values of 'other' cannot be cast to and from this type."""
     if not self.is_equivalent_to(other):
       raise TypesNotEquivalentError(self, other)
@@ -274,12 +274,12 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns whether values of `other` can be cast to and from this type."""
     return self.is_assignable_from(other) and other.is_assignable_from(self)
 
-  def check_identical_to(self, other: 'Type'):
+  def check_identical_to(self, other: 'Type') -> None:
     """Raises if `other` and `Type` are not exactly identical."""
     if not self.is_identical_to(other):
       raise TypesNotIdenticalError(self, other)
 
-  def is_identical_to(self, other: 'Type'):
+  def is_identical_to(self, other: 'Type') -> bool:
     """Returns whether or not `self` and `other` are exactly identical."""
     return self == other
 
@@ -462,7 +462,7 @@ class TensorType(Type, metaclass=_Intern):
   def children(self):
     return iter(())
 
-  def is_tensor(self):
+  def is_tensor(self) -> bool:
     return True
 
   @property
@@ -601,7 +601,7 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
   def python_container(self) -> Optional[TypingType[Any]]:
     return None
 
-  def is_struct(self):
+  def is_struct(self) -> bool:
     return True
 
   def __repr__(self):
@@ -650,7 +650,7 @@ class StructWithPythonType(StructType, metaclass=_Intern):
     self._container_type = container_type
     _check_well_formed(self)
 
-  def is_struct_with_python(self):
+  def is_struct_with_python(self) -> bool:
     return True
 
   @property
@@ -697,7 +697,7 @@ class SequenceType(Type, metaclass=_Intern):
   def children(self):
     yield self._element
 
-  def is_sequence(self):
+  def is_sequence(self) -> bool:
     return True
 
   @property
@@ -747,15 +747,15 @@ class FunctionType(Type, metaclass=_Intern):
       yield self._parameter
     yield self._result
 
-  def is_function(self):
+  def is_function(self) -> bool:
     return True
 
   @property
-  def parameter(self):
+  def parameter(self) -> Type:
     return self._parameter
 
   @property
-  def result(self):
+  def result(self) -> Type:
     return self._result
 
   def __repr__(self):
@@ -804,7 +804,7 @@ class AbstractType(Type, metaclass=_Intern):
   def children(self):
     return iter(())
 
-  def is_abstract(self):
+  def is_abstract(self) -> bool:
     return True
 
   @property
@@ -846,7 +846,7 @@ class PlacementType(Type, metaclass=_Intern):
   def children(self):
     return iter(())
 
-  def is_placement(self):
+  def is_placement(self) -> bool:
     return True
 
   def __repr__(self):
@@ -908,7 +908,7 @@ class FederatedType(Type, metaclass=_Intern):
   def children(self):
     yield self._member
 
-  def is_federated(self):
+  def is_federated(self) -> bool:
     return True
 
   @property
@@ -1354,7 +1354,3 @@ def _string_representation(type_spec, formatted: bool) -> str:
     return '\n'.join(lines)
   else:
     return ''.join(lines)
-
-
-def some_test_func_for_pytype(x: Type) -> int:
-  return len(x)

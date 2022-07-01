@@ -15,12 +15,14 @@
 
 import abc
 
+from tensorflow_federated.python.core.impl.types import computation_types
+
 
 class TypedObject(object, metaclass=abc.ABCMeta):
   """An abstract interface for things that possess TFF type signatures."""
 
   @property
   @abc.abstractmethod
-  def type_signature(self):
+  def type_signature(self) -> computation_types.Type:
     """Returns the TFF type of this object (an instance of `tff.Type`)."""
     raise NotImplementedError
