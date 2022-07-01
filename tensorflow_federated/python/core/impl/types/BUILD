@@ -253,4 +253,5 @@ py_library(
     name = "typed_object",
     srcs = ["typed_object.py"],
     srcs_version = "PY3",
+    deps = [":computation_types"],
 )
