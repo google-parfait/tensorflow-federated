@@ -157,7 +157,6 @@ py_library(
     srcs = ["mergeable_comp_execution_context.py"],
     srcs_version = "PY3",
     deps = [
-        ":async_execution_context",
         ":compiler_pipeline",
         "//tensorflow_federated/python/common_libs:async_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -167,7 +166,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
@@ -184,7 +182,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":async_execution_context",
         ":mergeable_comp_execution_context",
+        ":sync_execution_context",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",

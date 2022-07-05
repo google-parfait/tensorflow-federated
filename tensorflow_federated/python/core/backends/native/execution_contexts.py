@@ -20,12 +20,12 @@ import grpc
 
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
+from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
-from tensorflow_federated.python.core.impl.executors import executor_factory
 
 
 def _make_basic_python_execution_context(*, executor_fn, compiler_fn,
@@ -245,18 +245,18 @@ def set_remote_async_python_execution_context(channels,
 
 
 def create_mergeable_comp_execution_context(
-    executor_factories: Sequence[executor_factory.ExecutorFactory]
+    async_contexts: Sequence[context_base.Context]
 ) -> mergeable_comp_execution_context.MergeableCompExecutionContext:
   """Creates context which compiles to and executes mergeable comp form."""
   return mergeable_comp_execution_context.MergeableCompExecutionContext(
-      executor_factories=executor_factories,
+      async_contexts=async_contexts,
       # TODO(b/204258376): Enable this py-typecheck when possible.
       compiler_fn=mergeable_comp_compiler.compile_to_mergeable_comp_form)  # pytype: disable=wrong-arg-types
 
 
 def set_mergeable_comp_execution_context(
-    executor_factories: Sequence[executor_factory.ExecutorFactory]):
+    async_contexts: Sequence[context_base.Context]):
   """Sets context which compiles to and executes mergeable comp form."""
   context = create_mergeable_comp_execution_context(
-      executor_factories=executor_factories)
+      async_contexts=async_contexts)
   context_stack_impl.context_stack.set_default_context(context)

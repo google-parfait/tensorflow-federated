@@ -31,10 +31,8 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
-from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -376,22 +374,19 @@ class MergeableCompExecutionContextValue(typed_object.TypedObject):
     return self._partitioned_value
 
 
-async def _invoke_up_to_merge_and_return_context(
-    comp: MergeableCompForm, arg,
-    context: async_execution_context.AsyncExecutionContext):
+async def _invoke_up_to_merge_and_return_context(comp: MergeableCompForm, arg,
+                                                 context: context_base.Context):
   return await context.invoke(comp.up_to_merge, arg), context
 
 
-async def _merge_results(
-    comp: MergeableCompForm, merge_partial, value_to_merge,
-    context: async_execution_context.AsyncExecutionContext):
+async def _merge_results(comp: MergeableCompForm, merge_partial, value_to_merge,
+                         context: context_base.Context):
   return await context.invoke(
       comp.merge, structure.Struct.unnamed(merge_partial, value_to_merge))
 
 
-async def _compute_after_merged(
-    comp: MergeableCompForm, original_arg, merge_result,
-    context: async_execution_context.AsyncExecutionContext):
+async def _compute_after_merged(comp: MergeableCompForm, original_arg,
+                                merge_result, context: context_base.Context):
   if original_arg is not None:
     arg = structure.Struct.unnamed(original_arg, merge_result)
   else:
@@ -401,8 +396,7 @@ async def _compute_after_merged(
 
 async def _invoke_mergeable_comp_form(
     comp: MergeableCompForm, arg: Optional[MergeableCompExecutionContextValue],
-    execution_contexts: Sequence[
-        async_execution_context.AsyncExecutionContext]):
+    execution_contexts: Sequence[context_base.Context]):
   """Invokes `comp` on `arg`, repackaging the results to a single value."""
 
   if arg is not None:
@@ -456,15 +450,27 @@ class MergeableCompExecutionContext(context_base.Context):
   """
 
   def __init__(self,
-               executor_factories: Sequence[executor_factory.ExecutorFactory],
+               async_contexts: Sequence[context_base.Context],
                compiler_fn: Optional[Callable[[computation_base.Computation],
                                               MergeableCompForm]] = None):
-    self._async_runner = async_utils.AsyncThreadRunner()
-    self._async_execution_contexts = [
-        async_execution_context.AsyncExecutionContext(ex_factory)
-        for ex_factory in executor_factories
-    ]
+    """Initializes a MergeableCompExecutionContext.
 
+    Args:
+      async_contexts: Sequence of TFF execution contexts. These contexts are
+        assumed to implement their `invoke` method as a coroutine function,
+        returning an awaitable.
+      compiler_fn: An optional callable which accepts a `tff.Computation` and
+        returns an instance of `MergeableCompForm`. If not provided, this
+        context will only execute instances of `MergeableCompForm` directly.
+    """
+    self._async_runner = async_utils.AsyncThreadRunner()
+    for ctx in async_contexts:
+      py_typecheck.check_type(ctx, context_base.Context)
+      if not asyncio.iscoroutinefunction(ctx.invoke):
+        raise ValueError('Async context argument to '
+                         'MergeableCompExecutionContext must implement invoke '
+                         'as a coroutine function.')
+    self._async_execution_contexts = async_contexts
     if compiler_fn is not None:
       self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
     else:

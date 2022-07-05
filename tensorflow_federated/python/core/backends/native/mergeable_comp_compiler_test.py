@@ -16,6 +16,7 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import mergeable_comp_compiler
+from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -121,7 +122,7 @@ class MergeableCompCompilerTest(absltest.TestCase):
     ex_factory = python_executor_stacks.local_executor_factory(
         default_num_clients=0)
     self._mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        [ex_factory])
+        [async_execution_context.AsyncExecutionContext(ex_factory)])
     super().setUp()
 
   def _invoke_mergeable_form_on_arg(

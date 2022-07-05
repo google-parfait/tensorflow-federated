@@ -20,7 +20,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -386,17 +388,27 @@ class RepackageResultsTest(absltest.TestCase):
 
 class MergeableCompExecutionContextTest(parameterized.TestCase):
 
+  def test_construction_raises_with_sync_context(self):
+
+    contexts = [
+        sync_execution_context.ExecutionContext(
+            python_executor_stacks.local_executor_factory()) for _ in range(1)
+    ]
+    with self.assertRaises(ValueError):
+      mergeable_comp_execution_context.MergeableCompExecutionContext(contexts)
+
   def test_invoke_raises_computation_no_compiler(self):
 
     @tensorflow_computation.tf_computation()
     def return_one():
       return 1
 
-    ex_factories = [
-        python_executor_stacks.local_executor_factory() for _ in range(1)
+    contexts = [
+        async_execution_context.AsyncExecutionContext(
+            python_executor_stacks.local_executor_factory()) for _ in range(1)
     ]
     no_compiler_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        ex_factories)
+        contexts)
 
     with self.assertRaises(ValueError):
       no_compiler_context.invoke(return_one)
@@ -407,11 +419,12 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     def return_one():
       return 1
 
-    ex_factories = [
-        python_executor_stacks.local_executor_factory() for _ in range(1)
+    contexts = [
+        async_execution_context.AsyncExecutionContext(
+            python_executor_stacks.local_executor_factory()) for _ in range(1)
     ]
     context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        ex_factories, compiler_fn=lambda x: x)
+        contexts, compiler_fn=lambda x: x)
 
     with self.assertRaises(ValueError):
       context.invoke(return_one)
@@ -429,11 +442,12 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     # Simply returns the original argument
     mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
         up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
-    ex_factories = [
-        python_executor_stacks.local_executor_factory() for _ in range(5)
+    contexts = [
+        async_execution_context.AsyncExecutionContext(
+            python_executor_stacks.local_executor_factory()) for _ in range(5)
     ]
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        ex_factories)
+        contexts)
     # We preemptively package as a struct to work around shortcircuiting in
     # type_to_py_container in a non-Struct argument case.
     arg = structure.Struct.unnamed(*arg)
@@ -458,11 +472,12 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
 
     mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
         up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
-    ex_factories = [
-        python_executor_stacks.local_executor_factory() for _ in range(5)
+    contexts = [
+        async_execution_context.AsyncExecutionContext(
+            python_executor_stacks.local_executor_factory()) for _ in range(5)
     ]
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        ex_factories)
+        contexts)
 
     expected_result = type_conversions.type_to_py_container(
         expected_sum, after_merge.type_signature.result)
@@ -483,11 +498,12 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
 
     mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
         up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
-    ex_factories = [
-        python_executor_stacks.local_executor_factory() for _ in range(5)
+    contexts = [
+        async_execution_context.AsyncExecutionContext(
+            python_executor_stacks.local_executor_factory()) for _ in range(1)
     ]
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        ex_factories)
+        contexts)
 
     expected_result = type_conversions.type_to_py_container(
         expected_sum, after_merge.type_signature.result)
@@ -504,13 +520,14 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
 
     mergeable_comp_form = mergeable_comp_execution_context.MergeableCompForm(
         up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
-    ex_factories = [
-        python_executor_stacks.local_executor_factory(
-            default_num_clients=int(num_clients / num_executors))
-        for _ in range(num_executors)
-    ]
+    contexts = []
+    for _ in range(num_executors):
+      contexts.append(
+          async_execution_context.AsyncExecutionContext(
+              python_executor_stacks.local_executor_factory(
+                  default_num_clients=int(num_clients / num_executors))))
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        ex_factories)
+        contexts)
 
     expected_result = num_clients
     result = mergeable_comp_context.invoke(mergeable_comp_form, None)
