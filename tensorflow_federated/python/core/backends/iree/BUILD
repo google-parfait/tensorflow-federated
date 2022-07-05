@@ -123,7 +123,7 @@ py_test(
         ":executor",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
+        "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],

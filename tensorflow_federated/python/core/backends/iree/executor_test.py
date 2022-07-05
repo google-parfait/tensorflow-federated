@@ -21,7 +21,7 @@ from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import executor
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
-from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 
 
@@ -93,7 +93,7 @@ class ExecutorTest(tf.test.TestCase):
 
   def test_as_default_context(self):
     ex = executor.IreeExecutor(backend_info.VULKAN_SPIRV)
-    factory = executor_stacks.ResourceManagingExecutorFactory(
+    factory = python_executor_stacks.ResourceManagingExecutorFactory(
         executor_stack_fn=lambda _: ex)
     context = sync_execution_context.ExecutionContext(factory)
     set_default_context.set_default_context(context)
