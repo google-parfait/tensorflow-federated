@@ -6,47 +6,23 @@ One of the key goals for TensorFlow Federated is to serve as a platform for
 collaborations and joint development in the open between Google and the OSS
 community and industry partners.
 
-The purpose of this GitHub directory, and documents linked from here, is to
-bootstrap an initial lightweight and open process for jointly evolving TFF.
+To follow conversations among developers contributing to the TFF ecosystem,
+please join our [Discord server](https://discord.com/invite/5shux83qZ5). All
+content on the Discord server is open to access by all interested parties.
 
-To join conversations with other developers contributing to the TFF ecosystem,
-please join our [Discord server](https://discord.com/invite/5shux83qZ5).
+By default, you can only view, but not post. Posting is restricted to committed
+contributors. In order to actively participate as a contributor, please email
+tff-hello at google dot com to introduce yourself and tell us a few words about
+how you would like to contribute to the TFF ecosystem. The expectation of all
+contributors is to make regular engineering contributions.
 
-Additionally, here (in this directory) we will accumulate artifacts (proposals,
-notes, etc.) from conversations about project scoping, planning, logistics, and
-design, product and development roadmaps jointly developed with partners, and
-pointers to components maintained by community contributors.
+Information about workstreams and participants, as well as any artifacts that
+emerge during the course of conversations, including notes from meetings,
+project plans, design proposals, product and development roadmaps jointly
+developed with partners, and pointers to components maintained by community
+contributors, will be hosted on or linked from the Discord server. Some of the
+documents may be shareable by request.
 
-Content included here and on the Discord server is publicly accessible by all
-interested parties. We will eventually evolve and scale out the process, form
-workgroups, etc., as needed.
+We hope that you will join us and help us develop the TFF platform together.
 
-If you'd like to participate in these conversations, please join conversations
-in workstreas that interest you on our Discord server, introduce yourself, and
-tell us a few words about how you would like to contribute to the TFF ecosystem.
-The expectation of all workstream participants is to make regular engineering
-contributions.
-
-## Active workstreams
-
-### Planning the evolution of the TFF platform
-
-This is the primary conversation we will use to define joint goals for evolving
-the TFF platform with OSS partners, and to spawn other dedicated workstreams to
-drive changes in specific areas.
-
-Current list of participants:
-
-*   Google (Krzysztof Ostrowski, Alex Ingerman, DeWitt Clinton)
-
-*   LinkedIn (Souvik Ghosh, Zheng Li, Boyi Chen)
-
-Shared goals:
-
-*   (to be added shortly)
-
-Links to artifacts:
-
-*   [notes from past conversations](https://docs.google.com/document/d/1RwiCILXSoWmNiQQ3Nn_B8BZly2RecYJXKxY3h7TNvtk/edit?resourcekey=0-fK0BG1Gukki7LoXoyYEzHg)
-    (Available by invitation; please introduce yourself to gain access. All
-    conversations now being hosted on the Discord server - see link above.)
+Looking forward to hearing from you!
