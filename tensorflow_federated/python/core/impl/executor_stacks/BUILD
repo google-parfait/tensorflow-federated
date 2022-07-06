@@ -42,11 +42,10 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":cpp_executor_factory",
-        "@absl_py//absl/testing:absltest",
-        # build_cleaner: keep
         "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
