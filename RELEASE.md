@@ -1,3 +1,25 @@
+# Release 0.29.0
+
+## Major Features and Improvements
+
+*   Update the `MemoryReleaseManager` to save `type_signature` when releasing
+    values.
+*   Add a `type_signature` parameter to the `ReleaseManager.release` method.
+*   Unify retryability logic between TFF-C++ and TFF-Python.
+*   Update the TFF contributions and collaboration links to point to the Discord
+    server.
+
+## Breaking Changes
+
+*   Move Python executor stacks file to `python_executor_stacks.py` in
+    `executor_stacks` directory.
+
+## Bug Fixes
+
+*   Ensure that dataset deserialization will return ragged and sparse tensors,
+    as needed according to the TFF type of the dataset.
+*   Make `metric_finalizers` use metric constructors if available.
+
 # Release 0.28.0
 
 ## Major Features and Improvements
