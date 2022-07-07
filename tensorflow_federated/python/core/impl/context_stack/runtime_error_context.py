@@ -34,3 +34,8 @@ class RuntimeErrorContext(context_base.Context):
     del comp  # Unused
     del arg  # Unused
     self._raise_runtime_error()
+
+
+def create_runtime_error_context() -> context_base.Context:
+  """Creates a context that will raise an error when computations are invoked."""
+  return RuntimeErrorContext()
