@@ -75,11 +75,11 @@ async def train_federated_model(
       client data used during evaluation.
     total_rounds: The number of training rounds to run.
     number_of_clients: The number of clients per round of training.
-    train_output_managers: An optional list of `tff.program.ReleaseManagers`s
+    train_output_managers: An optional list of `tff.program.ReleaseManager`s
       used to release training output.
     evaluation_output_managers: An optional list of
-      `tff.program.ReleaseManagers`s used to release evaluation output.
-    model_output_manager: An optional `tff.program.ReleaseManagers`s used to
+      `tff.program.ReleaseManager`s used to release evaluation output.
+    model_output_manager: An optional `tff.program.ReleaseManager` used to
       release training output.
     program_state_manager: An optional `tff.program.ProgramStateManager` used to
       save program state for fault tolerance.
@@ -162,7 +162,7 @@ async def train_federated_model(
       evaluation_metrics_type = evaluation.type_signature.result
       tasks.add_all(*[
           m.release(evaluation_metrics, evaluation_metrics_type, round_number)
-          for m in train_output_managers
+          for m in evaluation_output_managers
       ])
 
     # Release the model output.
