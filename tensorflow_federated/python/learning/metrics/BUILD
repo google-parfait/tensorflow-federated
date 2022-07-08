@@ -38,6 +38,7 @@ py_library(
     srcs = ["aggregator.py"],
     srcs_version = "PY3",
     deps = [
+        "//tensorflow_federated/python/aggregators:sampling",
         "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",

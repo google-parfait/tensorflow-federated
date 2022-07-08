@@ -14,6 +14,7 @@
 """Libraries for working with metrics in federated learning algorithms."""
 
 from tensorflow_federated.python.learning.metrics.aggregator import create_default_secure_sum_quantization_ranges
+from tensorflow_federated.python.learning.metrics.aggregator import finalize_then_sample
 from tensorflow_federated.python.learning.metrics.aggregator import secure_sum_then_finalize
 from tensorflow_federated.python.learning.metrics.aggregator import sum_then_finalize
 from tensorflow_federated.python.learning.metrics.counters import NumBatchesCounter

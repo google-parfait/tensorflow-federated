@@ -16,6 +16,7 @@
 import collections
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.test import execution_contexts
@@ -506,6 +507,129 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
               (0.0, 1.0, 2.0),
               None
           ]))
+
+
+_TEST_FINALIZE_THEN_SAMPLE_KERAS_METRICS = {
+    'testcase_name':
+        'keras_metrics',
+    # Besides standard and custom Keras metrics, this test also covers the cases
+    # when the tensors in the unfinalized metrics have different numbers and
+    # different shapes.
+    'metric_finalizers':
+        collections.OrderedDict(
+            accuracy=finalizer.create_keras_metric_finalizer(
+                tf.keras.metrics.SparseCategoricalAccuracy),
+            custom_sum=finalizer.create_keras_metric_finalizer(CustomSumMetric)
+        ),
+    'local_unfinalized_metrics_at_clients': [
+        collections.OrderedDict(
+            # The unfinalized `accuracy` has two values: `total` and `count`.
+            accuracy=[tf.constant(1.0), tf.constant(2.0)],
+            # The unfinalized `custom_sum` has three values: `total`, `scalar`,
+            # and `vector`.
+            custom_sum=[tf.constant(1),
+                        tf.constant(1),
+                        tf.constant([1, 1])]),
+        collections.OrderedDict(
+            accuracy=[tf.constant(2.0), tf.constant(8.0)],
+            custom_sum=[tf.constant(0),
+                        tf.constant(1),
+                        tf.constant([0, 1])]),
+        collections.OrderedDict(
+            accuracy=[tf.constant(1.0), tf.constant(10.0)],
+            custom_sum=[tf.constant(0),
+                        tf.constant(1),
+                        tf.constant([1, 1])]),
+    ],
+    # The aggregated metrics are computed by first applying the finalizers (a
+    # division for `accuracy`, and a sum for `custom_sum`) to the unfinalized
+    # metrics at clients, and then collecting the results to the server.
+    'finalized_metrics_collected_from_all_clients':
+        collections.OrderedDict(
+            accuracy=np.array([1.0 / 2.0, 2.0 / 8.0, 1.0 / 10.0],
+                              dtype=np.float32),
+            custom_sum=np.array([4, 2, 3], dtype=np.int32))
+}
+
+_TEST_FINALIZE_THEN_SAMPLE_NON_KERAS_METRICS = {
+    'testcase_name':
+        'non_keras_metrics',
+    # Besides two type of finalizer functions (i.e., divide and sum), this test
+    # also covers two ways of representing the unfinalized metrics: as a list or
+    # as an OrderedDict.
+    'metric_finalizers':
+        collections.OrderedDict(
+            divide=tf.function(func=lambda x: x[0] / x[1]),
+            sum=tf.function(func=lambda x: x['count_1'] + x['count_2'])),
+    'local_unfinalized_metrics_at_clients': [
+        collections.OrderedDict(
+            divide=[tf.constant(1.0), tf.constant(2.0)],
+            sum=collections.OrderedDict(count_1=1, count_2=1)),
+        collections.OrderedDict(
+            divide=[tf.constant(3.0), tf.constant(12.0)],
+            sum=collections.OrderedDict(count_1=2, count_2=3)),
+    ],
+    # The aggregated metrics are computed by first applying the finalizers (a
+    # division and a sum) to the unfinalized metrics at clients, and then
+    # collecting the results to the server.
+    'finalized_metrics_collected_from_all_clients':
+        collections.OrderedDict(
+            divide=np.array([1.0 / 2.0, 3.0 / 12.0], dtype=np.float32),
+            sum=np.array([2, 5], dtype=np.int32))
+}
+
+
+class FinalizeThenSampleTest(parameterized.TestCase, tf.test.TestCase):
+
+  @parameterized.named_parameters(_TEST_FINALIZE_THEN_SAMPLE_KERAS_METRICS,
+                                  _TEST_FINALIZE_THEN_SAMPLE_NON_KERAS_METRICS)
+  def test_returns_correct_results_default_num_samples(
+      self, metric_finalizers, local_unfinalized_metrics_at_clients,
+      finalized_metrics_collected_from_all_clients):
+    aggregator_computation = aggregator.finalize_then_sample(
+        metric_finalizers=metric_finalizers,
+        local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+            local_unfinalized_metrics_at_clients[0]))
+    aggregated_metrics = aggregator_computation(
+        local_unfinalized_metrics_at_clients)
+    print(f'aggregated metrics is {aggregated_metrics}')
+    # The default `max_num_samples` is 100, which is larger than the number of
+    # clients, so the aggregated metrics will collect metrics from all clients.
+    # Note that we need to use `assertCountEqual` here because the order is not
+    # preserved after reservoir sampling.
+    tf.nest.map_structure(self.assertCountEqual, aggregated_metrics,
+                          finalized_metrics_collected_from_all_clients)
+
+  @parameterized.named_parameters(_TEST_FINALIZE_THEN_SAMPLE_KERAS_METRICS,
+                                  _TEST_FINALIZE_THEN_SAMPLE_NON_KERAS_METRICS)
+  def test_returns_correct_results_custom_num_samples(
+      self, metric_finalizers, local_unfinalized_metrics_at_clients,
+      finalized_metrics_collected_from_all_clients):
+    num_samples = 2
+    aggregator_computation = aggregator.finalize_then_sample(
+        metric_finalizers=metric_finalizers,
+        local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+            local_unfinalized_metrics_at_clients[0]),
+        max_num_samples=num_samples)
+    aggregated_metrics = aggregator_computation(
+        local_unfinalized_metrics_at_clients)
+    print(f'aggregated metrics is {aggregated_metrics}')
+    # Because `num_samples` is smaller than or equal to the number of clients,
+    # the final sampled metrics will contain `num_samples` samples per metric.
+    tf.nest.map_structure(lambda v: self.assertLen(v, num_samples),
+                          aggregated_metrics)
+    tf.nest.map_structure(self.assertContainsSubset, aggregated_metrics,
+                          finalized_metrics_collected_from_all_clients)
+
+  @parameterized.named_parameters(_TEST_ARGUMENTS_INVALID_INPUTS)
+  def test_fails_with_invalid_inputs(self, metric_finalizers,
+                                     local_unfinalized_metrics, error_type,
+                                     error_message):
+    with self.assertRaisesRegex(error_type, error_message):
+      aggregator.finalize_then_sample(
+          metric_finalizers=metric_finalizers,
+          local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+              local_unfinalized_metrics))
 
 
 if __name__ == '__main__':
