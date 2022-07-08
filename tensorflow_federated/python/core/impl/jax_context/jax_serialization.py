@@ -168,7 +168,25 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
 
 
 # Registers TFF's Struct as a node that Jax's tree-traversal utilities can walk
-# through.
-jax.tree_util.register_pytree_node(
-    structure.Struct, lambda struct: (structure.flatten(struct), struct),
-    lambda data, struct: structure.pack_sequence_as(data, list(struct)))
+# through. Pytree flattening works _per-level_ of the tree, so we don't
+# use structure.flatten and structure.unflatten here, rather we only unpack
+# the immediate Struct, and let pytress apply flattening recursively to properly
+# pack/unpack intermediate contaienrs of other types.
+
+
+def _struct_flatten(struct):
+  child_names, child_values = tuple(zip(*structure.iter_elements(struct)))
+  return (child_values, child_names)
+
+
+def _struct_unflatten(child_names, child_values):
+  return structure.Struct(tuple(zip(child_names, child_values)))
+
+
+jax.tree_util.register_pytree_node(structure.Struct, _struct_flatten,
+                                   _struct_unflatten)
+
+# Enable float64 for JAX, otherwise JAX silently casts float64 to float32 which
+# is hard to deal with in TFF's type system. This may need to be reverted
+# https://jax.readthedocs.io/en/latest/notebooks/Common_Gotchas_in_JAX.html#double-64bit-precision
+jax.config.update('jax_enable_x64', True)
