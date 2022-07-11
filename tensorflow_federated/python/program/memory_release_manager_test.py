@@ -138,7 +138,8 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
       ('str', 'a'),
       ('list', []),
   )
-  async def test_raises_type_error_with_type_signature(self, type_signature):
+  async def test_release_raises_type_error_with_type_signature(
+      self, type_signature):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
     with self.assertRaises(TypeError):

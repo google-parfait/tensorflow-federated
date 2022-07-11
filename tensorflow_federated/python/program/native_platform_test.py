@@ -489,6 +489,7 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
       self.fail('Raised TypeError unexpectedly.')
 
   @parameterized.named_parameters(
+      ('none', None),
       ('bool', True),
       ('int', 1),
       ('str', 'a'),
@@ -613,12 +614,13 @@ class DatasetDataSourceTest(parameterized.TestCase):
     self.assertEqual(data_source.federated_type, federated_type)
 
   @parameterized.named_parameters(
+      ('none', None),
       ('bool', True),
       ('int', 1),
       ('str', 'a'),
       ('list', [True, 1, 'a']),
   )
-  def test_init_raises_type_error(self, datasets):
+  def test_init_raises_type_error_with_datasets(self, datasets):
     with self.assertRaises(TypeError):
       native_platform.DatasetDataSource(datasets=datasets)
 

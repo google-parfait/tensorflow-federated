@@ -168,7 +168,8 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
       ('str', 'a'),
       ('list', []),
   )
-  async def test_raises_type_error_with_type_signature(self, type_signature):
+  async def test_release_raises_type_error_with_type_signature(
+      self, type_signature):
     release_mngr = logging_release_manager.LoggingReleaseManager()
 
     with self.assertRaises(TypeError):

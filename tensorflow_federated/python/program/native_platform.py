@@ -40,6 +40,12 @@ class CoroValueReference(value_reference.MaterializableValueReference):
   def __init__(self, coro: Coroutine[Any, Any,
                                      value_reference.MaterializablePythonType],
                type_signature: value_reference.MaterializableTffType):
+    """Returns an initialized `tff.program.CoroValueReference`.
+
+    Args:
+      coro: An `asyncio.Coroutine` that returns the referenced value.
+      type_signature: The `tff.Type` of this object.
+    """
     if not asyncio.iscoroutine(coro):
       raise TypeError(f'Expected a `Coroutine`, found {type(coro)}')
     py_typecheck.check_type(
@@ -216,12 +222,12 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
         iterator.
 
     Raises:
-      ValueError: If `datasets` is an empty list or if each `tf.data.Dataset` in
+      ValueError: If `datasets` is empty or if each `tf.data.Dataset` in
         `datasets` does not have the same type specification.
     """
     py_typecheck.check_type(datasets, collections.abc.Sequence)
     if not datasets:
-      raise ValueError('Expected `datasets` to not be an empty list.')
+      raise ValueError('Expected `datasets` to not be empty.')
     for dataset in datasets:
       py_typecheck.check_type(dataset, tf.data.Dataset)
       element_spec = datasets[0].element_spec
@@ -275,12 +281,12 @@ class DatasetDataSource(data_source.FederatedDataSource):
         this data source.
 
     Raises:
-      ValueError: If `datasets` is an empty list or if each `tf.data.Dataset` in
+      ValueError: If `datasets` is empty or if each `tf.data.Dataset` in
         `datasets` does not have the same type specification.
     """
     py_typecheck.check_type(datasets, collections.abc.Sequence)
     if not datasets:
-      raise ValueError('Expected `datasets` to not be an empty list.')
+      raise ValueError('Expected `datasets` to not be empty.')
     for dataset in datasets:
       py_typecheck.check_type(dataset, tf.data.Dataset)
       element_spec = datasets[0].element_spec
