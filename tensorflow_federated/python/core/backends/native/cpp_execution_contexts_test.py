@@ -93,16 +93,10 @@ class CPPExecutionContextTest(tf.test.TestCase):
     context = cpp_execution_contexts.create_local_async_cpp_execution_context()
 
     async def multiple_invocations():
-      arg_coros = []
-      for _ in range(n_parallel_calls):
-        arg_coros.append(
-            context.ingest(
-                collections.OrderedDict(x=1, y=1),
-                sleep_and_multiply.type_signature.parameter))
-
-      args = await asyncio.gather(*arg_coros)
-      return await asyncio.gather(
-          *[context.invoke(sleep_and_multiply, x) for x in args])
+      return await asyncio.gather(*[
+          context.invoke(sleep_and_multiply, collections.OrderedDict(x=1, y=1))
+          for _ in range(n_parallel_calls)
+      ])
 
     loop = asyncio.new_event_loop()
     # This timing-based test seems unfortunate.
