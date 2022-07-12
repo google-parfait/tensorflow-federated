@@ -27,9 +27,17 @@ from tensorflow_federated.python.program import federated_context
 
 
 class _TestFederatedContext(federated_context.FederatedContext):
+  """A test implementation of `tff.program.FederatedContext`.
+
+  A `tff.program.FederatedContext` can not be constructed directly because it
+  has abstract methods, this implementation exists to make it possible to
+  construct instances of `tff.program.FederatedContext` that can used as stubs
+  or mocked.
+  """
 
   def invoke(self, comp: computation_base.Computation, arg: Any) -> Any:
-    return None
+    del comp, arg  # Unused.
+    raise NotImplementedError
 
 
 class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):

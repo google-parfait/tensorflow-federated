@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List, Mapping, Optional
+from typing import Any, List, Optional
 import unittest
 from unittest import mock
 
@@ -22,56 +22,66 @@ from tensorflow_federated.python.program import program_state_manager
 
 
 class _TestProgramStateManager(program_state_manager.ProgramStateManager):
+  """A test implementation of `tff.program.ProgramStateManager`.
 
-  def __init__(self, values: Optional[Mapping[int, Any]] = None):
-    self._values = values
+  A `tff.program.ProgramStateManager` can not be constructed directly because it
+  has abstract methods, this implementation exists to make it possible to
+  construct instances of `tff.program.ProgramStateManager` that can used as
+  stubs or mocked.
+  """
 
   async def get_versions(self) -> Optional[List[int]]:
-    if self._values is None:
-      return None
-    return self._values.keys()
+    raise NotImplementedError
 
   async def load(self, version: int, structure: Any) -> Any:
-    del structure  # Unused.
-    if self._values is None or version not in self._values:
-      raise program_state_manager.ProgramStateManagerStateNotFoundError()
-    return self._values[version]
+    del version, structure  # Unused.
+    raise NotImplementedError
 
   async def save(self, program_state: Any, version: int) -> None:  # pytype: disable=signature-mismatch
     del program_state, version  # Unused.
+    raise NotImplementedError
 
 
 class ProgramStateManagerTest(absltest.TestCase,
                               unittest.IsolatedAsyncioTestCase):
 
   async def test_load_latest_with_saved_program_state(self):
-    values = {x: f'test{x}' for x in range(5)}
-    structure = values[0]
-    program_state_mngr = _TestProgramStateManager(values)
+    program_state_mngr = _TestProgramStateManager()
+    program_state_mngr.get_versions = mock.AsyncMock(return_value=[1, 2, 3])
+    program_state_mngr.load = mock.AsyncMock(return_value='test3')
+    structure = 'test'
 
     (program_state, version) = await program_state_mngr.load_latest(structure)
 
-    self.assertEqual(program_state, 'test4')
-    self.assertEqual(version, 4)
+    program_state_mngr.get_versions.assert_called_once_with()
+    program_state_mngr.load.assert_called_once_with(3, structure)
+    self.assertEqual(program_state, 'test3')
+    self.assertEqual(version, 3)
 
   async def test_load_latest_with_no_saved_program_state(self):
-    structure = None
     program_state_mngr = _TestProgramStateManager()
+    program_state_mngr.get_versions = mock.AsyncMock(return_value=None)
+    program_state_mngr.load = mock.AsyncMock()
+    structure = 'test'
 
     (program_state, version) = await program_state_mngr.load_latest(structure)
 
+    program_state_mngr.get_versions.assert_called_once_with()
+    program_state_mngr.load.assert_not_called()
     self.assertIsNone(program_state)
     self.assertEqual(version, 0)
 
   async def test_load_latest_with_load_failure(self):
-    values = {x: f'test{x}' for x in range(5)}
-    structure = values[0]
-    program_state_mngr = _TestProgramStateManager(values)
-    program_state_mngr.load = mock.MagicMock(
+    program_state_mngr = _TestProgramStateManager()
+    program_state_mngr.get_versions = mock.AsyncMock(return_value=[1, 2, 3])
+    program_state_mngr.load = mock.AsyncMock(
         side_effect=program_state_manager.ProgramStateManagerStateNotFoundError)
+    structure = 'test'
 
     (program_state, version) = await program_state_mngr.load_latest(structure)
 
+    program_state_mngr.get_versions.assert_called_once_with()
+    program_state_mngr.load.assert_called_once_with(3, structure)
     self.assertIsNone(program_state)
     self.assertEqual(version, 0)
 
