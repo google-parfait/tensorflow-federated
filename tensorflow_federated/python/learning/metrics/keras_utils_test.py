@@ -21,6 +21,24 @@ import tensorflow as tf
 
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import keras_utils
+from tensorflow_federated.python.tensorflow_libs import version_check
+
+# Names of Keras metrics to test.
+BINARY_METRIC_NAMES = [
+    'Accuracy',
+    'BinaryAccuracy',
+    'BinaryCrossentropy',
+    'CategoricalAccuracy',
+    'CategoricalCrossentropy',
+    'CategoricalHinge',
+    'CosineSimilarity',
+    'FalseNegatives',
+    'FalsePositives',
+    'KLDivergence',
+    'MeanAbsoluteError',
+    'MeanSquaredError',
+    'AUC',
+]
 
 
 class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
@@ -77,24 +95,42 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(metric.result(), finalize(state))
 
   @parameterized.named_parameters(
-      # pylint: disable=g-complex-comprehension
-      (name, getattr(tf.keras.metrics, name)) for name in [
-          'Accuracy',
-          'BinaryAccuracy',
-          'BinaryCrossentropy',
-          'CategoricalAccuracy',
-          'CategoricalCrossentropy',
-          'CategoricalHinge',
-          'CosineSimilarity',
-          'FalseNegatives',
-          'FalsePositives',
-          'KLDivergence',
-          'MeanAbsoluteError',
-          'MeanSquaredError',
-      ]
-      # pylint: enable=g-complex-comprehension
-  )
-  def test_binary_metrics(self, metric_constructor):
+      (name, getattr(tf.keras.metrics, name)) for name in BINARY_METRIC_NAMES)
+  def test_binary_metrics_graph(self, metric_constructor):
+    if not version_check.is_tensorflow_version_newer('2.10.0', tf):
+      self.skipTest(
+          'requires https://github.com/keras-team/keras/commit/f6e8e9b1b999d22de9830fabc5e6d15a1818f0c6'
+      )
+    with tf.Graph().as_default():
+      with tf.compat.v1.Session() as sess:
+        metric = metric_constructor()
+        sess.run(tf.compat.v1.initializers.variables(metric.variables))
+        initialize, update, finalize = keras_utils.create_functional_metric_fns(
+            metric_constructor)
+        self.assert_binary_metric_variableless_functions(
+            initialize, update, finalize)
+        state = initialize()
+        self.assertAllEqual(self.evaluate(metric.variables), state)
+        predictions = [0.0, 1.0]
+        labels = [1.0, 1.0]
+        self.evaluate(metric.update_state(y_pred=predictions, y_true=labels))
+        state = update(state, y_pred=predictions, y_true=labels)
+        self.assertAllEqual(
+            self.evaluate(metric.variables), self.evaluate(state))
+        self.assertAllEqual(
+            self.evaluate(metric.result()), self.evaluate(finalize(state)))
+        predictions = [0.0, 1.0, 0.0]
+        labels = [1.0, 1.0, 0.0]
+        self.evaluate(metric.update_state(y_pred=predictions, y_true=labels))
+        state = update(state, y_pred=predictions, y_true=labels)
+        self.assertAllEqual(
+            self.evaluate(metric.variables), self.evaluate(state))
+        self.assertAllEqual(
+            self.evaluate(metric.result()), self.evaluate(finalize(state)))
+
+  @parameterized.named_parameters(
+      (name, getattr(tf.keras.metrics, name)) for name in BINARY_METRIC_NAMES)
+  def test_binary_metrics_eager(self, metric_constructor):
     metric = metric_constructor()
     initialize, update, finalize = keras_utils.create_functional_metric_fns(
         metric_constructor)
@@ -179,8 +215,14 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
       # pylint: enable=g-complex-comprehension
   )
   def test_unary_metrics(self, metric_constructor):
-    with self.assertRaises(TypeError):
-      keras_utils.create_functional_metric_fns(metric_constructor)
+    initialize, update, _ = keras_utils.create_functional_metric_fns(
+        metric_constructor)
+    state = initialize()
+    predictions = [0.0, 1.0]
+    labels = [1.0, 1.0]
+    with self.assertRaisesRegex(TypeError,
+                                'got an unexpected keyword argument'):
+      update(state, y_pred=predictions, y_true=labels)
 
   def test_composite_metrics_fn(self):
     initialize, update, finalize = keras_utils.create_functional_metric_fns(

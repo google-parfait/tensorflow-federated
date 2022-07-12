@@ -21,7 +21,7 @@
 import collections
 import functools
 import itertools
-from typing import Any, Callable, OrderedDict, Tuple, TypeVar, Union
+from typing import Any, Callable, List, OrderedDict, Tuple, TypeVar, Union
 
 import tensorflow as tf
 
@@ -91,25 +91,18 @@ def create_functional_metric_fns(
     raise TypeError('`metrics_constructor` must be a callable or '
                     f'`collections.OrderedDict`. Got {metrics_constructor!r} '
                     f'which is a {type(metrics_constructor)!r}.')
-
-  # Eagerly validate that the metrics_constructor returns values that
-  # have the expected properties to provide better debugging messages to caller.
-  def check_keras_metric_type(obj):
-    if not isinstance(obj, tf.keras.metrics.Metric):
-      raise TypeError('Found non-tf.keras.metrics.Metric value: '
-                      f'{type(obj)}: {obj!r}.')
-    try:
-      obj.update_state(
-          y_true=tf.zeros([1], obj.dtype), y_pred=tf.zeros([1], obj.dtype))
-    except TypeError as e:
-      raise TypeError('Only tf.keras.metrics.Metric with an `update_state` '
-                      'taking a `y_true` and a `y_pred` argument are supported.'
-                      'Examples include `Accuracy` and `Precision`, where as '
-                      '`Sum` is not supported') from e
-
   try:
-    metrics_structure = metrics_constructor()
-    tf.nest.map_structure(check_keras_metric_type, metrics_structure)
+    # Eagerly validate that the metrics_constructor returns values that
+    # have the expected properties to provide better debugging messages to
+    # caller.
+    def check_keras_metric_type(obj):
+      if not isinstance(obj, tf.keras.metrics.Metric):
+        raise TypeError('Found non-tf.keras.metrics.Metric value: '
+                        f'{type(obj)}: {obj!r}.')
+
+    with tf.Graph().as_default():
+      metrics_structure = metrics_constructor()
+      tf.nest.map_structure(check_keras_metric_type, metrics_structure)
   except ValueError as e:
     raise ValueError(
         '`metrics_constructor` must return a `tf.keras.metrics.Metric` '
@@ -126,14 +119,15 @@ def create_functional_metric_fns(
 
   # IMPORTANT: the following code relies on the order of the `tf.Variable`s in
   # `tf.keras.metrics.Metric.variables` to match the order that they are created
-  # at runtime. If this changes,
-  # `build_replace_variable_with_parameter_creator` will yield the wrong
-  # parameters in `update` and `finalize` calls.
+  # at runtime. If this changes, `build_replace_variable_with_parameter_creator`
+  # will yield the wrong parameters in `update` and `finalize` calls.
 
   @tf.function
   def initialize():
     with tf.variable_creator_scope(variable_utils.create_tensor_variable):
-      return tf.nest.map_structure(lambda m: m.variables, metrics_constructor())
+      return tf.nest.map_structure(
+          lambda m: [v.read_value() for v in m.variables],
+          metrics_constructor())
 
   def build_replace_variable_with_parameter_creator(parameters):
     """Create a creation function that replaces variables with parameters.
@@ -163,17 +157,32 @@ def create_functional_metric_fns(
 
     return creator_fn
 
+  def _get_unwrapped_py_func(fn: Any) -> Callable[..., Any]:
+    """Unwraps a `tf.function` decorated method."""
+    # Its possible a function was decorated with `tf.function` more than once,
+    # so we need to loop here.
+    while hasattr(fn, '__original_wrapped__'):
+      fn = fn.__original_wrapped__
+    return fn
+
   @tf.function
   def update(state, y_true, y_pred, sample_weight=None):
     del sample_weight  # Unused.
 
-    def update(metric):
-      metric.update_state(y_true, y_pred, sample_weight=None)
-      return metric.variables
+    def inner_update(metric: tf.keras.metrics.Metric) -> List[tf.Tensor]:
+      # We must unwrap `update_state` here because the `TensorVariable` is
+      # created in the outer `update` FuncGraph and since it is not constant
+      # it can't be closed over in the `update_state` FuncGraph. The
+      # `tf.function` was used to get ACD, which the `TensorVariable` provides
+      # for us, so we simply unwrap the function and call the Python method
+      # directly.
+      update_state_fn = _get_unwrapped_py_func(metric.update_state)
+      update_state_fn(y_true=y_true, y_pred=y_pred)
+      return [v.read_value() for v in metric.variables]
 
     with tf.variable_creator_scope(
         build_replace_variable_with_parameter_creator(state)):
-      return tf.nest.map_structure(update, metrics_constructor())
+      return tf.nest.map_structure(inner_update, metrics_constructor())
 
   @tf.function
   def finalize(state):
