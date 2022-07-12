@@ -92,10 +92,12 @@ py_test(
     deps = [
         ":jax_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
         "@absl_py//absl/testing:absltest",
     ],
