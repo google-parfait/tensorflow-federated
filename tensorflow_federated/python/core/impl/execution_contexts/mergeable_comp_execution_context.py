@@ -21,7 +21,7 @@
 import asyncio
 import functools
 import math
-from typing import Any, Callable, List, Optional, Sequence, Union
+from typing import Any, Awaitable, Callable, List, Optional, Sequence, Tuple, TypeVar, Union
 
 import attr
 from tensorflow_federated.python.common_libs import async_utils
@@ -38,6 +38,10 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
+
+
+# Type alias for the payload value in a partitioned data structure.
+Value = TypeVar('Value')
 
 
 class MergeTypeNotAssignableError(TypeError):
@@ -265,8 +269,8 @@ def _partition_value(
     return val
 
 
-def _split_value_into_subrounds(value: Any, type_spec: computation_types.Type,
-                                num_desired_subrounds: int) -> List[Any]:
+def _split_value_into_subrounds(value: Value, type_spec: computation_types.Type,
+                                num_desired_subrounds: int) -> List[Value]:
   """Partitions clients-placed values to subrounds, replicating other values.
 
   This function should be applied to an argument of a computation which is
@@ -326,10 +330,11 @@ def _split_value_into_subrounds(value: Any, type_spec: computation_types.Type,
   return values_to_return
 
 
-def _repackage_partitioned_values(after_merge_results,
-                                  result_type_spec: computation_types.Type):
+def _repackage_partitioned_values(
+    after_merge_results: Union[List[Value], Tuple[Value, ...]],
+    result_type_spec: computation_types.Type) -> Value:
   """Inverts `_split_value_into_subrounds` above."""
-  py_typecheck.check_type(after_merge_results, list)
+  py_typecheck.check_type(after_merge_results, (tuple, list))
   if result_type_spec.is_struct():
     after_merge_structs = [
         structure.from_container(x) for x in after_merge_results
@@ -357,7 +362,7 @@ def _repackage_partitioned_values(after_merge_results,
 class MergeableCompExecutionContextValue(typed_object.TypedObject):
   """Represents a value embedded in the `MergeableCompExecutionContext`."""
 
-  def __init__(self, value: Any, type_spec: computation_types.Type,
+  def __init__(self, value: Value, type_spec: computation_types.Type,
                num_desired_subrounds: int):
     py_typecheck.check_type(type_spec, computation_types.Type)
     self._type_signature = type_spec
@@ -376,7 +381,7 @@ class MergeableCompExecutionContextValue(typed_object.TypedObject):
 
 async def _invoke_up_to_merge_and_return_context(comp: MergeableCompForm, arg,
                                                  context: context_base.Context):
-  return await context.invoke(comp.up_to_merge, arg), context
+  return await context.invoke(comp.up_to_merge, arg)
 
 
 async def _merge_results(comp: MergeableCompForm, merge_partial, value_to_merge,
@@ -394,6 +399,102 @@ async def _compute_after_merged(comp: MergeableCompForm, original_arg,
   return await context.invoke(comp.after_merge, arg)
 
 
+async def _run_in_async_context_pool(
+    task_fn: Callable[[Any, context_base.Context],
+                      asyncio.Task], arg_list: Sequence[Any],
+    execution_contexts: Sequence[context_base.Context], initial_result: Any,
+    postprocessing_hook: Callable[[Any, Any, context_base.Context],
+                                  Awaitable[Any]]):
+  """Runs the tasks against the execution pool, sequentializing the extra work.
+
+  Args:
+    task_fn: A callable which accepts an argument and a context, returning an
+      `asyncio.Task`. This task itself is expected to return both a result and
+      the context which computed this result (and thus has completed its work).
+    arg_list: The sequence of arguments to feed into task_fn. When this sequence
+      is processed, the function will return.
+    execution_contexts: The sequence of asynchronous TFF contexts in which to
+      compute these results. If this sequence is shorter than `arg_list`, we
+      will sequentialize calls with the excess arguments.
+    initial_result: The initial result to pass to the first postprocessing call.
+    postprocessing_hook: A callback which process results. Will be called with
+      the result of the previous postprocessing call, the new result (returned
+      by the most recently completed invocation), and a context ready to
+      execute.
+
+  Returns:
+    The result of the final postprocessing call, and the context used to compute
+    this result.
+  """
+  contexts_by_task = {
+      task_fn(x, context): context
+      for x, context in zip(arg_list, execution_contexts)
+  }
+  arg_list_index = len(execution_contexts)
+  result = initial_result
+  pending_tasks = set(contexts_by_task.keys())
+
+  while pending_tasks:
+    done, pending_tasks = await asyncio.wait(
+        pending_tasks, return_when=asyncio.FIRST_COMPLETED)
+    for done_task in done:
+      context = contexts_by_task[done_task]
+      partial_result = done_task.result()
+      result = await postprocessing_hook(result, partial_result, context)
+      if arg_list_index < len(arg_list):
+        # There are still args to be processed; add a new invocation to
+        # pending_tasks and increment arg_list_index.
+        task = task_fn(arg_list[arg_list_index], context)
+        pending_tasks.add(task)
+        contexts_by_task[task] = context
+        arg_list_index += 1
+
+  return result, context
+
+
+async def _invoke_merge_in_async_pool(
+    comp: MergeableCompForm, arg_list: Sequence[Any],
+    execution_contexts: Sequence[context_base.Context]):
+  """Invokes up to merge and merge in a pool of async contexts."""
+
+  def task_fn(x, context):
+    return asyncio.create_task(
+        _invoke_up_to_merge_and_return_context(comp, x, context))
+
+  initial_result = None
+
+  async def postprocessing(result, partial_result, context):
+    # We run merge on the partial results.
+    if result is None:
+      return partial_result
+    else:
+      return await _merge_results(comp, result, partial_result, context)
+
+  return await _run_in_async_context_pool(task_fn, arg_list, execution_contexts,
+                                          initial_result, postprocessing)
+
+
+async def _invoke_after_merge_in_async_pool(
+    comp: MergeableCompForm, merge_result: Any, arg_list: Sequence[Any],
+    execution_contexts: Sequence[context_base.Context]) -> Sequence[Any]:
+  """Invokes after_merge in a pool of async contexts, returning result."""
+
+  def task_fn(x, context):
+    return asyncio.create_task(
+        _compute_after_merged(comp, x, merge_result, context))
+
+  initial_result = ()
+
+  async def postprocessing(result, partial_result, context):
+    del context  # Unused
+    # We simply concatenate all the results in a new tuple for repackaging.
+    return (*result, partial_result)
+
+  after_merge_results, _ = await _run_in_async_context_pool(
+      task_fn, arg_list, execution_contexts, initial_result, postprocessing)
+  return list(after_merge_results)
+
+
 async def _invoke_mergeable_comp_form(
     comp: MergeableCompForm, arg: Optional[MergeableCompExecutionContextValue],
     execution_contexts: Sequence[context_base.Context]):
@@ -404,20 +505,8 @@ async def _invoke_mergeable_comp_form(
   else:
     arg_list = [None for _ in range(len(execution_contexts))]
 
-  up_to_merge_futures = asyncio.as_completed([
-      _invoke_up_to_merge_and_return_context(comp, x, context)
-      for x, context in zip(arg_list, execution_contexts)
-  ])
-
-  # We compute merge using the most-recently completed context.
-  # TODO(b/195349085): merge in a hierarchical fashion here rather than
-  # linearly.
-  merge_result, merge_context = await next(up_to_merge_futures)
-
-  for up_to_merge_result_future in up_to_merge_futures:
-    to_merge, merge_context = await up_to_merge_result_future
-    merge_result = await _merge_results(comp, merge_result, to_merge,
-                                        merge_context)
+  merge_result, merge_context = await _invoke_merge_in_async_pool(
+      comp, arg_list, execution_contexts)
 
   if type_analysis.contains_only(comp.after_merge.type_signature.result,
                                  lambda x: not x.is_federated() or x.all_equal):
@@ -425,13 +514,12 @@ async def _invoke_mergeable_comp_form(
     # therefore be independent of which element in the arg_list is passed--so we
     # avoid the extra work.
     top_level_arg_slice = arg_list[0]
-    return await _compute_after_merged(comp, top_level_arg_slice, merge_result,
-                                       merge_context)
+    result = await _compute_after_merged(comp, top_level_arg_slice,
+                                         merge_result, merge_context)
+    return result
 
-  after_merge_results = await asyncio.gather(*[
-      _compute_after_merged(comp, x, merge_result, context)
-      for x, context in zip(arg_list, execution_contexts)
-  ])
+  after_merge_results = await _invoke_after_merge_in_async_pool(
+      comp, merge_result, arg_list, execution_contexts)
 
   repackaged_values = _repackage_partitioned_values(
       after_merge_results,
@@ -449,10 +537,13 @@ class MergeableCompExecutionContext(context_base.Context):
   runtime which retries the entire round in the case of e.g. a worker failure.
   """
 
-  def __init__(self,
-               async_contexts: Sequence[context_base.Context],
-               compiler_fn: Optional[Callable[[computation_base.Computation],
-                                              MergeableCompForm]] = None):
+  def __init__(
+      self,
+      async_contexts: Sequence[context_base.Context],
+      compiler_fn: Optional[Callable[[computation_base.Computation],
+                                     MergeableCompForm]] = None,
+      num_subrounds: Optional[int] = None,
+  ):
     """Initializes a MergeableCompExecutionContext.
 
     Args:
@@ -462,6 +553,10 @@ class MergeableCompExecutionContext(context_base.Context):
       compiler_fn: An optional callable which accepts a `tff.Computation` and
         returns an instance of `MergeableCompForm`. If not provided, this
         context will only execute instances of `MergeableCompForm` directly.
+      num_subrounds: An optional integer, specifying total the number of
+        subrounds desired. If unspecified, the length of `async_contexts`
+        will determine the number of subrounds. If more subrounds are requested
+        than contexts are passed, invocations will be sequentialized.
     """
     self._async_runner = async_utils.AsyncThreadRunner()
     for ctx in async_contexts:
@@ -471,6 +566,9 @@ class MergeableCompExecutionContext(context_base.Context):
                          'MergeableCompExecutionContext must implement invoke '
                          'as a coroutine function.')
     self._async_execution_contexts = async_contexts
+    self._num_subrounds = (
+        num_subrounds
+        if num_subrounds is not None else len(self._async_execution_contexts))
     if compiler_fn is not None:
       self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
     else:
@@ -494,8 +592,7 @@ class MergeableCompExecutionContext(context_base.Context):
 
     if arg is not None:
       arg = MergeableCompExecutionContextValue(
-          arg, comp.up_to_merge.type_signature.parameter,
-          len(self._async_execution_contexts))
+          arg, comp.up_to_merge.type_signature.parameter, self._num_subrounds)
 
     return type_conversions.type_to_py_container(
         self._async_runner.run_coro_and_return_result(

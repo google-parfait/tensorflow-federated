@@ -31,6 +31,8 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 
+_NUM_EXPLICIT_SUBROUNDS = 50
+
 
 def build_sum_client_arg_computation(
     server_arg_type: computation_types.FederatedType,
@@ -429,9 +431,25 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       context.invoke(return_one)
 
-  @parameterized.named_parameters(('100_clients', (0, list(range(100)))),
-                                  ('fewer_clients_than_subrounds', (0, [0])))
-  def test_runs_computation_with_clients_placed_return_values(self, arg):
+  @parameterized.named_parameters(
+      ('100_clients_five_contexts_inferred_subrounds',
+       (0, list(range(100))), None, 5),
+      ('100_clients_sixty_contexts_inferred_subrounds',
+       (0, list(range(100))), None, 60),
+      ('100_clients_five_contexts_fifty_subrounds',
+       (0, list(range(100))), _NUM_EXPLICIT_SUBROUNDS, 5),
+      ('100_clients_sixty_contexts_fifty_subrounds',
+       (0, list(range(100))), _NUM_EXPLICIT_SUBROUNDS, 60),
+      ('fewer_clients_and_contexts_than_inferred_subrounds',
+       (0, [0]), None, int(_NUM_EXPLICIT_SUBROUNDS / 2)),
+      ('fewer_clients_more_contexts_than_inferred_subrounds',
+       (0, [0]), None, int(_NUM_EXPLICIT_SUBROUNDS * 2)),
+      ('fewer_clients_and_contexts_than_explicit_subrounds',
+       (0, [0]), _NUM_EXPLICIT_SUBROUNDS, int(_NUM_EXPLICIT_SUBROUNDS / 2)),
+      ('fewer_clients_more_contexts_than_explicit_subrounds',
+       (0, [0]), _NUM_EXPLICIT_SUBROUNDS, int(_NUM_EXPLICIT_SUBROUNDS * 2)))
+  def test_runs_computation_with_clients_placed_return_values(
+      self, arg, num_subrounds, num_contexts):
     up_to_merge = build_sum_client_arg_computation(
         computation_types.at_server(tf.int32),
         computation_types.at_clients(tf.int32))
@@ -444,10 +462,11 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
         up_to_merge=up_to_merge, merge=merge, after_merge=after_merge)
     contexts = [
         async_execution_context.AsyncExecutionContext(
-            python_executor_stacks.local_executor_factory()) for _ in range(5)
+            python_executor_stacks.local_executor_factory())
+        for _ in range(num_contexts)
     ]
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        contexts)
+        contexts, num_subrounds=num_subrounds)
     # We preemptively package as a struct to work around shortcircuiting in
     # type_to_py_container in a non-Struct argument case.
     arg = structure.Struct.unnamed(*arg)
@@ -455,14 +474,28 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
         arg, after_merge.type_signature.result)
     result = mergeable_comp_context.invoke(mergeable_comp_form, arg)
 
-    self.assertEqual(result, expected_result)
+    # We assert on the sets representing clients-placed values, rather than the
+    # values themselves, since clients-placed values are represented as lists
+    # and this test would therefore be dependent on the order in which these
+    # values were returned.
+    self.assertEqual(result['server_arg'], expected_result['server_arg'])
+    self.assertSameElements(result['client_arg'], expected_result['client_arg'])
+    self.assertCountEqual(result['client_arg'], expected_result['client_arg'])
 
   @parameterized.named_parameters(
-      ('500_clients', (0, list(range(500))), sum(range(500))),
-      ('500_clients_nonzero_server_values',
-       (1, list(range(500))), sum(range(500))),
-      ('fewer_clients_than_subrounds', (0, [1]), 1))
-  def test_computes_sum_of_clients_values(self, arg, expected_sum):
+      ('500_clients_inferred_subrounds',
+       (0, list(range(500))), sum(range(500)), None),
+      ('500_clients_nonzero_server_values_inferred_subrounds',
+       (1, list(range(500))), sum(range(500)), None),
+      ('fewer_clients_than__inferred_subrounds', (0, [1]), 1, None),
+      ('500_clients_explicit_subrounds',
+       (0, list(range(500))), sum(range(500)), _NUM_EXPLICIT_SUBROUNDS),
+      ('500_clients_nonzero_server_values_explicit_subrounds',
+       (1, list(range(500))), sum(range(500)), _NUM_EXPLICIT_SUBROUNDS),
+      ('fewer_clients_than_explicit_subrounds',
+       (0, [1]), 1, _NUM_EXPLICIT_SUBROUNDS))
+  def test_computes_sum_of_clients_values(self, arg, expected_sum,
+                                          num_subrounds):
     up_to_merge = build_sum_client_arg_computation(
         computation_types.at_server(tf.int32),
         computation_types.at_clients(tf.int32))
@@ -477,7 +510,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
             python_executor_stacks.local_executor_factory()) for _ in range(5)
     ]
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        contexts)
+        contexts, num_subrounds=num_subrounds)
 
     expected_result = type_conversions.type_to_py_container(
         expected_sum, after_merge.type_signature.result)
@@ -486,9 +519,14 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
     self.assertEqual(result, expected_result)
 
   @parameterized.named_parameters(
-      ('100_clients', (100, list(range(100))), sum(range(101))),
-      ('fewer_clients_than_subrounds', (1, [1]), 2))
-  def test_computes_sum_of_all_values(self, arg, expected_sum):
+      ('100_clients_inferred_subrounds',
+       (100, list(range(100))), sum(range(101)), None),
+      ('100_clients_explicit_subrounds',
+       (100, list(range(100))), sum(range(101)), _NUM_EXPLICIT_SUBROUNDS),
+      ('fewer_clients_than_inferred_subrounds', (1, [1]), 2, None),
+      ('fewer_clients_than_explicit_subrounds',
+       (1, [1]), 2, _NUM_EXPLICIT_SUBROUNDS))
+  def test_computes_sum_of_all_values(self, arg, expected_sum, num_subrounds):
     up_to_merge = build_sum_client_arg_computation(
         computation_types.at_server(tf.int32),
         computation_types.at_clients(tf.int32))
@@ -503,14 +541,17 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
             python_executor_stacks.local_executor_factory()) for _ in range(1)
     ]
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        contexts)
+        contexts, num_subrounds=num_subrounds)
 
     expected_result = type_conversions.type_to_py_container(
         expected_sum, after_merge.type_signature.result)
     result = mergeable_comp_context.invoke(mergeable_comp_form, arg)
     self.assertEqual(expected_result, result)
 
-  def test_counts_clients_with_noarg_computation(self):
+  @parameterized.named_parameters(
+      ('inferred_subrounds', None),
+      ('explicit_subrounds', _NUM_EXPLICIT_SUBROUNDS))
+  def test_counts_clients_with_noarg_computation(self, num_subrounds):
     num_clients = 100
     num_executors = 5
     up_to_merge = build_noarg_count_clients_computation()
@@ -527,7 +568,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
               python_executor_stacks.local_executor_factory(
                   default_num_clients=int(num_clients / num_executors))))
     mergeable_comp_context = mergeable_comp_execution_context.MergeableCompExecutionContext(
-        contexts)
+        contexts, num_subrounds=num_subrounds)
 
     expected_result = num_clients
     result = mergeable_comp_context.invoke(mergeable_comp_form, None)
