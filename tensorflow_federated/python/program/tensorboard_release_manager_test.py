@@ -124,15 +124,29 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
            ('y', [('c', tf.string)])]),
        [('x/a', True), ('x/b', 1)]),
       ('attr',
-       program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
        computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
        [('a', True), ('b', 1)]),
       ('attr_nested',
-       program_test_utils.TestAttrObject2(
-           program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
+           program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObject1('a')),
+           program_test_utils.TestAttrObj1('a')),
+       computation_types.SequenceType([
+           ('x', [('a', tf.bool), ('b', tf.int32)]),
+           ('y', [('c', tf.string)])]),
+       [('a/a', True), ('a/b', 1)]),
+      ('namedtuple',
+       program_test_utils.TestNamedtupleObj2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
+       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       [('a', True), ('b', 1)]),
+      ('namedtuple_nested',
+       program_test_utils.TestNamedtupleObj2(
+           program_test_utils.TestNamedtupleObj2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestNamedtupleObj1('a')),
        computation_types.SequenceType([
            ('x', [('a', tf.bool), ('b', tf.int32)]),
            ('y', [('c', tf.string)])]),

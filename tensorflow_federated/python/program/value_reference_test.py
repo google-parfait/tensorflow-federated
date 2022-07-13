@@ -67,17 +67,29 @@ class MaterializeValueTest(parameterized.TestCase,
         'y': {'c': 'a'}},
        {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}}),
       ('attr',
-       program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       program_test_utils.TestAttrObject2(True, 1)),
+       program_test_utils.TestAttrObj2(True, 1)),
       ('attr_nested',
-       program_test_utils.TestAttrObject2(
-           program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
+           program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObject1('a')),
-       program_test_utils.TestAttrObject2(
-           program_test_utils.TestAttrObject2(True, 1),
-           program_test_utils.TestAttrObject1('a'))),
+           program_test_utils.TestAttrObj1('a')),
+       program_test_utils.TestAttrObj2(
+           program_test_utils.TestAttrObj2(True, 1),
+           program_test_utils.TestAttrObj1('a'))),
+      ('namedtuple',
+       program_test_utils.TestNamedtupleObj2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
+       program_test_utils.TestNamedtupleObj2(True, 1)),
+      ('namedtuple_nested',
+       program_test_utils.TestNamedtupleObj2(
+           program_test_utils.TestNamedtupleObj2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestNamedtupleObj1('a')),
+       program_test_utils.TestNamedtupleObj2(
+           program_test_utils.TestNamedtupleObj2(True, 1),
+           program_test_utils.TestNamedtupleObj1('a'))),
   )
   # pyformat: enable
   async def test_returns_value(self, value, expected_value):

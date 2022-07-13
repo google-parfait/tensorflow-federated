@@ -74,15 +74,28 @@ class FlattenWithNameTest(parameterized.TestCase, tf.test.TestCase):
         ('x/b', program_test_utils.TestMaterializableValueReference(1)),
         ('y/c', 'a')]),
       ('attr',
-       program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
        [('a', True),
         ('b', program_test_utils.TestMaterializableValueReference(1))]),
       ('attr_nested',
-       program_test_utils.TestAttrObject2(
-           program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
+           program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObject1('a')),
+           program_test_utils.TestAttrObj1('a')),
+       [('a/a', True),
+        ('a/b', program_test_utils.TestMaterializableValueReference(1)),
+        ('b/a', 'a')]),
+      ('namedtuple',
+       program_test_utils.TestNamedtupleObj2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
+       [('a', True),
+        ('b', program_test_utils.TestMaterializableValueReference(1))]),
+      ('namedtuple_nested',
+       program_test_utils.TestNamedtupleObj2(
+           program_test_utils.TestNamedtupleObj2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestNamedtupleObj1('a')),
        [('a/a', True),
         ('a/b', program_test_utils.TestMaterializableValueReference(1)),
         ('b/a', 'a')]),

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utilities for testing the program library."""
 
-
+import collections
 from typing import Any
 
 import attr
@@ -25,14 +25,18 @@ from tensorflow_federated.python.program import value_reference
 
 
 @attr.s
-class TestAttrObject1():
+class TestAttrObj1():
   a = attr.ib()
 
 
 @attr.s
-class TestAttrObject2():
+class TestAttrObj2():
   a = attr.ib()
   b = attr.ib()
+
+
+TestNamedtupleObj1 = collections.namedtuple('TestNamedtupleObj1', ['a'])
+TestNamedtupleObj2 = collections.namedtuple('TestNamedtupleObj1', ['a', 'b'])
 
 
 class TestMaterializableValueReference(

@@ -305,17 +305,29 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase,
         'y': {'c': 'a'}},
        {'x': {'a': np.bool_(True), 'b': np.int32(1)}, 'y': {'c': b'a'}}),
       ('attr',
-       program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       program_test_utils.TestAttrObject2(np.bool_(True), np.int32(1))),
+       program_test_utils.TestAttrObj2(np.bool_(True), np.int32(1))),
       ('attr_nested',
-       program_test_utils.TestAttrObject2(
-           program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
+           program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObject1('a')),
-       program_test_utils.TestAttrObject2(
-           program_test_utils.TestAttrObject2(np.bool_(True), np.int32(1)),
-           program_test_utils.TestAttrObject1(b'a'))),
+           program_test_utils.TestAttrObj1('a')),
+       program_test_utils.TestAttrObj2(
+           program_test_utils.TestAttrObj2(np.bool_(True), np.int32(1)),
+           program_test_utils.TestAttrObj1(b'a'))),
+      ('namedtuple',
+       program_test_utils.TestNamedtupleObj2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
+       program_test_utils.TestNamedtupleObj2(np.bool_(True), np.int32(1))),
+      ('namedtuple_nested',
+       program_test_utils.TestNamedtupleObj2(
+           program_test_utils.TestNamedtupleObj2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestNamedtupleObj1('a')),
+       program_test_utils.TestNamedtupleObj2(
+           program_test_utils.TestNamedtupleObj2(np.bool_(True), np.int32(1)),
+           program_test_utils.TestNamedtupleObj1(b'a'))),
   )
   # pyformat: enable
   async def test_returns_saved_program_state(self, program_state,
@@ -541,14 +553,24 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
         'y': {'c': 'a'}},
        [True, 1, 'a']),
       ('attr',
-       program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
        [True, 1]),
       ('attr_nested',
-       program_test_utils.TestAttrObject2(
-           program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
+           program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObject1('a')),
+           program_test_utils.TestAttrObj1('a')),
+       [True, 1, 'a']),
+      ('namedtuple',
+       program_test_utils.TestNamedtupleObj2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
+       [True, 1]),
+      ('namedtuple_nested',
+       program_test_utils.TestNamedtupleObj2(
+           program_test_utils.TestNamedtupleObj2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestNamedtupleObj1('a')),
        [True, 1, 'a']),
   )
   # pyformat: enable

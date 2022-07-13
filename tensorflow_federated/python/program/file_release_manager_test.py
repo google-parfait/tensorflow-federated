@@ -755,15 +755,29 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
            ('y', [('c', tf.string)])]),
        [{'key': '1', 'x/a': 'True', 'x/b': '1', 'y/c': 'a'}]),
       ('attr',
-       program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
        computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
        [{'key': '1', 'a': 'True', 'b': '1'}]),
       ('attr_nested',
-       program_test_utils.TestAttrObject2(
-           program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
+           program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObject1('a')),
+           program_test_utils.TestAttrObj1('a')),
+       computation_types.SequenceType([
+           ('a', [('a', tf.bool), ('b', tf.int32)]),
+           ('b', [('c', tf.string)])]),
+       [{'key': '1', 'a/a': 'True', 'a/b': '1', 'b/a': 'a'}]),
+      ('namedtuple',
+       program_test_utils.TestNamedtupleObj2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
+       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       [{'key': '1', 'a': 'True', 'b': '1'}]),
+      ('namedtuple_nested',
+       program_test_utils.TestNamedtupleObj2(
+           program_test_utils.TestNamedtupleObj2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestNamedtupleObj1('a')),
        computation_types.SequenceType([
            ('a', [('a', tf.bool), ('b', tf.int32)]),
            ('b', [('c', tf.string)])]),
@@ -968,15 +982,29 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
            ('y', [('c', tf.string)])]),
        [True, 1, 'a']),
       ('attr',
-       program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
        computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
        [True, 1]),
       ('attr_nested',
-       program_test_utils.TestAttrObject2(
-           program_test_utils.TestAttrObject2(
+       program_test_utils.TestAttrObj2(
+           program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
-           program_test_utils.TestAttrObject1('a')),
+           program_test_utils.TestAttrObj1('a')),
+       computation_types.SequenceType([
+           ('a', [('a', tf.bool), ('b', tf.int32)]),
+           ('b', [('c', tf.string)])]),
+       [True, 1, 'a']),
+      ('namedtuple',
+       program_test_utils.TestNamedtupleObj2(
+           True, program_test_utils.TestMaterializableValueReference(1)),
+       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       [True, 1]),
+      ('namedtuple_nested',
+       program_test_utils.TestNamedtupleObj2(
+           program_test_utils.TestNamedtupleObj2(
+               True, program_test_utils.TestMaterializableValueReference(1)),
+           program_test_utils.TestNamedtupleObj1('a')),
        computation_types.SequenceType([
            ('a', [('a', tf.bool), ('b', tf.int32)]),
            ('b', [('c', tf.string)])]),
