@@ -43,7 +43,7 @@ def _request(rpc_func, request):
     except grpc.RpcError as e:
       if _is_retryable_grpc_error(e):
         logging.info("Received retryable gRPC error: %s", e)
-        raise executors_errors.RetryableError(e)
+        raise executors_errors.RetryableGRPCError(e)
       else:
         raise
 
