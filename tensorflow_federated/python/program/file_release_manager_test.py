@@ -729,56 +729,56 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
       # structures
       ('list',
        [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
-       computation_types.SequenceType([tf.bool, tf.int32, tf.string]),
+       computation_types.StructType([tf.bool, tf.int32, tf.string]),
        [{'key': '1', '0': 'True', '1': '1', '2': 'a'}]),
-      ('list_empty', [], computation_types.SequenceType([]), [{'key': '1'}]),
+      ('list_empty', [], computation_types.StructType([]), [{'key': '1'}]),
       ('list_nested',
        [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
-       computation_types.SequenceType([[tf.bool, tf.int32], [tf.string]]),
+       computation_types.StructType([[tf.bool, tf.int32], [tf.string]]),
        [{'key': '1', '0/0': 'True', '0/1': '1', '1/0': 'a'}]),
       ('dict',
        {'a': True,
         'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a'},
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string)]),
        [{'key': '1', 'a': 'True', 'b': '1', 'c': 'a'}]),
-      ('dict_empty', {}, computation_types.SequenceType([]), [{'key': '1'}]),
+      ('dict_empty', {}, computation_types.StructType([]), [{'key': '1'}]),
       ('dict_nested',
        {'x': {'a': True,
               'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('x', [('a', tf.bool), ('b', tf.int32)]),
            ('y', [('c', tf.string)])]),
        [{'key': '1', 'x/a': 'True', 'x/b': '1', 'y/c': 'a'}]),
       ('attr',
        program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
        [{'key': '1', 'a': 'True', 'b': '1'}]),
       ('attr_nested',
        program_test_utils.TestAttrObj2(
            program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestAttrObj1('a')),
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('a', [('a', tf.bool), ('b', tf.int32)]),
            ('b', [('c', tf.string)])]),
        [{'key': '1', 'a/a': 'True', 'a/b': '1', 'b/a': 'a'}]),
       ('namedtuple',
        program_test_utils.TestNamedtupleObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
        [{'key': '1', 'a': 'True', 'b': '1'}]),
       ('namedtuple_nested',
        program_test_utils.TestNamedtupleObj2(
            program_test_utils.TestNamedtupleObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestNamedtupleObj1('a')),
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('a', [('a', tf.bool), ('b', tf.int32)]),
            ('b', [('c', tf.string)])]),
        [{'key': '1', 'a/a': 'True', 'a/b': '1', 'b/a': 'a'}]),
@@ -956,56 +956,56 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       # structures
       ('list',
        [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
-       computation_types.SequenceType([tf.bool, tf.int32, tf.string]),
+       computation_types.StructType([tf.bool, tf.int32, tf.string]),
        [True, 1, 'a']),
-      ('list_empty', [], computation_types.SequenceType([]), []),
+      ('list_empty', [], computation_types.StructType([]), []),
       ('list_nested',
        [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
-       computation_types.SequenceType([[tf.bool, tf.int32], [tf.string]]),
+       computation_types.StructType([[tf.bool, tf.int32], [tf.string]]),
        [True, 1, 'a']),
       ('dict',
        {'a': True,
         'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a'},
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string)]),
        [True, 1, 'a']),
-      ('dict_empty', {}, computation_types.SequenceType([]), []),
+      ('dict_empty', {}, computation_types.StructType([]), []),
       ('dict_nested',
        {'x': {'a': True,
               'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('x', [('a', tf.bool), ('b', tf.int32)]),
            ('y', [('c', tf.string)])]),
        [True, 1, 'a']),
       ('attr',
        program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
        [True, 1]),
       ('attr_nested',
        program_test_utils.TestAttrObj2(
            program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestAttrObj1('a')),
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('a', [('a', tf.bool), ('b', tf.int32)]),
            ('b', [('c', tf.string)])]),
        [True, 1, 'a']),
       ('namedtuple',
        program_test_utils.TestNamedtupleObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
        [True, 1]),
       ('namedtuple_nested',
        program_test_utils.TestNamedtupleObj2(
            program_test_utils.TestNamedtupleObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestNamedtupleObj1('a')),
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('a', [('a', tf.bool), ('b', tf.int32)]),
            ('b', [('c', tf.string)])]),
        [True, 1, 'a']),

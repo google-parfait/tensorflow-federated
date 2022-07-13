@@ -71,42 +71,42 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
       # structures
       ('list',
        [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
-       computation_types.SequenceType([tf.bool, tf.int32, tf.string]),
+       computation_types.StructType([tf.bool, tf.int32, tf.string]),
        [True, 1, 'a']),
-      ('list_empty', [], computation_types.SequenceType([]), []),
+      ('list_empty', [], computation_types.StructType([]), []),
       ('list_nested',
        [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
-       computation_types.SequenceType([[tf.bool, tf.int32], [tf.string]]),
+       computation_types.StructType([[tf.bool, tf.int32], [tf.string]]),
        [[True, 1], ['a']]),
       ('dict',
        {'a': True,
         'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a'},
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string)]),
        {'a': True, 'b': 1, 'c': 'a'}),
-      ('dict_empty', {}, computation_types.SequenceType([]), {}),
+      ('dict_empty', {}, computation_types.StructType([]), {}),
       ('dict_nested',
        {'x': {'a': True,
               'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('x', [('a', tf.bool), ('b', tf.int32)]),
            ('y', [('c', tf.string)])]),
        {'x': {'a': True, 'b': 1}, 'y': {'c': 'a'}}),
       ('attr',
        program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
        program_test_utils.TestAttrObj2(True, 1)),
       ('attr_nested',
        program_test_utils.TestAttrObj2(
            program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestAttrObj1('a')),
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('a', [('a', tf.bool), ('b', tf.int32)]),
            ('b', [('c', tf.string)])]),
        program_test_utils.TestAttrObj2(
@@ -115,14 +115,14 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
       ('namedtuple',
        program_test_utils.TestNamedtupleObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
        program_test_utils.TestNamedtupleObj2(True, 1)),
       ('namedtuple_nested',
        program_test_utils.TestNamedtupleObj2(
            program_test_utils.TestNamedtupleObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestNamedtupleObj1('a')),
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('x', [('a', tf.bool), ('b', tf.int32)]),
            ('y', [('c', tf.string)])]),
        program_test_utils.TestNamedtupleObj2(

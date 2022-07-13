@@ -100,17 +100,17 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       # structures
       ('list',
        [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
-       computation_types.SequenceType([tf.bool, tf.int32, tf.string]),
+       computation_types.StructType([tf.bool, tf.int32, tf.string]),
        [('0', True), ('1', 1)]),
       ('list_nested',
        [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
-       computation_types.SequenceType([[tf.bool, tf.int32], [tf.string]]),
+       computation_types.StructType([[tf.bool, tf.int32], [tf.string]]),
        [('0/0', True), ('0/1', 1)]),
       ('dict',
        {'a': True,
         'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a'},
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('a', tf.bool),
            ('b', tf.int32),
            ('c', tf.string)]),
@@ -119,35 +119,35 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
        {'x': {'a': True,
               'b': program_test_utils.TestMaterializableValueReference(1)},
         'y': {'c': 'a'}},
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('x', [('a', tf.bool), ('b', tf.int32)]),
            ('y', [('c', tf.string)])]),
        [('x/a', True), ('x/b', 1)]),
       ('attr',
        program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
        [('a', True), ('b', 1)]),
       ('attr_nested',
        program_test_utils.TestAttrObj2(
            program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestAttrObj1('a')),
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('x', [('a', tf.bool), ('b', tf.int32)]),
            ('y', [('c', tf.string)])]),
        [('a/a', True), ('a/b', 1)]),
       ('namedtuple',
        program_test_utils.TestNamedtupleObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.SequenceType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
        [('a', True), ('b', 1)]),
       ('namedtuple_nested',
        program_test_utils.TestNamedtupleObj2(
            program_test_utils.TestNamedtupleObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestNamedtupleObj1('a')),
-       computation_types.SequenceType([
+       computation_types.StructType([
            ('x', [('a', tf.bool), ('b', tf.int32)]),
            ('y', [('c', tf.string)])]),
        [('a/a', True), ('a/b', 1)]),
