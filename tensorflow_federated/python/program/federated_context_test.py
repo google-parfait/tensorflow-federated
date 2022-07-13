@@ -12,32 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
+from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import federated_context
-
-
-class _TestFederatedContext(federated_context.FederatedContext):
-  """A test implementation of `tff.program.FederatedContext`.
-
-  A `tff.program.FederatedContext` can not be constructed directly because it
-  has abstract methods, this implementation exists to make it possible to
-  construct instances of `tff.program.FederatedContext` that can used as stubs
-  or mocked.
-  """
-
-  def invoke(self, comp: computation_base.Computation, arg: Any) -> Any:
-    del comp, arg  # Unused.
-    raise NotImplementedError
 
 
 class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
@@ -118,7 +103,7 @@ class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
 class CheckInFederatedContextTest(parameterized.TestCase):
 
   def test_does_not_raise_value_error(self):
-    context = _TestFederatedContext()
+    context = mock.MagicMock(spec=federated_context.FederatedContext)
 
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()
@@ -153,7 +138,7 @@ class CheckInFederatedContextTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()
 
-    context = _TestFederatedContext()
+    context = mock.MagicMock(spec=federated_context.FederatedContext)
     with context_stack_impl.context_stack.install(context):
       try:
         federated_context.check_in_federated_context()
