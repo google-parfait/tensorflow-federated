@@ -41,7 +41,7 @@ class CoroValueReferenceTest(parameterized.TestCase,
 
   @parameterized.named_parameters(
       ('tensor', _coro(1), computation_types.TensorType(tf.int32)),
-      ('sequence', _coro((1, 2, 3)), computation_types.SequenceType(tf.int32)),
+      ('sequence', _coro([1, 2, 3]), computation_types.SequenceType(tf.int32)),
   )
   def test_init_does_not_raise_type_error_with_type_signature(
       self, coro, type_signature):
@@ -67,10 +67,9 @@ class CoroValueReferenceTest(parameterized.TestCase,
           coro=coro, type_signature=type_signature)
 
   @parameterized.named_parameters(
-      ('federated',
-       computation_types.FederatedType(
-           computation_types.TensorType(tf.int32), placements.SERVER)),
-      ('struct', computation_types.StructType([])),
+      ('federated', computation_types.FederatedType(tf.int32,
+                                                    placements.SERVER)),
+      ('struct', computation_types.StructWithPythonType([], list)),
   )
   def test_init_raises_type_error_with_type_signature(self, type_signature):
     coro = _coro(1)
@@ -106,17 +105,13 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
            _coro(1), computation_types.TensorType(tf.int32))),
       ('federated',
        _coro(1),
-       computation_types.FederatedType(
-           computation_types.TensorType(tf.int32), placements.SERVER),
+       computation_types.FederatedType(tf.int32, placements.SERVER),
        native_platform.CoroValueReference(
            _coro(1), computation_types.TensorType(tf.int32))),
       ('struct_unnamed',
-       _coro((True, 1, 'a')),
-       computation_types.StructType([
-           (None, computation_types.TensorType(tf.bool)),
-           (None, computation_types.TensorType(tf.int32)),
-           (None, computation_types.TensorType(tf.string)),
-       ]),
+       _coro([True, 1, 'a']),
+       computation_types.StructWithPythonType([
+           tf.bool, tf.int32, tf.string], list),
        structure.Struct([
            (None, native_platform.CoroValueReference(
                _coro(True), computation_types.TensorType(tf.bool))),
@@ -127,11 +122,11 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
        ])),
       ('struct_named',
        _coro(collections.OrderedDict([('a', True), ('b', 1), ('c', 'a')])),
-       computation_types.StructType([
-           ('a', computation_types.TensorType(tf.bool)),
-           ('b', computation_types.TensorType(tf.int32)),
-           ('c', computation_types.TensorType(tf.string)),
-       ]),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+       ], collections.OrderedDict),
        structure.Struct([
            ('a', native_platform.CoroValueReference(
                _coro(True), computation_types.TensorType(tf.bool))),
@@ -145,15 +140,15 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
            ('x', collections.OrderedDict([('a', True), ('b', 1)])),
            ('y', collections.OrderedDict([('c', 'a')])),
        ])),
-       computation_types.StructType([
-           ('x', computation_types.StructType([
-               ('a', computation_types.TensorType(tf.bool)),
-               ('b', computation_types.TensorType(tf.int32)),
-           ])),
-           ('y', computation_types.StructType([
-               ('c', computation_types.TensorType(tf.string)),
-           ])),
-       ]),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
        structure.Struct([
            ('x', structure.Struct([
                ('a', native_platform.CoroValueReference(
@@ -217,10 +212,8 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
   # pyformat: disable
   @parameterized.named_parameters(
       ('federated', computation_types.FederatedType(
-          computation_types.TensorType(tf.int32), placements.CLIENTS)),
-      ('function', computation_types.FunctionType(
-          computation_types.TensorType(tf.int32),
-          computation_types.TensorType(tf.int32))),
+          tf.int32, placements.CLIENTS)),
+      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
       ('placement', computation_types.PlacementType()),
   )
   # pyformat: enable
@@ -233,12 +226,9 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
           coro=coro, type_signature=type_signature)
 
   async def test_returned_structure_materialized_sequentially(self):
-    coro = _coro((True, 1, 'a'))
-    type_signature = computation_types.StructType([
-        (None, computation_types.TensorType(tf.bool)),
-        (None, computation_types.TensorType(tf.int32)),
-        (None, computation_types.TensorType(tf.string)),
-    ])
+    coro = _coro([True, 1, 'a'])
+    type_signature = computation_types.StructWithPythonType(
+        [tf.bool, tf.int32, tf.string], list)
 
     result = native_platform._create_structure_of_coro_references(
         coro=coro, type_signature=type_signature)
@@ -251,12 +241,9 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
     self.assertEqual(actual_values, expected_values)
 
   async def test_returned_structure_materialized_concurrently(self):
-    coro = _coro((True, 1, 'a'))
-    type_signature = computation_types.StructType([
-        (None, computation_types.TensorType(tf.bool)),
-        (None, computation_types.TensorType(tf.int32)),
-        (None, computation_types.TensorType(tf.string)),
-    ])
+    coro = _coro([True, 1, 'a'])
+    type_signature = computation_types.StructWithPythonType(
+        [tf.bool, tf.int32, tf.string], list)
 
     result = native_platform._create_structure_of_coro_references(
         coro=coro, type_signature=type_signature)
@@ -280,28 +267,20 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase,
       ('federated',
        native_platform.CoroValueReference(
            _coro(1), computation_types.TensorType(tf.int32)),
-       computation_types.FederatedType(
-           computation_types.TensorType(tf.int32), placements.SERVER),
+       computation_types.FederatedType(tf.int32, placements.SERVER),
        1),
       ('struct_unnamed',
-       (
+       [
            native_platform.CoroValueReference(
                _coro(True), computation_types.TensorType(tf.bool)),
            native_platform.CoroValueReference(
                _coro(1), computation_types.TensorType(tf.int32)),
            native_platform.CoroValueReference(
                _coro('a'), computation_types.TensorType(tf.string)),
-       ),
-       computation_types.StructType([
-           (None, computation_types.TensorType(tf.bool)),
-           (None, computation_types.TensorType(tf.int32)),
-           (None, computation_types.TensorType(tf.string)),
-       ]),
-       structure.Struct([
-           (None, True),
-           (None, 1),
-           (None, 'a'),
-       ])),
+       ],
+       computation_types.StructWithPythonType(
+           [tf.bool, tf.int32, tf.string], list),
+       structure.Struct([(None, True), (None, 1), (None, 'a')])),
       ('struct_named',
        collections.OrderedDict([
            ('a', native_platform.CoroValueReference(
@@ -311,16 +290,12 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase,
            ('c', native_platform.CoroValueReference(
                _coro('a'), computation_types.TensorType(tf.string))),
        ]),
-       computation_types.StructType([
-           ('a', computation_types.TensorType(tf.bool)),
-           ('b', computation_types.TensorType(tf.int32)),
-           ('c', computation_types.TensorType(tf.string)),
-       ]),
-       structure.Struct([
-           ('a', True),
-           ('b', 1),
-           ('c', 'a'),
-       ])),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string)
+       ], collections.OrderedDict),
+       structure.Struct([('a', True), ('b', 1), ('c', 'a')])),
       ('struct_nested',
        collections.OrderedDict([
            ('x', collections.OrderedDict([
@@ -334,15 +309,15 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase,
                    _coro('a'), computation_types.TensorType(tf.string))),
            ])),
        ]),
-       computation_types.StructType([
-           ('x', computation_types.StructType([
-               ('a', computation_types.TensorType(tf.bool)),
-               ('b', computation_types.TensorType(tf.int32)),
-           ])),
-           ('y', computation_types.StructType([
-               ('c', computation_types.TensorType(tf.string)),
-           ])),
-       ]),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
        structure.Struct([
            ('x', structure.Struct([
                ('a', True),
@@ -505,17 +480,11 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('function', computation_types.FunctionType(
-          computation_types.TensorType(tf.int32),
-          computation_types.TensorType(tf.int32))),
+      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
       ('placement', computation_types.PlacementType()),
       ('sequence', computation_types.SequenceType(tf.int32)),
-      ('struct',
-       computation_types.StructType([
-           (None, computation_types.TensorType(tf.bool)),
-           (None, computation_types.TensorType(tf.int32)),
-           (None, computation_types.TensorType(tf.string)),
-       ])),
+      ('struct', computation_types.StructWithPythonType(
+          [tf.bool, tf.int32, tf.string], list)),
       ('tensor', computation_types.TensorType(tf.int32)),
   )
   # pyformat: enable
@@ -607,7 +576,7 @@ class DatasetDataSourceTest(parameterized.TestCase):
   def test_init_sets_federated_type(self, tensors, dtype):
     datasets = [tf.data.Dataset.from_tensor_slices(tensors)] * 3
 
-    data_source = native_platform.DatasetDataSource(datasets=datasets)
+    data_source = native_platform.DatasetDataSource(datasets)
 
     federated_type = computation_types.FederatedType(
         computation_types.SequenceType(dtype), placements.CLIENTS)
@@ -622,13 +591,13 @@ class DatasetDataSourceTest(parameterized.TestCase):
   )
   def test_init_raises_type_error_with_datasets(self, datasets):
     with self.assertRaises(TypeError):
-      native_platform.DatasetDataSource(datasets=datasets)
+      native_platform.DatasetDataSource(datasets)
 
   def test_init_raises_value_error_with_datasets_empty(self):
     datasets = []
 
     with self.assertRaises(ValueError):
-      native_platform.DatasetDataSource(datasets=datasets)
+      native_platform.DatasetDataSource(datasets)
 
   def test_init_raises_value_error_with_datasets_different_types(self):
     datasets = [
@@ -637,7 +606,7 @@ class DatasetDataSourceTest(parameterized.TestCase):
     ]
 
     with self.assertRaises(ValueError):
-      native_platform.DatasetDataSource(datasets=datasets)
+      native_platform.DatasetDataSource(datasets)
 
 
 if __name__ == '__main__':

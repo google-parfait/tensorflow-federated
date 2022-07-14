@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 from unittest import mock
 
 from absl.testing import absltest
@@ -29,41 +30,35 @@ class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('struct_unnamed', computation_types.StructType([
-          (None, computation_types.TensorType(tf.bool)),
-          (None, computation_types.TensorType(tf.int32)),
-          (None, computation_types.TensorType(tf.string)),
-      ])),
-      ('struct_named', computation_types.StructType([
-          ('a', computation_types.TensorType(tf.bool)),
-          ('b', computation_types.TensorType(tf.int32)),
-          ('c', computation_types.TensorType(tf.string)),
-      ])),
-      ('struct_nested', computation_types.StructType([
-          ('x', computation_types.StructType([
-              ('a', computation_types.TensorType(tf.bool)),
-              ('b', computation_types.TensorType(tf.int32)),
-          ])),
-          ('y', computation_types.StructType([
-              ('c', computation_types.TensorType(tf.string)),
-          ])),
-      ])),
+      ('struct_unnamed', computation_types.StructWithPythonType(
+          [tf.bool, tf.int32, tf.string], list)),
+      ('struct_named', computation_types.StructWithPythonType([
+          ('a', tf.bool),
+          ('b', tf.int32),
+          ('c', tf.string),
+      ], collections.OrderedDict)),
+      ('struct_nested', computation_types.StructWithPythonType([
+          ('x', computation_types.StructWithPythonType([
+              ('a', tf.bool),
+              ('b', tf.int32),
+          ], collections.OrderedDict)),
+          ('y', computation_types.StructWithPythonType([
+              ('c', tf.string),
+          ], collections.OrderedDict)),
+      ], collections.OrderedDict)),
       ('federated_struct', computation_types.FederatedType(
-          computation_types.StructType([
-              ('a', computation_types.TensorType(tf.bool)),
-              ('b', computation_types.TensorType(tf.int32)),
-              ('c', computation_types.TensorType(tf.string)),
-          ]),
+          computation_types.StructWithPythonType([
+              ('a', tf.bool),
+              ('b', tf.int32),
+              ('c', tf.string),
+          ], collections.OrderedDict),
           placements.SERVER)),
       ('federated_sequence', computation_types.FederatedType(
-          computation_types.SequenceType(
-              computation_types.TensorType(tf.int32)),
+          computation_types.SequenceType(tf.int32),
           placements.SERVER)),
       ('federated_tensor', computation_types.FederatedType(
-          computation_types.TensorType(tf.int32),
-          placements.SERVER)),
-      ('sequence', computation_types.SequenceType(
-          computation_types.TensorType(tf.int32))),
+          tf.int32, placements.SERVER)),
+      ('sequence', computation_types.SequenceType(tf.int32)),
       ('tensor', computation_types.TensorType(tf.int32)),
   )
   # pyformat: enable
@@ -75,11 +70,8 @@ class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('federated', computation_types.FederatedType(
-          computation_types.TensorType(tf.int32),
-          placements.CLIENTS)),
-      ('function', computation_types.FunctionType(
-          computation_types.TensorType(tf.int32),
-          computation_types.TensorType(tf.int32))),
+          tf.int32, placements.CLIENTS)),
+      ('function', computation_types.FunctionType(tf.int32, tf.int32)),
       ('placement', computation_types.PlacementType()),
   )
   # pyformat: enable
