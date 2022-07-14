@@ -925,11 +925,14 @@ tff_cc_library_with_tf_runtime_deps(
         "@org_tensorflow//tensorflow/stream_executor:stream_executor_headers",
         # Linking in the host platform here ensures that the stream executor can execute on CPU.
         "@org_tensorflow//tensorflow/stream_executor/host:host_platform",  # buildcleaner: keep
+        "@org_tensorflow//tensorflow/compiler/xla/client:global_data",
+        "@org_tensorflow//tensorflow/compiler/xla/service:hlo_proto_cc",
     ],
     deps = [
         ":executor",
         ":tensor_serialization",
         ":threading",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
         "@com_google_absl//absl/status",
     ],
 )
@@ -938,12 +941,21 @@ tff_cc_test_with_tf_deps(
     name = "xla_executor_test",
     timeout = "short",
     srcs = ["xla_executor_test.cc"],
-    tf_deps = ["@org_tensorflow//tensorflow/core:protos_all_cc"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/compiler/tf2xla:common",
+        "@org_tensorflow//tensorflow/compiler/xla:shape_util",
+        "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
+        "@org_tensorflow//tensorflow/compiler/xla/client:xla_builder",
+        "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
+    ],
     deps = [
         ":executor",
         ":status_matchers",
         ":value_test_utils",
         ":xla_executor",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "@com_google_absl//absl/status",
     ],
 )

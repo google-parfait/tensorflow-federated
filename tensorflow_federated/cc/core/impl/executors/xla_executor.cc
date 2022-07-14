@@ -15,6 +15,7 @@ limitations under the License
 
 #include "tensorflow_federated/cc/core/impl/executors/xla_executor.h"
 
+#include <functional>
 #include <future>  // NOLINT
 #include <memory>
 #include <string>
@@ -22,19 +23,27 @@ limitations under the License
 #include <variant>
 #include <vector>
 
+#include "google/protobuf/any.pb.h"
 #include "absl/status/status.h"
 #include "tensorflow/compiler/tf2xla/literal_util.h"
+#include "tensorflow/compiler/tf2xla/shape_util.h"
+#include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/xla/client/client_library.h"
+#include "tensorflow/compiler/xla/client/global_data.h"
+#include "tensorflow/compiler/xla/service/hlo.pb.h"
 #include "tensorflow/compiler/xla/xla.pb.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.pb.h"
+#include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/framework/tensor_shape.pb.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/stream_executor/multi_platform_manager.h"
 #include "tensorflow/stream_executor/platform.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
+#include "tensorflow_federated/proto/v0/computation.pb.h"
 
 namespace tensorflow_federated {
 
@@ -66,10 +75,46 @@ class ServiceTensor {
   ServiceTensor& operator=(const ServiceTensor&) = delete;
 };
 
-// Representation for concrete values embedded in the XLA executor.
+// Represents a computation embedded in the XLA client. Responsible for carrying
+// enough information to invoke the computation and ensure results can be
+// materialized at the appropriate time.
+class Computation {
+ public:
+  Computation(xla::ExecutionHandle&& compiled_computation,
+              v0::Xla::Binding arg_binding, v0::Xla::Binding result_binding,
+              v0::Type computation_type)
+      : xla_computation_(std::move(compiled_computation)),
+        arg_binding_(std::move(arg_binding)),
+        result_binding_(std::move(result_binding)),
+        computation_type_(std::move(computation_type)) {}
+
+  const xla::ExecutionHandle& xla_computation() { return xla_computation_; }
+  const v0::Xla::Binding& arg_binding() { return arg_binding_; }
+  const v0::Xla::Binding& result_binding() { return result_binding_; }
+  const v0::Type& type() { return computation_type_; }
+
+ private:
+  Computation() = delete;
+  // A handle to a compiled computation embedded in the XLA service.
+  // Assuming that this computation has been previously compiled in the
+  // service allows us to avoid worrying about caching computations the way
+  // we need to in the TensorFlow executor. If we decide to open up the
+  // TFF-JAX Python API to support unknown shapes and ranks in parameter
+  // tensors, this assumption will need to be relaxed for these cases.
+  // One option might involve preserving the proto and recompiling on the
+  // fly, adding to an internal cache of v0::Type to xla::ExecutionHandles.
+  const xla::ExecutionHandle xla_computation_;
+  const v0::Xla::Binding arg_binding_;
+  const v0::Xla::Binding result_binding_;
+  const v0::Type computation_type_;
+};
+
+// Representation for values embedded in the XLA executor. Generally, this class
+// holds handles to values embedded in the XLA client, as well as structures of
+// such handles.
 class XLAExecutorValue {
  public:
-  enum class ValueType { TENSOR, STRUCT, UNIMPLEMENTED };
+  enum class ValueType { TENSOR, STRUCT, COMPUTATION, UNKNOWN };
 
   explicit XLAExecutorValue(std::unique_ptr<xla::GlobalData> global_data,
                             tensorflow::DataType dtype)
@@ -78,14 +123,18 @@ class XLAExecutorValue {
   explicit XLAExecutorValue(absl::Span<const XLAExecutorValue> value_vector)
       : value_(std::vector<XLAExecutorValue>(value_vector.begin(),
                                              value_vector.end())) {}
+  explicit XLAExecutorValue(std::shared_ptr<Computation> xla_comp)
+      : value_(std::move(xla_comp)) {}
 
   ValueType type() const {
     if (absl::holds_alternative<std::shared_ptr<ServiceTensor>>(value_)) {
       return ValueType::TENSOR;
     } else if (absl::holds_alternative<std::vector<XLAExecutorValue>>(value_)) {
       return ValueType::STRUCT;
+    } else if (absl::holds_alternative<std::shared_ptr<Computation>>(value_)) {
+      return ValueType::COMPUTATION;
     } else {
-      return ValueType::UNIMPLEMENTED;
+      return ValueType::UNKNOWN;
     }
   }
 
@@ -98,14 +147,150 @@ class XLAExecutorValue {
   const std::vector<XLAExecutorValue>& structure() const {
     return absl::get<std::vector<XLAExecutorValue>>(value_);
   }
+  std::shared_ptr<Computation> computation() const {
+    return absl::get<std::shared_ptr<Computation>>(value_);
+  }
 
  private:
   XLAExecutorValue() = delete;
   using ValueVariant = absl::variant<std::shared_ptr<ServiceTensor>,
-                                     std::vector<XLAExecutorValue>>;
+                                     std::vector<XLAExecutorValue>,
+                                     std::shared_ptr<Computation>>;
   ValueVariant value_;
 };
 
+// This function, and its callers below, are used to compute flat values
+// corresponding to an XLA binding from a TFF type argument.
+template <typename S>
+absl::Status PopulateFlatVectorLikeBinding(
+    const v0::Type& type, const v0::Xla::Binding& binding,
+    std::function<absl::StatusOr<S>(const v0::TensorType&)> processing_fn,
+    std::vector<S>* vector_to_populate) {
+  switch (type.type_case()) {
+    case v0::Type::kTensor: {
+      if (!binding.has_tensor()) {
+        return absl::InvalidArgumentError(
+            "Mismatch between tensor type and non-tensor binding while "
+            "computing flat info like binding.");
+      }
+      // The binding tells us at which vector index to populate the information
+      // which is the result of processing this tensor type.
+      (*vector_to_populate)[binding.tensor().index()] =
+          TFF_TRY(processing_fn(type.tensor()));
+      return absl::OkStatus();
+    }
+    case v0::Type::kStruct: {
+      if (!binding.has_struct_()) {
+        return absl::InvalidArgumentError(
+            "Mismatch between struct type and non-struct binding while "
+            "computing flat info like binding.");
+      }
+      if (binding.struct_().element_size() != type.struct_().element_size()) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Mismatch between struct with ", type.struct_().element_size(),
+            " elements and binding with ", binding.struct_().element_size(),
+            " elements while attempting to compute flat info like binding. "
+            "These size values should match."));
+      }
+      int idx = 0;
+      for (const auto& el : type.struct_().element()) {
+        if (!(el.value().has_tensor() || el.value().has_struct_())) {
+          return absl::InvalidArgumentError(absl::StrCat(
+              "Cannot flatten structure with non-tensor and struct elements "
+              "to a vector corresponds to an XLA binding. Encountered type: ",
+              el.value().Utf8DebugString()));
+        }
+        TFF_TRY(PopulateFlatVectorLikeBinding(
+            el.value(), binding.struct_().element().at(idx), processing_fn,
+            vector_to_populate));
+        idx++;
+      }
+      return absl::OkStatus();
+    }
+    default: {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Cannot flatten structure with non-tensor elements to "
+          "a vector which corresponds to an XLA binding. Encountered type: ",
+          type.Utf8DebugString()));
+    }
+  }
+}
+
+// Helper function to compute XLA Shape value from TFF TensorType.
+absl::StatusOr<xla::Shape> XLAShapeFromTensorType(
+    const v0::TensorType& tensor_type) {
+  xla::ShapeProto xla_shape_proto;
+  // The static cast below is safe by the guarantee in TFF computation
+  // proto that TFF's Dtype enum is a subset of TF's Dtype enum with the
+  // same semantics. XLA TensorShape additionally needs the TF Dtype of the
+  // represented tensor.
+  tensorflow::DataType tensor_dtype =
+      static_cast<tensorflow::DataType>(tensor_type.dtype());
+  xla::PrimitiveType xla_dtype;
+  tensorflow::Status dtype_status =
+      tensorflow::DataTypeToPrimitiveType(tensor_dtype, &xla_dtype);
+  if (!dtype_status.ok()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Failure converting TFF's tensor DType to XLA primitive. Message: ",
+        dtype_status.error_message()));
+  }
+  if (tensor_type.unknown_rank()) {
+    return absl::InvalidArgumentError(
+        "Tensor parameters of unknown rank are unsupported in the "
+        "XLA executor.");
+  }
+  xla_shape_proto.set_element_type(xla_dtype);
+  for (int64_t dim : tensor_type.dims()) {
+    // XLA shapes cannot represent fully-unknown-shape dimensions; moreover, at
+    // the time of implementing the XLA executor, these cannot be generated by
+    // TFF's Python API. So we prefer to simply fail here for now. There is
+    // possibility to open this up in the future with an upper bound on the
+    // size; given this, XLA can support some dynamism.
+    if (dim < 0) {
+      return absl::InvalidArgumentError(
+          "Tensor parameters of unknown shape are unsupported in the "
+          "XLA executor.");
+    }
+    xla_shape_proto.add_dimensions(dim);
+    xla_shape_proto.add_is_dynamic_dimension(false);
+  }
+
+  xla::Shape xla_tensor_shape(xla_shape_proto);
+  return xla_tensor_shape;
+}
+
+// Computes vector of xla::Shape pointers from the type argument, in flattened
+// order determined by the binding argument. Populated in flat_shapes.
+absl::Status ComputeFlatShapesFromType(const v0::Type& type,
+                                       const v0::Xla::Binding& binding,
+                                       std::vector<xla::Shape>* flat_shapes) {
+  return PopulateFlatVectorLikeBinding(
+      type, binding,
+      std::function<absl::StatusOr<xla::Shape>(const v0::TensorType&)>(
+          XLAShapeFromTensorType),
+      flat_shapes);
+}
+
+// Computes the number of tensor elements in a given binding. We interpret an
+// unset binding to contain 0 elements, for uniformity of handling unset
+// parameter bindings.
+int ComputeNumElementsFromBinding(const v0::Xla::Binding& binding) {
+  switch (binding.binding_case()) {
+    case v0::Xla::Binding::kTensor: {
+      return 1;
+    }
+    case v0::Xla::Binding::kStruct: {
+      int num_elements = 0;
+      for (const v0::Xla::Binding& el_binding : binding.struct_().element()) {
+        num_elements += ComputeNumElementsFromBinding(el_binding);
+      }
+      return num_elements;
+    }
+    case v0::Xla::Binding::BINDING_NOT_SET: {
+      return 0;
+    }
+  }
+}
 using ValueFuture = std::shared_future<absl::StatusOr<XLAExecutorValue>>;
 
 class XLAExecutor : public ExecutorBase<ValueFuture> {
@@ -152,9 +337,6 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   // Pointer to local XLA client. Assumed to be valid through the lifetime of
   // the executor.
   xla::Client* xla_client_;
-  // Name specifying the platform which this executor will target. Assumed to be
-  // registered in TensorFlow's MultiPlatformManager;.
-  std::string platform_name_;
 
   absl::StatusOr<XLAExecutorValue> EmbedTensorValue(const v0::Value& value_pb) {
     tensorflow::Tensor t = TFF_TRY(DeserializeTensorValue(value_pb));
@@ -176,6 +358,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
           to_literal_status.error_message()));
     }
   }
+
   absl::StatusOr<XLAExecutorValue> CreateValueAny(const v0::Value& value_pb) {
     switch (value_pb.value_case()) {
       case v0::Value::ValueCase::kTensor: {
@@ -189,8 +372,55 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
         }
         return XLAExecutorValue(values);
       }
+      case v0::Value::ValueCase::kComputation: {
+        const v0::Computation& comp_pb = value_pb.computation();
+        if (!comp_pb.has_xla()) {
+          return absl::InvalidArgumentError(
+              absl::StrCat("Only XLA computations can be embedded in the XLA "
+                           "executor; attempted to embed a value of type ",
+                           comp_pb.type().Utf8DebugString()));
+        }
+        if (!comp_pb.type().has_function()) {
+          return absl::InvalidArgumentError(
+              absl::StrCat("Computation proto with non-functional type "
+                           "encountered in XLA executor. Type: ",
+                           comp_pb.type().Utf8DebugString()));
+        }
+        xla::HloModuleProto hlo_proto;
+        comp_pb.xla().hlo_module().UnpackTo(&hlo_proto);
+        xla::XlaComputation xla_comp(std::move(hlo_proto));
+        // Compute the vector of flat arg shapes; these will be needed to
+        // compile the computation.
+        v0::Xla::Binding arg_binding = comp_pb.xla().parameter();
+        int num_arg_elements = ComputeNumElementsFromBinding(arg_binding);
+        // Preallocate this vector to num_arg_elements, so that we can assign to
+        // these elements directly in the function call below.
+        std::vector<xla::Shape> arg_shapes(num_arg_elements);
+        if (comp_pb.type().function().has_parameter()) {
+          TFF_TRY(ComputeFlatShapesFromType(
+              comp_pb.type().function().parameter(), arg_binding, &arg_shapes));
+        }
+        // Compile the computation, resulting in caching the executable in the
+        // XLA service.
+        tensorflow::StatusOr<xla::ExecutionHandle> computation_handle =
+            xla_client_->Compile(xla_comp, arg_shapes);
+        if (!computation_handle.ok()) {
+          return absl::InternalError(
+              absl::StrCat("Failed to compile XLA computation. Message: ",
+                           computation_handle.status().error_message()));
+        }
+        // Finally, construct the representation of this computation in the XLA
+        // executor.
+        v0::Xla::Binding result_binding = comp_pb.xla().result();
+        return XLAExecutorValue(std::make_shared<Computation>(
+            std::move(*computation_handle), arg_binding, result_binding,
+            comp_pb.type()));
+      }
       default:
-        return absl::UnimplementedError("Not implemented yet");
+        return absl::UnimplementedError(absl::StrCat(
+            "XLA executor can only embed values of tensor, structure, or "
+            "computation type. Encountered a value of type ",
+            value_pb.value_case()));
     }
   }
 
