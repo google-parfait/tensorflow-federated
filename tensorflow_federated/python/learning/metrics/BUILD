@@ -132,6 +132,7 @@ py_test(
     deps = [
         ":counters",
         ":keras_utils",
+        "//tensorflow_federated/python/tensorflow_libs:version_check",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
