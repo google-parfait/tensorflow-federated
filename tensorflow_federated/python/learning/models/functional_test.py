@@ -13,6 +13,8 @@
 """Tests for FunctionModel."""
 
 import collections
+import itertools
+from typing import Any, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -23,6 +25,7 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.tensorflow_libs import variable_utils
+from tensorflow_federated.python.tensorflow_libs import version_check
 
 
 def initial_weights():
@@ -59,6 +62,41 @@ def forward_pass(model_weights, batch_input, training):
       loss=average_loss, predictions=predictions, num_examples=num_examples)
 
 
+@tf.function
+def initialize_metrics() -> functional.MetricsState:
+  return collections.OrderedDict(num_examples=(0.0,), accuracy=(0.0, 0.0))
+
+
+@tf.function
+def update_metrics_state(
+    state: functional.MetricsState,
+    y_true: Any,
+    y_pred: Any,
+    sample_weight: Optional[Any] = None) -> functional.MetricsState:
+  del sample_weight  # Unused.
+  batch_size = tf.cast(tf.shape(y_true)[0], tf.float32)
+
+  def update_accuracy(variables, y_true, y_pred):
+    accuracy, num_examples = variables
+    num_matches = tf.reduce_sum(tf.cast(tf.equal(y_true, y_pred), tf.float32))
+    accuracy += num_matches
+    num_examples += batch_size
+    return accuracy, num_examples
+
+  new_dict = collections.OrderedDict(
+      num_examples=(state['num_examples'][0] + batch_size,),
+      accuracy=update_accuracy(state['accuracy'], y_true, y_pred))
+  return new_dict
+
+
+@tf.function
+def finalize_metrics(state: functional.MetricsState) -> Any:
+  accuracy, num_examples = state['accuracy']
+  return collections.OrderedDict(
+      num_examples=state['num_examples'][0],
+      accuracy=tf.math.divide_no_nan(accuracy, num_examples))
+
+
 def create_test_keras_model():
   return tf.keras.models.Sequential([
       tf.keras.layers.InputLayer(input_shape=(1,)),
@@ -85,44 +123,458 @@ def create_test_dataset():
   return preprocess(tf.data.Dataset.range(num_examples).enumerate())
 
 
-class FunctionalTest(tf.test.TestCase):
+class FunctionalModelErrorsTest(tf.test.TestCase):
 
   def test_fail_construction_on_tf_value(self):
     dataset = create_test_dataset()
     input_spec = dataset.element_spec
     with self.assertRaisesRegex(functional.ValueMustNotBeTFError,
                                 'initial_weights may not contain'):
-      functional.FunctionalModel((tf.constant(1.0), ()), forward_pass,
-                                 predict_on_batch, input_spec)
+      functional.FunctionalModel(
+          initial_weights=(tf.constant(1.0), ()),
+          forward_pass_fn=forward_pass,
+          predict_on_batch_fn=predict_on_batch,
+          input_spec=input_spec)
     with self.assertRaisesRegex(functional.ValueMustNotBeTFError,
                                 'initial_weights may not contain'):
-      functional.FunctionalModel((tf.Variable(1.0), ()), forward_pass,
-                                 predict_on_batch, input_spec)
+      functional.FunctionalModel(
+          initial_weights=(tf.Variable(1.0), ()),
+          forward_pass_fn=forward_pass,
+          predict_on_batch_fn=predict_on_batch,
+          input_spec=input_spec)
 
   def test_fail_non_tf_function(self):
     dataset = create_test_dataset()
     input_spec = dataset.element_spec
     with self.assertRaisesRegex(
-        functional.CallableMustBeTFFunctionError,
+        functional.CallableNotTensorFlowFunctionError,
         'forward_pass_fn does not have a `get_concrete_function`'):
-      functional.FunctionalModel((), forward_pass.python_function,
-                                 predict_on_batch, input_spec)
+      functional.FunctionalModel(
+          initial_weights=(),
+          forward_pass_fn=forward_pass.python_function,
+          predict_on_batch_fn=predict_on_batch,
+          input_spec=input_spec)
     with self.assertRaisesRegex(
-        functional.CallableMustBeTFFunctionError,
+        functional.CallableNotTensorFlowFunctionError,
         'predict_on_batch_fn does not have a `get_concrete_function`'):
-      functional.FunctionalModel((), forward_pass,
-                                 predict_on_batch.python_function, input_spec)
+      functional.FunctionalModel(
+          initial_weights=(),
+          forward_pass_fn=forward_pass,
+          predict_on_batch_fn=predict_on_batch.python_function,
+          input_spec=input_spec)
+
+
+class FunctionalModelTest(tf.test.TestCase):
 
   def test_predict_on_batch(self):
     dataset = create_test_dataset()
     example_batch = next(iter(dataset))
     input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        input_spec=input_spec)
     self.assertAllClose(
         functional_model.predict_on_batch(functional_model.initial_weights,
                                           example_batch[0]), [[0.]] * 5)
+
+  def test_forward_pass(self):
+    dataset = create_test_dataset()
+    example_batch = next(iter(dataset))
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        input_spec=input_spec)
+    self.assertAllClose(
+        functional_model.predict_on_batch(functional_model.initial_weights,
+                                          example_batch[0]), [[0.]] * 5)
+
+  def test_metrics_eager(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        metrics_fns=(initialize_metrics, update_metrics_state,
+                     finalize_metrics),
+        input_spec=input_spec)
+    with self.subTest('initialize'):
+      state = functional_model.initialize_metrics_state()
+      self.assertAllClose(
+          state,
+          collections.OrderedDict(num_examples=(0.0,), accuracy=(0.0, 0.0)))
+    with self.subTest('update'):
+      predictions = np.asarray([0, 1, 1])
+      labels = np.asarray([0, 0, 1])
+      updated_state = functional_model.update_metrics_state(
+          state, y_true=labels, y_pred=predictions)
+      self.assertAllClose(
+          updated_state,
+          collections.OrderedDict(num_examples=(3.0,), accuracy=(2.0, 3.0)))
+    with self.subTest('finalize'):
+      final_metrics = functional_model.finalize_metrics(updated_state)
+      self.assertAllClose(
+          final_metrics,
+          collections.OrderedDict(num_examples=3.0, accuracy=2.0 / 3.0),
+          msg=final_metrics)
+
+  def test_metrics_graph(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    with tf.Graph().as_default() as g:
+      with tf.compat.v1.Session(graph=g) as sess:
+        functional_model = functional.FunctionalModel(
+            initial_weights=initial_weights(),
+            forward_pass_fn=forward_pass,
+            predict_on_batch_fn=predict_on_batch,
+            metrics_fns=(initialize_metrics, update_metrics_state,
+                         finalize_metrics),
+            input_spec=input_spec)
+        with self.subTest('initialize'):
+          initial_state = sess.run(functional_model.initialize_metrics_state())
+          self.assertAllClose(
+              initial_state,
+              collections.OrderedDict(num_examples=(0.0,), accuracy=(0.0, 0.0)))
+        with self.subTest('update'):
+          state_placeholder = tf.nest.map_structure(
+              lambda t: tf.compat.v1.placeholder(tf.float32), initial_state)
+          predictions = tf.compat.v1.placeholder(tf.int32)
+          labels = tf.compat.v1.placeholder(tf.int32)
+          updated_state = sess.run(
+              fetches=functional_model.update_metrics_state(
+                  state_placeholder, y_true=labels, y_pred=predictions),
+              feed_dict={
+                  predictions: np.asarray([0, 1, 1]),
+                  labels: np.asarray([0, 0, 1]),
+                  **{
+                      placeholder: value for placeholder, value in zip(
+                          tf.nest.flatten(state_placeholder),
+                          tf.nest.flatten(initial_state))
+                  }
+              })
+          self.assertAllClose(
+              updated_state,
+              collections.OrderedDict(num_examples=(3.0,), accuracy=(2.0, 3.0)),
+              msg=updated_state)
+        with self.subTest('finalize'):
+          final_metrics = sess.run(
+              fetches=functional_model.finalize_metrics(state_placeholder),
+              feed_dict={
+                  placeholder: value for placeholder, value in zip(
+                      tf.nest.flatten(state_placeholder),
+                      tf.nest.flatten(updated_state))
+              })
+          self.assertAllClose(
+              final_metrics,
+              collections.OrderedDict(num_examples=3.0, accuracy=2.0 / 3.0),
+              msg=final_metrics)
+
+  def test_functional_model_converges(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        input_spec=input_spec)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
+    variables = tf.nest.map_structure(tf.Variable,
+                                      functional_model.initial_weights)
+    trainable = variables[0]
+    loss = None
+    num_epochs = 50
+    for batch in dataset.repeat(num_epochs):
+      with tf.GradientTape() as tape:
+        batch_output = functional_model.forward_pass(
+            variables, batch, training=True)
+      gradients = tape.gradient(batch_output.loss, trainable)
+      optimizer.apply_gradients(zip(gradients, trainable))
+      loss = batch_output.loss
+    # Expect some amount of convergence after a few epochs of the dataset.
+    self.assertLess(loss, 0.1)
+    self.assertAllClose(trainable, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
+
+
+class ModelFromFunctionalModelTest(tf.test.TestCase):
+
+  def test_tff_model_from_functional_same_result(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        input_spec=input_spec)
+    tff_model = functional.model_from_functional(functional_model)
+
+    for training in [True, False]:
+      for batch in dataset:
+        self.assertAllClose(
+            tff_model.predict_on_batch(batch[0], training),
+            functional_model.predict_on_batch(functional_model.initial_weights,
+                                              batch[0], training))
+        tf.nest.map_structure(
+            self.assertAllClose, tff_model.forward_pass(batch, training),
+            functional_model.forward_pass(functional_model.initial_weights,
+                                          batch, training))
+
+  def test_tff_model_from_functional_converges(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        input_spec=input_spec)
+    tff_model = functional.model_from_functional(functional_model)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
+    loss = None
+    num_epochs = 50
+    for batch in dataset.repeat(num_epochs):
+      with tf.GradientTape() as tape:
+        batch_output = tff_model.forward_pass(batch, training=True)
+      gradients = tape.gradient(batch_output.loss,
+                                tff_model.trainable_variables)
+      optimizer.apply_gradients(zip(gradients, tff_model.trainable_variables))
+      loss = batch_output.loss
+    # Expect some amount of convergence after a few epochs of the dataset.
+    self.assertLess(loss, 0.1)
+    self.assertAllClose(
+        tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
+    self.assertAllClose(tff_model.report_local_unfinalized_metrics(),
+                        collections.OrderedDict(loss=[1066.19628, 1250.0]))
+
+  def test_tff_model_from_functional_fails_with_repeated_metric_names(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        input_spec=input_spec)
+    metric_constructors = [
+        lambda: tf.keras.metrics.MeanSquaredError(name='same_name'),
+        lambda: tf.keras.metrics.RootMeanSquaredError(name='same_name')
+    ]
+    with self.assertRaisesRegex(ValueError,
+                                'each metric should have a unique name'):
+      functional.model_from_functional(functional_model, metric_constructors)
+
+  def test_tff_model_from_functional_binding_metrics_succeeds(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        input_spec=input_spec)
+    metric_constructors = [
+        tf.keras.metrics.MeanSquaredError, tf.keras.metrics.RootMeanSquaredError
+    ]
+    tff_model = functional.model_from_functional(functional_model,
+                                                 metric_constructors)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
+    loss = None
+    num_epochs = 50
+    for batch in dataset.repeat(num_epochs):
+      with tf.GradientTape() as tape:
+        batch_output = tff_model.forward_pass(batch, training=True)
+      gradients = tape.gradient(batch_output.loss,
+                                tff_model.trainable_variables)
+      optimizer.apply_gradients(zip(gradients, tff_model.trainable_variables))
+      loss = batch_output.loss
+    # Expect some amount of convergence after a few epochs of the dataset.
+    self.assertLess(loss, 0.1)
+    self.assertAllClose(
+        tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
+    self.assertAllClose(
+        tff_model.report_local_unfinalized_metrics(),
+        collections.OrderedDict(
+            # The model uses mean squred error as `loss`, so the other two
+            # metrics (`mean_squared_error` and `root_mean_squared_error`)
+            # should have the same state as `loss`.
+            loss=[1066.19628, 1250.0],
+            mean_squared_error=[1066.19628, 1250.0],
+            root_mean_squared_error=[1066.19628, 1250.0]))
+
+  def test_tff_model_from_functional_overwrites_metrics(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        metrics_fns=(initialize_metrics, update_metrics_state,
+                     finalize_metrics),
+        input_spec=input_spec)
+    metric_constructors = [
+        tf.keras.metrics.MeanSquaredError, tf.keras.metrics.RootMeanSquaredError
+    ]
+    tff_model = functional.model_from_functional(functional_model,
+                                                 metric_constructors)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
+    loss = None
+    num_epochs = 50
+    for batch in dataset.repeat(num_epochs):
+      with tf.GradientTape() as tape:
+        batch_output = tff_model.forward_pass(batch, training=True)
+      gradients = tape.gradient(batch_output.loss,
+                                tff_model.trainable_variables)
+      optimizer.apply_gradients(zip(gradients, tff_model.trainable_variables))
+      loss = batch_output.loss
+    # Expect some amount of convergence after a few epochs of the dataset.
+    self.assertLess(loss, 0.1)
+    self.assertAllClose(
+        tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
+    self.assertAllClose(
+        tff_model.report_local_unfinalized_metrics(),
+        collections.OrderedDict(
+            # The model uses mean squred error as `loss`, so the other two
+            # metrics (`mean_squared_error` and `root_mean_squared_error`)
+            # should have the same state as `loss`.
+            loss=[1066.19628, 1250.0],
+            mean_squared_error=[1066.19628, 1250.0],
+            root_mean_squared_error=[1066.19628, 1250.0]))
+
+  def test_tff_model_from_functional_federated_aggregate_metrics_succeeds(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        input_spec=input_spec)
+    metric_constructors = [
+        lambda: tf.keras.metrics.MeanSquaredError(name='mse'),
+        lambda: tf.keras.metrics.MeanAbsoluteError(name='mae')
+    ]
+    tff_model = functional.model_from_functional(functional_model,
+                                                 metric_constructors)
+    client_1_local_outputs = collections.OrderedDict(
+        loss=[1.0, 2.0], mse=[1.0, 2.0], mae=[1.0, 2.0])
+    client_2_local_outputs = collections.OrderedDict(
+        loss=[2.0, 4.0], mse=[2.0, 2.0], mae=[1.0, 6.0])
+    metrics_aggregator = aggregator.sum_then_finalize
+    unfinalized_metrics_type = type_conversions.type_from_tensors(
+        tff_model.report_local_unfinalized_metrics())
+    metrics_aggregation_computation = metrics_aggregator(
+        tff_model.metric_finalizers(), unfinalized_metrics_type)
+    aggregated_metrics = metrics_aggregation_computation(
+        [client_1_local_outputs, client_2_local_outputs])
+    self.assertAllClose(
+        aggregated_metrics,
+        # loss = (1.0+2.0)/(2.0+4.0) = 0.5
+        # mse = (1.0+2.0)/(2.0+2.0) = 0.75
+        # mae = (1.0+1.0)/(2.0+6.0) = 0.25
+        collections.OrderedDict(loss=0.5, mse=0.75, mae=0.25))
+
+  def test_tff_model_from_functional_resets_metrics(self):
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.FunctionalModel(
+        initial_weights=initial_weights(),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        input_spec=input_spec)
+    metric_constructors = [
+        tf.keras.metrics.MeanSquaredError, tf.keras.metrics.RootMeanSquaredError
+    ]
+    tff_model = functional.model_from_functional(functional_model,
+                                                 metric_constructors)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
+
+    expected_initial_local_variables = [0.0, 0, 0.0, 0.0, 0.0, 0.0]
+    self.assertSequenceEqual(tff_model.local_variables,
+                             expected_initial_local_variables)
+
+    # Execute forward pass on the dataset, assert metrics are not zero.
+    for batch in dataset:
+      with tf.GradientTape() as tape:
+        batch_output = tff_model.forward_pass(batch, training=True)
+      gradients = tape.gradient(batch_output.loss,
+                                tff_model.trainable_variables)
+      optimizer.apply_gradients(zip(gradients, tff_model.trainable_variables))
+      loss = batch_output.loss
+    self.assertGreater(loss, 0)
+    self.assertAllClose(
+        tff_model.report_local_unfinalized_metrics(),
+        collections.OrderedDict(
+            loss=[876.11523, 25.0],
+            mean_squared_error=[876.11523, 25.0],
+            root_mean_squared_error=[876.11523, 25.0]))
+
+    # Reset metrics variables.
+    tff_model.reset_metrics()
+    self.assertSequenceEqual(tff_model.local_variables,
+                             expected_initial_local_variables)
+    self.assertEqual(
+        tff_model.report_local_unfinalized_metrics(),
+        collections.OrderedDict(
+            loss=[0, 0],
+            mean_squared_error=[0, 0],
+            root_mean_squared_error=[0, 0]))
+
+
+class FunctionalModelFromKerasTest(tf.test.TestCase):
+
+  def assert_variableless_function(self, fn, *args, **kwargs):
+    graph_def = fn.get_concrete_function(*args, **kwargs).graph.as_graph_def()
+    all_nodes = itertools.chain(
+        graph_def.node, *[f.node_def for f in graph_def.library.function])
+    self.assertEmpty([node.op for node in all_nodes if 'Variable' in node.op])
+
+  def test_construct_from_keras(self):
+    if not version_check.is_tensorflow_version_newer('2.10.0', tf):
+      self.skipTest(
+          'b/239094808'
+          ' requires https://github.com/keras-team/keras/commit/f6e8e9b1b999d22de9830fabc5e6d15a1818f0c6'
+      )
+    keras_model = create_test_keras_model()
+    # Assign some variables after initialization so we can assert that they
+    # were cloned into the FunctionalModel.
+    tf.nest.map_structure(lambda v: v.assign(tf.ones_like(v)),
+                          keras_model.variables)
+    x_spec = tf.TensorSpec([None, 1], dtype=tf.float32)
+    y_spec = tf.TensorSpec([None, 1], dtype=tf.int32)
+    functional_model = functional.functional_model_from_keras(
+        keras_model=keras_model,
+        loss_fn=tf.keras.losses.MeanSquaredError(),
+        input_spec=(x_spec, y_spec),
+        metrics_constructor=collections.OrderedDict(
+            accuracy=tf.keras.metrics.MeanSquaredError))
+    self.assertIsInstance(functional_model, functional.FunctionalModel)
+
+    model_weights_tensor_spec = tf.nest.map_structure(
+        lambda n: tf.TensorSpec(n.shape, tf.dtypes.as_dtype(n.dtype)),
+        functional_model.initial_weights)
+    with tf.Graph().as_default():
+      metrics_state_tensor_spec = tf.nest.map_structure(
+          tf.TensorSpec.from_tensor,
+          functional_model.initialize_metrics_state())
+      self.assert_variableless_function(
+          functional_model.predict_on_batch,
+          model_weights=model_weights_tensor_spec,
+          x=x_spec)
+      self.assert_variableless_function(
+          functional_model.forward_pass,
+          model_weights=model_weights_tensor_spec,
+          batch_input=(x_spec, y_spec))
+      self.assert_variableless_function(
+          functional_model.initialize_metrics_state)
+      self.assert_variableless_function(
+          functional_model.update_metrics_state,
+          state=metrics_state_tensor_spec,
+          y_true=tf.TensorSpec([1], tf.float32),
+          y_pred=tf.TensorSpec([1], tf.float32))
+      self.assert_variableless_function(
+          functional_model.finalize_metrics, state=metrics_state_tensor_spec)
+    # Assert all ones, instead of zeros from a newly initial model.
+    tf.nest.map_structure(lambda v: self.assertAllClose(v, tf.ones_like(v)),
+                          functional_model.initial_weights)
 
   def test_predict_on_batch_keras_outside_graph_fails(self):
     dataset = create_test_dataset()
@@ -136,33 +588,6 @@ class FunctionalTest(tf.test.TestCase):
                                 'only usable inside a tff.tf_computation'):
       functional_model.predict_on_batch(functional_model.initial_weights,
                                         example_batch[0])
-
-  def test_forward_pass(self):
-    dataset = create_test_dataset()
-    example_batch = next(iter(dataset))
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-    self.assertAllClose(
-        functional_model.predict_on_batch(functional_model.initial_weights,
-                                          example_batch[0]), [[0.]] * 5)
-
-  def test_construct_from_keras(self):
-    keras_model = create_test_keras_model()
-    # Assign some variables after initialization so we can assert that they
-    # were cloned into the FunctionalModel.
-    tf.nest.map_structure(lambda v: v.assign(tf.ones_like(v)),
-                          keras_model.variables)
-    functional_model = functional.functional_model_from_keras(
-        keras_model=keras_model,
-        loss_fn=tf.keras.losses.MeanSquaredError(),
-        input_spec=(tf.TensorSpec([None, 1], dtype=tf.float32),
-                    tf.TensorSpec([None, 1], dtype=tf.int32)))
-    self.assertIsInstance(functional_model, functional.FunctionalModel)
-    # Assert all ones, instead of zeros from a newly initial model.
-    tf.nest.map_structure(lambda v: self.assertAllClose(v, tf.ones_like(v)),
-                          functional_model.initial_weights)
 
   def test_construct_from_keras_converges(self):
     functional_model = functional.functional_model_from_keras(
@@ -211,195 +636,6 @@ class FunctionalTest(tf.test.TestCase):
     # Expect some amount of convergence after a few epochs of the dataset.
     self.assertGreater(initial_loss, 2.0)
     self.assertLess(final_loss, 0.2)
-
-  def test_tff_model_from_functional_same_result(self):
-    dataset = create_test_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-    tff_model = functional.model_from_functional(functional_model)
-
-    for training in [True, False]:
-      for batch in dataset:
-        self.assertAllClose(
-            tff_model.predict_on_batch(batch[0], training),
-            functional_model.predict_on_batch(functional_model.initial_weights,
-                                              batch[0], training))
-        tf.nest.map_structure(
-            self.assertAllClose, tff_model.forward_pass(batch, training),
-            functional_model.forward_pass(functional_model.initial_weights,
-                                          batch, training))
-
-  def test_functional_model_converges(self):
-    dataset = create_test_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
-    variables = tf.nest.map_structure(tf.Variable,
-                                      functional_model.initial_weights)
-    trainable = variables[0]
-    loss = None
-    num_epochs = 50
-    for batch in dataset.repeat(num_epochs):
-      with tf.GradientTape() as tape:
-        batch_output = functional_model.forward_pass(
-            variables, batch, training=True)
-      gradients = tape.gradient(batch_output.loss, trainable)
-      optimizer.apply_gradients(zip(gradients, trainable))
-      loss = batch_output.loss
-    # Expect some amount of convergence after a few epochs of the dataset.
-    self.assertLess(loss, 0.1)
-    self.assertAllClose(trainable, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
-
-  def test_tff_model_from_functional_converges(self):
-    dataset = create_test_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-    tff_model = functional.model_from_functional(functional_model)
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
-    loss = None
-    num_epochs = 50
-    for batch in dataset.repeat(num_epochs):
-      with tf.GradientTape() as tape:
-        batch_output = tff_model.forward_pass(batch, training=True)
-      gradients = tape.gradient(batch_output.loss,
-                                tff_model.trainable_variables)
-      optimizer.apply_gradients(zip(gradients, tff_model.trainable_variables))
-      loss = batch_output.loss
-    # Expect some amount of convergence after a few epochs of the dataset.
-    self.assertLess(loss, 0.1)
-    self.assertAllClose(
-        tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
-    self.assertAllClose(tff_model.report_local_unfinalized_metrics(),
-                        collections.OrderedDict(loss=[1066.19628, 1250.0]))
-
-  def test_tff_model_from_functional_fails_with_repeated_metric_names(self):
-    dataset = create_test_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-    metric_constructors = [
-        lambda: tf.keras.metrics.MeanSquaredError(name='same_name'),
-        lambda: tf.keras.metrics.RootMeanSquaredError(name='same_name')
-    ]
-    with self.assertRaisesRegex(ValueError,
-                                'each metric should have a unique name'):
-      functional.model_from_functional(functional_model, metric_constructors)
-
-  def test_tff_model_from_functional_binding_metrics_succeeds(self):
-    dataset = create_test_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-    metric_constructors = [
-        tf.keras.metrics.MeanSquaredError, tf.keras.metrics.RootMeanSquaredError
-    ]
-    tff_model = functional.model_from_functional(functional_model,
-                                                 metric_constructors)
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
-    loss = None
-    num_epochs = 50
-    for batch in dataset.repeat(num_epochs):
-      with tf.GradientTape() as tape:
-        batch_output = tff_model.forward_pass(batch, training=True)
-      gradients = tape.gradient(batch_output.loss,
-                                tff_model.trainable_variables)
-      optimizer.apply_gradients(zip(gradients, tff_model.trainable_variables))
-      loss = batch_output.loss
-    # Expect some amount of convergence after a few epochs of the dataset.
-    self.assertLess(loss, 0.1)
-    self.assertAllClose(
-        tff_model.trainable_variables, ([[1.0, 2.0, 3.0]], [5.0]), atol=0.5)
-    self.assertAllClose(
-        tff_model.report_local_unfinalized_metrics(),
-        collections.OrderedDict(
-            # The model uses mean squred error as `loss`, so the other two
-            # metrics (`mean_squared_error` and `root_mean_squared_error`)
-            # should have the same state as `loss`.
-            loss=[1066.19628, 1250.0],
-            mean_squared_error=[1066.19628, 1250.0],
-            root_mean_squared_error=[1066.19628, 1250.0]))
-
-  def test_tff_model_from_functional_federated_aggregate_metrics_succeeds(self):
-    dataset = create_test_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-    metric_constructors = [
-        lambda: tf.keras.metrics.MeanSquaredError(name='mse'),
-        lambda: tf.keras.metrics.MeanAbsoluteError(name='mae')
-    ]
-    tff_model = functional.model_from_functional(functional_model,
-                                                 metric_constructors)
-    client_1_local_outputs = collections.OrderedDict(
-        loss=[1.0, 2.0], mse=[1.0, 2.0], mae=[1.0, 2.0])
-    client_2_local_outputs = collections.OrderedDict(
-        loss=[2.0, 4.0], mse=[2.0, 2.0], mae=[1.0, 6.0])
-    metrics_aggregator = aggregator.sum_then_finalize
-    unfinalized_metrics_type = type_conversions.type_from_tensors(
-        tff_model.report_local_unfinalized_metrics())
-    metrics_aggregation_computation = metrics_aggregator(
-        tff_model.metric_finalizers(), unfinalized_metrics_type)
-    aggregated_metrics = metrics_aggregation_computation(
-        [client_1_local_outputs, client_2_local_outputs])
-    self.assertAllClose(
-        aggregated_metrics,
-        # loss = (1.0+2.0)/(2.0+4.0) = 0.5
-        # mse = (1.0+2.0)/(2.0+2.0) = 0.75
-        # mae = (1.0+1.0)/(2.0+6.0) = 0.25
-        collections.OrderedDict(loss=0.5, mse=0.75, mae=0.25))
-
-  def test_tff_model_from_functional_resets_metrics(self):
-    dataset = create_test_dataset()
-    input_spec = dataset.element_spec
-    functional_model = functional.FunctionalModel(initial_weights(),
-                                                  forward_pass,
-                                                  predict_on_batch, input_spec)
-    metric_constructors = [
-        tf.keras.metrics.MeanSquaredError, tf.keras.metrics.RootMeanSquaredError
-    ]
-    tff_model = functional.model_from_functional(functional_model,
-                                                 metric_constructors)
-    optimizer = tf.keras.optimizers.SGD(learning_rate=0.05)
-
-    expected_initial_local_variables = [0.0, 0, 0.0, 0.0, 0.0, 0.0]
-    self.assertSequenceEqual(tff_model.local_variables,
-                             expected_initial_local_variables)
-
-    # Execute forward pass on the dataset, assert metrics are not zero.
-    for batch in dataset:
-      with tf.GradientTape() as tape:
-        batch_output = tff_model.forward_pass(batch, training=True)
-      gradients = tape.gradient(batch_output.loss,
-                                tff_model.trainable_variables)
-      optimizer.apply_gradients(zip(gradients, tff_model.trainable_variables))
-      loss = batch_output.loss
-    self.assertGreater(loss, 0)
-    self.assertAllClose(
-        tff_model.report_local_unfinalized_metrics(),
-        collections.OrderedDict(
-            loss=[876.11523, 25.0],
-            mean_squared_error=[876.11523, 25.0],
-            root_mean_squared_error=[876.11523, 25.0]))
-
-    # Reset metrics variables.
-    tff_model.reset_metrics()
-    self.assertSequenceEqual(tff_model.local_variables,
-                             expected_initial_local_variables)
-    self.assertEqual(
-        tff_model.report_local_unfinalized_metrics(),
-        collections.OrderedDict(
-            loss=[0, 0],
-            mean_squared_error=[0, 0],
-            root_mean_squared_error=[0, 0]))
 
   def test_keras_model_with_non_trainable_variables_fails(self):
     inputs = tf.keras.layers.Input(shape=[1])

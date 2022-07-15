@@ -34,6 +34,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning/metrics:finalizer",
+        "//tensorflow_federated/python/learning/metrics:keras_utils",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
@@ -51,6 +52,7 @@ py_test(
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
+        "//tensorflow_federated/python/tensorflow_libs:version_check",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

@@ -49,6 +49,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning/models:functional",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
@@ -156,6 +157,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning/models:functional",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

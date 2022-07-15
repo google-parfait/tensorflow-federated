@@ -37,6 +37,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
+from tensorflow_federated.python.learning.models import functional
 
 
 class InternalError(Exception):
@@ -89,11 +90,12 @@ def check_metric_finalizers(metric_finalizers: model_lib.MetricFinalizersType):
     TypeError: If `metric_finalizers` is not a `collections.OrderedDict` or
       any key is not a `str` type, or value is not a `callable`.
   """
-  py_typecheck.check_type(metric_finalizers, collections.OrderedDict,
-                          'metric_finalizers')
-  for key, value in metric_finalizers.items():
-    py_typecheck.check_type(key, str, f'metric_finalizers key {key}')
-    py_typecheck.check_callable(value, f'metric_finalizers value {value}')
+  if not callable(metric_finalizers):
+    py_typecheck.check_type(metric_finalizers, collections.OrderedDict,
+                            'metric_finalizers')
+    for key, value in metric_finalizers.items():
+      py_typecheck.check_type(key, str, f'metric_finalizers key {key}')
+      py_typecheck.check_callable(value, f'metric_finalizers value {value}')
 
 
 def check_local_unfinalzied_metrics_type(
@@ -128,7 +130,8 @@ def check_local_unfinalzied_metrics_type(
 
 
 def sum_then_finalize(
-    metric_finalizers: model_lib.MetricFinalizersType,
+    metric_finalizers: Union[model_lib.MetricFinalizersType,
+                             functional.FunctionalMetricFinalizersType],
     local_unfinalized_metrics_type: computation_types.StructWithPythonType
 ) -> computation_base.Computation:
   """Creates a TFF computation that aggregates metrics via `sum_then_finalize`.
@@ -140,13 +143,14 @@ def sum_then_finalize(
   from `CLIENTS`, followed by applying the finalizers at `SERVER`.
 
   Args:
-    metric_finalizers: An `OrderedDict` of `string` metric names to finalizer
-      functions returned by `tff.learning.Model.metric_finalizers()`. It should
-      have the same keys (i.e., metric names) as the `OrderedDict` returned by
-      `tff.learning.Model.report_local_unfinalized_metrics()`. A finalizer is a
-      callable (typically `tf.function` or `tff.tf_computation` decoreated
-      function) that takes in a metric's unfinalized values, and returns the
-      finalized values.
+    metric_finalizers: Either the result of
+      `tff.learning.Model.metric_finalizers` (an `OrderedDict` of callables) or
+      the `tff.learning.models.FunctionalModel.finalize_metrics` method
+      (a callable that takes an `OrderedDict` argument). If the former, the
+      keys must be the same as the `OrderedDict` returned by
+      `tff.learning.Model.report_local_unfinalized_metrics`. If the later, the
+      callable must compute over the same keyspace of the result returned by
+      `tff.learning.models.FunctionalModel.update_metrics_state`.
     local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
       `OrderedDict` as the Python container) of a client's local unfinalized
       metrics. Let `local_unfinalized_metrics` be the output of
@@ -164,8 +168,12 @@ def sum_then_finalize(
   """
   check_metric_finalizers(metric_finalizers)
   check_local_unfinalzied_metrics_type(local_unfinalized_metrics_type)
-  check_finalizers_matches_unfinalized_metrics(metric_finalizers,
-                                               local_unfinalized_metrics_type)
+  if not callable(metric_finalizers):
+    # If we have a FunctionalMetricsFinalizerType it's a function that can only
+    # we checked when we call it, as users may have used *args/**kwargs
+    # arguments or otherwise making it hard to deduce the type.
+    check_finalizers_matches_unfinalized_metrics(
+        metric_finalizers, local_unfinalized_metrics_type)
 
   @federated_computation.federated_computation(
       computation_types.at_clients(local_unfinalized_metrics_type))
@@ -173,13 +181,18 @@ def sum_then_finalize(
     unfinalized_metrics_sum = intrinsics.federated_sum(
         client_local_unfinalized_metrics)
 
-    @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
-    def finalizer_computation(unfinalized_metrics):
-      finalized_metrics = collections.OrderedDict()
-      for metric_name, metric_finalizer in metric_finalizers.items():
-        finalized_metrics[metric_name] = metric_finalizer(
-            unfinalized_metrics[metric_name])
-      return finalized_metrics
+    if callable(metric_finalizers):
+      finalizer_computation = tensorflow_computation.tf_computation(
+          metric_finalizers, local_unfinalized_metrics_type)
+    else:
+
+      @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
+      def finalizer_computation(unfinalized_metrics):
+        finalized_metrics = collections.OrderedDict()
+        for metric_name, metric_finalizer in metric_finalizers.items():
+          finalized_metrics[metric_name] = metric_finalizer(
+              unfinalized_metrics[metric_name])
+        return finalized_metrics
 
     return intrinsics.federated_map(finalizer_computation,
                                     unfinalized_metrics_sum)
@@ -399,8 +412,12 @@ def secure_sum_then_finalize(
   """
   check_metric_finalizers(metric_finalizers)
   check_local_unfinalzied_metrics_type(local_unfinalized_metrics_type)
-  check_finalizers_matches_unfinalized_metrics(metric_finalizers,
-                                               local_unfinalized_metrics_type)
+  if not callable(metric_finalizers):
+    # If we have a FunctionalMetricsFinalizerType it's a function that can only
+    # we checked when we call it, as users may have used *args/**kwargs
+    # arguments or otherwise making it hard to deduce the type.
+    check_finalizers_matches_unfinalized_metrics(
+        metric_finalizers, local_unfinalized_metrics_type)
 
   default_metric_value_ranges = create_default_secure_sum_quantization_ranges(
       local_unfinalized_metrics_type)
@@ -541,9 +558,12 @@ def secure_sum_then_finalize(
           grouped_unfinalized_metrics)
       unfinalized_metrics = tf.nest.pack_sequence_as(
           structure_of_tensor_types, flattened_unfinalized_metrics_list)
-      for metric_name, metric_finalizer in metric_finalizers.items():
-        finalized_metrics[metric_name] = metric_finalizer(
-            unfinalized_metrics[metric_name])
+      if callable(metric_finalizers):
+        finalized_metrics.update(metric_finalizers(unfinalized_metrics))
+      else:
+        for metric_name, metric_finalizer in metric_finalizers.items():
+          finalized_metrics[metric_name] = metric_finalizer(
+              unfinalized_metrics[metric_name])
       return finalized_metrics
 
     return intrinsics.federated_map(finalizer_computation,
