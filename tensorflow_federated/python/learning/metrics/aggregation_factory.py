@@ -16,10 +16,10 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""AggregationFactory for Federated Learning metrics."""
+"""AggregationFactory for metrics."""
 
 import collections
-from typing import Any, Optional, OrderedDict, Union
+from typing import Any, Optional, OrderedDict
 
 import tensorflow as tf
 
@@ -36,19 +36,13 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregator
-from tensorflow_federated.python.learning.models import functional
 
 
 def _build_finalizer_computation(
-    metric_finalizers: Union[model_lib.MetricFinalizersType,
-                             functional.FunctionalMetricFinalizersType],
+    metric_finalizers: model_lib.MetricFinalizersType,
     local_unfinalized_metrics_type: computation_types.StructWithPythonType
 ) -> computation_base.Computation:
   """Builds computation for finalizing metrics."""
-  if callable(metric_finalizers):
-    return tensorflow_computation.tf_computation(
-        local_unfinalized_metrics_type)(
-            metric_finalizers)
 
   @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
   def finazlier_computation(unfinalized_metrics):
@@ -148,12 +142,8 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
     aggregator.check_metric_finalizers(metric_finalizers)
     aggregator.check_local_unfinalzied_metrics_type(
         local_unfinalized_metrics_type)
-    if not callable(metric_finalizers):
-      # If we have a FunctionalMetricsFinalizerType its a function that can only
-      # we checked when we call it, as users may have used *args/**kwargs
-      # arguments or otherwise making it hard to deduce the type.
-      aggregator.check_finalizers_matches_unfinalized_metrics(
-          metric_finalizers, local_unfinalized_metrics_type)
+    aggregator.check_finalizers_matches_unfinalized_metrics(
+        metric_finalizers, local_unfinalized_metrics_type)
 
     inner_summation_process = sum_factory_lib.SumFactory().create(
         local_unfinalized_metrics_type)

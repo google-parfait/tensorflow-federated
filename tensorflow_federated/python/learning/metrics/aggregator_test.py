@@ -14,7 +14,6 @@
 """Tests for aggregator."""
 
 import collections
-from typing import Any, OrderedDict
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -85,46 +84,6 @@ _TEST_ARGUMENTS_KERAS_METRICS = {
         collections.OrderedDict(
             accuracy=(1.0 + 3.0) / (2.0 + 6.0), custom_sum=8)
 }
-
-
-def _test_finalize_metrics(
-    unfinalized_metrics: OrderedDict[str, Any]) -> OrderedDict[str, Any]:
-  return collections.OrderedDict(
-      accuracy=finalizer.create_keras_metric_finalizer(
-          tf.keras.metrics.SparseCategoricalAccuracy)(
-              unfinalized_metrics['accuracy']),
-      custom_sum=finalizer.create_keras_metric_finalizer(CustomSumMetric)(
-          unfinalized_metrics['custom_sum']))
-
-
-_TEST_CALLABLE_ARGUMENTS_KERAS_METRICS = {
-    'testcase_name':
-        'keras_metrics_callable_finalizers',
-    'metric_finalizers':
-        _test_finalize_metrics,
-    'local_unfinalized_metrics_at_clients': [
-        collections.OrderedDict(
-            # The unfinalized `accuracy` has two values: `total` and `count`.
-            accuracy=[tf.constant(1.0), tf.constant(2.0)],
-            # The unfinalized `custom_sum` has three values: `total`, `scalar`,
-            # and `vector`.
-            custom_sum=[tf.constant(1),
-                        tf.constant(1),
-                        tf.constant([1, 1])]),
-        collections.OrderedDict(
-            accuracy=[tf.constant(3.0), tf.constant(6.0)],
-            custom_sum=[tf.constant(1),
-                        tf.constant(1),
-                        tf.constant([1, 1])])
-    ],
-    # The finalized metrics are computed by first summing the unfinalized values
-    # from clients, and run the corresponding finalizers (a division for
-    # `accuracy`, and a sum for `custom_sum`) at the server.
-    'expected_aggregated_metrics':
-        collections.OrderedDict(
-            accuracy=(1.0 + 3.0) / (2.0 + 6.0), custom_sum=8)
-}
-
 
 _TEST_ARGUMENTS_NON_KERAS_METRICS = {
     'testcase_name':
@@ -227,8 +186,7 @@ _TEST_ARGUMENTS_INVALID_INPUTS = [{
 class SumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(_TEST_ARGUMENTS_KERAS_METRICS,
-                                  _TEST_ARGUMENTS_NON_KERAS_METRICS,
-                                  _TEST_CALLABLE_ARGUMENTS_KERAS_METRICS)
+                                  _TEST_ARGUMENTS_NON_KERAS_METRICS)
   def test_returns_correct_results(self, metric_finalizers,
                                    local_unfinalized_metrics_at_clients,
                                    expected_aggregated_metrics):
@@ -333,7 +291,6 @@ class SecureSumThenFinalizeTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.named_parameters(_TEST_ARGUMENTS_KERAS_METRICS,
                                   _TEST_ARGUMENTS_NON_KERAS_METRICS,
-                                  _TEST_CALLABLE_ARGUMENTS_KERAS_METRICS,
                                   _TEST_METRICS_MIXED_DTYPES)
   def test_default_value_ranges_returns_correct_results(
       self, metric_finalizers, local_unfinalized_metrics_at_clients,

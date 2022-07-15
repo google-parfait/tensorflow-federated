@@ -28,18 +28,10 @@ from tensorflow_federated.python.learning.metrics import aggregation_factory
 
 
 def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
-  if callable(metric_finalizers):
-    finalized_metrics = metric_finalizers(unfinalized_metrics)
-  else:
-    finalized_metrics = collections.OrderedDict(
-        (metric, finalizer(unfinalized_metrics[metric]))
-        for metric, finalizer in metric_finalizers.items())
+  finalized_metrics = collections.OrderedDict()
+  for metric, finalizer in metric_finalizers.items():
+    finalized_metrics[metric] = finalizer(unfinalized_metrics[metric])
   return type_conversions.type_from_tensors(finalized_metrics)
-
-
-@tf.function
-def _tf_mean(x):
-  return tf.math.divide_no_nan(x[0], x[1])
 
 
 class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
@@ -49,12 +41,10 @@ class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
       ('scalar_metric',
        collections.OrderedDict(num_examples=tf.function(func=lambda x: x)),
        collections.OrderedDict(num_examples=1.0)),
-      ('non_scalar_metric', collections.OrderedDict(loss=_tf_mean),
-       collections.OrderedDict(loss=[2.0, 1.0])),
-      ('callable',
-       tf.function(
-           lambda x: collections.OrderedDict(mean_loss=_tf_mean(x['loss']))),
-       collections.OrderedDict(loss=[1.0, 2.0])))
+      ('non_scalar_metric',
+       collections.OrderedDict(
+           loss=tf.function(func=lambda x: tf.math.divide_no_nan(x[0], x[1]))),
+       collections.OrderedDict(loss=[2.0, 1.0])))
   def test_type_properties(self, metric_finalizers, unfinalized_metrics):
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory()
     self.assertIsInstance(aggregate_factory,
@@ -90,7 +80,7 @@ class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
         process.next.type_signature.is_equivalent_to(expected_next_type))
 
   @parameterized.named_parameters(
-      ('float', 1.0),
+      ('float', 1.0), ('callable', tf.function(func=lambda x: x)),
       ('list',
        [tf.function(func=lambda x: x),
         tf.function(func=lambda x: x + 1)]))
