@@ -14,15 +14,26 @@
 
 import asyncio
 import collections
+import subprocess
+import sys
+import threading
+from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
+
+
+@tensorflow_computation.tf_computation
+def return_one():
+  return 1
 
 
 class DatasetsTest(parameterized.TestCase):
@@ -150,19 +161,10 @@ class AsyncLocalExecutionContextTest(absltest.TestCase):
     execution_contexts.set_local_async_python_execution_context()
 
   def test_single_coro_invocation(self):
-
-    @tensorflow_computation.tf_computation
-    def return_one():
-      return 1
-
     result = asyncio.run(return_one())
     self.assertEqual(result, 1)
 
   def test_asyncio_gather(self):
-
-    @tensorflow_computation.tf_computation
-    def return_one():
-      return 1
 
     @tensorflow_computation.tf_computation
     def return_two():
@@ -173,6 +175,81 @@ class AsyncLocalExecutionContextTest(absltest.TestCase):
 
     result = asyncio.run(await_comps())
     self.assertEqual(result, [1, 2])
+
+
+class LocalhostServerCPPExecutionContextTest(absltest.TestCase):
+
+  def setUp(self):
+
+    class GetExReturnValue():
+
+      @property
+      def executor(self, *args, **kwargs):
+        del args, kwargs  # Unused
+        return executor_pb2.ExecutorId(id='0')
+
+    super().setUp()
+    self._server_binary_path = '/path/to/binary'
+    self._mock_stub = mock.MagicMock(
+        **{
+            'is_ready':
+                True,
+            'get_executor.return_value':
+                GetExReturnValue(),
+            'create_value.return_value':
+                executor_pb2.CreateValueResponse(),
+            'create_call.return_value':
+                executor_pb2.CreateCallResponse(),
+            'compute.return_value':
+                executor_pb2.ComputeResponse(
+                    value=executor_pb2.Value(
+                        computation=return_one.to_building_block().proto))
+        })
+
+  @mock.patch.object(subprocess, 'Popen')
+  def test_process_starts(self, mock_popen):
+    context = execution_contexts.create_localhost_cpp_execution_context(
+        binary_path=self._server_binary_path)
+
+    with mock.patch.object(
+        remote_executor_grpc_stub,
+        'RemoteExecutorGrpcStub',
+        return_value=self._mock_stub):
+      context.invoke(return_one, None)
+
+    mock_popen.assert_called_once_with([
+        f'{self._server_binary_path}', mock.ANY,
+        '--max_concurrent_computation_calls=0'
+    ],
+                                       stdout=sys.stdout,
+                                       stderr=sys.stderr)
+
+  @mock.patch.object(subprocess, 'Popen')
+  def test_stub_going_down_restarts_process(self, mock_popen):
+    context = execution_contexts.create_localhost_cpp_execution_context(
+        binary_path=self._server_binary_path)
+
+    self._mock_stub.is_ready = False
+
+    with mock.patch.object(
+        remote_executor_grpc_stub,
+        'RemoteExecutorGrpcStub',
+        return_value=self._mock_stub):
+      value_fn = lambda: context.invoke(return_one, None)
+      # Set the thread to daemonic, to avoid blocking shutdown.
+      thread = threading.Thread(target=value_fn, daemon=True)
+      thread.start()
+      thread.join(timeout=1)
+      # Stub returning false for is_ready will cause the invocation to block;
+      # is_alive returning true indicates the thread has not finished.
+      self.assertTrue(thread.is_alive())
+
+    mock_popen.assert_called_once_with([
+        f'{self._server_binary_path}', mock.ANY,
+        '--max_concurrent_computation_calls=0'
+    ],
+                                       stdout=sys.stdout,
+                                       stderr=sys.stderr)
 
 
 if __name__ == '__main__':
