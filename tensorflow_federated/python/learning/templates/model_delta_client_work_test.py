@@ -31,10 +31,12 @@ from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import model_delta_client_work
+from tensorflow_federated.python.tensorflow_libs import version_check
 
 
 class ModelDeltaClientWorkComputationTest(tf.test.TestCase,
@@ -129,12 +131,13 @@ def create_test_initial_weights() -> model_utils.ModelWeights:
       trainable=[tf.zeros((2, 1)), tf.constant(0.0)], non_trainable=[0.0])
 
 
+def create_model():
+  return model_examples.LinearRegression(feature_dim=2)
+
+
 class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
                                         parameterized.TestCase):
   """Tests of the client work of FedAvg using a common model and data."""
-
-  def create_model(self):
-    return model_examples.LinearRegression(feature_dim=2)
 
   @parameterized.named_parameters(
       ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
@@ -142,9 +145,9 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
   def test_keras_tff_client_work_equal(self, weighting):
     dataset = create_test_dataset()
     client_update_keras = model_delta_client_work.build_model_delta_update_with_keras_optimizer(
-        model_fn=self.create_model, weighting=weighting)
+        model_fn=create_model, weighting=weighting)
     client_update_tff = model_delta_client_work.build_model_delta_update_with_tff_optimizer(
-        model_fn=self.create_model, weighting=weighting)
+        model_fn=create_model, weighting=weighting)
     keras_result = client_update_keras(
         tf.keras.optimizers.SGD(learning_rate=0.1),
         create_test_initial_weights(), dataset)
@@ -174,7 +177,7 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
   def test_client_tf(self, simulation, optimizer_kwargs, expected_norm,
                      weighting):
     client_tf = model_delta_client_work.build_model_delta_update_with_keras_optimizer(
-        model_fn=self.create_model,
+        model_fn=create_model,
         weighting=weighting,
         use_experimental_simulation_loop=simulation)
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs)
@@ -198,7 +201,7 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
     client_tf = model_delta_client_work.build_model_delta_update_with_keras_optimizer(
-        model_fn=self.create_model,
+        model_fn=create_model,
         weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
     dataset = create_test_dataset()
@@ -234,7 +237,7 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
       return aggregation_computation
 
     process = model_delta_client_work.build_model_delta_client_work(
-        model_fn=self.create_model,
+        model_fn=create_model,
         optimizer=sgdm.build_sgdm(1.0),
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
         metrics_aggregator=sum_then_finalize_then_times_two)
@@ -253,7 +256,7 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
       wraps=dataset_reduce._dataset_reduce_fn)
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     client_tf = model_delta_client_work.build_model_delta_update_with_keras_optimizer(
-        model_fn=self.create_model,
+        model_fn=create_model,
         weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
         use_experimental_simulation_loop=simulation)
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
@@ -269,12 +272,12 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
       ('keras_optimizer', lambda: tf.keras.optimizers.SGD(1.0)))
   def test_delta_regularizer_yields_smaller_model_delta(self, optimizer):
     simple_process = model_delta_client_work.build_model_delta_client_work(
-        self.create_model,
+        create_model,
         optimizer,
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
         delta_l2_regularizer=0.0)
     proximal_process = model_delta_client_work.build_model_delta_client_work(
-        self.create_model,
+        create_model,
         sgdm.build_sgdm(1.0),
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
         delta_l2_regularizer=1.0)
@@ -302,7 +305,7 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
       ('keras_momentum', lambda: tf.keras.optimizers.SGD(1.0, momentum=0.9)))
   def test_execution_with_optimizer(self, optimizer):
     client_work_process = model_delta_client_work.build_model_delta_client_work(
-        self.create_model,
+        create_model,
         optimizer,
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
     client_data = [create_test_dataset()]
@@ -380,6 +383,39 @@ class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
       # pylint: enable=cell-var-from-loop
     self.assertAllClose(
         attr.astuple(model_fn_weights), functional_model_weights)
+
+  def test_metrics_output(self):
+    if not version_check.is_tensorflow_version_newer('2.10.0', tf):
+      self.skipTest(
+          'b/239094808'
+          ' requires https://github.com/keras-team/keras/commit/f6e8e9b1b999d22de9830fabc5e6d15a1818f0c6'
+      )
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=2)
+    loss_fn = tf.keras.losses.MeanSquaredError()
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+
+    def build_metrics_fn():
+      return collections.OrderedDict(num_examples=counters.NumExamplesCounter())
+
+    functional_model = functional.functional_model_from_keras(
+        keras_model,
+        loss_fn=loss_fn,
+        input_spec=input_spec,
+        metrics_constructor=build_metrics_fn)
+
+    process = model_delta_client_work.build_functional_model_delta_client_work(
+        model=functional_model,
+        optimizer=sgdm.build_sgdm(1.0),
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    num_clients = 3
+    client_model_weights = [functional_model.initial_weights] * num_clients
+    client_datasets = [dataset] * num_clients
+    output = process.next(process.initialize(), client_model_weights,
+                          client_datasets)
+    self.assertEqual(output.measurements['train']['num_examples'],
+                     8 * num_clients)
 
 
 if __name__ == '__main__':

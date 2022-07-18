@@ -18,7 +18,8 @@
 # information.
 """Module of `FunctionalModel` implementations for useful for tests."""
 
-from typing import Any
+import collections
+from typing import Any, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -69,8 +70,29 @@ def build_functional_linear_regression(
     return model_lib.BatchOutput(
         loss=average_loss, predictions=predictions, num_examples=num_examples)
 
+  @tf.function
+  def initialize_metrics() -> functional.MetricsState:
+    return collections.OrderedDict(num_examples=tf.constant(0, tf.int32))
+
+  @tf.function
+  def update_metrics_state(
+      state: functional.MetricsState,
+      y_true: Any,
+      y_pred: Any,
+      sample_weight: Optional[Any] = None) -> functional.MetricsState:
+    del y_pred  # Unused.
+    del sample_weight  # Unused.
+    batch_size = tf.shape(y_true)[0]
+    return collections.OrderedDict(num_examples=state["num_examples"] +
+                                   batch_size)
+
+  @tf.function
+  def finalize_metrics(state: functional.MetricsState):
+    return state
+
   return functional.FunctionalModel(
       initial_weights=initial_weights,
       forward_pass_fn=forward_pass,
       predict_on_batch_fn=predict_on_batch,
+      metrics_fns=(initialize_metrics, update_metrics_state, finalize_metrics),
       input_spec=input_spec)

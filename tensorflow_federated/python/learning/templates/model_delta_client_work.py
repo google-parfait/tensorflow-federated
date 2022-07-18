@@ -376,6 +376,7 @@ def build_functional_model_delta_update(
         tf.TensorSpec.from_tensor,
         tuple(tf.nest.flatten(initial_trainable_weights)))
     optimizer_state = optimizer.initialize(trainable_tensor_specs)
+    metrics_state = model.initialize_metrics_state()
 
     # Autograph requires we define these variables once outside the loop.
     model_weights = initial_weights
@@ -384,7 +385,7 @@ def build_functional_model_delta_update(
     for batch in iter(dataset):
       trainable_weights, non_trainable_weights = model_weights
       with tf.GradientTape() as tape:
-        # Must explicitly watch non-variable tensors.
+        # Must explicitly watch non-tf.Variable tensors.
         tape.watch(trainable_weights)
         output = model.forward_pass(model_weights, batch, training=True)
       gradients = tape.gradient(output.loss, trainable_weights)
@@ -397,19 +398,25 @@ def build_functional_model_delta_update(
           optimizer_state, trainable_weights, gradients)
       num_examples += tf.cast(output.num_examples, tf.int64)
       model_weights = (trainable_weights, non_trainable_weights)
+      if isinstance(batch, collections.abc.Mapping):
+        labels = batch['y']
+      else:
+        _, labels = batch
+      metrics_state = model.update_metrics_state(
+          metrics_state, y_pred=output.predictions, y_true=labels)
     # After all local batches, compute the delta between the trained model
     # and the initial incoming model weights.
     client_model_update = tf.nest.map_structure(tf.subtract,
                                                 initial_trainable_weights,
                                                 trainable_weights)
-    # TODO(b/229612282): Implement metrics.
-    model_output = ()
+    unfinalized_metrics = metrics_state
     client_model_update, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(client_model_update))
     client_weight = _choose_client_weight(weighting, has_non_finite_delta,
                                           num_examples)
     return client_works.ClientResult(
-        update=client_model_update, update_weight=client_weight), model_output
+        update=client_model_update,
+        update_weight=client_weight), unfinalized_metrics
 
   return client_update_fn
 
@@ -458,11 +465,6 @@ def build_functional_model_delta_client_work(
     raise ValueError(f'Provided delta_l2_regularizer must be non-negative,'
                      f'but found: {delta_l2_regularizer}')
 
-  if metrics_aggregator is None:
-    metrics_aggregator = aggregator.sum_then_finalize
-
-  # TODO(b/229612282): Add metrics implementation.
-
   data_type = computation_types.SequenceType(model.input_spec)
 
   def ndarray_to_tensorspec(ndarray):
@@ -490,16 +492,21 @@ def build_functional_model_delta_client_work(
     # Empty tuple means "no state" / stateless.
     return intrinsics.federated_value((), placements.SERVER)
 
+  if metrics_aggregator is None:
+    metrics_aggregator = aggregator.sum_then_finalize
+
   @federated_computation.federated_computation(
       computation_types.at_server(()),
       computation_types.at_clients(weights_type),
       computation_types.at_clients(data_type))
   def next_fn(state, weights, client_data):
-    client_result, model_outputs = intrinsics.federated_map(
+    client_result, unfinalized_metrics = intrinsics.federated_map(
         client_update_computation, (weights, client_data))
-    # TODO(b/229612282): Add metrics computations
-    del model_outputs
-    measurements = intrinsics.federated_value((), placements.SERVER)
+    metrics_aggregation_fn = metrics_aggregator(
+        model.finalize_metrics, unfinalized_metrics.type_signature.member)
+    finalized_training_metrics = metrics_aggregation_fn(unfinalized_metrics)
+    measurements = intrinsics.federated_zip(
+        collections.OrderedDict(train=finalized_training_metrics))
     return measured_process.MeasuredProcessOutput(state, client_result,
                                                   measurements)
 
