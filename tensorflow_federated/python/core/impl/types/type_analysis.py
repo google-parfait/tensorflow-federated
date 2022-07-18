@@ -19,7 +19,7 @@
 """A library of static analysis functions for computation types."""
 
 import collections
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, OrderedDict
 
 import tensorflow as tf
 
@@ -707,7 +707,7 @@ def count_tensors_in_type(
     type_spec: computation_types.Type,
     tensor_filter: Optional[Callable[[computation_types.TensorType],
                                      bool]] = None
-) -> collections.OrderedDict[str, Any]:
+) -> OrderedDict[str, Any]:
   """Counts tensors and fully-specified elements under `type_spec`.
 
   Args:

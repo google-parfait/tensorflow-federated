@@ -18,8 +18,7 @@
 # information.
 """Utility methods for working with TensorFlow Federated Model objects."""
 
-import collections
-from typing import Any, Callable, Union
+from typing import Any, Callable, OrderedDict, Union
 
 import attr
 import tensorflow as tf
@@ -100,7 +99,7 @@ def weights_type_from_model(
 
 def parameter_count_from_model(
     model: Union[model_lib.Model, Callable[[], model_lib.Model]]
-) -> collections.OrderedDict[str, Any]:
+) -> OrderedDict[str, Any]:
   """Computes count of trainable parameters for a `model`."""
   weights_type = weights_type_from_model(model)
   trainable_weights_type = weights_type.trainable

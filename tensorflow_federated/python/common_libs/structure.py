@@ -15,7 +15,7 @@
 
 import collections
 import typing
-from typing import Any, Callable, Dict, Optional, Iterable, Iterator, List, Tuple, Union
+from typing import Any, Callable, Dict, Optional, OrderedDict, Iterable, Iterator, List, Tuple, Union
 
 import attr
 import tensorflow as tf
@@ -261,8 +261,7 @@ def iter_elements(struct: Struct) -> Iterator[Tuple[Optional[str], Any]]:
   # pylint: enable=protected-access
 
 
-def to_odict(struct: Struct,
-             recursive: bool = False) -> collections.OrderedDict[str, Any]:
+def to_odict(struct: Struct, recursive: bool = False) -> OrderedDict[str, Any]:
   """Returns `struct` as an `OrderedDict`, if possible.
 
   Args:
@@ -275,8 +274,7 @@ def to_odict(struct: Struct,
   py_typecheck.check_type(struct, Struct)
 
   def _to_odict(
-      elements: List[tuple[Optional[str], Any]]
-  ) -> collections.OrderedDict[str, Any]:
+      elements: List[tuple[Optional[str], Any]]) -> OrderedDict[str, Any]:
     for name, _ in elements:
       if name is None:
         raise ValueError('Cannot convert an `Struct` with unnamed entries to a '
@@ -292,8 +290,7 @@ def to_odict(struct: Struct,
 
 def to_odict_or_tuple(
     struct: Struct,
-    recursive: bool = True
-) -> Union[collections.OrderedDict[str, Any], Tuple[Any, ...]]:
+    recursive: bool = True) -> Union[OrderedDict[str, Any], Tuple[Any, ...]]:
   """Returns `struct` as an `OrderedDict` or `tuple`, if possible.
 
   If all elements of `struct` have names, convert `struct` to an
@@ -312,7 +309,7 @@ def to_odict_or_tuple(
 
   def _to_odict_or_tuple(
       elements: List[tuple[Optional[str], Any]]
-  ) -> Union[collections.OrderedDict[str, Any], Tuple[Any, ...]]:
+  ) -> Union[OrderedDict[str, Any], Tuple[Any, ...]]:
     fields_are_named = tuple(name is not None for name, _ in elements)
     if any(fields_are_named):
       if not all(fields_are_named):

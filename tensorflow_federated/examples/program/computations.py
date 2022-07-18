@@ -17,7 +17,7 @@ These computations compute the sum of the integer data accross all clients.
 """
 
 import collections
-from typing import Any, Tuple
+from typing import Any, OrderedDict, Tuple
 
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -46,9 +46,8 @@ def _sum_integers(x: int, y: int) -> int:
 @tff.federated_computation(
     tff.type_at_server(tf.int32),
     tff.type_at_clients(tff.SequenceType(tf.int32)))
-def train(
-    server_state: int, client_data: tf.data.Dataset
-) -> Tuple[int, collections.OrderedDict[str, Any]]:
+def train(server_state: int,
+          client_data: tf.data.Dataset) -> Tuple[int, OrderedDict[str, Any]]:
   """Computes the sum of all the integers on the clients.
 
   Computes the sum of all the integers on the clients, updates the server state,
@@ -76,9 +75,8 @@ def train(
 @tff.federated_computation(
     tff.type_at_server(tf.int32),
     tff.type_at_clients(tff.SequenceType(tf.int32)))
-def evaluation(
-    server_state: int,
-    client_data: tf.data.Dataset) -> collections.OrderedDict[str, Any]:
+def evaluation(server_state: int,
+               client_data: tf.data.Dataset) -> OrderedDict[str, Any]:
   """Computes the sum of all the integers on the clients.
 
   Computes the sum of all the integers on the clients and returns the following
