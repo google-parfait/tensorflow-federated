@@ -447,6 +447,7 @@ class MapReduceForm(object):
         ('secure_modular_sum_modulus', self.secure_modular_sum_modulus),
         ('update', self.update),
     ):
-      # Add sufficient padding to align first column; len('initialize') == 10
-      print_fn('{:<10}: {}'.format(
+      # Add sufficient padding to align first column;
+      # len('secure_modular_sum_modulus') == 26
+      print_fn('{:<26}: {}'.format(
           label, comp.type_signature.compact_representation()))
