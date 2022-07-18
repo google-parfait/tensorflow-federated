@@ -17,6 +17,7 @@ import collections
 from absl.testing import absltest
 import jax
 import numpy as np
+import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
@@ -36,6 +37,30 @@ TensorType = computation_types.TensorType
 
 
 class JaxSerializationTest(absltest.TestCase):
+
+  def test_serialize_jax_fails_well_with_unk_rank_param(self):
+
+    def traced_fn(x):
+      return x + 10
+
+    param_type = computation_types.TensorType(
+        dtype=tf.int32, shape=tf.TensorShape(None))
+    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
+    with self.assertRaisesRegex(TypeError, 'fully-defined TensorShapes'):
+      jax_serialization.serialize_jax_computation(
+          traced_fn, arg_fn, param_type, context_stack_impl.context_stack)
+
+  def test_serialize_jax_fails_well_with_known_rank_unk_shape_param(self):
+
+    def traced_fn(x):
+      return x + 10
+
+    param_type = computation_types.TensorType(
+        dtype=tf.int32, shape=tf.TensorShape([None]))
+    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
+    with self.assertRaisesRegex(TypeError, 'fully-defined TensorShapes'):
+      jax_serialization.serialize_jax_computation(
+          traced_fn, arg_fn, param_type, context_stack_impl.context_stack)
 
   def test_serialize_jax_with_noarg_to_int32(self):
 

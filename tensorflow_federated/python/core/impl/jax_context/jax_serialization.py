@@ -21,6 +21,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.jax_context import jax_computation_context
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import typed_object
 from tensorflow_federated.python.core.impl.xla_context import xla_serialization
 
@@ -30,6 +31,7 @@ class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):
 
   def __init__(self, tensor_type, tensor_index):
     py_typecheck.check_type(tensor_type, computation_types.TensorType)
+    # We assume shape has already been checked to be fully defined here.
     shape = tuple(tensor_type.shape.as_list())
     dtype = tensor_type.dtype.as_numpy_dtype
     jax.ShapeDtypeStruct.__init__(self, shape, dtype)
@@ -72,8 +74,23 @@ def _tff_type_to_xla_serializer_arg(type_spec):
     serializer.
   """
 
+  def _undefined_shape_predicate(type_element: computation_types.Type):
+    if type_element.is_tensor():
+      if not type_element.shape.is_fully_defined():
+        return True
+    return False
+
+  has_undefined_shapes = type_analysis.contains(type_spec,
+                                                _undefined_shape_predicate)
+  if has_undefined_shapes:
+    raise TypeError('Can only serialize XLA computations whose parameters '
+                    'contain fully-defined TensorShapes at the leaves; '
+                    'encountered undefined tensor shapes (or unknown rank '
+                    'tensors) in the signature:\n'
+                    f'{type_spec.formatted_representation()}')
+
   def _make(type_spec, next_unused_tensor_index):
-    if isinstance(type_spec, computation_types.TensorType):
+    if type_spec.is_tensor():
       obj = _XlaSerializerTensorArg(type_spec, next_unused_tensor_index)
       next_unused_tensor_index = next_unused_tensor_index + 1
       return obj, next_unused_tensor_index
