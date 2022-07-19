@@ -115,8 +115,12 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   absl::string_view ExecutorName() final { return "XLAExecutor"; }
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
-    return ThreadRun(
-        [value_pb, this]() { return this->CreateValueAny(value_pb); });
+    return ThreadRun([value_pb, this_shared = shared_from_this()]() {
+      // shared_from_this() returns the base Executor* type, so we must
+      // cast to our derived type here.
+      return static_cast<XLAExecutor*>(this_shared.get())
+          ->CreateValueAny(value_pb);
+    });
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
