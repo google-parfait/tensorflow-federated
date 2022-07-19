@@ -3,7 +3,6 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#
 #      http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -13,6 +12,7 @@
 # limitations under the License.
 """Tests for tensorflow_federated.python.tensorflow_libs.variable_utils."""
 
+import functools
 import itertools
 import operator
 
@@ -279,15 +279,45 @@ class TensorVariableTest(tf.test.TestCase, parameterized.TestCase):
   def test_hashing(self):
     with self.subTest('eager'):
       with self.assertRaises(TypeError):
-        v = tf.Variable(1.0)
+        v = variable_utils.TensorVariable(1.0)
         hash(v)
     with self.subTest('graph'):
       with tf.Graph().as_default():
-        v = tf.Variable(1.0)
+        v = variable_utils.TensorVariable(1.0)
         try:
           hash(v)
         except:  # pylint: disable=bare-except
           self.fail('Failed to compute hash of variable in a graph context.')
+
+  def test_name(self):
+    variable_name = 'test'
+    v = variable_utils.TensorVariable(1.0, name=variable_name)
+    self.assertEqual(v.name, variable_name)
+    with tf.Graph().as_default():
+      graph_name = variable_name + '_graph'
+      graph_v = variable_utils.TensorVariable(1.0, name=graph_name)
+      self.assertEqual(graph_v.name, graph_name)
+
+  def test_partitioned_variable(self):
+    test_value = [1, 2, 3]
+    with tf.Graph().as_default() as g:
+      create_variable = functools.partial(
+          tf.compat.v1.get_variable,
+          initializer=tf.convert_to_tensor(test_value),
+          shape=[3],
+          partitioner=tf.compat.v1.min_max_variable_partitioner(
+              max_partitions=3, min_slice_size=1))
+
+      v = create_variable(name='partitioned_variable')
+      output_v = tf.identity(v)
+      with tf.variable_creator_scope(variable_utils.create_tensor_variable):
+        tv = create_variable(name='partitioned_tensor_variable')
+      output_tv = tf.identity(tv)
+
+    with tf.compat.v1.Session(graph=g) as sess:
+      sess.run(fetches=tf.compat.v1.initializers.global_variables())
+      output_v, output_tv = sess.run(fetches=[output_v, output_tv])
+      self.assertAllEqual(output_v, output_tv)
 
 
 if __name__ == '__main__':

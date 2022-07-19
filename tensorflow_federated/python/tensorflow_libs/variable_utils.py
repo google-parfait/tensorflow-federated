@@ -50,6 +50,11 @@ class TensorVariable:
   is the same behavior as inside a `tf.function`. This may have surprising
   side-effects if code authors were not expecting it, but also is more similar
   to standard Python code where the line ordering implies execution ordering.
+
+  IMPORTANT: the `name` attribute does not behave the same as `tf.Variable`.
+  Notably, it does not do name deduplication in graph contexts (no `_#` suffix
+  is applied), and the returned name string does not refer to the fetchable
+  resource from a session.
   """
 
   def __init__(self,
@@ -59,7 +64,6 @@ class TensorVariable:
                shape=None,
                **kwargs):
     """For details see https://www.tensorflow.org/api_docs/python/tf/Variable#args_1."""
-    del kwargs  # Unused.
     if callable(initial_value):
       if dtype is None:
         raise ValueError('When `initial_value` is a callable, `dtype` must be '
@@ -81,14 +85,20 @@ class TensorVariable:
         shape = tf.TensorShape(shape)
       self._shape = shape
       self._check_shape(self._tensor)
+    self._name = kwargs.get('name', 'Variable')
+    self._save_slice_info = None
 
   @property
-  def shape(self):
+  def shape(self) -> tf.TensorShape:
     return self._tensor.shape
 
   @property
-  def dtype(self):
+  def dtype(self) -> tf.DType:
     return self._tensor.dtype
+
+  @property
+  def name(self) -> str:
+    return self._name
 
   def assign(self, value, use_locking=False, name=None, read_value=True):
     del use_locking  # Unused.
@@ -189,14 +199,25 @@ class TensorVariable:
     return operator.__pow__(self._tensor, value)
 
   def __hash__(self):
-    raise TypeError(f'TensorVariable {self!r} is unhashable. Instead, use '
-                    'tensorvariable.ref() as the key.')
+    if not tf.executing_eagerly():
+      return hash(self._tensor)
+    else:
+      raise TypeError(f'TensorVariable {self!r} is unhashable. Instead, use '
+                      'tensorvariable.ref() as the key.')
 
   def __repr__(self) -> str:
     return f'<TensorVariable: {self._tensor}>'
 
   def __array__(self):
     return np.array(self._tensor)
+
+  # _save_slice_info is an internal implementation detail of old style
+  # tf.compat.v1.get_variable() creation and should not generally be used.
+  def _set_save_slice_info(self, save_slice_info):
+    self._save_slice_info = save_slice_info
+
+  def _get_save_slice_info(self):
+    return self._save_slice_info
 
 
 def create_tensor_variable(next_creator_fn, **kwargs):
