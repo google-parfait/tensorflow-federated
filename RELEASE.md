@@ -1,3 +1,27 @@
+# Release 0.30.0
+
+## Major Features and Improvements
+
+*   Add tests for `namedtuple`s in the `tff.program` package.
+*   Add `num_subrounds` parameter to the mergeable context, allowing callers to
+    optionally sequentialize subrounds.
+*   Add metrics support to `tff.learning.models.FunctionalModel`, including
+    updates to the helper function `create_functional_metric_fns` and the
+    downstream caller `tff.learning.algorithms.build_weighted_fed_avg`.
+
+## Bug Fixes
+
+*   Fix typo in the types constructed for testing the `tff.program` package.
+*   Fix some program example typos.
+*   Fix tests that don't seem to be running under the CI.
+*   Fix naming bug for Python mergeable execution.
+*   Ensure exceptions raised from remote executor stub implement gRPC error
+    interface.
+*   Update `tff.structure.Struct` integration with JAX pytrees to not flatten
+    the entire structure.
+*   Use Python 3.7 compatible type annotations until Colab updates to Python
+    3.9.
+
 # Release 0.29.0
 
 ## Major Features and Improvements
