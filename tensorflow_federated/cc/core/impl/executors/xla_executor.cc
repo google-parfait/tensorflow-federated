@@ -69,16 +69,21 @@ class ServiceTensor {
 // Representation for concrete values embedded in the XLA executor.
 class XLAExecutorValue {
  public:
-  enum class ValueType { TENSOR, UNIMPLEMENTED };
+  enum class ValueType { TENSOR, STRUCT, UNIMPLEMENTED };
 
   explicit XLAExecutorValue(std::unique_ptr<xla::GlobalData> global_data,
                             tensorflow::DataType dtype)
       : value_(std::make_shared<ServiceTensor>(std::move(global_data), dtype)) {
   }
+  explicit XLAExecutorValue(absl::Span<const XLAExecutorValue> value_vector)
+      : value_(std::vector<XLAExecutorValue>(value_vector.begin(),
+                                             value_vector.end())) {}
 
   ValueType type() const {
     if (absl::holds_alternative<std::shared_ptr<ServiceTensor>>(value_)) {
       return ValueType::TENSOR;
+    } else if (absl::holds_alternative<std::vector<XLAExecutorValue>>(value_)) {
+      return ValueType::STRUCT;
     } else {
       return ValueType::UNIMPLEMENTED;
     }
@@ -90,14 +95,18 @@ class XLAExecutorValue {
   std::shared_ptr<ServiceTensor> tensor() const {
     return absl::get<std::shared_ptr<ServiceTensor>>(value_);
   }
+  const std::vector<XLAExecutorValue>& structure() const {
+    return absl::get<std::vector<XLAExecutorValue>>(value_);
+  }
 
  private:
-  using ValueVariant = absl::variant<std::shared_ptr<ServiceTensor>>;
+  XLAExecutorValue() = delete;
+  using ValueVariant = absl::variant<std::shared_ptr<ServiceTensor>,
+                                     std::vector<XLAExecutorValue>>;
   ValueVariant value_;
 };
 
-using ValueFuture =
-    std::shared_future<absl::StatusOr<std::shared_ptr<XLAExecutorValue>>>;
+using ValueFuture = std::shared_future<absl::StatusOr<XLAExecutorValue>>;
 
 class XLAExecutor : public ExecutorBase<ValueFuture> {
  public:
@@ -106,16 +115,8 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   absl::string_view ExecutorName() final { return "XLAExecutor"; }
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
-    switch (value_pb.value_case()) {
-      case v0::Value::ValueCase::kTensor: {
-        return ThreadRun(
-            [value_pb, this]() { return this->EmbedTensorValue(value_pb); });
-      }
-      default:
-        return absl::UnimplementedError(absl::StrCat(
-            "CreateValue not yet implemented for values of value case ",
-            value_pb.value_case()));
-    }
+    return ThreadRun(
+        [value_pb, this]() { return this->CreateValueAny(value_pb); });
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
@@ -134,35 +135,13 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::Status Materialize(ValueFuture value, v0::Value* value_pb) final {
-    std::shared_ptr<XLAExecutorValue> executor_value = TFF_TRY(Wait(value));
-    switch (executor_value->type()) {
-      case XLAExecutorValue::ValueType::TENSOR: {
-        std::shared_ptr<ServiceTensor> tensor_in_service =
-            executor_value->tensor();
-        tensorflow::StatusOr<xla::Literal> result_literal =
-            xla_client_->Transfer(*(tensor_in_service->global_data()));
-        if (!result_literal.ok()) {
-          return absl::InternalError(absl::StrCat(
-              "Error transferring tensor from XLA service to host. Message: ",
-              result_literal.status().error_message()));
-        }
-        tensorflow::Tensor tensor_out;
-        tensorflow::Status tensor_conversion = tensorflow::LiteralToHostTensor(
-            *result_literal, tensor_in_service->dtype(), &tensor_out);
-        if (!tensor_conversion.ok()) {
-          return absl::InternalError(
-              absl::StrCat("Error converting XLA literal to tensor. Message: ",
-                           tensor_conversion.error_message()));
-        }
-        TFF_TRY(SerializeTensorValue(tensor_out, value_pb));
-        return absl::OkStatus();
-      }
-      default:
-        return absl::UnimplementedError(
-            absl::StrCat("Materialize only implemented for tensors. Attempted "
-                         "to materialize a value of type ",
-                         executor_value->type()));
-    }
+    // TODO(b/235642979) This pattern is known to potentially segfault under
+    // heavy load.
+    XLAExecutorValue executor_value = TFF_TRY(Wait(value));
+    ParallelTasks tasks;
+    TFF_TRY(MaterializeXLAValue(executor_value, value_pb, tasks));
+    TFF_TRY(tasks.WaitAll());
+    return absl::OkStatus();
   }
 
  private:
@@ -173,8 +152,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
   // registered in TensorFlow's MultiPlatformManager;.
   std::string platform_name_;
 
-  absl::StatusOr<std::shared_ptr<XLAExecutorValue>> EmbedTensorValue(
-      const v0::Value& value_pb) {
+  absl::StatusOr<XLAExecutorValue> EmbedTensorValue(const v0::Value& value_pb) {
     tensorflow::Tensor t = TFF_TRY(DeserializeTensorValue(value_pb));
     xla::BorrowingLiteral tensor_literal;
     tensorflow::Status to_literal_status =
@@ -187,12 +165,77 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
     tensorflow::StatusOr<std::unique_ptr<xla::GlobalData>> data_in_server =
         xla_client_->TransferToServer(tensor_literal);
     if (data_in_server.ok()) {
-      return std::make_shared<XLAExecutorValue>(std::move(*data_in_server),
-                                                t.dtype());
+      return XLAExecutorValue(std::move(*data_in_server), t.dtype());
     } else {
       return absl::InvalidArgumentError(absl::StrCat(
           "Failed to transfer XLA literal to local server. Message: ",
           to_literal_status.error_message()));
+    }
+  }
+  absl::StatusOr<XLAExecutorValue> CreateValueAny(const v0::Value& value_pb) {
+    switch (value_pb.value_case()) {
+      case v0::Value::ValueCase::kTensor: {
+        return TFF_TRY(EmbedTensorValue(value_pb));
+      }
+      case v0::Value::ValueCase::kStruct: {
+        std::vector<XLAExecutorValue> values;
+        values.reserve(value_pb.struct_().element_size());
+        for (const auto& el : value_pb.struct_().element()) {
+          values.emplace_back(TFF_TRY(CreateValueAny(el.value())));
+        }
+        return XLAExecutorValue(values);
+      }
+      default:
+        return absl::UnimplementedError("Not implemented yet");
+    }
+  }
+
+  // NOTE: Just like in TF executor, `value` reference must remain valid until
+  // `tasks.WaitAll` returns. Additionally, here the captured `this` pointer
+  // must also remain valid.
+  absl::Status MaterializeXLAValue(const XLAExecutorValue& executor_value,
+                                   v0::Value* value_pb, ParallelTasks& tasks) {
+    switch (executor_value.type()) {
+      case XLAExecutorValue::ValueType::TENSOR: {
+        // We add tensor materialization and serialization to the ParallelTasks
+        // instance we are passed down, and avoid blocking here.
+        tasks.add_task([&executor_value, value_pb, this]() {
+          std::shared_ptr<ServiceTensor> tensor_in_service =
+              executor_value.tensor();
+          tensorflow::StatusOr<xla::Literal> result_literal =
+              xla_client_->Transfer(*(tensor_in_service->global_data()));
+          if (!result_literal.ok()) {
+            return absl::InternalError(absl::StrCat(
+                "Error transferring tensor from XLA service to host. Message: ",
+                result_literal.status().error_message()));
+          }
+          tensorflow::Tensor tensor_out;
+          tensorflow::Status tensor_conversion =
+              tensorflow::LiteralToHostTensor(
+                  *result_literal, tensor_in_service->dtype(), &tensor_out);
+          if (!tensor_conversion.ok()) {
+            return absl::InternalError(absl::StrCat(
+                "Error converting XLA literal to tensor. Message: ",
+                tensor_conversion.error_message()));
+          }
+          TFF_TRY(SerializeTensorValue(tensor_out, value_pb));
+          return absl::OkStatus();
+        });
+        return absl::OkStatus();
+      }
+      case XLAExecutorValue::ValueType::STRUCT: {
+        v0::Value::Struct* mutable_struct = value_pb->mutable_struct_();
+        for (const auto& el : executor_value.structure()) {
+          TFF_TRY(MaterializeXLAValue(
+              el, mutable_struct->add_element()->mutable_value(), tasks));
+        }
+        return absl::OkStatus();
+      }
+      default:
+        return absl::UnimplementedError(absl::StrCat(
+            "Can only materialize tensors and structures of tensors from XLA "
+            "executor; attempted to materialize a value of type: ",
+            executor_value.type()));
     }
   }
 };

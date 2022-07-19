@@ -30,6 +30,7 @@ namespace tensorflow_federated {
 namespace {
 
 using ::tensorflow_federated::testing::EqualsProto;
+using ::tensorflow_federated::testing::StructV;
 using ::tensorflow_federated::testing::TensorV;
 using ::testing::HasSubstr;
 
@@ -121,6 +122,16 @@ TEST_F(XLAExecutorTest, CreateCallFailsUnimplemented) {
                            test_executor_->CreateValue(tensor_pb));
   EXPECT_THAT(test_executor_->CreateCall(embedded_tensor.ref(), absl::nullopt),
               StatusIs(absl::StatusCode::kUnimplemented));
+}
+
+TEST_F(XLAExecutorTest, RoundTripStructWithTensor) {
+  v0::Value input_pb = StructV({TensorV(9)});
+  CheckRoundTrip(input_pb);
+}
+
+TEST_F(XLAExecutorTest, RoundTripStructOfNestedTensors) {
+  v0::Value input_pb = StructV({StructV({TensorV(24)}), TensorV(88)});
+  CheckRoundTrip(input_pb);
 }
 
 }  // namespace
