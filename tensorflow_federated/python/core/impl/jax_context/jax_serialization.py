@@ -21,6 +21,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.jax_context import jax_computation_context
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import typed_object
 from tensorflow_federated.python.core.impl.xla_context import xla_serialization
 
@@ -30,6 +31,7 @@ class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):
 
   def __init__(self, tensor_type, tensor_index):
     py_typecheck.check_type(tensor_type, computation_types.TensorType)
+    # We assume shape has already been checked to be fully defined here.
     shape = tuple(tensor_type.shape.as_list())
     dtype = tensor_type.dtype.as_numpy_dtype
     jax.ShapeDtypeStruct.__init__(self, shape, dtype)
@@ -61,29 +63,49 @@ class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
     return '_XlaSerializerStructArg({})'.format(structure.Struct.__str__(self))
 
 
-def _tff_type_to_xla_serializer_arg(type_spec):
+def _tff_type_to_xla_serializer_arg(type_spec: computation_types.Type):
   """Converts TFF type into an argument for the JAX-to-XLA serializer.
 
   Args:
-    type_spec: An instance of `computation_types.TensorType`.
+    type_spec: An instance of `computation_types.Type` containing only structure
+      and tensor elements.
 
   Returns:
     An object that carries both TFF and JAX type info, to be fed into the JAX
     serializer.
   """
 
+  def _undefined_shape_predicate(type_element: computation_types.Type) -> bool:
+    if type_element.is_tensor():
+      if not type_element.shape.is_fully_defined():
+        return True
+    return False
+
+  has_undefined_shapes = type_analysis.contains(type_spec,
+                                                _undefined_shape_predicate)
+  if has_undefined_shapes:
+    raise TypeError('Can only serialize XLA computations whose parameters '
+                    'contain fully-defined TensorShapes at the leaves; '
+                    'encountered undefined tensor shapes (or unknown rank '
+                    'tensors) in the signature:\n'
+                    f'{type_spec.formatted_representation()}')
+
   def _make(type_spec, next_unused_tensor_index):
-    if isinstance(type_spec, computation_types.TensorType):
+    if type_spec.is_tensor():
       obj = _XlaSerializerTensorArg(type_spec, next_unused_tensor_index)
       next_unused_tensor_index = next_unused_tensor_index + 1
       return obj, next_unused_tensor_index
-    py_typecheck.check_type(type_spec, computation_types.StructType)
-    elements = []
-    for k, v in structure.to_elements(type_spec):
-      obj, next_unused_tensor_index = _make(v, next_unused_tensor_index)
-      elements.append((k, obj))
-    obj = _XlaSerializerStructArg(type_spec, elements)
-    return obj, next_unused_tensor_index
+    elif type_spec.is_struct():
+      elements = []
+      for k, v in structure.to_elements(type_spec):
+        obj, next_unused_tensor_index = _make(v, next_unused_tensor_index)
+        elements.append((k, obj))
+      obj = _XlaSerializerStructArg(type_spec, elements)
+      return obj, next_unused_tensor_index
+    else:
+      raise TypeError('Can only construct an XLA serializer for TFF types '
+                      'which contain exclusively structure and tensor types; '
+                      f'found type:\n {type_spec.formatted_representation()}')
 
   obj, _ = _make(type_spec, 0)
   return obj

@@ -78,6 +78,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:typed_object",
         "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
     ],
@@ -100,5 +101,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
         "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
