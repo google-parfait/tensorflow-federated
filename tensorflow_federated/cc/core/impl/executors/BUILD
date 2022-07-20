@@ -849,6 +849,16 @@ tff_cc_test_with_tf_deps(
 )
 
 tff_cc_library_with_tf_deps(
+    name = "type_test_utils",
+    testonly = True,
+    hdrs = ["type_test_utils.h"],
+    tf_deps = [
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+    deps = ["//tensorflow_federated/proto/v0:computation_cc_proto"],
+)
+
+tff_cc_library_with_tf_deps(
     name = "value_test_utils",
     testonly = True,
     hdrs = ["value_test_utils.h"],
@@ -917,6 +927,8 @@ tff_cc_library_with_tf_runtime_deps(
         # Linking in this dependency ensures that XLA can compile its code for the CPU host.
         "@org_tensorflow//tensorflow/compiler/jit:xla_cpu_jit",  # buildcleaner: keep
         "@org_tensorflow//tensorflow/compiler/tf2xla:common",
+        "@org_tensorflow//tensorflow/compiler/xla/client:global_data",
+        "@org_tensorflow//tensorflow/compiler/xla/service:hlo_proto_cc",
         "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
         "@org_tensorflow//tensorflow/compiler/xla:xla_proto_cc",
         "@org_tensorflow//tensorflow/compiler/xla/client:client_library",
@@ -925,8 +937,6 @@ tff_cc_library_with_tf_runtime_deps(
         "@org_tensorflow//tensorflow/stream_executor:stream_executor_headers",
         # Linking in the host platform here ensures that the stream executor can execute on CPU.
         "@org_tensorflow//tensorflow/stream_executor/host:host_platform",  # buildcleaner: keep
-        "@org_tensorflow//tensorflow/compiler/xla/client:global_data",
-        "@org_tensorflow//tensorflow/compiler/xla/service:hlo_proto_cc",
     ],
     deps = [
         ":executor",
@@ -952,6 +962,7 @@ tff_cc_test_with_tf_deps(
     deps = [
         ":executor",
         ":status_matchers",
+        ":type_test_utils",
         ":value_test_utils",
         ":xla_executor",
         "//tensorflow_federated/cc/common_libs:oss_test_main",

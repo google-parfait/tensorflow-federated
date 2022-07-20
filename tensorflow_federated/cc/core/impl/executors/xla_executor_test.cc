@@ -34,6 +34,7 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+#include "tensorflow_federated/cc/core/impl/executors/type_test_utils.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 
@@ -41,7 +42,14 @@ namespace tensorflow_federated {
 namespace {
 
 using ::tensorflow_federated::testing::EqualsProto;
+using ::tensorflow_federated::testing::FlatStructT;
+using ::tensorflow_federated::testing::FunctionT;
+using ::tensorflow_federated::testing::IdentityFunctionT;
+using ::tensorflow_federated::testing::NestedStructT;
+using ::tensorflow_federated::testing::NoArgFunctionT;
+using ::tensorflow_federated::testing::StructT;
 using ::tensorflow_federated::testing::StructV;
+using ::tensorflow_federated::testing::TensorT;
 using ::tensorflow_federated::testing::TensorV;
 using ::testing::HasSubstr;
 
@@ -225,14 +233,6 @@ TEST_F(XLAExecutorTest, CreateSelectionFailsUnimplemented) {
               StatusIs(absl::StatusCode::kUnimplemented));
 }
 
-TEST_F(XLAExecutorTest, CreateCallFailsUnimplemented) {
-  v0::Value tensor_pb = TensorV(2);
-  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_tensor,
-                           test_executor_->CreateValue(tensor_pb));
-  EXPECT_THAT(test_executor_->CreateCall(embedded_tensor.ref(), absl::nullopt),
-              StatusIs(absl::StatusCode::kUnimplemented));
-}
-
 TEST_F(XLAExecutorTest, CreateValueComputationNonFunctionalTypeFails) {
   xla::XlaBuilder builder("float_unk_shape_tensor_identity");
   xla::Parameter(&builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
@@ -342,6 +342,207 @@ TEST_F(XLAExecutorTest, CreateValueComputationTensorParameterUnknownRankFails) {
   CheckMaterializeStatusIs(
       embedded_fn, StatusIs(absl::StatusCode::kInvalidArgument,
                             HasSubstr("Tensor parameters of unknown rank")));
+}
+
+TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallSingleTensor) {
+  xla::XlaBuilder builder("return_two");
+  xla::ConstantR0<float>(&builder, 2.0);
+  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  ASSERT_TRUE(xla_computation.ok());
+  auto tensor_type = TensorT(v0::TensorType::DT_FLOAT);
+  v0::Type function_type = NoArgFunctionT(tensor_type);
+  v0::Value computation =
+      ComputationV(absl::nullopt,
+                   std::get<0>(TFF_ASSERT_OK(BindingFromType(tensor_type, 0))),
+                   std::move(*xla_computation), function_type);
+
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
+                           test_executor_->CreateValue(computation));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      OwnedValueId called_fn,
+      test_executor_->CreateCall(embedded_fn.ref(), absl::nullopt));
+  v0::Value expected_result = TensorV(2.0f);
+
+  CheckMaterializeEqual(called_fn, expected_result);
+}
+
+TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallTensorStructure) {
+  xla::XlaBuilder builder("return_two_tensors");
+  auto float_one = xla::ConstantR0<float>(&builder, 1.0);
+  auto float_two = xla::ConstantR0<float>(&builder, 2.0);
+  xla::Tuple(&builder, {float_one, float_two});
+  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  ASSERT_TRUE(xla_computation.ok());
+
+  v0::Type return_type = FlatStructT(v0::TensorType::DT_FLOAT, 2);
+  v0::Type function_type = NoArgFunctionT(return_type);
+
+  v0::Value computation =
+      ComputationV(absl::nullopt,
+                   std::get<0>(TFF_ASSERT_OK(BindingFromType(return_type, 0))),
+                   std::move(*xla_computation), function_type);
+
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
+                           test_executor_->CreateValue(computation));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      OwnedValueId called_fn,
+      test_executor_->CreateCall(embedded_fn.ref(), absl::nullopt));
+  v0::Value expected_result = StructV({TensorV(1.0f), TensorV(2.0f)});
+  CheckMaterializeEqual(called_fn, expected_result);
+}
+
+TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallNestedTensorStructure) {
+  xla::XlaBuilder builder("return_nested_struct");
+  auto float_one = xla::ConstantR0<float>(&builder, 1.0);
+  auto float_two = xla::ConstantR0<float>(&builder, 2.0);
+  auto float_three = xla::ConstantR0<float>(&builder, 3.0);
+  xla::Tuple(&builder, {float_one, float_two, float_three});
+  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  ASSERT_TRUE(xla_computation.ok());
+
+  // We construct a return type <tf.float32, <tf.float32, tf.float32>>
+  v0::Type nested_struct_type = NestedStructT(v0::TensorType::DT_FLOAT);
+  v0::Type function_type = NoArgFunctionT(nested_struct_type);
+
+  v0::Value computation = ComputationV(
+      absl::nullopt,
+      std::get<0>(TFF_ASSERT_OK(BindingFromType(nested_struct_type, 0))),
+      std::move(*xla_computation), function_type);
+
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
+                           test_executor_->CreateValue(computation));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      OwnedValueId called_fn,
+      test_executor_->CreateCall(embedded_fn.ref(), absl::nullopt));
+  v0::Value expected_result =
+      StructV({TensorV(1.0f), StructV({TensorV(2.0f), TensorV(3.0f)})});
+
+  CheckMaterializeEqual(called_fn, expected_result);
+}
+
+TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityScalar) {
+  xla::XlaBuilder builder("float_scalar_identity");
+  xla::Parameter(&builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
+  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  ASSERT_TRUE(xla_computation.ok());
+  v0::Type float_tensor_type = TensorT(v0::TensorType::DT_FLOAT);
+  v0::Type function_type = IdentityFunctionT(float_tensor_type);
+  auto binding =
+      std::get<0>(TFF_ASSERT_OK(BindingFromType(float_tensor_type, 0)));
+  v0::Value computation = ComputationV(
+      // Identical parameter and result bindings.
+      binding, binding, std::move(*xla_computation), function_type);
+
+  v0::Value arg_value = TensorV(2.0f);
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
+                           test_executor_->CreateValue(computation));
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_arg,
+                           test_executor_->CreateValue(arg_value));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      OwnedValueId called_fn,
+      test_executor_->CreateCall(embedded_fn.ref(), embedded_arg));
+  CheckMaterializeEqual(called_fn, arg_value);
+}
+
+TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityNestedStruct) {
+  xla::XlaBuilder builder("float_nested_struct_identity");
+  auto x = xla::Parameter(&builder, 0,
+                          xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
+  auto y = xla::Parameter(&builder, 1,
+                          xla::ShapeUtil::MakeScalarShape(xla::F32), "y");
+  auto z = xla::Parameter(&builder, 2,
+                          xla::ShapeUtil::MakeScalarShape(xla::F32), "z");
+  xla::Tuple(&builder, {x, y, z});
+  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  ASSERT_TRUE(xla_computation.ok());
+
+  v0::Type nested_struct_type = NestedStructT(v0::TensorType::DT_FLOAT);
+  v0::Type function_type = IdentityFunctionT(nested_struct_type);
+  auto binding =
+      std::get<0>(TFF_ASSERT_OK(BindingFromType(nested_struct_type, 0)));
+  v0::Value computation = ComputationV(
+      binding, binding, std::move(*xla_computation), function_type);
+
+  v0::Value arg_value =
+      StructV({TensorV(1.0f), StructV({TensorV(2.0f), TensorV(3.0f)})});
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
+                           test_executor_->CreateValue(computation));
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_arg,
+                           test_executor_->CreateValue(arg_value));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      OwnedValueId called_fn,
+      test_executor_->CreateCall(embedded_fn.ref(), embedded_arg));
+  CheckMaterializeEqual(called_fn, arg_value);
+}
+
+TEST_F(XLAExecutorTest, CallAndMaterializeIdentityPartiallyNonScalarStruct) {
+  tensorflow::TensorShape non_scalar_tf_shape =
+      tensorflow::TensorShape({10, 10});
+  xla::Shape non_scalar_shape =
+      tensorflow::TensorShapeToXLAShape(xla::F32, non_scalar_tf_shape);
+  xla::XlaBuilder builder("partially_non_scalar_struct_identity");
+  auto x = xla::Parameter(&builder, 0,
+                          xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
+  auto y = xla::Parameter(&builder, 1, non_scalar_shape, "y");
+  xla::Tuple(&builder, {x, y});
+  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  ASSERT_TRUE(xla_computation.ok());
+
+  // Create a computation type to match the above.
+  v0::Type scalar = TensorT(v0::TensorType::DT_FLOAT);
+  v0::Type matrix = TensorT(v0::TensorType::DT_FLOAT, {10, 10});
+  v0::Type struct_type = StructT({scalar, matrix});
+  v0::Type function_type = IdentityFunctionT(struct_type);
+  auto binding = std::get<0>(TFF_ASSERT_OK(BindingFromType(struct_type, 0)));
+  v0::Value computation = ComputationV(
+      binding, binding, std::move(*xla_computation), function_type);
+
+  v0::Value arg_value = StructV(
+      {TensorV(1.0f), TensorV(tensorflow::DT_FLOAT, non_scalar_tf_shape)});
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
+                           test_executor_->CreateValue(computation));
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_arg,
+                           test_executor_->CreateValue(arg_value));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      OwnedValueId called_fn,
+      test_executor_->CreateCall(embedded_fn.ref(), embedded_arg));
+  CheckMaterializeEqual(called_fn, arg_value);
+}
+
+TEST_F(XLAExecutorTest,
+       CreateCallAndMaterializeDifferentParameterAndResultTypes) {
+  xla::XlaBuilder builder("float_nested_struct_partial_sum");
+  auto x = xla::Parameter(&builder, 0,
+                          xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
+  auto y = xla::Parameter(&builder, 1,
+                          xla::ShapeUtil::MakeScalarShape(xla::F32), "y");
+  auto z = xla::Parameter(&builder, 2,
+                          xla::ShapeUtil::MakeScalarShape(xla::F32), "z");
+  xla::Tuple(&builder, {x, xla::Add(y, z)});
+  tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
+  ASSERT_TRUE(xla_computation.ok());
+  v0::Type nested_struct_type = NestedStructT(v0::TensorType::DT_FLOAT);
+  v0::Type result_type = FlatStructT(v0::TensorType::DT_FLOAT, 2);
+  v0::Type function_type = FunctionT(nested_struct_type, result_type);
+  auto parameter_binding =
+      std::get<0>(TFF_ASSERT_OK(BindingFromType(nested_struct_type, 0)));
+  auto result_binding =
+      std::get<0>(TFF_ASSERT_OK(BindingFromType(result_type, 0)));
+  v0::Value computation =
+      ComputationV(parameter_binding, result_binding,
+                   std::move(*xla_computation), function_type);
+
+  v0::Value arg_value =
+      StructV({TensorV(1.0f), StructV({TensorV(2.0f), TensorV(3.0f)})});
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_fn,
+                           test_executor_->CreateValue(computation));
+  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_arg,
+                           test_executor_->CreateValue(arg_value));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      OwnedValueId called_fn,
+      test_executor_->CreateCall(embedded_fn.ref(), embedded_arg));
+  v0::Value expected_result = StructV({TensorV(1.0f), TensorV(5.0f)});
+  CheckMaterializeEqual(called_fn, expected_result);
 }
 
 }  // namespace
