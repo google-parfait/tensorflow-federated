@@ -403,7 +403,7 @@ class HierarchicalHistogramDecoder():
         break
       exclusive_left_children_sum = left_children_sum
 
-    return quantile
+    return quantile  # pytype: disable=name-error  # py310-upgrade
 
   def quantile_query(self, q) -> Tuple[float, float]:
     """Queries the q-quantile in a hierarchical historgram.
