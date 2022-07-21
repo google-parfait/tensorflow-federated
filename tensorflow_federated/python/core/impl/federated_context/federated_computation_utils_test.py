@@ -90,13 +90,13 @@ class FnToBuildingBlockTest(parameterized.TestCase):
   )
   # pyformat: enable
   def test_returns_result_with_py_container(self, fn, parameter_type,
-                                            exepcted_result_type):
+                                            expected_result_type):
     _, type_signature = _federated_computation_serializer(
         fn, 'foo', parameter_type)
-    self.assertIs(type(type_signature.result), type(exepcted_result_type))
+    self.assertIs(type(type_signature.result), type(expected_result_type))
     self.assertIs(type_signature.result.python_container,
-                  exepcted_result_type.python_container)
-    self.assertEqual(type_signature.result, exepcted_result_type)
+                  expected_result_type.python_container)
+    self.assertEqual(type_signature.result, expected_result_type)
 
 
 if __name__ == '__main__':
