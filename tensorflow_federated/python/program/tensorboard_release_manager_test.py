@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import os
 import os.path
 import shutil
@@ -100,56 +101,93 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       # structures
       ('list',
        [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
-       computation_types.StructType([tf.bool, tf.int32, tf.string]),
+       computation_types.StructWithPythonType(
+           [tf.bool, tf.int32, tf.string], list),
        [('0', True), ('1', 1)]),
       ('list_nested',
        [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
-       computation_types.StructType([[tf.bool, tf.int32], [tf.string]]),
+       computation_types.StructWithPythonType([
+           computation_types.StructWithPythonType([tf.bool, tf.int32], list),
+           computation_types.StructWithPythonType([tf.string], list)
+       ], list),
        [('0/0', True), ('0/1', 1)]),
       ('dict',
-       {'a': True,
-        'b': program_test_utils.TestMaterializableValueReference(1),
-        'c': 'a'},
-       computation_types.StructType([
+       {
+           'a': True,
+           'b': program_test_utils.TestMaterializableValueReference(1),
+           'c': 'a',
+       },
+       computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
-           ('c', tf.string)]),
+           ('c', tf.string),
+       ], collections.OrderedDict),
        [('a', True), ('b', 1)]),
       ('dict_nested',
-       {'x': {'a': True,
-              'b': program_test_utils.TestMaterializableValueReference(1)},
-        'y': {'c': 'a'}},
-       computation_types.StructType([
-           ('x', [('a', tf.bool), ('b', tf.int32)]),
-           ('y', [('c', tf.string)])]),
+       {
+           'x': {
+               'a': True,
+               'b': program_test_utils.TestMaterializableValueReference(1),
+           },
+           'y': {
+               'c': 'a',
+           },
+       },
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
        [('x/a', True), ('x/b', 1)]),
       ('attr',
        program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+       ], program_test_utils.TestAttrObj2),
        [('a', True), ('b', 1)]),
       ('attr_nested',
        program_test_utils.TestAttrObj2(
            program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestAttrObj1('a')),
-       computation_types.StructType([
-           ('x', [('a', tf.bool), ('b', tf.int32)]),
-           ('y', [('c', tf.string)])]),
+       computation_types.StructWithPythonType([
+           ('a', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], program_test_utils.TestAttrObj2)),
+           ('b', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], program_test_utils.TestAttrObj1)),
+       ], program_test_utils.TestAttrObj2),
        [('a/a', True), ('a/b', 1)]),
       ('namedtuple',
        program_test_utils.TestNamedtupleObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+       ], program_test_utils.TestNamedtupleObj2),
        [('a', True), ('b', 1)]),
       ('namedtuple_nested',
        program_test_utils.TestNamedtupleObj2(
            program_test_utils.TestNamedtupleObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestNamedtupleObj1('a')),
-       computation_types.StructType([
-           ('x', [('a', tf.bool), ('b', tf.int32)]),
-           ('y', [('c', tf.string)])]),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], program_test_utils.TestNamedtupleObj2)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], program_test_utils.TestNamedtupleObj1)),
+       ], program_test_utils.TestNamedtupleObj2),
        [('a/a', True), ('a/b', 1)]),
   )
   # pyformat: enable
@@ -214,10 +252,8 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
         summary_dir=summary_dir)
     value = [1, tf.ones([3], tf.int32)]
-    type_signature = computation_types.StructType([
-        tf.int32,
-        computation_types.TensorType(tf.float32, [3]),
-    ])
+    type_signature = computation_types.StructWithPythonType(
+        [tf.int32, computation_types.TensorType(tf.float32, [3])], list)
 
     patched_scalar = mock.patch.object(tf.summary, 'scalar')
     patched_histogram = mock.patch.object(tf.summary, 'histogram')
@@ -234,16 +270,20 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       self.assertAllEqual(actual_value, expected_value)
       self.assertEqual(kwargs, {'step': 1})
 
+  # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, computation_types.StructType([])),
+      ('none', None, computation_types.StructWithPythonType([], list)),
       ('str', 'a', computation_types.TensorType(tf.string)),
       ('tensor_str', tf.constant('a'), computation_types.TensorType(tf.string)),
 
       # structures
-      ('list_empty', [], computation_types.StructType(())),
-      ('dict_empty', {}, computation_types.StructType(())),
+      ('list_empty', [], computation_types.StructWithPythonType([], list)),
+      ('dict_empty',
+       {},
+       computation_types.StructWithPythonType([], collections.OrderedDict)),
   )
+  # pyformat: enable
   async def test_does_not_write_value(self, value, type_signature):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(

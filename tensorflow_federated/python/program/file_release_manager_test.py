@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import csv
 import os
 import os.path
@@ -46,7 +47,7 @@ def _write_values_to_csv(file_path: Union[str, os.PathLike[str]],
                          fieldnames: Sequence[str],
                          values: Iterable[Mapping[str, Any]]) -> None:
   with tf.io.gfile.GFile(file_path, 'w') as file:
-    writer = csv.DictWriter(file, fieldnames=fieldnames)
+    writer = csv.DictWriter(file, fieldnames)
     writer.writeheader()
     for value in values:
       writer.writerow(value)
@@ -598,10 +599,8 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path)
     value = {'a': 11, 'b': 21}
-    type_signature = computation_types.StructType([
-        ('a', tf.int32),
-        ('b', tf.int32),
-    ])
+    type_signature = computation_types.StructWithPythonType(
+        [('a', tf.int32), ('b', tf.int32)], collections.OrderedDict)
 
     with mock.patch.object(
         release_mngr,
@@ -625,10 +624,10 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path)
     value = {'a': 11, 'b': 12}
-    type_signature = computation_types.StructType([
+    type_signature = computation_types.StructWithPythonType([
         ('a', tf.int32),
         ('b', tf.int32),
-    ])
+    ], collections.OrderedDict)
 
     with mock.patch.object(
         release_mngr,
@@ -645,10 +644,10 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path, save_mode=file_release_manager.CSVSaveMode.APPEND)
     value = {'a': 11, 'b': 12}
-    type_signature = computation_types.StructType([
+    type_signature = computation_types.StructWithPythonType([
         ('a', tf.int32),
         ('b', tf.int32),
-    ])
+    ], collections.OrderedDict)
 
     with mock.patch.object(release_mngr, '_append_value') as mock_append_value:
       await release_mngr.release(value, type_signature, 1)
@@ -663,10 +662,10 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path, save_mode=file_release_manager.CSVSaveMode.WRITE)
     value = {'a': 11, 'b': 12}
-    type_signature = computation_types.StructType([
+    type_signature = computation_types.StructWithPythonType([
         ('a', tf.int32),
         ('b', tf.int32),
-    ])
+    ], collections.OrderedDict)
 
     with mock.patch.object(release_mngr, '_write_value') as mock_write_value:
       await release_mngr.release(value, type_signature, 1)
@@ -680,7 +679,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
       # materialized values
       ('none',
        None,
-       computation_types.StructType([]),
+       computation_types.StructWithPythonType([], list),
        [{'key': '1', '': ''}]),
       ('bool',
        True,
@@ -729,58 +728,101 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
       # structures
       ('list',
        [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
-       computation_types.StructType([tf.bool, tf.int32, tf.string]),
+       computation_types.StructWithPythonType(
+           [tf.bool, tf.int32, tf.string], list),
        [{'key': '1', '0': 'True', '1': '1', '2': 'a'}]),
-      ('list_empty', [], computation_types.StructType([]), [{'key': '1'}]),
+      ('list_empty',
+       [],
+       computation_types.StructWithPythonType([], list),
+       [{'key': '1'}]),
       ('list_nested',
        [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
-       computation_types.StructType([[tf.bool, tf.int32], [tf.string]]),
+       computation_types.StructWithPythonType([
+           computation_types.StructWithPythonType([tf.bool, tf.int32], list),
+           computation_types.StructWithPythonType([tf.string], list)
+       ], list),
        [{'key': '1', '0/0': 'True', '0/1': '1', '1/0': 'a'}]),
       ('dict',
-       {'a': True,
-        'b': program_test_utils.TestMaterializableValueReference(1),
-        'c': 'a'},
-       computation_types.StructType([
+       {
+           'a': True,
+           'b': program_test_utils.TestMaterializableValueReference(1),
+           'c': 'a',
+       },
+       computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
-           ('c', tf.string)]),
+           ('c', tf.string),
+       ], collections.OrderedDict),
        [{'key': '1', 'a': 'True', 'b': '1', 'c': 'a'}]),
-      ('dict_empty', {}, computation_types.StructType([]), [{'key': '1'}]),
+      ('dict_empty',
+       {},
+       computation_types.StructWithPythonType([], collections.OrderedDict),
+       [{'key': '1'}]),
       ('dict_nested',
-       {'x': {'a': True,
-              'b': program_test_utils.TestMaterializableValueReference(1)},
-        'y': {'c': 'a'}},
-       computation_types.StructType([
-           ('x', [('a', tf.bool), ('b', tf.int32)]),
-           ('y', [('c', tf.string)])]),
+       {
+           'x': {
+               'a': True,
+               'b': program_test_utils.TestMaterializableValueReference(1),
+           },
+           'y': {
+               'c': 'a',
+           },
+       },
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
        [{'key': '1', 'x/a': 'True', 'x/b': '1', 'y/c': 'a'}]),
       ('attr',
        program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+       ], program_test_utils.TestAttrObj2),
        [{'key': '1', 'a': 'True', 'b': '1'}]),
       ('attr_nested',
        program_test_utils.TestAttrObj2(
            program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestAttrObj1('a')),
-       computation_types.StructType([
-           ('a', [('a', tf.bool), ('b', tf.int32)]),
-           ('b', [('c', tf.string)])]),
+       computation_types.StructWithPythonType([
+           ('a', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], program_test_utils.TestAttrObj2)),
+           ('b', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], program_test_utils.TestAttrObj1)),
+       ], program_test_utils.TestAttrObj2),
        [{'key': '1', 'a/a': 'True', 'a/b': '1', 'b/a': 'a'}]),
       ('namedtuple',
        program_test_utils.TestNamedtupleObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+       ], program_test_utils.TestNamedtupleObj2),
        [{'key': '1', 'a': 'True', 'b': '1'}]),
       ('namedtuple_nested',
        program_test_utils.TestNamedtupleObj2(
            program_test_utils.TestNamedtupleObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestNamedtupleObj1('a')),
-       computation_types.StructType([
-           ('a', [('a', tf.bool), ('b', tf.int32)]),
-           ('b', [('c', tf.string)])]),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], program_test_utils.TestNamedtupleObj2)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], program_test_utils.TestNamedtupleObj1)),
+       ], program_test_utils.TestNamedtupleObj2),
        [{'key': '1', 'a/a': 'True', 'a/b': '1', 'b/a': 'a'}]),
   )
   # pyformat: enable
@@ -917,7 +959,7 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
   # pyformat: disable
   @parameterized.named_parameters(
       # materialized values
-      ('none', None, computation_types.StructType([]), [None]),
+      ('none', None, computation_types.StructWithPythonType([], list), [None]),
       ('bool', True, computation_types.TensorType(tf.bool), [True]),
       ('int', 1, computation_types.TensorType(tf.int32), [1]),
       ('str', 'a', computation_types.TensorType(tf.string), ['a']),
@@ -956,58 +998,98 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       # structures
       ('list',
        [True, program_test_utils.TestMaterializableValueReference(1), 'a'],
-       computation_types.StructType([tf.bool, tf.int32, tf.string]),
+       computation_types.StructWithPythonType(
+           [tf.bool, tf.int32, tf.string], list),
        [True, 1, 'a']),
-      ('list_empty', [], computation_types.StructType([]), []),
+      ('list_empty', [], computation_types.StructWithPythonType([], list), []),
       ('list_nested',
        [[True, program_test_utils.TestMaterializableValueReference(1)], ['a']],
-       computation_types.StructType([[tf.bool, tf.int32], [tf.string]]),
+       computation_types.StructWithPythonType([
+           computation_types.StructWithPythonType([tf.bool, tf.int32], list),
+           computation_types.StructWithPythonType([tf.string], list)
+       ], list),
        [True, 1, 'a']),
       ('dict',
-       {'a': True,
-        'b': program_test_utils.TestMaterializableValueReference(1),
-        'c': 'a'},
-       computation_types.StructType([
+       {
+           'a': True,
+           'b': program_test_utils.TestMaterializableValueReference(1),
+           'c': 'a',
+       },
+       computation_types.StructWithPythonType([
            ('a', tf.bool),
            ('b', tf.int32),
-           ('c', tf.string)]),
+           ('c', tf.string),
+       ], collections.OrderedDict),
        [True, 1, 'a']),
-      ('dict_empty', {}, computation_types.StructType([]), []),
+      ('dict_empty',
+       {},
+       computation_types.StructWithPythonType([], collections.OrderedDict),
+       []),
       ('dict_nested',
-       {'x': {'a': True,
-              'b': program_test_utils.TestMaterializableValueReference(1)},
-        'y': {'c': 'a'}},
-       computation_types.StructType([
-           ('x', [('a', tf.bool), ('b', tf.int32)]),
-           ('y', [('c', tf.string)])]),
+       {
+           'x': {
+               'a': True,
+               'b': program_test_utils.TestMaterializableValueReference(1),
+           },
+           'y': {
+               'c': 'a',
+           },
+       },
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
        [True, 1, 'a']),
       ('attr',
        program_test_utils.TestAttrObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+       ], program_test_utils.TestAttrObj2),
        [True, 1]),
       ('attr_nested',
        program_test_utils.TestAttrObj2(
            program_test_utils.TestAttrObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestAttrObj1('a')),
-       computation_types.StructType([
-           ('a', [('a', tf.bool), ('b', tf.int32)]),
-           ('b', [('c', tf.string)])]),
+       computation_types.StructWithPythonType([
+           ('a', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], program_test_utils.TestAttrObj2)),
+           ('b', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], program_test_utils.TestAttrObj1)),
+       ], program_test_utils.TestAttrObj2),
        [True, 1, 'a']),
       ('namedtuple',
        program_test_utils.TestNamedtupleObj2(
            True, program_test_utils.TestMaterializableValueReference(1)),
-       computation_types.StructType([('a', tf.bool), ('b', tf.int32)]),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+       ], program_test_utils.TestNamedtupleObj2),
        [True, 1]),
       ('namedtuple_nested',
        program_test_utils.TestNamedtupleObj2(
            program_test_utils.TestNamedtupleObj2(
                True, program_test_utils.TestMaterializableValueReference(1)),
            program_test_utils.TestNamedtupleObj1('a')),
-       computation_types.StructType([
-           ('a', [('a', tf.bool), ('b', tf.int32)]),
-           ('b', [('c', tf.string)])]),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], program_test_utils.TestNamedtupleObj2)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], program_test_utils.TestNamedtupleObj1)),
+       ], program_test_utils.TestNamedtupleObj2),
        [True, 1, 'a']),
   )
   # pyformat: enable
