@@ -14,7 +14,7 @@
 
 import collections
 import itertools
-from typing import Dict, List, Optional, Callable
+from typing import Callable, Dict, List, Optional, Tuple
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -82,7 +82,7 @@ def _execute_computation(
     secure_sum_bitwidth: Optional[int] = None,
     multi_contribution: bool = True,
     string_postprocessor: Optional[Callable[[tf.Tensor], tf.Tensor]] = None
-) -> Dict[str, tf.Tensor]:
+) -> Tuple[Dict[str, tf.Tensor], tf.Tensor, tf.Tensor]:
   """Executes one round of IBLT computation over the given datasets.
 
   Args:
@@ -117,7 +117,10 @@ def _execute_computation(
       If `None`, no postprocessing is done.
 
   Returns:
-    A dictionary containing the heavy hitter results.
+    A tuple, with elements:
+      1. A dictionary containing the heavy hitter results
+      2. The count of undecoded strings
+      3. The round timestamp
   """
   one_round_computation = iblt_tff.build_iblt_computation(
       capacity=capacity,

@@ -48,7 +48,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
       hash_family: Optional[str] = None,
       hash_family_params: Optional[Dict[str, Union[int, float]]] = None,
       field_size: int = iblt_lib.DEFAULT_FIELD_SIZE,
-  ) -> Dict[str, int]:
+  ) -> Dict[Optional[str], int]:
     iblt_decoder = iblt_lib.IbltDecoder(
         iblt=iblt_table,
         capacity=capacity,
@@ -88,7 +88,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
       hash_family: Optional[str] = None,
       hash_family_params: Optional[Dict[str, Union[int, float]]] = None,
       field_size: int = iblt_lib.DEFAULT_FIELD_SIZE,
-  ) -> Dict[str, int]:
+  ) -> Dict[Optional[str], int]:
     decoding_graph = iblt_lib.decode_iblt_tf(
         iblt=iblt_table,
         capacity=capacity,
