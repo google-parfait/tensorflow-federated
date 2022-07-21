@@ -60,7 +60,7 @@ def _build_fed_eval_client_work(
       local_unfinalized_metrics_type = type_conversions.type_from_tensors(
           model.report_local_unfinalized_metrics())
       metrics_aggregation_process = aggregation_factory.SumThenFinalizeFactory(
-      ).create(metrics_finalizers, local_unfinalized_metrics_type)
+          metrics_finalizers).create(local_unfinalized_metrics_type)
     else:
       py_typecheck.check_type(metrics_aggregation_process,
                               aggregation_process.AggregationProcess,

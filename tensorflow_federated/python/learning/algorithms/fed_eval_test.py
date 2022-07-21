@@ -178,8 +178,8 @@ class FedEvalProcessTest(tf.test.TestCase):
         unfinalized_metrics)
     finalized_metrics_type = _get_finalized_metrics_type(
         metric_finalizers, unfinalized_metrics)
-    metics_aggregator = aggregation_factory.SumThenFinalizeFactory().create(
-        metric_finalizers, local_unfinalized_metrics_type)
+    metics_aggregator = aggregation_factory.SumThenFinalizeFactory(
+        metric_finalizers).create(local_unfinalized_metrics_type)
     metics_aggregator_state_type = (
         metics_aggregator.initialize.type_signature.result.member)
 
