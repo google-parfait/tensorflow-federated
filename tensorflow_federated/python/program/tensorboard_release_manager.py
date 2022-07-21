@@ -68,7 +68,7 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
   async def release(self, value: Any, type_signature: computation_types.Type,
-                    key: int) -> None:  # pytype: disable=signature-mismatch
+                    key: int) -> None:
     """Releases `value` from a federated program.
 
     Args:

@@ -223,7 +223,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       stop = start - self._keep_total
       await asyncio.gather(*[self._remove(v) for v in versions[start:stop]])
 
-  async def save(self, program_state: Any, version: int) -> None:  # pytype: disable=signature-mismatch
+  async def save(self, program_state: Any, version: int) -> None:
     """Saves `program_state` for the given `version`.
 
     Args:
