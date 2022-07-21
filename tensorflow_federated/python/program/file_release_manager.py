@@ -255,7 +255,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
       self._latest_key = key
 
   async def release(self, value: Any, type_signature: computation_types.Type,
-                    key: int) -> None:  # pytype: disable=signature-mismatch
+                    key: int) -> None:
     """Releases `value` from a federated program.
 
     This method will atomically update the managed CSV file by removing all
@@ -353,7 +353,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     return os.path.join(self._root_dir, basename)
 
   async def release(self, value: Any, type_signature: computation_types.Type,
-                    key: int) -> None:  # pytype: disable=signature-mismatch
+                    key: int) -> None:
     """Releases `value` from a federated program.
 
     Args:

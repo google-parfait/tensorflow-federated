@@ -37,7 +37,7 @@ class _TestProgramStateManager(program_state_manager.ProgramStateManager):
     del version, structure  # Unused.
     raise NotImplementedError
 
-  async def save(self, program_state: Any, version: int) -> None:  # pytype: disable=signature-mismatch
+  async def save(self, program_state: Any, version: int) -> None:
     del program_state, version  # Unused.
     raise NotImplementedError
 
