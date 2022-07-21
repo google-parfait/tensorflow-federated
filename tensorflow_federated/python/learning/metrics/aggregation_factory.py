@@ -42,7 +42,7 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.metrics import aggregation_utils
 from tensorflow_federated.python.learning.models import functional
 
 
@@ -149,7 +149,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
     Raises:
       TypeError: If any argument type mismatches.
     """
-    aggregator.check_metric_finalizers(metric_finalizers)
+    aggregation_utils.check_metric_finalizers(metric_finalizers)
     self._metric_finalizers = metric_finalizers
 
     if initial_unfinalized_metrics is not None:
@@ -186,13 +186,13 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
         mismatch the type of local unfinalized metrics; if the initial
         unfinalized metrics mismatch the type of local unfinalized metrics.
     """
-    aggregator.check_local_unfinalzied_metrics_type(
+    aggregation_utils.check_local_unfinalzied_metrics_type(
         local_unfinalized_metrics_type)
     if not callable(self._metric_finalizers):
       # If we have a FunctionalMetricsFinalizerType its a function that can only
       # be checked when we call it, as users may have used *args/**kwargs
       # arguments or otherwise making it hard to deduce the type.
-      aggregator.check_finalizers_matches_unfinalized_metrics(
+      aggregation_utils.check_finalizers_matches_unfinalized_metrics(
           self._metric_finalizers, local_unfinalized_metrics_type)
 
     inner_summation_process = self._inner_summation_factory.create(
@@ -248,17 +248,9 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
 
-UserMetricValueRange = Union[Tuple[float, float], Tuple[int, int]]
-UserMetricValueRangeDict = OrderedDict[str, Union[Union[Tuple[float, float],
-                                                        Tuple[int, int]],
-                                                  'UserMetricValueRangeDict']]
 MetricValueLowerBoundType = Union[int, float, None]
 MetricValueUpperBoundType = Union[int, float,
                                   estimation_process.EstimationProcess]
-MetricValueRange = Union[Tuple[float, float], Tuple[int, int],
-                         Tuple[None, estimation_process.EstimationProcess]]
-MetricValueRangeDict = OrderedDict[str, Union[MetricValueRange,
-                                              'MetricValueRangeDict']]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -280,15 +272,23 @@ class _MetricRange:
             type(self.lower) is type(other.lower) and self.lower == other.lower)
 
 
-class UnquantizableDTypeError(Exception):
-  """An error raised when a tensor dtype is not quantizable."""
-
+UserMetricValueRange = Union[Tuple[float, float], Tuple[int, int], _MetricRange]
+UserMetricValueRangeDict = OrderedDict[str, Union[UserMetricValueRange,
+                                                  'UserMetricValueRangeDict']]
+MetricValueRange = Union[Tuple[float, float], Tuple[int, int],
+                         Tuple[None, estimation_process.EstimationProcess]]
+MetricValueRangeDict = OrderedDict[str, Union[MetricValueRange,
+                                              'MetricValueRangeDict']]
 
 DEFAULT_FIXED_SECURE_LOWER_BOUND = 0
 # Use a power of 2 minus one to more accurately encode floating dtypes that
 # actually contain integer values. 2 ^ 20 gives us approximately a range of
 # [0, 1 million].
 DEFAULT_FIXED_SECURE_UPPER_BOUND = 2**20 - 1
+
+
+class UnquantizableDTypeError(Exception):
+  """An error raised when a tensor dtype is not quantizable."""
 
 
 def _check_user_metric_value_range(value_range: UserMetricValueRange):
@@ -306,13 +306,13 @@ def _check_user_metric_value_range(value_range: UserMetricValueRange):
       types of `MetricValueRange`.
     ValueError: If the value has length other than two.
   """
-  py_typecheck.check_type(value_range, tuple)
+  py_typecheck.check_type(value_range, tuple, 'range')
   if len(value_range) != 2:
     raise ValueError('Ranges must be defined as a 2-tuple, got a tuple of '
                      f'length {len(value_range)}.')
 
   lower, upper = value_range
-  py_typecheck.check_type(lower, (int, float))
+  py_typecheck.check_type(lower, (int, float), 'lower bound')
   if type(upper) is not type(lower):
     raise TypeError('The lower bound threshold should have the same type as '
                     'the upper bound threshold, but found the lower bound '
@@ -320,7 +320,7 @@ def _check_user_metric_value_range(value_range: UserMetricValueRange):
                     f'threshold type {type(upper)}.')
 
 
-def _create_default_secure_sum_quantization_ranges(
+def create_default_secure_sum_quantization_ranges(
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
     lower_bound: Optional[Union[int, float]] = DEFAULT_FIXED_SECURE_LOWER_BOUND,
     upper_bound: Optional[Union[int, float]] = DEFAULT_FIXED_SECURE_UPPER_BOUND,
@@ -398,6 +398,49 @@ def _create_default_secure_sum_quantization_ranges(
       create_default_range, local_unfinalized_metrics_type)
 
 
+def fill_missing_values_with_defaults(
+    default_values: MetricValueRangeDict,
+    user_values: UserMetricValueRangeDict) -> MetricValueRangeDict:
+  """Fill missing user provided metric value ranges with default ranges.
+
+  Args:
+    default_values: Default metric value ranges.
+    user_values: User provided metric value ranges.
+
+  Returns:
+    A `MetricValueRangeDict` with all metric value ranges filled.
+
+  Raises:
+    TypeError: If the user value is not a `_MetricRange` or a `tuple` or its
+      elements are not allowed types of `MetricValueRange`.
+    ValueError: If the value has length other than two.
+  """
+  if isinstance(default_values, collections.abc.Mapping):
+    if user_values is None:
+      user_values = {}
+    filled_with_defaults_values = []
+    for key, default_value in default_values.items():
+      filled_with_defaults_values.append(
+          (key,
+           fill_missing_values_with_defaults(default_value,
+                                             user_values.get(key))))
+    return type(default_values)(filled_with_defaults_values)
+  elif isinstance(default_values, list):
+    if user_values is None:
+      user_values = [None] * len(default_values)
+    return [
+        fill_missing_values_with_defaults(default_value, user_values[idx])
+        for idx, default_value in enumerate(default_values)
+    ]
+  elif user_values is None:
+    return _MetricRange(*default_values)
+  else:
+    if isinstance(user_values, _MetricRange):
+      return user_values
+    _check_user_metric_value_range(user_values)
+    return _MetricRange(*user_values)
+
+
 # Define a delimiter that is used to generate a string key of a inner secure
 # summation factory.
 _DELIMITER = '/'
@@ -409,9 +452,9 @@ _DELIMITER = '/'
 # and tensor dtype. In secure summation, we will create a aggregation process
 # for each factory key. Metric values sharing the same factory key will be
 # aggregated together.
-def _create_factory_key(lower: MetricValueLowerBoundType,
-                        upper: MetricValueUpperBoundType,
-                        tensor_dtype: tf.dtypes.DType) -> str:
+def create_factory_key(lower: MetricValueLowerBoundType,
+                       upper: MetricValueUpperBoundType,
+                       tensor_dtype: tf.dtypes.DType) -> str:
   """Creates a string key for a `tff.aggregators.SecureSumFactory`."""
   # The `tff.templates.EstimationProcess` are only used as the default upper
   # bound for float values, so replace it as a fixed string.
@@ -421,7 +464,6 @@ def _create_factory_key(lower: MetricValueLowerBoundType,
       str(item) for item in [lower, upper, tensor_dtype.as_datatype_enum])
 
 
-# TODO(b/227811468): Update `aggregator.py` to use the `SecureSumFactory`.
 class SecureSumFactory(factory.UnweightedAggregationFactory):
   """Aggregation Factory that performs secure summation over metrics.
 
@@ -510,44 +552,20 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     Raises:
       TypeError: If any argument type mismatches.
     """
-    aggregator.check_local_unfinalzied_metrics_type(
+    aggregation_utils.check_local_unfinalzied_metrics_type(
         local_unfinalized_metrics_type)
 
-    default_metric_value_ranges = _create_default_secure_sum_quantization_ranges(
+    default_metric_value_ranges = create_default_secure_sum_quantization_ranges(
         local_unfinalized_metrics_type)
 
     # Walk the incoming `metric_value_ranges` and `default_metric_value_ranges`
     # and fill in any missing ranges using the defaults.
-    def fill_missing_values_with_defaults(default_values, user_values):
-      if isinstance(default_values, collections.abc.Mapping):
-        if user_values is None:
-          user_values = {}
-        filled_with_defaults_values = []
-        for key, default_value in default_values.items():
-          filled_with_defaults_values.append(
-              (key,
-               fill_missing_values_with_defaults(default_value,
-                                                 user_values.get(key))))
-        return type(default_values)(filled_with_defaults_values)
-      elif isinstance(default_values, list):
-        if user_values is None:
-          user_values = [None] * len(default_values)
-        return [
-            fill_missing_values_with_defaults(default_value, user_values[idx])
-            for idx, default_value in enumerate(default_values)
-        ]
-      elif user_values is None:
-        return _MetricRange(*default_values)
-      else:
-        _check_user_metric_value_range(user_values)
-        return _MetricRange(*user_values)
-
     try:
       metric_value_ranges = fill_missing_values_with_defaults(
           default_metric_value_ranges, self._metric_value_ranges)
     except TypeError as e:
       raise TypeError('Failed to create encoding value range from: '
-                      f'{metric_value_ranges}') from e
+                      f'{self._metric_value_ranges}') from e
 
     # Create an aggregator factory for each unique value range, rather than each
     # leaf tensor (which could introduce a lot of duplication).
@@ -576,8 +594,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     for (path, tensor_spec), (_, value_range) in zip(
         tree.flatten_with_path(structure_of_tensor_types),
         tree.flatten_with_path(metric_value_ranges)):
-      factory_key = _create_factory_key(value_range.lower, value_range.upper,
-                                        tensor_spec.dtype)
+      factory_key = create_factory_key(value_range.lower, value_range.upper,
+                                       tensor_spec.dtype)
       factory_key_by_path[path] = factory_key
       value_range_by_factory_key[factory_key] = value_range
       path_list_by_factory_key[factory_key].append(path)

@@ -18,14 +18,20 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
+from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning.metrics import aggregation_factory
+
+# Convenience aliases.
+TensorType = computation_types.TensorType
+MetricRange = aggregation_factory._MetricRange
 
 
 def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
@@ -45,6 +51,20 @@ def _tf_mean(x):
 
 _DEFAULT_FLOAT_FACTORY_KEY = 'None/default_estimation_process/1'
 _DEFAULT_INT_FACTORY_KEY = '0/1048575/3'
+
+_DEFAULT_FIXED_FLOAT_RANGE = (
+    float(aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
+    float(aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND))
+_DEFAULT_AUTO_TUNED_FLOAT_RANGE = (
+    None,
+    quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
+        initial_estimate=50.0,
+        target_quantile=0.95,
+        learning_rate=1.0,
+        multiplier=2.0,
+        secure_estimation=True))
+_DEFAULT_INT_RANGE = (int(aggregation_factory.DEFAULT_FIXED_SECURE_LOWER_BOUND),
+                      int(aggregation_factory.DEFAULT_FIXED_SECURE_UPPER_BOUND))
 
 
 class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
@@ -445,9 +465,9 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
       self.fail('Metric aggregation contains non-secure summation aggregation')
 
     state = process.initialize()
-    custom_float_factory_key = aggregation_factory._create_factory_key(
+    custom_float_factory_key = aggregation_factory.create_factory_key(
         0.0, 100.0, tf.float32)
-    custom_int_factory_key = aggregation_factory._create_factory_key(
+    custom_int_factory_key = aggregation_factory.create_factory_key(
         0, 100, tf.int32)
     expected_factory_keys = set([
         _DEFAULT_FLOAT_FACTORY_KEY, custom_float_factory_key,
@@ -529,6 +549,214 @@ class SecureSumFactoryTest(tf.test.TestCase, parameterized.TestCase):
         metric_value_ranges)
     with self.assertRaisesRegex(ValueError, 'must be defined as a 2-tuple'):
       secure_sum_factory.create(local_unfinalized_metrics_type)
+
+
+class CreateDefaultSecureSumQuantizationRangesTest(parameterized.TestCase,
+                                                   tf.test.TestCase):
+
+  # The auto-tuned bound of float values is a `tff.templates.EstimationProcess`,
+  # simply check two bounds have the same type.
+  def assertAutoTunedBoundEqual(self, a, b, msg=None):
+    if isinstance(a, estimation_process.EstimationProcess):
+      return self.assertIsInstance(b, estimation_process.EstimationProcess, msg)
+
+  @parameterized.named_parameters(
+      ('float32', TensorType(tf.float32, [3]), _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
+      ('float64', TensorType(tf.float64, [1]), _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
+      ('int32', TensorType(tf.int32, [1]), _DEFAULT_INT_RANGE),
+      ('int64', TensorType(tf.int64, [3]), _DEFAULT_INT_RANGE),
+      ('<int64,float32>', computation_types.to_type([tf.int64, tf.float32]),
+       [_DEFAULT_INT_RANGE, _DEFAULT_AUTO_TUNED_FLOAT_RANGE]),
+      ('<a=int64,b=<c=float32,d=[int32,int32]>>',
+       computation_types.to_type(
+           collections.OrderedDict(
+               a=tf.int64,
+               b=collections.OrderedDict(c=tf.float32, d=[tf.int32, tf.int32
+                                                         ]))),
+       collections.OrderedDict(
+           a=_DEFAULT_INT_RANGE,
+           b=collections.OrderedDict(
+               c=_DEFAULT_AUTO_TUNED_FLOAT_RANGE,
+               d=[_DEFAULT_INT_RANGE, _DEFAULT_INT_RANGE]))),
+  )
+  def test_default_auto_tuned_range_construction(self, type_spec,
+                                                 expected_range):
+
+    self.addTypeEqualityFunc(estimation_process.EstimationProcess,
+                             self.assertAutoTunedBoundEqual)
+    tf.nest.map_structure(
+        self.assertEqual,
+        aggregation_factory.create_default_secure_sum_quantization_ranges(
+            type_spec), expected_range)
+
+  @parameterized.named_parameters(
+      ('float32', TensorType(tf.float32, [3]), _DEFAULT_FIXED_FLOAT_RANGE),
+      ('float64', TensorType(tf.float64, [1]), _DEFAULT_FIXED_FLOAT_RANGE),
+      ('int32', TensorType(tf.int32, [1]), _DEFAULT_INT_RANGE),
+      ('int64', TensorType(tf.int64, [3]), _DEFAULT_INT_RANGE),
+      ('<int64,float32>', computation_types.to_type([tf.int64, tf.float32]),
+       [_DEFAULT_INT_RANGE, _DEFAULT_FIXED_FLOAT_RANGE]),
+      ('<a=int64,b=<c=float32,d=[int32,int32]>>',
+       computation_types.to_type(
+           collections.OrderedDict(
+               a=tf.int64,
+               b=collections.OrderedDict(c=tf.float32, d=[tf.int32, tf.int32
+                                                         ]))),
+       collections.OrderedDict(
+           a=_DEFAULT_INT_RANGE,
+           b=collections.OrderedDict(
+               c=_DEFAULT_FIXED_FLOAT_RANGE,
+               d=[_DEFAULT_INT_RANGE, _DEFAULT_INT_RANGE]))),
+  )
+  def test_default_fixed_range_construction(self, type_spec, expected_range):
+    self.assertAllEqual(
+        aggregation_factory.create_default_secure_sum_quantization_ranges(
+            type_spec, use_auto_tuned_bounds_for_float_values=False),
+        expected_range)
+
+  @parameterized.named_parameters(
+      ('float32_float_range', TensorType(
+          tf.float32, [3]), 0.1, 0.5, _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
+      ('float32_int_range', TensorType(
+          tf.float32, [3]), 1, 5, _DEFAULT_AUTO_TUNED_FLOAT_RANGE),
+      ('int32_int_range', TensorType(tf.int32, [1]), 1, 5, (1, 5)),
+      ('int32_float_range', TensorType(tf.int32, [1]), 1., 5., (1, 5)),
+      ('int32_float_range_truncated', TensorType(tf.int32, [1]), 1.5, 5.5,
+       (2, 5)),
+      ('<int64,float32>', computation_types.to_type([tf.int64, tf.float32]), 1,
+       5, [(1, 5), _DEFAULT_AUTO_TUNED_FLOAT_RANGE]),
+      ('<a=int64,b=<c=float32,d=[int32,int32]>>',
+       computation_types.to_type(
+           collections.OrderedDict(
+               a=tf.int64,
+               b=collections.OrderedDict(c=tf.float32, d=[tf.int32, tf.int32
+                                                         ]))), 1, 5,
+       collections.OrderedDict(
+           a=(1, 5),
+           b=collections.OrderedDict(
+               c=_DEFAULT_AUTO_TUNED_FLOAT_RANGE, d=[(1, 5), (1, 5)]))),
+  )
+  def test_user_supplied_range_using_default_auto_tuned_range(
+      self, type_spec, lower_bound, upper_bound, expected_range):
+    self.addTypeEqualityFunc(estimation_process.EstimationProcess,
+                             self.assertAutoTunedBoundEqual)
+    tf.nest.map_structure(
+        self.assertEqual,
+        aggregation_factory.create_default_secure_sum_quantization_ranges(
+            type_spec, lower_bound, upper_bound), expected_range)
+
+  @parameterized.named_parameters(
+      ('float32_float_range', TensorType(tf.float32, [3]), 0.1, 0.5,
+       (0.1, 0.5)),
+      ('float32_int_range', TensorType(tf.float32, [3]), 1, 5, (1., 5.)),
+      ('int32_int_range', TensorType(tf.int32, [1]), 1, 5, (1, 5)),
+      ('int32_float_range', TensorType(tf.int32, [1]), 1., 5., (1, 5)),
+      ('int32_float_range_truncated', TensorType(tf.int32, [1]), 1.5, 5.5,
+       (2, 5)),
+      ('<int64,float32>', computation_types.to_type(
+          [tf.int64, tf.float32]), 1, 5, [(1, 5), (1., 5.)]),
+      ('<a=int64,b=<c=float32,d=[int32,int32]>>',
+       computation_types.to_type(
+           collections.OrderedDict(
+               a=tf.int64,
+               b=collections.OrderedDict(c=tf.float32, d=[tf.int32, tf.int32
+                                                         ]))), 1, 5,
+       collections.OrderedDict(
+           a=(1, 5), b=collections.OrderedDict(c=(1., 5.), d=[(1, 5),
+                                                              (1, 5)]))),
+  )
+  def test_user_supplied_range_using_default_fixed_range(
+      self, type_spec, lower_bound, upper_bound, expected_range):
+    self.assertAllEqual(
+        aggregation_factory.create_default_secure_sum_quantization_ranges(
+            type_spec,
+            lower_bound,
+            upper_bound,
+            use_auto_tuned_bounds_for_float_values=False), expected_range)
+
+  def test_invalid_dtype(self):
+    with self.assertRaises(aggregation_factory.UnquantizableDTypeError):
+      aggregation_factory.create_default_secure_sum_quantization_ranges(
+          TensorType(tf.string))
+
+  def test_too_narrow_integer_range(self):
+    with self.assertRaisesRegex(ValueError, 'not wide enough'):
+      aggregation_factory.create_default_secure_sum_quantization_ranges(
+          TensorType(tf.int32), lower_bound=0.7, upper_bound=1.3)
+
+  def test_range_reversed(self):
+    with self.assertRaisesRegex(ValueError, 'must be greater than'):
+      aggregation_factory.create_default_secure_sum_quantization_ranges(
+          TensorType(tf.int32), lower_bound=10, upper_bound=5)
+    with self.assertRaisesRegex(ValueError, 'must be greater than'):
+      aggregation_factory.create_default_secure_sum_quantization_ranges(
+          TensorType(tf.int32), lower_bound=10., upper_bound=5.)
+
+
+class FillMissingMetricValueRangesTest(parameterized.TestCase,
+                                       tf.test.TestCase):
+
+  @parameterized.named_parameters(
+      ('none_user_ranges', None,
+       collections.OrderedDict(
+           num_example=MetricRange(0, 100),
+           loss=[MetricRange(0.0, 100.0),
+                 MetricRange(0.0, 100.0)])),
+      ('partial_user_ranges', collections.OrderedDict(loss=[None, (0.0,
+                                                                   400.0)]),
+       collections.OrderedDict(
+           num_example=MetricRange(0, 100),
+           loss=[MetricRange(0.0, 100.0),
+                 MetricRange(0.0, 400.0)])),
+      ('full_tuple_user_ranges',
+       collections.OrderedDict(
+           num_example=(10, 200), loss=[(-100.0, 300.0), (0.0, 400.0)]),
+       collections.OrderedDict(
+           num_example=MetricRange(10, 200),
+           loss=[MetricRange(-100.0, 300.0),
+                 MetricRange(0.0, 400.0)])),
+      ('full_metric_range_user_ranges',
+       collections.OrderedDict(
+           num_example=MetricRange(10, 200),
+           loss=[MetricRange(-100.0, 300.0),
+                 MetricRange(0.0, 400.0)]),
+       collections.OrderedDict(
+           num_example=MetricRange(10, 200),
+           loss=[MetricRange(-100.0, 300.0),
+                 MetricRange(0.0, 400.0)])))
+  def test_fill_user_ranges_returns_correct_results(self, user_ranges,
+                                                    expected_filled_ranges):
+    default_ranges = collections.OrderedDict(
+        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)])
+    filled_ranges = aggregation_factory.fill_missing_values_with_defaults(
+        default_ranges, user_ranges)
+    tf.nest.map_structure(self.assertAllEqual, filled_ranges,
+                          expected_filled_ranges)
+
+  @parameterized.named_parameters(
+      ('range_as_list',
+       collections.OrderedDict(
+           num_example=[10, 200], loss=[None, [0.0, 400.0]]), 'range'),
+      ('invalid_bound_type',
+       collections.OrderedDict(num_example=('lower', 'upper')), 'lower bound'),
+      ('bounds_not_match', collections.OrderedDict(num_example=(1.0, 100)),
+       'same type'))
+  def test_invalid_user_ranges_type_raises(self, user_ranges, expected_regex):
+    default_ranges = collections.OrderedDict(
+        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)])
+    with self.assertRaisesRegex(TypeError, expected_regex):
+      aggregation_factory.fill_missing_values_with_defaults(
+          default_ranges, user_ranges)
+
+  @parameterized.named_parameters(
+      ('1_tuple', collections.OrderedDict(num_example=(10,))),
+      ('3_tuple', collections.OrderedDict(num_example=(10, 50, 100))))
+  def test_invalid_user_ranges_value_raises(self, user_ranges):
+    default_ranges = collections.OrderedDict(
+        num_example=(0, 100), loss=[(0.0, 100.0), (0.0, 100.0)])
+    with self.assertRaisesRegex(ValueError, '2-tuple'):
+      aggregation_factory.fill_missing_values_with_defaults(
+          default_ranges, user_ranges)
 
 
 if __name__ == '__main__':

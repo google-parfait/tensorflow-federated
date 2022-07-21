@@ -27,6 +27,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
+        ":aggregation_factory",
         ":aggregator",
         ":counters",
         ":finalizer",
@@ -38,19 +39,15 @@ py_library(
     srcs = ["aggregator.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/aggregators:secure",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
+        ":aggregation_factory",
+        ":aggregation_utils",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning/models:functional",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -60,10 +57,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":aggregation_factory",
         ":aggregator",
         ":finalizer",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/test:static_assert",
         "@absl_py//absl/testing:parameterized",
@@ -144,7 +141,7 @@ py_library(
     srcs = ["aggregation_factory.py"],
     srcs_version = "PY3",
     deps = [
-        ":aggregator",
+        ":aggregation_utils",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:quantile_estimation",
         "//tensorflow_federated/python/aggregators:secure",
@@ -170,17 +167,46 @@ py_test(
     name = "aggregation_factory_test",
     srcs = ["aggregation_factory_test.py"],
     python_version = "PY3",
+    shard_count = 2,
     srcs_version = "PY3",
     deps = [
         ":aggregation_factory",
         "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:quantile_estimation",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/test:static_assert",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
+    ],
+)
+
+py_library(
+    name = "aggregation_utils",
+    srcs = ["aggregation_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/learning:model",
+    ],
+)
+
+py_test(
+    name = "aggregation_utils_test",
+    srcs = ["aggregation_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":aggregation_utils",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
