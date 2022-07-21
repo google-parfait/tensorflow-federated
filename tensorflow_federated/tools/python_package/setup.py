@@ -66,7 +66,7 @@ REQUIRED_PACKAGES = [
     'portpicker~=1.5.2',
     'semantic-version~=2.6.0',
     'tensorflow-model-optimization~=0.7.2',
-    'tensorflow-privacy~=0.8.0',
+    'tensorflow-privacy~=0.8.1',
     'tensorflow~=2.9.1',
     'tqdm~=4.64.0',
 ]
