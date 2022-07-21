@@ -282,7 +282,24 @@ py_library(
     name = "release_manager",
     srcs = ["release_manager.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_test(
+    name = "release_manager_test",
+    srcs = ["release_manager_test.py"],
+    deps = [
+        ":program_test_utils",
+        ":release_manager",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
+    ],
 )
 
 py_library(
