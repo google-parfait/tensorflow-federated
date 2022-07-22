@@ -584,3 +584,67 @@ def functional_model_from_keras(
       predict_on_batch_fn=predict_on_batch,
       metrics_fns=metrics_fns,
       input_spec=input_spec)
+
+
+def keras_model_from_functional_weights(
+    *, model_weights: ModelWeights,
+    keras_model: tf.keras.Model) -> tf.keras.Model:
+  """Creates a new Keras model using the model weights from a `FunctionalModel`.
+
+  This method is effectively the reverse of `functional_model_from_keras`. Since
+  the trained weights are external to the model, this method expects a nested
+  structure of tensors that was used to train a `FunctionalModel`
+
+  IMPORTANT: this method must be run in a graph context (e.g. inside a
+  `tf.Graph` context, or a `tff.tf_computation` decorated callable), otherwise
+  the Keras model construction will differ from how the `FunctionalModel` was
+  originally created.
+
+  Args:
+    model_weights: A nested structure of tensors matching the structure of
+      `tff.learning.models.FunctionalModel.initial_weights` for a model
+      constructed using `functional_model_from_keras`.
+    keras_model: A Keras model to use for cloning a new model but with the input
+      weights.
+
+  Returns:
+    A newly constructed `tf.keras.Model` that matches the architecture of
+    the input `keras_model` argument but with the weight values from
+    `model_weights.
+  """
+  if tf.compat.v1.executing_eagerly_outside_functions():
+    raise ValueError(
+        '`keras_model_from_functional_weights()` can only be called from within'
+        ' a graph context.')
+
+  # Convert to mutable lists that we can `pop` weights off of.
+  trainable_weights, non_trainable_weights = [list(w) for w in model_weights]
+
+  def variable_creator_with_weights(next_creator_fn, **kwargs):
+    try:
+      if kwargs.get('trainable', True):
+        weight = trainable_weights.pop(0)
+      else:
+        weight = non_trainable_weights.pop(0)
+    except IndexError:
+      raise ValueError(
+          '`model_weights` contains fewer weights than `keras_model` uses, '
+          'check that the weights argument is matching the model type.'
+      ) from None
+    if 'initial_value' in kwargs:
+      kwargs['initial_value'] = weight
+    elif 'initializer' in kwargs:
+      kwargs['initializer'] = tf.compat.v1.constant_initializer(value=weight)
+    else:
+      raise ValueError(
+          'Can\'t set weights to a Keras model that creates variables without '
+          'initial values.')
+    return next_creator_fn(**kwargs)
+
+  with tf.variable_creator_scope(variable_creator_with_weights):
+    new_model = tf.keras.models.clone_model(keras_model)
+  if trainable_weights or non_trainable_weights:
+    raise ValueError(
+        '`model_weights` contained more variables than `keras_model` uses, '
+        'check that the weights argument is matching the model type.')
+  return new_model

@@ -731,6 +731,103 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
                     tf.TensorSpec(shape=[None, 1])))
 
 
+class KerasModelFromFunctionalWeightsTest(tf.test.TestCase):
+
+  def test_keras_model_created_in_graph(self):
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.InputLayer(input_shape=[3]),
+        tf.keras.layers.BatchNormalization(
+            beta_initializer='zeros',
+            gamma_initializer='zeros',
+            moving_mean_initializer='zeros',
+            moving_variance_initializer='zeros'),
+        tf.keras.layers.Dense(
+            1, kernel_initializer='zeros', bias_initializer='zeros'),
+    ])
+    # Assert the initial variables are all zero.
+    self.assertAllClose(model.variables,
+                        tf.nest.map_structure(tf.zeros_like, model.variables))
+    trainable_weights = (
+        # Batch norm: gamma, beta
+        np.ones(shape=[3]) * 1.0,
+        np.ones(shape=[3]) * 1.0,
+        # Dense: kernel, bias
+        np.ones(shape=[3, 1]) * 2.0,
+        np.ones(shape=[1]) * 2.0)
+    non_trainable_weights = (
+        # Batch norm: moving_mean, moving_variance
+        np.ones(shape=[3]) * 3.0,
+        np.ones(shape=[3]) * 3.0)
+    weights = (trainable_weights, non_trainable_weights)
+    # Now create a new keras model using the structure with model weights that
+    # are all twos.
+    with tf.Graph().as_default() as g:
+      new_model = functional.keras_model_from_functional_weights(
+          model_weights=weights, keras_model=model)
+      initializer = tf.compat.v1.initializers.variables(new_model.variables)
+    with tf.compat.v1.Session(graph=g) as sess:
+      sess.run(initializer)
+      self.assertAllClose(
+          sess.run(new_model.variables),
+          # Note: the order of variables is not he same as the creation order,
+          # but rather in layer, then within-layer creation, order.
+          (
+              # Batch norm: gamma, beta, moving_mean, moving_variance
+              np.ones(shape=[3]) * 1.0,
+              np.ones(shape=[3]) * 1.0,
+              np.ones(shape=[3]) * 3.0,
+              np.ones(shape=[3]) * 3.0,
+              # Dense: kernel, bias
+              np.ones(shape=[3, 1]) * 2.0,
+              np.ones(shape=[1]) * 2.0))
+
+  def test_keras_model_in_eager_fails(self):
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.InputLayer(input_shape=[3]),
+        tf.keras.layers.Dense(
+            1, kernel_initializer='zeros', bias_initializer='zeros'),
+    ])
+    trainable_weights = (np.ones(shape=[3, 1]) * 2.0, np.ones(shape=[1]) * 2.0)
+    non_trainable_weights = ()
+    weights = (trainable_weights, non_trainable_weights)
+    with self.assertRaisesRegex(
+        ValueError, 'can only be called from within a graph context'):
+      functional.keras_model_from_functional_weights(
+          model_weights=weights, keras_model=model)
+
+  def test_keras_model_too_few_weights_fails(self):
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.InputLayer(input_shape=[3]),
+        tf.keras.layers.Dense(
+            1, kernel_initializer='zeros', bias_initializer='zeros'),
+    ])
+    trainable_weights = (np.ones(shape=[3, 1]) * 2.0,)
+    non_trainable_weights = ()
+    weights = (trainable_weights, non_trainable_weights)
+    with tf.Graph().as_default():
+      with self.assertRaisesRegex(ValueError, 'contains fewer weights'):
+        functional.keras_model_from_functional_weights(
+            model_weights=weights, keras_model=model)
+
+  def test_keras_model_too_many_weights_fails(self):
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.InputLayer(input_shape=[3]),
+        tf.keras.layers.Dense(
+            1, kernel_initializer='zeros', bias_initializer='zeros'),
+    ])
+    trainable_weights = (
+        np.ones(shape=[3, 1]) * 2.0,
+        np.ones(shape=[1]) * 2.0,
+        np.ones(shape=[3, 1]) * 2.0,
+    )
+    non_trainable_weights = ()
+    weights = (trainable_weights, non_trainable_weights)
+    with tf.Graph().as_default():
+      with self.assertRaisesRegex(ValueError, 'contained more variables'):
+        functional.keras_model_from_functional_weights(
+            model_weights=weights, keras_model=model)
+
+
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
   tf.test.main()
