@@ -20,5 +20,4 @@ from tensorflow_federated.python.learning.framework.optimizer_utils import Clien
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
 from tensorflow_federated.python.learning.framework.optimizer_utils import ServerState
 from tensorflow_federated.python.learning.model_utils import ModelWeights
-from tensorflow_federated.python.learning.model_utils import parameter_count_from_model
 from tensorflow_federated.python.learning.model_utils import weights_type_from_model
