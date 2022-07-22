@@ -25,10 +25,10 @@ import tensorflow_federated as tff
 METRICS_TOTAL_SUM = 'total_sum'
 
 
-@tff.tf_computation()
+@tff.federated_computation()
 def initialize() -> int:
   """Returns the initial state."""
-  return 0
+  return tff.federated_value(0, tff.SERVER)
 
 
 @tff.tf_computation(tff.SequenceType(tf.int32))
@@ -69,6 +69,7 @@ def train(server_state: int,
   metrics = collections.OrderedDict([
       (METRICS_TOTAL_SUM, total_sum),
   ])
+  metrics = tff.federated_zip(metrics)
   return updated_state, metrics
 
 
@@ -98,4 +99,5 @@ def evaluation(server_state: int,
   metrics = collections.OrderedDict([
       (METRICS_TOTAL_SUM, total_sum),
   ])
+  metrics = tff.federated_zip(metrics)
   return metrics

@@ -21,10 +21,163 @@ therefore this program logic is portable across platforms.
 """
 
 import functools
-from typing import List, Optional
+from typing import Optional
 
 from absl import logging
 import tensorflow_federated as tff
+
+
+class TrainFederatedModelUnexpectedTypeSingatureError(Exception):
+  pass
+
+
+def _check_expected_type_signatures(
+    initialize: tff.Computation, train: tff.Computation,
+    train_data_source: tff.program.FederatedDataSource,
+    evaluation: tff.Computation,
+    evaluation_data_source: tff.program.FederatedDataSource) -> None:
+  """Checks the computations and data sources for the expected type signatures.
+
+  See `train_federated_model` for more information on the expected type
+  signatures of the computations and data sources.
+
+  Args:
+    initialize: A `tff.Computation` to invoke before training.
+    train: A `tff.Computation` to invoke during training.
+    train_data_source: A `tff.program.FederatedDataSource` which returns client
+      data used during training.
+    evaluation: A `tff.Computation` to invoke to evaluate the model produced
+      after training.
+    evaluation_data_source: A `tff.program.FederatedDataSource` which returns
+      client data used during evaluation.
+
+  Raises:
+    TrainFederatedModelUnexpectedTypeSingatureError: If the computations or data
+      sources have an unexpected type signature.
+  """
+  try:
+    # Check initialize type.
+    initialize.type_signature.check_function()
+
+    # Check initialize parameter type.
+    if initialize.type_signature.parameter is not None:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected `initialize` to have no parameters, found '
+          f'{initialize.type_signature.parameter}.')
+
+    # Check initialize result type.
+    initialize.type_signature.result.check_federated()
+    if initialize.type_signature.result.placement is not tff.SERVER:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected the result of `initialize` to be placed at `tff.SERVER`, '
+          f'found {initialize.type_signature.result.placement}.')
+
+    # Check train data source type.
+    if train_data_source.federated_type.placement is not tff.CLIENTS:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected the data returned by `train_data_source` to be placed at '
+          '`tff.CLIENTS`, found '
+          f'{train_data_source.federated_type.placement}.')
+
+    # Check train type.
+    train.type_signature.check_function()
+
+    # Check train result type.
+    train.type_signature.result.check_struct()
+    if len(train.type_signature.result) != 2:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected `train` to return two values, found '
+          f'{train.type_signature.result}.')
+    train_result_state_type, train_result_metrics_type = train.type_signature.result
+
+    # Check train result state type.
+    train_result_state_type.check_federated()
+    if train_result_state_type.placement is not tff.SERVER:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected the first result of `train` to be placed at `tff.SERVER`, '
+          f'found {train_result_state_type.placement}.')
+
+    # Check train result metrics type.
+    train_result_metrics_type.check_federated()
+    if train_result_metrics_type.placement is not tff.SERVER:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected the second result of `train` to be placed at `tff.SERVER`, '
+          f'found {train_result_metrics_type.placement}.')
+    train_result_metrics_type.member.check_struct()
+
+    # Check train parameter type.
+    train.type_signature.parameter.check_struct()
+    if len(train.type_signature.parameter) != 2:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected `train` to have two parameters, found '
+          f'{train.type_signature.parameter}.')
+    train_parameter_state_type, train_parameter_client_data_type = train.type_signature.parameter
+
+    # Check train parameter state type.
+    train_parameter_state_type.check_federated()
+    if train_parameter_state_type.placement is not tff.SERVER:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected the first parameter of `train` to be placed at `tff.SERVER`, '
+          f'found {train_parameter_state_type.placement}.')
+    train_parameter_state_type.check_assignable_from(
+        initialize.type_signature.result)
+    train_parameter_state_type.check_assignable_from(train_result_state_type)
+
+    # Check train parameter client data type.
+    train_parameter_client_data_type.check_federated()
+    if train_parameter_client_data_type.placement is not tff.CLIENTS:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected the second parameter of `train` to be placed at '
+          f'`tff.CLIENTS`, found {train_parameter_client_data_type.placement}.')
+    train_parameter_client_data_type.check_assignable_from(
+        train_data_source.federated_type)
+
+    # Check evaluation data source type.
+    if evaluation_data_source.federated_type.placement is not tff.CLIENTS:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected the data returned by `evaluation_data_source` to be placed '
+          'at `tff.CLIENTS`, found '
+          f'{evaluation_data_source.federated_type.placement}.')
+
+    # Check evaluation type.
+    evaluation.type_signature.check_function()
+
+    # Check evaluation result type.
+    evaluation.type_signature.result.check_federated()
+    if evaluation.type_signature.result.placement is not tff.SERVER:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected the result of `evaluation` to be placed at `tff.SERVER`, '
+          f'found {evaluation.type_signature.result.placement}.')
+    evaluation.type_signature.result.member.check_struct()
+
+    # Check evaluation parameter type.
+    evaluation.type_signature.parameter.check_struct()
+    if len(evaluation.type_signature.parameter) != 2:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected `evaluation` to have two parameters, found '
+          f'{evaluation.type_signature.parameter}.')
+    evaluation_parameter_state_type, evaluation_parameter_client_data_type = evaluation.type_signature.parameter
+
+    # Check evaluation parameter state type.
+    evaluation_parameter_state_type.check_federated()
+    if evaluation_parameter_state_type.placement is not tff.SERVER:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected the first parameter of `evaluation` to be placed at '
+          f'`tff.SERVER`, found {evaluation_parameter_state_type.placement}.')
+    evaluation_parameter_state_type.check_assignable_from(
+        train_result_state_type)
+
+    # Check evaluation parameter client data type.
+    evaluation_parameter_client_data_type.check_federated()
+    if evaluation_parameter_client_data_type.placement is not tff.CLIENTS:
+      raise TrainFederatedModelUnexpectedTypeSingatureError(
+          'Expected the second parameter of `evaluation` to be placed at '
+          '`tff.CLIENTS`, found '
+          f'{evaluation_parameter_client_data_type.placement}.')
+    evaluation_parameter_client_data_type.check_assignable_from(
+        evaluation_data_source.federated_type)
+  except TypeError as e:
+    raise TrainFederatedModelUnexpectedTypeSingatureError() from e
 
 
 async def train_federated_model(
@@ -35,24 +188,40 @@ async def train_federated_model(
     evaluation_data_source: tff.program.FederatedDataSource,
     total_rounds: int,
     number_of_clients: int,
-    train_output_managers: Optional[List[tff.program.ReleaseManager]] = None,
-    evaluation_output_managers: Optional[List[
-        tff.program.ReleaseManager]] = None,
+    train_metrics_manager: Optional[tff.program.ReleaseManager] = None,
+    evaluation_metrics_manager: Optional[tff.program.ReleaseManager] = None,
     model_output_manager: Optional[tff.program.ReleaseManager] = None,
-    program_state_manager: Optional[tff.program.ProgramStateManager] = None):
+    program_state_manager: Optional[tff.program.ProgramStateManager] = None
+) -> None:
   """Trains a federated model for some number of rounds.
 
-  The following `tff.Computation` types signatures are required:
+  The following types signatures are required:
 
-  *   `initialize`: `( -> state)`.
-  *   `train`:      `(<state, client_data> -> <state, metrics>)`
-  *   `evaluation`: `(<state, client_data> -> metrics)`
+  1.  `initialize`: `( -> S@SERVER)`
+  2.  `train`:      `(<S@SERVER, D1@CLIENTS> -> <S@SERVER, M1@SERVER>)`
+  3.  `evaluation`: `(<S@SERVER, D2@CLIENTS> -> M2@SERVER)`
+
+  And
+
+  4.  `train_data_source`:      `D1@CLIENTS`
+  5.  `evaluation_data_source`: `D2@CLIENTS`
+
+  Where:
+
+  *   `S`: The server state.
+  *   `M1`: The train metrics.
+  *   `M2`: The evaluation metrics.
+  *   `D1`: The train client data.
+  *   `D2`: The evaluation client data.
+
+  Note: `S`, `D1`, and `D2` are only required to be assignable as described
+  below, not necessarily identical
 
   This function invokes `initialize` to construct a local `state` and then runs
   `total_rounds` rounds updating this `state`. At each round, this update occurs
   by invoking `train` with the `state` and the `client_data` selected from the
   `train_data_source`. Each round, the training metrics are released to the
-  `train_output_managers` and the updated `state` used in the next round of
+  `train_metrics_managers` and the updated `state` used in the next round of
   training.
 
   *   Round 0 represents the initialized state
@@ -60,7 +229,7 @@ async def train_federated_model(
 
   After training, this function invokes `evaluation` once with the updated
   `state` and the `client_data` selected from the `evaluation_data_source`; and
-  the evaluation metrics are released to the `evaluation_output_managers`.
+  the evaluation metrics are released to the `evaluation_metrics_managers`.
 
   Finally, `state` is released to the `model_output_manager`.
 
@@ -75,16 +244,18 @@ async def train_federated_model(
       client data used during evaluation.
     total_rounds: The number of training rounds to run.
     number_of_clients: The number of clients per round of training.
-    train_output_managers: An optional list of `tff.program.ReleaseManager`s
-      used to release training output.
-    evaluation_output_managers: An optional list of
-      `tff.program.ReleaseManager`s used to release evaluation output.
+    train_metrics_manager: An optional `tff.program.ReleaseManager` used to
+      release training metrics.
+    evaluation_metrics_manager: An optional `tff.program.ReleaseManager` used to
+      release evaluation metrics.
     model_output_manager: An optional `tff.program.ReleaseManager` used to
       release training output.
     program_state_manager: An optional `tff.program.ProgramStateManager` used to
       save program state for fault tolerance.
   """
   tff.program.check_in_federated_context()
+  _check_expected_type_signatures(initialize, train, train_data_source,
+                                  evaluation, evaluation_data_source)
   logging.info('Running program logic')
 
   # Try to load the latest program state; if the program logic failed on a
@@ -133,12 +304,11 @@ async def train_federated_model(
       state, metrics = train(state, train_data)
 
       # Release the training metrics.
-      if train_output_managers is not None:
+      if train_metrics_manager is not None:
         _, metrics_type = train.type_signature.result
-        tasks.add_all(*[
-            m.release(metrics, metrics_type, round_number)
-            for m in train_output_managers
-        ])
+        metrics_type = metrics_type.member
+        tasks.add(
+            train_metrics_manager.release(metrics, metrics_type, round_number))
 
       # Save the current program state.
       if program_state_manager is not None:
@@ -158,14 +328,15 @@ async def train_federated_model(
     evaluation_metrics = evaluation(state, evaluation_data)
 
     # Release the evaluation metrics.
-    if evaluation_output_managers is not None:
-      evaluation_metrics_type = evaluation.type_signature.result
-      tasks.add_all(*[
-          m.release(evaluation_metrics, evaluation_metrics_type, round_number)
-          for m in evaluation_output_managers
-      ])
+    if evaluation_metrics_manager is not None:
+      evaluation_metrics_type = evaluation.type_signature.result.member
+      tasks.add(
+          evaluation_metrics_manager.release(evaluation_metrics,
+                                             evaluation_metrics_type,
+                                             round_number))
 
     # Release the model output.
     if model_output_manager is not None:
-      state_type, _ = train.type_signature.result
+      _, state_type = train.type_signature.result
+      state_type = state_type.member
       tasks.add(model_output_manager.release(state, state_type))

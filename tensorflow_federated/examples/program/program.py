@@ -39,7 +39,7 @@ more documentation about this example.
 
 import asyncio
 import os.path
-from typing import Sequence
+from typing import Sequence, Tuple, Union
 
 from absl import app
 from absl import flags
@@ -50,6 +50,13 @@ from tensorflow_federated.examples.program import computations
 from tensorflow_federated.examples.program import program_logic
 
 _OUTPUT_DIR = flags.DEFINE_string('output_dir', None, 'The output path.')
+
+
+def _filter_metrics(path: Tuple[Union[str, int], ...]) -> bool:
+  if path == (computations.METRICS_TOTAL_SUM,):
+    return True
+  else:
+    return False
 
 
 def main(argv: Sequence[str]) -> None:
@@ -83,18 +90,35 @@ def main(argv: Sequence[str]) -> None:
   # Configure the platform-agnostic components.
 
   # Create release managers with access to customer storage.
-  train_output_managers = [tff.program.LoggingReleaseManager()]
-  evaluation_output_managers = [tff.program.LoggingReleaseManager()]
+  train_metrics_managers = [tff.program.LoggingReleaseManager()]
+  evaluation_metrics_managers = [tff.program.LoggingReleaseManager()]
   model_output_manager = tff.program.LoggingReleaseManager()
 
   if _OUTPUT_DIR.value is not None:
     summary_dir = os.path.join(_OUTPUT_DIR.value, 'summary')
     tensorboard_manager = tff.program.TensorBoardReleaseManager(summary_dir)
-    train_output_managers.append(tensorboard_manager)
+    train_metrics_managers.append(tensorboard_manager)
 
     csv_path = os.path.join(_OUTPUT_DIR.value, 'evaluation_metrics.csv')
     csv_manager = tff.program.CSVFileReleaseManager(csv_path)
-    evaluation_output_managers.append(csv_manager)
+    evaluation_metrics_managers.append(csv_manager)
+
+  # Group the metrics release managers; program logic may accept a single
+  # release manager to make the implementation of the program logic simpler and
+  # easier to maintain, the program can use a
+  # `tff.program.GroupingReleaseManager` to release values to multiple
+  # destinations.
+  #
+  # Filter the metrics before they are released; the program can use a
+  # `tff.program.FilteringReleaseManager` to limit the values that are
+  # released by the program logic. If a formal privacy guarantee is not
+  # required, it may be ok to release all the metrics.
+  train_metrics_manager = tff.program.FilteringReleaseManager(
+      tff.program.GroupingReleaseManager(train_metrics_managers),
+      _filter_metrics)
+  evaluation_metrics_manager = tff.program.FilteringReleaseManager(
+      tff.program.GroupingReleaseManager(evaluation_metrics_managers),
+      _filter_metrics)
 
   # Create a program state manager with access to platform storage.
   program_state_manager = None
@@ -106,7 +130,7 @@ def main(argv: Sequence[str]) -> None:
 
   # Execute the program logic; the program logic is abstracted into a separate
   # function to illustrate the boundary between the program and the program
-  # logic. This program logic is declared as an async def, and needs to be
+  # logic. This program logic is declared as an async def and needs to be
   # executed in an asyncio event loop.
   asyncio.run(
       program_logic.train_federated_model(
@@ -117,8 +141,8 @@ def main(argv: Sequence[str]) -> None:
           evaluation_data_source=evaluation_data_source,
           total_rounds=total_rounds,
           number_of_clients=number_of_clients,
-          train_output_managers=train_output_managers,
-          evaluation_output_managers=evaluation_output_managers,
+          train_metrics_manager=train_metrics_manager,
+          evaluation_metrics_manager=evaluation_metrics_manager,
           model_output_manager=model_output_manager,
           program_state_manager=program_state_manager))
 
