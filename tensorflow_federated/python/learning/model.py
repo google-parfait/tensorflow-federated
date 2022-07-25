@@ -19,9 +19,9 @@
 """Abstractions for models used in federated learning."""
 
 import abc
+import collections
 from typing import Any, Callable, OrderedDict, Sequence
 
-import attr
 import tensorflow as tf
 
 
@@ -29,10 +29,11 @@ MODEL_ARG_NAME = 'x'
 MODEL_LABEL_NAME = 'y'
 MetricFinalizersType = OrderedDict[str, Callable[[Any], Any]]
 
-
-@attr.s(frozen=True, slots=True, eq=False)
-class BatchOutput():
-  """A structure that holds the output of a `tff.learning.Model`.
+BatchOutput = collections.namedtuple(
+    'BatchOutput', ['loss', 'predictions', 'num_examples'],
+    defaults=[None, None, None])
+BatchOutput.__doc__ = (
+    """A structure that holds the output of a `tff.learning.Model`.
 
   Note: All fields are optional (may be None).
 
@@ -42,10 +43,7 @@ class BatchOutput():
     predictions: Tensor of predictions on the examples. The first dimension must
       be the same size (the size of the batch).
     num_examples: Number of examples seen in the batch.
-  """
-  loss = attr.ib()
-  predictions = attr.ib()
-  num_examples = attr.ib()
+  """)
 
 
 class Model(object, metaclass=abc.ABCMeta):

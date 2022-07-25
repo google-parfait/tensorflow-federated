@@ -16,7 +16,6 @@ import collections
 import os
 
 from absl.testing import parameterized
-import attr
 import numpy as np
 import tensorflow as tf
 
@@ -306,8 +305,7 @@ class SerializationTest(tf.test.TestCase, parameterized.TestCase):
           loaded_model.predict_on_batch(predict_input, training))
       model_result = model.forward_pass(test_batch, training)
       loaded_model_result = loaded_model.forward_pass(test_batch, training)
-      self.assertAllClose(
-          attr.asdict(model_result), attr.asdict(loaded_model_result))
+      self.assertAllClose(model_result, loaded_model_result)
 
     # Assert that the models produce the same finalized metrics.
     # Creating a TFF computation is needed because the `tf.function`-decorated
