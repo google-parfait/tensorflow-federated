@@ -93,7 +93,7 @@ class TensorVariable:
     return self._tensor.shape
 
   @property
-  def dtype(self) -> tf.DType:
+  def dtype(self) -> tf.dtypes.DType:
     return self._tensor.dtype
 
   @property

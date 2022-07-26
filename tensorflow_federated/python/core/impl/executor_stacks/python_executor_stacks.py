@@ -228,7 +228,7 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
         broadcast_bits=broadcast_bits,
         aggregate_bits=aggregate_bits)
 
-  def _bits_per_element(self, dtype: tf.DType) -> int:
+  def _bits_per_element(self, dtype: tf.dtypes.DType) -> int:
     """Returns the number of bits that a tensorflow DType uses per element."""
     if dtype == tf.string:
       return 8
