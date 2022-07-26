@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -169,6 +171,16 @@ class YogiTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     state = optimizer.initialize(_SCALAR_SPEC)
     with self.assertRaises(ValueError):
       optimizer.next(state, tf.zeros([2]), tf.zeros([2]))
+
+  def test_get_hparams_not_implemented(self):
+    optimizer = yogi.build_yogi(0.1)
+    with self.assertRaises(NotImplementedError):
+      optimizer.get_hparams(state=())
+
+  def test_set_hparams_not_implemented(self):
+    optimizer = yogi.build_yogi(0.1)
+    with self.assertRaises(NotImplementedError):
+      optimizer.set_hparams(state=(), hparams=collections.OrderedDict())
 
 
 if __name__ == '__main__':
