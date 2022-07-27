@@ -1,3 +1,16 @@
+# Release 0.31.0
+
+## Major Features and Improvements
+
+*   Added `ReleaseManager`s to make authoring program logic more convenient.
+*   Updated TFFs `attrs` dependency to version `21.4.0`.
+*   Update TFFs `tensorflow-privacy` dependency to version `0.8.1`.
+
+## Breaking Changes
+
+*   Changed `tff.learning.BatchOutput` from an attrs class to a namedtuple.
+*   Removed unused `tff.learning.framework.parameter_count_from_model` API.
+
 # Release 0.30.0
 
 ## Major Features and Improvements
