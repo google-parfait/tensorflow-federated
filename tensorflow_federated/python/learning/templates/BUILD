@@ -33,7 +33,10 @@ py_library(
     srcs = ["client_works.py"],
     srcs_version = "PY3",
     deps = [
+        ":tunable",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
@@ -294,4 +297,10 @@ py_test(
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
+)
+
+py_library(
+    name = "tunable",
+    srcs = ["tunable.py"],
+    srcs_version = "PY3",
 )

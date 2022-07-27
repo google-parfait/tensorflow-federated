@@ -35,6 +35,7 @@ CLIENTS_FLOAT = computation_types.FederatedType(tf.float32, placements.CLIENTS)
 CLIENTS_INT = computation_types.FederatedType(tf.int32, placements.CLIENTS)
 MODEL_WEIGHTS_TYPE = computation_types.at_clients(
     computation_types.to_type(model_utils.ModelWeights(tf.float32, ())))
+HPARAMS_TYPE = computation_types.to_type(collections.OrderedDict(a=tf.int32))
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
 
@@ -76,6 +77,17 @@ def test_next_fn(state, weights, data):
                                intrinsics.federated_value(1, placements.SERVER))
 
 
+@tensorflow_computation.tf_computation(tf.int32)
+def test_get_hparams_fn(state):
+  return collections.OrderedDict(a=state)
+
+
+@tensorflow_computation.tf_computation(tf.int32, HPARAMS_TYPE)
+def test_set_hparams_fn(state, hparams):
+  del state
+  return hparams['a']
+
+
 class ClientWorkTest(absltest.TestCase):
 
   def test_construction_does_not_raise(self):
@@ -111,6 +123,20 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(
           initialize_fn=test_initialize_fn,
           next_fn=lambda state, w, d: MeasuredProcessOutput(state, w + d, ()))
+
+  def test_get_hparams_not_tff_computation_raises(self):
+    with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
+      client_works.ClientWorkProcess(
+          initialize_fn=test_initialize_fn,
+          next_fn=test_next_fn,
+          get_hparams_fn=lambda x: 0)
+
+  def test_set_hparams_not_tff_computation_raises(self):
+    with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
+      client_works.ClientWorkProcess(
+          initialize_fn=test_initialize_fn,
+          next_fn=test_next_fn,
+          set_hparams_fn=lambda x: 0)
 
   def test_init_param_not_empty_raises(self):
     one_arg_initialize_fn = federated_computation.federated_computation(
@@ -363,6 +389,78 @@ class ClientWorkTest(absltest.TestCase):
 
     with self.assertRaises(errors.TemplatePlacementError):
       client_works.ClientWorkProcess(test_initialize_fn, next_fn)
+
+  def test_get_hparams_fn_with_incompatible_state_type_raises(self):
+
+    @tensorflow_computation.tf_computation(tf.float32)
+    def bad_get_hparams_fn(state):
+      return collections.OrderedDict(a=state)
+
+    with self.assertRaises(client_works.GetHparamsTypeError):
+      client_works.ClientWorkProcess(
+          test_initialize_fn, test_next_fn, get_hparams_fn=bad_get_hparams_fn)
+
+  def test_set_hparams_fn_with_one_input_arg_raises(self):
+
+    @tensorflow_computation.tf_computation(tf.int32)
+    def bad_set_hparams_fn(state):
+      return state
+
+    with self.assertRaises(client_works.SetHparamsTypeError):
+      client_works.ClientWorkProcess(
+          test_initialize_fn, test_next_fn, set_hparams_fn=bad_set_hparams_fn)
+
+  def test_set_hparams_fn_with_three_input_args_raises(self):
+
+    @tensorflow_computation.tf_computation(tf.int32, tf.int32, tf.int32)
+    def bad_set_hparams_fn(state, x, y):
+      del x
+      del y
+      return state
+
+    with self.assertRaises(client_works.SetHparamsTypeError):
+      client_works.ClientWorkProcess(
+          test_initialize_fn, test_next_fn, set_hparams_fn=bad_set_hparams_fn)
+
+  def test_set_hparams_fn_with_incompatible_input_state_type_raises(self):
+
+    hparams_type = computation_types.to_type(
+        collections.OrderedDict(a=tf.float32))
+
+    @tensorflow_computation.tf_computation(tf.float32, hparams_type)
+    def bad_set_hparams_fn(state, hparams):
+      del state
+      return hparams['a']
+
+    with self.assertRaises(client_works.SetHparamsTypeError):
+      client_works.ClientWorkProcess(
+          test_initialize_fn, test_next_fn, set_hparams_fn=bad_set_hparams_fn)
+
+  def test_set_hparams_fn_with_incompatible_outputput_state_type_raises(self):
+
+    hparams_type = computation_types.to_type(
+        collections.OrderedDict(a=tf.float32))
+
+    @tensorflow_computation.tf_computation(tf.int32, hparams_type)
+    def bad_set_hparams_fn(state, hparams):
+      del state
+      return tf.cast(hparams['a'], tf.float32)
+
+    with self.assertRaises(client_works.SetHparamsTypeError):
+      client_works.ClientWorkProcess(
+          test_initialize_fn, test_next_fn, set_hparams_fn=bad_set_hparams_fn)
+
+  def test_default_get_hparams_raises_not_implemented_error(self):
+    client_work = client_works.ClientWorkProcess(
+        initialize_fn=test_initialize_fn, next_fn=test_next_fn)
+    with self.assertRaises(NotImplementedError):
+      client_work.get_hparams  # pylint: disable=pointless-statement
+
+  def test_default_set_hparams_raises_not_implemented_error(self):
+    client_work = client_works.ClientWorkProcess(
+        initialize_fn=test_initialize_fn, next_fn=test_next_fn)
+    with self.assertRaises(NotImplementedError):
+      client_work.set_hparams  # pylint: disable=pointless-statement
 
 
 if __name__ == '__main__':
