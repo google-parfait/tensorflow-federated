@@ -103,6 +103,12 @@ py_test(
 )
 
 py_library(
+    name = "pytypes",
+    srcs = ["pytypes.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
     name = "retrying",
     srcs = ["retrying.py"],
     srcs_version = "PY3",

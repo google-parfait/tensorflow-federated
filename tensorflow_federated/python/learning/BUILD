@@ -166,6 +166,7 @@ py_library(
     name = "model",
     srcs = ["model.py"],
     srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/common_libs:pytypes"],
 )
 
 py_library(

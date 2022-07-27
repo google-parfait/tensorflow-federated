@@ -11,29 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Abstractions for models used in federated learning."""
 
 import abc
-import collections
-from typing import Any, Callable, OrderedDict, Sequence
+from typing import Callable, NamedTuple, Optional, OrderedDict, TypeVar, Union
 
 import tensorflow as tf
+
+from tensorflow_federated.python.common_libs import pytypes
 
 
 MODEL_ARG_NAME = 'x'
 MODEL_LABEL_NAME = 'y'
-MetricFinalizersType = OrderedDict[str, Callable[[Any], Any]]
+MetricFinalizersType = OrderedDict[str, Callable[
+    [Union[pytypes.TensorLike, pytypes.TensorStructure]], pytypes.TensorLike]]
 
-BatchOutput = collections.namedtuple(
-    'BatchOutput', ['loss', 'predictions', 'num_examples'],
-    defaults=[None, None, None])
-BatchOutput.__doc__ = (
-    """A structure that holds the output of a `tff.learning.Model`.
+
+class BatchOutput(NamedTuple):
+  """A structure that holds the output of a `tff.learning.Model`.
 
   Note: All fields are optional (may be None).
 
@@ -43,10 +38,46 @@ BatchOutput.__doc__ = (
     predictions: Tensor of predictions on the examples. The first dimension must
       be the same size (the size of the batch).
     num_examples: Number of examples seen in the batch.
-  """)
+  """
+  loss: Optional[pytypes.TensorLike] = None
+  predictions: Optional[Union[pytypes.TensorLike,
+                              pytypes.TensorStructure]] = None
+  num_examples: Optional[pytypes.TensorLike] = None
 
 
-class Model(object, metaclass=abc.ABCMeta):
+# A tensor or nested structure of tensors the model predicts on.
+Features = Union[pytypes.TensorLike, pytypes.TensorStructure]
+# A tensor or nested structure of tensors the loss function compares to.
+Labels = Union[pytypes.TensorLike, pytypes.TensorStructure]
+
+# A `tuple` of input tensors.
+#
+# The tuple must contain the two elements, the first being the inputs to the
+# forward pass and the second being labels/targets for the loss function
+# respectively.
+#
+# Also see `BatchDict` for a similar input format.
+BatchTuple = tuple[Features, Labels]
+
+# A batch of input tensors in a `dict` collection.
+#
+# The `dict` must contain the two `str` keys `'x'` and `'y'` denoting the inputs
+# to the forward pass and the labels/targets for the loss function respectively.
+#
+# Also see `BatchTuple` for a similar input format.
+BatchDict = TypeVar(
+    'BatchDict', bound=OrderedDict[str, pytypes.TensorStructure])
+
+# A type denoting either a BatchTuple, BatchDict, or union of both.
+#
+# All models must support either a BatchTuple, a BatchDict, or both.
+# Consequently, this means that all learning algorithms that support all
+# poosible models must support both.
+BatchInput = TypeVar('BatchInput', BatchTuple, BatchDict, Union[BatchTuple,
+                                                                BatchDict])
+
+
+class Model(metaclass=abc.ABCMeta):
   """Represents a model for use in TensorFlow Federated.
 
   Each `Model` will work on a set of `tf.Variables`, and each method should be
@@ -83,25 +114,23 @@ class Model(object, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def trainable_variables(self) -> Sequence[tf.Variable]:
-    """An iterable of `tf.Variable` objects, see class comment for details."""
-    pass
+  def trainable_variables(self) -> Union[tuple[tf.Variable], list[tf.Variable]]:
+    """A tuple or list of `tf.Variable` objects."""
 
   @property
   @abc.abstractmethod
-  def non_trainable_variables(self) -> Sequence[tf.Variable]:
-    """An iterable of `tf.Variable` objects, see class comment for details."""
-    pass
+  def non_trainable_variables(
+      self) -> Union[tuple[tf.Variable], list[tf.Variable]]:
+    """A tupel or list of `tf.Variable` objects."""
 
   @property
   @abc.abstractmethod
-  def local_variables(self) -> Sequence[tf.Variable]:
-    """An iterable of `tf.Variable` objects, see class comment for details."""
-    pass
+  def local_variables(self) -> Union[tuple[tf.Variable], list[tf.Variable]]:
+    """A tuple or list of `tf.Variable` objects."""
 
   @property
   @abc.abstractmethod
-  def input_spec(self):
+  def input_spec(self) -> pytypes.TensorSpecStructure:
     """The type specification of the `batch_input` parameter for `forward_pass`.
 
     A nested structure of `tf.TensorSpec` objects, that matches the structure of
@@ -118,10 +147,11 @@ class Model(object, metaclass=abc.ABCMeta):
 
     Similar in spirit to `tf.keras.models.Model.input_spec`.
     """.format(MODEL_ARG_NAME, MODEL_LABEL_NAME)
-    pass
 
   @abc.abstractmethod
-  def forward_pass(self, batch_input, training=True) -> BatchOutput:
+  def forward_pass(self,
+                   batch_input: BatchInput,
+                   training: bool = True) -> BatchOutput:
     """Runs the forward pass and returns results.
 
     This method must be serializable in a `tff.tf_computation` or other backend
@@ -158,10 +188,11 @@ class Model(object, metaclass=abc.ABCMeta):
       A `BatchOutput` object. The object must include the `loss` tensor if the
       model will be trained via a gradient-based algorithm.
     """
-    pass
 
   @abc.abstractmethod
-  def predict_on_batch(self, batch_input, training=True):
+  def predict_on_batch(self,
+                       batch_input: Features,
+                       training: bool = True) -> pytypes.TensorStructure:
     """Performs inference on a batch, produces predictions.
 
     Unlike `forward_pass`, this function must _not_ mutate any variables
@@ -197,7 +228,8 @@ class Model(object, metaclass=abc.ABCMeta):
     """.format(MODEL_ARG_NAME)
 
   @abc.abstractmethod
-  def report_local_unfinalized_metrics(self) -> OrderedDict[str, Any]:
+  def report_local_unfinalized_metrics(
+      self) -> OrderedDict[str, Union[list[tf.Tensor], tuple[tf.Tensor, ...]]]:
     """Creates an `OrderedDict` of metric names to unfinalized values.
 
     For a metric, its unfinalized values are given as a structure (typically a
@@ -239,7 +271,6 @@ class Model(object, metaclass=abc.ABCMeta):
       method will be used together to build a cross-client metrics aggregator
       when defining the federated training processes or evaluation computations.
     """
-    pass
 
   @abc.abstractmethod
   def metric_finalizers(self) -> MetricFinalizersType:
@@ -265,7 +296,6 @@ class Model(object, metaclass=abc.ABCMeta):
       will be used together to build a cross-client metrics aggregator in
       federated training processes or evaluation computations.
     """
-    pass
 
   @abc.abstractmethod
   def reset_metrics(self) -> None:
@@ -279,4 +309,3 @@ class Model(object, metaclass=abc.ABCMeta):
     `reset_metrics` is never called, `report_local_unfinalized_metrics` will
     report metrics aggregated over *all* previous `forward_pass` calls.
     """
-    pass
