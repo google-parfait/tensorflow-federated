@@ -27,7 +27,7 @@ _ACCUMULATOR_KEY = 'accumulator'
 _PRECONDITIONER_KEY = 'preconditioner'
 
 
-class _Adam(optimizer.Optimizer):
+class _Adam(optimizer.Optimizer, optimizer.Tunable):
   """Adam optimizer, see `build_adam` for details."""
 
   def __init__(self,
@@ -97,6 +97,16 @@ class _Adam(optimizer.Optimizer):
         (_PRECONDITIONER_KEY, updated_preconditioner),
     ])
     return updated_state, updated_weights
+
+  # TODO(b/240183407): Implement this method.
+  def get_hparams(self, state):
+    raise NotImplementedError('The get_hparams method is still being '
+                              'implemented and is not ready to use yet.')
+
+  # TODO(b/240183407): Implement this method.
+  def set_hparams(self, state, hparams):
+    raise NotImplementedError('The set_hparams method is still being '
+                              'implemented and is not ready to use yet.')
 
 
 def _check_beta(beta):

@@ -24,7 +24,7 @@ _PRECONDITIONER_KEY = 'preconditioner'
 _EPSILON_KEY = 'epsilon'
 
 
-class _RmsProp(optimizer.Optimizer):
+class _RmsProp(optimizer.Optimizer, optimizer.Tunable):
   """RMSprop optimizer, see `build_rmsprop` for details."""
 
   def __init__(self,
@@ -74,6 +74,16 @@ class _RmsProp(optimizer.Optimizer):
         (_PRECONDITIONER_KEY, updated_preconditioner),
     ])
     return updated_state, updated_weights
+
+  # TODO(b/240183407): Implement this method.
+  def get_hparams(self, state):
+    raise NotImplementedError('The get_hparams method is still being '
+                              'implemented and is not ready to use yet.')
+
+  # TODO(b/240183407): Implement this method.
+  def set_hparams(self, state, hparams):
+    raise NotImplementedError('The set_hparams method is still being '
+                              'implemented and is not ready to use yet.')
 
 
 def _check_decay(decay):

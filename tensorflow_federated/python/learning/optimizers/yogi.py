@@ -27,7 +27,7 @@ _ACCUMULATOR_KEY = 'accumulator'
 _PRECONDITIONER_KEY = 'preconditioner'
 
 
-class _Yogi(optimizer.Optimizer):
+class _Yogi(optimizer.Optimizer, optimizer.Tunable):
   """Yogi optimizer, see `build_yogi` for details."""
 
   def __init__(self,
@@ -50,9 +50,13 @@ class _Yogi(optimizer.Optimizer):
   def initialize(self, specs):
     initial_accumulator = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype), specs)
-    initial_preconditioner = tf.nest.map_structure(
-        lambda s: tf.ones(s.shape, s.dtype) * self.
-        _initial_preconditioner_value, specs)
+
+    def _get_tensor_preconditioner(tensor_spec: tf.TensorSpec) -> tf.Tensor:
+      tensor_preconditioner = tf.ones(tensor_spec.shape, tensor_spec.dtype)
+      return tensor_preconditioner * self._initial_preconditioner_value
+
+    initial_preconditioner = tf.nest.map_structure(_get_tensor_preconditioner,
+                                                   specs)
     state = collections.OrderedDict([
         (optimizer.LEARNING_RATE_KEY, self._lr),
         (_BETA_1_KEY, self._beta_1),
@@ -105,6 +109,16 @@ class _Yogi(optimizer.Optimizer):
         (_PRECONDITIONER_KEY, updated_preconditioner),
     ])
     return updated_state, updated_weights
+
+  # TODO(b/240183407): Implement this method.
+  def get_hparams(self, state):
+    raise NotImplementedError('The get_hparams method is still being '
+                              'implemented and is not ready to use yet.')
+
+  # TODO(b/240183407): Implement this method.
+  def set_hparams(self, state, hparams):
+    raise NotImplementedError('The set_hparams method is still being '
+                              'implemented and is not ready to use yet.')
 
 
 def _check_beta(beta):
