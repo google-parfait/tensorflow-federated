@@ -278,12 +278,12 @@ def is_numeric_dtype(dtype):
   """Returns True iff `dtype` is numeric.
 
   Args:
-    dtype: An instance of tf.DType.
+    dtype: An instance of `tf.dtypes.DType`.
 
   Returns:
     True iff `dtype` is numeric, i.e., integer, float, or complex.
   """
-  py_typecheck.check_type(dtype, tf.DType)
+  py_typecheck.check_type(dtype, tf.dtypes.DType)
   return dtype.is_integer or dtype.is_floating or dtype.is_complex
 
 
@@ -354,7 +354,7 @@ def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
-    py_typecheck.check_type(type_spec.dtype, tf.DType)
+    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
     return type_spec.dtype.is_floating
   elif type_spec.is_struct():
     return all(
@@ -387,7 +387,7 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
-    py_typecheck.check_type(type_spec.dtype, tf.DType)
+    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
     return type_spec.dtype.is_integer
   elif type_spec.is_struct():
     return all(

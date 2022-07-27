@@ -378,7 +378,7 @@ class _Intern(abc.ABCMeta):
       return interned
 
 
-def _hash_dtype_and_shape(dtype: tf.DType, shape: tf.TensorShape) -> int:
+def _hash_dtype_and_shape(dtype: tf.dtypes.DType, shape: tf.TensorShape) -> int:
   if shape.rank is not None:
     # as_list is not defined on unknown tensorshapes
     return hash((dtype.name, tuple(shape.as_list())))
@@ -394,7 +394,7 @@ def _is_dtype_spec(dtype):
   Returns:
     Boolean result indicating whether `dtype` is a Numpy or TF dtype.
   """
-  return (isinstance(dtype, tf.DType) or
+  return (isinstance(dtype, tf.dtypes.DType) or
           isinstance(dtype, type) and issubclass(dtype, np.number) or
           isinstance(dtype, np.dtype))
 
@@ -413,7 +413,7 @@ class TensorType(Type, metaclass=_Intern):
   @staticmethod
   def _normalize_init_args(dtype, shape=None):
     """Checks init arguments and converts to a normalized representation."""
-    if not isinstance(dtype, tf.DType):
+    if not isinstance(dtype, tf.dtypes.DType):
       if _is_dtype_spec(dtype):
         dtype = tf.dtypes.as_dtype(dtype)
       else:
@@ -439,7 +439,7 @@ class TensorType(Type, metaclass=_Intern):
     """Constructs a new instance from the given `dtype` and `shape`.
 
     Args:
-      dtype: An instance of `tf.DType` or one of the Numpy numeric types.
+      dtype: An instance of `tf.dtypes.DType` or one of the Numpy numeric types.
       shape: An optional instance of `tf.TensorShape` or an argument that can be
         passed to its constructor (such as a `list` or a `tuple`). `None` yields
         the default scalar shape.
@@ -1045,9 +1045,9 @@ def to_type(spec) -> Union[TensorType, StructType, StructWithPythonType]:
          (isinstance(spec[1], (list, tuple)) and all(
              (isinstance(x, int) or x is None) for x in spec[1])))):
     # We found a 2-element tuple of the form (dtype, shape), where dtype is an
-    # instance of tf.DType, and shape is either an instance of tf.TensorShape,
-    # or a list, or a tuple that can be fed as argument into a tf.TensorShape.
-    # We thus convert this into a TensorType.
+    # instance of tf.dtypes.DType, and shape is either an instance of
+    # tf.TensorShape, or a list, or a tuple that can be fed as argument into a
+    # tf.TensorShape. We thus convert this into a TensorType.
     return TensorType(spec[0], spec[1])
   elif isinstance(spec, (list, tuple)):
     if any(py_typecheck.is_name_value_pair(e) for e in spec):

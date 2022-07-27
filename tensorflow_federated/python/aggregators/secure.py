@@ -616,7 +616,7 @@ def _create_update_state_two_processes(upper_bound_process,
 
 
 def _unique_dtypes_in_structure(
-    type_spec: computation_types.Type) -> Set[tf.DType]:
+    type_spec: computation_types.Type) -> Set[tf.dtypes.DType]:
   """Returns a set of unique dtypes in `type_spec`.
 
   Args:
@@ -627,7 +627,7 @@ def _unique_dtypes_in_structure(
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
-    py_typecheck.check_type(type_spec.dtype, tf.DType)
+    py_typecheck.check_type(type_spec.dtype, tf.dtypes.DType)
     return set([type_spec.dtype])
   elif type_spec.is_struct():
     return set(
