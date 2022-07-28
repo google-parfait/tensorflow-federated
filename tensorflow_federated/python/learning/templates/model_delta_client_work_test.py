@@ -68,7 +68,9 @@ class ModelDeltaClientWorkComputationTest(tf.test.TestCase,
         client_works.ClientResult(
             update=mw_type.trainable,
             update_weight=computation_types.TensorType(tf.float32)))
-    expected_state_type = computation_types.at_server(())
+    state_member_type = computation_types.to_type(
+        collections.OrderedDict(delta_l2_regularizer=tf.float32))
+    expected_state_type = computation_types.at_server(state_member_type)
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             train=collections.OrderedDict(
@@ -316,6 +318,43 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
 
     self.assertCountEqual(output.measurements.keys(), ['train'])
 
+  def test_get_hparams_matches_input(self):
+    delta_l2_regularizer = 0.5
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        create_model,
+        sgdm.build_sgdm(0.1),
+        delta_l2_regularizer=delta_l2_regularizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    state = client_work_process.initialize()
+    hparams = client_work_process.get_hparams(state)
+    self.assertEqual(state, hparams)
+
+  def test_get_hparams_matches_state(self):
+    delta_l2_regularizer = 0.5
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        create_model,
+        sgdm.build_sgdm(0.1),
+        delta_l2_regularizer=delta_l2_regularizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    state = client_work_process.initialize()
+    hparams = client_work_process.get_hparams(state)
+    expected_hparams = collections.OrderedDict(
+        delta_l2_regularizer=delta_l2_regularizer)
+    self.assertEqual(expected_hparams, hparams)
+
+  def test_set_hparams_overwrites_state(self):
+    delta_l2_regularizer = 0.5
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        create_model,
+        sgdm.build_sgdm(0.1),
+        delta_l2_regularizer=delta_l2_regularizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    state = client_work_process.initialize()
+    hparams = client_work_process.get_hparams(state)
+    hparams['delta_l2_regularizer'] = 1.0
+    updated_state = client_work_process.set_hparams(state, hparams)
+    self.assertEqual(updated_state, hparams)
+
 
 class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
                                                   parameterized.TestCase):
@@ -416,6 +455,64 @@ class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
                           client_datasets)
     self.assertEqual(output.measurements['train']['num_examples'],
                      8 * num_clients)
+
+  def test_get_hparams_matches_input(self):
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=2)
+    loss_fn = tf.keras.losses.MeanSquaredError()
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.functional_model_from_keras(
+        keras_model, loss_fn=loss_fn, input_spec=input_spec)
+    delta_l2_regularizer = 0.5
+    client_work_process = model_delta_client_work.build_functional_model_delta_client_work(
+        model=functional_model,
+        optimizer=sgdm.build_sgdm(0.1),
+        delta_l2_regularizer=delta_l2_regularizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    state = client_work_process.initialize()
+    hparams = client_work_process.get_hparams(state)
+    self.assertEqual(state, hparams)
+
+  def test_get_hparams_matches_state(self):
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=2)
+    loss_fn = tf.keras.losses.MeanSquaredError()
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.functional_model_from_keras(
+        keras_model, loss_fn=loss_fn, input_spec=input_spec)
+    delta_l2_regularizer = 0.5
+    client_work_process = model_delta_client_work.build_functional_model_delta_client_work(
+        model=functional_model,
+        optimizer=sgdm.build_sgdm(0.1),
+        delta_l2_regularizer=delta_l2_regularizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    state = client_work_process.initialize()
+    hparams = client_work_process.get_hparams(state)
+    expected_hparams = collections.OrderedDict(
+        delta_l2_regularizer=delta_l2_regularizer)
+    self.assertEqual(expected_hparams, hparams)
+
+  def test_set_hparams_overwrites_state(self):
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=2)
+    loss_fn = tf.keras.losses.MeanSquaredError()
+    dataset = create_test_dataset()
+    input_spec = dataset.element_spec
+    functional_model = functional.functional_model_from_keras(
+        keras_model, loss_fn=loss_fn, input_spec=input_spec)
+    delta_l2_regularizer = 0.5
+    client_work_process = model_delta_client_work.build_functional_model_delta_client_work(
+        model=functional_model,
+        optimizer=sgdm.build_sgdm(0.1),
+        delta_l2_regularizer=delta_l2_regularizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    state = client_work_process.initialize()
+    hparams = client_work_process.get_hparams(state)
+    hparams['delta_l2_regularizer'] = 1.0
+    updated_state = client_work_process.set_hparams(state, hparams)
+    self.assertEqual(updated_state, hparams)
 
 
 if __name__ == '__main__':

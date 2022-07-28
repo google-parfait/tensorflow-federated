@@ -270,7 +270,7 @@ class ClientWorkProcess(measured_process.MeasuredProcess, tunable.Tunable):
     _type_check_next_fn_parameters(next_fn)
     _type_check_next_fn_result(next_fn)
 
-    state_type = initialize_fn.type_signature.result
+    state_type = initialize_fn.type_signature.result.member
     if get_hparams_fn is not None:
       _type_check_get_hparams_fn(get_hparams_fn, state_type)
 

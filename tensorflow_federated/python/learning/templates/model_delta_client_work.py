@@ -310,46 +310,67 @@ def build_model_delta_client_work(
   data_type = computation_types.SequenceType(model.input_spec)
   weights_type = model_utils.weights_type_from_model(model)
 
+  hparams = collections.OrderedDict(delta_l2_regularizer=delta_l2_regularizer)
+  hparams_type = type_conversions.type_from_tensors(hparams)
+
   if isinstance(optimizer, optimizer_base.Optimizer):
 
-    @tensorflow_computation.tf_computation(weights_type, data_type)
-    def client_update_computation(initial_model_weights, dataset):
+    @tensorflow_computation.tf_computation(weights_type, hparams_type,
+                                           data_type)
+    def client_update_computation(initial_model_weights, hparams, dataset):
       client_update = build_model_delta_update_with_tff_optimizer(
           model_fn=model_fn,
           weighting=client_weighting,
-          delta_l2_regularizer=delta_l2_regularizer,
+          delta_l2_regularizer=hparams['delta_l2_regularizer'],
           use_experimental_simulation_loop=use_experimental_simulation_loop)
       return client_update(optimizer, initial_model_weights, dataset)
 
   else:
 
-    @tensorflow_computation.tf_computation(weights_type, data_type)
-    def client_update_computation(initial_model_weights, dataset):
+    @tensorflow_computation.tf_computation(weights_type, hparams_type,
+                                           data_type)
+    def client_update_computation(initial_model_weights, hparams, dataset):
       keras_optimizer = optimizer()
       client_update = build_model_delta_update_with_keras_optimizer(
           model_fn=model_fn,
           weighting=client_weighting,
-          delta_l2_regularizer=delta_l2_regularizer,
+          delta_l2_regularizer=hparams['delta_l2_regularizer'],
           use_experimental_simulation_loop=use_experimental_simulation_loop)
       return client_update(keras_optimizer, initial_model_weights, dataset)
 
   @federated_computation.federated_computation
   def init_fn():
-    return intrinsics.federated_value((), placements.SERVER)
+    return intrinsics.federated_value(hparams, placements.SERVER)
+
+  state_type = init_fn.type_signature.result
 
   @federated_computation.federated_computation(
-      init_fn.type_signature.result, computation_types.at_clients(weights_type),
+      state_type, computation_types.at_clients(weights_type),
       computation_types.at_clients(data_type))
   def next_fn(state, weights, client_data):
+    hparams = intrinsics.federated_broadcast(state)
     client_result, model_outputs = intrinsics.federated_map(
-        client_update_computation, (weights, client_data))
+        client_update_computation, (weights, hparams, client_data))
     train_metrics = metrics_aggregation_fn(model_outputs)
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(train=train_metrics))
     return measured_process.MeasuredProcessOutput(state, client_result,
                                                   measurements)
 
-  return client_works.ClientWorkProcess(init_fn, next_fn)
+  @tensorflow_computation.tf_computation(hparams_type)
+  def get_hparams_fn(state):
+    return state
+
+  @tensorflow_computation.tf_computation(hparams_type, hparams_type)
+  def set_hparams_fn(state, hparams):
+    del state
+    return hparams
+
+  return client_works.ClientWorkProcess(
+      init_fn,
+      next_fn,
+      get_hparams_fn=get_hparams_fn,
+      set_hparams_fn=set_hparams_fn)
 
 
 def build_functional_model_delta_update(
@@ -476,32 +497,35 @@ def build_functional_model_delta_client_work(
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[0]),
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]))
 
-  @tensorflow_computation.tf_computation(weights_type, data_type)
-  def client_update_computation(initial_model_weights, dataset):
+  hparams = collections.OrderedDict(delta_l2_regularizer=delta_l2_regularizer)
+  hparams_type = type_conversions.type_from_tensors(hparams)
+
+  @tensorflow_computation.tf_computation(weights_type, hparams_type, data_type)
+  def client_update_computation(initial_model_weights, hparams, dataset):
     # Switch to the tuple expected by FunctionalModel.
     initial_model_weights = (initial_model_weights.trainable,
                              initial_model_weights.non_trainable)
     client_update = build_functional_model_delta_update(
         model=model,
         weighting=client_weighting,
-        delta_l2_regularizer=delta_l2_regularizer)
+        delta_l2_regularizer=hparams['delta_l2_regularizer'])
     return client_update(optimizer, initial_model_weights, dataset)
 
   @federated_computation.federated_computation
   def init_fn():
-    # Empty tuple means "no state" / stateless.
-    return intrinsics.federated_value((), placements.SERVER)
+    return intrinsics.federated_value(hparams, placements.SERVER)
 
   if metrics_aggregator is None:
     metrics_aggregator = aggregator.sum_then_finalize
 
   @federated_computation.federated_computation(
-      computation_types.at_server(()),
+      computation_types.at_server(hparams_type),
       computation_types.at_clients(weights_type),
       computation_types.at_clients(data_type))
   def next_fn(state, weights, client_data):
+    hparams = intrinsics.federated_broadcast(state)
     client_result, unfinalized_metrics = intrinsics.federated_map(
-        client_update_computation, (weights, client_data))
+        client_update_computation, (weights, hparams, client_data))
     metrics_aggregation_fn = metrics_aggregator(
         model.finalize_metrics, unfinalized_metrics.type_signature.member)
     finalized_training_metrics = metrics_aggregation_fn(unfinalized_metrics)
@@ -510,4 +534,17 @@ def build_functional_model_delta_client_work(
     return measured_process.MeasuredProcessOutput(state, client_result,
                                                   measurements)
 
-  return client_works.ClientWorkProcess(init_fn, next_fn)
+  @tensorflow_computation.tf_computation(hparams_type)
+  def get_hparams_fn(state):
+    return state
+
+  @tensorflow_computation.tf_computation(hparams_type, hparams_type)
+  def set_hparams_fn(state, hparams):
+    del state
+    return hparams
+
+  return client_works.ClientWorkProcess(
+      init_fn,
+      next_fn,
+      get_hparams_fn=get_hparams_fn,
+      set_hparams_fn=set_hparams_fn)
