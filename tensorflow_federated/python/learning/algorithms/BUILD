@@ -339,6 +339,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/optimizers:adagrad",
         "//tensorflow_federated/python/learning/optimizers:adam",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/learning/optimizers:rmsprop",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "//tensorflow_federated/python/learning/optimizers:yogi",

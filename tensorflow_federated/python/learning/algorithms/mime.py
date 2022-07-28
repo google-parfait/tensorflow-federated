@@ -279,6 +279,106 @@ def _build_mime_lite_client_work(
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
 
+def _build_scheduled_mime_lite_client_work(
+    model_fn: Callable[[], model_lib.Model],
+    learning_rate_fn: Callable[[int], float],
+    optimizer: optimizer_base.Optimizer,
+    client_weighting: client_weight_lib.ClientWeighting,
+    full_gradient_aggregator: Optional[
+        factory.WeightedAggregationFactory] = None,
+    metrics_aggregator: Optional[Callable[[
+        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
+    ], computation_base.Computation]] = None,
+    use_experimental_simulation_loop: bool = False
+) -> client_works.ClientWorkProcess:
+  """Creates `ClientWorkProcess` for Mimelite with learning rate schedule.
+
+  Args:
+    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
+      must *not* capture TensorFlow tensors or variables and use them. The model
+      must be constructed entirely from scratch on each invocation, returning
+      the same pre-constructed model each call will result in an error.
+    learning_rate_fn: A callable accepting an integer round number and returning
+      a float to be used as a learning rate for the optimizer.
+    optimizer: A `tff.learning.optimizers.Optimizer` which will be used for both
+      creating and updating a global optimizer state, as well as optimization at
+      clients given the global state, which is fixed during the optimization.
+    client_weighting: A member of `tff.learning.ClientWeighting` that specifies
+      a built-in weighting method.
+    full_gradient_aggregator: An optional
+      `tff.aggregators.WeightedAggregationFactory` used to aggregate the full
+      gradients on client datasets. If `None`, this is set to
+      `tff.aggregators.MeanFactory`.
+    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
+      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
+      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
+      returns a `tff.Computation` for aggregating the unfinalized metrics. If
+      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+    use_experimental_simulation_loop: Controls the reduce loop function for
+      input dataset. An experimental reduce loop is used for simulation. It is
+      currently necessary to set this flag to True for performant GPU
+      simulations.
+
+  Returns:
+    A `ClientWorkProcess`.
+  """
+  with tf.Graph().as_default():
+    # Wrap model construction in a graph to avoid polluting the global context
+    # with variables created for this model.
+    model = model_fn()
+
+  data_type = computation_types.SequenceType(model.input_spec)
+  weights_type = model_utils.weights_type_from_model(model)
+
+  client_work = _build_mime_lite_client_work(model_fn, optimizer,
+                                             client_weighting,
+                                             full_gradient_aggregator,
+                                             metrics_aggregator,
+                                             use_experimental_simulation_loop)
+
+  mime_state_type = client_work.initialize.type_signature.result.member
+
+  @tensorflow_computation.tf_computation(mime_state_type)
+  def initialize_learning_rate(mime_state):
+    # mime_state is a tuple of the form (optimizer_state, aggregator_state)
+    mime_state[0][optimizer_base.LEARNING_RATE_KEY] = learning_rate_fn(0)
+    return mime_state
+
+  @federated_computation.federated_computation
+  def init_fn():
+    initial_state = client_work.initialize()
+    updated_state = intrinsics.federated_map(initialize_learning_rate,
+                                             initial_state)
+    return intrinsics.federated_zip(
+        (intrinsics.federated_value(0, placements.SERVER), updated_state))
+
+  state_type = init_fn.type_signature.result.member
+
+  @tensorflow_computation.tf_computation(state_type)
+  def update_state(state):
+    round_num = state[0]
+    updated_round_num = round_num + 1
+    updated_learning_rate = learning_rate_fn(updated_round_num)
+    mime_state = state[1]
+    mime_state[0][optimizer_base.LEARNING_RATE_KEY] = updated_learning_rate
+    return (updated_round_num, mime_state)
+
+  @federated_computation.federated_computation(
+      init_fn.type_signature.result, computation_types.at_clients(weights_type),
+      computation_types.at_clients(data_type))
+  def next_fn(state, weights, client_data):
+    round_num, mime_state = state
+    output = client_work.next(mime_state, weights, client_data)
+    updated_mime_state = output.state
+    outer_state = intrinsics.federated_zip((round_num, updated_mime_state))
+    updated_state = intrinsics.federated_map(update_state, outer_state)
+    return measured_process.MeasuredProcessOutput(updated_state, output.result,
+                                                  output.measurements)
+
+  return client_works.ClientWorkProcess(init_fn, next_fn)
+
+
 def build_weighted_mime_lite(
     model_fn: Callable[[], model_lib.Model],
     base_optimizer: optimizer_base.Optimizer,
@@ -540,3 +640,152 @@ def build_unweighted_mime_lite(
           full_gradient_aggregator),
       metrics_aggregator=metrics_aggregator,
       use_experimental_simulation_loop=use_experimental_simulation_loop)
+
+
+def build_mime_lite_with_optimizer_schedule(
+    model_fn: Callable[[], model_lib.Model],
+    learning_rate_fn: Callable[[int], float],
+    base_optimizer: optimizer_base.Optimizer,
+    server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
+    client_weighting: Optional[
+        client_weight_lib
+        .ClientWeighting] = client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+    model_distributor: Optional[distributors.DistributionProcess] = None,
+    model_aggregator: Optional[factory.WeightedAggregationFactory] = None,
+    full_gradient_aggregator: Optional[
+        factory.WeightedAggregationFactory] = None,
+    metrics_aggregator: Optional[Callable[[
+        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
+    ], computation_base.Computation]] = None,
+    use_experimental_simulation_loop: bool = False
+) -> learning_process.LearningProcess:
+  """Builds a learning process for Mime Lite with optimizer scheduling.
+
+  This function creates a `tff.learning.templates.LearningProcess` that performs
+  Mime Lite algorithm on client models. The iterative process has the following
+  methods inherited from `tff.learning.templates.LearningProcess`:
+
+  *   `initialize`: A `tff.Computation` with the functional type signature
+      `( -> S@SERVER)`, where `S` is a
+      `tff.learning.templates.LearningAlgorithmState` representing the initial
+      state of the server.
+  *   `next`: A `tff.Computation` with the functional type signature
+      `(<S@SERVER, {B*}@CLIENTS> -> <L@SERVER>)` where `S` is a
+      `tff.learning.templates.LearningAlgorithmState` whose type matches the
+      output of `initialize` and `{B*}@CLIENTS` represents the client datasets.
+      The output `L` contains the updated server state, as well as aggregated
+      metrics at the server, including client training metrics and any other
+      metrics from distribution and aggregation processes.
+  *   `get_model_weights`: A `tff.Computation` with type signature `(S -> M)`,
+      where `S` is a `tff.learning.templates.LearningAlgorithmState` whose type
+      matches the output of `initialize` and `next`, and `M` represents the type
+      of the model weights used during training.
+  *   `set_model_weights`: A `tff.Computation` with type signature
+      `(<S, M> -> S)`, where `S` is a
+      `tff.learning.templates.LearningAlgorithmState` whose type matches the
+      output of `initialize` and `M` represents the type of the model weights
+      used during training.
+
+  Each time the `next` method is called, the server model is communicated to
+  each client using the provided `model_distributor`. For each client, local
+  training is performed using `optimizer`, where its state is communicated by
+  the server, and kept intact during local training. The state is updated only
+  at the server based on the full gradient evaluated by the clients based on the
+  current server model state. The client full gradients are aggregated by
+  weighted `full_gradient_aggregator`. Each client computes the difference
+  between the client model after training and its initial model. These model
+  deltas are then aggregated by weighted `model_aggregator`. Both of the
+  aggregations are weighted, according to `client_weighting`. The aggregate
+  model delta is added to the existing server model state.
+
+  The Mime Lite algorithm is based on the paper
+  "Breaking the centralized barrier for cross-device federated learning."
+    Sai Praneeth Karimireddy, Martin Jaggi, Satyen Kale, Mehryar Mohri, Sashank
+    Reddi, Sebastian U. Stich, and Ananda Theertha Suresh.
+    Advances in Neural Information Processing Systems 34 (2021).
+    https://proceedings.neurips.cc/paper/2021/file/f0e6be4ce76ccfa73c5a540d992d0756-Paper.pdf
+
+  Note that Keras optimizers are not supported. This is due to the Mime Lite
+  algorithm applying the optimizer without changing it state at clients
+  (optimizer's `tf.Variable`s in the case of Keras), which is not possible with
+  Keras optimizers without reaching into private implementation details and
+  incurring additional computation and memory cost at clients.
+
+  Args:
+    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
+      must *not* capture TensorFlow tensors or variables and use them. The model
+      must be constructed entirely from scratch on each invocation, returning
+      the same pre-constructed model each call will result in an error.
+    learning_rate_fn: A callable accepting an integer round number and returning
+      a float to be used as a learning rate for the optimizer.
+      `learning_rate_fn` must be serializable by Tensorflow (e.g. via
+      `tf.function`).
+    base_optimizer: A `tff.learning.optimizers.Optimizer` which will be used for
+      both creating and updating a global optimizer state, as well as
+      optimization at clients given the global state, which is fixed during the
+      optimization.
+    server_optimizer: A `tff.learning.optimizers.Optimizer` which will be used
+      for applying the aggregate model update to the global model weights.
+    client_weighting: A member of `tff.learning.ClientWeighting` that specifies
+      a built-in weighting method. By default, weighting by number of examples
+      is used.
+    model_distributor: An optional `DistributionProcess` that distributes the
+      model weights on the server to the clients. If set to `None`, the
+      distributor is constructed via `distributors.build_broadcast_process`.
+    model_aggregator: An optional `tff.aggregators.WeightedAggregationFactory`
+      used to aggregate client updates on the server. If `None`, this is set to
+      `tff.aggregators.MeanFactory`.
+    full_gradient_aggregator: An optional
+      `tff.aggregators.WeightedAggregationFactory` used to aggregate the full
+      gradients on client datasets. If `None`, this is set to
+      `tff.aggregators.MeanFactory`.
+    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
+      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
+      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
+      returns a `tff.Computation` for aggregating the unfinalized metrics. If
+      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+    use_experimental_simulation_loop: Controls the reduce loop function for
+      input dataset. An experimental reduce loop is used for simulation. It is
+      currently necessary to set this flag to True for performant GPU
+      simulations.
+
+  Returns:
+    A `tff.learning.templates.LearningProcess`.
+  """
+  py_typecheck.check_callable(model_fn)
+  py_typecheck.check_type(base_optimizer, optimizer_base.Optimizer)
+  py_typecheck.check_type(server_optimizer, optimizer_base.Optimizer)
+  py_typecheck.check_callable(learning_rate_fn)
+  py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
+
+  @tensorflow_computation.tf_computation()
+  def initial_model_weights_fn():
+    return model_utils.ModelWeights.from_model(model_fn())
+
+  model_weights_type = initial_model_weights_fn.type_signature.result
+  if model_distributor is None:
+    model_distributor = distributors.build_broadcast_process(model_weights_type)
+  if model_aggregator is None:
+    model_aggregator = mean.MeanFactory()
+  py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
+  model_aggregator = model_aggregator.create(
+      model_weights_type.trainable, computation_types.TensorType(tf.float32))
+  if full_gradient_aggregator is None:
+    full_gradient_aggregator = mean.MeanFactory()
+  py_typecheck.check_type(full_gradient_aggregator,
+                          factory.WeightedAggregationFactory)
+
+  client_work = _build_scheduled_mime_lite_client_work(
+      model_fn=model_fn,
+      learning_rate_fn=learning_rate_fn,
+      optimizer=base_optimizer,
+      client_weighting=client_weighting,
+      full_gradient_aggregator=full_gradient_aggregator,
+      metrics_aggregator=metrics_aggregator,
+      use_experimental_simulation_loop=use_experimental_simulation_loop)
+  finalizer = finalizers.build_apply_optimizer_finalizer(
+      server_optimizer, model_weights_type)
+  return composers.compose_learning_process(initial_model_weights_fn,
+                                            model_distributor, client_work,
+                                            model_aggregator, finalizer)

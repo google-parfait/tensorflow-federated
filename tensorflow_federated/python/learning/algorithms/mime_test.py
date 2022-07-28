@@ -39,6 +39,7 @@ from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator as metrics_aggregator
 from tensorflow_federated.python.learning.optimizers import adagrad
 from tensorflow_federated.python.learning.optimizers import adam
+from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.optimizers import rmsprop
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.optimizers import yogi
@@ -391,6 +392,83 @@ class MimeLiteTest(tf.test.TestCase, parameterized.TestCase):
       state = output.state
       metrics = output.metrics
       self.assertEqual(8, metrics['client_work']['train']['num_examples'])
+
+
+class ScheduledMimeLiteTest(tf.test.TestCase):
+  """Tests the Mime Lite training process with learning rate scheduling."""
+
+  def test_raises_on_non_callable_model_fn(self):
+    with self.assertRaises(TypeError):
+      mime.build_mime_lite_with_optimizer_schedule(
+          model_fn=model_examples.LinearRegression(),
+          learning_rate_fn=lambda x: tf.constant(0.1),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9))
+
+  def test_raises_on_non_callable_learning_rate_fn(self):
+    with self.assertRaises(TypeError):
+      mime.build_mime_lite_with_optimizer_schedule(
+          model_fn=model_examples.LinearRegression,
+          learning_rate_fn=tf.constant(0.1),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9))
+
+  def test_raises_on_invalid_client_weighting(self):
+    with self.assertRaises(TypeError):
+      mime.build_mime_lite_with_optimizer_schedule(
+          model_fn=model_examples.LinearRegression,
+          learning_rate_fn=lambda x: tf.constant(0.1),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+          client_weighting='uniform')
+
+  def test_raises_on_invalid_distributor(self):
+    model_weights_type = type_conversions.type_from_tensors(
+        model_utils.ModelWeights.from_model(model_examples.LinearRegression()))
+    distributor = distributors.build_broadcast_process(model_weights_type)
+    invalid_distributor = iterative_process.IterativeProcess(
+        distributor.initialize, distributor.next)
+    with self.assertRaises(TypeError):
+      mime.build_mime_lite_with_optimizer_schedule(
+          model_fn=model_examples.LinearRegression,
+          learning_rate_fn=lambda x: tf.constant(0.1),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+          model_distributor=invalid_distributor)
+
+  def test_raises_on_unweighted_aggregator(self):
+    aggregator = model_update_aggregator.robust_aggregator(weighted=False)
+    with self.assertRaisesRegex(TypeError, 'WeightedAggregationFactory'):
+      mime.build_mime_lite_with_optimizer_schedule(
+          model_fn=model_examples.LinearRegression,
+          learning_rate_fn=lambda x: tf.constant(0.1),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+          model_aggregator=aggregator)
+    with self.assertRaisesRegex(TypeError, 'WeightedAggregationFactory'):
+      mime.build_mime_lite_with_optimizer_schedule(
+          model_fn=model_examples.LinearRegression,
+          learning_rate_fn=lambda x: tf.constant(0.1),
+          base_optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+          full_gradient_aggregator=aggregator)
+
+  @tensorflow_test_utils.skip_test_for_multi_gpu
+  def test_construction_calls_learning_rate_fn(self):
+    mock_learning_rate_fn = mock.Mock(
+        side_effect=lambda x: tf.cast(x, tf.float32))
+    mime_process = mime.build_mime_lite_with_optimizer_schedule(
+        model_fn=_create_model,
+        learning_rate_fn=mock_learning_rate_fn,
+        base_optimizer=sgdm.build_sgdm(0.1))
+
+    client_data = [_create_dataset()]
+    mime_state = mime_process.initialize()
+    self.assertEqual(
+        mime_state.client_work[1][0][optimizer_base.LEARNING_RATE_KEY], 0.0)
+
+    for x in range(2):
+      mime_output = mime_process.next(mime_state, client_data)
+      mime_state = mime_output.state
+      self.assertEqual(
+          mime_state.client_work[1][0][optimizer_base.LEARNING_RATE_KEY],
+          x + 1.0)
+
+    self.assertEqual(mock_learning_rate_fn.call_count, 2)
 
 
 if __name__ == '__main__':
