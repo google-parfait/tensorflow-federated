@@ -1,3 +1,23 @@
+# Release 0.32.0
+
+## Major Features and Improvements
+
+*   Add a MimeLite implementation that allows from optimizer learning rate
+    scheduling in
+    `tff.learning.algorithms.build_mime_lite_with_optimizer_schedule`.
+
+## Breaking Changes
+
+*   None
+
+## Bug Fixes
+
+*   None
+
+## Known Bugs
+
+*   TFF's python 3.9 typing conflicts with Colab's Python 3.7 support.
+
 # Release 0.31.0
 
 ## Major Features and Improvements
