@@ -107,11 +107,20 @@ def robust_aggregator(
 
   Returns:
     A `tff.aggregators.AggregationFactory`.
+
+  Raises:
+    TypeError: if debug_measurement_fn yields an aggregation factory whose
+      weight type does not match `weighted`.
   """
   factory_ = mean.MeanFactory() if weighted else mean.UnweightedMeanFactory()
 
   if debug_measurements_fn:
     factory_ = debug_measurements_fn(factory_)
+    if (weighted and
+        not isinstance(factory_, factory.WeightedAggregationFactory)) or (
+            (not weighted) and
+            (not isinstance(factory_, factory.UnweightedAggregationFactory))):
+      raise TypeError('debug_measurements_fn should return the same type.')
 
   if clipping:
     factory_ = _default_clipping(factory_)
@@ -190,6 +199,10 @@ def compression_aggregator(
 
   Returns:
     A `tff.aggregators.AggregationFactory`.
+
+  Raises:
+    TypeError: if debug_measurement_fn yields an aggregation factory whose
+      weight type does not match `weighted`.
   """
   factory_ = encoded.EncodedSumFactory.quantize_above_threshold(
       quantization_bits=8, threshold=20000, **kwargs)
