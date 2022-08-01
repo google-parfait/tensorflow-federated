@@ -41,6 +41,10 @@ See the
 documentation for instructions on how to install TensorFlow Federated as a
 package or build TensorFlow Federated from source.
 
+### Requirements
+
+TFF requires Python 3.10.
+
 ## Getting Started
 
 See the
