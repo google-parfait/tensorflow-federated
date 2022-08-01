@@ -25,6 +25,9 @@ digraph {
 
   simulation -> analytics
   simulation -> learning
+  simulation -> aggregators
+  simulation -> program
+  simulation -> core
   learning -> aggregators
   learning -> program
   learning -> core
