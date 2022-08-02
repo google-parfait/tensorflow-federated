@@ -296,7 +296,10 @@ py_cpu_gpu_test(
     srcs = ["personalization_eval_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nokokoro"],
+    tags = [
+        "manual",
+        "nokokoro",
+    ],
     deps = [
         ":keras_utils",
         ":model_examples",

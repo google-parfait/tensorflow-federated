@@ -59,6 +59,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
+        "manual",
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
     deps = [
