@@ -157,7 +157,7 @@ py_library(
         "//tensorflow_federated/python/learning/templates:distributors",
         "//tensorflow_federated/python/learning/templates:finalizers",
         "//tensorflow_federated/python/learning/templates:learning_process",
-        "//tensorflow_federated/python/learning/templates:model_delta_client_work",
+        "//tensorflow_federated/python/learning/templates:proximal_client_work",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

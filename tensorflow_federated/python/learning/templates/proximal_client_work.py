@@ -43,7 +43,6 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
-from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -54,8 +53,9 @@ def build_model_delta_update_with_tff_optimizer(
     model_fn: Callable[[], model_lib.Model],
     *,
     weighting: client_weight_lib.ClientWeighting,
+    delta_l2_regularizer: float,
     use_experimental_simulation_loop: bool = False):
-  """Creates client update logic in FedAvg using a TFF optimizer.
+  """Creates client update logic in FedProx using a TFF optimizer.
 
   In contrast to using a `tf.keras.optimizers.Optimizer`, we avoid creating
   `tf.Variable`s associated with the optimizer state within the scope of the
@@ -67,6 +67,8 @@ def build_model_delta_update_with_tff_optimizer(
   Args:
     model_fn: A no-arg callable returning a `tff.learning.Model`.
     weighting: A `tff.learning.ClientWeighting` value.
+    delta_l2_regularizer: A positive float, L2 regularization strength of the
+      model delta.
     use_experimental_simulation_loop: Controls the reduce loop function for the
       input dataset. An experimental reduce loop is used for simulation.
 
@@ -90,6 +92,11 @@ def build_model_delta_update_with_tff_optimizer(
         output = model.forward_pass(batch, training=True)
 
       gradients = tape.gradient(output.loss, model_weights.trainable)
+      if delta_l2_regularizer > 0.0:
+        proximal_term = tf.nest.map_structure(
+            lambda x, y: delta_l2_regularizer * (y - x),
+            model_weights.trainable, initial_weights.trainable)
+        gradients = tf.nest.map_structure(tf.add, gradients, proximal_term)
       optimizer_state, updated_weights = optimizer.next(
           optimizer_state, tuple(tf.nest.flatten(model_weights.trainable)),
           tuple(tf.nest.flatten(gradients)))
@@ -138,8 +145,9 @@ def build_model_delta_update_with_tff_optimizer(
 def build_model_delta_update_with_keras_optimizer(
     model_fn,
     weighting,
+    delta_l2_regularizer,
     use_experimental_simulation_loop: bool = False):
-  """Creates client update logic in FedAvg using a `tf.keras` optimizer.
+  """Creates client update logic in FedProx using a `tf.keras` optimizer.
 
   In contrast to using a `tff.learning.optimizers.Optimizer`, we have to
   maintain `tf.Variable`s associated with the optimizer state within the scope
@@ -149,6 +157,8 @@ def build_model_delta_update_with_keras_optimizer(
   Args:
     model_fn: A no-arg callable returning a `tff.learning.Model`.
     weighting: A `tff.learning.ClientWeighting` value.
+    delta_l2_regularizer: A positive float, L2 regularization strength of the
+      model delta.
     use_experimental_simulation_loop: Controls the reduce loop function for the
       input dataset. An experimental reduce loop is used for simulation.
 
@@ -171,6 +181,11 @@ def build_model_delta_update_with_keras_optimizer(
         output = model.forward_pass(batch, training=True)
 
       gradients = tape.gradient(output.loss, model_weights.trainable)
+      if delta_l2_regularizer > 0.0:
+        proximal_term = tf.nest.map_structure(
+            lambda x, y: delta_l2_regularizer * (y - x),
+            model_weights.trainable, initial_weights.trainable)
+        gradients = tf.nest.map_structure(tf.add, gradients, proximal_term)
       grads_and_vars = zip(gradients, model_weights.trainable)
       optimizer.apply_gradients(grads_and_vars)
 
@@ -222,13 +237,14 @@ def build_model_delta_client_work(
     optimizer: Union[optimizer_base.Optimizer,
                      Callable[[], tf.keras.optimizers.Optimizer]],
     client_weighting: client_weight_lib.ClientWeighting,
+    delta_l2_regularizer: float,
     metrics_aggregator: Optional[Callable[[
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
     *,
     use_experimental_simulation_loop: bool = False
 ) -> client_works.ClientWorkProcess:
-  """Creates a `ClientWorkProcess` for federated averaging.
+  """Creates a `ClientWorkProcess` for the FedProx algorithm.
 
   This client work is constructed in slightly different manners depending on
   whether `optimizer` is a `tff.learning.optimizers.Optimizer`, or a no-arg
@@ -241,6 +257,9 @@ def build_model_delta_client_work(
   the result to the model weights (while a `tf.keras.optimizers.Optimizer` will
   modify the model weight in place using `optimizer.apply_gradients`).
 
+  In contrast to FedAvg, this client work employs L2 regularization towards the
+  server model, the strength of which is governed by the `delta_l2_regularizer`.
+
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`. This method
       must *not* capture TensorFlow tensors or variables and use them. The model
@@ -249,6 +268,10 @@ def build_model_delta_client_work(
     optimizer: A `tff.learning.optimizers.Optimizer`, or a no-arg callable that
       returns a `tf.keras.Optimizer`.
     client_weighting:  A `tff.learning.ClientWeighting` value.
+    delta_l2_regularizer: A positive float representing the parameter of the
+      L2-regularization term applied to the delta from initial model weights
+      during training. Values larger than 0.0 prevent clients from moving too
+      far from the server model during local training.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.Model.metric_finalizers()`) and a
       `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
@@ -265,6 +288,10 @@ def build_model_delta_client_work(
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
+  py_typecheck.check_type(delta_l2_regularizer, float)
+  if delta_l2_regularizer <= 0.0:
+    raise ValueError(f'Provided delta_l2_regularizer must be positive,'
+                     f'but found: {delta_l2_regularizer}')
   if not (isinstance(optimizer, optimizer_base.Optimizer) or
           callable(optimizer)):
     raise TypeError(
@@ -292,6 +319,7 @@ def build_model_delta_client_work(
       client_update = build_model_delta_update_with_tff_optimizer(
           model_fn=model_fn,
           weighting=client_weighting,
+          delta_l2_regularizer=delta_l2_regularizer,
           use_experimental_simulation_loop=use_experimental_simulation_loop)
       return client_update(optimizer, initial_model_weights, dataset)
 
@@ -303,6 +331,7 @@ def build_model_delta_client_work(
       client_update = build_model_delta_update_with_keras_optimizer(
           model_fn=model_fn,
           weighting=client_weighting,
+          delta_l2_regularizer=delta_l2_regularizer,
           use_experimental_simulation_loop=use_experimental_simulation_loop)
       return client_update(keras_optimizer, initial_model_weights, dataset)
 
@@ -319,146 +348,6 @@ def build_model_delta_client_work(
     train_metrics = metrics_aggregation_fn(model_outputs)
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(train=train_metrics))
-    return measured_process.MeasuredProcessOutput(state, client_result,
-                                                  measurements)
-
-  return client_works.ClientWorkProcess(init_fn, next_fn)
-
-
-def build_functional_model_delta_update(
-    model: functional.FunctionalModel, *,
-    weighting: client_weight_lib.ClientWeighting) -> tf.function:
-  """Creates client update logic in FedAvg.
-
-  Args:
-    model: A `tff.learning.models.FunctionalModel`.
-    weighting: A `tff.learning.ClientWeighting` value.
-
-  Returns:
-    A `tf.function`.
-  """
-
-  @tf.function
-  def client_update_fn(optimizer, initial_weights, dataset):
-    initial_trainable_weights = initial_weights[0]
-    trainable_tensor_specs = tf.nest.map_structure(
-        tf.TensorSpec.from_tensor,
-        tuple(tf.nest.flatten(initial_trainable_weights)))
-    optimizer_state = optimizer.initialize(trainable_tensor_specs)
-    metrics_state = model.initialize_metrics_state()
-
-    # Autograph requires we define these variables once outside the loop.
-    model_weights = initial_weights
-    trainable_weights, non_trainable_weights = model_weights
-    num_examples = tf.constant(0, tf.int64)
-    for batch in iter(dataset):
-      trainable_weights, non_trainable_weights = model_weights
-      with tf.GradientTape() as tape:
-        # Must explicitly watch non-tf.Variable tensors.
-        tape.watch(trainable_weights)
-        output = model.forward_pass(model_weights, batch, training=True)
-      gradients = tape.gradient(output.loss, trainable_weights)
-      optimizer_state, trainable_weights = optimizer.next(
-          optimizer_state, trainable_weights, gradients)
-      num_examples += tf.cast(output.num_examples, tf.int64)
-      model_weights = (trainable_weights, non_trainable_weights)
-      if isinstance(batch, collections.abc.Mapping):
-        labels = batch['y']
-      else:
-        _, labels = batch
-      metrics_state = model.update_metrics_state(
-          metrics_state, y_pred=output.predictions, y_true=labels)
-    # After all local batches, compute the delta between the trained model
-    # and the initial incoming model weights.
-    client_model_update = tf.nest.map_structure(tf.subtract,
-                                                initial_trainable_weights,
-                                                trainable_weights)
-    unfinalized_metrics = metrics_state
-    client_model_update, has_non_finite_delta = (
-        tensor_utils.zero_all_if_any_non_finite(client_model_update))
-    client_weight = _choose_client_weight(weighting, has_non_finite_delta,
-                                          num_examples)
-    return client_works.ClientResult(
-        update=client_model_update,
-        update_weight=client_weight), unfinalized_metrics
-
-  return client_update_fn
-
-
-def build_functional_model_delta_client_work(
-    *,
-    model: functional.FunctionalModel,
-    optimizer: optimizer_base.Optimizer,
-    client_weighting: client_weight_lib.ClientWeighting,
-    metrics_aggregator: Optional[Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation]] = None,
-) -> client_works.ClientWorkProcess:
-  """Creates a `ClientWorkProcess` for federated averaging.
-
-  This differs from `tff.learning.templates.build_model_delta_client_work` in
-  that it only accepts `tff.learning.models.FunctionalModel` and
-  `tff.learning.optimizers.Optimizer` type arguments, resulting in TensorFlow
-  graphs that do not contain `tf.Variable` operations.
-
-  Args:
-    model: A `tff.learning.models.FunctionalModel` to train.
-    optimizer: A `tff.learning.optimizers.Optimizer` to use for local, on-client
-      optimization.
-    client_weighting:  A `tff.learning.ClientWeighting` value.
-    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
-      `tff.learning.Model.metric_finalizers()`) and a
-      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
-      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
-      returns a `tff.Computation` for aggregating the unfinalized metrics. If
-      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
-
-  Returns:
-    A `ClientWorkProcess`.
-  """
-  py_typecheck.check_type(model, functional.FunctionalModel)
-  py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
-  py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
-  data_type = computation_types.SequenceType(model.input_spec)
-
-  def ndarray_to_tensorspec(ndarray):
-    return tf.TensorSpec(
-        shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype))
-
-  # Wrap in a `ModelWeights` structure that is required by the `finalizer.`
-  weights_type = model_utils.ModelWeights(
-      tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[0]),
-      tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]))
-
-  @tensorflow_computation.tf_computation(weights_type, data_type)
-  def client_update_computation(initial_model_weights, dataset):
-    # Switch to the tuple expected by FunctionalModel.
-    initial_model_weights = (initial_model_weights.trainable,
-                             initial_model_weights.non_trainable)
-    client_update = build_functional_model_delta_update(
-        model=model, weighting=client_weighting)
-    return client_update(optimizer, initial_model_weights, dataset)
-
-  @federated_computation.federated_computation
-  def init_fn():
-    # Empty tuple means "no state" / stateless.
-    return intrinsics.federated_value((), placements.SERVER)
-
-  if metrics_aggregator is None:
-    metrics_aggregator = aggregator.sum_then_finalize
-
-  @federated_computation.federated_computation(
-      computation_types.at_server(()),
-      computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type))
-  def next_fn(state, weights, client_data):
-    client_result, unfinalized_metrics = intrinsics.federated_map(
-        client_update_computation, (weights, client_data))
-    metrics_aggregation_fn = metrics_aggregator(
-        model.finalize_metrics, unfinalized_metrics.type_signature.member)
-    finalized_training_metrics = metrics_aggregation_fn(unfinalized_metrics)
-    measurements = intrinsics.federated_zip(
-        collections.OrderedDict(train=finalized_training_metrics))
     return measured_process.MeasuredProcessOutput(state, client_result,
                                                   measurements)
 

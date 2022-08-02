@@ -300,6 +300,58 @@ py_test(
 )
 
 py_library(
+    name = "proximal_client_work",
+    srcs = ["proximal_client_work.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":client_works",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning:client_weight_lib",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "//tensorflow_federated/python/learning/metrics:aggregator",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
+    ],
+)
+
+py_test(
+    name = "proximal_client_work_test",
+    size = "small",
+    timeout = "moderate",
+    srcs = ["proximal_client_work_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":client_works",
+        ":proximal_client_work",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning:client_weight_lib",
+        "//tensorflow_federated/python/learning:model_examples",
+        "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "//tensorflow_federated/python/learning/optimizers:sgdm",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
+    ],
+)
+
+py_library(
     name = "tunable",
     srcs = ["tunable.py"],
     srcs_version = "PY3",

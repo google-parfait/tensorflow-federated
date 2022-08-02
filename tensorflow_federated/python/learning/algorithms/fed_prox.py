@@ -45,7 +45,7 @@ from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
-from tensorflow_federated.python.learning.templates import model_delta_client_work
+from tensorflow_federated.python.learning.templates import proximal_client_work
 
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
@@ -187,7 +187,7 @@ def build_weighted_fed_prox(
 
   if metrics_aggregator is None:
     metrics_aggregator = metric_aggregator.sum_then_finalize
-  client_work = model_delta_client_work.build_model_delta_client_work(
+  client_work = proximal_client_work.build_model_delta_client_work(
       model_fn=model_fn,
       optimizer=client_optimizer_fn,
       client_weighting=client_weighting,
