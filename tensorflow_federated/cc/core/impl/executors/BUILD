@@ -793,6 +793,7 @@ tff_cc_cpu_gpu_test_with_tf_deps(
         "$(location reduce_lambda_test.pbtxt)",
     ],
     data = ["reduce_lambda_test.pbtxt"],
+    env = {"TF_XLA_FLAGS": "--tf_mlir_enable_mlir_bridge=true"},
     tf_deps = [
         "@org_tensorflow//tensorflow/cc:cc_ops",
         "@org_tensorflow//tensorflow/cc:ops",
