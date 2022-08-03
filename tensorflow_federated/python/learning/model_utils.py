@@ -48,6 +48,10 @@ class ModelWeights(object):
     return cls(model.trainable_variables, model.non_trainable_variables)
 
   @classmethod
+  def from_variable_list(cls, trainable_vars, non_trainable_vars):
+    return cls(trainable_vars, non_trainable_vars)
+
+  @classmethod
   def from_tff_result(cls, struct):
     py_typecheck.check_type(struct, structure.Struct)
     return cls(
