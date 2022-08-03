@@ -346,7 +346,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
@@ -515,7 +514,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":eager_tf_executor",
-        ":executor_test_utils",
         ":federated_resolving_strategy",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",

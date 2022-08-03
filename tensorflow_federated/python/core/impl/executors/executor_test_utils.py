@@ -20,7 +20,6 @@
 
 import asyncio
 
-from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -145,30 +144,6 @@ class TestExecutionContext(context_base.Context):
 def install_executor(executor_factory_instance):
   context = TestExecutionContext(executor_factory_instance)
   return context_stack_impl.context_stack.install(context)
-
-
-class AsyncTestCase(absltest.TestCase):
-  """A test case that manages a new event loop for each test.
-
-  Each test will have a new event loop instead of using the current event loop.
-  This ensures that tests are isolated from each other and avoid unexpected side
-  effects.
-
-  Attributes:
-    loop: An `asyncio` event loop.
-  """
-
-  def setUp(self):
-    super().setUp()
-    self.loop = asyncio.new_event_loop()
-
-    # If `setUp()` fails, then `tearDown()` is not called; however cleanup
-    # functions will be called. Register the newly created loop `close()`
-    # function here to ensure it is closed after each test.
-    self.addCleanup(self.loop.close)
-
-  def run_sync(self, coro):
-    return self.loop.run_until_complete(coro)
 
 
 class TracingExecutor(executor_base.Executor):

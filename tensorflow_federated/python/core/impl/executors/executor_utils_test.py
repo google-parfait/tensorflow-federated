@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
@@ -92,46 +94,47 @@ def create_test_aggregated_stack(
      27),
 ])
 # pyformat: enable
-class ComputeIntrinsicFederatedBroadcastTest(executor_test_utils.AsyncTestCase,
+class ComputeIntrinsicFederatedBroadcastTest(unittest.IsolatedAsyncioTestCase,
                                              parameterized.TestCase):
 
-  def test_returns_value_with_federated_type_at_server(self, executor,
-                                                       num_clients):
+  async def test_returns_value_with_federated_type_at_server(
+      self, executor, num_clients):
     del num_clients  # Unused.
     value, type_signature = executor_test_utils.create_whimsy_value_at_server()
 
-    value = self.run_sync(executor.create_value(value, type_signature))
-    result = self.run_sync(
-        executor_utils.compute_intrinsic_federated_broadcast(executor, value))
+    value = await executor.create_value(value, type_signature)
+    result = await executor_utils.compute_intrinsic_federated_broadcast(
+        executor, value)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     expected_type = computation_types.at_clients(
         type_signature.member, all_equal=True)
     self.assertEqual(result.type_signature.compact_representation(),
                      expected_type.compact_representation())
-    actual_result = self.run_sync(result.compute())
+    actual_result = await result.compute()
     self.assertEqual(actual_result, 10.0)
 
-  def test_raises_type_error_with_federated_type_at_clients(
+  async def test_raises_type_error_with_federated_type_at_clients(
       self, executor, num_clients):
     value, type_signature = executor_test_utils.create_whimsy_value_at_clients(
         num_clients)
 
-    value = self.run_sync(executor.create_value(value, type_signature))
+    value = await executor.create_value(value, type_signature)
 
     with self.assertRaises(TypeError):
-      self.run_sync(
-          executor_utils.compute_intrinsic_federated_broadcast(executor, value))
+      await executor_utils.compute_intrinsic_federated_broadcast(
+          executor, value)
 
-  def test_raises_type_error_with_unplaced_type(self, executor, num_clients):
+  async def test_raises_type_error_with_unplaced_type(self, executor,
+                                                      num_clients):
     del num_clients  # Unused.
     value, type_signature = executor_test_utils.create_whimsy_value_unplaced()
 
-    value = self.run_sync(executor.create_value(value, type_signature))
+    value = await executor.create_value(value, type_signature)
 
     with self.assertRaises(TypeError):
-      self.run_sync(
-          executor_utils.compute_intrinsic_federated_broadcast(executor, value))
+      await executor_utils.compute_intrinsic_federated_broadcast(
+          executor, value)
 
 
 # pyformat: disable
@@ -146,42 +149,40 @@ class ComputeIntrinsicFederatedBroadcastTest(executor_test_utils.AsyncTestCase,
          clients_per_stack=3, stacks_per_layer=3, num_layers=3)),
 ])
 # pyformat: enable
-class ComputeIntrinsicFederatedValueTest(executor_test_utils.AsyncTestCase,
+class ComputeIntrinsicFederatedValueTest(unittest.IsolatedAsyncioTestCase,
                                          parameterized.TestCase):
 
-  def test_returns_value_with_unplaced_type_and_clients(self, executor):
+  async def test_returns_value_with_unplaced_type_and_clients(self, executor):
     value, type_signature = executor_test_utils.create_whimsy_value_unplaced()
 
-    value = self.run_sync(executor.create_value(value, type_signature))
-    result = self.run_sync(
-        executor_utils.compute_intrinsic_federated_value(
-            executor, value, placements.CLIENTS))
+    value = await executor.create_value(value, type_signature)
+    result = await executor_utils.compute_intrinsic_federated_value(
+        executor, value, placements.CLIENTS)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     expected_type = computation_types.at_clients(type_signature, all_equal=True)
     self.assertEqual(result.type_signature.compact_representation(),
                      expected_type.compact_representation())
-    actual_result = self.run_sync(result.compute())
+    actual_result = await result.compute()
     self.assertEqual(actual_result, 10.0)
 
-  def test_returns_value_with_unplaced_type_and_server(self, executor):
+  async def test_returns_value_with_unplaced_type_and_server(self, executor):
     value, type_signature = executor_test_utils.create_whimsy_value_unplaced()
 
-    value = self.run_sync(executor.create_value(value, type_signature))
-    result = self.run_sync(
-        executor_utils.compute_intrinsic_federated_value(
-            executor, value, placements.SERVER))
+    value = await executor.create_value(value, type_signature)
+    result = await executor_utils.compute_intrinsic_federated_value(
+        executor, value, placements.SERVER)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     expected_type = computation_types.at_server(type_signature)
     self.assertEqual(result.type_signature.compact_representation(),
                      expected_type.compact_representation())
-    actual_result = self.run_sync(result.compute())
+    actual_result = await result.compute()
     self.assertEqual(actual_result, 10.0)
 
 
 class ComputeIntrinsicFederatedWeightedMeanTest(
-    executor_test_utils.AsyncTestCase, parameterized.TestCase):
+    unittest.IsolatedAsyncioTestCase, parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -201,7 +202,7 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
        27),
   ])
   # pyformat: enable
-  def test_computes_weighted_mean(
+  async def test_computes_weighted_mean(
       self,
       executor,
       num_clients,
@@ -212,16 +213,16 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
     # Weighted mean computed in Python
     expected_result = sum([x**2 for x in value]) / sum(value)
 
-    value = self.run_sync(executor.create_value(value, type_signature))
-    arg = self.run_sync(executor.create_struct([value, value]))
-    result = self.run_sync(
-        executor_utils.compute_intrinsic_federated_weighted_mean(executor, arg))
+    value = await executor.create_value(value, type_signature)
+    arg = await executor.create_struct([value, value])
+    result = await executor_utils.compute_intrinsic_federated_weighted_mean(
+        executor, arg)
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     expected_type = computation_types.at_server(type_signature.member)
     self.assertEqual(result.type_signature.compact_representation(),
                      expected_type.compact_representation())
-    actual_result = self.run_sync(result.compute())
+    actual_result = await result.compute()
     self.assertEqual(actual_result, expected_result)
 
   # pyformat: disable
@@ -240,15 +241,14 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
        executor_test_utils.create_whimsy_value_at_server()),
   ])
   # pyformat: enable
-  def test_raises_type_error(self, executor, value_and_type_signature):
+  async def test_raises_type_error(self, executor, value_and_type_signature):
     value, type_signature = value_and_type_signature
-    value = self.run_sync(executor.create_value(value, type_signature))
-    arg = self.run_sync(executor.create_struct([value, value]))
+    value = await executor.create_value(value, type_signature)
+    arg = await executor.create_struct([value, value])
 
     with self.assertRaises(TypeError):
-      self.run_sync(
-          executor_utils.compute_intrinsic_federated_weighted_mean(
-              executor, arg))
+      await executor_utils.compute_intrinsic_federated_weighted_mean(
+          executor, arg)
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -260,20 +260,19 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
        27),
   ])
   # pyformat: enable
-  def test_raises_type_error_with_singleton_tuple(
+  async def test_raises_type_error_with_singleton_tuple(
       self,
       executor,
       num_clients,
   ):
     value, type_signature = executor_test_utils.create_whimsy_value_at_clients(
         num_clients)
-    value = self.run_sync(executor.create_value(value, type_signature))
-    arg = self.run_sync(executor.create_struct([value]))
+    value = await executor.create_value(value, type_signature)
+    arg = await executor.create_struct([value])
 
     with self.assertRaises(TypeError):
-      self.run_sync(
-          executor_utils.compute_intrinsic_federated_weighted_mean(
-              executor, arg))
+      await executor_utils.compute_intrinsic_federated_weighted_mean(
+          executor, arg)
 
 
 class TypeUtilsTest(parameterized.TestCase):
