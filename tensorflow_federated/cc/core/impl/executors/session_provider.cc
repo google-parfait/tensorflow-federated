@@ -125,12 +125,19 @@ void SetDevice(absl::string_view device, tensorflow::GraphDef* graph_def,
     if (node_pb.op() == "ReduceDataset" &&
         !(strcmp(device_type, tensorflow::DEVICE_TPU))) {
       (*node_pb.mutable_attr())["_xla_compile_device_type"].set_s(device_type);
+      node_pb.set_device(device.data(), device.size());
+      VLOG(5) << "Placing node [" << node_pb.name() << "] (" << node_pb.op()
+              << ") on device [" << device << "]"
+              << "and marking for compilation on device type [" << device_type
+              << "]";
     }
     if (!node_pb.device().empty()) {
       VLOG(5) << "Skipping already placed node [" << node_pb.name() << "] ("
               << node_pb.op() << ") on " << node_pb.device();
       continue;
-    } else if (tensorflow::KernelDefAvailable(device_type, node_pb)) {
+      // Note: Don't place general ops directly on TPU.
+    } else if (tensorflow::KernelDefAvailable(device_type, node_pb) &&
+               strcmp(device_type, tensorflow::DEVICE_TPU) != 0) {
       VLOG(5) << "Placing node [" << node_pb.name() << "] (" << node_pb.op()
               << ") on device [" << device << "]";
       node_pb.set_device(device.data(), device.size());
