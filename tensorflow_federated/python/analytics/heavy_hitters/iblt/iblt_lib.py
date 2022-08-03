@@ -66,6 +66,9 @@ import tensorflow as tf
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import chunkers
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import hyperedge_hashers
 
+# Convenience Aliases
+_CharacterEncoding = chunkers.CharacterEncoding
+
 DEFAULT_FIELD_SIZE = 2**31 - 1
 DEFAULT_REPETITIONS = 3
 # Theoretical IBLT space bounds, Table 1 in https://arxiv.org/pdf/1101.2245.pdf
@@ -203,6 +206,7 @@ class IbltDecoder:
       capacity: int,
       string_max_length: int,
       *,
+      encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
       seed: int = 0,
       repetitions: int = DEFAULT_REPETITIONS,
       hash_family: Optional[str] = None,
@@ -228,6 +232,9 @@ class IbltDecoder:
       iblt: Tensor representing the IBLT computed by the IbltEncoder.
       capacity: Number of distinct strings that we expect to be inserted.
       string_max_length: Maximum length of a string that can be inserted.
+      encoding: The character encoding of the string data to decode. For
+        non-character binary data or strings with unknown encoding, specify
+        `CharacterEncoding.UNKNOWN`. Defaults to `CharacterEncoding.UTF8`.
       seed: Integer seed for hash functions. Defaults to 0.
       repetitions: Number of repetitions in IBLT data structure (must be >= 3).
         Defaults to 3.
@@ -242,8 +249,11 @@ class IbltDecoder:
     self.table_size, self.hash_family, self.hash_family_params = _internal_parameters(
         capacity, repetitions, hash_family, hash_family_params)
     self.field_size = field_size
-    self.chunker = chunkers.UTF8Chunker(
-        string_max_length, max_chunk_value=self.field_size, dtype=self._dtype)
+    self.chunker = chunkers.create_chunker(
+        string_max_length=string_max_length,
+        encoding=encoding,
+        max_chunk_value=self.field_size,
+        dtype=self._dtype)
     self.num_chunks = self.chunker.get_num_chunks()
     self.count = self.num_chunks
     self.check = self.num_chunks + 1
@@ -273,7 +283,7 @@ class IbltDecoder:
       chunks: A `tf.Tensor` of `num_chunks` integers.
 
     Returns:
-      A `tf.Tensor` with the UTF-8 string encoded in the chunks.
+      A `tf.Tensor` with the string encoded in the chunks.
     """
     return self.chunker.decode_tensorflow(chunks)[0]
 
@@ -453,7 +463,8 @@ class IbltDecoder:
   def get_freq_estimates(self):
     """Decodes key-value pairs from an IBLT.
 
-    Note that this method only works when running TF in Eager mode.
+    Note that this method only works for UTF-8 strings, and when running TF in
+    Eager mode.
 
     Returns:
       A dictionary containing a decoded key with its frequency.
@@ -493,6 +504,7 @@ class IbltEncoder:
                capacity,
                string_max_length,
                *,
+               encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
                drop_strings_above_max_length=False,
                seed=0,
                repetitions=DEFAULT_REPETITIONS,
@@ -504,6 +516,9 @@ class IbltEncoder:
     Args:
       capacity: Number of distinct strings that we expect to be inserted.
       string_max_length: Maximum length of a string that can be inserted.
+      encoding: The character encoding of the string data to encode. For
+        non-character binary data or strings with unknown encoding, specify
+        `CharacterEncoding.UNKNOWN`. Defaults to `CharacterEncoding.UTF8`.
       drop_strings_above_max_length: If True, strings above string_max_length
         will be dropped when constructing the IBLT. Defaults to False.
       seed: Integer seed for hash functions. Defaults to 0.
@@ -523,8 +538,11 @@ class IbltEncoder:
     self.field_size = field_size
     self.drop_strings_above_max_length = drop_strings_above_max_length
     self._dtype = tf.int64
-    self.chunker = chunkers.UTF8Chunker(
-        string_max_length, max_chunk_value=self.field_size, dtype=self._dtype)
+    self.chunker = chunkers.create_chunker(
+        string_max_length=string_max_length,
+        encoding=encoding,
+        max_chunk_value=self.field_size,
+        dtype=self._dtype)
     self.num_chunks = self.chunker.get_num_chunks()
     self.iblt_shape = (self.repetitions, self.table_size, self.num_chunks + 2)
     if hash_family == _HASH_FAMILY_RANDOM:
@@ -741,6 +759,7 @@ def decode_iblt_tf(
     capacity: int,
     string_max_length: int,
     *,
+    encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
     seed: int = 0,
     repetitions: int = DEFAULT_REPETITIONS,
     hash_family: Optional[str] = None,
@@ -756,6 +775,9 @@ def decode_iblt_tf(
     iblt: Tensor representing the IBLT computed by the IbltEncoder.
     capacity: Number of distinct strings that we expect to be inserted.
     string_max_length: Maximum length of a string that can be inserted.
+    encoding: The character encoding of the string data to decode. For
+      non-character binary data or strings with unknown encoding, specify
+      `CharacterEncoding.UNKNOWN`.
     seed: Integer seed for hash functions. Defaults to 0.
     repetitions: Number of repetitions in IBLT data structure (must be >= 3).
       Defaults to 3.
@@ -775,6 +797,7 @@ def decode_iblt_tf(
       iblt=iblt,
       capacity=capacity,
       string_max_length=string_max_length,
+      encoding=encoding,
       seed=seed,
       repetitions=repetitions,
       hash_family=hash_family,

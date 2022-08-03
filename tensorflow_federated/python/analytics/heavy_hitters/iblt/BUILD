@@ -48,7 +48,11 @@ py_library(
         "chunkers.py",
     ],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
+    ],
 )
 
 py_library(
@@ -105,6 +109,7 @@ py_library(
     srcs = ["iblt_tff.py"],
     srcs_version = "PY3",
     deps = [
+        ":chunkers",
         ":iblt_lib",
         ":iblt_tensor",
         "//tensorflow_federated/python/analytics:data_processing",
@@ -142,6 +147,7 @@ py_library(
     srcs = ["iblt_tensor.py"],
     srcs_version = "PY3",
     deps = [
+        ":chunkers",
         ":iblt_lib",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
@@ -164,6 +170,7 @@ py_library(
     name = "iblt_factory",
     srcs = ["iblt_factory.py"],
     deps = [
+        ":chunkers",
         ":iblt_tensor",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:sum_factory",
@@ -182,12 +189,14 @@ py_test(
     name = "iblt_factory_test",
     srcs = ["iblt_factory_test.py"],
     deps = [
+        ":chunkers",
         ":iblt_factory",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:secure",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/logging",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],

@@ -13,16 +13,22 @@
 # limitations under the License.
 """Tests for iblt_factory.py."""
 import collections
-from typing import Optional
+from typing import List, Optional, Tuple, Union
+
+from absl import logging
 from absl.testing import parameterized
 
 import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.aggregators import sum_factory
+from tensorflow_federated.python.analytics.heavy_hitters.iblt import chunkers
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_factory
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+
+# Convenience Aliases
+_CharacterEncoding = chunkers.CharacterEncoding
 
 DATA = [
     (['seattle', 'hello', 'world', 'bye'], [[1, 2, 3], [4, 5, 1], [1, 1, 1],
@@ -47,10 +53,15 @@ AGGREGATED_DATA = {
     'bye': [-2, 3, 17]
 }
 
+DEFAULT_REPETITIONS = 3
+WHIMSY_SEED = 42
 
-def _generate_client_data():
+
+def _generate_client_data(
+    input_structure: List[Tuple[List[Union[str, bytes]], List[List[int]]]]
+) -> List[tf.data.Dataset]:
   client_data = []
-  for input_strings, string_values in DATA:
+  for input_strings, string_values in input_structure:
     client = collections.OrderedDict([
         (iblt_factory.DATASET_KEY, tf.constant(input_strings, dtype=tf.string)),
         (iblt_factory.DATASET_VALUE, tf.constant(string_values, dtype=tf.int64))
@@ -59,7 +70,7 @@ def _generate_client_data():
   return client_data
 
 
-CLIENT_DATA = _generate_client_data()
+CLIENT_DATA = _generate_client_data(DATA)
 
 
 class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
@@ -166,7 +177,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
           'testcase_name': 'default_factories',
           'capacity': 10,
           'string_max_length': 10,
-          'repetitions': 3,
+          'repetitions': DEFAULT_REPETITIONS,
           'seed': 0,
       },
       {
@@ -174,7 +185,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
           'sketch_agg_factory': secure.SecureSumFactory(2**32 - 1),
           'capacity': 20,
           'string_max_length': 20,
-          'repetitions': 3,
+          'repetitions': DEFAULT_REPETITIONS,
           'seed': 1,
       },
       {
@@ -197,13 +208,15 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_iblt_aggregation_as_expected(
       self,
+      *,
       capacity: int,
       string_max_length: int,
       repetitions: int,
       seed: int,
       sketch_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
       value_tensor_agg_factory: Optional[
-          factory.UnweightedAggregationFactory] = None):
+          factory.UnweightedAggregationFactory] = None,
+  ):
     iblt_agg_factory = iblt_factory.IbltFactory(
         sketch_agg_factory=sketch_agg_factory,
         value_tensor_agg_factory=value_tensor_agg_factory,
@@ -226,6 +239,47 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
                                                      ('sketch', ()),
                                                      ('value_tensor', ())])
     self.assertCountEqual(process_output.measurements, expected_measurements)
+
+  def test_binary_string_aggregation(self):
+    non_unicode_string = b'\xFF' * 5
+    # Each line represents a single clients' data;
+    # Each binary key has two int64 values at the corresponding tuple position.
+    client_data: List[tf.data.Dataset] = _generate_client_data([
+        ([b'AAA', b'BBB', non_unicode_string], [[1, 2], [3, 4], [5, 6]]),
+        ([b'CCC', non_unicode_string], [[7, 8], [9, 10]]),
+        ([b'AAA'], [[11, 12]]),
+    ])
+    expected_aggregated = {
+        b'AAA': [1 + 11, 2 + 12],
+        b'BBB': [3, 4],
+        b'CCC': [7, 8],
+        non_unicode_string: [5 + 9, 6 + 10],
+    }
+
+    iblt_agg_factory = iblt_factory.IbltFactory(
+        encoding=_CharacterEncoding.UNKNOWN,
+        repetitions=DEFAULT_REPETITIONS,
+        seed=WHIMSY_SEED,
+        capacity=2,
+        string_max_length=5,
+    )
+    iblt_agg_process = iblt_agg_factory.create(
+        value_type=computation_types.SequenceType(
+            collections.OrderedDict(
+                key=tf.string,
+                value=computation_types.TensorType(
+                    shape=(2,),
+                    dtype=tf.int64,
+                ))))
+    process_output = iblt_agg_process.next(iblt_agg_process.initialize(),
+                                           client_data)
+    logging.info('process_output: %s', process_output)
+
+    self.assertEqual(process_output.measurements['num_not_decoded'], 0)
+    result = dict(
+        zip(process_output.result.output_strings,
+            process_output.result.string_values))
+    self.assertCountEqual(result, expected_aggregated)
 
 
 if __name__ == '__main__':

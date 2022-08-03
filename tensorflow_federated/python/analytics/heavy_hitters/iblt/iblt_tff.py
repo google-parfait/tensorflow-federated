@@ -20,6 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.analytics import data_processing
+from tensorflow_federated.python.analytics.heavy_hitters.iblt import chunkers
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_lib
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tensor
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -28,6 +29,9 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+
+# Convenience Aliases
+_CharacterEncoding = chunkers.CharacterEncoding
 
 
 @attr.s(eq=False, frozen=True)
@@ -151,6 +155,7 @@ def build_iblt_computation(
     encoder = iblt_tensor.IbltTensorEncoder(
         capacity=capacity,
         string_max_length=max_string_length,
+        encoding=_CharacterEncoding.UTF8,
         repetitions=repetitions,
         value_shape=(1,),
         seed=seed)

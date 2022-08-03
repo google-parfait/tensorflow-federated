@@ -47,7 +47,11 @@ from typing import Dict, Optional, Sequence, Tuple, Union
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.analytics.heavy_hitters.iblt import chunkers
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_lib
+
+# Convenience Aliases
+_CharacterEncoding = chunkers.CharacterEncoding
 
 
 class IbltTensorDecoder(iblt_lib.IbltDecoder):
@@ -183,7 +187,8 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
       self) -> Tuple[Dict[Optional[str], int], Dict[Optional[str], np.ndarray]]:
     """Decodes key-value pairs from an IBLT.
 
-    Note that this method only works when running TF in Eager mode.
+    Note that this method only works for UTF-8 strings, and when running TF in
+    Eager mode.
 
     Returns:
       A dictionary containing a decoded key with its frequency and
@@ -336,6 +341,7 @@ def decode_iblt_tensor_tf(
     string_max_length: int,
     value_shape: Sequence[int],
     *,
+    encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
     seed: int = 0,
     repetitions: int = iblt_lib.DEFAULT_REPETITIONS,
     hash_family: Optional[str] = None,
@@ -354,6 +360,9 @@ def decode_iblt_tensor_tf(
     capacity: Number of distinct strings that we expect to be inserted.
     string_max_length: Maximum length of a string that can be inserted.
     value_shape: Shape of the values tensor.
+    encoding: The character encoding of the string data to decode. For
+      non-character binary data or strings with unknown encoding, specify
+      `CharacterEncoding.UNKNOWN`.
     seed: Integer seed for hash functions. Defaults to 0.
     repetitions: Number of repetitions in IBLT data structure (must be >= 3).
       Defaults to 3.
@@ -376,6 +385,7 @@ def decode_iblt_tensor_tf(
       iblt_values=iblt_values,
       capacity=capacity,
       string_max_length=string_max_length,
+      encoding=encoding,
       seed=seed,
       value_shape=value_shape,
       repetitions=repetitions,

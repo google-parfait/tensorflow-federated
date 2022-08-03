@@ -22,6 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.analytics import data_processing
+from tensorflow_federated.python.analytics.heavy_hitters.iblt import chunkers
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import iblt_tensor
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -30,6 +31,8 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
+# Convenience Aliases
+_CharacterEncoding = chunkers.CharacterEncoding
 
 DATASET_KEY = 'key'
 DATASET_VALUE = 'value'
@@ -49,10 +52,10 @@ def _parse_client_dict(dataset: tf.data.Dataset,
 
   Args:
     dataset: A `tf.data.Dataset` that yields `OrderedDict`. In each
-      `OrderedDict` there are two key, value pairs:
-        `DATASET_KEY`: A `tf.string` representing a string in the dataset.
-        `DATASET_VALUE`: A rank 1 `tf.Tensor` with `dtype` `tf.int64`
-          representing the value associate with the string.
+      `OrderedDict` there are two key, value pairs: `DATASET_KEY`: A `tf.string`
+      representing a string in the dataset. `DATASET_VALUE`: A rank 1
+      `tf.Tensor` with `dtype` `tf.int64` representing the value associate with
+      the string.
     string_max_length: The maximum length of the strings. If any string is
       longer than `string_max_length`, a `ValueError` will be raised.
 
@@ -71,7 +74,10 @@ def _parse_client_dict(dataset: tf.data.Dataset,
       tf.math.logical_not(
           tf.math.reduce_any(
               tf.greater(tf.strings.length(input_strings), string_max_length))),
-      data=[input_strings],
+      data=[
+          f'IbltFactory: Input strings must be truncated to {string_max_length=}',
+          input_strings
+      ],
       name='CHECK_STRING_LENGTH')
   return input_strings, string_values
 
@@ -84,6 +90,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       *,
       capacity: int,
       string_max_length: int,
+      encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
       repetitions: int,
       seed: int = 0,
       sketch_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
@@ -94,8 +101,11 @@ class IbltFactory(factory.UnweightedAggregationFactory):
 
     Args:
       capacity: The capacity of the IBLT sketch. Must be positive.
-      string_max_length: The maximum length of a string in the IBLT. Must be
-        positive.
+      string_max_length: The maximum length in bytes of a string in the IBLT.
+        Must be positive.
+      encoding: The character encoding of the string data to encode. For
+        non-character binary data or strings with unknown encoding, specify
+        `CharacterEncoding.UNKNOWN`.
       repetitions: The number of repetitions in IBLT data structure (must be >=
         3). Must be at least `3`.
       seed: An integer seed for hash functions. Defaults to 0.
@@ -128,6 +138,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     ) if value_tensor_agg_factory is None else value_tensor_agg_factory
     self._capacity = capacity
     self._string_max_length = string_max_length
+    self._encoding = encoding
     self._repetitions = repetitions
     self._seed = seed
 
@@ -139,8 +150,8 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     Args:
       value_type: A `tff.SequenceType` representing the type of the input
         dataset, must be compatible with the following `tff.Type`:
-          tff.SequenceType( collections.OrderedDict([ (DATASET_KEY, tf.string),
-          (DATASET_VALUE, tff.TensorType(shape=[None], dtype=tf.int64)), ]))
+        tff.SequenceType( collections.OrderedDict([ (DATASET_KEY, tf.string),
+        (DATASET_VALUE, tff.TensorType(shape=[None], dtype=tf.int64)), ]))
 
     Raises:
       ValueError: If `value_type` is not as expected.
@@ -168,6 +179,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       iblt_encoder = iblt_tensor.IbltTensorEncoder(
           capacity=self._capacity,
           string_max_length=self._string_max_length,
+          encoding=self._encoding,
           repetitions=self._repetitions,
           value_shape=self._value_shape,
           seed=self._seed)
@@ -183,6 +195,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
           value_shape=self._value_shape,
           capacity=self._capacity,
           string_max_length=self._string_max_length,
+          encoding=self._encoding,
           repetitions=self._repetitions,
           seed=self._seed)
       (output_strings, _, string_values,
