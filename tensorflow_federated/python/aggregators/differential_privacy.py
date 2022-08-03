@@ -231,6 +231,8 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       record_specs: Collection[tf.TensorSpec],
       noise_seed: Optional[int] = None,
       use_efficient: bool = True,
+      record_aggregation_factory: Optional[
+          factory.UnweightedAggregationFactory] = None
   ) -> factory.UnweightedAggregationFactory:
     """`DifferentiallyPrivateFactory` with tree aggregation noise.
 
@@ -260,6 +262,9 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         nondeterministic seed based on system time will be generated.
       use_efficient: If true, use the efficient tree aggregation algorithm based
         on the paper "Efficient Use of Differentially Private Binary Trees".
+      record_aggregation_factory: An optional
+        `tff.aggregators.UnweightedAggregationFactory` to aggregate values after
+        preprocessing by the `query`. See the __init__ method for more details.
 
     Returns:
       A `DifferentiallyPrivateFactory` with Gaussian noise by tree aggregation.
@@ -278,7 +283,8 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         noise_seed=noise_seed,
         use_efficient=use_efficient)
     mean_query = tfp.NormalizedQuery(sum_query, denominator=clients_per_round)
-    return cls(mean_query)
+    return cls(
+        mean_query, record_aggregation_factory=record_aggregation_factory)
 
   def __init__(self,
                query: tfp.DPQuery,

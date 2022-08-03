@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+from typing import List
 
 from absl.testing import parameterized
 import numpy as np
@@ -103,6 +104,29 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
 class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
+  def assertInnerSumPlusOnePerformed(
+      self, output: measured_process.MeasuredProcessOutput, l2_clip: float,
+      client_data: List[float]):
+    """Asserts one step of SumPlusOneFactory was performed in inner aggregation.
+
+    This includes three tests:
+      1: that the output sum is as desired, accounting for clipping each float
+        and the additional +1 of the SumPlusOneFactory.
+      2: that the aggregator_test_utils.SumPlusOneFactory was called exactly
+        once.
+      3: that the measurement constant was left untouched.
+
+    Args:
+      output: The output of the `AggregationProcess`.next
+      l2_clip: The l2 clipping parameter passed to the DP factory of choice.
+      client_data: The client data passed to the `AggregationProcess`.next
+    """
+    self.assertAllClose(
+        sum([min(x, l2_clip) for x in client_data]) + 1.0, output.result)
+    self.assertAllEqual(1, output.state[1])  # incremented by one each time.
+    self.assertAllEqual(aggregator_test_utils.MEASUREMENT_CONSTANT,
+                        output.measurements['dp'])
+
   def test_simple_sum(self):
     factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
     value_type = computation_types.to_type(tf.float32)
@@ -139,23 +163,37 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(expected_result, output.result)
 
   def test_inner_sum(self):
+    value_type = computation_types.to_type(tf.float32)
     factory_ = differential_privacy.DifferentiallyPrivateFactory(
         _test_dp_query, _test_inner_agg_factory)
-    value_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type)
-
-    # The test query has clip 1.0 and no noise, so this computes clipped sum.
-    # Inner agg adds another 1.0 (post-clipping).
 
     state = process.initialize()
     self.assertAllEqual(0, state[1])
 
     client_data = [0.5, 1.0, 1.5]
     output = process.next(state, client_data)
-    self.assertAllEqual(1, output.state[1])
-    self.assertAllClose(3.5, output.result)
-    self.assertAllEqual(aggregator_test_utils.MEASUREMENT_CONSTANT,
-                        output.measurements['dp'])
+    self.assertInnerSumPlusOnePerformed(output, _test_dp_query._l2_norm_clip,
+                                        client_data)
+
+  def test_tree_aggregation_inner_sum(self):
+    l2_clip = 1.0
+    value_type = computation_types.to_type(tf.float32)
+    tree_factory = (
+        differential_privacy.DifferentiallyPrivateFactory.tree_aggregation(
+            noise_multiplier=0.0,
+            l2_norm_clip=l2_clip,
+            record_specs=value_type,
+            clients_per_round=1.0,
+            record_aggregation_factory=_test_inner_agg_factory))
+    process = tree_factory.create(value_type)
+
+    state = process.initialize()
+    self.assertAllEqual(0, state[1])
+
+    client_data = [0.5, 1.0, 1.5]
+    output = process.next(state, client_data)
+    self.assertInnerSumPlusOnePerformed(output, l2_clip, client_data)
 
   def test_adaptive_query(self):
     query = tfp.QuantileAdaptiveClipSumQuery(
@@ -204,8 +242,9 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(stddev, noise, rtol=0.15)
 
   def test_gaussian_adaptive_cls(self):
-    process = differential_privacy.DifferentiallyPrivateFactory.gaussian_adaptive(
-        noise_multiplier=1e-2, clients_per_round=10)
+    process = (
+        differential_privacy.DifferentiallyPrivateFactory.gaussian_adaptive(
+            noise_multiplier=1e-2, clients_per_round=10))
     self.assertIsInstance(process,
                           differential_privacy.DifferentiallyPrivateFactory)
 
@@ -222,8 +261,9 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
   def test_adaptive_clip_noise_params(self, clip_count_stddev):
     noise_mult = 2.0
     num_clients = 100.0
-    value_noise_mult, new_clip_count_stddev = differential_privacy.adaptive_clip_noise_params(
-        noise_mult, num_clients, clip_count_stddev)
+    value_noise_mult, new_clip_count_stddev = (
+        differential_privacy.adaptive_clip_noise_params(noise_mult, num_clients,
+                                                        clip_count_stddev))
 
     # The effective noise for client values are larger as we're splitting the
     # privacy budget (intended by the input noise level) with adaptive clipping.
@@ -237,12 +277,12 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
       self.assertEqual(new_clip_count_stddev, clip_count_stddev)
 
   @parameterized.named_parameters(
-      ('total5_std2', 5, 8., 2., False),
+      ('total5_std2', 5, 8.0, 2.0, False),
       ('total6_std0d5', 6, 0.5, 0.5, False),
-      ('total7_std1', 7, 3., 1., False),
-      ('total8_std1', 8, 1., 1., False),
-      ('total3_std1_eff', 3, 1. + 2. / 3., 1., True),
-      ('total4_std1_eff', 4, 4. / 7., 1., True),
+      ('total7_std1', 7, 3.0, 1.0, False),
+      ('total8_std1', 8, 1.0, 1.0, False),
+      ('total3_std1_eff', 3, 1.0 + 2.0 / 3.0, 1.0, True),
+      ('total4_std1_eff', 4, 4.0 / 7.0, 1.0, True),
   )
   def test_tree_aggregation_factory(self, total_steps, expected_variance,
                                     noise_std, use_efficient):
@@ -252,14 +292,15 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     record_type = computation_types.to_type((tf.float32, variable_shape))
     specs = tf.nest.map_structure(tf.TensorSpec, record_shape)
 
-    tree_factory = differential_privacy.DifferentiallyPrivateFactory.tree_aggregation(
-        noise_multiplier=noise_std,
-        l2_norm_clip=1.,
-        record_specs=specs,
-        clients_per_round=1.,
-        noise_seed=1,
-        use_efficient=use_efficient,
-    )
+    tree_factory = (
+        differential_privacy.DifferentiallyPrivateFactory.tree_aggregation(
+            noise_multiplier=noise_std,
+            l2_norm_clip=1.,
+            record_specs=specs,
+            clients_per_round=1.,
+            noise_seed=1,
+            use_efficient=use_efficient,
+        ))
 
     process = tree_factory.create(record_type)
 
@@ -274,9 +315,9 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
         np.sqrt(expected_variance), np.std(cumsum_result), rtol=tolerance)
 
   @parameterized.named_parameters(
-      ('negative_clip', -1., 0.),
-      ('zero_clip', 0., 0.),
-      ('negative_noise', 1., -1.),
+      ('negative_clip', -1.0, 0.0),
+      ('zero_clip', 0.0, 0.0),
+      ('negative_noise', 1.0, -1.0),
   )
   def test_tree_aggregation_factory_raise(self, clip_norm, noise_multiplier):
     with self.assertRaisesRegex(ValueError, 'must be'):
@@ -284,7 +325,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
           noise_multiplier=noise_multiplier,
           l2_norm_clip=clip_norm,
           record_specs=tf.TensorSpec([]),
-          clients_per_round=1.,
+          clients_per_round=1.0,
           noise_seed=1)
 
 
