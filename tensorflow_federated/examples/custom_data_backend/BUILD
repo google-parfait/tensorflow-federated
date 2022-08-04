@@ -7,6 +7,9 @@ tff_cc_library_with_tf_deps(
     name = "data_backend_example_cc",
     srcs = ["data_backend_example.cc"],
     hdrs = ["data_backend_example.h"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     tf_deps = [
         "//third_party/tensorflow/core:framework",
         "//third_party/tensorflow/core:protos_all_cc",
@@ -22,6 +25,9 @@ tff_cc_library_with_tf_deps(
 tff_pybind_extension_with_tf_deps(
     name = "data_backend_example_bindings",
     srcs = ["data_backend_example_bindings.cc"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
         ":data_backend_example_cc",
         "//tensorflow_federated/cc/core/impl/executors:data_backend",
@@ -44,6 +50,7 @@ py_library(
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
     deps = [
+        ":data_backend_example_bindings",
         "//tensorflow_federated",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
     ],
@@ -52,7 +59,6 @@ py_library(
 py_test(
     name = "data_backend_example_test",
     srcs = ["data_backend_example_test.py"],
-    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
@@ -62,8 +68,6 @@ py_test(
         ":data_backend_example_py",
         "//tensorflow_federated",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
+        "//third_party/pybind11_abseil:status",
     ],
 )

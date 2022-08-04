@@ -35,11 +35,7 @@ py_test(
         "nofixdeps",
         "nokokoro",
     ],
-    deps = [
-        ":computation_py_pb2",
-        "@absl_py//absl/testing:absltest",
-        "@org_tensorflow//tensorflow/core:protos_all_py",
-    ],
+    deps = [":computation_py_pb2"],
 )
 
 cc_proto_library(

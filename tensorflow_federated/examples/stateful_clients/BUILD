@@ -13,9 +13,6 @@ py_binary(
         ":stateful_fedavg_tf",
         ":stateful_fedavg_tff",
         "//tensorflow_federated",
-        "@absl_py//absl:app",
-        "@absl_py//absl/flags",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -23,10 +20,7 @@ py_library(
     name = "stateful_fedavg_tf",
     srcs = ["stateful_fedavg_tf.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = ["//tensorflow_federated"],
 )
 
 py_library(
@@ -36,7 +30,6 @@ py_library(
     deps = [
         ":stateful_fedavg_tf",
         "//tensorflow_federated",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -50,7 +43,5 @@ py_test(
         ":stateful_fedavg_tf",
         ":stateful_fedavg_tff",
         "//tensorflow_federated",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

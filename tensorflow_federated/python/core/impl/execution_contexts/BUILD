@@ -40,7 +40,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:typed_object",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -59,7 +58,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -82,15 +80,16 @@ py_test(
     deps = [
         ":compiler_pipeline",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "@absl_py//absl/testing:absltest",
     ],
 )
 
 py_library(
     name = "cpp_async_execution_context",
     srcs = ["cpp_async_execution_context.py"],
-    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
         ":compiler_pipeline",
         "//tensorflow_federated/python/common_libs:retrying",
@@ -98,7 +97,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
         "//tensorflow_federated/python/core/impl/executors:value_serialization",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "@absl_py//absl/logging",
+        "//third_party/pybind11_abseil:status",
     ],
 )
 
@@ -106,6 +105,9 @@ py_library(
     name = "cpp_sync_execution_context",
     srcs = ["cpp_sync_execution_context.py"],
     srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
     deps = [
         ":cpp_async_execution_context",
         "//tensorflow_federated/python/common_libs:async_utils",
@@ -146,9 +148,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -194,8 +193,5 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

@@ -27,7 +27,6 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -40,8 +39,6 @@ py_test(
         ":adagrad",
         ":optimizer",
         ":optimizer_test_utils",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -52,7 +49,6 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -65,8 +61,6 @@ py_test(
         ":adam",
         ":optimizer",
         ":optimizer_test_utils",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -90,10 +84,7 @@ py_library(
     name = "keras_optimizer",
     srcs = ["keras_optimizer.py"],
     srcs_version = "PY3",
-    deps = [
-        ":optimizer",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":optimizer"],
 )
 
 py_test(
@@ -108,8 +99,6 @@ py_test(
         ":sgdm",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -131,8 +120,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -140,7 +127,6 @@ py_library(
     name = "optimizer",
     srcs = ["optimizer.py"],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_test(
@@ -148,11 +134,7 @@ py_test(
     srcs = ["optimizer_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":optimizer",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":optimizer"],
 )
 
 py_library(
@@ -160,10 +142,7 @@ py_library(
     testonly = True,
     srcs = ["optimizer_test_utils.py"],
     srcs_version = "PY3",
-    deps = [
-        ":optimizer",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":optimizer"],
 )
 
 py_test(
@@ -171,10 +150,7 @@ py_test(
     srcs = ["optimizer_test_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":optimizer_test_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":optimizer_test_utils"],
 )
 
 py_library(
@@ -184,7 +160,6 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -197,8 +172,6 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":rmsprop",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -209,7 +182,6 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -226,8 +198,6 @@ py_test(
         ":scheduling",
         ":sgdm",
         ":yogi",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -238,7 +208,6 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -251,8 +220,6 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":sgdm",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -263,7 +230,6 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -276,7 +242,5 @@ py_test(
         ":optimizer",
         ":optimizer_test_utils",
         ":yogi",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

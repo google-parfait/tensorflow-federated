@@ -38,7 +38,6 @@ py_library(
     deps = [
         ":chunkers",
         ":hyperedge_hashers",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -48,11 +47,7 @@ py_library(
         "chunkers.py",
     ],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "@absl_py//absl/logging",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
 py_library(
@@ -61,7 +56,6 @@ py_library(
         "hyperedge_hashers.py",
     ],
     srcs_version = "PY3",
-    deps = ["@org_tensorflow//tensorflow:tensorflow_py_no_contrib"],
 )
 
 py_test(
@@ -72,11 +66,7 @@ py_test(
     python_version = "PY3",
     shard_count = 4,
     srcs_version = "PY3",
-    deps = [
-        ":iblt_lib",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":iblt_lib"],
 )
 
 py_test(
@@ -84,11 +74,7 @@ py_test(
     srcs = ["chunkers_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":chunkers",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":chunkers"],
 )
 
 py_test(
@@ -97,11 +83,7 @@ py_test(
     srcs = ["hyperedge_hashers_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":hyperedge_hashers",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
-    ],
+    deps = [":hyperedge_hashers"],
 )
 
 py_library(
@@ -119,7 +101,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -136,9 +117,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
-        "@absl_py//absl/testing:absltest",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -149,7 +127,6 @@ py_library(
     deps = [
         ":chunkers",
         ":iblt_lib",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -161,8 +138,6 @@ py_test(
     deps = [
         ":iblt_lib",
         ":iblt_tensor",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -181,7 +156,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
 
@@ -196,8 +170,5 @@ py_test(
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "@absl_py//absl/logging",
-        "@absl_py//absl/testing:parameterized",
-        "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )
