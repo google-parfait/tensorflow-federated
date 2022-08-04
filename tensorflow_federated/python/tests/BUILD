@@ -184,7 +184,6 @@ py_library(
     deps = [
         ":remote_runtime_test_utils",
         "//tensorflow_federated",
-        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py_no_contrib",
     ],
 )

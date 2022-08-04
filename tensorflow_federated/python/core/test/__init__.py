@@ -13,6 +13,8 @@
 # limitations under the License.
 """Libraries for testing TensorFlow Federated."""
 
+from tensorflow_federated.python.core.impl.context_stack.context_stack_test_utils import with_context
+from tensorflow_federated.python.core.impl.context_stack.context_stack_test_utils import with_contexts
 from tensorflow_federated.python.core.impl.context_stack.runtime_error_context import create_runtime_error_context
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_no_default_context
 from tensorflow_federated.python.core.impl.types.type_test_utils import assert_type_assignable_from

@@ -64,10 +64,24 @@ py_test(
 
 py_library(
     name = "context_stack_test_utils",
-    testonly = True,
     srcs = ["context_stack_test_utils.py"],
     srcs_version = "PY3",
-    deps = [":context_base"],
+    deps = [
+        ":context_base",
+        ":context_stack_impl",
+        "@absl_py//absl/testing:parameterized",
+    ],
+)
+
+py_test(
+    name = "context_stack_test_utils_test",
+    srcs = ["context_stack_test_utils_test.py"],
+    deps = [
+        ":context_stack_impl",
+        ":context_stack_test_utils",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+    ],
 )
 
 py_library(

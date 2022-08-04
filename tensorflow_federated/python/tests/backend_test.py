@@ -27,7 +27,7 @@ from tensorflow_federated.python.tests import test_contexts
 
 class NoClientAggregationsTest(parameterized.TestCase):
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_executes_null_aggregate(self):
     unit_type = tff.StructWithPythonType([], tuple)
 
@@ -49,7 +49,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
     result = empty_agg()
     self.assertEqual(result, ())
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_executes_empty_sum(self):
 
     @tff.federated_computation(tff.type_at_clients(tf.int32))
@@ -59,7 +59,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
     result = fed_sum([])
     self.assertEqual(result, 0)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_empty_mean_returns_nan(self):
     self.skipTest('b/200970992')
     # TODO(b/200970992): Standardize handling of this case. We currently have a
@@ -75,7 +75,7 @@ class NoClientAggregationsTest(parameterized.TestCase):
 
 class DatasetManipulationTest(parameterized.TestCase):
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_executes_passthru_dataset(self):
 
     @tff.tf_computation(tff.SequenceType(tf.int64))
@@ -86,7 +86,7 @@ class DatasetManipulationTest(parameterized.TestCase):
     ds = passthru_dataset(input_data)
     self.assertIsInstance(ds, tf.data.Dataset)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_executes_dataset_concat_aggregation(self):
 
     tensor_spec = tf.TensorSpec(shape=[2], dtype=tf.float32)
@@ -122,7 +122,7 @@ class DatasetManipulationTest(parameterized.TestCase):
 
 class TemperatureSensorExampleTest(parameterized.TestCase):
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_temperature_sensor_example_with_clients_datasets(self):
     to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [
@@ -136,7 +136,7 @@ class TemperatureSensorExampleTest(parameterized.TestCase):
         temperatures, threshold)
     self.assertEqual(result, 12.5)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_temperature_sensor_example_with_clients_lists(self):
     temperatures = [
         [float(x) for x in range(10)],
@@ -152,7 +152,7 @@ class TemperatureSensorExampleTest(parameterized.TestCase):
 
 class FederatedComputationTest(parameterized.TestCase):
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_constant(self):
 
     @tff.federated_computation
@@ -162,7 +162,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = foo()
     self.assertEqual(result, 10)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_empty_tuple(self):
 
     @tff.federated_computation
@@ -172,7 +172,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = foo()
     self.assertEqual(result, ())
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_federated_value(self):
 
     @tff.federated_computation
@@ -182,7 +182,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = foo(10)
     self.assertIsNotNone(result)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_federated_zip(self):
 
     @tff.federated_computation([tff.type_at_clients(tf.int32)] * 2)
@@ -192,7 +192,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = foo([[1, 2], [3, 4]])
     self.assertIsNotNone(result)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_federated_zip_with_twenty_elements(self):
     # This test will fail if execution scales factorially with number of
     # elements zipped.
@@ -207,7 +207,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = foo(value)
     self.assertIsNotNone(result)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_repeated_invocations_of_map(self):
 
     @tff.tf_computation(tf.int32)
@@ -224,7 +224,7 @@ class FederatedComputationTest(parameterized.TestCase):
     self.assertIsNotNone(result1)
     self.assertEqual(result1, result2)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_polymorphism(self):
 
     @tff.tf_computation(tf.int32)
@@ -244,7 +244,7 @@ class FederatedComputationTest(parameterized.TestCase):
     self.assertLen(result1, 2)
     self.assertLen(result2, 3)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_runs_unplaced_lambda(self):
 
     @tff.federated_computation(tf.int32, tf.int32)
@@ -255,7 +255,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = bar(1, 2)
     self.assertEqual(result, 1)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_runs_server_placed_lambda(self):
 
     @tff.federated_computation(tf.int32, tf.int32)
@@ -272,7 +272,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = bar(collections.OrderedDict(x=1, y=2))
     self.assertEqual(result, 1)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_runs_clients_placed_lambda(self):
 
     @tff.federated_computation(tf.int32, tf.int32)
@@ -289,7 +289,7 @@ class FederatedComputationTest(parameterized.TestCase):
     result = bar([collections.OrderedDict(x=1, y=2)])
     self.assertEqual(result, [1])
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_bad_type_coercion_raises(self):
     tensor_type = tff.TensorType(shape=[None], dtype=tf.float32)
 
@@ -326,7 +326,7 @@ class FederatedComputationTest(parameterized.TestCase):
 
 class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_create_call_take_two_from_stateful_dataset(self):
 
     vocab = ['a', 'b', 'c', 'd', 'e', 'f']
@@ -344,7 +344,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = take_two(ds)
     self.assertCountEqual([x.numpy() for x in result], [0, 1])
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_twice_used_variable_keeps_separate_state(self):
 
     def count_one_body():
@@ -361,7 +361,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertEqual((1, 1, 1), count_one_twice())
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_dynamic_lookup_table(self):
 
     @tff.tf_computation(
@@ -376,7 +376,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = comp(tf.constant(['a', 'b', 'c']), tf.constant(['a', 'z', 'c']))
     self.assertAllEqual(result, [0, 101, 2])
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_reinitialize_dynamic_lookup_table(self):
 
     @tff.tf_computation(
@@ -394,7 +394,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(expected_zero, 0)
     self.assertEqual(expected_three, 3)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_returns_constant(self):
 
     @tff.tf_computation
@@ -404,7 +404,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = foo()
     self.assertEqual(result, 10)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_returns_empty_tuple(self):
 
     @tff.tf_computation
@@ -414,7 +414,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = foo()
     self.assertEqual(result, ())
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_returns_variable(self):
 
     @tff.tf_computation
@@ -425,19 +425,26 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(result, 10)
 
   # pyformat: disable
-  @test_contexts.with_contexts(
-      # pylint: disable=unnecessary-lambda
-      ('native_local', lambda: tff.backends.native.create_local_python_execution_context()),
+  # pylint: disable=unnecessary-lambda,g-long-lambda
+  @tff.test.with_contexts(
+      ('native_local',
+       lambda: tff.backends.native.create_local_python_execution_context()),
       ('native_remote',
-       lambda: remote_runtime_test_utils.create_localhost_remote_context(test_contexts.WORKER_PORTS),
-       lambda: remote_runtime_test_utils.create_inprocess_worker_contexts(test_contexts.WORKER_PORTS)),
+       lambda: remote_runtime_test_utils.create_localhost_remote_context(
+           test_contexts.WORKER_PORTS),
+       lambda: remote_runtime_test_utils.create_inprocess_worker_contexts(
+           test_contexts.WORKER_PORTS)),
       ('native_remote_intermediate_aggregator',
-       lambda: remote_runtime_test_utils.create_localhost_remote_context(test_contexts.AGGREGATOR_PORTS),
-       lambda: remote_runtime_test_utils.create_inprocess_aggregator_contexts(test_contexts.WORKER_PORTS, test_contexts.AGGREGATOR_PORTS)),
-      ('native_sizing', lambda: tff.backends.native.create_sizing_execution_context()),
+       lambda: remote_runtime_test_utils.create_localhost_remote_context(
+           test_contexts.AGGREGATOR_PORTS),
+       lambda: remote_runtime_test_utils.create_inprocess_aggregator_contexts(
+           test_contexts.WORKER_PORTS, test_contexts.AGGREGATOR_PORTS)),
+      ('native_sizing',
+       lambda: tff.backends.native.create_sizing_execution_context()),
       ('native_thread_debug',
        lambda: tff.backends.native.create_thread_debugging_execution_context()),
   )
+  # pylint: enable=unnecessary-lambda,g-long-lambda
   # pyformat: enable
   def test_takes_infinite_dataset(self):
 
@@ -452,19 +459,26 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
   # pyformat: disable
-  @test_contexts.with_contexts(
-      # pylint: disable=unnecessary-lambda
-      ('native_local', lambda: tff.backends.native.create_local_python_execution_context()),
+  # pylint: disable=unnecessary-lambda,g-long-lambda
+  @tff.test.with_contexts(
+      ('native_local',
+       lambda: tff.backends.native.create_local_python_execution_context()),
       ('native_remote',
-       lambda: remote_runtime_test_utils.create_localhost_remote_context(test_contexts.WORKER_PORTS),
-       lambda: remote_runtime_test_utils.create_inprocess_worker_contexts(test_contexts.WORKER_PORTS)),
+       lambda: remote_runtime_test_utils.create_localhost_remote_context(
+           test_contexts.WORKER_PORTS),
+       lambda: remote_runtime_test_utils.create_inprocess_worker_contexts(
+           test_contexts.WORKER_PORTS)),
       ('native_remote_intermediate_aggregator',
-       lambda: remote_runtime_test_utils.create_localhost_remote_context(test_contexts.AGGREGATOR_PORTS),
-       lambda: remote_runtime_test_utils.create_inprocess_aggregator_contexts(test_contexts.WORKER_PORTS, test_contexts.AGGREGATOR_PORTS)),
-      ('native_sizing', lambda: tff.backends.native.create_sizing_execution_context()),
+       lambda: remote_runtime_test_utils.create_localhost_remote_context(
+           test_contexts.AGGREGATOR_PORTS),
+       lambda: remote_runtime_test_utils.create_inprocess_aggregator_contexts(
+           test_contexts.WORKER_PORTS, test_contexts.AGGREGATOR_PORTS)),
+      ('native_sizing',
+       lambda: tff.backends.native.create_sizing_execution_context()),
       ('native_thread_debug',
        lambda: tff.backends.native.create_thread_debugging_execution_context()),
   )
+  # pylint: enable=unnecessary-lambda,g-long-lambda
   # pyformat: enable
   def test_returns_infinite_dataset(self):
 
@@ -479,7 +493,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
         actual_result.take(100).reduce(np.int64(0), lambda x, y: x + y),
         expected_result.take(100).reduce(np.int64(0), lambda x, y: x + y))
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_returns_result_with_typed_fn(self):
 
     @tff.tf_computation(tf.int32, tf.int32)
@@ -489,7 +503,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     result = foo(1, 2)
     self.assertEqual(result, 3)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_raises_type_error_with_typed_fn(self):
 
     @tff.tf_computation(tf.int32, tf.int32)
@@ -499,7 +513,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaises(TypeError):
       foo(1.0, 2.0)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_returns_result_with_polymorphic_fn(self):
 
     @tff.tf_computation
@@ -514,7 +528,7 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
 
 class NonDeterministicTest(parameterized.TestCase):
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_computation_called_once_is_invoked_once(self):
 
     @tff.tf_computation
@@ -529,7 +543,7 @@ class NonDeterministicTest(parameterized.TestCase):
     first_random, second_random = get_one_random_twice()
     self.assertEqual(first_random, second_random)
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_computation_called_twice_is_invoked_twice(self):
 
     @tff.tf_computation
@@ -546,8 +560,7 @@ class NonDeterministicTest(parameterized.TestCase):
 
 class SequenceExecutorIntegrationTest(parameterized.TestCase):
 
-  @test_contexts.with_context(
-      test_contexts.create_sequence_op_supporting_context)
+  @tff.test.with_context(test_contexts.create_sequence_op_supporting_context)
   def test_inlined_value_in_sequence_reduce(self):
 
     @tff.tf_computation(tf.float32, tf.float32)
@@ -563,8 +576,7 @@ class SequenceExecutorIntegrationTest(parameterized.TestCase):
     value = sum_floats(ds)
     self.assertEqual(value, 10. * 9 / 2)
 
-  @test_contexts.with_context(
-      test_contexts.create_sequence_op_supporting_context)
+  @tff.test.with_context(test_contexts.create_sequence_op_supporting_context)
   def test_inlined_value_in_mapped_sequence_reduce(self):
 
     @tff.tf_computation(tf.float32, tf.float32)
@@ -587,9 +599,7 @@ class SequenceExecutorIntegrationTest(parameterized.TestCase):
 
 class SizingExecutionContextTest(parameterized.TestCase):
 
-  @test_contexts.with_context(
-      # pylint: disable=unnecessary-lambda
-      lambda: tff.backends.native.create_sizing_execution_context())
+  @tff.test.with_context(tff.backends.native.create_sizing_execution_context)
   def test_get_size_info(self):
     num_clients = 10
     to_float = lambda x: tf.cast(x, tf.float32)
@@ -617,7 +627,7 @@ class SizingExecutionContextTest(parameterized.TestCase):
 
 class KerasIntegrationTest(parameterized.TestCase):
 
-  @test_contexts.with_contexts
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_keras_model_with_activity_regularization_runs_fedavg(self):
     self.skipTest('b/171358068')
 
