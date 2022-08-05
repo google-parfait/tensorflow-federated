@@ -20,7 +20,6 @@ from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.analytics.hierarchical_histogram import clipping_factory
-from tensorflow_federated.python.analytics.hierarchical_histogram import modular_clipping_factory
 
 # Supported no-noise mechanisms.
 NO_NOISE_MECHANISMS = ['no-noise']
@@ -162,27 +161,7 @@ def create_hierarchical_histogram_aggregation_factory(
     elif dp_mechanism in ['central-gaussian']:
       nested_factory = secure.SecureSumFactory(float(max_records_per_user))
     # (3) If `dp_mechanism` is in `DISTRIBUTED_DP_MECHANISMS`, should be
-    #     `SecureSumFactory`. To preserve DP and avoid overflow, we have 4
-    #    modular clips from nesting two modular clip aggregators:
-    #    #1. outer-client: clips to [-2**(bits-1), 2**(bits-1))
-    #        Bounds the client values.
-    #    #2. inner-client: clips to [0, 2**bits)
-    #        Similar to applying a two's complement to the values such that
-    #        frequent values (post-rotation) are now near 0 (representing small
-    #        positives) and 2**bits (small negatives). 0 also always map to 0,
-    #        and we do not require another explicit value range shift from
-    #        [-2**(bits-1), 2**(bits-1)] to [0, 2**bits] to make sure that
-    #        values are compatible with SecAgg's mod m = 2**bits. This can be
-    #        reverted at #4.
-    #    #3. inner-server: clips to [0, 2**bits)
-    #        Ensures the aggregated value range does not grow by
-    #        `log2(expected_clients_per_round)`.
-    #        NOTE: If underlying SecAgg is implemented using the new
-    #        `tff.federated_secure_modular_sum()` operator with the same
-    #        modular clipping range, then this would correspond to a no-op.
-    #    #4. outer-server: clips to [-2**(bits-1), 2**(bits-1))
-    #        Keeps aggregated values centered near 0 out of the logical SecAgg
-    #        black box for outer aggregators.
+    #     `SecureModularSumFactory`, with modulus = 2**(bits-1).
     elif dp_mechanism in ['distributed-discrete-gaussian']:
       # TODO(b/196312838): Please add scaling to the distributed case once we
       # have a stable guideline for setting scaling factor to improve
@@ -205,16 +184,8 @@ def create_hierarchical_histogram_aggregation_factory(
             f'result. Please decrease the '
             f'`expected_clients_per_round` / `max_records_per_user` '
             f'/ `noise_multiplier`, or increase `bits`.')
-      nested_factory = secure.SecureSumFactory(
-          upper_bound_threshold=2**bits - 1, lower_bound_threshold=0)
-      nested_factory = modular_clipping_factory.ModularClippingSumFactory(
-          clip_range_lower=0,
-          clip_range_upper=2**bits,
-          inner_agg_factory=nested_factory)
-      nested_factory = modular_clipping_factory.ModularClippingSumFactory(
-          clip_range_lower=-2**(bits - 1),
-          clip_range_upper=2**(bits - 1),
-          inner_agg_factory=nested_factory)
+      nested_factory = secure.SecureModularSumFactory(
+          modulus=2**(bits - 1), symmetric_range=True)
 
   # 2. DP operations.
   # Constructs `DifferentiallyPrivateFactory` according to the chosen

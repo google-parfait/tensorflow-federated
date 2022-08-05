@@ -204,15 +204,7 @@ class TreeAggregationFactoryComputationTest(tf.test.TestCase,
             expected_initialize_type))
 
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(
-            dp_query_metrics=query_metrics_type,
-            dp=(collections.OrderedDict(
-                modclip=collections.OrderedDict(
-                    modclip=collections.OrderedDict(
-                        secure_upper_clipped_count=tf.int32,
-                        secure_lower_clipped_count=tf.int32,
-                        secure_upper_threshold=tf.int32,
-                        secure_lower_threshold=tf.int32))))))
+        collections.OrderedDict(dp_query_metrics=query_metrics_type, dp=()))
 
     tree_depth = hihi_factory._tree_depth(value_shape, arity)
     flat_tree_shape = (arity**tree_depth - 1) // (arity - 1)
