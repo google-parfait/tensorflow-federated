@@ -9,7 +9,9 @@ package(default_visibility = [
 
 package_group(
     name = "aggregators_packages",
-    packages = ["//tensorflow_federated/python/aggregators/..."],
+    packages = [
+        "//tensorflow_federated/python/aggregators/...",
+    ],
 )
 
 licenses(["notice"])
@@ -22,6 +24,7 @@ py_library(
     deps = [
         ":concat",
         ":differential_privacy",
+        ":elias_gamma_encode",
         ":encoded",
         ":factory",
         ":factory_utils",
@@ -263,6 +266,42 @@ py_test(
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/test:static_assert",
+    ],
+)
+
+py_library(
+    name = "elias_gamma_encode",
+    srcs = ["elias_gamma_encode.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/aggregators:concat",
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)
+
+py_test(
+    name = "elias_gamma_encode_test",
+    size = "medium",
+    srcs = ["elias_gamma_encode_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":elias_gamma_encode",
+        "//tensorflow_federated/python/aggregators:mean",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
     ],
 )
 
