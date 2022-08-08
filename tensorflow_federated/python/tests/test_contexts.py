@@ -24,6 +24,13 @@ from tensorflow_federated.python.tests import remote_runtime_test_utils
 WORKER_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 
+root = tf.compat.v1.resource_loader.get_root_dir_with_all_resources()
+split_root = root.split(os.path.sep)
+reduced_root = os.path.sep.join(split_root[:-1])
+_TFF_SERVICE_BINARY_PATH = os.path.join(
+    reduced_root, 'org_tensorflow_federated',
+    'tensorflow_federated/cc/simulation/worker_binary')
+
 
 def _create_local_python_mergeable_comp_context():
   async_context = tff.backends.native.create_local_async_python_execution_context(
@@ -38,6 +45,11 @@ def create_sequence_op_supporting_context():
   return tff.framework.ExecutionContext(
       executor_fn=executor_factory,
       compiler_fn=tff.backends.native.compiler.transform_to_native_form)  # pytype: disable=wrong-arg-types
+
+
+def create_localhost_cpp_context():
+  return tff.backends.native.create_localhost_cpp_execution_context(
+      _TFF_SERVICE_BINARY_PATH)
 
 
 def _get_all_contexts():
