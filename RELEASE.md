@@ -1,3 +1,21 @@
+# Release 0.33.0
+
+## Major Features and Improvements
+
+*   Extend `tff.analytics.heavy_hitters.iblt` with `create_chunker` API for
+    encoding non-Unicode strings.
+*   Extend `tff.aggregators.DifferentiallyPrivateFactory.tree_aggregation` with
+    an optional `record_aggregation_factory` argument.
+
+## Breaking Changes
+
+*   Replaced `ModularClippingSumFactory` with `SecureModularSumFactory` in
+    `tff.analytics.build_hierarchical_histogram_process`.
+
+## Known Bugs
+
+*   TFF's python 3.9 typing conflicts with Colab's Python 3.7 support.
+
 # Release 0.32.0
 
 ## Major Features and Improvements
