@@ -55,6 +55,7 @@ class DataExecutor : public ExecutorBase<ValueFuture> {
                         data_type = std::move(data_type),
                         this_keepalive =
                             shared_from_this()]() -> absl::StatusOr<SharedId> {
+        Trace("DataExecutor::DataBackend::ResolveToValue");
         v0::Value resolved_value;
         TFF_TRY(data_backend_->ResolveToValue(data, data_type, resolved_value));
         OwnedValueId child_value = TFF_TRY(child_->CreateValue(resolved_value));

@@ -105,12 +105,8 @@ tff_cc_library_with_tf_deps(
     deps = [
         ":data_backend",
         ":executor",
-        ":status_macros",
         ":threading",
-        "//tensorflow_federated/proto/v0:computation_cc_proto",
-        "//tensorflow_federated/proto/v0:executor_cc_proto",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
     ],
 )
 
