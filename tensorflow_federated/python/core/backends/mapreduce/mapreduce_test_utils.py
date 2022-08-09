@@ -14,18 +14,45 @@
 """Utilities for testing the mapreduce backend."""
 
 import collections
+from typing import Tuple
 
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
+
+
+MapReduceFormExample = collections.namedtuple('MapReduceFormExample',
+                                              ['mrf', 'initialize'])
+
+
+def generate_unnamed_type_signature(update, work, report):
+  """Generates a type signature for the MapReduceForm based on components."""
+  parameter = computation_types.StructType([
+      (None,
+       computation_types.FederatedType(update.type_signature.parameter[0],
+                                       placements.SERVER)),
+      (None,
+       computation_types.FederatedType(work.type_signature.parameter[0],
+                                       placements.CLIENTS)),
+  ])
+  result = computation_types.StructType([
+      (None,
+       computation_types.FederatedType(update.type_signature.parameter[0],
+                                       placements.SERVER)),
+      (None,
+       computation_types.FederatedType(report.type_signature.result,
+                                       placements.SERVER)),
+  ])
+  return computation_types.FunctionType(parameter, result)
 
 
 def get_temperature_sensor_example():
@@ -35,12 +62,19 @@ def get_temperature_sensor_example():
   temperatures over the threshold.
 
   Returns:
-    An instance of `forms.MapReduceForm`.
+    A tuple of: (1) an instance of `forms.MapReduceForm` and (2) an associated
+    `computation_base.Computation` that generates an initial state compatible
+    with the server state expected by the `forms.MapReduceForm`.
   """
 
-  @tensorflow_computation.tf_computation
+  @federated_computation.federated_computation()
   def initialize():
-    return collections.OrderedDict(num_rounds=tf.constant(0))
+
+    @tensorflow_computation.tf_computation
+    def initialize_tf():
+      return collections.OrderedDict(num_rounds=tf.constant(0))
+
+    return intrinsics.federated_value(initialize_tf(), placements.SERVER)
 
   # The state of the server is a singleton tuple containing just the integer
   # counter `num_rounds`.
@@ -121,12 +155,18 @@ def get_temperature_sensor_example():
     return (collections.OrderedDict(num_rounds=state['num_rounds'] + 1),
             update[0])
 
-  return forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
-                             report, bitwidth, max_input, modulus, update)
+  type_signature = generate_unnamed_type_signature(update, work, report)
+  return MapReduceFormExample(
+      mrf=forms.MapReduceForm(type_signature, prepare, work, zero, accumulate,
+                              merge, report, bitwidth, max_input, modulus,
+                              update),
+      initialize=initialize)
 
 
-def get_federated_sum_example(*,
-                              secure_sum: bool = False) -> forms.MapReduceForm:
+def get_federated_sum_example(
+    *,
+    secure_sum: bool = False
+) -> Tuple[forms.MapReduceForm, computation_base.Computation]:
   """Constructs `forms.MapReduceForm` which performs a sum aggregation.
 
   Args:
@@ -138,10 +178,15 @@ def get_federated_sum_example(*,
   """
 
   @tensorflow_computation.tf_computation
-  def initialize():
+  def initialize_tf():
     return ()
 
-  server_state_type = initialize.type_signature.result
+  @federated_computation.federated_computation()
+  def initialize():
+
+    return intrinsics.federated_value(initialize_tf(), placements.SERVER)
+
+  server_state_type = initialize_tf.type_signature.result
 
   @tensorflow_computation.tf_computation(server_state_type)
   def prepare(state):
@@ -202,8 +247,12 @@ def get_federated_sum_example(*,
     else:
       return state, update[0]
 
-  return forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
-                             report, bitwidth, max_input, modulus, update)
+  type_signature = generate_unnamed_type_signature(update, work, report)
+  return MapReduceFormExample(
+      mrf=forms.MapReduceForm(type_signature, prepare, work, zero, accumulate,
+                              merge, report, bitwidth, max_input, modulus,
+                              update),
+      initialize=initialize)
 
 
 def get_mnist_training_example():
@@ -216,11 +265,16 @@ def get_mnist_training_example():
   server_state_nt = (collections.namedtuple('ServerState', 'model num_rounds'))
 
   # Start with a model filled with zeros, and the round counter set to zero.
-  @tensorflow_computation.tf_computation
+  @federated_computation.federated_computation()
   def initialize():
-    return server_state_nt(
-        model=model_nt(weights=tf.zeros([784, 10]), bias=tf.zeros([10])),
-        num_rounds=tf.constant(0))
+
+    @tensorflow_computation.tf_computation
+    def initialize_tf():
+      return server_state_nt(
+          model=model_nt(weights=tf.zeros([784, 10]), bias=tf.zeros([10])),
+          num_rounds=tf.constant(0))
+
+    return intrinsics.federated_value(initialize_tf(), placements.SERVER)
 
   server_state_tff_type = server_state_nt(
       model=model_nt(weights=(tf.float32, [784, 10]), bias=(tf.float32, [10])),
@@ -356,9 +410,12 @@ def get_mnist_training_example():
                 num_examples=report.num_examples,
                 loss=report.loss))
 
-  return forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
-                             report, secure_sum_bitwidth, secure_sum_max_input,
-                             secure_sum_modulus, update)
+  type_signature = generate_unnamed_type_signature(update, work, report)
+  return MapReduceFormExample(
+      mrf=forms.MapReduceForm(type_signature, prepare, work, zero, accumulate,
+                              merge, report, secure_sum_bitwidth,
+                              secure_sum_max_input, secure_sum_modulus, update),
+      initialize=initialize)
 
 
 def get_iterative_process_for_example_with_unused_lambda_arg():

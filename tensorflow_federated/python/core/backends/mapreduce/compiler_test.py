@@ -28,6 +28,8 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -60,7 +62,12 @@ class CheckExtractionResultTest(absltest.TestCase):
     return comp_to_return.function
 
   def compiled_computation_for_initialize(self, initialize):
-    block = initialize.to_building_block()
+    # Create a federated version of initialize.
+    @federated_computation.federated_computation
+    def federated_initialize_computation():
+      return intrinsics.federated_value(initialize(), placements.SERVER)
+
+    block = federated_initialize_computation.to_building_block()
     return self.get_function_from_first_symbol_binding_in_lambda_result(block)
 
   def test_raises_on_none_args(self):
@@ -81,8 +88,10 @@ class CheckExtractionResultTest(absltest.TestCase):
       compiler.check_extraction_result(function, call)
 
   def test_raises_non_function_and_compiled_computation(self):
-    init = form_utils.get_iterative_process_for_map_reduce_form(
-        mapreduce_test_utils.get_temperature_sensor_example()).initialize
+    initialize = (
+        mapreduce_test_utils.get_temperature_sensor_example().initialize)
+    init = form_utils.get_state_initialization_computation_for_map_reduce_form(
+        initialize)
     compiled_computation = self.compiled_computation_for_initialize(init)
     integer_ref = building_blocks.Reference('x', tf.int32)
     with self.assertRaisesRegex(compiler.MapReduceFormCompilationError,
@@ -90,8 +99,10 @@ class CheckExtractionResultTest(absltest.TestCase):
       compiler.check_extraction_result(integer_ref, compiled_computation)
 
   def test_raises_function_and_compiled_computation_of_different_type(self):
-    init = form_utils.get_iterative_process_for_map_reduce_form(
-        mapreduce_test_utils.get_temperature_sensor_example()).initialize
+    initialize = (
+        mapreduce_test_utils.get_temperature_sensor_example().initialize)
+    init = form_utils.get_state_initialization_computation_for_map_reduce_form(
+        initialize)
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference(
         'f', computation_types.FunctionType(tf.int32, tf.int32))
@@ -109,8 +120,10 @@ class CheckExtractionResultTest(absltest.TestCase):
       compiler.check_extraction_result(ref_to_int, called_fn)
 
   def test_passes_function_and_compiled_computation_of_same_type(self):
-    init = form_utils.get_iterative_process_for_map_reduce_form(
-        mapreduce_test_utils.get_temperature_sensor_example()).initialize
+    initialize = (
+        mapreduce_test_utils.get_temperature_sensor_example().initialize)
+    init = form_utils.get_state_initialization_computation_for_map_reduce_form(
+        initialize)
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference('f',
                                          compiled_computation.type_signature)
@@ -125,8 +138,10 @@ class ConsolidateAndExtractTest(absltest.TestCase):
           None, DEFAULT_GRAPPLER_CONFIG)
 
   def test_already_reduced_case(self):
-    init = form_utils.get_iterative_process_for_map_reduce_form(
-        mapreduce_test_utils.get_temperature_sensor_example()).initialize
+    initialize = (
+        mapreduce_test_utils.get_temperature_sensor_example().initialize)
+    init = form_utils.get_state_initialization_computation_for_map_reduce_form(
+        initialize)
 
     comp = init.to_building_block()
 

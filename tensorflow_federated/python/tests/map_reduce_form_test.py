@@ -54,7 +54,7 @@ class MapReduceFormTest(tf.test.TestCase):
       self):
     ip = construct_example_training_comp()
 
-    cf = tff.backends.mapreduce.get_map_reduce_form_for_iterative_process(ip)
+    cf = tff.backends.mapreduce.get_map_reduce_form_for_computation(ip.next)
 
     # This type spec test actually carries the meaning that TFF's vanilla path
     # to canonical form will broadcast and aggregate exactly one copy of the
@@ -117,9 +117,10 @@ class MapReduceFormTest(tf.test.TestCase):
     # the eager TF runtime with multiple definitions.
     grappler_config = tf.compat.v1.ConfigProto()
     grappler_config.graph_options.rewrite_options.disable_meta_optimizer = True
-    cf = tff.backends.mapreduce.get_map_reduce_form_for_iterative_process(
-        ip_1, grappler_config=grappler_config)
-    ip_2 = tff.backends.mapreduce.get_iterative_process_for_map_reduce_form(cf)
+    cf = tff.backends.mapreduce.get_map_reduce_form_for_computation(
+        ip_1.next, grappler_config=grappler_config)
+    next_2 = tff.backends.mapreduce.get_computation_for_map_reduce_form(cf)
+    ip_2 = tff.templates.IterativeProcess(ip_1.initialize, next_2)
 
     ip_1.initialize.type_signature.check_equivalent_to(
         ip_2.initialize.type_signature)

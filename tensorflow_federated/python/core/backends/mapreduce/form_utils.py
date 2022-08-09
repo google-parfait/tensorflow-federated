@@ -18,7 +18,7 @@
 # information.
 """Utils for converting to/from the MapReduce form.
 
-Note: Refer to `get_iterative_process_for_map_reduce_form()` for the meaning of
+Note: Refer to `get_computation_for_map_reduce_form()` for the meaning of
 variable names used in this module.
 """
 
@@ -42,7 +42,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.templates import iterative_process
 
 _GRAPPLER_DEFAULT_CONFIG = tf.compat.v1.ConfigProto()
 _AGGRESSIVE = _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.AGGRESSIVE
@@ -80,34 +79,65 @@ def get_computation_for_broadcast_form(
   return computation
 
 
-def get_iterative_process_for_map_reduce_form(
-    mrf: forms.MapReduceForm) -> iterative_process.IterativeProcess:
-  """Creates `tff.templates.IterativeProcess` from a MapReduce form.
+def get_state_initialization_computation_for_map_reduce_form(
+    initialize_computation: computation_base.Computation,
+    grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG
+) -> computation_base.Computation:
+  """Validates and transforms a computation to generate state for MapReduceForm.
+
+  Args:
+    initialize_computation: A `computation_base.Computation` that should
+      generate initial state for a computation that is compatible with
+      MapReduceForm.
+    grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
+      configure Grappler graph optimization of the TensorFlow graphs backing the
+      resulting `tff.backends.mapreduce.MapReduceForm`. These options are
+      combined with a set of defaults that aggressively configure Grappler. If
+      the input `grappler_config` has
+      `graph_options.rewrite_options.disable_meta_optimizer=True`, Grappler is
+      bypassed.
+
+  Returns:
+    A `computation_base.Computation` that can generate state for a computation
+    that is compatible with MapReduceForm.
+
+  Raises:
+    TypeError: If the arguments are of the wrong types.
+  """
+  initialize_tree = initialize_computation.to_building_block()
+  init_type = initialize_tree.type_signature
+  _check_type_is_no_arg_fn(init_type, '`initialize`', TypeError)
+  if (not init_type.result.is_federated() or
+      init_type.result.placement != placements.SERVER):
+    raise TypeError('Expected `initialize` to return a single federated value '
+                    'placed at server (type `T@SERVER`), found return type:\n'
+                    f'{init_type.result}')
+  initialize_tree, _ = tree_transformations.replace_intrinsics_with_bodies(
+      initialize_tree)
+  tree_analysis.check_contains_only_reducible_intrinsics(initialize_tree)
+  initialize_tree = compiler.consolidate_and_extract_local_processing(
+      initialize_tree, grappler_config)
+  return computation_impl.ConcreteComputation.from_building_block(
+      initialize_tree)
+
+
+def get_computation_for_map_reduce_form(
+    mrf: forms.MapReduceForm) -> computation_base.Computation:
+  """Creates `tff.Computation` from a MapReduce form.
 
   Args:
     mrf: An instance of `tff.backends.mapreduce.MapReduceForm`.
 
   Returns:
-    An instance of `tff.templates.IterativeProcess` that corresponds to `mrf`.
+    An instance of `tff.Computation` that corresponds to `mrf`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
   py_typecheck.check_type(mrf, forms.MapReduceForm)
 
-  @federated_computation.federated_computation
-  def init_computation():
-    return intrinsics.federated_value(mrf.initialize(), placements.SERVER)
-
-  next_parameter_type = computation_types.StructType([
-      (mrf.server_state_label, init_computation.type_signature.result),
-      (mrf.client_data_label,
-       computation_types.FederatedType(mrf.work.type_signature.parameter[0],
-                                       placements.CLIENTS)),
-  ])
-
-  @federated_computation.federated_computation(next_parameter_type)
-  def next_computation(arg):
+  @federated_computation.federated_computation(mrf.type_signature.parameter)
+  def computation(arg):
     """The logic of a single MapReduce processing round."""
     server_state, client_data = arg
     broadcast_input = intrinsics.federated_map(mrf.prepare, server_state)
@@ -132,7 +162,7 @@ def get_iterative_process_for_map_reduce_form(
         mrf.update, update_arg)
     return updated_server_state, server_output
 
-  return iterative_process.IterativeProcess(init_computation, next_computation)
+  return computation
 
 
 def _check_len(
@@ -232,8 +262,8 @@ def _check_function_signature_compatible_with_broadcast_form(
         f'{result_type}')
 
 
-def check_iterative_process_compatible_with_map_reduce_form(
-    ip: iterative_process.IterativeProcess,
+def check_computation_compatible_with_map_reduce_form(
+    comp: computation_base.Computation,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
 ) -> Tuple[building_blocks.ComputationBuildingBlock,
@@ -241,56 +271,43 @@ def check_iterative_process_compatible_with_map_reduce_form(
   """Tests compatibility with `tff.backends.mapreduce.MapReduceForm`.
 
   Note: the conditions here are specified in the documentation for
-    `get_map_reduce_form_for_iterative_process`. Changes to this function should
+    `get_map_reduce_form_for_computation`. Changes to this function should
     be propagated to that documentation.
 
   Args:
-    ip: An instance of `tff.templates.IterativeProcess` to check for
+    comp: An instance of `computation_base.Computation` to check for
       compatibility with `tff.backends.mapreduce.MapReduceForm`.
     tff_internal_preprocessing: An optional function to transform the AST of the
       computation.
 
   Returns:
-    TFF-internal building-blocks representing the validated and simplified
-    `initialize` and `next` computations.
+    A TFF-internal building-block representing the validated and simplified
+    computation.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  py_typecheck.check_type(ip, iterative_process.IterativeProcess)
-  initialize_tree = ip.initialize.to_building_block()
-  next_tree = ip.next.to_building_block()
-  if tff_internal_preprocessing:
-    initialize_tree = tff_internal_preprocessing(initialize_tree)
-    next_tree = tff_internal_preprocessing(next_tree)
+  py_typecheck.check_type(comp, computation_base.Computation)
+  comp_tree = comp.to_building_block()
+  if tff_internal_preprocessing is not None:
+    comp_tree = tff_internal_preprocessing(comp_tree)
 
-  init_type = initialize_tree.type_signature
-  _check_type_is_no_arg_fn(init_type, '`initialize`', TypeError)
-  if (not init_type.result.is_federated() or
-      init_type.result.placement != placements.SERVER):
-    raise TypeError('Expected `initialize` to return a single federated value '
-                    'placed at server (type `T@SERVER`), found return type:\n'
-                    f'{init_type.result}')
+  comp_type = comp_tree.type_signature
+  _check_type_is_fn(comp_type, '`comp`', TypeError)
+  if not comp_type.parameter.is_struct() or len(comp_type.parameter) != 2:
+    raise TypeError('Expected `comp` to take two arguments, found parameter '
+                    f' type:\n{comp_type.parameter}')
+  if not comp_type.result.is_struct() or len(comp_type.result) != 2:
+    raise TypeError('Expected `comp` to return two values, found result '
+                    f'type:\n{comp_type.result}')
 
-  next_type = next_tree.type_signature
-  _check_type_is_fn(next_type, '`next`', TypeError)
-  if not next_type.parameter.is_struct() or len(next_type.parameter) != 2:
-    raise TypeError('Expected `next` to take two arguments, found parameter '
-                    f' type:\n{next_type.parameter}')
-  if not next_type.result.is_struct() or len(next_type.result) != 2:
-    raise TypeError('Expected `next` to return two values, found result '
-                    f'type:\n{next_type.result}')
+  comp_tree, _ = tree_transformations.replace_intrinsics_with_bodies(comp_tree)
+  comp_tree = _replace_lambda_body_with_call_dominant_form(comp_tree)
 
-  initialize_tree, _ = tree_transformations.replace_intrinsics_with_bodies(
-      initialize_tree)
-  next_tree, _ = tree_transformations.replace_intrinsics_with_bodies(next_tree)
-  next_tree = _replace_lambda_body_with_call_dominant_form(next_tree)
+  tree_analysis.check_contains_only_reducible_intrinsics(comp_tree)
+  tree_analysis.check_broadcast_not_dependent_on_aggregate(comp_tree)
 
-  tree_analysis.check_contains_only_reducible_intrinsics(initialize_tree)
-  tree_analysis.check_contains_only_reducible_intrinsics(next_tree)
-  tree_analysis.check_broadcast_not_dependent_on_aggregate(next_tree)
-
-  return initialize_tree, next_tree
+  return comp_tree
 
 
 def _untuple_broadcast_only_before_after(before, after):
@@ -575,10 +592,10 @@ def _extract_client_processing(after_broadcast, grappler_config):
 def _extract_prepare(before_broadcast, grappler_config):
   """extracts `prepare` from `before_broadcast`.
 
-  This function is intended to be used by
-  `get_map_reduce_form_for_iterative_process` only. As a result, this function
-  does not assert that `before_broadcast` has the expected structure, the
-  caller is expected to perform these checks before calling this function.
+  This function is intended to be used by `get_map_reduce_form_for_computation`
+  only. As a result, this function does not assert that `before_broadcast` has
+  the expected structure, the caller is expected to perform these checks before
+  calling this function.
 
   Args:
     before_broadcast: The first result of splitting `next_bb` on
@@ -605,8 +622,8 @@ def _extract_work(before_aggregate, grappler_config):
   """Extracts `work` from `before_aggregate`.
 
   This function is intended to be used by
-  `get_map_reduce_form_for_iterative_process` only. As a result, this function
-  does not assert that `before_aggregate` has the expected structure, the caller
+  `get_map_reduce_form_for_computation` only. As a result, this function does
+  not assert that `before_aggregate` has the expected structure, the caller
   is expected to perform these checks before calling this function.
 
   Args:
@@ -672,7 +689,7 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
   """Extracts federated aggregate functions from `before_aggregate`.
 
   This function is intended to be used by
-  `get_map_reduce_form_for_iterative_process` only. As a result, this function
+  `get_map_reduce_form_for_computation` only. As a result, this function
   does not assert that `before_aggregate` has the expected structure, the
   caller is expected to perform these checks before calling this function.
 
@@ -709,7 +726,7 @@ def _extract_update(after_aggregate, grappler_config):
   """Extracts `update` from `after_aggregate`.
 
   This function is intended to be used by
-  `get_map_reduce_form_for_iterative_process` only. As a result, this function
+  `get_map_reduce_form_for_computation` only. As a result, this function
   does not assert that `after_aggregate` has the expected structure, the
   caller is expected to perform these checks before calling this function.
 
@@ -854,7 +871,7 @@ def get_broadcast_form_for_computation(
   grappler_config = _merge_grappler_config_with_default(grappler_config)
 
   bb = comp.to_building_block()
-  if tff_internal_preprocessing:
+  if tff_internal_preprocessing is not None:
     bb = tff_internal_preprocessing(bb)
   bb, _ = tree_transformations.replace_intrinsics_with_bodies(bb)
   bb = _replace_lambda_body_with_call_dominant_form(bb)
@@ -888,20 +905,20 @@ def get_broadcast_form_for_computation(
       client_data_label=client_data_label)
 
 
-def get_map_reduce_form_for_iterative_process(
-    ip: iterative_process.IterativeProcess,
+def get_map_reduce_form_for_computation(
+    comp: computation_base.Computation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
 ) -> forms.MapReduceForm:
-  """Constructs `tff.backends.mapreduce.MapReduceForm` given iterative process.
+  """Constructs `tff.backends.mapreduce.MapReduceForm` for a computation.
 
   Args:
-    ip: An instance of `tff.templates.IterativeProcess` that is compatible with
-      MapReduce form. Iterative processes are only compatible if `initialize_fn`
-      returns a single federated value placed at `SERVER` and `next` takes
-      exactly two arguments. The first must be the state value placed at
-      `SERVER`. - `next` returns exactly two values.
+    comp: An instance of `computation_base.Computation` that is compatible with
+      MapReduce form. The computation must take exactly two arguments, and the
+      first must be a state value placed at `SERVER`. The computation must
+      return exactly two values. The type of the first element in the result
+      must also be assignable to the first element of the parameter.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the TensorFlow graphs backing the
       resulting `tff.backends.mapreduce.MapReduceForm`. These options are
@@ -914,25 +931,22 @@ def get_map_reduce_form_for_iterative_process(
 
   Returns:
     An instance of `tff.backends.mapreduce.MapReduceForm` equivalent to the
-    provided `tff.templates.IterativeProcess`.
+    provided `computation_base.Computation`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
     compiler.MapReduceFormCompilationError: If the compilation process fails.
   """
-  py_typecheck.check_type(ip, iterative_process.IterativeProcess)
-  initialize_bb, next_bb = (
-      check_iterative_process_compatible_with_map_reduce_form(
-          ip, tff_internal_preprocessing=tff_internal_preprocessing))
+  py_typecheck.check_type(comp, computation_base.Computation)
+  comp_bb = check_computation_compatible_with_map_reduce_form(
+      comp, tff_internal_preprocessing=tff_internal_preprocessing)
   py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
   grappler_config = _merge_grappler_config_with_default(grappler_config)
 
-  next_bb, _ = tree_transformations.uniquify_reference_names(next_bb)
-  before_broadcast, after_broadcast = _split_ast_on_broadcast(next_bb)
+  comp_bb, _ = tree_transformations.uniquify_reference_names(comp_bb)
+  before_broadcast, after_broadcast = _split_ast_on_broadcast(comp_bb)
   before_aggregate, after_aggregate = _split_ast_on_aggregate(after_broadcast)
 
-  initialize = compiler.consolidate_and_extract_local_processing(
-      initialize_bb, grappler_config)
   prepare = _extract_prepare(before_broadcast, grappler_config)
   work = _extract_work(before_aggregate, grappler_config)
   zero, accumulate, merge, report = _extract_federated_aggregate_functions(
@@ -947,16 +961,9 @@ def get_map_reduce_form_for_iterative_process(
       grappler_config)
   update = _extract_update(after_aggregate, grappler_config)
 
-  next_parameter_names = structure.name_list_with_nones(
-      ip.next.type_signature.parameter)
-  server_state_label, client_data_label = next_parameter_names
-  blocks = (initialize, prepare, work, zero, accumulate, merge, report,
-            secure_sum_bitwidth, secure_sum_max_input, secure_sum_modulus,
-            update)
+  blocks = (prepare, work, zero, accumulate, merge, report, secure_sum_bitwidth,
+            secure_sum_max_input, secure_sum_modulus, update)
   comps = (
       computation_impl.ConcreteComputation.from_building_block(bb)
       for bb in blocks)
-  return forms.MapReduceForm(
-      *comps,
-      server_state_label=server_state_label,
-      client_data_label=client_data_label)
+  return forms.MapReduceForm(comp.type_signature, *comps)

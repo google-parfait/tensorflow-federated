@@ -42,10 +42,6 @@ def _test_broadcast_form_computations():
 
 def _test_map_reduce_form_computations():
 
-  @tensorflow_computation.tf_computation
-  def initialize():
-    return tf.constant(0)
-
   @tensorflow_computation.tf_computation(tf.int32)
   def prepare(server_state):
     del server_state  # Unused
@@ -93,11 +89,11 @@ def _test_map_reduce_form_computations():
     del global_update  # Unused
     return tf.constant(1), []
 
-  return (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
-          max_input, modulus, update)
+  return (prepare, work, zero, accumulate, merge, report, bitwidth, max_input,
+          modulus, update)
 
 
-def _build_test_map_reduce_form_with_computations(initialize=None,
+def _build_test_map_reduce_form_with_computations(type_signature=None,
                                                   prepare=None,
                                                   work=None,
                                                   zero=None,
@@ -108,11 +104,14 @@ def _build_test_map_reduce_form_with_computations(initialize=None,
                                                   max_input=None,
                                                   modulus=None,
                                                   update=None):
-  (test_initialize, test_prepare, test_work, test_zero, test_accumulate,
-   test_merge, test_report, test_bitwidth, test_max_input, test_modulus,
+  (test_prepare, test_work, test_zero, test_accumulate, test_merge, test_report,
+   test_bitwidth, test_max_input, test_modulus,
    test_update) = _test_map_reduce_form_computations()
+  type_signature = (
+      type_signature or mapreduce_test_utils.generate_unnamed_type_signature(
+          test_update, test_work, test_report))
   return forms.MapReduceForm(
-      initialize if initialize else test_initialize,
+      type_signature,
       prepare if prepare else test_prepare,
       work if work else test_work,
       zero if zero else test_zero,
@@ -166,12 +165,6 @@ class MapReduceFormTest(absltest.TestCase):
     server_state_type = computation_types.TensorType(
         shape=[None], dtype=tf.int32)
 
-    @tensorflow_computation.tf_computation
-    def initialize():
-      # Return a value of a type assignable to, but not equal to
-      # `server_state_type`
-      return tf.constant([1, 2, 3])
-
     @tensorflow_computation.tf_computation(server_state_type)
     def prepare(server_state):
       del server_state  # Unused
@@ -222,23 +215,16 @@ class MapReduceFormTest(absltest.TestCase):
       del global_update  # Unused
       # Return a new server state value whose type is assignable but not equal
       # to `server_state_type`, and which is different from the type returned
-      # by `initialize`.
+      # by the expected initial state.
       return tf.constant([1]), []
 
+    type_signature = mapreduce_test_utils.generate_unnamed_type_signature(
+        update, work, report)
     try:
-      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
-                          report, bitwidth, max_input, modulus, update)
+      forms.MapReduceForm(type_signature, prepare, work, zero, accumulate,
+                          merge, report, bitwidth, max_input, modulus, update)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
-
-  def test_init_raises_type_error_with_bad_initialize_result_type(self):
-
-    @tensorflow_computation.tf_computation
-    def initialize():
-      return tf.constant(0.0)
-
-    with self.assertRaises(TypeError):
-      _build_test_map_reduce_form_with_computations(initialize=initialize)
 
   def test_init_raises_type_error_with_bad_prepare_parameter_type(self):
 
@@ -422,16 +408,16 @@ class MapReduceFormTest(absltest.TestCase):
 
   def test_securely_aggregates_tensors_true(self):
     cf_with_secure_sum = mapreduce_test_utils.get_federated_sum_example(
-        secure_sum=True)
+        secure_sum=True).mrf
     self.assertTrue(cf_with_secure_sum.securely_aggregates_tensors)
 
   def test_securely_aggregates_tensors_false(self):
     cf_with_no_secure_sum = mapreduce_test_utils.get_federated_sum_example(
-        secure_sum=False)
+        secure_sum=False).mrf
     self.assertFalse(cf_with_no_secure_sum.securely_aggregates_tensors)
 
   def test_summary(self):
-    mrf = mapreduce_test_utils.get_temperature_sensor_example()
+    mrf = mapreduce_test_utils.get_temperature_sensor_example().mrf
 
     class CapturePrint(object):
 
@@ -446,7 +432,6 @@ class MapReduceFormTest(absltest.TestCase):
     # pyformat: disable
     self.assertEqual(
         capture.summary,
-        'initialize                : ( -> <num_rounds=int32>)\n'
         'prepare                   : (<num_rounds=int32> -> <max_temperature=float32>)\n'
         'work                      : (<data=float32*,state=<max_temperature=float32>> -> <<is_over=bool>,<>,<>,<>>)\n'
         'zero                      : ( -> <num_total=int32,num_over=int32>)\n'

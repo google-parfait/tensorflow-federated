@@ -84,17 +84,12 @@ def get_iterative_process_for_sum_example():
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
-def get_iterative_process_with_nested_broadcasts():
-  """Returns an iterative process with nested federated broadcasts.
+def get_computation_with_nested_broadcasts():
+  """Returns a computation with nested federated broadcasts.
 
-  This iterative process contains all the components required to compile to
+  This computation contains all the components required to compile to
   `forms.MapReduceForm`.
   """
-
-  @federated_computation.federated_computation
-  def init_fn():
-    """The `init` function for `tff.templates.IterativeProcess`."""
-    return intrinsics.federated_value([0, 0], placements.SERVER)
 
   @tensorflow_computation.tf_computation([tf.int32, tf.int32])
   def prepare(server_state):
@@ -122,7 +117,7 @@ def get_iterative_process_with_nested_broadcasts():
       computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
-  def next_fn(server_state, client_data):
+  def comp_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
     s2 = intrinsics.federated_map(prepare, server_state)
     unused_client_input, to_broadcast = broadcast_and_return_arg_and_result(s2)
@@ -137,7 +132,7 @@ def get_iterative_process_with_nested_broadcasts():
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output
 
-  return iterative_process.IterativeProcess(init_fn, next_fn)
+  return comp_fn
 
 
 def get_iterative_process_for_sum_example_with_no_prepare():
@@ -534,42 +529,37 @@ class MapReduceFormTestCase(tf.test.TestCase):
           type(value)))
 
 
-class GetIterativeProcessForMapReduceFormTest(MapReduceFormTestCase):
+class GetComputationForMapReduceFormTest(MapReduceFormTestCase):
 
   def test_with_temperature_sensor_example(self):
-    mrf = mapreduce_test_utils.get_temperature_sensor_example()
-    it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
+    example = mapreduce_test_utils.get_temperature_sensor_example()
 
-    state = it.initialize()
-    self.assertAllEqual(state, collections.OrderedDict(num_rounds=0))
+    state = example.initialize()
 
-    state, metrics = it.next(state, [[28.0], [30.0, 33.0, 29.0]])
+    comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
+    state, metrics = comp(state, [[28.0], [30.0, 33.0, 29.0]])
     self.assertAllEqual(state, collections.OrderedDict(num_rounds=1))
     self.assertAllClose(metrics,
                         collections.OrderedDict(ratio_over_threshold=0.5))
 
-    state, metrics = it.next(state, [[33.0], [34.0], [35.0], [36.0]])
+    state, metrics = comp(state, [[33.0], [34.0], [35.0], [36.0]])
     self.assertAllClose(metrics,
                         collections.OrderedDict(ratio_over_threshold=0.75))
 
 
-class CheckMapReduceFormCompatibleWithIterativeProcessTest(
-    MapReduceFormTestCase, parameterized.TestCase):
+class CheckMapReduceFormCompatibleWithComputationTest(MapReduceFormTestCase,
+                                                      parameterized.TestCase):
 
   @parameterized.named_parameters(
       *get_example_cf_compatible_iterative_processes())
   def test_allows_valid_computation(self, ip):
-    form_utils.check_iterative_process_compatible_with_map_reduce_form(ip)
+    form_utils.check_computation_compatible_with_map_reduce_form(ip.next)
 
   def test_disallows_broadcast_dependent_on_aggregate(self):
 
-    @federated_computation.federated_computation
-    def init_comp():
-      return intrinsics.federated_value(0, placements.SERVER)
-
     @federated_computation.federated_computation(
         computation_types.at_server(tf.int32), computation_types.at_clients(()))
-    def next_comp(server_state, client_data):
+    def comp(server_state, client_data):
       del server_state, client_data
       client_val = intrinsics.federated_value(0, placements.CLIENTS)
       server_agg = intrinsics.federated_sum(client_val)
@@ -580,121 +570,121 @@ class CheckMapReduceFormCompatibleWithIterativeProcessTest(
       # `next` must return two values.
       return server_agg_again, intrinsics.federated_value((), placements.SERVER)
 
-    ip = iterative_process.IterativeProcess(init_comp, next_comp)
-
     with self.assertRaises(ValueError):
-      form_utils.check_iterative_process_compatible_with_map_reduce_form(ip)
+      form_utils.check_computation_compatible_with_map_reduce_form(comp)
 
 
-class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
-                                              parameterized.TestCase):
+class GetMapReduceFormTest(MapReduceFormTestCase, parameterized.TestCase):
 
   def test_next_computation_returning_tensor_fails_well(self):
-    mrf = mapreduce_test_utils.get_temperature_sensor_example()
-    it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
-    init_result = it.initialize.type_signature.result
+    initialize = (
+        mapreduce_test_utils.get_temperature_sensor_example().initialize)
+    init_result = initialize.type_signature.result
     lam = building_blocks.Lambda('x', init_result,
                                  building_blocks.Reference('x', init_result))
-    bad_it = iterative_process.IterativeProcess(
-        it.initialize,
-        computation_impl.ConcreteComputation.from_building_block(lam))
+    bad_comp = computation_impl.ConcreteComputation.from_building_block(lam)
     with self.assertRaises(TypeError):
-      form_utils.get_map_reduce_form_for_iterative_process(bad_it)
+      form_utils.get_map_reduce_form_for_computation(bad_comp)
 
   def test_broadcast_dependent_on_aggregate_fails_well(self):
-    mrf = mapreduce_test_utils.get_temperature_sensor_example()
-    it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
-    next_comp = it.next.to_building_block()
-    top_level_param = building_blocks.Reference(next_comp.parameter_name,
-                                                next_comp.parameter_type)
-    first_result = building_blocks.Call(next_comp, top_level_param)
+    example = mapreduce_test_utils.get_temperature_sensor_example()
+    comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
+    comp_bb = comp.to_building_block()
+    top_level_param = building_blocks.Reference(comp_bb.parameter_name,
+                                                comp_bb.parameter_type)
+    first_result = building_blocks.Call(comp_bb, top_level_param)
     middle_param = building_blocks.Struct([
         building_blocks.Selection(first_result, index=0),
         building_blocks.Selection(top_level_param, index=1)
     ])
-    second_result = building_blocks.Call(next_comp, middle_param)
-    not_reducible = building_blocks.Lambda(next_comp.parameter_name,
-                                           next_comp.parameter_type,
+    second_result = building_blocks.Call(comp_bb, middle_param)
+    not_reducible = building_blocks.Lambda(comp_bb.parameter_name,
+                                           comp_bb.parameter_type,
                                            second_result)
-    not_reducible_it = iterative_process.IterativeProcess(
-        it.initialize,
-        computation_impl.ConcreteComputation.from_building_block(not_reducible))
+    bad_comp = computation_impl.ConcreteComputation.from_building_block(
+        not_reducible)
 
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):
-      form_utils.get_map_reduce_form_for_iterative_process(not_reducible_it)
+      form_utils.get_map_reduce_form_for_computation(bad_comp)
 
   def test_gets_map_reduce_form_for_nested_broadcast(self):
-    ip = get_iterative_process_with_nested_broadcasts()
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(ip)
+    comp = get_computation_with_nested_broadcasts()
+    mrf = form_utils.get_map_reduce_form_for_computation(comp)
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
   def test_constructs_map_reduce_form_from_mnist_training_example(self):
-    it = form_utils.get_iterative_process_for_map_reduce_form(
-        mapreduce_test_utils.get_mnist_training_example())
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(it)
+    comp = form_utils.get_computation_for_map_reduce_form(
+        mapreduce_test_utils.get_mnist_training_example().mrf)
+    mrf = form_utils.get_map_reduce_form_for_computation(comp)
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
   def test_temperature_example_round_trip(self):
-    # NOTE: the roundtrip through MapReduceForm->IterProc->MapReduceForm seems
+    # NOTE: the roundtrip through MapReduceForm->Comp->MapReduceForm seems
     # to lose the python container annotations on the StructType.
-    it = form_utils.get_iterative_process_for_map_reduce_form(
-        mapreduce_test_utils.get_temperature_sensor_example())
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(it)
-    new_it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
-    state = new_it.initialize()
+    example = mapreduce_test_utils.get_temperature_sensor_example()
+    comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
+    new_initialize = (
+        form_utils.get_state_initialization_computation_for_map_reduce_form(
+            example.initialize))
+    new_mrf = form_utils.get_map_reduce_form_for_computation(comp)
+    new_comp = form_utils.get_computation_for_map_reduce_form(new_mrf)
+    state = new_initialize()
     self.assertEqual(state['num_rounds'], 0)
 
-    state, metrics = new_it.next(state, [[28.0], [30.0, 33.0, 29.0]])
+    state, metrics = new_comp(state, [[28.0], [30.0, 33.0, 29.0]])
     self.assertEqual(state['num_rounds'], 1)
     self.assertAllClose(metrics,
                         collections.OrderedDict(ratio_over_threshold=0.5))
 
-    state, metrics = new_it.next(state, [[33.0], [34.0], [35.0], [36.0]])
+    state, metrics = new_comp(state, [[33.0], [34.0], [35.0], [36.0]])
     self.assertAllClose(metrics,
                         collections.OrderedDict(ratio_over_threshold=0.75))
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
-            it.next.to_building_block()),
+            comp.to_building_block()),
         tree_analysis.count_tensorflow_variables_under(
-            new_it.next.to_building_block()))
+            new_comp.to_building_block()))
 
   def test_mnist_training_round_trip(self):
-    it = form_utils.get_iterative_process_for_map_reduce_form(
-        mapreduce_test_utils.get_mnist_training_example())
+    example = mapreduce_test_utils.get_mnist_training_example()
+    comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
 
     # TODO(b/208887729): We disable grappler to work around attempting to hoist
     # transformed functions of the same name into the eager context. When this
     # execution is C++-backed, this can go away.
     grappler_config = tf.compat.v1.ConfigProto()
     grappler_config.graph_options.rewrite_options.disable_meta_optimizer = True
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(
-        it, grappler_config)
-    new_it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
+    new_initialize = (
+        form_utils.get_state_initialization_computation_for_map_reduce_form(
+            example.initialize))
+    new_mrf = form_utils.get_map_reduce_form_for_computation(
+        comp, grappler_config)
+    new_comp = form_utils.get_computation_for_map_reduce_form(new_mrf)
 
-    state1 = it.initialize()
-    state2 = new_it.initialize()
+    state1 = example.initialize()
+    state2 = new_initialize()
     self.assertAllClose(state1, state2)
     whimsy_x = np.array([[0.5] * 784], dtype=np.float32)
     whimsy_y = np.array([1], dtype=np.int32)
     client_data = [collections.OrderedDict(x=whimsy_x, y=whimsy_y)]
-    round_1 = it.next(state1, [client_data])
+    round_1 = new_comp(state1, [client_data])
     state = round_1[0]
     metrics = round_1[1]
-    alt_round_1 = new_it.next(state2, [client_data])
+    alt_round_1 = new_comp(state2, [client_data])
     alt_state = alt_round_1[0]
     self.assertAllClose(state, alt_state)
     alt_metrics = alt_round_1[1]
     self.assertAllClose(metrics, alt_metrics)
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
-            it.next.to_building_block()),
+            comp.to_building_block()),
         tree_analysis.count_tensorflow_variables_under(
-            new_it.next.to_building_block()))
+            new_comp.to_building_block()))
 
   @parameterized.named_parameters(
       *get_example_cf_compatible_iterative_processes())
   def test_returns_map_reduce_form(self, ip):
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(ip)
+    mrf = form_utils.get_map_reduce_form_for_computation(ip.next)
 
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
@@ -703,21 +693,21 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
   def test_returns_canonical_form_with_grappler_disabled(self, ip):
     grappler_config = tf.compat.v1.ConfigProto()
     grappler_config.graph_options.rewrite_options.disable_meta_optimizer = True
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(
-        ip, grappler_config)
+    mrf = form_utils.get_map_reduce_form_for_computation(
+        ip.next, grappler_config)
 
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
   def test_returns_map_reduce_form_for_sum_example_with_no_aggregation(self):
     ip = get_iterative_process_for_sum_example_with_no_aggregation()
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(ip)
+    mrf = form_utils.get_map_reduce_form_for_computation(ip.next)
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
   def test_returns_map_reduce_form_with_indirection_to_intrinsic(self):
     ip = mapreduce_test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation(
     )
 
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(ip)
+    mrf = form_utils.get_map_reduce_form_for_computation(ip.next)
 
     self.assertIsInstance(mrf, forms.MapReduceForm)
 
@@ -727,7 +717,7 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
 
     Creates an `iterative_process.IterativeProcess` which uses
     `client_to_server_fn` to map from `client_data` to `server_output`, then
-    passes this value through `get_map_reduce_form_for_iterative_process`.
+    passes this value through `get_map_reduce_form_for_computation`.
 
     Args:
       client_to_server_fn: A function from client-placed data to server-placed
@@ -737,20 +727,15 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
       A `forms.MapReduceForm` which uses the embedded `client_to_server_fn`.
     """
 
-    @federated_computation.federated_computation
-    def init_fn():
-      return intrinsics.federated_value((), placements.SERVER)
-
     @federated_computation.federated_computation([
         computation_types.at_server(()),
         computation_types.at_clients(tf.int32),
     ])
-    def next_fn(server_state, client_data):
+    def comp_fn(server_state, client_data):
       server_output = client_to_server_fn(client_data)
       return server_state, server_output
 
-    ip = iterative_process.IterativeProcess(init_fn, next_fn)
-    return form_utils.get_map_reduce_form_for_iterative_process(ip)
+    return form_utils.get_map_reduce_form_for_computation(comp_fn)
 
   def test_returns_map_reduce_form_with_secure_sum_bitwidth(self):
     mrf = self.get_map_reduce_form_for_client_to_server_fn(

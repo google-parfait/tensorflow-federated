@@ -286,7 +286,7 @@ class CompilerIntegrationTest(parameterized.TestCase):
                                      max_scalars,
                                      min_scalars=0):
     aggregator = _mrfify_aggregator(aggregator)
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(aggregator)
+    mrf = form_utils.get_map_reduce_form_for_computation(aggregator.next)
     num_aggregated_scalars = type_analysis.count_tensors_in_type(
         mrf.work.type_signature.result)['parameters']
     self.assertLess(num_aggregated_scalars, max_scalars)
