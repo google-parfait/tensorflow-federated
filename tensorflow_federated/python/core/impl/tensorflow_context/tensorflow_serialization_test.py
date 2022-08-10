@@ -122,6 +122,26 @@ class TensorFlowSerializationTest(tf.test.TestCase):
             }, [tf_proto.result.tensor.tensor_name]))
     self.assertEqual(results, [10])
 
+  @tensorflow_test_utils.graph_mode_test
+  def test_serialize_tensorflow_with_dataset_yielding_lists(self):
+    self.skipTest('b/242057254: tf.data doesn\'t work well with TFF sequences '
+                  'typed to return python `list` types.')
+
+    def _legacy_dataset_reducer_example(ds):
+      return ds.reduce(np.int64(0), lambda x, y: x + y[0])
+
+    tf_proto, _ = self.assert_serializes(
+        _legacy_dataset_reducer_example,
+        computation_types.SequenceType([tf.int64]), '(<int64>* -> int64)')
+    parameter = tf.data.Dataset.range(5)
+    results = tf.compat.v1.Session().run(
+        tf.graph_util.import_graph_def(
+            serialization_utils.unpack_graph_def(tf_proto.graph_def), {
+                tf_proto.parameter.sequence.variant_tensor_name:
+                    tf.data.experimental.to_variant(parameter)
+            }, [tf_proto.result.tensor.tensor_name]))
+    self.assertEqual(results, [10])
+
 
 if __name__ == '__main__':
   tf.test.main()
