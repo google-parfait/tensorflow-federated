@@ -23,12 +23,14 @@ from typing import Callable, Optional
 
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import distributed_dp
+from tensorflow_federated.python.aggregators import elias_gamma_encode
 from tensorflow_federated.python.aggregators import encoded
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import secure
+from tensorflow_federated.python.aggregators import stochastic_discretization
 
 
 def _default_zeroing(
@@ -206,6 +208,70 @@ def compression_aggregator(
   """
   factory_ = encoded.EncodedSumFactory.quantize_above_threshold(
       quantization_bits=8, threshold=20000, **kwargs)
+
+  factory_ = (
+      mean.MeanFactory(factory_)
+      if weighted else mean.UnweightedMeanFactory(factory_))
+
+  if debug_measurements_fn:
+    factory_ = debug_measurements_fn(factory_)
+    if (weighted and
+        not isinstance(factory_, factory.WeightedAggregationFactory)) or (
+            (not weighted) and
+            (not isinstance(factory_, factory.UnweightedAggregationFactory))):
+      raise TypeError('debug_measurements_fn should return the same type.')
+
+  if clipping:
+    factory_ = _default_clipping(factory_)
+
+  if zeroing:
+    factory_ = _default_zeroing(factory_)
+
+  return factory_
+
+
+def entropy_compression_aggregator(
+    *,
+    step_size: float = 0.5,
+    zeroing: bool = True,
+    clipping: bool = True,
+    weighted: bool = True,
+    debug_measurements_fn: Optional[Callable[
+        [factory.AggregationFactory], factory.AggregationFactory]] = None,
+) -> factory.AggregationFactory:
+  """Creates an aggregation factory for quantization and entropy coding.
+
+  Args:
+    step_size: A positive float that determines the step size between adjacent
+      quantization levels; suggested range [0.1, 10.0].
+    zeroing: A boolean indicating whether to add zeroing out extreme client
+      updates (`True`) or not (`False`).
+    clipping: A boolean indicating whether to add clipping to large client
+      updates (`True`) or not (`False`).
+    weighted: A boolean indicating whether client model weights should be
+      averaged in a weighted manner (`True`) or unweighted manner (`False`).
+    debug_measurements_fn: A callable to add measurements suitable for debugging
+      learning algorithms, with possible values as None,
+      `tff.learning.add_debug_measurements` or
+      `tff.learning.add_debug_measurements_with_mixed_dtype`.
+
+  Returns:
+    A `tff.aggregators.AggregationFactory`.
+
+  Raises:
+    TypeError: if debug_measurement_fn yields an aggregation factory whose
+      weight type does not match `weighted`.
+    ValueError: if step_size is not a positive float.
+  """
+  if step_size <= 0.0:
+    raise ValueError('step_size should be a positive float.')
+
+  factory_ = elias_gamma_encode.EliasGammaEncodedSumFactory(
+      bitrate_mean_factory=mean.UnweightedMeanFactory())
+  factory_ = stochastic_discretization.StochasticDiscretizationFactory(
+      step_size=step_size,
+      inner_agg_factory=factory_,
+      distortion_aggregation_factory=mean.UnweightedMeanFactory())
 
   factory_ = (
       mean.MeanFactory(factory_)
