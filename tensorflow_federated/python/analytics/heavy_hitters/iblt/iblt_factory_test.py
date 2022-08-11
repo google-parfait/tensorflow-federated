@@ -82,35 +82,35 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
   def test_capacity_validation(self):
     with self.assertRaisesRegex(ValueError, 'capacity'):
       iblt_factory.IbltFactory(
-          capacity=0, string_max_length=10, repetitions=3, seed=0)
+          capacity=0, string_max_bytes=10, repetitions=3, seed=0)
     with self.assertRaisesRegex(ValueError, 'capacity'):
       iblt_factory.IbltFactory(
-          capacity=-1, string_max_length=10, repetitions=3, seed=0)
+          capacity=-1, string_max_bytes=10, repetitions=3, seed=0)
     # Should not raise
     iblt_factory.IbltFactory(
-        capacity=1, string_max_length=10, repetitions=3, seed=0)
+        capacity=1, string_max_bytes=10, repetitions=3, seed=0)
 
-  def test_string_max_length_validation(self):
-    with self.assertRaisesRegex(ValueError, 'string_max_length'):
+  def test_string_max_bytes_validation(self):
+    with self.assertRaisesRegex(ValueError, 'string_max_bytes'):
       iblt_factory.IbltFactory(
-          string_max_length=0, capacity=10, repetitions=3, seed=0)
-    with self.assertRaisesRegex(ValueError, 'string_max_length'):
+          string_max_bytes=0, capacity=10, repetitions=3, seed=0)
+    with self.assertRaisesRegex(ValueError, 'string_max_bytes'):
       iblt_factory.IbltFactory(
-          string_max_length=-1, capacity=10, repetitions=3, seed=0)
+          string_max_bytes=-1, capacity=10, repetitions=3, seed=0)
     # Should not raise
     iblt_factory.IbltFactory(
-        string_max_length=1, capacity=10, repetitions=3, seed=0)
+        string_max_bytes=1, capacity=10, repetitions=3, seed=0)
 
   def test_repetitions_validation(self):
     with self.assertRaisesRegex(ValueError, 'repetitions'):
       iblt_factory.IbltFactory(
-          repetitions=0, capacity=10, string_max_length=10, seed=0)
+          repetitions=0, capacity=10, string_max_bytes=10, seed=0)
     with self.assertRaisesRegex(ValueError, 'repetitions'):
       iblt_factory.IbltFactory(
-          repetitions=2, capacity=10, string_max_length=10, seed=0)
+          repetitions=2, capacity=10, string_max_bytes=10, seed=0)
     # Should not raise
     iblt_factory.IbltFactory(
-        repetitions=3, capacity=10, string_max_length=10, seed=0)
+        repetitions=3, capacity=10, string_max_bytes=10, seed=0)
 
   @parameterized.named_parameters(
       ('scalar',
@@ -151,11 +151,11 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_value_type_validation(self, value_type):
     iblt_agg_factory = iblt_factory.IbltFactory(
-        capacity=10, string_max_length=5, repetitions=3, seed=0)
+        capacity=10, string_max_bytes=5, repetitions=3, seed=0)
     with self.assertRaises(ValueError):
       iblt_agg_factory.create(value_type)
 
-  def test_string_max_length_error(self):
+  def test_string_max_bytes_error(self):
     client = collections.OrderedDict([
         (iblt_factory.DATASET_KEY,
          tf.constant(['thisisalongword'], dtype=tf.string)),
@@ -167,7 +167,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
             value=computation_types.TensorType(shape=(1,), dtype=tf.int64)))
     client_data = [tf.data.Dataset.from_tensor_slices(client)]
     iblt_agg_factory = iblt_factory.IbltFactory(
-        capacity=10, string_max_length=5, repetitions=3, seed=0)
+        capacity=10, string_max_bytes=5, repetitions=3, seed=0)
     iblt_agg_process = iblt_agg_factory.create(value_type)
     with self.assertRaises(tf.errors.InvalidArgumentError):
       iblt_agg_process.next(iblt_agg_process.initialize(), client_data)
@@ -176,7 +176,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
       {
           'testcase_name': 'default_factories',
           'capacity': 10,
-          'string_max_length': 10,
+          'string_max_bytes': 10,
           'repetitions': DEFAULT_REPETITIONS,
           'seed': 0,
       },
@@ -184,7 +184,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
           'testcase_name': 'sketch_secure_factory',
           'sketch_agg_factory': secure.SecureSumFactory(2**32 - 1),
           'capacity': 20,
-          'string_max_length': 20,
+          'string_max_bytes': 20,
           'repetitions': DEFAULT_REPETITIONS,
           'seed': 1,
       },
@@ -192,7 +192,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
           'testcase_name': 'tensor_value_sum_factory',
           'value_tensor_agg_factory': sum_factory.SumFactory(),
           'capacity': 100,
-          'string_max_length': 10,
+          'string_max_bytes': 10,
           'repetitions': 5,
           'seed': 5,
       },
@@ -201,7 +201,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
           'sketch_agg_factory': secure.SecureSumFactory(2**32 - 1),
           'value_tensor_agg_factory': secure.SecureSumFactory(2**32 - 1),
           'capacity': 10,
-          'string_max_length': 10,
+          'string_max_bytes': 10,
           'repetitions': 4,
           'seed': 5,
       },
@@ -210,7 +210,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
       self,
       *,
       capacity: int,
-      string_max_length: int,
+      string_max_bytes: int,
       repetitions: int,
       seed: int,
       sketch_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
@@ -221,7 +221,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
         sketch_agg_factory=sketch_agg_factory,
         value_tensor_agg_factory=value_tensor_agg_factory,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         seed=seed)
     iblt_agg_process = iblt_agg_factory.create(VALUE_TYPE)
@@ -261,7 +261,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
         repetitions=DEFAULT_REPETITIONS,
         seed=WHIMSY_SEED,
         capacity=2,
-        string_max_length=5,
+        string_max_bytes=5,
     )
     iblt_agg_process = iblt_agg_factory.create(
         value_type=computation_types.SequenceType(

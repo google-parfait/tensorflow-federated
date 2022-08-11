@@ -21,7 +21,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 @tf.function
 def get_all_elements(dataset: tf.data.Dataset,
-                     max_string_length: Optional[int] = None):
+                     string_max_bytes: Optional[int] = None):
   """Gets all the elements from the input dataset.
 
   The input `dataset` must yield batched rank-1 tensors. This function reads
@@ -29,8 +29,8 @@ def get_all_elements(dataset: tf.data.Dataset,
 
   Args:
     dataset: A `tf.data.Dataset`.
-    max_string_length: The maximum length (in bytes) of strings in the dataset.
-      Strings longer than `max_string_length` will be truncated. Defaults to
+    string_max_bytes: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `string_max_bytes` will be truncated. Defaults to
       `None`, which means there is no limit of the string length.
 
   Returns:
@@ -39,7 +39,7 @@ def get_all_elements(dataset: tf.data.Dataset,
   Raises:
     ValueError:
       -- If the shape of elements in `dataset` is not rank 1.
-      -- If `max_string_length` is not `None` and is less than 1.
+      -- If `string_max_bytes` is not `None` and is less than 1.
     TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
       `tf.string`.
   """
@@ -53,16 +53,16 @@ def get_all_elements(dataset: tf.data.Dataset,
     raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
                     f' element type {dataset.element_spec.dtype}')
 
-  if max_string_length is not None and max_string_length < 1:
-    raise ValueError('`max_string_length` must be at least 1 when it is not'
+  if string_max_bytes is not None and string_max_bytes < 1:
+    raise ValueError('`string_max_bytes` must be at least 1 when it is not'
                      ' None.')
 
   initial_list = tf.constant([], dtype=tf.string)
 
   def add_element(element_list, element_batch):
-    if max_string_length is not None:
+    if string_max_bytes is not None:
       element_batch = tf.strings.substr(
-          element_batch, 0, max_string_length, unit='BYTE')
+          element_batch, 0, string_max_bytes, unit='BYTE')
     element_list = tf.concat([element_list, element_batch], axis=0)
     return element_list
 
@@ -123,7 +123,7 @@ def _get_capped_dataset(dataset: tf.data.Dataset,
 def get_capped_elements(dataset: tf.data.Dataset,
                         max_user_contribution: int,
                         batch_size: int = 1,
-                        max_string_length: Optional[int] = None):
+                        string_max_bytes: Optional[int] = None):
   """Gets the first `max_user_contribution` elements from the input dataset.
 
   The input `dataset` must yield batched rank-1 tensors. This function reads
@@ -137,8 +137,8 @@ def get_capped_elements(dataset: tf.data.Dataset,
     dataset: A `tf.data.Dataset`.
     max_user_contribution: The maximum number of elements to return.
     batch_size: The number of elements in each batch of `dataset`.
-    max_string_length: The maximum length (in bytes) of strings in the dataset.
-      Strings longer than `max_string_length` will be truncated. Defaults to
+    string_max_bytes: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `string_max_bytes` will be truncated. Defaults to
       `None`, which means there is no limit of the string length.
 
   Returns:
@@ -151,25 +151,25 @@ def get_capped_elements(dataset: tf.data.Dataset,
       -- If the shape of elements in `dataset` is not rank 1.
       -- If `max_user_contribution` is less than 1.
       -- If `batch_size` is less than 1.
-      -- If `max_string_length` is not `None` and is less than 1.
+      -- If `string_max_bytes` is not `None` and is less than 1.
     TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
       `tf.string`.
   """
 
-  if max_string_length is not None and max_string_length < 1:
-    raise ValueError('`max_string_length` must be at least 1 when it is not'
+  if string_max_bytes is not None and string_max_bytes < 1:
+    raise ValueError('`string_max_bytes` must be at least 1 when it is not'
                      ' None.')
   capped_dataset = _get_capped_dataset(
       dataset=dataset,
       max_user_contribution=max_user_contribution,
       batch_size=batch_size)
-  return get_all_elements(capped_dataset, max_string_length)
+  return get_all_elements(capped_dataset, string_max_bytes)
 
 
 def get_capped_elements_with_counts(dataset: tf.data.Dataset,
                                     max_user_contribution: int,
                                     batch_size: int = 1,
-                                    max_string_length: Optional[int] = None):
+                                    string_max_bytes: Optional[int] = None):
   """Gets the capped elements with counts from the input dataset.
 
   The input `dataset` must yield batched rank-1 tensors. This function reads
@@ -183,8 +183,8 @@ def get_capped_elements_with_counts(dataset: tf.data.Dataset,
     dataset: A `tf.data.Dataset`.
     max_user_contribution: The maximum number of elements to return.
     batch_size: The number of elements in each batch of `dataset`.
-    max_string_length: The maximum length (in bytes) of strings in the dataset.
-      Strings longer than `max_string_length` will be truncated. Defaults to
+    string_max_bytes: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `string_max_bytes` will be truncated. Defaults to
       `None`, which means there is no limit of the string length.
 
   Returns:
@@ -199,23 +199,23 @@ def get_capped_elements_with_counts(dataset: tf.data.Dataset,
       -- If the shape of elements in `dataset` is not rank 1.
       -- If `max_user_contribution` is less than 1.
       -- If `batch_size` is less than 1.
-      -- If `max_string_length` is not `None` and is less than 1.
+      -- If `string_max_bytes` is not `None` and is less than 1.
     TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
       `tf.string`.
   """
-  if max_string_length is not None and max_string_length < 1:
-    raise ValueError('`max_string_length` must be at least 1 when it is not'
+  if string_max_bytes is not None and string_max_bytes < 1:
+    raise ValueError('`string_max_bytes` must be at least 1 when it is not'
                      ' None.')
   capped_dataset = _get_capped_dataset(
       dataset=dataset,
       max_user_contribution=max_user_contribution,
       batch_size=batch_size)
-  return get_unique_elements_with_counts(capped_dataset, max_string_length)
+  return get_unique_elements_with_counts(capped_dataset, string_max_bytes)
 
 
 @tf.function
 def get_unique_elements(dataset: tf.data.Dataset,
-                        max_string_length: Optional[int] = None):
+                        string_max_bytes: Optional[int] = None):
   """Gets the unique elements from the input `dataset`.
 
   The input `dataset` must yield batched rank-1 tensors. This function reads
@@ -224,8 +224,8 @@ def get_unique_elements(dataset: tf.data.Dataset,
 
   Args:
     dataset: A `tf.data.Dataset`. Element type must be `tf.string`.
-    max_string_length: The maximum lenghth (in bytes) of strings in the dataset.
-      Strings longer than `max_string_length` will be truncated. Defaults to
+    string_max_bytes: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `string_max_bytes` will be truncated. Defaults to
       `None`, which means there is no limit of the string length.
 
   Returns:
@@ -234,7 +234,7 @@ def get_unique_elements(dataset: tf.data.Dataset,
   Raises:
     ValueError:
       -- If the shape of elements in `dataset` is not rank 1.
-      -- If `max_string_length` is not `None` and is less than 1.
+      -- If `string_max_bytes` is not `None` and is less than 1.
     TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
       `tf.string`.
   """
@@ -244,8 +244,8 @@ def get_unique_elements(dataset: tf.data.Dataset,
                      f' found rank = {dataset.element_spec.shape.rank}'
                      ' instead.')
 
-  if max_string_length is not None and max_string_length < 1:
-    raise ValueError('`max_string_length` must be at least 1 when it is not'
+  if string_max_bytes is not None and string_max_bytes < 1:
+    raise ValueError('`string_max_bytes` must be at least 1 when it is not'
                      ' None.')
 
   if dataset.element_spec.dtype != tf.string:
@@ -255,9 +255,9 @@ def get_unique_elements(dataset: tf.data.Dataset,
   initial_list = tf.constant([], dtype=tf.string)
 
   def add_unique_element(element_list, element_batch):
-    if max_string_length is not None:
+    if string_max_bytes is not None:
       element_batch = tf.strings.substr(
-          element_batch, 0, max_string_length, unit='BYTE')
+          element_batch, 0, string_max_bytes, unit='BYTE')
     element_list = tf.concat([element_list, element_batch], axis=0)
     element_list, _ = tf.unique(element_list)
     return element_list
@@ -272,7 +272,7 @@ def get_unique_elements(dataset: tf.data.Dataset,
 # The current implementation iterates `dataset` twice, which is not optimal.
 def get_unique_elements_with_counts(
     dataset: tf.data.Dataset,
-    max_string_length: Optional[int] = None) -> Tuple[tf.Tensor, tf.Tensor]:
+    string_max_bytes: Optional[int] = None) -> Tuple[tf.Tensor, tf.Tensor]:
   """Gets unique elements and their counts from the input `dataset`.
 
   This method returns a tuple of `elements` and `counts`, where `elements` are
@@ -286,8 +286,8 @@ def get_unique_elements_with_counts(
   Args:
     dataset: A `tf.data.Dataset` to elements from. Element type must be
       `tf.string`.
-    max_string_length: The maximum lenghth (in bytes) of strings in the dataset.
-      Strings longer than `max_string_length` will be truncated. Defaults to
+    string_max_bytes: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `string_max_bytes` will be truncated. Defaults to
       `None`, which means there is no limit of the string length.
 
   Returns:
@@ -298,7 +298,7 @@ def get_unique_elements_with_counts(
   Raises:
     ValueError:
       -- If the shape of elements in `dataset` is not rank 1
-      -- If `max_string_length` is not `None` and is less than 1.
+      -- If `string_max_bytes` is not `None` and is less than 1.
     TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
       `tf.string`.
   """
@@ -307,15 +307,15 @@ def get_unique_elements_with_counts(
                      f' found rank = {dataset.element_spec.shape.rank}'
                      ' instead.')
 
-  if max_string_length is not None and max_string_length < 1:
-    raise ValueError('`max_string_length` must be at least 1 when it is not'
+  if string_max_bytes is not None and string_max_bytes < 1:
+    raise ValueError('`string_max_bytes` must be at least 1 when it is not'
                      ' None.')
 
   if dataset.element_spec.dtype != tf.string:
     raise TypeError('`dataset.element_spec.dtype` must be `tf.string`, found'
                     f' element type {dataset.element_spec.dtype}')
 
-  all_elements = get_all_elements(dataset, max_string_length)
+  all_elements = get_all_elements(dataset, string_max_bytes)
 
   elements, indices = tf.unique(all_elements)
 
@@ -335,7 +335,7 @@ def get_unique_elements_with_counts(
 def get_top_elements_with_counts(
     dataset: tf.data.Dataset,
     max_user_contribution: int,
-    max_string_length: Optional[int] = None) -> Tuple[tf.Tensor, tf.Tensor]:
+    string_max_bytes: Optional[int] = None) -> Tuple[tf.Tensor, tf.Tensor]:
   """Gets top unique elements from the input `dataset`.
 
   This method returns a tuple of `elements` and `counts`, where `elements` are
@@ -349,8 +349,8 @@ def get_top_elements_with_counts(
     dataset: A `tf.data.Dataset` to extract top elements from. Element type must
       be `tf.string`.
     max_user_contribution: The maximum number of elements to keep.
-    max_string_length: The maximum lenghth (in bytes) of strings in the dataset.
-      Strings longer than `max_string_length` will be truncated. Defaults to
+    string_max_bytes: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `string_max_bytes` will be truncated. Defaults to
       `None`, which means there is no limit of the string length.
 
   Returns:
@@ -364,14 +364,14 @@ def get_top_elements_with_counts(
     ValueError:
       -- If the shape of elements in `dataset` is not rank 1.
       -- If `max_user_contribution` is less than 1.
-      -- If `max_string_length` is not `None` and is less than 1.
+      -- If `string_max_bytes` is not `None` and is less than 1.
     TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
       `tf.string`.
   """
   if max_user_contribution < 1:
     raise ValueError('`max_user_contribution` must be at least 1.')
 
-  elements, counts = get_unique_elements_with_counts(dataset, max_string_length)
+  elements, counts = get_unique_elements_with_counts(dataset, string_max_bytes)
 
   if tf.math.greater(tf.size(elements), max_user_contribution):
     counts, top_indices = tf.math.top_k(
@@ -383,7 +383,7 @@ def get_top_elements_with_counts(
 
 def get_top_elements(dataset: tf.data.Dataset,
                      max_user_contribution: int,
-                     max_string_length: Optional[int] = None):
+                     string_max_bytes: Optional[int] = None):
   """Gets top unique elements from the input `dataset`.
 
   This method returns the set of `max_user_contribution` elements that appear
@@ -402,8 +402,8 @@ def get_top_elements(dataset: tf.data.Dataset,
     dataset: A `tf.data.Dataset` to extract top elements from. Element type must
       be `tf.string`.
     max_user_contribution: The maximum number of elements to keep.
-    max_string_length: The maximum length (in bytes) of strings in the dataset.
-      Strings longer than `max_string_length` will be truncated. Defaults to
+    string_max_bytes: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `string_max_bytes` will be truncated. Defaults to
       `None`, which means there is no limit of the string length.
 
   Returns:
@@ -416,20 +416,20 @@ def get_top_elements(dataset: tf.data.Dataset,
     ValueError:
       -- If the shape of elements in `dataset` is not rank 1.
       -- If `max_user_contribution` is less than 1.
-      -- If `max_string_length` is not `None` and is less than 1.
+      -- If `string_max_bytes` is not `None` and is less than 1.
     TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
       `tf.string`.
   """
   top_elements, _ = get_top_elements_with_counts(
       dataset=dataset,
       max_user_contribution=max_user_contribution,
-      max_string_length=max_string_length)
+      string_max_bytes=string_max_bytes)
   return top_elements
 
 
 def get_top_multi_elements(dataset: tf.data.Dataset,
                            max_user_contribution: int,
-                           max_string_length: Optional[int] = None):
+                           string_max_bytes: Optional[int] = None):
   """Gets the top unique word multiset from the input `dataset`.
 
   This method returns the `max_user_contribution` most common unique elements
@@ -449,8 +449,8 @@ def get_top_multi_elements(dataset: tf.data.Dataset,
     dataset: A `tf.data.Dataset` to extract top elements from. Element type must
       be `tf.string`.
     max_user_contribution: The maximum number of elements to keep.
-    max_string_length: The maximum length (in bytes) of strings in the dataset.
-      Strings longer than `max_string_length` will be truncated. Defaults to
+    string_max_bytes: The maximum length (in bytes) of strings in the dataset.
+      Strings longer than `string_max_bytes` will be truncated. Defaults to
       `None`, which means there is no limit of the string length.
 
   Returns:
@@ -463,14 +463,14 @@ def get_top_multi_elements(dataset: tf.data.Dataset,
     ValueError:
       -- If the shape of elements in `dataset` is not rank 1.
       -- If `max_user_contribution` is less than 1.
-      -- If `max_string_length` is not `None` and is less than 1.
+      -- If `string_max_bytes` is not `None` and is less than 1.
     TypeError: If `dataset.element_spec.dtype` must be `tf.string` is not
       `tf.string`.
   """
   top_elements, counts = get_top_elements_with_counts(
       dataset=dataset,
       max_user_contribution=max_user_contribution,
-      max_string_length=max_string_length)
+      string_max_bytes=string_max_bytes)
   return tf.repeat(top_elements, counts)
 
 

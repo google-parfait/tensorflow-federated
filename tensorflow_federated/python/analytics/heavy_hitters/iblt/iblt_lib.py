@@ -204,7 +204,7 @@ class IbltDecoder:
       self,
       iblt: tf.Tensor,
       capacity: int,
-      string_max_length: int,
+      string_max_bytes: int,
       *,
       encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
       seed: int = 0,
@@ -231,7 +231,8 @@ class IbltDecoder:
     Args:
       iblt: Tensor representing the IBLT computed by the IbltEncoder.
       capacity: Number of distinct strings that we expect to be inserted.
-      string_max_length: Maximum length of a string that can be inserted.
+      string_max_bytes: Maximum length of a string in bytes that can be
+        inserted.
       encoding: The character encoding of the string data to decode. For
         non-character binary data or strings with unknown encoding, specify
         `CharacterEncoding.UNKNOWN`. Defaults to `CharacterEncoding.UTF8`.
@@ -250,7 +251,7 @@ class IbltDecoder:
         capacity, repetitions, hash_family, hash_family_params)
     self.field_size = field_size
     self.chunker = chunkers.create_chunker(
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         encoding=encoding,
         max_chunk_value=self.field_size,
         dtype=self._dtype)
@@ -502,7 +503,7 @@ class IbltEncoder:
 
   def __init__(self,
                capacity,
-               string_max_length,
+               string_max_bytes,
                *,
                encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
                drop_strings_above_max_length=False,
@@ -515,11 +516,11 @@ class IbltEncoder:
 
     Args:
       capacity: Number of distinct strings that we expect to be inserted.
-      string_max_length: Maximum length of a string that can be inserted.
+      string_max_bytes: Maximum length of a string in bytesthat can be inserted.
       encoding: The character encoding of the string data to encode. For
         non-character binary data or strings with unknown encoding, specify
         `CharacterEncoding.UNKNOWN`. Defaults to `CharacterEncoding.UTF8`.
-      drop_strings_above_max_length: If True, strings above string_max_length
+      drop_strings_above_max_length: If True, strings above `string_max_bytes`
         will be dropped when constructing the IBLT. Defaults to False.
       seed: Integer seed for hash functions. Defaults to 0.
       repetitions: Number of repetitions in IBLT data structure (must be >= 3).
@@ -530,7 +531,7 @@ class IbltEncoder:
         expects. (defaults are chosen based on capacity.)
       field_size: The field size for all values in IBLT. Defaults to 2**31 - 1.
     """
-    self.string_max_length = string_max_length
+    self.string_max_bytes = string_max_bytes
     self.table_size, hash_family, hash_family_params = _internal_parameters(
         capacity, repetitions, hash_family, hash_family_params)
     self.repetitions = repetitions
@@ -539,7 +540,7 @@ class IbltEncoder:
     self.drop_strings_above_max_length = drop_strings_above_max_length
     self._dtype = tf.int64
     self.chunker = chunkers.create_chunker(
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         encoding=encoding,
         max_chunk_value=self.field_size,
         dtype=self._dtype)
@@ -757,7 +758,7 @@ class IbltEncoder:
 def decode_iblt_tf(
     iblt: tf.Tensor,
     capacity: int,
-    string_max_length: int,
+    string_max_bytes: int,
     *,
     encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
     seed: int = 0,
@@ -774,7 +775,7 @@ def decode_iblt_tf(
   Args:
     iblt: Tensor representing the IBLT computed by the IbltEncoder.
     capacity: Number of distinct strings that we expect to be inserted.
-    string_max_length: Maximum length of a string that can be inserted.
+    string_max_bytes: Maximum length of a string in bytes that can be inserted.
     encoding: The character encoding of the string data to decode. For
       non-character binary data or strings with unknown encoding, specify
       `CharacterEncoding.UNKNOWN`.
@@ -796,7 +797,7 @@ def decode_iblt_tf(
   iblt_decoder = IbltDecoder(
       iblt=iblt,
       capacity=capacity,
-      string_max_length=string_max_length,
+      string_max_bytes=string_max_bytes,
       encoding=encoding,
       seed=seed,
       repetitions=repetitions,

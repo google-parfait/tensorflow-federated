@@ -60,7 +60,7 @@ class ServerOutput():
 def build_iblt_computation(
     *,
     capacity: int = 1000,
-    max_string_length: int = 10,
+    string_max_bytes: int = 10,
     repetitions: int = 3,
     seed: int = 0,
     max_heavy_hitters: Optional[int] = None,
@@ -77,8 +77,8 @@ def build_iblt_computation(
 
   Args:
     capacity: The capacity of the IBLT sketch. Defaults to `1000`.
-    max_string_length: The maximum length of a string in the IBLT. Defaults to
-      `10`. Must be positive.
+    string_max_bytes: The maximum length in byte sof a string in the IBLT.
+      Defaults to `10`. Must be positive.
     repetitions: The number of repetitions in IBLT data structure (must be >=
       3). Defaults to `3`. Must be at least `3`.
     seed: An integer seed for hash functions. Defaults to `0`.
@@ -118,9 +118,9 @@ def build_iblt_computation(
   Raises:
     ValueError: if parameters don't meet expectations.
   """
-  if max_string_length < 1:
-    raise ValueError('max_string_length should be at least 1, got '
-                     f'{max_string_length}')
+  if string_max_bytes < 1:
+    raise ValueError('string_max_bytes should be at least 1, got '
+                     f'{string_max_bytes}')
   if repetitions < 3:
     raise ValueError(f'repetitions should be at least 3, got {repetitions}')
   if max_heavy_hitters is not None and max_heavy_hitters < 1:
@@ -154,7 +154,7 @@ def build_iblt_computation(
     """The TF computation to compute the frequency sketches."""
     encoder = iblt_tensor.IbltTensorEncoder(
         capacity=capacity,
-        string_max_length=max_string_length,
+        string_max_bytes=string_max_bytes,
         encoding=_CharacterEncoding.UTF8,
         repetitions=repetitions,
         value_shape=(1,),
@@ -165,17 +165,17 @@ def build_iblt_computation(
             dataset,
             max_words_per_user,
             batch_size=batch_size,
-            max_string_length=max_string_length)
+            string_max_bytes=string_max_bytes)
       else:
         # `tff.analytics.data_processing.get_top_elements` returns the top
         # `max_words_per_user` words in client's local histogram. Each element
         # appears at most once in the list.
         k_words, counts = data_processing.get_top_elements_with_counts(
-            dataset, max_words_per_user, max_string_length=max_string_length)
+            dataset, max_words_per_user, string_max_bytes=string_max_bytes)
         counts = tf.ones_like(counts)
     else:
       k_words, counts = data_processing.get_unique_elements_with_counts(
-          dataset, max_string_length=max_string_length)
+          dataset, string_max_bytes=string_max_bytes)
       if not multi_contribution:
         counts = tf.ones_like(counts)
     counts = tf.reshape(counts, shape=[-1, 1])
@@ -190,7 +190,7 @@ def build_iblt_computation(
         iblt_values=count_tensor,
         value_shape=(1,),
         capacity=capacity,
-        string_max_length=max_string_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         seed=seed)
 

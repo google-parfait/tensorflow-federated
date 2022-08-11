@@ -41,7 +41,7 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
       iblt: tf.Tensor,
       iblt_values: tf.Tensor,
       capacity: int,
-      string_max_length: int,
+      string_max_bytes: int,
       value_shape: Sequence[int],
       *,
       seed: int = 0,
@@ -54,7 +54,7 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
         iblt=iblt,
         iblt_values=iblt_values,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         value_shape=value_shape,
         seed=seed,
         repetitions=repetitions,
@@ -84,7 +84,7 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
       iblt: tf.Tensor,
       iblt_values: tf.Tensor,
       capacity: int,
-      string_max_length: int,
+      string_max_bytes: int,
       value_shape: Sequence[int],
       *,
       seed: int = 0,
@@ -97,7 +97,7 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
         iblt=iblt,
         iblt_values=iblt_values,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         value_shape=value_shape,
         seed=seed,
         repetitions=repetitions,
@@ -120,7 +120,7 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
         iblt=iblt,
         iblt_values=iblt_values,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         value_shape=value_shape,
         seed=seed,
         repetitions=repetitions,
@@ -151,11 +151,11 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
       {
           'testcase_name': 'trim_strings_above_max_length',
           'value_shape': (1,),
-          'string_max_length': 4,
-          # IBLT automatically chooses a larger `string_max_length` if some
+          'string_max_bytes': 4,
+          # IBLT automatically chooses a larger `string_max_bytes` if some
           # space is being wasted in the field encoding. For example if field is
           # 2**31 - 1 and as such we can encode 3 bytes per int, then if we
-          # choose `string_max_length = 4`, it will automatically update it to
+          # choose `string_max_bytes = 4`, it will automatically update it to
           # 2*3 = 6.
           'input_strings_list': [
               '2022', 'seattle', 'heavy', 'hitters', 'क', '☺️', 'has space',
@@ -174,7 +174,7 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
       {
           'testcase_name': 'drop_strings_above_max_length',
           'value_shape': (1,),
-          'string_max_length': 3,  # Maximum number of bytes.
+          'string_max_bytes': 3,  # Maximum number of bytes.
           'drop_strings_above_max_length': True,
           'input_strings_list': [
               '201', 'seattle', 'heavy', 'hitters', 'क', '☺️', 'has space',
@@ -264,7 +264,7 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
                                          output_strings_list,
                                          output_values_list,
                                          output_count_list,
-                                         string_max_length=12,
+                                         string_max_bytes=12,
                                          hash_family=None,
                                          hash_family_params=None,
                                          drop_strings_above_max_length=False):
@@ -274,7 +274,7 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
     iblt_encoder = iblt_tensor.IbltTensorEncoder(
         value_shape,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         hash_family=hash_family,
         hash_family_params=hash_family_params,
@@ -290,7 +290,7 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
         iblt_values=iblt_values,
         value_shape=value_shape,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         hash_family=hash_family,
         hash_family_params=hash_family_params,
@@ -351,12 +351,12 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
   def test_iblt_input_checks(self, value_shape, input_strings_list,
                              input_values_list, exception_raised):
     capacity = 10
-    string_max_length = 12
+    string_max_bytes = 12
     seed = 0
     iblt_encoder = iblt_tensor.IbltTensorEncoder(
         value_shape=value_shape,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         seed=seed,
         drop_strings_above_max_length=False)
     input_strings = tf.constant(input_strings_list, dtype=tf.string)

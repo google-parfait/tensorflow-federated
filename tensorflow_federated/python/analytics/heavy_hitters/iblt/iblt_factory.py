@@ -47,7 +47,7 @@ class ServerOutput():
 
 @tf.function
 def _parse_client_dict(dataset: tf.data.Dataset,
-                       string_max_length: int) -> Tuple[tf.Tensor, tf.Tensor]:
+                       string_max_bytes: int) -> Tuple[tf.Tensor, tf.Tensor]:
   """Parses the dictionary in the input `dataset` to key and value lists.
 
   Args:
@@ -56,8 +56,8 @@ def _parse_client_dict(dataset: tf.data.Dataset,
       representing a string in the dataset. `DATASET_VALUE`: A rank 1
       `tf.Tensor` with `dtype` `tf.int64` representing the value associate with
       the string.
-    string_max_length: The maximum length of the strings. If any string is
-      longer than `string_max_length`, a `ValueError` will be raised.
+    string_max_bytes: The maximum length of the strings in bytes. If any string
+      is longer than `string_max_bytes`, a `ValueError` will be raised.
 
   Returns:
     input_strings: A rank 1 `tf.Tensor` containing the list of strings in
@@ -65,7 +65,7 @@ def _parse_client_dict(dataset: tf.data.Dataset,
     string_values: A rank 2 `tf.Tensor` containing the values of
       `input_strings`.
   Raises:
-    ValueError: If any string in `dataset` is longer than string_max_length.
+    ValueError: If any string in `dataset` is longer than string_max_bytes.
   """
   parsed_dict = data_processing.to_stacked_tensor(dataset)
   input_strings = parsed_dict[DATASET_KEY]
@@ -73,9 +73,9 @@ def _parse_client_dict(dataset: tf.data.Dataset,
   tf.debugging.Assert(
       tf.math.logical_not(
           tf.math.reduce_any(
-              tf.greater(tf.strings.length(input_strings), string_max_length))),
+              tf.greater(tf.strings.length(input_strings), string_max_bytes))),
       data=[
-          f'IbltFactory: Input strings must be truncated to {string_max_length=}',
+          f'IbltFactory: Input strings must be truncated to {string_max_bytes=}',
           input_strings
       ],
       name='CHECK_STRING_LENGTH')
@@ -89,7 +89,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       self,
       *,
       capacity: int,
-      string_max_length: int,
+      string_max_bytes: int,
       encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
       repetitions: int,
       seed: int = 0,
@@ -101,7 +101,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
 
     Args:
       capacity: The capacity of the IBLT sketch. Must be positive.
-      string_max_length: The maximum length in bytes of a string in the IBLT.
+      string_max_bytes: The maximum length in bytes of a string in the IBLT.
         Must be positive.
       encoding: The character encoding of the string data to encode. For
         non-character binary data or strings with unknown encoding, specify
@@ -126,9 +126,9 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     """
     if capacity < 1:
       raise ValueError('capacity should be at least 1, got ' f'{capacity}')
-    if string_max_length < 1:
-      raise ValueError('string_max_length should be at least 1, got '
-                       f'{string_max_length}')
+    if string_max_bytes < 1:
+      raise ValueError('string_max_bytes should be at least 1, got '
+                       f'{string_max_bytes}')
     if repetitions < 3:
       raise ValueError(f'repetitions should be at least 3, got {repetitions}')
 
@@ -137,7 +137,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     self._value_tensor_agg_factory = sum_factory.SumFactory(
     ) if value_tensor_agg_factory is None else value_tensor_agg_factory
     self._capacity = capacity
-    self._string_max_length = string_max_length
+    self._string_max_bytes = string_max_bytes
     self._encoding = encoding
     self._repetitions = repetitions
     self._seed = seed
@@ -175,10 +175,10 @@ class IbltFactory(factory.UnweightedAggregationFactory):
     def encode_iblt(dataset):
       """The TF computation to compute the IBLT frequency sketches."""
       input_strings, string_values = _parse_client_dict(dataset,
-                                                        self._string_max_length)
+                                                        self._string_max_bytes)
       iblt_encoder = iblt_tensor.IbltTensorEncoder(
           capacity=self._capacity,
-          string_max_length=self._string_max_length,
+          string_max_bytes=self._string_max_bytes,
           encoding=self._encoding,
           repetitions=self._repetitions,
           value_shape=self._value_shape,
@@ -194,7 +194,7 @@ class IbltFactory(factory.UnweightedAggregationFactory):
           iblt_values=value_tensor,
           value_shape=self._value_shape,
           capacity=self._capacity,
-          string_max_length=self._string_max_length,
+          string_max_bytes=self._string_max_bytes,
           encoding=self._encoding,
           repetitions=self._repetitions,
           seed=self._seed)

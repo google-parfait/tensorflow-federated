@@ -45,10 +45,10 @@ class DataProcessingTest(parameterized.TestCase,
                   ], 3, 6, ['新年', '新年', '☺️', '☺️', '☺️']),
   )
   def test_all_elements_with_max_len_returns_expected_values(
-      self, input_data, batch_size, max_string_length, expected_result):
+      self, input_data, batch_size, string_max_bytes, expected_result):
     ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
     all_elements = data_processing.get_all_elements(
-        ds, max_string_length=max_string_length)
+        ds, string_max_bytes=string_max_bytes)
     all_elements = [
         elem.decode('utf-8', 'ignore') for elem in all_elements.numpy()
     ]
@@ -70,16 +70,16 @@ class DataProcessingTest(parameterized.TestCase,
       data_processing.get_all_elements(ds)
 
   @parameterized.named_parameters(
-      ('max_string_length_0', 0),
-      ('max_string_length_neg', -1),
+      ('string_max_bytes_0', 0),
+      ('string_max_bytes_neg', -1),
   )
-  def test_all_elements_raise_params_value_error(self, max_string_length):
+  def test_all_elements_raise_params_value_error(self, string_max_bytes):
     ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b',
                                              'c']).batch(batch_size=1)
 
     with self.assertRaisesRegex(ValueError,
-                                '`max_string_length` must be at least 1.'):
-      data_processing.get_all_elements(ds, max_string_length=max_string_length)
+                                '`string_max_bytes` must be at least 1.'):
+      data_processing.get_all_elements(ds, string_max_bytes=string_max_bytes)
 
   @parameterized.named_parameters(
       ('int_dataset', [1, 3, 2, 2, 4, 6, 3]),
@@ -117,14 +117,14 @@ class DataProcessingTest(parameterized.TestCase,
       ('unicode', ['新年快乐', '新年', '☺️😇', '☺️😇', '☺️'], 2, 3, 6, ['新年'], [2]),
   )
   def test_capped_elements_with_counts_max_len_returns_expected_values(
-      self, input_data, batch_size, max_user_contribution, max_string_length,
+      self, input_data, batch_size, max_user_contribution, string_max_bytes,
       expected_elements, expected_counts):
     ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
     capped_elements, counts = data_processing.get_capped_elements_with_counts(
         ds,
         batch_size=batch_size,
         max_user_contribution=max_user_contribution,
-        max_string_length=max_string_length)
+        string_max_bytes=string_max_bytes)
     capped_elements = [
         elem.decode('utf-8', 'ignore') for elem in capped_elements.numpy()
     ]
@@ -156,11 +156,10 @@ class DataProcessingTest(parameterized.TestCase,
       ('batch_size', 5, 0, 10, '`batch_size` must be at least 1.'),
       ('max_user_contribution', -10, 10, 10,
        '`max_user_contribution` must be at least 1.'),
-      ('max_string_length', 10, 5, 0,
-       '`max_string_length` must be at least 1.'),
+      ('string_max_bytes', 10, 5, 0, '`string_max_bytes` must be at least 1.'),
   )
   def test_capped_elements_with_counts_raise_params_value_error(
-      self, max_user_contribution, batch_size, max_string_length, raises_regex):
+      self, max_user_contribution, batch_size, string_max_bytes, raises_regex):
     ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b',
                                              'c']).batch(batch_size=1)
     with self.assertRaisesRegex(ValueError, raises_regex):
@@ -168,7 +167,7 @@ class DataProcessingTest(parameterized.TestCase,
           ds,
           max_user_contribution=max_user_contribution,
           batch_size=batch_size,
-          max_string_length=max_string_length)
+          string_max_bytes=string_max_bytes)
 
   @parameterized.named_parameters(
       ('int_dataset', [1, 3, 2, 2, 4, 6, 3]),
@@ -206,14 +205,14 @@ class DataProcessingTest(parameterized.TestCase,
       ('unicode', ['新年快乐', '新年', '☺️😇', '☺️😇', '☺️'], 2, 3, 6, ['新年', '新年']),
   )
   def test_capped_elements_with_max_len_returns_expected_values(
-      self, input_data, batch_size, max_user_contribution, max_string_length,
+      self, input_data, batch_size, max_user_contribution, string_max_bytes,
       expected_result):
     ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
     all_elements = data_processing.get_capped_elements(
         ds,
         batch_size=batch_size,
         max_user_contribution=max_user_contribution,
-        max_string_length=max_string_length)
+        string_max_bytes=string_max_bytes)
     all_elements = [
         elem.decode('utf-8', 'ignore') for elem in all_elements.numpy()
     ]
@@ -243,12 +242,11 @@ class DataProcessingTest(parameterized.TestCase,
       ('batch_size', 5, 0, 10, '`batch_size` must be at least 1.'),
       ('max_user_contribution', -10, 10, 10,
        '`max_user_contribution` must be at least 1.'),
-      ('max_string_length', 10, 5, 0,
-       '`max_string_length` must be at least 1.'),
+      ('string_max_bytes', 10, 5, 0, '`string_max_bytes` must be at least 1.'),
   )
   def test_capped_elements_raise_params_value_error(self, max_user_contribution,
                                                     batch_size,
-                                                    max_string_length,
+                                                    string_max_bytes,
                                                     raises_regex):
     ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b',
                                              'c']).batch(batch_size=1)
@@ -257,7 +255,7 @@ class DataProcessingTest(parameterized.TestCase,
           ds,
           max_user_contribution=max_user_contribution,
           batch_size=batch_size,
-          max_string_length=max_string_length)
+          string_max_bytes=string_max_bytes)
 
   @parameterized.named_parameters(
       ('int_dataset', [1, 3, 2, 2, 4, 6, 3]),
@@ -292,10 +290,10 @@ class DataProcessingTest(parameterized.TestCase,
       ('unicode', ['新年快乐', '新年', '☺️😇', '☺️😇', '☺️'], 3, 6, ['新年', '☺️']),
   )
   def test_get_unique_elements_with_max_len_returns_expected_values(
-      self, input_data, batch_size, max_string_length, expected_result):
+      self, input_data, batch_size, string_max_bytes, expected_result):
     ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
     unique_elements = data_processing.get_unique_elements(
-        ds, max_string_length=max_string_length)
+        ds, string_max_bytes=string_max_bytes)
     unique_elements = [
         elem.decode('utf-8', 'ignore') for elem in unique_elements.numpy()
     ]
@@ -317,17 +315,16 @@ class DataProcessingTest(parameterized.TestCase,
       data_processing.get_unique_elements(ds)
 
   @parameterized.named_parameters(
-      ('max_string_length_0', 0),
-      ('max_string_length_neg', -1),
+      ('string_max_bytes_0', 0),
+      ('string_max_bytes_neg', -1),
   )
-  def test_unique_elements_raise_params_value_error(self, max_string_length):
+  def test_unique_elements_raise_params_value_error(self, string_max_bytes):
     ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b',
                                              'c']).batch(batch_size=1)
 
     with self.assertRaisesRegex(ValueError,
-                                '`max_string_length` must be at least 1.'):
-      data_processing.get_unique_elements(
-          ds, max_string_length=max_string_length)
+                                '`string_max_bytes` must be at least 1.'):
+      data_processing.get_unique_elements(ds, string_max_bytes=string_max_bytes)
 
   @parameterized.named_parameters(
       ('int_dataset', [1, 3, 2, 2, 4, 6, 3]),
@@ -364,11 +361,11 @@ class DataProcessingTest(parameterized.TestCase,
                                                             ], [2, 3]),
   )
   def test_get_unique_elements_with_counts_max_len_returns_expected_values(
-      self, input_data, batch_size, max_string_length, expected_elements,
+      self, input_data, batch_size, string_max_bytes, expected_elements,
       expected_counts):
     ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
     unique_elements, counts = data_processing.get_unique_elements_with_counts(
-        ds, max_string_length=max_string_length)
+        ds, string_max_bytes=string_max_bytes)
     unique_elements = [
         elem.decode('utf-8', 'ignore') for elem in unique_elements.numpy()
     ]
@@ -391,18 +388,18 @@ class DataProcessingTest(parameterized.TestCase,
       data_processing.get_unique_elements_with_counts(ds)
 
   @parameterized.named_parameters(
-      ('max_string_length_0', 0),
-      ('max_string_length_neg', -1),
+      ('string_max_bytes_0', 0),
+      ('string_max_bytes_neg', -1),
   )
   def test_unique_elements_with_counts_raise_params_value_error(
-      self, max_string_length):
+      self, string_max_bytes):
     ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b',
                                              'c']).batch(batch_size=1)
 
     with self.assertRaisesRegex(ValueError,
-                                '`max_string_length` must be at least 1.'):
+                                '`string_max_bytes` must be at least 1.'):
       data_processing.get_unique_elements_with_counts(
-          ds, max_string_length=max_string_length)
+          ds, string_max_bytes=string_max_bytes)
 
   @parameterized.named_parameters(
       ('int_dataset', [1, 3, 2, 2, 4, 6, 3]),
@@ -446,11 +443,11 @@ class DataProcessingTest(parameterized.TestCase,
       ('unicode', ['新年快乐', '新年', '☺️😇', '☺️😇', '☺️'], 1, 2, 6, ['新年', '☺️']),
   )
   def test_get_top_elements_with_max_len_returns_expected_values(
-      self, input_data, batch_size, max_user_contribution, max_string_length,
+      self, input_data, batch_size, max_user_contribution, string_max_bytes,
       expected_result):
     ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
     top_elements = data_processing.get_top_elements(
-        ds, max_user_contribution, max_string_length=max_string_length)
+        ds, max_user_contribution, string_max_bytes=string_max_bytes)
     top_elements = [
         elem.decode('utf-8', 'ignore') for elem in top_elements.numpy()
     ]
@@ -478,13 +475,13 @@ class DataProcessingTest(parameterized.TestCase,
        '`max_user_contribution` must be at least 1.'),
       ('max_user_contribution_neg', -10, 10,
        '`max_user_contribution` must be at least 1.'),
-      ('max_string_length_0', 10, 0, '`max_string_length` must be at least 1.'),
-      ('max_string_length_neg', 20, -1,
-       '`max_string_length` must be at least 1.'),
+      ('string_max_bytes_0', 10, 0, '`string_max_bytes` must be at least 1.'),
+      ('string_max_bytes_neg', 20, -1,
+       '`string_max_bytes` must be at least 1.'),
   )
   def test_get_top_elements_raise_params_value_error(self,
                                                      max_user_contribution,
-                                                     max_string_length,
+                                                     string_max_bytes,
                                                      raises_regex):
     ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b',
                                              'c']).batch(batch_size=1)
@@ -493,7 +490,7 @@ class DataProcessingTest(parameterized.TestCase,
       data_processing.get_top_elements(
           ds,
           max_user_contribution=max_user_contribution,
-          max_string_length=max_string_length)
+          string_max_bytes=string_max_bytes)
 
   @parameterized.named_parameters(
       ('int_dataset', [1, 3, 2, 2, 4, 6, 3]),
@@ -538,11 +535,11 @@ class DataProcessingTest(parameterized.TestCase,
                   ], 1, 2, 6, ['新年', '☺️']),
   )
   def test_get_top_multi_elements_with_max_len_returns_expected_values(
-      self, input_data, batch_size, max_user_contribution, max_string_length,
+      self, input_data, batch_size, max_user_contribution, string_max_bytes,
       expected_result):
     ds = tf.data.Dataset.from_tensor_slices(input_data).batch(batch_size)
     top_elements = data_processing.get_top_multi_elements(
-        ds, max_user_contribution, max_string_length=max_string_length)
+        ds, max_user_contribution, string_max_bytes=string_max_bytes)
     top_elements = [
         elem.decode('utf-8', 'ignore') for elem in top_elements.numpy()
     ]
@@ -570,12 +567,12 @@ class DataProcessingTest(parameterized.TestCase,
        '`max_user_contribution` must be at least 1.'),
       ('max_user_contribution_neg', -10, 10,
        '`max_user_contribution` must be at least 1.'),
-      ('max_string_length_0', 10, 0, '`max_string_length` must be at least 1.'),
-      ('max_string_length_neg', 20, -1,
-       '`max_string_length` must be at least 1.'),
+      ('string_max_bytes_0', 10, 0, '`string_max_bytes` must be at least 1.'),
+      ('string_max_bytes_neg', 20, -1,
+       '`string_max_bytes` must be at least 1.'),
   )
   def test_get_top_multi_elements_raise_params_value_error(
-      self, max_user_contribution, max_string_length, raises_regex):
+      self, max_user_contribution, string_max_bytes, raises_regex):
     ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b',
                                              'c']).batch(batch_size=1)
 
@@ -583,7 +580,7 @@ class DataProcessingTest(parameterized.TestCase,
       data_processing.get_top_multi_elements(
           ds,
           max_user_contribution=max_user_contribution,
-          max_string_length=max_string_length)
+          string_max_bytes=string_max_bytes)
 
   @parameterized.named_parameters(
       ('int_dataset', [1, 3, 2, 2, 4, 6, 3]),
@@ -670,6 +667,7 @@ class ToStackedTensorTest(tf.test.TestCase):
 
     with self.assertRaisesRegex(TypeError, 'ds'):
       data_processing.to_stacked_tensor(not_a_dataset)
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -91,7 +91,7 @@ _DEFAULT_DTYPE = tf.int64
 
 
 def create_chunker(*,
-                   string_max_length: int,
+                   string_max_bytes: int,
                    encoding: CharacterEncoding = CharacterEncoding.UTF8,
                    max_chunk_value: Optional[int] = None,
                    dtype: tf.dtypes.DType = _DEFAULT_DTYPE) -> Chunker:
@@ -101,7 +101,7 @@ def create_chunker(*,
   documentation for details.
 
   Args:
-    string_max_length: Maximum length of the string to encode, in bytes.
+    string_max_bytes: Maximum length of the string to encode, in bytes.
     encoding: The character encoding of the string data to encode. For
       non-character binary data or strings with unknown encoding, specify
       `CharacterEncoding.UNKNOWN`. Defaults to `CharacterEncoding.UTF8`.
@@ -115,13 +115,13 @@ def create_chunker(*,
   """
   if encoding == CharacterEncoding.UTF8:
     return UTF8Chunker(
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         max_chunk_value=max_chunk_value,
         dtype=dtype,
     )
   if encoding == CharacterEncoding.UNKNOWN:
     return BinaryChunker(
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         max_chunk_value=max_chunk_value,
         dtype=dtype,
     )
@@ -150,14 +150,13 @@ class BinaryChunker(Chunker):
 
   def __init__(self,
                *,
-               string_max_length: int,
+               string_max_bytes: int,
                max_chunk_value: Optional[int] = None,
                dtype: tf.dtypes.DType = _DEFAULT_DTYPE):
     """Initializes the chunker.
 
     Args:
-      string_max_length: Maximum length of the binary string to encode, in
-        bytes.
+      string_max_bytes: Maximum length of the binary string to encode, in bytes.
       max_chunk_value: Maximum encoded value each chunk can hold. Encoded chunk
         values will be in the range `[0, max_chunk_value]`. Defaults to the
         maximum possible value in dtype.
@@ -167,16 +166,16 @@ class BinaryChunker(Chunker):
     Raises:
       ValueError: If arguments do not meet expectations.
     """
-    py_typecheck.check_type(string_max_length, int, label='string_max_length')
+    py_typecheck.check_type(string_max_bytes, int, label='string_max_bytes')
     py_typecheck.check_type(dtype, tf.dtypes.DType, label='dtype')
     if max_chunk_value is None:
       max_chunk_value = dtype.max
     py_typecheck.check_type(max_chunk_value, int, label='max_chunk_value')
 
-    if (string_max_length <= 0 or string_max_length > max_chunk_value):
+    if (string_max_bytes <= 0 or string_max_bytes > max_chunk_value):
       raise ValueError(
-          f'string_max_length must be between [1, {max_chunk_value=}]. '
-          f'Found: {string_max_length}')
+          f'string_max_bytes must be between [1, {max_chunk_value=}]. '
+          f'Found: {string_max_bytes}')
 
     if dtype not in (tf.int32, tf.int64):
       raise ValueError('`dtype` must be either `tf.int32` or `tf.int64`.'
@@ -187,20 +186,20 @@ class BinaryChunker(Chunker):
           f'`max_chunk_value must be between [{tf.uint8.max}, {dtype.max=}]. '
           f'Found: {max_chunk_value}')
 
-    self._string_max_length = string_max_length
+    self._string_max_bytes = string_max_bytes
     self._dtype = dtype
     self._max_chunk_value = max_chunk_value
 
     self._chunk_value_bitrange = math.floor(math.log2(max_chunk_value))
-    self._num_data_chunks = math.ceil(self._string_max_length * 8 /
+    self._num_data_chunks = math.ceil(self._string_max_bytes * 8 /
                                       self._chunk_value_bitrange)
     # The header always fits into a single chunk because
-    # `string_max_length <= max_chunk_value`
+    # `string_max_bytes <= max_chunk_value`
     self._num_header_chunks = 1
 
     logging.debug(
         'BinaryChunker: %s %s %s %s %s %s',
-        f'{self._string_max_length=}',
+        f'{self._string_max_bytes=}',
         f'{self._dtype=}',
         f'{self._max_chunk_value=}',
         f'{self._chunk_value_bitrange=}',
@@ -240,13 +239,13 @@ class BinaryChunker(Chunker):
     # ]
 
     # `trimmed` contains the input strings after they've been trimmed to
-    # `string_max_length`. ex:
+    # `string_max_bytes`. ex:
     # [
     #     b'abc',
     #   b'12345',
     # ]
     trimmed = tf.strings.substr(
-        input_strings, pos=0, len=self._string_max_length, unit='BYTE')
+        input_strings, pos=0, len=self._string_max_bytes, unit='BYTE')
 
     # `trimmed_lengths_in_bytes` is a 1-D vector of the byte size of each
     # trimmed string. ex:
@@ -258,13 +257,13 @@ class BinaryChunker(Chunker):
 
     # `split_bytes` is a 2-D array containing the byte-size integer
     # representation of trimmed input strings, padded with zeros to
-    # `string_max_length`. ex:
+    # `string_max_bytes`. ex:
     # [
     #   [97, 98, 99,  0,  0],
     #   [49, 50, 51, 52, 53],
     # ]
     split_bytes = tf.io.decode_raw(
-        trimmed, out_type=tf.uint8, fixed_length=self._string_max_length)
+        trimmed, out_type=tf.uint8, fixed_length=self._string_max_bytes)
 
     def pack_string_bytes_to_int(string_bytes: tf.Tensor) -> tf.Tensor:
       return te.utils.pack_into_int(
@@ -372,7 +371,7 @@ class BinaryChunker(Chunker):
           string_chunks,
           original_bitrange=8,
           target_bitrange=self._chunk_value_bitrange,
-          shape=[self._string_max_length])
+          shape=[self._string_max_bytes])
 
     # `decoded_bytes` is a 2-D array containing the byte-size integer
     # representation of each string padded with zeros. ex:
@@ -385,7 +384,7 @@ class BinaryChunker(Chunker):
         elems=tf.expand_dims(encoded_data, axis=-1))
 
     # `byte_strings` contains the encoded binary data as indiviual bytes
-    # of tf.string binary, padded with 0 bytes to `string_max_length`. ex:
+    # of tf.string binary, padded with 0 bytes to `string_max_bytes`. ex:
     # [
     #   [b'a', b'b', b'c', b'\x00', b'\x00', b'\x00', b'\x00', b'\x00']
     #   [b'1', b'2', b'3', b'4',    b'5',    b'\x00', b'\x00', b'\x00'],
@@ -429,16 +428,16 @@ class UTF8Chunker(Chunker):
   """Encodes and decodes strings into integer tensors using UTF-8 encoding."""
 
   def __init__(self,
-               string_max_length: int,
+               string_max_bytes: int,
                *,
                max_chunk_value: Optional[int] = None,
                dtype: tf.dtypes.DType = _DEFAULT_DTYPE):
     """Initializes the chunker.
 
     Args:
-      string_max_length: Maximum length of the string to encode. Note that this
+      string_max_bytes: Maximum length of the string to encode. Note that this
         is measured in bytes and some unicode characters may take more than 1
-        byte. In the case that `string_max_length` does not divide
+        byte. In the case that `string_max_bytes` does not divide
         `self._dtype_size_bytes` (calculated below), it is rounded up to the
         smallest integer that divides it.
       max_chunk_value: Maximum value in each chunk. Defaults to the maximum
@@ -449,8 +448,8 @@ class UTF8Chunker(Chunker):
     Raises:
       ValueError: If arguments do not meet expectations.
     """
-    if string_max_length < 1:
-      raise ValueError('string_max_length must be at least 1.')
+    if string_max_bytes < 1:
+      raise ValueError('string_max_bytes must be at least 1.')
 
     if dtype not in [tf.int32, tf.int64]:
       raise ValueError('If set, dtype must be tf.int32 or tf.int64.')
@@ -471,7 +470,7 @@ class UTF8Chunker(Chunker):
       self._dtype_size_bytes = self._dtype.size
 
     self._num_chunks = math.ceil(
-        float(string_max_length) / self._dtype_size_bytes)
+        float(string_max_bytes) / self._dtype_size_bytes)
     self._max_length = self._num_chunks * self._dtype_size_bytes
     self._bit_lengths = [
         self._utf8_size_bits * i for i in range(self._dtype_size_bytes)

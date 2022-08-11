@@ -41,7 +41,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
       self,
       iblt_table: tf.Tensor,
       capacity: int,
-      string_max_length: int,
+      string_max_bytes: int,
       *,
       seed: int = 0,
       repetitions: int = iblt_lib.DEFAULT_REPETITIONS,
@@ -52,7 +52,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     iblt_decoder = iblt_lib.IbltDecoder(
         iblt=iblt_table,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         seed=seed,
         repetitions=repetitions,
         hash_family=hash_family,
@@ -81,7 +81,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
       self,
       iblt_table: tf.Tensor,
       capacity: int,
-      string_max_length: int,
+      string_max_bytes: int,
       *,
       seed: int = 0,
       repetitions: int = iblt_lib.DEFAULT_REPETITIONS,
@@ -92,7 +92,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     decoding_graph = iblt_lib.decode_iblt_tf(
         iblt=iblt_table,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         seed=seed,
         repetitions=repetitions,
         hash_family=hash_family,
@@ -116,7 +116,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     counter_by_get_freq_estimates_tf = self._get_decoded_results_by_get_freq_estimates_tf(
         iblt_table=iblt_table,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         seed=seed,
         repetitions=repetitions,
         hash_family=hash_family,
@@ -129,13 +129,12 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
   @_graph_and_eager_test
   def test_decode_string_from_chunks(self):
     capacity = 10
-    string_max_length = 7
+    string_max_bytes = 7
     repetitions = 3
     seed = 0
-    iblt_encoder = iblt_lib.IbltEncoder(capacity, string_max_length, seed=seed)
+    iblt_encoder = iblt_lib.IbltEncoder(capacity, string_max_bytes, seed=seed)
     input_strings_list = [
-        '2019', 'seattle', 'mtv', 'heavy', 'hitters', '新年快乐',
-        '☺️😇'
+        '2019', 'seattle', 'mtv', 'heavy', 'hitters', '新年快乐', '☺️😇'
     ]
     input_strings = tf.constant(input_strings_list, dtype=tf.string)
     chunks, _ = iblt_encoder.compute_chunks(input_strings)
@@ -144,7 +143,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     iblt_decoder = iblt_lib.IbltDecoder(
         iblt=iblt_table,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         seed=seed)
     for i in range(chunks.shape[0]):
@@ -162,11 +161,11 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
   @_graph_and_eager_test
   def test_iblt_encode_and_decode(self):
     capacity = 10
-    string_max_length = 12
+    string_max_bytes = 12
     repetitions = 3
     seed = 0
 
-    iblt_encoder = iblt_lib.IbltEncoder(capacity, string_max_length, seed=seed)
+    iblt_encoder = iblt_lib.IbltEncoder(capacity, string_max_bytes, seed=seed)
     input_strings_list = [
         '2019', 'seattle', 'heavy', 'hitters', 'क', '☺️', 'has space',
         'has, comma', '新年快乐', '☺️😇'
@@ -176,7 +175,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     strings_with_frequency = self._get_decoded_results(
         iblt_table=iblt_table,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         seed=seed)
     self.assertCountEqual(input_strings_list, strings_with_frequency.keys())
@@ -184,7 +183,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
   @_graph_and_eager_test
   def test_iblt_with_coupled_hash_edges(self):
     capacity = 10
-    string_max_length = 12
+    string_max_bytes = 12
     repetitions = 3
     seed = 0
     hash_family = 'coupled'
@@ -192,7 +191,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
 
     iblt_encoder = iblt_lib.IbltEncoder(
         capacity,
-        string_max_length,
+        string_max_bytes,
         hash_family=hash_family,
         hash_family_params=hash_family_params,
         seed=seed)
@@ -205,7 +204,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     strings_with_frequency = self._get_decoded_results(
         iblt_table=iblt_table,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         hash_family=hash_family,
         hash_family_params=hash_family_params,
@@ -230,12 +229,12 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
   def test_iblt_tensorflow(self,
                            capacity=10,
                            field_size=iblt_lib.DEFAULT_FIELD_SIZE):
-    string_max_length = 12
+    string_max_bytes = 12
     repetitions = 3
     seed = 0
 
     iblt_encoder = iblt_lib.IbltEncoder(
-        capacity, string_max_length, seed=seed, field_size=field_size)
+        capacity, string_max_bytes, seed=seed, field_size=field_size)
     input_strings_list = [
         '2019', 'seattle', 'heavy', 'hitters', 'क', '☺️', 'has space',
         'has, comma', '新年快乐', '☺️😇'
@@ -245,7 +244,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     strings_with_frequency = self._get_decoded_results(
         iblt_table=iblt_table,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         field_size=field_size,
         seed=seed)
@@ -254,12 +253,12 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
   @_graph_and_eager_test
   def test_iblt_trim_strings_above_max_length(self):
     capacity = 10
-    string_max_length = 4
+    string_max_bytes = 4
     repetitions = 3
     seed = 0
     iblt_encoder = iblt_lib.IbltEncoder(
         capacity,
-        string_max_length,
+        string_max_bytes,
         seed=seed,
         drop_strings_above_max_length=False)
     input_strings_list = [
@@ -271,17 +270,17 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     strings_with_frequency = self._get_decoded_results(
         iblt_table=iblt_table,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         seed=seed)
 
-    # The IBLT automatically chooses a larger string_max_length if some space
+    # The IBLT automatically chooses a larger string_max_bytes if some space
     # is being wasted in the field encoding. For example if field is 2**31 - 1
     # and as such we can encode 3 bytes per int, then if we choose
-    # string_max_length = 4, it will automatically update it to 2*3 = 6.
+    # string_max_bytes = 4, it will automatically update it to 2*3 = 6.
     expected_decoded_strings = [
-        '2019', 'seattl', 'heavy', 'hitter', 'क', '☺️', 'has sp',
-        'has, c', '新年', '😇'
+        '2019', 'seattl', 'heavy', 'hitter', 'क', '☺️', 'has sp', 'has, c',
+        '新年', '😇'
     ]
     self.assertCountEqual(expected_decoded_strings,
                           strings_with_frequency.keys())
@@ -289,12 +288,12 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
   @_graph_and_eager_test
   def test_iblt_drop_strings_above_max_length(self):
     capacity = 10
-    string_max_length = 3
+    string_max_bytes = 3
     repetitions = 3
     seed = 0
     iblt_encoder = iblt_lib.IbltEncoder(
         capacity,
-        string_max_length,
+        string_max_bytes,
         seed=seed,
         drop_strings_above_max_length=True)
     input_strings_list = [
@@ -306,7 +305,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     strings_with_frequency = self._get_decoded_results(
         iblt_table=iblt_table,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         seed=seed)
     # ☺️, '新年快乐', '☺️😇' are filtered out as it takes more than 3 bytes to
@@ -316,12 +315,12 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
   @_graph_and_eager_test
   def test_iblt_with_counts(self):
     capacity = 10
-    string_max_length = 12
+    string_max_bytes = 12
     repetitions = 3
     seed = 0
     iblt_encoder = iblt_lib.IbltEncoder(
         capacity,
-        string_max_length,
+        string_max_bytes,
         seed=seed,
         drop_strings_above_max_length=False)
     input_map = {
@@ -341,7 +340,7 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
     strings_with_frequency = self._get_decoded_results(
         iblt_table=iblt_table,
         capacity=capacity,
-        string_max_length=string_max_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         seed=seed)
     input_map_mod_field_size = {
@@ -386,11 +385,11 @@ class IbltTest(tf.test.TestCase, parameterized.TestCase):
                              exception_raised,
                              input_values_dtype=tf.int64):
     capacity = 10
-    string_max_length = 12
+    string_max_bytes = 12
     seed = 0
     iblt_encoder = iblt_lib.IbltEncoder(
         capacity,
-        string_max_length,
+        string_max_bytes,
         seed=seed,
         drop_strings_above_max_length=False)
     input_strings = tf.constant(input_strings_list, dtype=tf.string)

@@ -73,7 +73,7 @@ def _execute_computation(
     *,
     batch_size: int = 1,
     capacity: int = 1000,
-    max_string_length: int = 10,
+    string_max_bytes: int = 10,
     repetitions: int = 3,
     seed: int = 0,
     max_heavy_hitters: Optional[int] = None,
@@ -90,7 +90,7 @@ def _execute_computation(
     batch_size: The number of elements in each batch of the dataset. Defaults to
       `1`, means the input dataset is processed by `tf.data.Dataset.batch(1)`.
     capacity: Capacity of the underlying IBLT. Defaults to `1000`.
-    max_string_length: Maximum length (in bytes) of an item in the IBLT. Multi-
+    string_max_bytes: Maximum length (in bytes) of an item in the IBLT. Multi-
       byte characters in the string will be truncated on byte (not character)
       boundaries. Defaults to `10`.
     repetitions: The number of repetitions in IBLT data structure (must be >=
@@ -124,7 +124,7 @@ def _execute_computation(
   """
   one_round_computation = iblt_tff.build_iblt_computation(
       capacity=capacity,
-      max_string_length=max_string_length,
+      string_max_bytes=string_max_bytes,
       repetitions=repetitions,
       seed=seed,
       max_heavy_hitters=max_heavy_hitters,
@@ -176,12 +176,12 @@ class IbltTffConstructionTest(absltest.TestCase):
                     round_timestamp=tf.int64,
                 ))))
 
-  def test_max_string_length_validation(self):
-    with self.assertRaisesRegex(ValueError, 'max_string_length'):
-      iblt_tff.build_iblt_computation(max_string_length=0)
-    with self.assertRaisesRegex(ValueError, 'max_string_length'):
-      iblt_tff.build_iblt_computation(max_string_length=-1)
-    iblt_tff.build_iblt_computation(max_string_length=1)
+  def test_string_max_bytes_validation(self):
+    with self.assertRaisesRegex(ValueError, 'string_max_bytes'):
+      iblt_tff.build_iblt_computation(string_max_bytes=0)
+    with self.assertRaisesRegex(ValueError, 'string_max_bytes'):
+      iblt_tff.build_iblt_computation(string_max_bytes=-1)
+    iblt_tff.build_iblt_computation(string_max_bytes=1)
 
   def test_repetitions_validation(self):
     with self.assertRaisesRegex(ValueError, 'repetitions'):
@@ -253,12 +253,12 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
       ('higher_cap_seed_1_batch_1_postprocess', 20, 30, 6, 1, 1, 32, True),
       ('lower_cap_seed_0_batch_5_postprocess', 10, 20, 3, 0, 5, 50, True),
       ('higher_cap_seed_1_batch_5_postprocess', 20, 30, 6, 1, 5, None, True))
-  def test_computation(self, capacity, max_string_length, repetitions, seed,
+  def test_computation(self, capacity, string_max_bytes, repetitions, seed,
                        batch_size, secure_sum_bitwidth, postprocess):
     (results, num_not_decoded, _) = _execute_computation(
         DATA,
         capacity=capacity,
-        max_string_length=max_string_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         seed=seed,
         batch_size=batch_size,
@@ -285,11 +285,11 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
 
     self.assertDictEqual(ground_truth, results)
 
-  def test_computation_with_max_string_length(self):
+  def test_computation_with_string_max_bytes(self):
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
-        max_string_length=5,
+        string_max_bytes=5,
         max_words_per_user=10,
         max_heavy_hitters=4,
         batch_size=1)
@@ -300,12 +300,12 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
         'I am ': (4, 4)
     })
 
-  def test_computation_with_max_string_length_multibyte(self):
+  def test_computation_with_string_max_bytes_multibyte(self):
     client_data = [['七転び八起き', '取らぬ狸の皮算用', '一石二鳥'] for _ in range(10)]
     results, _, _ = _execute_computation(
         client_data,
         capacity=100,
-        max_string_length=3,
+        string_max_bytes=3,
         max_words_per_user=10,
         max_heavy_hitters=4,
         batch_size=1)
@@ -316,7 +316,7 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
-        max_string_length=30,
+        string_max_bytes=30,
         max_words_per_user=10,
         max_heavy_hitters=4,
         batch_size=batch_size)
@@ -335,7 +335,7 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
-        max_string_length=30,
+        string_max_bytes=30,
         max_words_per_user=10,
         k_anonymity=3,
         batch_size=batch_size)
@@ -369,12 +369,12 @@ class SecAggIbltTffExecutionTest(parameterized.TestCase):
           'I': (5, 7)
       }),
   )
-  def test_computation_with_k_anonymity_and_max_string_length(
-      self, batch_size, k_anonymity, max_string_length, expected_result):
+  def test_computation_with_k_anonymity_and_string_max_bytes(
+      self, batch_size, k_anonymity, string_max_bytes, expected_result):
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
-        max_string_length=max_string_length,
+        string_max_bytes=string_max_bytes,
         max_words_per_user=10,
         k_anonymity=k_anonymity,
         batch_size=batch_size)
@@ -396,12 +396,12 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
       ('higher_cap_seed_1_batch_1_postprocess', 20, 30, 6, 1, 1, 32, True),
       ('lower_cap_seed_0_batch_5_postprocess', 10, 20, 3, 0, 5, 50, True),
       ('higher_cap_seed_1_batch_5_postprocess', 20, 30, 6, 1, 5, None, True))
-  def test_computation(self, capacity, max_string_length, repetitions, seed,
+  def test_computation(self, capacity, string_max_bytes, repetitions, seed,
                        batch_size, secure_sum_bitwidth, postprocess):
     (results, num_not_decoded, _) = _execute_computation(
         DATA,
         capacity=capacity,
-        max_string_length=max_string_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         seed=seed,
         batch_size=batch_size,
@@ -477,13 +477,13 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
               'I': (1, 1),
               ':-': (2, 2)
           }))
-  def test_computation_with_max_string_length(self, capacity, max_string_length,
-                                              repetitions, seed, batch_size,
-                                              expected_results):
+  def test_computation_with_string_max_bytes(self, capacity, string_max_bytes,
+                                             repetitions, seed, batch_size,
+                                             expected_results):
     results, _, _ = _execute_computation(
         DATA,
         capacity=capacity,
-        max_string_length=max_string_length,
+        string_max_bytes=string_max_bytes,
         repetitions=repetitions,
         seed=seed,
         max_words_per_user=10,
@@ -497,7 +497,7 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
-        max_string_length=30,
+        string_max_bytes=30,
         max_words_per_user=10,
         max_heavy_hitters=3,
         batch_size=batch_size,
@@ -513,7 +513,7 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
-        max_string_length=30,
+        string_max_bytes=30,
         max_words_per_user=10,
         k_anonymity=3,
         batch_size=batch_size,
@@ -548,12 +548,12 @@ class SecAggIbltUniqueCountsTffTest(parameterized.TestCase):
           'I': (5, 5)
       }),
   )
-  def test_computation_with_k_anonymity_and_max_string_length(
-      self, batch_size, k_anonymity, max_string_length, expected_result):
+  def test_computation_with_k_anonymity_and_string_max_bytes(
+      self, batch_size, k_anonymity, string_max_bytes, expected_result):
     results, _, _ = _execute_computation(
         DATA,
         capacity=100,
-        max_string_length=max_string_length,
+        string_max_bytes=string_max_bytes,
         max_words_per_user=10,
         k_anonymity=k_anonymity,
         batch_size=batch_size,

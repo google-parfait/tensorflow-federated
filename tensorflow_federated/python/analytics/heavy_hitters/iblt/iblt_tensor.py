@@ -338,7 +338,7 @@ def decode_iblt_tensor_tf(
     iblt: tf.Tensor,
     iblt_values: tf.Tensor,
     capacity: int,
-    string_max_length: int,
+    string_max_bytes: int,
     value_shape: Sequence[int],
     *,
     encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
@@ -358,7 +358,7 @@ def decode_iblt_tensor_tf(
     iblt_values: Tensor representing the IBLT values computed by the
       IbltEncoder.
     capacity: Number of distinct strings that we expect to be inserted.
-    string_max_length: Maximum length of a string that can be inserted.
+    string_max_bytes: Maximum length of a string in bytes that can be inserted.
     value_shape: Shape of the values tensor.
     encoding: The character encoding of the string data to decode. For
       non-character binary data or strings with unknown encoding, specify
@@ -384,7 +384,7 @@ def decode_iblt_tensor_tf(
       iblt=iblt,
       iblt_values=iblt_values,
       capacity=capacity,
-      string_max_length=string_max_length,
+      string_max_bytes=string_max_bytes,
       encoding=encoding,
       seed=seed,
       value_shape=value_shape,
