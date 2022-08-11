@@ -13,6 +13,8 @@
 # limitations under the License.
 """Standardized representation of logic deployable to MapReduce-like systems."""
 
+from typing import Callable, Optional
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -205,9 +207,20 @@ class MapReduceForm(typed_object.TypedObject):
 
   """
 
-  def __init__(self, type_signature, prepare, work, zero, accumulate, merge,
-               report, secure_sum_bitwidth, secure_sum_max_input,
-               secure_modular_sum_modulus, update):
+  def __init__(
+      self,
+      type_signature: computation_types.FunctionType,
+      prepare: computation_impl.ConcreteComputation,
+      work: computation_impl.ConcreteComputation,
+      zero: computation_impl.ConcreteComputation,
+      accumulate: computation_impl.ConcreteComputation,
+      merge: computation_impl.ConcreteComputation,
+      report: computation_impl.ConcreteComputation,
+      secure_sum_bitwidth: computation_impl.ConcreteComputation,
+      secure_sum_max_input: computation_impl.ConcreteComputation,
+      secure_modular_sum_modulus: computation_impl.ConcreteComputation,
+      update: computation_impl.ConcreteComputation,
+  ):
     """Constructs a representation of a MapReduce-like computation.
 
     Note: All the computations supplied here as arguments must be TensorFlow
@@ -348,56 +361,56 @@ class MapReduceForm(typed_object.TypedObject):
     self._server_state_label, self._client_data_label = parameter_names
 
   @property
-  def type_signature(self) -> computation_types.Type:
+  def type_signature(self) -> computation_types.FunctionType:
     """Returns the TFF type of the equivalent `tff.Computation`."""
     return self._type_signature
 
   @property
-  def prepare(self):
+  def prepare(self) -> computation_impl.ConcreteComputation:
     return self._prepare
 
   @property
-  def work(self):
+  def work(self) -> computation_impl.ConcreteComputation:
     return self._work
 
   @property
-  def zero(self):
+  def zero(self) -> computation_impl.ConcreteComputation:
     return self._zero
 
   @property
-  def accumulate(self):
+  def accumulate(self) -> computation_impl.ConcreteComputation:
     return self._accumulate
 
   @property
-  def merge(self):
+  def merge(self) -> computation_impl.ConcreteComputation:
     return self._merge
 
   @property
-  def report(self):
+  def report(self) -> computation_impl.ConcreteComputation:
     return self._report
 
   @property
-  def secure_sum_bitwidth(self):
+  def secure_sum_bitwidth(self) -> computation_impl.ConcreteComputation:
     return self._secure_sum_bitwidth
 
   @property
-  def secure_sum_max_input(self):
+  def secure_sum_max_input(self) -> computation_impl.ConcreteComputation:
     return self._secure_sum_max_input
 
   @property
-  def secure_modular_sum_modulus(self):
+  def secure_modular_sum_modulus(self) -> computation_impl.ConcreteComputation:
     return self._secure_modular_sum_modulus
 
   @property
-  def update(self):
+  def update(self) -> computation_impl.ConcreteComputation:
     return self._update
 
   @property
-  def server_state_label(self):
+  def server_state_label(self) -> Optional[str]:
     return self._server_state_label
 
   @property
-  def client_data_label(self):
+  def client_data_label(self) -> Optional[str]:
     return self._client_data_label
 
   @property
@@ -414,7 +427,7 @@ class MapReduceForm(typed_object.TypedObject):
         return True
     return False
 
-  def summary(self, print_fn=print):
+  def summary(self, print_fn: Callable[..., None] = print) -> None:
     """Prints a string summary of the `MapReduceForm`.
 
     Args:
