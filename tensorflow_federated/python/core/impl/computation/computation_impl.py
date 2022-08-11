@@ -18,6 +18,8 @@
 # information.
 """Defines the implementation of the base Computation interface."""
 
+from typing import Any, Optional
+
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -80,7 +82,10 @@ class ConcreteComputation(computation_base.Computation):
     return building_blocks.CompiledComputation(
         self._computation_proto, type_signature=self.type_signature)
 
-  def __init__(self, computation_proto, context_stack, annotated_type=None):
+  def __init__(self,
+               computation_proto: pb.Computation,
+               context_stack: context_stack_base.ContextStack,
+               annotated_type: Optional[computation_types.FunctionType] = None):
     """Constructs a new instance of ConcreteComputation from the computation_proto.
 
     Args:
@@ -101,20 +106,20 @@ class ConcreteComputation(computation_base.Computation):
     if annotated_type is not None:
       if not type_spec.is_assignable_from(annotated_type):
         raise TypeError(
-            'annotated_type not compatible with computation_proto.type\n'
-            'computation_proto.type: {!s}\n'
-            'annotated_type: {!s}'.format(type_spec, annotated_type))
+            f'annotated_type not compatible with computation_proto.type\n'
+            f'computation_proto.type: {type_spec}\n'
+            f'annotated_type: {annotated_type}')
       type_spec = annotated_type
 
     if not type_spec.is_function():
-      raise TypeError('{} is not a functional type, from proto: {}'.format(
-          str(type_spec), str(computation_proto)))
+      raise TypeError(f'{type_spec} is not a functional type, from proto: '
+                      f'{computation_proto}')
 
     self._type_signature = type_spec
     self._context_stack = context_stack
     self._computation_proto = computation_proto
 
-  def __eq__(self, other):
+  def __eq__(self, other: Any) -> bool:
     if self is other:
       return True
     elif not isinstance(other, ConcreteComputation):
@@ -122,7 +127,7 @@ class ConcreteComputation(computation_base.Computation):
     return self._computation_proto == other._computation_proto
 
   @property
-  def type_signature(self):
+  def type_signature(self) -> computation_types.FunctionType:
     return self._type_signature
 
   def __call__(self, *args, **kwargs):
