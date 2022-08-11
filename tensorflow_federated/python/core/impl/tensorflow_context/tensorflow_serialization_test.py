@@ -124,8 +124,6 @@ class TensorFlowSerializationTest(tf.test.TestCase):
 
   @tensorflow_test_utils.graph_mode_test
   def test_serialize_tensorflow_with_dataset_yielding_lists(self):
-    self.skipTest('b/242057254: tf.data doesn\'t work well with TFF sequences '
-                  'typed to return python `list` types.')
 
     def _legacy_dataset_reducer_example(ds):
       return ds.reduce(np.int64(0), lambda x, y: x + y[0])

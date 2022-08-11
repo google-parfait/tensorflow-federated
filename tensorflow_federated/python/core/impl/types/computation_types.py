@@ -352,8 +352,8 @@ class _Intern(abc.ABCMeta):
   Inherits from `abc.ABCMeta` to prevent subclass conflicts.
   """
 
-  @staticmethod
-  def _hash_normalized_args(*args):
+  @classmethod
+  def _hash_normalized_args(cls, *args):
     """Default implementation of `_hash_normalized_args`."""
     return hash(args)
 
@@ -410,8 +410,8 @@ class _TensorShapeContainer:
 class TensorType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
 
-  @staticmethod
-  def _normalize_init_args(dtype, shape=None):
+  @classmethod
+  def _normalize_init_args(cls, dtype, shape=None):
     """Checks init arguments and converts to a normalized representation."""
     if not isinstance(dtype, tf.dtypes.DType):
       if _is_dtype_spec(dtype):
@@ -431,8 +431,8 @@ class TensorType(Type, metaclass=_Intern):
           has_rank=True, shape_tuple=tuple(shape.as_list()))
     return (dtype, shape_container)
 
-  @staticmethod
-  def _hash_normalized_args(dtype, shape_container):
+  @classmethod
+  def _hash_normalized_args(cls, dtype, shape_container):
     return hash((dtype, shape_container))
 
   def __init__(self, dtype, shape=None):
@@ -543,8 +543,8 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
   index, `foo[index]`.
   """
 
-  @staticmethod
-  def _normalize_init_args(elements, convert=True):
+  @classmethod
+  def _normalize_init_args(cls, elements, convert=True):
     py_typecheck.check_type(elements, collections.abc.Iterable)
     if convert:
       if py_typecheck.is_named_tuple(elements):
@@ -572,8 +572,8 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
         elements = [_map_element(e) for e in elements]
     return (elements,)
 
-  @staticmethod
-  def _hash_normalized_args(elements):
+  @classmethod
+  def _hash_normalized_args(cls, elements):
     return hash(tuple(elements))
 
   def __init__(self, elements, enable_wf_check=True):
@@ -632,15 +632,15 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
 class StructWithPythonType(StructType, metaclass=_Intern):
   """A representation of a structure paired with a Python container type."""
 
-  @staticmethod
-  def _normalize_init_args(elements, container_type):  # pylint: disable=arguments-renamed
+  @classmethod
+  def _normalize_init_args(cls, elements, container_type):  # pylint: disable=arguments-renamed
     py_typecheck.check_type(container_type, type)
     # TODO(b/161561250): check the `container_type` for validity.
     elements = StructType._normalize_init_args(elements)[0]
     return (elements, container_type)
 
-  @staticmethod
-  def _hash_normalized_args(elements, container_type):
+  @classmethod
+  def _hash_normalized_args(cls, elements, container_type):
     return hash((tuple(elements), container_type))
 
   def __init__(self, elements, container_type):
@@ -678,11 +678,36 @@ class StructWithPythonType(StructType, metaclass=_Intern):
 
 
 class SequenceType(Type, metaclass=_Intern):
-  """An implementation of `tff.Type` representing types of sequences in TFF."""
+  """An implementation of `tff.Type` representing types of sequences in TFF.
 
-  @staticmethod
-  def _normalize_init_args(element):
-    return (to_type(element),)
+  IMPORTANT: since `SequenceType` is frequently backed by `tf.data.Dataset`
+  which converts `list` to `tuple`, any `SequenceType` constructed with
+  `StructWithPythonType` elements will convert any `list` python container type
+  to `tuple` python container types for interoperability.
+  """
+
+  @classmethod
+  def _normalize_init_args(cls, element) -> tuple[Type]:
+    """Normalizes arguments by converting `list` to `tuple` in struct types."""
+    T = TypeVar('T')
+
+    def convert_struct_with_list_to_struct_with_tuple(type_spec: T) -> T:
+      """Convert any StructWithPythonType using lists to use tuples."""
+      # We ignore non-struct, non-tensor types, these are not well formed types
+      # for sequence elements.
+      if not type_spec.is_struct():
+        return type_spec
+      elements = [(name, convert_struct_with_list_to_struct_with_tuple(value))
+                  for name, value in structure.iter_elements(type_spec)]
+      if not type_spec.is_struct_with_python():
+        return StructType(elements=elements)
+      container_cls = StructWithPythonType.get_container_type(type_spec)
+      return StructWithPythonType(
+          elements=elements,
+          container_type=tuple if container_cls is list else container_cls)
+
+    type_spec = convert_struct_with_list_to_struct_with_tuple(to_type(element))
+    return (type_spec,)
 
   def __init__(self, element):
     """Constructs a new instance from the given `element` type.
@@ -724,8 +749,8 @@ class SequenceType(Type, metaclass=_Intern):
 class FunctionType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing functional types in TFF."""
 
-  @staticmethod
-  def _normalize_init_args(parameter, result):
+  @classmethod
+  def _normalize_init_args(cls, parameter, result):
     return (to_type(parameter), to_type(result))
 
   def __init__(self, parameter, result):
@@ -786,8 +811,8 @@ class FunctionType(Type, metaclass=_Intern):
 class AbstractType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing abstract types in TFF."""
 
-  @staticmethod
-  def _normalize_init_args(label):
+  @classmethod
+  def _normalize_init_args(cls, label):
     py_typecheck.check_type(label, str)
     return (str(label),)
 
@@ -836,8 +861,8 @@ class PlacementType(Type, metaclass=_Intern):
   built-in TFF placement type.
   """
 
-  @staticmethod
-  def _normalize_init_args():
+  @classmethod
+  def _normalize_init_args(cls):
     return ()
 
   def __init__(self):
@@ -867,8 +892,8 @@ class PlacementType(Type, metaclass=_Intern):
 class FederatedType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing federated types in TFF."""
 
-  @staticmethod
-  def _normalize_init_args(member, placement, all_equal=None):
+  @classmethod
+  def _normalize_init_args(cls, member, placement, all_equal=None):
     py_typecheck.check_type(placement, placements.PlacementLiteral)
     member = to_type(member)
     if all_equal is None:
@@ -1077,7 +1102,7 @@ def to_type(spec) -> Union[TensorType, StructType, StructWithPythonType]:
       # `flat_values_shape = [None] + spec.shape[spec.ragged_rank + 1:]`
       # However, we can't go back from this type into a `tf.RaggedTensorSpec`,
       # meaning that round-tripping a `tf.RaggedTensorSpec` through
-      # `type_conversions.type_to_tf_structure(computation_types.to_type(spec))`
+      # `type_conversions.type_to_tf_structure(to_type(spec))`
       # would *not* be a no-op: it would clear away the extra shape information,
       # leading to compilation errors. This round-trip is tested in
       # `type_conversions_test.py` to ensure correctness.

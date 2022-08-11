@@ -72,6 +72,7 @@ py_test(
     deps = [
         ":computation_types",
         ":placements",
+        ":type_test_utils",
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
     ],

@@ -24,6 +24,7 @@ from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_test_utils
 
 
 class TypeMismatchErrorTest(absltest.TestCase):
@@ -135,22 +136,22 @@ class TensorTypeTest(absltest.TestCase):
         t.is_assignable_from(computation_types.TensorType(tf.int32, [5])))
     self.assertFalse(
         t.is_assignable_from(computation_types.TensorType(tf.int32, [10, 10])))
-    self.assertTrue(
-        t.is_assignable_from(computation_types.TensorType(tf.int32, 10)))
+    type_test_utils.assert_type_assignable_from(
+        t, computation_types.TensorType(tf.int32, 10))
 
   def test_is_assignable_from_unknown_dims(self):
     t1 = computation_types.TensorType(tf.int32, [None])
     t2 = computation_types.TensorType(tf.int32, [10])
-    self.assertTrue(t1.is_assignable_from(t2))
+    type_test_utils.assert_type_assignable_from(t1, t2)
     self.assertFalse(t2.is_assignable_from(t1))
 
   def test_is_equivalent_to(self):
     t1 = computation_types.TensorType(tf.int32, [None])
     t2 = computation_types.TensorType(tf.int32, [10])
     t3 = computation_types.TensorType(tf.int32, [10])
-    self.assertTrue(t1.is_equivalent_to(t1))
-    self.assertTrue(t2.is_equivalent_to(t3))
-    self.assertTrue(t3.is_equivalent_to(t2))
+    type_test_utils.assert_types_equivalent(t1, t1)
+    type_test_utils.assert_types_equivalent(t2, t3)
+    type_test_utils.assert_types_equivalent(t3, t2)
     self.assertFalse(t1.is_equivalent_to(t2))
     self.assertFalse(t2.is_equivalent_to(t1))
 
@@ -227,11 +228,11 @@ class StructTypeTest(absltest.TestCase):
     t4 = computation_types.StructType([tf.int32, ('a', tf.string)])
     t5 = computation_types.StructType([tf.int32])
     t6 = computation_types.StructType([tf.int32, tf.bool])
-    self.assertTrue(t1.is_assignable_from(t2))
+    type_test_utils.assert_type_assignable_from(t1, t2)
     self.assertFalse(t1.is_assignable_from(t3))
     self.assertFalse(t1.is_assignable_from(t4))
     self.assertFalse(t1.is_assignable_from(t5))
-    self.assertTrue(t1.is_assignable_from(t6))
+    type_test_utils.assert_type_assignable_from(t1, t6)
     self.assertFalse(t6.is_assignable_from(t1))
 
 
@@ -317,12 +318,24 @@ class SequenceTypeTest(absltest.TestCase):
     self.assertIs(t1, t2)
 
   def test_is_assignable_from(self):
-    self.assertTrue(
-        computation_types.SequenceType(tf.int32).is_assignable_from(
-            computation_types.SequenceType(tf.int32)))
+    type_test_utils.assert_type_assignable_from(
+        computation_types.SequenceType(tf.int32),
+        computation_types.SequenceType(tf.int32))
     self.assertFalse(
         computation_types.SequenceType(tf.int32).is_assignable_from(
             computation_types.SequenceType(tf.bool)))
+
+  def test_converts_struct_with_list_to_struct_with_tuple(self):
+    sequence_type = computation_types.SequenceType([tf.int32])
+    expected_type = computation_types.SequenceType((tf.int32,))
+    type_test_utils.assert_types_identical(sequence_type, expected_type)
+
+  def test_converts_nested_struct_with_list_to_struct_with_tuple(self):
+    sequence_type = computation_types.SequenceType(
+        [collections.OrderedDict(a=[tf.int32])])
+    expected_type = computation_types.SequenceType(
+        [collections.OrderedDict(a=(tf.int32,))])
+    type_test_utils.assert_types_identical(sequence_type, expected_type)
 
 
 class FunctionTypeTest(absltest.TestCase):
@@ -366,8 +379,8 @@ class FunctionTypeTest(absltest.TestCase):
     t2 = computation_types.FunctionType(tf.int32, tf.bool)
     t3 = computation_types.FunctionType(tf.int32, tf.int32)
     t4 = computation_types.TensorType(tf.int32)
-    self.assertTrue(t1.is_assignable_from(t1))
-    self.assertTrue(t1.is_assignable_from(t2))
+    type_test_utils.assert_type_assignable_from(t1, t1)
+    type_test_utils.assert_type_assignable_from(t1, t2)
     self.assertFalse(t1.is_assignable_from(t3))
     self.assertFalse(t1.is_assignable_from(t4))
 
@@ -420,8 +433,8 @@ class PlacementTypeTest(absltest.TestCase):
   def test_is_assignable_from(self):
     t1 = computation_types.PlacementType()
     t2 = computation_types.PlacementType()
-    self.assertTrue(t1.is_assignable_from(t1))
-    self.assertTrue(t1.is_assignable_from(t2))
+    type_test_utils.assert_type_assignable_from(t1, t1)
+    type_test_utils.assert_type_assignable_from(t1, t2)
 
 
 class FederatedTypeTest(absltest.TestCase):
@@ -457,17 +470,17 @@ class FederatedTypeTest(absltest.TestCase):
 
   def test_with_federated_type(self):
     t1 = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    self.assertTrue(t1.is_assignable_from(t1))
+    type_test_utils.assert_type_assignable_from(t1, t1)
     t2 = computation_types.FederatedType(
         tf.int32, placements.CLIENTS, all_equal=True)
-    self.assertTrue(t1.is_assignable_from(t2))
-    self.assertTrue(t2.is_assignable_from(t2))
+    type_test_utils.assert_type_assignable_from(t1, t2)
+    type_test_utils.assert_type_assignable_from(t2, t2)
     self.assertFalse(t2.is_assignable_from(t1))
     t3 = computation_types.FederatedType(
         computation_types.TensorType(tf.int32, [10]), placements.CLIENTS)
     t4 = computation_types.FederatedType(
         computation_types.TensorType(tf.int32, [None]), placements.CLIENTS)
-    self.assertTrue(t4.is_assignable_from(t3))
+    type_test_utils.assert_type_assignable_from(t4, t3)
     self.assertFalse(t3.is_assignable_from(t4))
     t5 = computation_types.FederatedType(
         computation_types.TensorType(tf.int32, [10]), placements.SERVER)
@@ -477,8 +490,8 @@ class FederatedTypeTest(absltest.TestCase):
         computation_types.TensorType(tf.int32, [10]),
         placements.CLIENTS,
         all_equal=True)
-    self.assertTrue(t3.is_assignable_from(t6))
-    self.assertTrue(t4.is_assignable_from(t6))
+    type_test_utils.assert_type_assignable_from(t3, t6)
+    type_test_utils.assert_type_assignable_from(t4, t6)
     self.assertFalse(t6.is_assignable_from(t3))
     self.assertFalse(t6.is_assignable_from(t4))
 
