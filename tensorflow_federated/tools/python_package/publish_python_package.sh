@@ -61,7 +61,10 @@ main() {
   python3.9 -m venv "venv"
   source "venv/bin/activate"
   python --version
-  pip install --upgrade pip
+  # TODO(b/242107901): Downgraded pip due to bug installing compatible versions
+  # of required packages https://github.com/pypa/pip/issues/9613. As of 8/10/22
+  # this is the latest version that works. pip 20.3.x was verified to fail.
+  pip install --upgrade "pip==20.2.4"
   pip --version
 
   # Publish the Python package.
