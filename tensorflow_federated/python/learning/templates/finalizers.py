@@ -239,7 +239,9 @@ def build_apply_optimizer_finalizer(
   """
   if not isinstance(optimizer_fn, optimizer_base.Optimizer):
     if not callable(optimizer_fn) or not isinstance(
-        optimizer_fn(), tf.keras.optimizers.Optimizer):
+        optimizer_fn(),
+        (tf.keras.optimizers.Optimizer, tf.keras.optimizers.legacy.Optimizer,
+         tf.keras.optimizers.experimental.Optimizer)):
       raise TypeError(
           'The optimizer_fn must be a `tff.learning.optimizers.Optimizer`, or '
           'a no-arg callable returning a `tf.keras.optimizers.Optimizer`.')
