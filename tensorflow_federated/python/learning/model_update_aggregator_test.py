@@ -12,17 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+from unittest import mock
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import mean
+from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.test import static_assert
@@ -31,6 +37,35 @@ from tensorflow_federated.python.learning import model_update_aggregator
 
 _float_type = computation_types.TensorType(tf.float32)
 _float_matrix_type = computation_types.TensorType(tf.float32, [200, 300])
+
+_expected_unweighted_state_type = computation_types.at_server(
+    (computation_types.StructType([('step_size', tf.float32),
+                                   ('inner_agg_process', ())]), ()))
+_expected_weighted_state_type = computation_types.at_server(
+    collections.OrderedDict(
+        value_sum_process=computation_types.StructType([
+            ('step_size', tf.float32), ('inner_agg_process', ())
+        ]),
+        weight_sum_process=()))
+
+_expected_unweighted_measurements_type = computation_types.at_server(
+    collections.OrderedDict(
+        mean_value=computation_types.StructType([
+            ('stochastic_discretization',
+             computation_types.StructType([('elias_gamma_code_avg_bitrate',
+                                            tf.float64)])),
+            ('distortion', tf.float32)
+        ]),
+        mean_count=()))
+_expected_weighted_measurements_type = computation_types.at_server(
+    collections.OrderedDict(
+        mean_value=computation_types.StructType([
+            ('stochastic_discretization',
+             computation_types.StructType([('elias_gamma_code_avg_bitrate',
+                                            tf.float64)])),
+            ('distortion', tf.float32)
+        ]),
+        mean_weight=()))
 
 
 class ModelUpdateAggregatorTest(parameterized.TestCase):
@@ -272,6 +307,109 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
       model_update_aggregator.compression_aggregator(
           debug_measurements_fn=wrong_debug_measurements_fn)
 
+  def test_simple_entropy_compression_aggregator_unweighted(self):
+    factory_ = model_update_aggregator.entropy_compression_aggregator(
+        step_size=0.5,
+        zeroing=False,
+        clipping=False,
+        weighted=False,
+        debug_measurements_fn=None)
+
+    self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
+    process = factory_.create(_float_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+
+    type_test_utils.assert_types_equivalent(
+        process.initialize.type_signature,
+        computation_types.FunctionType(
+            parameter=None, result=_expected_unweighted_state_type))
+    type_test_utils.assert_types_equivalent(
+        process.next.type_signature,
+        computation_types.FunctionType(
+            parameter=collections.OrderedDict(
+                state=_expected_unweighted_state_type,
+                value=computation_types.at_clients(_float_type)),
+            result=collections.OrderedDict(
+                state=_expected_unweighted_state_type,
+                result=computation_types.at_server(_float_type),
+                measurements=_expected_unweighted_measurements_type)))
+
+  def test_simple_entropy_compression_aggregator_weighted(self):
+    factory_ = model_update_aggregator.entropy_compression_aggregator(
+        step_size=0.5,
+        zeroing=False,
+        clipping=False,
+        weighted=True,
+        debug_measurements_fn=None)
+
+    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
+    process = factory_.create(_float_type, _float_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertTrue(process.is_weighted)
+
+    type_test_utils.assert_types_equivalent(
+        process.initialize.type_signature,
+        computation_types.FunctionType(
+            parameter=None, result=_expected_weighted_state_type))
+    type_test_utils.assert_types_equivalent(
+        process.next.type_signature,
+        computation_types.FunctionType(
+            parameter=collections.OrderedDict(
+                state=_expected_weighted_state_type,
+                value=computation_types.at_clients(_float_type),
+                weight=computation_types.at_clients(_float_type)),
+            result=collections.OrderedDict(
+                state=_expected_weighted_state_type,
+                result=computation_types.at_server(_float_type),
+                measurements=_expected_weighted_measurements_type)))
+
+  @parameterized.named_parameters(
+      ('simple', False, False, None),
+      ('zeroing', True, False, None),
+      ('clipping', False, True, None),
+      ('zeroing_and_clipping', True, True, None),
+      ('debug_measurements', False, False,
+       debug_measurements.add_debug_measurements),
+      ('zeroing_clipping_debug_measurements', True, True,
+       debug_measurements.add_debug_measurements),
+  )
+  @mock.patch.object(model_update_aggregator, '_default_clipping')
+  @mock.patch.object(model_update_aggregator, '_default_zeroing')
+  def test_entropy_compression_aggregator_configurations(
+      self, zeroing, clipping, debug_measurements_fn, mock_default_zeroing,
+      mock_default_clipping):
+    model_update_aggregator.entropy_compression_aggregator(
+        step_size=0.5,
+        clipping=clipping,
+        zeroing=zeroing,
+        weighted=True,
+        debug_measurements_fn=debug_measurements_fn)
+
+    self.assertEqual(mock_default_clipping.call_count, int(clipping))
+    self.assertEqual(mock_default_zeroing.call_count, int(zeroing))
+
+  @parameterized.named_parameters(
+      ('weighted_agg_unweighted_debug', True,
+       lambda *args: sum_factory.SumFactory()),
+      ('unweighted_agg_weighted_debug', False,
+       lambda *args: mean.MeanFactory()),
+  )
+  def test_entropy_compression_aggregator_wrong_debug_measurements_fn_raises(
+      self, weighted, debug_measurements_fn):
+    with self.assertRaises(
+        TypeError, msg='debug_measurements_fn should return the same type.'):
+      _ = model_update_aggregator.entropy_compression_aggregator(
+          weighted=weighted, debug_measurements_fn=debug_measurements_fn)
+
+  @parameterized.named_parameters(('negative_step_size', -1.0),
+                                  ('zero_step_size', 0.0))
+  def test_entropy_compression_aggregator_wrong_step_size_raises(
+      self, step_size):
+    with self.assertRaises(
+        ValueError, msg='step_size should be a positive float.'):
+      _ = model_update_aggregator.entropy_compression_aggregator(
+          step_size=step_size)
+
 
 class CompilerIntegrationTest(parameterized.TestCase):
   """Integration tests making sure compiler does not end up confused.
@@ -316,6 +454,15 @@ class CompilerIntegrationTest(parameterized.TestCase):
         _float_matrix_type, _float_type)
     # Default compression should reduce the size aggregated by more than 60%.
     self._check_aggregated_scalar_count(aggregator, 60000 * 0.4)
+
+  def test_entropy_compression_aggregator(self):
+    aggregator = model_update_aggregator.entropy_compression_aggregator(
+    ).create(_float_matrix_type, _float_type)
+    num_matrix_parameters = type_analysis.count_tensors_in_type(
+        _float_matrix_type)['parameters']
+    # Default entropy code should reduce the size aggregated by more than 90%.
+    self._check_aggregated_scalar_count(
+        aggregator, max_scalars=int(num_matrix_parameters * 0.1))
 
   def test_ddp_secure_aggregator(self):
     aggregator = model_update_aggregator.ddp_secure_aggregator(
