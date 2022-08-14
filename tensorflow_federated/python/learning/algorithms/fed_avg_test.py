@@ -20,18 +20,14 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory_utils
-from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.optimizers import sgdm
-from tensorflow_federated.python.learning.templates import distributors
 
 
 class FedAvgTest(parameterized.TestCase):
@@ -96,30 +92,20 @@ class FedAvgTest(parameterized.TestCase):
         client_optimizer_fn=sgdm.build_sgdm(1.0))
     self.assertEqual(mock_as_weighted.call_count, 1)
 
-  def test_raises_on_non_callable_model_fn(self):
-    with self.assertRaises(TypeError):
+  def test_raises_on_callable_non_model_fn(self):
+    with self.assertRaisesRegex(TypeError, 'callable returned type:'):
       fed_avg.build_weighted_fed_avg(
-          model_fn=model_examples.LinearRegression(),
-          client_optimizer_fn=tf.keras.optimizers.SGD)
+          model_fn=lambda: 0, client_optimizer_fn=tf.keras.optimizers.SGD)
+    with self.assertRaisesRegex(TypeError, 'callable returned type:'):
+      fed_avg.build_unweighted_fed_avg(
+          model_fn=lambda: 0, client_optimizer_fn=tf.keras.optimizers.SGD)
 
   def test_raises_on_invalid_client_weighting(self):
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(TypeError, 'client_weighting'):
       fed_avg.build_weighted_fed_avg(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=sgdm.build_sgdm(1.0),
           client_weighting='uniform')
-
-  def test_raises_on_invalid_distributor(self):
-    model_weights_type = type_conversions.type_from_tensors(
-        model_utils.ModelWeights.from_model(model_examples.LinearRegression()))
-    distributor = distributors.build_broadcast_process(model_weights_type)
-    invalid_distributor = iterative_process.IterativeProcess(
-        distributor.initialize, distributor.next)
-    with self.assertRaises(TypeError):
-      fed_avg.build_weighted_fed_avg(
-          model_fn=model_examples.LinearRegression,
-          client_optimizer_fn=sgdm.build_sgdm(1.0),
-          model_distributor=invalid_distributor)
 
   def test_weighted_fed_avg_raises_on_unweighted_aggregator(self):
     model_aggregator = model_update_aggregator.robust_aggregator(weighted=False)
@@ -163,18 +149,18 @@ class FedAvgTest(parameterized.TestCase):
 class FunctionalFedAvgTest(parameterized.TestCase):
   """Tests construction of the FedAvg training process."""
 
-  def test_raises_on_model_and_model_fn(self):
-    with self.assertRaises(ValueError):
+  def test_raises_on_non_callable_or_functional_model(self):
+    with self.assertRaisesRegex(TypeError, 'is not a callable'):
       fed_avg.build_weighted_fed_avg(
-          model_fn=model_examples.LinearRegression,
-          model=test_models.build_functional_linear_regression(),
-          client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1))
+          model_fn=0, client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1))
+    with self.assertRaisesRegex(TypeError, 'is not a callable'):
+      fed_avg.build_unweighted_fed_avg(
+          model_fn=0, client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1))
 
   def test_weighted_fed_avg_with_only_secure_aggregation(self):
     model = test_models.build_functional_linear_regression()
     learning_process = fed_avg.build_weighted_fed_avg(
-        model_fn=None,
-        model=model,
+        model_fn=model,
         client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1),
         model_aggregator=model_update_aggregator.secure_aggregator(
             weighted=True),

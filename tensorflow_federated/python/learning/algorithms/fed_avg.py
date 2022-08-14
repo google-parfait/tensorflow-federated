@@ -60,7 +60,7 @@ DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
 
 def build_weighted_fed_avg(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     client_optimizer_fn: Union[optimizer_base.Optimizer,
                                Callable[[], tf.keras.optimizers.Optimizer]],
     server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
@@ -75,7 +75,6 @@ def build_weighted_fed_avg(
         model_lib.MetricFinalizersType, computation_types.StructWithPythonType
     ], computation_base.Computation]] = None,
     use_experimental_simulation_loop: bool = False,
-    model: Optional[functional.FunctionalModel] = None,
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated averaging.
 
@@ -121,11 +120,12 @@ def build_weighted_fed_avg(
   [Reddi et al., 2021](https://arxiv.org/abs/2003.00295)).
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error. Cannot
-      be used with `model` argument.
+    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
+      instance of a `tff.learning.models.FunctionalModel`. When passing a
+      callable, the callable must *not* capture TensorFlow tensors or variables
+      and use them.  The model must be constructed entirely from scratch on each
+      invocation, returning the same pre-constructed model each call will result
+      in an error.
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`.
     server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
@@ -151,47 +151,52 @@ def build_weighted_fed_avg(
       input dataset. An experimental reduce loop is used for simulation. It is
       currently necessary to set this flag to True for performant GPU
       simulations.
-    model: A `tff.learning.models.FunctionalModel` to train. Cannot be used with
-      `model_fn` and must be `None` if `model_fn` is not `None`.
 
   Returns:
     A `tff.learning.templates.LearningProcess`.
+
+  Raises:
+    TypeError: If arguments are not the documented types.
   """
-  if model is not None and model_fn is not None:
-    raise ValueError('Must specify only one of `model` and `model_fn`, both '
-                     'were not `None`.')
-  elif model is None and model_fn is None:
-    raise ValueError('Must specify one of `model` and `model_fn`, both were '
-                     '`None`.')
-  if model_fn is not None:
-    py_typecheck.check_callable(model_fn)
-  else:
-    py_typecheck.check_type(model, functional.FunctionalModel)
-  py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
+  py_typecheck.check_type(
+      client_weighting,
+      client_weight_lib.ClientWeighting,
+      label='client_weighting')
 
-  if model is not None:
+  if not callable(model_fn):
+    if not isinstance(model_fn, functional.FunctionalModel):
+      raise TypeError(
+          'If `model_fn` is not a callable, it must be an instance '
+          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
+      trainable_weights, non_trainable_weights = model_fn.initial_weights
       return model_utils.ModelWeights(
-          tuple(tf.convert_to_tensor(w) for w in model.initial_weights[0]),
-          tuple(tf.convert_to_tensor(w) for w in model.initial_weights[1]))
+          tuple(tf.convert_to_tensor(w) for w in trainable_weights),
+          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
+
   else:
+    py_typecheck.check_callable(model_fn)
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
-      return model_utils.ModelWeights.from_model(model_fn())
+      model = model_fn()
+      if not isinstance(model, model_lib.Model):
+        raise TypeError('When `model_fn` is a callable, it return instances of '
+                        'tff.learning.Model. Instead callable returned type: '
+                        f'{type(model)}')
+      return model_utils.ModelWeights.from_model(model)
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 
   if model_distributor is None:
     model_distributor = distributors.build_broadcast_process(model_weights_type)
-
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
 
-  if model is not None:
+  if not callable(model_fn):
     trainable_weights_type, _ = model_weights_type
     model_update_type = trainable_weights_type
   else:
@@ -212,9 +217,9 @@ def build_weighted_fed_avg(
   if metrics_aggregator is None:
     metrics_aggregator = metric_aggregator.sum_then_finalize
 
-  if model is not None:
+  if not callable(model_fn):
     client_work = model_delta_client_work.build_functional_model_delta_client_work(
-        model=model,
+        model=model_fn,
         optimizer=client_optimizer_fn,
         client_weighting=client_weighting,
         metrics_aggregator=metrics_aggregator)
@@ -233,7 +238,7 @@ def build_weighted_fed_avg(
 
 
 def build_unweighted_fed_avg(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     client_optimizer_fn: Union[optimizer_base.Optimizer,
                                Callable[[], tf.keras.optimizers.Optimizer]],
     server_optimizer_fn: Union[optimizer_base.Optimizer, Callable[
@@ -288,10 +293,12 @@ def build_unweighted_fed_avg(
   or server optimizers.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
+      instance of a `tff.learning.models.FunctionalModel`. When passing a
+      callable, the callable must *not* capture TensorFlow tensors or variables
+      and use them.  The model must be constructed entirely from scratch on each
+      invocation, returning the same pre-constructed model each call will result
+      in an error.
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`.
     server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
