@@ -65,17 +65,13 @@ py_cpu_gpu_test(
     deps = [
         ":fed_avg",
         "//tensorflow_federated/python/aggregators:factory_utils",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/test:static_assert",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_update_aggregator",
-        "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
-        "//tensorflow_federated/python/learning/templates:distributors",
     ],
 )
 
