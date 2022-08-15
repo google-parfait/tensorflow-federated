@@ -89,15 +89,13 @@ def get_package_name(requirement: str) -> str:
 setuptools.setup(
     name=PROJECT_NAME,
     version=VERSION,
-    packages=setuptools.find_packages(exclude=('tools')),
     description=DOCLINES[0],
     long_description='\n'.join(DOCLINES[2:]),
     long_description_content_type='text/plain',
+    url='http://tensorflow.org/federated',
     author='Google Inc.',
     author_email='packages@tensorflow.org',
-    url='http://tensorflow.org/federated',
-    download_url='https://github.com/tensorflow/federated/tags',
-    install_requires=REQUIRED_PACKAGES,
+    license='Apache 2.0',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
@@ -115,6 +113,14 @@ setuptools.setup(
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    license='Apache 2.0',
     keywords='tensorflow federated machine learning',
+    project_urls={
+        'Issues': 'https://github.com/tensorflow/federated/issues',
+        'Releases': 'https://github.com/tensorflow/federated/releases',
+        'Source': 'https://github.com/tensorflow/federated',
+        'Documentation': 'https://www.tensorflow.org/federated',
+    },
+    packages=setuptools.find_packages(exclude=('tools')),
+    install_requires=REQUIRED_PACKAGES,
+    python_requires='~=3.9.0',
 )
