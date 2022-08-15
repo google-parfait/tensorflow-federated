@@ -19,20 +19,28 @@ set -e
 usage() {
   local script_name=$(basename "${0}")
   local options=(
+      "--python=python3.9"
       "--output_dir=<path>"
   )
   echo "usage: ${script_name} ${options[@]}"
+  echo "  --python=python3.9   The Python version used by the environment to"
+  echo "                       build the Python package."
   echo "  --output_dir=<path>  An output directory."
   exit 1
 }
 
 main() {
   # Parse the arguments.
+  local python="python3.9"
   local output_dir=""
 
   while [[ "$#" -gt 0 ]]; do
     option="$1"
     case "${option}" in
+      --python=*)
+        python="${option#*=}"
+        shift
+        ;;
       --output_dir=*)
         output_dir="${option#*=}"
         shift
@@ -59,7 +67,7 @@ main() {
   pushd "${temp_dir}"
 
   # Create a Python environment.
-  python3.9 -m venv "venv"
+  "${python}" -m venv "venv"
   source "venv/bin/activate"
   python --version
   # TODO(b/242107901): Downgraded pip due to bug installing compatible versions
