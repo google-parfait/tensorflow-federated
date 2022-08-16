@@ -21,7 +21,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import keras_utils
-from tensorflow_federated.python.tensorflow_libs import version_check
 
 # Names of Keras metrics to test.
 BINARY_METRIC_NAMES = [
@@ -97,10 +96,6 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       (name, getattr(tf.keras.metrics, name)) for name in BINARY_METRIC_NAMES)
   def test_binary_metrics_graph(self, metric_constructor):
-    if not version_check.is_tensorflow_version_newer('2.10.0', tf):
-      self.skipTest(
-          'requires https://github.com/keras-team/keras/commit/f6e8e9b1b999d22de9830fabc5e6d15a1818f0c6'
-      )
     with tf.Graph().as_default():
       with tf.compat.v1.Session() as sess:
         metric = metric_constructor()

@@ -304,7 +304,6 @@ py_test(
         "//tensorflow_federated/python/learning/metrics:counters",
         "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
-        "//tensorflow_federated/python/tensorflow_libs:version_check",
     ],
 )
 

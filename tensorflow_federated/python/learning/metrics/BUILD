@@ -116,7 +116,6 @@ py_test(
     deps = [
         ":counters",
         ":keras_utils",
-        "//tensorflow_federated/python/tensorflow_libs:version_check",
     ],
 )
 
