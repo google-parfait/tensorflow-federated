@@ -37,7 +37,7 @@ numpy~=1.21
 portpicker~=1.5
 semantic-version~=2.6
 tensorflow-model-optimization==0.7.3
-tensorflow-privacy==0.8.4
+tensorflow-privacy==0.8.6
 # The version of this dependency should match the version in
 # https://github.com/tensorflow/federated/blob/main/WORKSPACE.
 tensorflow==2.9.1
