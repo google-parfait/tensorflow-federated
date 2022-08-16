@@ -62,11 +62,11 @@ REQUIRED_PACKAGES = [
     'grpcio~=1.46.3',
     'jaxlib~=0.3.10',
     'jax~=0.3.13',
-    'numpy~=1.21.4',
+    'numpy~=1.23.2',
     'portpicker~=1.5.2',
     'semantic-version~=2.6.0',
     'tensorflow-model-optimization~=0.7.3',
-    'tensorflow-privacy~=0.8.4',
+    'tensorflow-privacy~=0.8.6',
     'tensorflow~=2.9.1',
     'tqdm~=4.64.0',
 ]
