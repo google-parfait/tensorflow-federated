@@ -43,7 +43,7 @@ package or build TensorFlow Federated from source.
 
 ### Requirements
 
-TFF requires Python 3.10.
+TFF requires Python >= 3.9.2.
 
 ## Getting Started
 

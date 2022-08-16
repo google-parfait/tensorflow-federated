@@ -15,7 +15,7 @@ There are a few ways to set up your environment to use TensorFlow Federated
 
 ## Requirements
 
-TFF requires Python 3.10.
+TFF requires Python >= 3.9.2.
 
 ## Install TensorFlow Federated using `pip`
 
