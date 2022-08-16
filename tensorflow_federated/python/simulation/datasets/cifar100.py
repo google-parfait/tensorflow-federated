@@ -119,8 +119,10 @@ def get_synthetic():
      characteristics (other than size) of those provided by
      `tff.simulation.datasets.cifar100.load_data`.
   """
-  return from_tensor_slices_client_data.TestClientData(
-      {'synthetic': _get_synthetic_digits_data()})
+  return from_tensor_slices_client_data.TestClientData({
+      'synthetic1': _get_synthetic_digits_data(),
+      'synthetic2': _get_synthetic_digits_data()
+  })
 
 
 def _get_synthetic_digits_data():
