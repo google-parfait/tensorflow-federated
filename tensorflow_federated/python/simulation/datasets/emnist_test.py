@@ -29,7 +29,7 @@ class EmnistTest(tf.test.TestCase):
 
   def test_get_synthetic(self):
     client_data = emnist.get_synthetic()
-    self.assertLen(client_data.client_ids, 1)
+    self.assertLen(client_data.client_ids, 2)
     self.assertEqual(client_data.element_type_structure, EXPECTED_ELEMENT_TYPE)
     for client_id in client_data.client_ids:
       data = self.evaluate(

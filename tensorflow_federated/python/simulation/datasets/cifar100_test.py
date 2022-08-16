@@ -30,25 +30,24 @@ class CIFAR100Test(tf.test.TestCase):
 
   def test_get_synthetic(self):
     client_data = cifar100.get_synthetic()
-    self.assertLen(client_data.client_ids, 1)
+    self.assertLen(client_data.client_ids, 2)
     self.assertEqual(client_data.element_type_structure, EXPECTED_ELEMENT_TYPE)
 
-    data = self.evaluate(
-        list(
-            client_data.create_tf_dataset_for_client(
-                client_data.client_ids[0])))
-    coarse_labels = [x['coarse_label'] for x in data]
-    images = [x['image'] for x in data]
-    labels = [x['label'] for x in data]
-    self.assertLen(coarse_labels, 5)
-    self.assertCountEqual(coarse_labels, [4, 4, 4, 8, 10])
+    for client_id in client_data.client_ids:
+      data = self.evaluate(
+          list(client_data.create_tf_dataset_for_client(client_id)))
+      coarse_labels = [x['coarse_label'] for x in data]
+      images = [x['image'] for x in data]
+      labels = [x['label'] for x in data]
+      self.assertLen(coarse_labels, 5)
+      self.assertCountEqual(coarse_labels, [4, 4, 4, 8, 10])
 
-    self.assertLen(labels, 5)
-    self.assertCountEqual(labels, [0, 51, 51, 88, 71])
+      self.assertLen(labels, 5)
+      self.assertCountEqual(labels, [0, 51, 51, 88, 71])
 
-    self.assertLen(images, 5)
-    self.assertEqual(images[0].shape, (32, 32, 3))
-    self.assertEqual(images[-1].shape, (32, 32, 3))
+      self.assertLen(images, 5)
+      self.assertEqual(images[0].shape, (32, 32, 3))
+      self.assertEqual(images[-1].shape, (32, 32, 3))
 
   def test_load_from_gcs(self):
     self.skipTest(
