@@ -27,7 +27,7 @@ There are a few ways to set up your environment to use TensorFlow Federated
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">python3 -m venv "venv"</code>
 <code class="devsite-terminal">source "venv/bin/activate"</code>
-<code class="devsite-terminal tfo-terminal-venv">pip install --upgrade "pip==20.2.4"</code>
+<code class="devsite-terminal tfo-terminal-venv">pip install --upgrade "pip"</code>
 </pre>
 
 Note: To exit the virtual environment, run `deactivate`.
@@ -96,13 +96,8 @@ build tool used to compile Tensorflow Federated.
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">python3 -m venv "venv"</code>
 <code class="devsite-terminal">source "venv/bin/activate"</code>
-<code class="devsite-terminal tfo-terminal-venv">pip install --upgrade "pip==20.2.4"</code>
+<code class="devsite-terminal tfo-terminal-venv">pip install --upgrade "pip"</code>
 </pre>
-
-<!-- TODO(b/242107901): Downgraded pip due to bug installing compatible versions
-     of required packages https://github.com/pypa/pip/issues/9613. As of 8/10/22
-     this is the latest version that works. pip 20.3.x was verified to fail.
--->
 
 Note: To exit the virtual environment run `deactivate`.
 

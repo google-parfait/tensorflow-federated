@@ -28,7 +28,7 @@ The fix is to:
         # Create a virtual environment
         python3 -m venv "venv"
         source "venv/bin/activate"
-        pip install --upgrade "pip==20.2.4"
+        pip install --upgrade "pip"
 
         # Install the required Python package
         pip install --upgrade \
@@ -44,12 +44,6 @@ The fix is to:
             --name tff_kernel \
             --display-name "TFF Kernel"
         ```
-
-        <!-- TODO(b/242107901): Downgraded pip due to bug installing compatible
-        versions of required packages https://github.com/pypa/pip/issues/9613.
-        As of 8/10/22 this is the latest version that works. pip 20.3.x was
-        verified to fail.
-        -->
 
 1.  Use `nest-asyncio` to patch `asyncio`.
 

@@ -25,10 +25,7 @@ RUN test -n "${VERSION}"
 
 COPY "tensorflow_federated/tools/runtime/remote_executor_service.py" /
 
-# TODO(b/242107901): Downgraded pip due to bug installing compatible versions
-# of required packages https://github.com/pypa/pip/issues/9613. As of 8/10/22
-# this is the latest version that works. pip 20.3.x was verified to fail.
-RUN pip3 install --no-cache-dir --upgrade "pip==20.2.4"
+RUN pip3 install --no-cache-dir --upgrade "pip"
 
 RUN pip3 install --no-cache-dir --upgrade "tensorflow-federated==${VERSION}"
 
