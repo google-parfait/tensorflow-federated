@@ -529,7 +529,16 @@ class MapReduceFormTestCase(tf.test.TestCase):
           type(value)))
 
 
-class GetComputationForMapReduceFormTest(MapReduceFormTestCase):
+class GetComputationForMapReduceFormTest(MapReduceFormTestCase,
+                                         parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('temperature', mapreduce_test_utils.get_temperature_sensor_example()),
+      ('mnist', mapreduce_test_utils.get_mnist_training_example()))
+  def test_type_signature_matches_generated_computation(self, example):
+    comp = form_utils.get_computation_for_map_reduce_form(example.mrf)
+    self.assertTrue(
+        comp.type_signature.is_equivalent_to(example.mrf.type_signature))
 
   def test_with_temperature_sensor_example(self):
     example = mapreduce_test_utils.get_temperature_sensor_example()

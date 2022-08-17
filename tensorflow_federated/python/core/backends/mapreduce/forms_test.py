@@ -109,7 +109,7 @@ def _build_test_map_reduce_form_with_computations(type_signature=None,
    test_update) = _test_map_reduce_form_computations()
   type_signature = (
       type_signature or mapreduce_test_utils.generate_unnamed_type_signature(
-          test_update, test_work, test_report))
+          test_update, test_work))
   return forms.MapReduceForm(
       type_signature,
       prepare if prepare else test_prepare,
@@ -219,7 +219,7 @@ class MapReduceFormTest(absltest.TestCase):
       return tf.constant([1]), []
 
     type_signature = mapreduce_test_utils.generate_unnamed_type_signature(
-        update, work, report)
+        update, work)
     try:
       forms.MapReduceForm(type_signature, prepare, work, zero, accumulate,
                           merge, report, bitwidth, max_input, modulus, update)

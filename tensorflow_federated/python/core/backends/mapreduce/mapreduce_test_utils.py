@@ -34,7 +34,7 @@ MapReduceFormExample = collections.namedtuple('MapReduceFormExample',
                                               ['mrf', 'initialize'])
 
 
-def generate_unnamed_type_signature(update, work, report):
+def generate_unnamed_type_signature(update, work):
   """Generates a type signature for the MapReduceForm based on components."""
   parameter = computation_types.StructType([
       (None,
@@ -49,7 +49,7 @@ def generate_unnamed_type_signature(update, work, report):
        computation_types.FederatedType(update.type_signature.parameter[0],
                                        placements.SERVER)),
       (None,
-       computation_types.FederatedType(report.type_signature.result,
+       computation_types.FederatedType(update.type_signature.result[1],
                                        placements.SERVER)),
   ])
   return computation_types.FunctionType(parameter, result)
@@ -155,7 +155,7 @@ def get_temperature_sensor_example():
     return (collections.OrderedDict(num_rounds=state['num_rounds'] + 1),
             update[0])
 
-  type_signature = generate_unnamed_type_signature(update, work, report)
+  type_signature = generate_unnamed_type_signature(update, work)
   return MapReduceFormExample(
       mrf=forms.MapReduceForm(type_signature, prepare, work, zero, accumulate,
                               merge, report, bitwidth, max_input, modulus,
@@ -247,7 +247,7 @@ def get_federated_sum_example(
     else:
       return state, update[0]
 
-  type_signature = generate_unnamed_type_signature(update, work, report)
+  type_signature = generate_unnamed_type_signature(update, work)
   return MapReduceFormExample(
       mrf=forms.MapReduceForm(type_signature, prepare, work, zero, accumulate,
                               merge, report, bitwidth, max_input, modulus,
@@ -410,7 +410,7 @@ def get_mnist_training_example():
                 num_examples=report.num_examples,
                 loss=report.loss))
 
-  type_signature = generate_unnamed_type_signature(update, work, report)
+  type_signature = generate_unnamed_type_signature(update, work)
   return MapReduceFormExample(
       mrf=forms.MapReduceForm(type_signature, prepare, work, zero, accumulate,
                               merge, report, secure_sum_bitwidth,
