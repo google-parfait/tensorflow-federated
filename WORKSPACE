@@ -55,6 +55,8 @@ git_repository(
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
     remote = "https://github.com/tensorflow/tensorflow.git",
+    # The version of this dependency should match the version in
+    # https://github.com/tensorflow/federated/blob/main/requirements.txt.
     tag = "v2.9.1",
 )
 

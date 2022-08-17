@@ -53,22 +53,25 @@ import setuptools
 
 DOCLINES = __doc__.split('\n')
 PROJECT_NAME = 'tensorflow_federated'
+
+# The version of a dependency should match the version and follow the guidlines
+# in https://github.com/tensorflow/federated/blob/main/requirements.txt.
 REQUIRED_PACKAGES = [
-    'absl-py~=1.0.0',
-    'attrs~=21.4.0',
-    'cachetools~=3.1.1',
-    'dm-tree~=0.1.7',
-    'farmhashpy~=0.4.0',
-    'grpcio~=1.46.3',
-    'jaxlib~=0.3.10',
-    'jax~=0.3.13',
-    'numpy~=1.21.4',
-    'portpicker~=1.5.2',
-    'semantic-version~=2.6.0',
-    'tensorflow-model-optimization~=0.7.3',
-    'tensorflow-privacy~=0.8.4',
-    'tensorflow~=2.9.1',
-    'tqdm~=4.64.0',
+    'absl-py>=1.0,==1.*',
+    'attrs~=21.4',
+    'cachetools~=3.1',
+    'dm-tree==0.1.7',
+    'farmhashpy==0.4.0',
+    'grpcio~=1.46',
+    'jaxlib==0.3.10',
+    'jax==0.3.13',
+    'numpy~=1.21',
+    'portpicker~=1.5',
+    'semantic-version~=2.6',
+    'tensorflow-model-optimization==0.7.3',
+    'tensorflow-privacy==0.8.4',
+    'tensorflow==2.9.1',
+    'tqdm~=4.64',
 ]
 
 with open('tensorflow_federated/version.py') as fp:
