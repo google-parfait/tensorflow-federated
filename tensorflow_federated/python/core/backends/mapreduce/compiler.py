@@ -117,8 +117,13 @@ def check_extraction_result(before_extraction, extracted):
           'computation {} represents a case the Tff-to-TF parser is missing.'
           .format(before_extraction.type_signature, extracted.function,
                   extracted.function.type_signature, before_extraction))
-  if not before_extraction.type_signature.is_equivalent_to(
+  if not before_extraction.type_signature.is_assignable_from(
       extracted.type_signature):
+    # In some situations, TF may can statically determine more type information
+    # after TFF has coalesced computations (example: calling an identity
+    # function of type (int32[?] -> int32[?]) on an argument of type int32[1]).
+    # This one-way assignability check allows the TFF compiler to return a TF
+    # computation with a more specific type if possible.
     raise MapReduceFormCompilationError(
         'We have extracted a TensorFlow block of the correct Python type, but '
         'incorrect TFF type signature. Before extraction, we had a TFF '

@@ -160,6 +160,33 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     self.assertEqual(extracted_tf.type_signature, lam.type_signature)
 
+  def test_further_concretizes_type_if_possible(self):
+    unk_size_int_type = computation_types.TensorType(
+        dtype=tf.int32, shape=[None])
+    known_size_int_type = computation_types.TensorType(
+        dtype=tf.int32, shape=[1])
+    lam_with_unk_size = building_blocks.Lambda(
+        'x', unk_size_int_type,
+        building_blocks.Reference('x', unk_size_int_type))
+    known_size_ref = building_blocks.Reference('y', known_size_int_type)
+    called_identity_knowable_size = building_blocks.Call(
+        lam_with_unk_size, known_size_ref)
+    lam_with_knowable_size = building_blocks.Lambda(
+        known_size_ref.name, known_size_ref.type_signature,
+        called_identity_knowable_size)
+
+    extracted_tf = compiler.consolidate_and_extract_local_processing(
+        lam_with_knowable_size, DEFAULT_GRAPPLER_CONFIG)
+
+    self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
+    # Assert assignability only goes one way in this case--the compiler can
+    # concretize the type of the lambda further.
+    type_test_utils.assert_type_assignable_from(
+        lam_with_knowable_size.type_signature, extracted_tf.type_signature)
+    self.assertFalse(
+        extracted_tf.type_signature.is_assignable_from(
+            lam_with_knowable_size.type_signature))
+
   def test_reduces_unplaced_lambda_to_equivalent_tf(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', tf.int32))
