@@ -79,8 +79,9 @@ class ComputationCallable(typed_object.TypedObject):
     # that wraps anything parsed from ASM that lacks an explicit module
     # declaration. Possibly manually surround with "module @myName { ... }" in
     # the compiler helpers.
-    self._vm_module = iree.runtime.VmModule.from_flatbuffer(flatbuffer_blob)
     self._config = _get_default_config_for_driver(backend.driver_name)
+    self._vm_module = iree.runtime.VmModule.from_flatbuffer(
+        self._config.vm_instance, flatbuffer_blob)
     self._function_name = module.function_name
     self._type_signature = module.type_signature
 
