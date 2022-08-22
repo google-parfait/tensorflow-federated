@@ -142,7 +142,7 @@ def federated_max(value):
     value: A value of a TFF federated type placed at the tff.CLIENTS.
 
   Returns:
-    A representation of the min of the member constituents of `value` placed at
+    A representation of the max of the member constituents of `value` placed at
     `tff.SERVER`.
   """
   _validate_value_on_clients(value)
