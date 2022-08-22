@@ -106,7 +106,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
   def __init__(
       self,
       quantile_estimator_query: tfp.QuantileEstimatorQuery,
-      record_aggregation_factory: factory.UnweightedAggregationFactory = None):
+      record_aggregation_factory: factory.UnweightedAggregationFactory):
     """Initializes `PrivateQuantileEstimationProcess`.
 
     Args:
