@@ -15,7 +15,6 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.stackoverflow import tag_prediction_tasks
@@ -119,7 +118,24 @@ class TagPredictionTasksTest(tf.test.TestCase, parameterized.TestCase):
           tag_vocab_size=tag_vocab_size,
           use_synthetic_data=True)
 
+  def test_preprocessed_test_dataset_can_yield_batches(self):
+    train_client_spec = client_spec.ClientSpec(
+        num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
+    eval_client_spec = client_spec.ClientSpec(
+        num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
+    baseline_task_spec = tag_prediction_tasks.create_tag_prediction_task(
+        train_client_spec,
+        eval_client_spec=eval_client_spec,
+        use_synthetic_data=True)
+    test_data = baseline_task_spec.datasets.test_data
+    preprocessed_test_data = test_data.preprocess(
+        baseline_task_spec.datasets.eval_preprocess_fn)
+    test_tf_dataset = preprocessed_test_data.create_tf_dataset_from_all_clients(
+    )
+    # Fails due to b/243523845.
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      next(iter(test_tf_dataset))
+
 
 if __name__ == '__main__':
-  execution_contexts.set_local_python_execution_context()
   tf.test.main()
