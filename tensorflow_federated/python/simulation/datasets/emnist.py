@@ -120,8 +120,8 @@ def load_data(only_digits=True, cache_dir=None):
 def get_synthetic():
   """Returns a small synthetic dataset for testing.
 
-  The single client produced has exactly 10 examples, one example for each digit
-  label. The images are derived from a fixed set of hard-coded images.
+  The two clients produced have exactly 10 examples apiece, one example for each
+  digit label. The images are derived from a fixed set of hard-coded images.
 
   Returns:
      A `tff.simulation.datasets.ClientData` object that matches the
