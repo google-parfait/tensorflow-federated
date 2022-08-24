@@ -22,6 +22,7 @@ import collections
 import typing
 from typing import Collection, Optional, Tuple
 import warnings
+from absl import logging
 
 import tensorflow as tf
 import tensorflow_privacy as tfp
@@ -174,6 +175,10 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
 
     value_noise_multiplier, clipped_count_stddev = adaptive_clip_noise_params(
         noise_multiplier, clients_per_round, clipped_count_stddev)
+    logging.info(
+        'Adaptive clipping, value noise multiplier: %s -> %s,'
+        'clipped_count_stddev: %s', noise_multiplier, value_noise_multiplier,
+        clipped_count_stddev)
 
     query = tfp.QuantileAdaptiveClipSumQuery(
         initial_l2_norm_clip=initial_l2_norm_clip,
