@@ -262,6 +262,9 @@ class ClientData(object, metaclass=abc.ABCMeta):
   ) -> 'ClientData':
     """Constructs a `ClientData` based on the given function.
 
+    Warning: Because this function must be serializable within a `tf.function`
+    and a `tff.Computation`, it cannot be a `tff.Computation`.
+
     Args:
       client_ids: A non-empty list of strings to use as input to
         `create_dataset_fn`.
@@ -270,9 +273,17 @@ class ClientData(object, metaclass=abc.ABCMeta):
         serializable and usable within the context of a `tf.function` and
         `tff.Computation`.
 
+    Raises:
+      TypeError: If `serializable_dataset_fn` is a `tff.Computation`.
+
     Returns:
       A `ClientData` object.
     """
+    if isinstance(serializable_dataset_fn, computation_base.Computation):
+      raise TypeError(
+          'The input serializable_dataset_fn cannot be a tff.Computation, as it'
+          ' must be serializable within the context of a tf.function.')
+
     return ConcreteClientData(client_ids, serializable_dataset_fn)
 
   @classmethod

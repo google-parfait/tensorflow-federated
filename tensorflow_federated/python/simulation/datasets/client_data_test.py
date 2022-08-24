@@ -164,6 +164,16 @@ class TrainTestClientSplitTest(tf.test.TestCase, parameterized.TestCase):
 
 class ConcreteClientDataTest(tf.test.TestCase, parameterized.TestCase):
 
+  def test_raises_on_tff_computation(self):
+
+    @tensorflow_computation.tf_computation
+    def dataset_fn():
+      return 0
+
+    with self.assertRaises(TypeError):
+      cd.ClientData.from_clients_and_tf_fn(
+          client_ids=[], serializable_dataset_fn=dataset_fn)
+
   def test_concrete_client_data_create_expected_datasets(self):
     client_data = create_concrete_client_data()
     self.assertEqual(client_data.element_type_structure,
