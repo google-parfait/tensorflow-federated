@@ -1,3 +1,42 @@
+# Release 0.34.0
+
+## Major Features and Improvements
+
+*   Updated to use `Bazel` version `5.3.0`.
+*   Updated the conventions used to specify the version of a Python dependency,
+    see https://github.com/tensorflow/federated/blob/main/requirements.txt for
+    more information.
+*   Updated the `setup.py` to explicitly fail to `pip install` in Python 3.10.
+    This has always been failing at runtime, but now explicitly fails to install
+    using `pip`.
+*   Refreshed loading_remote_data notebook content and added content for
+    `FederatedDataSource`.
+*   Added a TFF `type_signature` attribute to objects of type `MapReduceForm`.
+*   Added a
+    [series](https://github.com/tensorflow/federated/blob/main/docs/design/TFF_101_lingua_federata.pdf)
+    [of](https://github.com/tensorflow/federated/blob/main/docs/design/TFF_102_executors.pdf)
+    [slides](https://github.com/tensorflow/federated/blob/main/docs/design/TFF_103_transformations.pdf)
+    to the GitHub repo (so not part of the PIP package) which detail a technical
+    deep dive into TFF.
+
+## Breaking Changes
+
+*   Bumped tf-privacy version to `0.8.4`.
+*   Bumped tf-model-optimization version to `0.8.3`.
+*   Removed `initialize` from `MapReduceForm`.
+*   `SequenceType` now automatically casts any `StructWithPythonType` that
+    contains a `list` to a `tuple` for `tf.data` compatibility.
+*   Unified the `model_fn` and `model` parameters of
+    `tff.learning.algorithms.build_weighted_fed_avg`.
+*   `MapReduceForm` now takes a `type_signature` argument in its constructor,
+    and no longer takes an `initialize` argument.
+*   `MapReduceForm` no longer contains an `initialize` attribute.
+
+## Bug Fixes
+
+*   Relaxed overly strict type equivalence check to assignability in TFF-TF code
+    generation.
+
 # Release 0.33.0
 
 ## Major Features and Improvements
