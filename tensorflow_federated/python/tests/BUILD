@@ -62,6 +62,11 @@ py_test(
     srcs = ["jax_components_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "guitar",
+        "learning",
+        "manual",
+    ],
     deps = [
         ":jax_components",
         "//tensorflow_federated",
@@ -73,6 +78,11 @@ py_test(
     srcs = ["jax_training_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "guitar",
+        "learning",
+        "manual",
+    ],
     deps = [
         ":jax_components",
         "//tensorflow_federated",
