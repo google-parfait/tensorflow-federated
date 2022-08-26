@@ -771,6 +771,7 @@ tff_cc_library_with_tf_deps(
         "@com_google_absl//absl/types:optional",
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
+        "@org_tensorflow//tensorflow/core/tpu:tpu_global_init",
     ],
 )
 

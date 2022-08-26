@@ -48,6 +48,7 @@ limitations under the License
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow/core/public/session.h"
+#include "tensorflow/core/tpu/tpu_global_init.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
@@ -999,6 +1000,12 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
 std::shared_ptr<Executor> CreateTensorFlowExecutor(
     int32_t max_concurrent_computation_calls) {
+  // TODO(b/233917877): This only handles single host TPU topologies(2x2 or
+  // smaller).  Pass in the TPU topology to handle multihost TPU topologies.
+  // Note: This will fail if there are no TPUs but the status is just
+  // optionally logged.
+  auto initialize_status = tensorflow::InitializeTPUSystemGlobally();
+  VLOG(1) << "TPU Initialization Status." << initialize_status;
   return std::make_shared<TensorFlowExecutor>(max_concurrent_computation_calls);
 }
 
