@@ -15,9 +15,11 @@
 
 import abc
 import enum
-from typing import Any, List, Optional
+from typing import List, Optional, Generic, TypeVar
 
 from tensorflow_federated.python.core.impl.types import computation_types
+
+_D = TypeVar('_D', bound=computation_types.FederatedType)
 
 
 class Capability(enum.Enum):
@@ -54,7 +56,7 @@ class Capability(enum.Enum):
   SUPPORTS_REUSE = 4
 
 
-class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
+class FederatedDataSourceIterator(Generic[_D], abc.ABC):
   """An abstract interface for representing federated data source iterators.
 
   This interface abstracts away the specifics of iterating over data in a data
@@ -80,7 +82,7 @@ class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def select(self, number_of_clients: Optional[int] = None) -> Any:
+  def select(self, number_of_clients: Optional[int] = None) -> _D:
     """Returns a new selection of federated data from this iterator.
 
     The selection contains data distributed across a cohort of logical clients.
@@ -102,7 +104,7 @@ class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
 
-class FederatedDataSource(metaclass=abc.ABCMeta):
+class FederatedDataSource(Generic[_D], abc.ABC):
   """An abstract interface for representing federated data sources.
 
   This interface abstracts away the specifics of working with various types of
@@ -137,6 +139,6 @@ class FederatedDataSource(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def iterator(self) -> FederatedDataSourceIterator:
+  def iterator(self) -> FederatedDataSourceIterator[_D]:
     """Returns a new iterator for retrieving data from this data source."""
     raise NotImplementedError
