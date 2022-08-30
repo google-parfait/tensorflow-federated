@@ -18,6 +18,7 @@
 # information.
 """Abstractions for client work in learning algorithms."""
 
+import collections
 from typing import Optional
 
 import attr
@@ -25,6 +26,7 @@ import attr
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -245,7 +247,11 @@ class ClientWorkProcess(measured_process.MeasuredProcess, tunable.Tunable):
       initialize_fn: A `tff.Computation` matching the criteria above.
       next_fn: A `tff.Computation` matching the criteria above.
       get_hparams_fn: An optional `tff.Computation` matching the criteria above.
+        If not provided, this defaults to a computation that returns an empty
+        ordred dictionary, regardless of the contents of the state.
       set_hparams_fn: An optional `tff.Computation` matching the criteria above.
+        If not provided, this defaults to a pass-through computation, that
+        returns the input state regardless of the hparams passed in.
 
     Raises:
       TemplateNotFederatedError: If any of the federated computations provided
@@ -270,26 +276,36 @@ class ClientWorkProcess(measured_process.MeasuredProcess, tunable.Tunable):
     _type_check_next_fn_parameters(next_fn)
     _type_check_next_fn_result(next_fn)
 
-    state_type = initialize_fn.type_signature.result
+    state_type = initialize_fn.type_signature.result.member
     if get_hparams_fn is not None:
       _type_check_get_hparams_fn(get_hparams_fn, state_type)
+      get_hparams_computation = get_hparams_fn
+    else:
+
+      @tensorflow_computation.tf_computation(state_type)
+      def get_hparams_computation(state):
+        del state
+        return collections.OrderedDict()
+
+    hparams_type = get_hparams_computation.type_signature.result
 
     if set_hparams_fn is not None:
       _type_check_set_hparams_fn(set_hparams_fn, state_type)
+      set_hparams_computation = set_hparams_fn
+    else:
 
-    self._get_hparams_fn = get_hparams_fn
-    self._set_hparams_fn = set_hparams_fn
+      @tensorflow_computation.tf_computation(state_type, hparams_type)
+      def set_hparams_computation(state, hparams):
+        del hparams
+        return state
+
+    self._get_hparams_computation = get_hparams_computation
+    self._set_hparams_computation = set_hparams_computation
 
   @property
   def get_hparams(self) -> computation_base.Computation:
-    if self._get_hparams_fn is None:
-      raise NotImplementedError('get_hparams is not implemented for this '
-                                'ClientWorkProcess.')
-    return self._get_hparams_fn
+    return self._get_hparams_computation
 
   @property
   def set_hparams(self) -> computation_base.Computation:
-    if self._set_hparams_fn is None:
-      raise NotImplementedError('set_hparams is not implemented for this '
-                                'ClientWorkProcess.')
-    return self._set_hparams_fn
+    return self._set_hparams_computation
