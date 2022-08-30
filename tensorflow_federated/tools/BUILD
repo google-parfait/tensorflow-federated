@@ -19,6 +19,7 @@ bzl_library(
 py_binary(
     name = "build_docs",
     srcs = ["build_docs.py"],
+    # helpshort_test = True,
     python_version = "PY3",
     srcs_version = "PY3",
 )

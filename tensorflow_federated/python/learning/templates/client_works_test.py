@@ -22,6 +22,7 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_utils
@@ -450,17 +451,19 @@ class ClientWorkTest(absltest.TestCase):
       client_works.ClientWorkProcess(
           test_initialize_fn, test_next_fn, set_hparams_fn=bad_set_hparams_fn)
 
-  def test_default_get_hparams_raises_not_implemented_error(self):
+  def test_default_get_hparams_returns_empty_dict(self):
     client_work = client_works.ClientWorkProcess(
         initialize_fn=test_initialize_fn, next_fn=test_next_fn)
-    with self.assertRaises(NotImplementedError):
-      client_work.get_hparams  # pylint: disable=pointless-statement
+    hparams_type = client_work.get_hparams.type_signature.result
+    expected_type = computation_types.to_type(collections.OrderedDict())
+    type_test_utils.assert_types_equivalent(hparams_type, expected_type)
 
-  def test_default_set_hparams_raises_not_implemented_error(self):
+  def test_default_set_hparams_returns_state_of_matching_type(self):
     client_work = client_works.ClientWorkProcess(
         initialize_fn=test_initialize_fn, next_fn=test_next_fn)
-    with self.assertRaises(NotImplementedError):
-      client_work.set_hparams  # pylint: disable=pointless-statement
+    state_type = client_work.set_hparams.type_signature.parameter[0]
+    result_type = client_work.set_hparams.type_signature.result
+    type_test_utils.assert_types_equivalent(state_type, result_type)
 
 
 if __name__ == '__main__':
