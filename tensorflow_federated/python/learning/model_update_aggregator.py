@@ -23,12 +23,14 @@ from typing import Callable, Optional
 
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import distributed_dp
+from tensorflow_federated.python.aggregators import elias_gamma_encode
 from tensorflow_federated.python.aggregators import encoded
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import secure
+from tensorflow_federated.python.aggregators import stochastic_discretization
 
 
 def _default_zeroing(
@@ -112,23 +114,24 @@ def robust_aggregator(
     TypeError: if debug_measurement_fn yields an aggregation factory whose
       weight type does not match `weighted`.
   """
-  factory_ = mean.MeanFactory() if weighted else mean.UnweightedMeanFactory()
+  aggregation_factory = mean.MeanFactory(
+  ) if weighted else mean.UnweightedMeanFactory()
 
   if debug_measurements_fn:
-    factory_ = debug_measurements_fn(factory_)
+    aggregation_factory = debug_measurements_fn(aggregation_factory)
     if (weighted and
-        not isinstance(factory_, factory.WeightedAggregationFactory)) or (
-            (not weighted) and
-            (not isinstance(factory_, factory.UnweightedAggregationFactory))):
+        not isinstance(aggregation_factory, factory.WeightedAggregationFactory)
+       ) or ((not weighted) and (not isinstance(
+           aggregation_factory, factory.UnweightedAggregationFactory))):
       raise TypeError('debug_measurements_fn should return the same type.')
 
   if clipping:
-    factory_ = _default_clipping(factory_)
+    aggregation_factory = _default_clipping(aggregation_factory)
 
   if zeroing:
-    factory_ = _default_zeroing(factory_)
+    aggregation_factory = _default_zeroing(aggregation_factory)
 
-  return factory_
+  return aggregation_factory
 
 
 def dp_aggregator(noise_multiplier: float,
@@ -156,13 +159,13 @@ def dp_aggregator(noise_multiplier: float,
     A `tff.aggregators.UnweightedAggregationFactory`.
   """
 
-  factory_ = differential_privacy.DifferentiallyPrivateFactory.gaussian_adaptive(
+  aggregation_factory = differential_privacy.DifferentiallyPrivateFactory.gaussian_adaptive(
       noise_multiplier, clients_per_round)
 
   if zeroing:
-    factory_ = _default_zeroing(factory_)
+    aggregation_factory = _default_zeroing(aggregation_factory)
 
-  return factory_
+  return aggregation_factory
 
 
 def compression_aggregator(
@@ -204,28 +207,92 @@ def compression_aggregator(
     TypeError: if debug_measurement_fn yields an aggregation factory whose
       weight type does not match `weighted`.
   """
-  factory_ = encoded.EncodedSumFactory.quantize_above_threshold(
+  aggregation_factory = encoded.EncodedSumFactory.quantize_above_threshold(
       quantization_bits=8, threshold=20000, **kwargs)
 
-  factory_ = (
-      mean.MeanFactory(factory_)
-      if weighted else mean.UnweightedMeanFactory(factory_))
+  aggregation_factory = (
+      mean.MeanFactory(aggregation_factory)
+      if weighted else mean.UnweightedMeanFactory(aggregation_factory))
 
-  if debug_measurements_fn:
-    factory_ = debug_measurements_fn(factory_)
+  if debug_measurements_fn is not None:
+    aggregation_factory = debug_measurements_fn(aggregation_factory)
     if (weighted and
-        not isinstance(factory_, factory.WeightedAggregationFactory)) or (
-            (not weighted) and
-            (not isinstance(factory_, factory.UnweightedAggregationFactory))):
+        not isinstance(aggregation_factory, factory.WeightedAggregationFactory)
+       ) or ((not weighted) and (not isinstance(
+           aggregation_factory, factory.UnweightedAggregationFactory))):
       raise TypeError('debug_measurements_fn should return the same type.')
 
   if clipping:
-    factory_ = _default_clipping(factory_)
+    aggregation_factory = _default_clipping(aggregation_factory)
 
   if zeroing:
-    factory_ = _default_zeroing(factory_)
+    aggregation_factory = _default_zeroing(aggregation_factory)
 
-  return factory_
+  return aggregation_factory
+
+
+def entropy_compression_aggregator(
+    *,
+    step_size: float = 0.5,
+    zeroing: bool = True,
+    clipping: bool = True,
+    weighted: bool = True,
+    debug_measurements_fn: Optional[Callable[
+        [factory.AggregationFactory], factory.AggregationFactory]] = None,
+) -> factory.AggregationFactory:
+  """Creates an aggregation factory for quantization and entropy coding.
+
+  Args:
+    step_size: A positive float that determines the step size between adjacent
+      quantization levels; suggested range [0.1, 10.0].
+    zeroing: A boolean indicating whether to add zeroing out extreme client
+      updates (`True`) or not (`False`).
+    clipping: A boolean indicating whether to add clipping to large client
+      updates (`True`) or not (`False`).
+    weighted: A boolean indicating whether client model weights should be
+      averaged in a weighted manner (`True`) or unweighted manner (`False`).
+    debug_measurements_fn: A callable to add measurements suitable for debugging
+      learning algorithms, with possible values as None,
+      `tff.learning.add_debug_measurements` or
+      `tff.learning.add_debug_measurements_with_mixed_dtype`.
+
+  Returns:
+    A `tff.aggregators.AggregationFactory`.
+
+  Raises:
+    TypeError: if debug_measurement_fn yields an aggregation factory whose
+      weight type does not match `weighted`.
+    ValueError: if step_size is not a positive float.
+  """
+  if step_size <= 0.0:
+    raise ValueError('step_size should be a positive float.')
+
+  aggregation_factory = elias_gamma_encode.EliasGammaEncodedSumFactory(
+      bitrate_mean_factory=mean.UnweightedMeanFactory())
+  aggregation_factory = stochastic_discretization.StochasticDiscretizationFactory(
+      step_size=step_size,
+      inner_agg_factory=aggregation_factory,
+      distortion_aggregation_factory=mean.UnweightedMeanFactory())
+
+  aggregation_factory = (
+      mean.MeanFactory(aggregation_factory)
+      if weighted else mean.UnweightedMeanFactory(aggregation_factory))
+
+  if debug_measurements_fn is not None:
+    aggregation_factory = debug_measurements_fn(aggregation_factory)
+    if (weighted and
+        not isinstance(aggregation_factory, factory.WeightedAggregationFactory)
+       ) or ((not weighted) and (not isinstance(
+           aggregation_factory, factory.UnweightedAggregationFactory))):
+      raise TypeError('debug_measurements_fn should return the same type.')
+
+  if clipping:
+    aggregation_factory = _default_clipping(aggregation_factory)
+
+  if zeroing:
+    aggregation_factory = _default_zeroing(aggregation_factory)
+
+  return aggregation_factory
 
 
 def secure_aggregator(
@@ -261,11 +328,11 @@ def secure_aggregator(
       multiplier=2.0,
       secure_estimation=True)
 
-  factory_ = secure.SecureSumFactory(secure_clip_bound)
+  aggregation_factory = secure.SecureSumFactory(secure_clip_bound)
 
   if weighted:
-    factory_ = mean.MeanFactory(
-        value_sum_factory=factory_,
+    aggregation_factory = mean.MeanFactory(
+        value_sum_factory=aggregation_factory,
         # Use a power of 2 minus one to more accurately encode floating dtypes
         # that actually contain integer values. 2 ^ 20 gives us approximately a
         # range of [0, 1 million]. Existing use cases have the weights either
@@ -273,18 +340,20 @@ def secure_aggregator(
         weight_sum_factory=secure.SecureSumFactory(
             upper_bound_threshold=float(2**20 - 1), lower_bound_threshold=0.0))
   else:
-    factory_ = mean.UnweightedMeanFactory(
-        value_sum_factory=factory_,
+    aggregation_factory = mean.UnweightedMeanFactory(
+        value_sum_factory=aggregation_factory,
         count_sum_factory=secure.SecureSumFactory(
             upper_bound_threshold=1, lower_bound_threshold=0))
 
   if clipping:
-    factory_ = _default_clipping(factory_, secure_estimation=True)
+    aggregation_factory = _default_clipping(
+        aggregation_factory, secure_estimation=True)
 
   if zeroing:
-    factory_ = _default_zeroing(factory_, secure_estimation=True)
+    aggregation_factory = _default_zeroing(
+        aggregation_factory, secure_estimation=True)
 
-  return factory_
+  return aggregation_factory
 
 
 def ddp_secure_aggregator(
@@ -327,7 +396,7 @@ def ddp_secure_aggregator(
   Returns:
     A `tff.aggregators.UnweightedAggregationFactory`.
   """
-  agg_factory = distributed_dp.DistributedDpSumFactory(
+  aggregation_factory = distributed_dp.DistributedDpSumFactory(
       noise_multiplier=noise_multiplier,
       expected_clients_per_round=expected_clients_per_round,
       bits=bits,
@@ -335,12 +404,13 @@ def ddp_secure_aggregator(
       mechanism='distributed_skellam',
       rotation_type=rotation_type,
       auto_l2_clip=True)
-  agg_factory = mean.UnweightedMeanFactory(
-      value_sum_factory=agg_factory,
+  aggregation_factory = mean.UnweightedMeanFactory(
+      value_sum_factory=aggregation_factory,
       count_sum_factory=secure.SecureSumFactory(
           upper_bound_threshold=1, lower_bound_threshold=0))
 
   if zeroing:
-    agg_factory = _default_zeroing(agg_factory, secure_estimation=True)
+    aggregation_factory = _default_zeroing(
+        aggregation_factory, secure_estimation=True)
 
-  return agg_factory
+  return aggregation_factory

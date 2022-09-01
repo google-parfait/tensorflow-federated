@@ -36,6 +36,7 @@ jax==0.3.13
 numpy~=1.21
 portpicker~=1.5
 semantic-version~=2.6
+tensorflow-compression~=2.9.1
 tensorflow-model-optimization==0.7.3
 tensorflow-privacy==0.8.5
 # The version of this dependency should match the version in

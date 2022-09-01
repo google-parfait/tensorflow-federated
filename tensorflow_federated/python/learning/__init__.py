@@ -56,6 +56,7 @@ from tensorflow_federated.python.learning.model import Model
 from tensorflow_federated.python.learning.model_update_aggregator import compression_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import ddp_secure_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import dp_aggregator
+from tensorflow_federated.python.learning.model_update_aggregator import entropy_compression_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import robust_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import secure_aggregator
 from tensorflow_federated.python.learning.model_utils import ModelWeights

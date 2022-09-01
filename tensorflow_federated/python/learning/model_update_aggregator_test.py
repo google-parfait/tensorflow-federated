@@ -12,25 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+from unittest import mock
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import mean
+from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import debug_measurements
 from tensorflow_federated.python.learning import model_update_aggregator
 
-_float_type = computation_types.TensorType(tf.float32)
-_float_matrix_type = computation_types.TensorType(tf.float32, [200, 300])
+_FLOAT_TYPE = computation_types.TensorType(tf.float32)
+_FLOAT_MATRIX_TYPE = computation_types.TensorType(tf.float32, [200, 300])
 
 
 class ModelUpdateAggregatorTest(parameterized.TestCase):
@@ -53,7 +59,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         debug_measurements_fn=debug_measurements_fn)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create(_float_type, _float_type)
+    process = factory_.create(_FLOAT_TYPE, _FLOAT_TYPE)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertTrue(process.is_weighted)
 
@@ -76,7 +82,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         debug_measurements_fn=debug_measurements_fn)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    process = factory_.create(_float_type)
+    process = factory_.create(_FLOAT_TYPE)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertFalse(process.is_weighted)
 
@@ -94,7 +100,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         debug_measurements_fn=debug_measurements_fn)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create(_float_type, _float_type)
+    process = factory_.create(_FLOAT_TYPE, _FLOAT_TYPE)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertTrue(process.is_weighted)
 
@@ -120,7 +126,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         noise_multiplier=1e-2, clients_per_round=10, zeroing=zeroing)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    process = factory_.create(_float_type)
+    process = factory_.create(_FLOAT_TYPE)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertFalse(process.is_weighted)
 
@@ -135,7 +141,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         zeroing=zeroing, clipping=clipping)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create(_float_type, _float_type)
+    process = factory_.create(_FLOAT_TYPE, _FLOAT_TYPE)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertTrue(process.is_weighted)
 
@@ -150,13 +156,13 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         zeroing=zeroing, clipping=clipping, weighted=False)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    process = factory_.create(_float_type)
+    process = factory_.create(_FLOAT_TYPE)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertFalse(process.is_weighted)
 
   def test_weighted_secure_aggregator_only_contains_secure_aggregation(self):
     aggregator = model_update_aggregator.secure_aggregator(
-        weighted=True).create(_float_matrix_type, _float_type)
+        weighted=True).create(_FLOAT_MATRIX_TYPE, _FLOAT_TYPE)
     try:
       static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
     except:  # pylint: disable=bare-except
@@ -164,7 +170,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
 
   def test_unweighted_secure_aggregator_only_contains_secure_aggregation(self):
     aggregator = model_update_aggregator.secure_aggregator(
-        weighted=False).create(_float_matrix_type)
+        weighted=False).create(_FLOAT_MATRIX_TYPE)
     try:
       static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
     except:  # pylint: disable=bare-except
@@ -173,17 +179,17 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
   def test_ddp_secure_aggregator_only_contains_secure_aggregation(self):
     aggregator = model_update_aggregator.ddp_secure_aggregator(
         noise_multiplier=1e-2,
-        expected_clients_per_round=10).create(_float_matrix_type)
+        expected_clients_per_round=10).create(_FLOAT_MATRIX_TYPE)
     try:
       static_assert.assert_not_contains_unsecure_aggregation(aggregator.next)
     except:  # pylint: disable=bare-except
       self.fail('Secure aggregator contains non-secure aggregation.')
 
   @parameterized.named_parameters(
-      ('zeroing_float', True, _float_type),
-      ('zeroing_float_matrix', True, _float_matrix_type),
-      ('no_zeroing_float', False, _float_type),
-      ('no_zeroing_float_matrix', False, _float_matrix_type))
+      ('zeroing_float', True, _FLOAT_TYPE),
+      ('zeroing_float_matrix', True, _FLOAT_MATRIX_TYPE),
+      ('no_zeroing_float', False, _FLOAT_TYPE),
+      ('no_zeroing_float_matrix', False, _FLOAT_MATRIX_TYPE))
   def test_ddp_secure_aggregator_unweighted(self, zeroing, dtype):
     aggregator = model_update_aggregator.ddp_secure_aggregator(
         noise_multiplier=1e-2,
@@ -214,7 +220,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         debug_measurements_fn=debug_measurements_fn)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create(_float_type, _float_type)
+    process = factory_.create(_FLOAT_TYPE, _FLOAT_TYPE)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertTrue(process.is_weighted)
 
@@ -237,7 +243,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         debug_measurements_fn=debug_measurements_fn)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    process = factory_.create(_float_type)
+    process = factory_.create(_FLOAT_TYPE)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertFalse(process.is_weighted)
 
@@ -255,7 +261,7 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
         debug_measurements_fn=debug_measurements_fn)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create(_float_type, _float_type)
+    process = factory_.create(_FLOAT_TYPE, _FLOAT_TYPE)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertTrue(process.is_weighted)
 
@@ -271,6 +277,138 @@ class ModelUpdateAggregatorTest(parameterized.TestCase):
 
       model_update_aggregator.compression_aggregator(
           debug_measurements_fn=wrong_debug_measurements_fn)
+
+  def test_simple_entropy_compression_aggregator_unweighted(self):
+    factory_ = model_update_aggregator.entropy_compression_aggregator(
+        step_size=0.5,
+        zeroing=False,
+        clipping=False,
+        weighted=False,
+        debug_measurements_fn=None)
+
+    self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
+    process = factory_.create(_FLOAT_TYPE)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+
+    expected_unweighted_state_type = computation_types.at_server(
+        (computation_types.StructType([('step_size', tf.float32),
+                                       ('inner_agg_process', ())]), ()))
+    expected_unweighted_measurements_type = computation_types.at_server(
+        collections.OrderedDict(
+            mean_value=computation_types.StructType([
+                ('stochastic_discretization',
+                 computation_types.StructType([('elias_gamma_code_avg_bitrate',
+                                                tf.float64)])),
+                ('distortion', tf.float32)
+            ]),
+            mean_count=()))
+
+    type_test_utils.assert_types_equivalent(
+        process.initialize.type_signature,
+        computation_types.FunctionType(
+            parameter=None, result=expected_unweighted_state_type))
+    type_test_utils.assert_types_equivalent(
+        process.next.type_signature,
+        computation_types.FunctionType(
+            parameter=collections.OrderedDict(
+                state=expected_unweighted_state_type,
+                value=computation_types.at_clients(_FLOAT_TYPE)),
+            result=collections.OrderedDict(
+                state=expected_unweighted_state_type,
+                result=computation_types.at_server(_FLOAT_TYPE),
+                measurements=expected_unweighted_measurements_type)))
+
+  def test_simple_entropy_compression_aggregator_weighted(self):
+    factory_ = model_update_aggregator.entropy_compression_aggregator(
+        step_size=0.5,
+        zeroing=False,
+        clipping=False,
+        weighted=True,
+        debug_measurements_fn=None)
+
+    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
+    process = factory_.create(_FLOAT_TYPE, _FLOAT_TYPE)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertTrue(process.is_weighted)
+
+    expected_weighted_state_type = computation_types.at_server(
+        collections.OrderedDict(
+            value_sum_process=computation_types.StructType([
+                ('step_size', tf.float32), ('inner_agg_process', ())
+            ]),
+            weight_sum_process=()))
+    expected_weighted_measurements_type = computation_types.at_server(
+        collections.OrderedDict(
+            mean_value=computation_types.StructType([
+                ('stochastic_discretization',
+                 computation_types.StructType([('elias_gamma_code_avg_bitrate',
+                                                tf.float64)])),
+                ('distortion', tf.float32)
+            ]),
+            mean_weight=()))
+
+    type_test_utils.assert_types_equivalent(
+        process.initialize.type_signature,
+        computation_types.FunctionType(
+            parameter=None, result=expected_weighted_state_type))
+    type_test_utils.assert_types_equivalent(
+        process.next.type_signature,
+        computation_types.FunctionType(
+            parameter=collections.OrderedDict(
+                state=expected_weighted_state_type,
+                value=computation_types.at_clients(_FLOAT_TYPE),
+                weight=computation_types.at_clients(_FLOAT_TYPE)),
+            result=collections.OrderedDict(
+                state=expected_weighted_state_type,
+                result=computation_types.at_server(_FLOAT_TYPE),
+                measurements=expected_weighted_measurements_type)))
+
+  @parameterized.named_parameters(
+      ('simple', False, False, None),
+      ('zeroing', True, False, None),
+      ('clipping', False, True, None),
+      ('zeroing_and_clipping', True, True, None),
+      ('debug_measurements', False, False,
+       debug_measurements.add_debug_measurements),
+      ('zeroing_clipping_debug_measurements', True, True,
+       debug_measurements.add_debug_measurements),
+  )
+  @mock.patch.object(model_update_aggregator, '_default_clipping')
+  @mock.patch.object(model_update_aggregator, '_default_zeroing')
+  def test_entropy_compression_aggregator_handles_configuration(
+      self, zeroing, clipping, debug_measurements_fn, mock_default_zeroing,
+      mock_default_clipping):
+    model_update_aggregator.entropy_compression_aggregator(
+        step_size=0.5,
+        clipping=clipping,
+        zeroing=zeroing,
+        weighted=True,
+        debug_measurements_fn=debug_measurements_fn)
+
+    self.assertEqual(mock_default_clipping.call_count, int(clipping))
+    self.assertEqual(mock_default_zeroing.call_count, int(zeroing))
+
+  @parameterized.named_parameters(
+      ('weighted_agg_unweighted_debug', True,
+       lambda *args: sum_factory.SumFactory()),
+      ('unweighted_agg_weighted_debug', False,
+       lambda *args: mean.MeanFactory()),
+  )
+  def test_entropy_compression_aggregator_wrong_debug_measurements_fn_raises(
+      self, weighted, debug_measurements_fn):
+    with self.assertRaises(
+        TypeError, msg='debug_measurements_fn should return the same type.'):
+      model_update_aggregator.entropy_compression_aggregator(
+          weighted=weighted, debug_measurements_fn=debug_measurements_fn)
+
+  @parameterized.named_parameters(('negative_step_size', -1.0),
+                                  ('zero_step_size', 0.0))
+  def test_entropy_compression_aggregator_wrong_step_size_raises(
+      self, step_size):
+    with self.assertRaises(
+        ValueError, msg='step_size should be a positive float.'):
+      model_update_aggregator.entropy_compression_aggregator(
+          step_size=step_size)
 
 
 class CompilerIntegrationTest(parameterized.TestCase):
@@ -295,17 +433,17 @@ class CompilerIntegrationTest(parameterized.TestCase):
 
   def test_robust_aggregator(self):
     aggregator = model_update_aggregator.robust_aggregator().create(
-        _float_matrix_type, _float_type)
+        _FLOAT_MATRIX_TYPE, _FLOAT_TYPE)
     self._check_aggregated_scalar_count(aggregator, 60000 * 1.01, 60000)
 
   def test_dp_aggregator(self):
     aggregator = model_update_aggregator.dp_aggregator(
-        0.01, 10).create(_float_matrix_type)
+        0.01, 10).create(_FLOAT_MATRIX_TYPE)
     self._check_aggregated_scalar_count(aggregator, 60000 * 1.01, 60000)
 
   def test_secure_aggregator(self):
     aggregator = model_update_aggregator.secure_aggregator().create(
-        _float_matrix_type, _float_type)
+        _FLOAT_MATRIX_TYPE, _FLOAT_TYPE)
     mrf = self._check_aggregated_scalar_count(aggregator, 60000 * 1.01, 60000)
 
     # The MapReduceForm should be using secure aggregation.
@@ -313,14 +451,23 @@ class CompilerIntegrationTest(parameterized.TestCase):
 
   def test_compression_aggregator(self):
     aggregator = model_update_aggregator.compression_aggregator().create(
-        _float_matrix_type, _float_type)
+        _FLOAT_MATRIX_TYPE, _FLOAT_TYPE)
     # Default compression should reduce the size aggregated by more than 60%.
     self._check_aggregated_scalar_count(aggregator, 60000 * 0.4)
+
+  def test_entropy_compression_aggregator(self):
+    aggregator = model_update_aggregator.entropy_compression_aggregator(
+    ).create(_FLOAT_MATRIX_TYPE, _FLOAT_TYPE)
+    num_matrix_parameters = type_analysis.count_tensors_in_type(
+        _FLOAT_MATRIX_TYPE)['parameters']
+    # Default entropy code should reduce the size aggregated by more than 90%.
+    self._check_aggregated_scalar_count(
+        aggregator, max_scalars=int(num_matrix_parameters * 0.1))
 
   def test_ddp_secure_aggregator(self):
     aggregator = model_update_aggregator.ddp_secure_aggregator(
         noise_multiplier=1e-2,
-        expected_clients_per_round=10).create(_float_matrix_type)
+        expected_clients_per_round=10).create(_FLOAT_MATRIX_TYPE)
     # The Hadmard transform requires padding to next power of 2
     mrf = self._check_aggregated_scalar_count(aggregator, 2**16 * 1.01, 60000)
 

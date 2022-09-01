@@ -8,7 +8,9 @@ package(default_visibility = [
 
 package_group(
     name = "learning_packages",
-    packages = ["//tensorflow_federated/python/learning/..."],
+    packages = [
+        "//tensorflow_federated/python/learning/...",
+    ],
 )
 
 package_group(
@@ -206,12 +208,14 @@ py_library(
     deps = [
         "//tensorflow_federated/python/aggregators:differential_privacy",
         "//tensorflow_federated/python/aggregators:distributed_dp",
+        "//tensorflow_federated/python/aggregators:elias_gamma_encode",
         "//tensorflow_federated/python/aggregators:encoded",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:quantile_estimation",
         "//tensorflow_federated/python/aggregators:robust",
         "//tensorflow_federated/python/aggregators:secure",
+        "//tensorflow_federated/python/aggregators:stochastic_discretization",
     ],
 )
 
@@ -225,12 +229,15 @@ py_test(
         ":debug_measurements",
         ":model_update_aggregator",
         "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/aggregators:mean",
+        "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/core/backends/mapreduce:form_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/test:static_assert",
