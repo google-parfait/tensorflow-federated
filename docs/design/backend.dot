@@ -38,15 +38,6 @@ digraph {
     mapreduce_context -> mapreduce_runtime
   }
 
-  subgraph cluster_iree {
-    label="IREE"
-    iree_context [label="ExecutionContext", href="#context-3", target="_parent", fillcolor="#FEF6E0", color="#F7CB4D"]
-    iree_compiler [label="Compiler", href="#compiler-3", target="_parent", fillcolor="#FEF6E0", color="#F7CB4D"]
-    iree_runtime [label="Runtime", href="#runtime-3", target="_parent", fillcolor="#FEF6E0", color="#F7CB4D"]
-    iree_context -> iree_compiler
-    iree_context -> iree_runtime
-  }
-
   subgraph cluster_reference {
     label="Reference"
     reference_context [label="Context", href="#reference", target="_parent", fillcolor="#F3E5F5", color="#BA68C8"]
@@ -58,6 +49,6 @@ digraph {
 
   // Layout
   {rank=same; core_context, reference_context}
-  {rank=same; core_execution_context, native_context, mapreduce_context, iree_context}
-  {rank=same; core_compiler, core_runtime, native_compiler, native_runtime, mapreduce_compiler, mapreduce_runtime, iree_compiler, iree_runtime}
+  {rank=same; core_execution_context, native_context, mapreduce_context}
+  {rank=same; core_compiler, core_runtime, native_compiler, native_runtime, mapreduce_compiler, mapreduce_runtime}
 }

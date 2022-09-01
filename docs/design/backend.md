@@ -30,8 +30,8 @@ The **blue** nodes are provided by TFF
 [core](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core).
 
 The **green**, **red**, **yellow**, and **purple** nodes are provided by the
-[native](#native), [mapreduce](#mapreduce), [iree](#iree), and
-[reference](#reference) backends respectively.
+[native](#native), [mapreduce](#mapreduce), and [reference](#reference) backends
+respectively.
 
 The **dashed** nodes are provided by an external system.
 
@@ -123,38 +123,3 @@ an external MapReduce-like system.
 ### Context
 
 A MapReduce context is not provided by TFF.
-
-## IREE
-
-[IREE](https://github.com/google/iree) is an experimental compiler backend for
-[MLIR](https://mlir.llvm.org/).
-
-The
-[iree](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/iree)
-backend contains the data structures, compiler, and runtime required to execute
-an AST.
-
-### Compiler
-
-The
-[compiler](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/iree/compiler.py)
-module contains transformations required to comiple an AST to a form that can be
-exected using an
-[executor.IreeExecutor](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/iree/executor.py).
-
-### Runtime
-
-The
-[executor.IreeExecutor](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/iree/executor.py)
-is an [Executor](execution.md#executor) that executes computations by delegating
-to an IREE runtime. This executor can be composed with other
-[Executors](execution.md#executor) from the TFF runtime in order to construct an
-[execution stack](execution.md#execution-stack) representing an IREE runtime.
-
-### Context
-
-An iree context is [ExecutionContext](context.md#executioncontext) constructed
-with an iree compiler and an [execution stack](execution.md#execution-stack)
-with an
-[executor.IreeExecutor](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/iree/executor.py)
-delegating to an external IREE runtime.

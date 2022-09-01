@@ -24,8 +24,7 @@ computations using an [Executor](execution.md#executor).
 
 This API defines a **high-level abstraction** that should be used when an
 [Executor](execution.md#executor) is used for execution; the
-[native](backend.md#native) and [IREE](backend.md#iree) backends integrate at
-this level.
+[native](backend.md#native) integrates at this level.
 
 ### `FederatedComputationContext`
 

@@ -4,7 +4,6 @@ digraph {
   edge [color="#616161"]
 
   subgraph cluster_core_0 {
-    iree [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/iree" target="_parent",]
     mapreduce [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/mapreduce" target="_parent",]
     native [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/native" target="_parent",]
     backends_test [label="test", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/backends/test" target="_parent",]
@@ -13,7 +12,6 @@ digraph {
     templates [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/core/templates" target="_parent"]
   }
 
-  iree -> backends
   mapreduce -> backends
   native -> backends
   backends_test -> backends
