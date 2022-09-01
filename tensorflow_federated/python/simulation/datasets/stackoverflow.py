@@ -204,9 +204,9 @@ def load_tag_counts(cache_dir=None):
 def get_synthetic():
   """Returns a small synthetic dataset for testing.
 
-  Provides two clients, each client with only 3 examples. The examples are
-  derived from a fixed set of examples in the larger dataset, but are not exact
-  copies.
+  Provides three clients, each client with only 2 or 3 examples each.
+  The examples are derived from a fixed set of examples in the larger dataset,
+  but are not exact copies.
 
   Returns:
      A `tff.simulation.datasets.ClientData` object that matches the
