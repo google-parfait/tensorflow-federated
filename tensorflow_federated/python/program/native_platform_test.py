@@ -609,5 +609,89 @@ class DatasetDataSourceTest(parameterized.TestCase):
       native_platform.DatasetDataSource(datasets)
 
 
+class ClientIdDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
+
+  def test_init_does_not_raise_type_error(self):
+    client_ids = ['a', 'b', 'c']
+    try:
+      native_platform.ClientIdDataSourceIterator(client_ids=client_ids)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('bool', True),
+      ('int', 1),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_client_ids(self, client_ids):
+    with self.assertRaises(TypeError):
+      native_platform.ClientIdDataSourceIterator(client_ids=client_ids)
+
+  def test_init_raises_value_error_with_client_ids_empty(self):
+    client_ids = []
+    with self.assertRaises(ValueError):
+      native_platform.ClientIdDataSourceIterator(client_ids=client_ids)
+
+  @parameterized.named_parameters(
+      ('1', 0),
+      ('2', 1),
+      ('3', 2),
+  )
+  def test_select_returns_client_ids(self, number_of_clients):
+    client_ids = ['a', 'b', 'c']
+    iterator = native_platform.ClientIdDataSourceIterator(client_ids=client_ids)
+
+    selected_client_ids = iterator.select(number_of_clients)
+
+    self.assertLen(selected_client_ids, number_of_clients)
+    self.assertAllInSet(selected_client_ids, client_ids)
+    for client_id in selected_client_ids:
+      self.assertDTypeEqual(client_id, tf.string)
+
+  @parameterized.named_parameters(
+      ('str', 'a'),
+      ('list', []),
+  )
+  def test_select_raises_type_error_with_number_of_clients(
+      self, number_of_clients):
+    client_ids = ['a', 'b', 'c']
+    iterator = native_platform.ClientIdDataSourceIterator(client_ids=client_ids)
+
+    with self.assertRaises(TypeError):
+      iterator.select(number_of_clients)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('negative', -1),
+      ('greater', 4),
+  )
+  def test_select_raises_value_error_with_number_of_clients(
+      self, number_of_clients):
+    client_ids = ['a', 'b', 'c']
+    iterator = native_platform.ClientIdDataSourceIterator(client_ids=client_ids)
+
+    with self.assertRaises(ValueError):
+      iterator.select(number_of_clients)
+
+
+class ClientIdDataSourceTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('bool', True),
+      ('int', 1),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_client_ids(self, client_ids):
+    with self.assertRaises(TypeError):
+      native_platform.ClientIdDataSource(client_ids)
+
+  def test_init_raises_value_error_with_client_ids_empty(self):
+    client_ids = []
+    with self.assertRaises(ValueError):
+      native_platform.ClientIdDataSource(client_ids)
+
+
 if __name__ == '__main__':
   absltest.main()

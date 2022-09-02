@@ -312,3 +312,103 @@ class DatasetDataSource(data_source.FederatedDataSource):
   def iterator(self) -> DatasetDataSourceIterator:
     """Returns a new iterator for retrieving data from this data source."""
     return DatasetDataSourceIterator(self._datasets, self._federated_type)
+
+
+class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
+  """A `tff.program.FederatedDataSourceIterator` backed by client id strings.
+
+  A `tff.program.FederatedDataSourceIterator` backed by sequence of string ids,
+  one id per client. It selects ids uniformly at random, with replacement over
+  successive calls of `.select()` but without replacement within a single call
+  of `.select()`.
+  """
+
+  def __init__(self, client_ids: Sequence[str]):
+    """Returns an initialized `tff.program.ClientIdDataSourceIterator`.
+
+    Args:
+      client_ids: A sequence of client ids to use to yield the ids from this
+        data source.
+
+    Raises:
+      ValueError: If `client_ids` is empty or not a sequence, or if one of the
+        ids is not a string.
+    """
+    py_typecheck.check_type(client_ids, collections.abc.Sequence)
+    if not client_ids:
+      raise ValueError('Expected `client_ids` to not be empty.')
+    for client_id in client_ids:
+      py_typecheck.check_type(client_id, str)
+    self._client_ids = client_ids
+    self._federated_type = computation_types.at_clients(
+        computation_types.TensorType(tf.string))
+
+  @property
+  def federated_type(self) -> computation_types.FederatedType:
+    """The type of the data returned by calling `select` on an iterator."""
+    return self._federated_type
+
+  def select(self, number_of_clients: Optional[int] = None) -> Any:
+    """Returns a new selection of client ids from this iterator.
+
+    Within a single call, the client ids are sampled without replacement, i.e.,
+    there will never be client ids duplicated in the output. But separate calls
+    to this method will sample anew, so the same client ids can be present in
+    successive calls.
+
+    Args:
+      number_of_clients: A number of clients to use when selecting data, must be
+        a positive integer and less than the total number of client ids.
+
+    Raises:
+      ValueError: If `number_of_clients` is not a positive integer or if
+        `number_of_clients` is not less than the total number of client ids.
+    """
+    if number_of_clients is None:
+      raise ValueError(
+          'The `number_of_clients` argument cannot be None (must be int).')
+    if (number_of_clients < 0 or number_of_clients > len(self._client_ids)):
+      raise ValueError(
+          'Expected `number_of_clients` to be positive and less than the '
+          f'number of client_ids ({len(self._client_ids)}). Was '
+          f'{number_of_clients}.')
+    return random.sample(self._client_ids, number_of_clients)
+
+
+class ClientIdDataSource(data_source.FederatedDataSource):
+  """A tff.program.FederatedDataSource managing data in form of client ids."""
+
+  def __init__(self, client_ids: Sequence[str]):
+    """Returns an initialized `tff.program.ClientIdDataSource`.
+
+    Args:
+      client_ids: A sequence of client ids to use to yield the ids from this
+        data source.
+
+    Raises:
+      ValueError: If `client_ids` is empty or not a sequence, or if one of the
+        ids is not a string.
+    """
+    py_typecheck.check_type(client_ids, collections.abc.Sequence)
+    if not client_ids:
+      raise ValueError('Expected `client_ids` to not be empty.')
+    for client_id in client_ids:
+      py_typecheck.check_type(client_id, str)
+    self._client_ids = client_ids
+    self._federated_type = computation_types.at_clients(
+        computation_types.TensorType(tf.string))
+    self._capabilities = [data_source.Capability.RANDOM_UNIFORM]
+
+  @property
+  def federated_type(self) -> computation_types.FederatedType:
+    """The type of the data returned by calling `select` on an iterator."""
+    return self._federated_type
+
+  @property
+  def capabilities(self) -> List[data_source.Capability]:
+    """The list of capabilities supported by this data source."""
+    return self._capabilities
+
+  def iterator(self) -> data_source.FederatedDataSourceIterator:
+    """Returns a new iterator for retrieving client ids from this data source."""
+    return ClientIdDataSourceIterator(self._client_ids)
