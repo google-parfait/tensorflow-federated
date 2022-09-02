@@ -13,7 +13,10 @@ licenses(["notice"])
 bzl_library(
     name = "build_defs_bzl",
     srcs = ["build_defs.bzl"],
-    deps = ["@rules_python//python:defs.bzl"],
+    visibility = ["//tensorflow_federated:__subpackages__"],
+    deps = [
+        "@rules_python//python:defs.bzl",
+    ],
 )
 
 py_binary(

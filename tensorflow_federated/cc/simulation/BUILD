@@ -1,5 +1,3 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_binary_with_tf_deps")
-
 package(default_visibility = [
     ":simulation_packages",
     ":simulation_users",
@@ -50,8 +48,7 @@ cc_library(
     ],
 )
 
-# TODO(b/234147708): If / when we move to a static build of this directory, this target can be replaced with cc_binary.
-tff_cc_binary_with_tf_deps(
+cc_binary(
     name = "worker_binary",
     linkopts = ["-lrt"],
     deps = [

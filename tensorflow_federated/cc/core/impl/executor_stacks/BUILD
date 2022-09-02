@@ -1,4 +1,4 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "tff_cc_test_with_tf_deps", "tff_pybind_extension_with_tf_deps")
+load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 
 package(default_visibility = [
     ":executor_stacks_packages",
@@ -15,13 +15,12 @@ package_group(
 
 licenses(["notice"])
 
-tff_pybind_extension_with_tf_deps(
+pybind_extension(
     name = "executor_stack_bindings",
     srcs = ["executor_stack_bindings.cc"],
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
-    tf_python_dependency = True,
     deps = [
         ":remote_stacks",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
@@ -46,7 +45,7 @@ cc_library(
     ],
 )
 
-tff_cc_test_with_tf_deps(
+cc_test(
     name = "local_stacks_test",
     srcs = ["local_stacks_test.cc"],
     deps = [
@@ -81,7 +80,7 @@ cc_library(
     ],
 )
 
-tff_cc_test_with_tf_deps(
+cc_test(
     name = "remote_stacks_test",
     srcs = ["remote_stacks_test.cc"],
     deps = [
