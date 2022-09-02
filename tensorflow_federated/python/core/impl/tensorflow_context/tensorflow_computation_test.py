@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import attr
 import tensorflow as tf
 
@@ -27,64 +28,47 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
 
-class TensorflowWrapperTest(absltest.TestCase):
+def one_arg_fn(x):
+  return x > 10
 
-  def test_invoke_with_typed_lambda(self):
-    foo = lambda x: x > 10
-    foo = tensorflow_computation.tf_computation(foo, tf.int32)
-    self.assertEqual(foo.type_signature.compact_representation(),
-                     '(int32 -> bool)')
 
-  def test_invoke_with_polymorphic_lambda(self):
-    foo = lambda x: x > 10
-    foo = tensorflow_computation.tf_computation(foo)
+def no_arg_fn():
+  return 10
 
-    concrete_fn = foo.fn_for_argument_type(
+
+class TensorFlowComputationTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('lambda_with_arg', lambda x: x > 10, tf.int32, '(int32 -> bool)'),
+      ('function_with_arg', one_arg_fn, tf.int32, '(int32 -> bool)'),
+      ('tf_function_with_arg', tf.function(one_arg_fn), tf.int32,
+       '(int32 -> bool)'),
+      ('lambda_with_no_args', lambda: 10, None, '( -> int32)'),
+      ('function_with_no_args', no_arg_fn, None, '( -> int32)'),
+      ('tf_function_with_no_args', tf.function(no_arg_fn), None, '( -> int32)'),
+  )
+  def test_tf_computation_invoked_with_type(self, fn, fn_arg_type,
+                                            expected_representation):
+    fn = tensorflow_computation.tf_computation(fn, fn_arg_type)
+    self.assertEqual(fn.type_signature.compact_representation(),
+                     expected_representation)
+
+  @parameterized.named_parameters(
+      ('lambda', lambda x: x > 10),
+      ('function', one_arg_fn),
+      ('tf_function', tf.function(one_arg_fn)),
+  )
+  def test_tf_computation_invoked_without_type(self, fn):
+
+    fn = tensorflow_computation.tf_computation(fn)
+    concrete_fn = fn.fn_for_argument_type(
         computation_types.TensorType(tf.int32))
     self.assertEqual(concrete_fn.type_signature.compact_representation(),
                      '(int32 -> bool)')
-    concrete_fn = foo.fn_for_argument_type(
+    concrete_fn = fn.fn_for_argument_type(
         computation_types.TensorType(tf.float32))
     self.assertEqual(concrete_fn.type_signature.compact_representation(),
                      '(float32 -> bool)')
-
-  def test_invoke_with_no_arg_lambda(self):
-    foo = lambda: 10
-    foo = tensorflow_computation.tf_computation(foo)
-    self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
-
-  def test_invoke_with_typed_fn(self):
-
-    def foo(x):
-      return x > 10
-
-    foo = tensorflow_computation.tf_computation(foo, tf.int32)
-    self.assertEqual(foo.type_signature.compact_representation(),
-                     '(int32 -> bool)')
-
-  def test_invoke_with_polymorphic_fn(self):
-
-    def foo(x):
-      return x > 10
-
-    foo = tensorflow_computation.tf_computation(foo)
-
-    concrete_fn = foo.fn_for_argument_type(
-        computation_types.TensorType(tf.int32))
-    self.assertEqual(concrete_fn.type_signature.compact_representation(),
-                     '(int32 -> bool)')
-    concrete_fn = foo.fn_for_argument_type(
-        computation_types.TensorType(tf.float32))
-    self.assertEqual(concrete_fn.type_signature.compact_representation(),
-                     '(float32 -> bool)')
-
-  def test_invoke_with_no_arg_fn(self):
-
-    def foo():
-      return 10
-
-    foo = tensorflow_computation.tf_computation(foo)
-    self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
 
   def test_decorate_as_typed_fn(self):
 
@@ -116,42 +100,6 @@ class TensorflowWrapperTest(absltest.TestCase):
     def foo():
       return 10
 
-    self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
-
-  def test_invoke_with_typed_tf_function(self):
-
-    @tf.function
-    def foo(x):
-      return x > 10
-
-    foo = tensorflow_computation.tf_computation(foo, tf.int32)
-    self.assertEqual(foo.type_signature.compact_representation(),
-                     '(int32 -> bool)')
-
-  def test_invoke_with_polymorphic_tf_function(self):
-
-    @tf.function
-    def foo(x):
-      return x > 10
-
-    foo = tensorflow_computation.tf_computation(foo)
-
-    concrete_fn = foo.fn_for_argument_type(
-        computation_types.TensorType(tf.int32))
-    self.assertEqual(concrete_fn.type_signature.compact_representation(),
-                     '(int32 -> bool)')
-    concrete_fn = foo.fn_for_argument_type(
-        computation_types.TensorType(tf.float32))
-    self.assertEqual(concrete_fn.type_signature.compact_representation(),
-                     '(float32 -> bool)')
-
-  def test_invoke_with_no_arg_tf_function(self):
-
-    @tf.function
-    def foo():
-      return 10
-
-    foo = tensorflow_computation.tf_computation(foo)
     self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
 
   def test_takes_tuple_typed(self):
