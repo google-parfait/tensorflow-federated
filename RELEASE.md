@@ -1,3 +1,31 @@
+# Release 0.35.0
+
+## Major Features and Improvements
+
+*   Added get/set_hparams methods to `tff.learning.templates.ClientWorkProcess`.
+*   Added `tff.learning.algorithms.build_mime_lite_with_optimizer_schedule`.
+*   Updated `tensorflow-privacy` to version `0.8.5`.
+*   Added `tff.learning.entropy_compression_aggregator`.
+*   Added `tff.aggregators.EliasGammaEncodedSumFactory`.
+*   Added `tff.program.ClientIdDataSource` and
+    `tff.program.ClientIdDataSourceIterator`, for working with a data source of
+    ids of federated clients.
+
+## Breaking Changes
+
+*   Removed prototype IREE backend.
+*   Added new dependency on TensorFlow Compression.
+
+## Bug Fixes
+
+*   Fixed implementation of the `loading_remote_data` tutorial.
+*   Corrected the docstring of
+    `tff.simulation.datasets.stackoverflow.get_synthetic`.
+
+## Known Bugs
+
+*   TFF's Python 3.9 typing conflicts with Colab's Python 3.7 runtime.
+
 # Release 0.34.0
 
 ## Major Features and Improvements
