@@ -414,7 +414,6 @@ def with_trace_context_from_rpc():
 def add_tracing_provider(tracing_provider: TracingProvider):
   """Add to the global list of tracing providers."""
   py_typecheck.check_type(tracing_provider, TracingProvider)
-  global _global_tracing_providers
   _global_tracing_providers.append(tracing_provider)
 
 
