@@ -32,7 +32,6 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning.templates import tunable
 
 
 @attr.s(frozen=True)
@@ -193,7 +192,7 @@ def _type_check_set_hparams_fn(set_hparams_fn: computation_base.Computation,
         f'of type {state_type} but found {set_hparams_result_type}.')
 
 
-class ClientWorkProcess(measured_process.MeasuredProcess, tunable.Tunable):
+class ClientWorkProcess(measured_process.MeasuredProcess):
   """A stateful process capturing work at clients during learning.
 
   Client work encapsulates the main work performed by clients as part of a

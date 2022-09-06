@@ -33,7 +33,6 @@ py_library(
     srcs = ["client_works.py"],
     srcs_version = "PY3",
     deps = [
-        ":tunable",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
@@ -334,10 +333,4 @@ py_test(
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
-)
-
-py_library(
-    name = "tunable",
-    srcs = ["tunable.py"],
-    srcs_version = "PY3",
 )
