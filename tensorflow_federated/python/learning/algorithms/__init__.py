@@ -21,5 +21,6 @@ from tensorflow_federated.python.learning.algorithms.fed_prox import build_unwei
 from tensorflow_federated.python.learning.algorithms.fed_prox import build_weighted_fed_prox
 from tensorflow_federated.python.learning.algorithms.fed_sgd import build_fed_sgd
 from tensorflow_federated.python.learning.algorithms.kmeans_clustering import build_fed_kmeans
+from tensorflow_federated.python.learning.algorithms.mime import build_mime_lite_with_optimizer_schedule
 from tensorflow_federated.python.learning.algorithms.mime import build_unweighted_mime_lite
 from tensorflow_federated.python.learning.algorithms.mime import build_weighted_mime_lite
