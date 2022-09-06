@@ -29,8 +29,8 @@ def build_dataset_mixture(a, b, a_probability, seed=None):
       `tf.random.Generator.from_non_deterministic_state`. Note that setting a
       random seed alone is not enough to guarantee complete reproducibility of
       results. For example, random number generation is not guaranteed to be
-      consistent across TensorFlow versions (see [TensorFlow version
-        compatibility](https://www.tensorflow.org/guide/versions#what_is_not_covered)).
+      consistent across TensorFlow versions (see
+      https://www.tensorflow.org/guide/versions#what_is_not_covered).
 
   Returns:
     A `tf.data.Dataset` that returns examples from dataset `a` with probability
