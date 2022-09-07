@@ -160,7 +160,9 @@ py_library(
     srcs = ["finalizers.py"],
     srcs_version = "PY3",
     deps = [
+        ":hparams_base",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",

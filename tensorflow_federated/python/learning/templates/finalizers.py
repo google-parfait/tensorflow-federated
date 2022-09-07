@@ -18,11 +18,12 @@
 # information.
 """Abstractions for finalization in learning algorithms."""
 
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
@@ -35,6 +36,7 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
+from tensorflow_federated.python.learning.templates import hparams_base
 
 
 class FinalizerResultTypeError(TypeError):
@@ -47,30 +49,71 @@ class FinalizerProcess(measured_process.MeasuredProcess):
   A `FinalizerProcess` is a `tff.templates.MeasuredProcess` that formalizes the
   type signature of `initialize_fn` and `next_fn` for the work performed by
   server in a learning process after aggregating model updates from clients.
-
-  The `initialize_fn` and `next_fn` must have the following type signatures:
-  ```
-    - initialize_fn: ( -> S@SERVER)
-    - next_fn: (<S@SERVER,
-                 A@SERVER,
-                 B@SERVER>
-                ->
-                <state=S@SERVER,
-                 result=A@SERVER,
-                 measurements=M@SERVER>)
-  ```
-
-  `FinalizerProcess` requires `next_fn` with a second and a third input
-  argument, which are both placed at `SERVER`. The second type `A` represents
-  the current server parameters to be updated, while the third type `B`
-  represents an update to the parameter `A`, and often matches the type of `B`.
-
-  The `result` field of the returned `tff.templates.MeasuredProcessOutput` must
-  be placed at `SERVER`, be of type matching that of second input argument (`B`)
-  and represents the updated ("finalized") model parameters.
   """
 
-  def __init__(self, initialize_fn, next_fn):
+  def __init__(self,
+               initialize_fn: computation_base.Computation,
+               next_fn: computation_base.Computation,
+               *,
+               get_hparams_fn: Optional[computation_base.Computation] = None,
+               set_hparams_fn: Optional[computation_base.Computation] = None):
+    """Initializes a `FinalizerProcess`.
+
+    The `initialize_fn` and `next_fn` must have the following type signatures:
+
+    ```
+      - initialize_fn: ( -> S@SERVER)
+      - next_fn: (<S@SERVER,
+                   A@SERVER,
+                   B@SERVER>
+                  ->
+                  <state=S@SERVER,
+                   result=A@SERVER,
+                   measurements=M@SERVER>)
+    ```
+
+    Here, `A` represents the server parameters to be updated, while the `B`
+    represents an update to the parameter `A`.
+
+    The `result` field of the returned `tff.templates.MeasuredProcessOutput`
+    must be placed at `SERVER`, be of type matching that of second input
+    argument (`B`) and represents the updated ("finalized") model parameters.
+
+    If provided, the `get_hparams_fn` and `set_hparams_fn` must be non-federated
+    computations with the following type signatures:
+
+    ```
+      - get_hparams_fn: (S -> H)
+      - set_hparams_fn: (<S, H> -> S)
+    ```
+
+    Here, `S` must match the state `S` of `initialize_fn` and `next_fn`, and `H`
+    represents the hyperparameter type.
+
+    Args:
+      initialize_fn: A `tff.Computation` matching the criteria above.
+      next_fn: A `tff.Computation` matching the criteria above.
+      get_hparams_fn: An optional `tff.Computation` matching the criteria above.
+        If not provided, this defaults to a computation that returns an empty
+        ordred dictionary, regardless of the contents of the state.
+      set_hparams_fn: An optional `tff.Computation` matching the criteria above.
+        If not provided, this defaults to a pass-through computation, that
+        returns the input state regardless of the hparams passed in.
+
+    Raises:
+      TemplateNotFederatedError: If any of the federated computations provided
+        do not return a federated type.
+      TemplateNextFnNumArgsError: If the `next_fn` has an incorrect number
+        of arguments.
+      TemplatePlacementError: If any of the federated computations have an
+        incorrect placement.
+      FinalizerResultTypeError: If the second output of `next_fn` does not meet
+        the criteria outlined above.
+      GetHparamsTypeError: If the type signature of `get_hparams_fn` does not
+        meet the criteria above.
+      SetHparamsTypeError: If the type signature of `set_hparams_fn` does not
+        meet the criteria above.
+    """
     super().__init__(initialize_fn, next_fn, next_is_multi_arg=True)
 
     if not initialize_fn.type_signature.result.is_federated():
@@ -136,6 +179,31 @@ class FinalizerProcess(measured_process.MeasuredProcess):
       raise errors.TemplatePlacementError(
           f'The "measurements" attribute of return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.measurements}.')
+
+    state_type = initialize_fn.type_signature.result.member
+    if get_hparams_fn is not None:
+      hparams_base.type_check_get_hparams_fn(get_hparams_fn, state_type)
+    else:
+      get_hparams_fn = hparams_base.build_basic_hparams_getter(state_type)
+
+    hparams_type = get_hparams_fn.type_signature.result
+
+    if set_hparams_fn is not None:
+      hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
+    else:
+      set_hparams_fn = hparams_base.build_basic_hparams_setter(
+          state_type, hparams_type)
+
+    self._get_hparams_fn = get_hparams_fn
+    self._set_hparams_fn = set_hparams_fn
+
+  @property
+  def get_hparams(self) -> computation_base.Computation:
+    return self._get_hparams_fn
+
+  @property
+  def set_hparams(self) -> computation_base.Computation:
+    return self._set_hparams_fn
 
 
 def _build_tff_optimizer_initialize_and_next(
