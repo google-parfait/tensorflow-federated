@@ -27,7 +27,7 @@ _ACCUMULATOR_KEY = 'accumulator'
 _PRECONDITIONER_KEY = 'preconditioner'
 
 
-class _Adam(optimizer.Optimizer, optimizer.Tunable):
+class _Adam(optimizer.Optimizer):
   """Adam optimizer, see `build_adam` for details."""
 
   def __init__(self,

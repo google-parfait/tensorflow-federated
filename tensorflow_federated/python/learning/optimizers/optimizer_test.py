@@ -12,10 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.learning.optimizers import optimizer
+
+
+class _TestOptimizer(optimizer.Optimizer):
+
+  def initialize(self, specs):
+    del specs
+    return (0, 1)
+
+  def next(self, state, weights, gradients):
+    del gradients
+    return state, weights
+
+
+class GetSetHparamsTest(tf.test.TestCase):
+
+  def test_get_hparams_returns_empty_dict(self):
+    test_optimizer = _TestOptimizer()
+    state = test_optimizer.initialize(specs=())
+    hparams = test_optimizer.get_hparams(state)
+    self.assertEqual(hparams, collections.OrderedDict())
+
+  def test_set_hparams_returns_input_state(self):
+    test_optimizer = _TestOptimizer()
+    state = test_optimizer.initialize(specs=())
+    hparams = collections.OrderedDict(a=1, b=2)
+    updated_state = test_optimizer.set_hparams(state, hparams)
+    self.assertEqual(state, updated_state)
 
 
 class OptimizerChecksTest(tf.test.TestCase, parameterized.TestCase):

@@ -23,7 +23,7 @@ _PRECONDITIONER_KEY = 'preconditioner'
 _EPSILON_KEY = 'epsilon'
 
 
-class _Adagrad(optimizer.Optimizer, optimizer.Tunable):
+class _Adagrad(optimizer.Optimizer):
   """Adagrad optimizer, see `build_adagrad` for details."""
 
   def __init__(self,

@@ -27,7 +27,7 @@ _ACCUMULATOR_KEY = 'accumulator'
 _PRECONDITIONER_KEY = 'preconditioner'
 
 
-class _Yogi(optimizer.Optimizer, optimizer.Tunable):
+class _Yogi(optimizer.Optimizer):
   """Yogi optimizer, see `build_yogi` for details."""
 
   def __init__(self,

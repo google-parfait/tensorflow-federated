@@ -14,6 +14,7 @@
 """Abstractions for optimizers used in federated learning."""
 
 import abc
+import collections
 from typing import Any, Generic, TypeVar, OrderedDict
 
 import tensorflow as tf
@@ -81,28 +82,33 @@ class Optimizer(abc.ABC, Generic[State]):
     """
     pass
 
-
-# TODO(b/240183407): Merge with the `Optimizer` class if and when we want to
-# enforce that all TFF optimizers implement these methods.
-class Tunable(abc.ABC, Generic[State]):
-  """Represents a tunable optimizer for use in TensorFlow Federated.
-
-  This abstract interface defines `get_hparams` and `set_hparams` methods that
-  are used, respectively, to extract hyperparameters from some state, and to set
-  the hyperparameters of that state. This is intended to allow users to tune
-  hyperparameters of the optimizer.
-
-  These methods are intended to be used in settings where an optimizer is
-  tunable, but the state object is complex or should not be altered directly.
-  """
-
-  @abc.abstractmethod
   def get_hparams(self, state: State) -> Hparams:
-    """Returns a dictionary of optimizer hyperparameters."""
+    """Returns a dictionary containing the optimizer state hyperparameters.
 
-  @abc.abstractmethod
+    Args:
+      state: The state of the optimizer. Must match the structure returned by
+        the `initialize` method.
+
+    Returns:
+      An ordered dictionary representing the hyperparameters in the given state.
+    """
+    del state
+    return collections.OrderedDict()
+
   def set_hparams(self, state: State, hparams: Hparams) -> State:
-    """Returns a dictionary of optimizer hyperparameters."""
+    """Returns an optimizer state with updated hyperparameters.
+
+    Args:
+      state: The state of the optimizer. Must match the structure returned by
+        the `initialize` method.
+      hparams: A dictionary matching the output of `get_hparams` containing the
+        updated hyperparameters to use.
+
+    Returns:
+      An ordered dictionary representing the hyperparameters in the given state.
+    """
+    del hparams
+    return state
 
 
 def _check_shape_dtype_match(x, y):

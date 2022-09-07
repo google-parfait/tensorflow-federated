@@ -69,16 +69,6 @@ class _SGD(optimizer.Optimizer):
       ])
     return updated_state, updated_weights
 
-  # TODO(b/240183407): Implement this method.
-  def get_hparams(self, state):
-    raise NotImplementedError('The get_hparams method is still being '
-                              'implemented and is not ready to use yet.')
-
-  # TODO(b/240183407): Implement this method.
-  def set_hparams(self, state, hparams):
-    raise NotImplementedError('The set_hparams method is still being '
-                              'implemented and is not ready to use yet.')
-
 
 def _check_momentum(momentum):
   py_typecheck.check_type(momentum, float)

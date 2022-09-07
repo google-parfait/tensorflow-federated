@@ -24,7 +24,7 @@ _PRECONDITIONER_KEY = 'preconditioner'
 _EPSILON_KEY = 'epsilon'
 
 
-class _RmsProp(optimizer.Optimizer, optimizer.Tunable):
+class _RmsProp(optimizer.Optimizer):
   """RMSprop optimizer, see `build_rmsprop` for details."""
 
   def __init__(self,
