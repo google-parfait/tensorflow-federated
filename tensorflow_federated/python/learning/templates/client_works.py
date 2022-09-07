@@ -18,20 +18,18 @@
 # information.
 """Abstractions for client work in learning algorithms."""
 
-import collections
 from typing import Optional
 
 import attr
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.computation import computation_base
-from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning.templates import hparams_base
 
 
 @attr.s(frozen=True)
@@ -52,14 +50,6 @@ class ClientDataTypeError(TypeError):
 
 class ClientResultTypeError(TypeError):
   """`TypeError` for incorrect structure of result of client work."""
-
-
-class GetHparamsTypeError(TypeError):
-  """`TypeError` for incorrect input and output of get_hparams."""
-
-
-class SetHparamsTypeError(TypeError):
-  """`TypeError` for incorrect input and output of get_hparams."""
 
 
 # TODO(b/240314933): Move this (or refactor this) to a more general location.
@@ -158,40 +148,6 @@ def _type_check_next_fn_result(next_fn: computation_base.Computation):
         f'placed at SERVER, but found {next_fn_result.measurements}.')
 
 
-# TODO(b/240314933): Move this (or refactor this) to a more general location.
-def _type_check_get_hparams_fn(get_hparams_fn: computation_base.Computation,
-                               state_type: computation_types.Type):
-  """Validates the type signature of `get_hparams_fn` in `ClientWorkProcess`."""
-  py_typecheck.check_type(get_hparams_fn, computation_base.Computation)
-  get_hparams_state_type = get_hparams_fn.type_signature.parameter
-  if not get_hparams_state_type.is_assignable_from(state_type):
-    raise GetHparamsTypeError(
-        f'The input to get_hparams must be compatible with the state type '
-        f'{state_type}, but found type {get_hparams_state_type}.')
-
-
-# TODO(b/240314933): Move this (or refactor this) to a more general location.
-def _type_check_set_hparams_fn(set_hparams_fn: computation_base.Computation,
-                               state_type: computation_types.Type):
-  """Validates the type signature of `set_hparams_fn` in `ClientWorkProcess`."""
-  py_typecheck.check_type(set_hparams_fn, computation_base.Computation)
-  set_hparams_parameter = set_hparams_fn.type_signature.parameter
-  if not set_hparams_parameter.is_struct() or len(set_hparams_parameter) != 2:
-    raise SetHparamsTypeError(
-        f'Expected two input arguments to set_hparams, but found '
-        f'{set_hparams_parameter}.')
-  set_hparams_state_type = set_hparams_parameter[0]
-  if not set_hparams_state_type.is_assignable_from(state_type):
-    raise SetHparamsTypeError(
-        f'The first input to set_hparams must be compatible with the state '
-        f'type {state_type}, but found {set_hparams_state_type}.')
-  set_hparams_result_type = set_hparams_fn.type_signature.result
-  if not set_hparams_result_type.is_assignable_from(state_type):
-    raise SetHparamsTypeError(
-        f'The output of set_hparams must be compatible with the state '
-        f'of type {state_type} but found {set_hparams_result_type}.')
-
-
 class ClientWorkProcess(measured_process.MeasuredProcess):
   """A stateful process capturing work at clients during learning.
 
@@ -277,34 +233,25 @@ class ClientWorkProcess(measured_process.MeasuredProcess):
 
     state_type = initialize_fn.type_signature.result.member
     if get_hparams_fn is not None:
-      _type_check_get_hparams_fn(get_hparams_fn, state_type)
-      get_hparams_computation = get_hparams_fn
+      hparams_base.type_check_get_hparams_fn(get_hparams_fn, state_type)
     else:
+      get_hparams_fn = hparams_base.build_basic_hparams_getter(state_type)
 
-      @tensorflow_computation.tf_computation(state_type)
-      def get_hparams_computation(state):
-        del state
-        return collections.OrderedDict()
-
-    hparams_type = get_hparams_computation.type_signature.result
+    hparams_type = get_hparams_fn.type_signature.result
 
     if set_hparams_fn is not None:
-      _type_check_set_hparams_fn(set_hparams_fn, state_type)
-      set_hparams_computation = set_hparams_fn
+      hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
     else:
+      set_hparams_fn = hparams_base.build_basic_hparams_setter(
+          state_type, hparams_type)
 
-      @tensorflow_computation.tf_computation(state_type, hparams_type)
-      def set_hparams_computation(state, hparams):
-        del hparams
-        return state
-
-    self._get_hparams_computation = get_hparams_computation
-    self._set_hparams_computation = set_hparams_computation
+    self._get_hparams_fn = get_hparams_fn
+    self._set_hparams_fn = set_hparams_fn
 
   @property
   def get_hparams(self) -> computation_base.Computation:
-    return self._get_hparams_computation
+    return self._get_hparams_fn
 
   @property
   def set_hparams(self) -> computation_base.Computation:
-    return self._set_hparams_computation
+    return self._set_hparams_fn

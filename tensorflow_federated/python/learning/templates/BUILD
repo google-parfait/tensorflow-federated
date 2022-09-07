@@ -33,10 +33,9 @@ py_library(
     srcs = ["client_works.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
+        ":hparams_base",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
@@ -58,7 +57,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_utils",
@@ -197,6 +195,28 @@ py_test(
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
+    ],
+)
+
+py_library(
+    name = "hparams_base",
+    srcs = ["hparams_base.py"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_test(
+    name = "hparams_base_test",
+    srcs = ["hparams_base_test.py"],
+    deps = [
+        ":hparams_base",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_test_utils",
     ],
 )
 
