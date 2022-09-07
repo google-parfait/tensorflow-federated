@@ -717,6 +717,7 @@ cc_library(
     srcs = ["tensorflow_executor.cc"],
     hdrs = ["tensorflow_executor.h"],
     deps = [
+        ":dataset_from_tensor_structures",
         ":executor",
         ":session_provider",
         ":status_macros",

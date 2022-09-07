@@ -488,5 +488,48 @@ TEST_F(TensorFlowExecutorTest, CallWithComputationId) {
   CheckCallEqualsProto(fn, arg, expected);
 }
 
+TEST_F(TensorFlowExecutorTest, CallArgsIntoSequenceRequiresAtLeastOneArgument) {
+  OwnedValueId args_into_sequence =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ArgsIntoSequenceV()));
+  OwnedValueId structures =
+      TFF_ASSERT_OK(test_executor_->CreateValue(StructV({})));
+  OwnedValueId result_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(args_into_sequence, structures));
+  EXPECT_THAT(test_executor_->Materialize(result_id),
+              StatusIs(StatusCode::kInvalidArgument, HasSubstr("zero-length")));
+}
+
+TEST_F(TensorFlowExecutorTest, CallArgsIntoSequenceStructureReturnsSequence) {
+  OwnedValueId args_into_sequence =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ArgsIntoSequenceV()));
+  OwnedValueId structures = TFF_ASSERT_OK(test_executor_->CreateValue(StructV({
+      StructV({TensorV(1.0), TensorV("foo")}),
+      StructV({TensorV(2.0), TensorV("bar")}),
+  })));
+  OwnedValueId result_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(args_into_sequence, structures));
+  v0::Value result = TFF_ASSERT_OK(test_executor_->Materialize(result_id));
+  EXPECT_TRUE(result.has_sequence()) << result.ShortDebugString();
+}
+
+TEST_F(TensorFlowExecutorTest, ArgsIntoSequenceReturnsReducible) {
+  v0::Value elements_pb =
+      StructV({TensorV(int64_t{1}), TensorV(int64_t{10}), TensorV(int64_t{100}),
+               TensorV(int64_t{1000})});
+  const int64_t expected_sum = 1111;
+  OwnedValueId args_into_sequence =
+      TFF_ASSERT_OK(test_executor_->CreateValue(ArgsIntoSequenceV()));
+  OwnedValueId elements =
+      TFF_ASSERT_OK(test_executor_->CreateValue(elements_pb));
+  OwnedValueId sequence =
+      TFF_ASSERT_OK(test_executor_->CreateCall(args_into_sequence, elements));
+  OwnedValueId reduce = TFF_ASSERT_OK(
+      test_executor_->CreateValue(CreateDatasetReduceComputationV()));
+  OwnedValueId result_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(reduce, sequence));
+  v0::Value result = TFF_ASSERT_OK(test_executor_->Materialize(result_id));
+  EXPECT_THAT(result, EqualsProto(TensorV(expected_sum)));
+}
+
 }  // namespace
 }  // namespace tensorflow_federated
