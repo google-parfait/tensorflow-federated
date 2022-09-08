@@ -36,7 +36,6 @@ from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import model_delta_client_work
-from tensorflow_federated.python.tensorflow_libs import version_check
 
 
 class ModelDeltaClientWorkComputationTest(tf.test.TestCase,
@@ -346,11 +345,6 @@ class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
         attr.astuple(model_fn_weights), functional_model_weights)
 
   def test_metrics_output(self):
-    if not version_check.is_tensorflow_version_newer('2.10.0', tf):
-      self.skipTest(
-          'b/239094808'
-          ' requires https://github.com/keras-team/keras/commit/f6e8e9b1b999d22de9830fabc5e6d15a1818f0c6'
-      )
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=2)
     loss_fn = tf.keras.losses.MeanSquaredError()

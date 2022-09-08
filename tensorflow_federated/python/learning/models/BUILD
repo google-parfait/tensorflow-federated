@@ -51,7 +51,6 @@ py_test(
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning/metrics:aggregator",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
-        "//tensorflow_federated/python/tensorflow_libs:version_check",
     ],
 )
 

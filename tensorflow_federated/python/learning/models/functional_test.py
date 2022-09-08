@@ -25,7 +25,6 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.tensorflow_libs import variable_utils
-from tensorflow_federated.python.tensorflow_libs import version_check
 
 
 def initial_weights():
@@ -528,11 +527,6 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
     self.assertEmpty([node.op for node in all_nodes if 'Variable' in node.op])
 
   def test_construct_from_keras(self):
-    if not version_check.is_tensorflow_version_newer('2.10.0', tf):
-      self.skipTest(
-          'b/239094808'
-          ' requires https://github.com/keras-team/keras/commit/f6e8e9b1b999d22de9830fabc5e6d15a1818f0c6'
-      )
     keras_model = create_test_keras_model()
     # Assign some variables after initialization so we can assert that they
     # were cloned into the FunctionalModel.
