@@ -27,6 +27,7 @@ py_library(
     deps = [
         ":optimizer",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
     ],
 )
 

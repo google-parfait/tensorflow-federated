@@ -14,16 +14,24 @@
 """Adagrad optimizer."""
 
 import collections
+from typing import Any, Generic, TypeVar, OrderedDict
+
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.learning.optimizers import optimizer
 
-_PRECONDITIONER_KEY = 'preconditioner'
 _EPSILON_KEY = 'epsilon'
+_PRECONDITIONER_KEY = 'preconditioner'
+_HPARAMS_KEYS = [optimizer.LEARNING_RATE_KEY, _EPSILON_KEY]
+
+Hparams = OrderedDict[str, float]
+State = TypeVar('State', bound=OrderedDict[str, Any])
+Weights = optimizer.Weights
 
 
-class _Adagrad(optimizer.Optimizer):
+class _Adagrad(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
   """Adagrad optimizer, see `build_adagrad` for details."""
 
   def __init__(self,
@@ -39,7 +47,7 @@ class _Adagrad(optimizer.Optimizer):
     self._initial_precond = initial_preconditioner_value
     self._epsilon = epsilon
 
-  def initialize(self, specs):
+  def initialize(self, specs: Any) -> State:
     initial_preconditioner = tf.nest.map_structure(
         lambda s: tf.ones(s.shape, s.dtype) * self._initial_precond, specs)
     state = collections.OrderedDict([
@@ -49,7 +57,8 @@ class _Adagrad(optimizer.Optimizer):
     ])
     return state
 
-  def next(self, state, weights, gradients):
+  def next(self, state: State, weights: Weights,
+           gradients: Weights) -> tuple[State, Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[optimizer.LEARNING_RATE_KEY]
@@ -71,15 +80,14 @@ class _Adagrad(optimizer.Optimizer):
     ])
     return updated_state, updated_weights
 
-  # TODO(b/240183407): Implement this method.
-  def get_hparams(self, state):
-    raise NotImplementedError('The get_hparams method is still being '
-                              'implemented and is not ready to use yet.')
+  def get_hparams(self, state: State) -> Hparams:
+    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])
 
-  # TODO(b/240183407): Implement this method.
-  def set_hparams(self, state, hparams):
-    raise NotImplementedError('The set_hparams method is still being '
-                              'implemented and is not ready to use yet.')
+  def set_hparams(self, state: State, hparams: Hparams) -> State:
+    # We use `tff.structure.update_struct` (rather than something like
+    # `copy.deepcopy`) to ensure that this can be called within a
+    # `tff.Computation`.
+    return structure.update_struct(state, **hparams)
 
 
 def build_adagrad(learning_rate: float,

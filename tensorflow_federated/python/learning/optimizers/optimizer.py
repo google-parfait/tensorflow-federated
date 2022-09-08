@@ -26,7 +26,7 @@ State = TypeVar('State')
 Weights = TypeVar('Weights')
 
 
-class Optimizer(abc.ABC, Generic[State]):
+class Optimizer(abc.ABC, Generic[State, Weights]):
   """Represents an optimizer for use in TensorFlow Federated.
 
   Its pair of `initialize` and `next` methods define the optimization
