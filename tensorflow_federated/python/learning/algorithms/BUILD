@@ -192,6 +192,7 @@ py_library(
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/metrics:aggregator",
+        "//tensorflow_federated/python/learning/models:functional",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/learning/templates:client_works",
         "//tensorflow_federated/python/learning/templates:composers",
@@ -217,6 +218,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/metrics:aggregator",
+        "//tensorflow_federated/python/learning/models:functional",
+        "//tensorflow_federated/python/learning/models:test_models",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",
     ],
 )

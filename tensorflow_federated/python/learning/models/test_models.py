@@ -55,7 +55,14 @@ def build_functional_linear_regression(
   def forward_pass(weights: functional.ModelWeights,
                    batch_input: Any,
                    training: bool = True) -> model_lib.BatchOutput:
-    x, y = batch_input
+    if isinstance(batch_input, collections.abc.Mapping):
+      x = batch_input["x"]
+      y = batch_input["y"]
+    elif isinstance(batch_input, collections.abc.Sequence):
+      x, y = batch_input
+    else:
+      raise TypeError("`batch_input` must be a mapping with keys `x` and `y`, "
+                      f"or a sequence of two elements. Got: {batch_input!r}.")
     if not input_spec[1].is_compatible_with(y):
       raise ValueError("Expected batch_input[1] to be compatible with "
                        f"{input_spec[1]} but found {y}")

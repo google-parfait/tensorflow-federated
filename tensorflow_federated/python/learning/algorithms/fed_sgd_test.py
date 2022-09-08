@@ -26,33 +26,40 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_sgd
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
 
+def _dataset() -> tf.data.Dataset:
+  # Create a dataset with 4 examples:
+  dataset = tf.data.Dataset.from_tensor_slices(
+      collections.OrderedDict(
+          x=[[1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0]],
+          y=[[1.0], [1.0], [1.0], [1.0]]))
+  # Repeat the dataset 2 times with batches of 3 examples,
+  # producing 3 minibatches (the last one with only 2 examples).
+  # Note that `batch` is required for this dataset to be useable,
+  # as it adds the batch dimension which is expected by the model.
+  return dataset.repeat(2).batch(3)
+
+
+def _model_fn() -> model_examples.LinearRegression:
+  return model_examples.LinearRegression(feature_dim=2)
+
+
+def _build_functional_model() -> functional.FunctionalModel:
+  return test_models.build_functional_linear_regression(feature_dim=2)
+
+
+def _initial_weights() -> model_utils.ModelWeights:
+  return model_utils.ModelWeights(
+      trainable=[tf.constant([[0.0], [0.0]]),
+                 tf.constant(0.0)],
+      non_trainable=[0.0])
+
+
 class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
-
-  def dataset(self):
-    # Create a dataset with 4 examples:
-    dataset = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[[1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0]],
-            y=[[1.0], [1.0], [1.0], [1.0]]))
-    # Repeat the dataset 2 times with batches of 3 examples,
-    # producing 3 minibatches (the last one with only 2 examples).
-    # Note that `batch` is required for this dataset to be useable,
-    # as it adds the batch dimension which is expected by the model.
-    return dataset.repeat(2).batch(3)
-
-  def model_fn(self):
-    return model_examples.LinearRegression(feature_dim=2)
-
-  def initial_weights(self):
-    return model_utils.ModelWeights(
-        trainable=[
-            tf.constant([[0.0], [0.0]]),
-            tf.constant(0.0),
-        ],
-        non_trainable=[0.0])
 
   @parameterized.named_parameters(
       ('non-simulation', False),
@@ -60,24 +67,23 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
   )
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_client_update(self, simulation):
-    dataset = self.dataset()
+    dataset = _dataset()
     client_update = fed_sgd._build_client_update(
-        self.model_fn(), use_experimental_simulation_loop=simulation)
-    client_result, model_output = client_update(self.initial_weights(), dataset)
+        _model_fn(), use_experimental_simulation_loop=simulation)
+    client_result, model_output = client_update(_initial_weights(), dataset)
 
     # Both trainable parameters should have gradients, and we don't return the
     # non-trainable 'c'. Model deltas for squared error:
     self.assertAllClose(client_result.update, [[[-1.0], [0.0]], -1.0])
     self.assertAllClose(client_result.update_weight, 8.0)
-    self.assertDictContainsSubset({
-        'num_examples': 8,
-    }, model_output)
+    self.assertDictContainsSubset({'num_examples': 8}, model_output)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
-    dataset = self.dataset()
-    client_update = fed_sgd._build_client_update(self.model_fn())
-    init_weights = self.initial_weights()
+    dataset = _dataset()
+    client_update = fed_sgd._build_client_update(
+        _model_fn(), use_experimental_simulation_loop=False)
+    init_weights = _initial_weights()
     init_weights.trainable[1] = bad_value
     client_outputs, _ = client_update(init_weights, dataset)
     self.assertEqual(self.evaluate(client_outputs.update_weight), 0.0)
@@ -92,21 +98,18 @@ class FederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
       wraps=dataset_reduce._dataset_reduce_fn)
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
-    dataset = self.dataset()
+    dataset = _dataset()
     client_update = fed_sgd._build_client_update(
-        self.model_fn(), use_experimental_simulation_loop=simulation)
-    client_update(self.initial_weights(), dataset)
+        _model_fn(), use_experimental_simulation_loop=simulation)
+    client_update(_initial_weights(), dataset)
     if simulation:
       mock_method.assert_not_called()
     else:
       mock_method.assert_called()
 
-
-class FederatedSGDTest(tf.test.TestCase, parameterized.TestCase):
-
-  def test_raises_on_non_callable_model_fn(self):
+  def test_raises_on_non_callable_non_functional_model_fn(self):
     non_callable_model_fn = model_examples.LinearRegression()
-    with self.assertRaisesRegex(TypeError, 'found non-callable'):
+    with self.assertRaisesRegex(TypeError, 'must be an instance'):
       fed_sgd.build_fed_sgd(non_callable_model_fn)
 
   # pylint: disable=g-complex-comprehension
@@ -131,6 +134,77 @@ class FederatedSGDTest(tf.test.TestCase, parameterized.TestCase):
     model_fn = model_examples.LinearRegression
     learning_process = fed_sgd.build_fed_sgd(
         model_fn,
+        model_aggregator=model_update_aggregator.secure_aggregator(),
+        metrics_aggregator=aggregator.secure_sum_then_finalize)
+    static_assert.assert_not_contains_unsecure_aggregation(
+        learning_process.next)
+
+
+class FunctionalFederatedSgdTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('non-simulation', False),
+      ('simulation', True),
+  )
+  @tensorflow_test_utils.skip_test_for_multi_gpu
+  def test_client_update(self, simulation):
+    dataset = _dataset()
+    model = _build_functional_model()
+    client_update = fed_sgd._build_functional_client_update(
+        model, use_experimental_simulation_loop=simulation)
+    client_result, model_output = client_update(_initial_weights(), dataset)
+    # Both trainable parameters should have gradients. Model deltas for squared
+    # error:
+    self.assertAllClose(client_result.update, [[[-2.0], [0.0]], -2.0])
+    self.assertAllClose(client_result.update_weight, 8.0)
+    self.assertDictContainsSubset({'num_examples': 8}, model_output)
+
+  @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
+  def test_non_finite_aggregation(self, bad_value):
+    dataset = _dataset()
+    model = _build_functional_model()
+    client_update = fed_sgd._build_functional_client_update(
+        model, use_experimental_simulation_loop=False)
+    init_weights = _initial_weights()
+    # Set a non-finite bias to force non-finite gradients.
+    init_weights.trainable[1] = tf.constant(bad_value)
+    client_outputs, _ = client_update(init_weights, dataset)
+    self.assertEqual(self.evaluate(client_outputs.update_weight), 0.0)
+    self.assertAllClose(
+        self.evaluate(client_outputs.update), [[[0.0], [0.0]], 0.0])
+
+  @parameterized.named_parameters(('non-simulation', False),
+                                  ('simulation', True))
+  @mock.patch.object(
+      dataset_reduce,
+      '_dataset_reduce_fn',
+      wraps=dataset_reduce._dataset_reduce_fn)
+  @tensorflow_test_utils.skip_test_for_multi_gpu
+  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+    dataset = _dataset()
+    model = _build_functional_model()
+    client_update = fed_sgd._build_functional_client_update(
+        model, use_experimental_simulation_loop=simulation)
+    client_update(_initial_weights(), dataset)
+    if simulation:
+      mock_method.assert_not_called()
+    else:
+      mock_method.assert_called()
+
+  def test_build_functional_client_work_without_functional_model_fails(self):
+    with self.assertRaisesRegex(TypeError, 'FunctionalModel'):
+      fed_sgd._build_functional_fed_sgd_client_work(
+          model=lambda: 0,
+          metrics_aggregator=aggregator.secure_sum_then_finalize)
+
+  def test_build_functional_fed_sgd_succeeds(self):
+    model = _build_functional_model()
+    fed_sgd.build_fed_sgd(model_fn=model)
+
+  def test_no_unsecure_aggregation_with_secure_aggregator(self):
+    model = _build_functional_model()
+    learning_process = fed_sgd.build_fed_sgd(
+        model,
         model_aggregator=model_update_aggregator.secure_aggregator(),
         metrics_aggregator=aggregator.secure_sum_then_finalize)
     static_assert.assert_not_contains_unsecure_aggregation(
