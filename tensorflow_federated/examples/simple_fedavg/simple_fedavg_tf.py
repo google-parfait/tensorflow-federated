@@ -139,8 +139,8 @@ def client_update(model, dataset, server_message, client_optimizer):
   Args:
     model: A `tff.learning.Model` to train locally on the client.
     dataset: A 'tf.data.Dataset' representing the clients local dataset.
-    server_message: A `BroadcastMessage` from serve containing the initial
-      model weights to train.
+    server_message: A `BroadcastMessage` from serve containing the initial model
+      weights to train.
     client_optimizer: A `tf.keras.optimizers.Optimizer` used to update the local
       model during training.
 

@@ -136,9 +136,7 @@ def build_model_delta_update_with_tff_optimizer(
 
 # TODO(b/213433744): Make this method private.
 def build_model_delta_update_with_keras_optimizer(
-    model_fn,
-    weighting,
-    use_experimental_simulation_loop: bool = False):
+    model_fn, weighting, use_experimental_simulation_loop: bool = False):
   """Creates client update logic in FedAvg using a `tf.keras` optimizer.
 
   In contrast to using a `tff.learning.optimizers.Optimizer`, we have to

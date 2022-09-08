@@ -218,8 +218,7 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
       self.fail('Raised TypeError unexpectedly.')
 
   @parameterized.named_parameters(
-      ('list', []),
-  )
+      ('list', []),)
   async def test_release_raises_type_error_with_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
     value = 1

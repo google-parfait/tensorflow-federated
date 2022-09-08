@@ -124,7 +124,7 @@ def create_preprocess_fn(
 
   Args:
     preprocess_spec: A `tff.simulation.baselines.ClientSpec` containing
-        information on how to preprocess clients.
+      information on how to preprocess clients.
     vocab: A list of string values representing the vocabulary for the
       string-to-token conversion.
     sequence_length: A positive integer determining the length of preprocessed

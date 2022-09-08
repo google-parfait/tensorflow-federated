@@ -28,7 +28,6 @@ flags.DEFINE_integer('clients', '1', 'number of clients to host on this worker')
 flags.DEFINE_integer('fanout', '100',
                      'max fanout in the hierarchy of local executors')
 
-
 GRPC_OPTIONS = [('grpc.max_message_length', 20 * 1024 * 1024),
                 ('grpc.max_receive_message_length', 20 * 1024 * 1024)]
 

@@ -1253,6 +1253,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertSequenceEqual(metrics['loss'], [0, 0])
     self.assertSequenceEqual(metrics['mean_absolute_error'], [0, 0])
 
+
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()
   tf.test.main()

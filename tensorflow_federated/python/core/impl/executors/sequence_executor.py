@@ -194,10 +194,10 @@ class _SequenceMapOp(_SequenceOp):
 
   async def execute(self, target_executor: executor_base.Executor, arg):
     arg_type = self._type_signature.parameter
-    seq, map_fn = await asyncio.gather(*[
-        _to_sequence(arg[1]),
-        _delegate(arg[0], arg_type[0], target_executor)
-    ])
+    seq, map_fn = await asyncio.gather(
+        *
+        [_to_sequence(arg[1]),
+         _delegate(arg[0], arg_type[0], target_executor)])
     result_type = self._type_signature.result
     return _SequenceFromMap(seq, map_fn, target_executor, result_type)
 
@@ -208,9 +208,9 @@ class _SequenceReduceOp(_SequenceOp):
   async def execute(self, target_executor: executor_base.Executor, arg):
     arg_type = self._type_signature.parameter
     seq = await _to_sequence(arg[0])
-    accumulator, op = await asyncio.gather(*[
-        _delegate(arg[idx], arg_type[idx], target_executor) for idx in [1, 2]
-    ])
+    accumulator, op = await asyncio.gather(
+        *
+        [_delegate(arg[idx], arg_type[idx], target_executor) for idx in [1, 2]])
     element_type = seq.type_signature.element
     async for x in seq:
       el = await target_executor.create_value(x, element_type)

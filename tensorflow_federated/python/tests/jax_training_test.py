@@ -30,7 +30,6 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.tests import jax_components
 
-
 BATCH_TYPE = collections.OrderedDict([
     ('pixels', tff.TensorType(np.float32, (50, 784))),
     ('labels', tff.TensorType(np.int32, (50,)))

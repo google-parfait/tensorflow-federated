@@ -18,13 +18,11 @@ from typing import Callable, List, Optional, Sequence, TypeVar
 
 import numpy as np
 
-
 #  Settings for a multiplicative linear congruential generator (aka Lehmer
 #  generator) suggested in 'Random Number Generators: Good
 #  Ones are Hard to Find' by Park and Miller.
 MLCG_MODULUS = 2**(31) - 1
 MLCG_MULTIPLIER = 16807
-
 
 # Type variable for matching the input and output of `build_sampling_fn`
 T = TypeVar('T')
@@ -38,8 +36,8 @@ def build_uniform_sampling_fn(
 
   Args:
     sample_range: A 1-D array-like sequence, to be used as input to
-    `np.random.choice`. Samples are generated randomly from the elements of the
-    sequence.
+      `np.random.choice`. Samples are generated randomly from the elements of
+      the sequence.
     replace: A boolean indicating whether the sampling is done with replacement
       (True) or without replacement (False).
     random_seed: If random_seed is set as an integer, then we use it as a random

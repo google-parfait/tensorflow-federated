@@ -41,7 +41,6 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
-
 # Supported DP mechanisms.
 DP_MECHANISMS = [
     # Distributed Discrete Gaussian (https://arxiv.org/abs/2102.06387).
@@ -149,11 +148,11 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         in the range [0, 1). The larger the value, the less post-rounding L2
         sensitivity inflation. Defaults to exp(-0.5). Please see Sections 4 of
           https://arxiv.org/pdf/2102.06387.pdf for a detailed explanation of
-          conditional randomized rounding.
+            conditional randomized rounding.
       mechanism: (Optional) The distributed DP mechanism to use. Possible
         options are 'distributed_dgauss' (distributed discrete Gaussian
-        mechanism) or 'distributed_skellam' (distributed Skellam mechanism;
-        the default).
+        mechanism) or 'distributed_skellam' (distributed Skellam mechanism; the
+        default).
       rotation_type: (Optional) The rotation operation used to spread out input
         values across vector dimensions. Possible options are 'hd' (randomized
         Hadamard transform) or 'dft' (discrete Fourier transform; the defaut).
@@ -166,8 +165,8 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       auto_l2_target_quantile: (Optional) A float in the inclusive range [0, 1]
         indicating the target quantile to which the L2 clipping norm should
         adapt. A value of 0.8 means a clipping norm should be chosen such that
-        80% of the client values have norm below it. Defaults to 0.5. Ignored
-        if `auto_l2_clip` is `False`.
+        80% of the client values have norm below it. Defaults to 0.5. Ignored if
+        `auto_l2_clip` is `False`.
       auto_l2_lr: (Optional) A float specifying the the learning rate for the
         adaptive L2 clipping process. Default to 0.2. Ignored if `auto_l2_clip`
         is `False`.
@@ -392,8 +391,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         clipping_norm=self._l2_clip,
         inner_agg_factory=nested_factory,
         clipped_count_sum_factory=secure.SecureSumFactory(
-            upper_bound_threshold=1,
-            lower_bound_threshold=0))
+            upper_bound_threshold=1, lower_bound_threshold=0))
 
     # 5. Flattening to improve quantization and reduce modular wrapping.
     nested_factory = rotation_factory(inner_agg_factory=nested_factory)
@@ -506,8 +504,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     dp_query_state, _ = dp_state
 
     actual_num_clients = intrinsics.federated_secure_sum_bitwidth(
-        intrinsics.federated_value(1, placements.CLIENTS),
-        bitwidth=1)
+        intrinsics.federated_value(1, placements.CLIENTS), bitwidth=1)
     padded_dim = intrinsics.federated_value(
         int(self._padded_dim), placements.SERVER)
 

@@ -84,9 +84,9 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
         `stochastic` is False. Intuitively, this term controls the bias-variance
         trade-off of stochastic rounding: a beta of 0 means the rounding is
         unbiased, but the resulting norm could be larger (thus larger added
-        noise when combined with differential privacy); a larger beta means
-        the vector norm grows less but at the expense of some bias. Defaults
-        to 0 (unconditional stochastic rounding).
+        noise when combined with differential privacy); a larger beta means the
+        vector norm grows less but at the expense of some bias. Defaults to 0
+        (unconditional stochastic rounding).
       prior_norm_bound: A float constant denoting the global L2 norm bound of
         the inputs (e.g. as a result of global L2 clipping). This is useful when
         `prior_norm_bound` is larger than the input norm, in which case we can
@@ -222,8 +222,8 @@ def _discretize_struct(struct, scale_factor, stochastic, beta,
     scaled_bound = prior_norm_bound * scale_factor  # 0 if no prior bound.
     # Round to integer grid.
     if stochastic:
-      discretized_x = _stochastic_rounding(scaled_x, scaled_bound,
-                                           scale_factor, beta)
+      discretized_x = _stochastic_rounding(scaled_x, scaled_bound, scale_factor,
+                                           beta)
     else:
       discretized_x = tf.round(scaled_x)
 

@@ -27,7 +27,6 @@ from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 
-
 # List of op names that are eligible for Grappler disabling.
 CALL_OPS = frozenset(['StatefulPartitionedCall', 'PartitionedCall'])
 

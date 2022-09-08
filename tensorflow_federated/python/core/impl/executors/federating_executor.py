@@ -436,8 +436,8 @@ class FederatingExecutor(executor_base.Executor):
       which_computation = comp.internal_representation.WhichOneof('computation')
       if ((which_computation in ['tensorflow', 'xla', 'intrinsic']) or
           ((which_computation == 'intrinsic') and
-           (comp.internal_representation.intrinsic.uri in
-            FederatingExecutor._FORWARDED_INTRINSICS))):
+           (comp.internal_representation.intrinsic.uri
+            in FederatingExecutor._FORWARDED_INTRINSICS))):
         embedded_comp = await self._unplaced_executor.create_value(
             comp.internal_representation, comp.type_signature)
         if arg is not None:

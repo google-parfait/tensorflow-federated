@@ -26,7 +26,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.xla_context import xla_serialization
 
-
 # TODO(b/175888145): Plug this into `backends_test.py` after refactoring it to
 # generate framework-specific tests (currently hard-wired to TF).
 

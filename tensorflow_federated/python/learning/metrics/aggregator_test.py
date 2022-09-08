@@ -122,7 +122,6 @@ _TEST_CALLABLE_ARGUMENTS_KERAS_METRICS = {
             accuracy=(1.0 + 3.0) / (2.0 + 6.0), custom_sum=8)
 }
 
-
 _TEST_ARGUMENTS_NON_KERAS_METRICS = {
     'testcase_name':
         'non_keras_metrics',

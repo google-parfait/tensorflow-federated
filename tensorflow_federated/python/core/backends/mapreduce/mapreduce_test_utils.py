@@ -29,7 +29,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import iterative_process
 
-
 MapReduceFormExample = collections.namedtuple('MapReduceFormExample',
                                               ['mrf', 'initialize'])
 

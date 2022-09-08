@@ -417,5 +417,6 @@ class RunTrainingProcessTest(parameterized.TestCase):
     expected_calls.append(call)
     self.assertEqual(metrics_manager.release.call_args_list, expected_calls)
 
+
 if __name__ == '__main__':
   absltest.main()

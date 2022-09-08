@@ -146,8 +146,8 @@ class FunctionalModel():
         boolean determinig whether the call is during a training pass (e.g. for
         Dropout, BatchNormalization, etc).
       metrics_fns: A 3-tuple of callables that initialize the metrics state,
-        update the metrics state, and finalize the metrics values
-        respectively. This can be the result of `
+        update the metrics state, and finalize the metrics values respectively.
+        This can be the result of `
         tff.learning.metrics.create_functional_metric_fns`or custom user written
         callables.
       input_spec: A 2-tuple of `(x, y)` where each element is a nested structure
@@ -378,7 +378,7 @@ def functional_model_from_keras(
   Args:
     keras_model: A `tf.keras.Model` object, should be uncompiled. If compiled,
       the metrics, optimizer, and loss function will be ignored. Note: models
-        that have multiple outputs will send all outputs to the `loss_fn`.
+      that have multiple outputs will send all outputs to the `loss_fn`.
     loss_fn: A `tf.keras.losses.Loss` object.
     input_spec: A structure of `tf.TensorSpec` defining the input to the model.
     metrics_constructor: An optional callable that must be compatible with

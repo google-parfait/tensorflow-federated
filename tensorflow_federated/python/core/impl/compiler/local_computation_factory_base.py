@@ -24,7 +24,6 @@ from typing import Tuple
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.impl.types import computation_types
 
-
 ComputationProtoAndType = Tuple[pb.Computation, computation_types.Type]
 
 

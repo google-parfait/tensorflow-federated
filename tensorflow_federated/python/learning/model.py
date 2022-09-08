@@ -24,7 +24,6 @@ from typing import Any, Callable, OrderedDict, Sequence
 
 import tensorflow as tf
 
-
 MODEL_ARG_NAME = 'x'
 MODEL_LABEL_NAME = 'y'
 MetricFinalizersType = OrderedDict[str, Callable[[Any], Any]]

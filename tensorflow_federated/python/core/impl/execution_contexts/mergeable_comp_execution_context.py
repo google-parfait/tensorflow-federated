@@ -39,7 +39,6 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
 
-
 # Type alias for the payload value in a partitioned data structure.
 Value = TypeVar('Value')
 
@@ -554,9 +553,9 @@ class MergeableCompExecutionContext(context_base.Context):
         returns an instance of `MergeableCompForm`. If not provided, this
         context will only execute instances of `MergeableCompForm` directly.
       num_subrounds: An optional integer, specifying total the number of
-        subrounds desired. If unspecified, the length of `async_contexts`
-        will determine the number of subrounds. If more subrounds are requested
-        than contexts are passed, invocations will be sequentialized.
+        subrounds desired. If unspecified, the length of `async_contexts` will
+        determine the number of subrounds. If more subrounds are requested than
+        contexts are passed, invocations will be sequentialized.
     """
     self._async_runner = async_utils.AsyncThreadRunner()
     for ctx in async_contexts:

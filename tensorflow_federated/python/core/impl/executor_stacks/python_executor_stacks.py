@@ -648,8 +648,8 @@ def local_executor_factory(
       sequence ops (currently False by default).
     leaf_executor_fn: A function that constructs leaf-level executors. Default
       is the eager TF executor (other possible options: XLA). Should accept the
-        `device` keyword argument if the executor is to be configured with
-        explicitly chosen devices.
+      `device` keyword argument if the executor is to be configured with
+      explicitly chosen devices.
     local_computation_factory: An instance of `LocalComputationFactory` to use
       to construct local computations used as parameters in certain federated
       operators (such as `tff.federated_sum`, etc.). Defaults to a TensorFlow
@@ -742,8 +742,8 @@ def thread_debugging_executor_factory(
       memory.
     leaf_executor_fn: A function that constructs leaf-level executors. Default
       is the eager TF executor (other possible options: XLA). Should accept the
-        `device` keyword argument if the executor is to be configured with
-        explicitly chosen devices.
+      `device` keyword argument if the executor is to be configured with
+      explicitly chosen devices.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -787,8 +787,8 @@ def sizing_executor_factory(
       memory.
     leaf_executor_fn: A function that constructs leaf-level executors. Default
       is the eager TF executor (other possible options: XLA). Should accept the
-        `device` keyword argument if the executor is to be configured with
-        explicitly chosen devices.
+      `device` keyword argument if the executor is to be configured with
+      explicitly chosen devices.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the

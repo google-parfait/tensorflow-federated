@@ -86,22 +86,20 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
       num_bins: The integer number of bins to compute.
       arity: The branching factor of the tree. Defaults to 2.
       clip_mechanism: A `str` representing the clipping mechanism. Currently
-        supported mechanisms are
-        - 'sub-sampling': (Default) Uniformly sample up to
-          `max_records_per_user` records without replacement from the client
-          dataset.
-        - 'distinct': Uniquify client dataset and uniformly sample up to
-          `max_records_per_user` records without replacement from it.
+        supported mechanisms are - 'sub-sampling': (Default) Uniformly sample up
+        to `max_records_per_user` records without replacement from the client
+        dataset. - 'distinct': Uniquify client dataset and uniformly sample up
+        to `max_records_per_user` records without replacement from it.
       max_records_per_user: An `int` representing the maximum of records each
         user can include in their local histogram. Defaults to 10.
       dp_mechanism: A `str` representing the differentially private mechanism to
-        use. Currently supported mechanisms are
-        - 'no-noise': (Default) Tree aggregation mechanism without noise.
-        - 'central-gaussian': Tree aggregation with central Gaussian mechanism.
-        - 'distributed-discrete-gaussian': Tree aggregation mechanism with the
-          distributed discrete Gaussian mechanism in "The Distributed Discrete
-          Gaussian Mechanism for Federated Learning with Secure Aggregation.
-          Peter Kairouz, Ziyu Liu, Thomas Steinke".
+        use. Currently supported mechanisms are - 'no-noise': (Default) Tree
+        aggregation mechanism without noise. - 'central-gaussian': Tree
+        aggregation with central Gaussian mechanism. -
+        'distributed-discrete-gaussian': Tree aggregation mechanism with the
+        distributed discrete Gaussian mechanism in "The Distributed Discrete
+        Gaussian Mechanism for Federated Learning with Secure Aggregation. Peter
+        Kairouz, Ziyu Liu, Thomas Steinke".
        noise_multiplier: A `float` specifying the noise multiplier (central
          noise stddev / L2 clip norm) for model updates. Defaults to 0.0.
       expected_clients_per_round: An `int` specifying the lower bound on the
@@ -119,8 +117,8 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
         frequent modular clipping; (3) If the number of clients exceed
         `expected_clients_per_round`, overflow might happen.
       enable_secure_sum: Whether to aggregate client's update by secure sum or
-      not. Defaults to `False`. When `dp_mechanism` is set to
-      `'distributed-discrete-gaussian'`, `enable_secure_sum` must be `True`.
+        not. Defaults to `False`. When `dp_mechanism` is set to
+        `'distributed-discrete-gaussian'`, `enable_secure_sum` must be `True`.
 
     Returns:
       A `Tuple` of two `tf.RaggedTenor`, which contain the hierarchical

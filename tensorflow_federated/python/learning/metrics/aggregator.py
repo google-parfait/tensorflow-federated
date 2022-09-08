@@ -53,9 +53,9 @@ def sum_then_finalize(
   Args:
     metric_finalizers: Either the result of
       `tff.learning.Model.metric_finalizers` (an `OrderedDict` of callables) or
-      the `tff.learning.models.FunctionalModel.finalize_metrics` method
-      (a callable that takes an `OrderedDict` argument). If the former, the
-      keys must be the same as the `OrderedDict` returned by
+      the `tff.learning.models.FunctionalModel.finalize_metrics` method (a
+      callable that takes an `OrderedDict` argument). If the former, the keys
+      must be the same as the `OrderedDict` returned by
       `tff.learning.Model.report_local_unfinalized_metrics`. If the later, the
       callable must compute over the same keyspace of the result returned by
       `tff.learning.models.FunctionalModel.update_metrics_state`.
@@ -170,9 +170,9 @@ def secure_sum_then_finalize(
   Args:
     metric_finalizers: Either the result of
       `tff.learning.Model.metric_finalizers` (an `OrderedDict` of callables) or
-      the `tff.learning.models.FunctionalModel.finalize_metrics` method
-      (a callable that takes an `OrderedDict` argument). If the former, the
-      keys must be the same as the `OrderedDict` returned by
+      the `tff.learning.models.FunctionalModel.finalize_metrics` method (a
+      callable that takes an `OrderedDict` argument). If the former, the keys
+      must be the same as the `OrderedDict` returned by
       `tff.learning.Model.report_local_unfinalized_metrics`. If the later, the
       callable must compute over the same keyspace of the result returned by
       `tff.learning.models.FunctionalModel.update_metrics_state`.

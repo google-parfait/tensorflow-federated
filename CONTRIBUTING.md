@@ -66,27 +66,27 @@ TFF ecosystem.
 
 #### Fromat your changes
 
-    *   Install [yapf](https://pypi.org/project/yapf/).
+*   Install [yapf](https://pypi.org/project/yapf/).
 
-    *   Format unstaged changes, to Python files, in place.
+*   Format unstaged changes, to Python files, in place.
 
-    ```shell
-    git diff --name-only \
-        | sed '/.*\.py/!d' \
-        | xargs yapf --in-place
-    ```
+```shell
+git diff --name-only \
+    | sed '/.*\.py/!d' \
+    | xargs yapf --in-place
+```
 
 #### Lint your changes
 
-    *   Install [pylint](https://pypi.org/project/pylint/).
+*   Install [pylint](https://pypi.org/project/pylint/).
 
-    *   Lint unstaged changes to Python files.
+*   Lint unstaged changes to Python files.
 
-    ```shell
-    git diff --name-only \
-        | sed '/.*\.py/!d' \
-        | xargs pylint
-    ```
+```shell
+git diff --name-only \
+    | sed '/.*\.py/!d' \
+    | xargs pylint
+```
 
 ### License
 

@@ -65,8 +65,7 @@ def fast_walsh_hadamard_transform(x):
   if dim is None:  # dim is not statically known.
     dim = tf.shape(x)[-1]
     log2 = tf.cast(
-        tf.math.round(
-            tf.math.log(tf.cast(dim, tf.float32)) / tf.math.log(2.)),
+        tf.math.round(tf.math.log(tf.cast(dim, tf.float32)) / tf.math.log(2.)),
         tf.int32)
     with tf.control_dependencies([
         tf.debugging.assert_equal(

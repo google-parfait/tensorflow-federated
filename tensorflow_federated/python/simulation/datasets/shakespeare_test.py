@@ -48,5 +48,5 @@ class ShakespeareTest(absltest.TestCase):
     self.assertEqual(test.element_type_structure, EXPECTED_ELEMENT_TYPE)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   absltest.main()

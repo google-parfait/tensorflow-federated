@@ -107,8 +107,8 @@ class CreateResnetInputValidationTest(tf.test.TestCase):
           input_shape=(32, 32, 3), initial_kernel_size=(3, 3, 4))
 
   def test_unsupported_norm_raises(self):
-    with self.assertRaisesRegex(
-        ValueError, 'norm_layer must be of type `NormLayer`'):
+    with self.assertRaisesRegex(ValueError,
+                                'norm_layer must be of type `NormLayer`'):
       resnet_models.create_resnet(
           input_shape=(32, 32, 3), norm_layer='bad_norm')
 

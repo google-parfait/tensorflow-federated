@@ -26,7 +26,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
-
 # Convenience aliases.
 _StructType = computation_types.StructType
 _TensorType = computation_types.TensorType

@@ -34,8 +34,8 @@ def create_test_cpp_execution_context(
   Args:
     default_num_clients: The number of clients to be used if the number of
       clients cannot be inferred from the arguments to a computation.
-    max_concurrent_computation_calls: The maximum number of concurrent calls
-      to a single computation in the C++ runtime. If nonpositive, there is no
+    max_concurrent_computation_calls: The maximum number of concurrent calls to
+      a single computation in the C++ runtime. If nonpositive, there is no
       limit.
 
   Returns:
@@ -45,6 +45,7 @@ def create_test_cpp_execution_context(
     ValueError: If invalid parameters are provided to either the C++ or Python
       runtimes, as detailed above.
   """
+
   def _compile(comp):
     # Compile secure_sum and secure_sum_bitwidth intrinsics to insecure
     # TensorFlow computations for testing purposes.
@@ -72,8 +73,8 @@ def set_test_cpp_execution_context(*,
   Args:
     default_num_clients: The number of clients to be used if the number of
       clients cannot be inferred from the arguments to a computation.
-    max_concurrent_computation_calls: The maximum number of concurrent calls
-      to a single computation in the C++ runtime. If nonpositive, there is no
+    max_concurrent_computation_calls: The maximum number of concurrent calls to
+      a single computation in the C++ runtime. If nonpositive, there is no
       limit.
 
   Raises:

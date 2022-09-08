@@ -25,7 +25,6 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.learning.templates import learning_process
 
-
 # Convenience aliases.
 LearningProcessOutput = learning_process.LearningProcessOutput
 SequenceType = computation_types.SequenceType

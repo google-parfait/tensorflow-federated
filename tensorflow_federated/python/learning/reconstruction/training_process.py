@@ -275,14 +275,14 @@ def _build_client_update_fn(
     dataset_type: Type of TF dataset.
     model_weights_type: Type of model weights.
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      function that returns a `tf.keras.optimizers.Optimizer` for training
-      the model weights on the client post-reconstruction.
+      function that returns a `tf.keras.optimizers.Optimizer` for training the
+      model weights on the client post-reconstruction.
     reconstruction_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a
       no-arg function that returns a `tf.keras.optimizers.Optimizer` for
       reconstructing the local variables with global variables frozen. This
       optimizer is used before the one given by `client_optimizer_fn`.
-    dataset_split_fn: A `tff.learning.reconstruction.DatasetSplitFn` taking in
-      a client dataset and producing two TF datasets. The first is iterated over
+    dataset_split_fn: A `tff.learning.reconstruction.DatasetSplitFn` taking in a
+      client dataset and producing two TF datasets. The first is iterated over
       during reconstruction, and the second is iterated over
       post-reconstruction. This can be used to preprocess datasets to e.g.
       iterate over them for multiple epochs or use disjoint data for

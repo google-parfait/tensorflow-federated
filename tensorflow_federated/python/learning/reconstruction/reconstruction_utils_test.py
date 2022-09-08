@@ -97,9 +97,7 @@ class ReconstructionUtilsTest(tf.test.TestCase):
     client_dataset = tf.data.Dataset.range(6).batch(2)
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
-        recon_epochs=1,
-        recon_steps_max=4,
-        post_recon_epochs=0)
+        recon_epochs=1, recon_steps_max=4, post_recon_epochs=0)
 
     recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
@@ -129,8 +127,7 @@ class ReconstructionUtilsTest(tf.test.TestCase):
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
         split_dataset=True)
-    recon_dataset, post_recon_dataset = split_dataset_fn(
-        client_dataset)
+    recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
     post_recon_list = list(post_recon_dataset.as_numpy_iterator())
@@ -159,8 +156,7 @@ class ReconstructionUtilsTest(tf.test.TestCase):
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
         split_dataset=True)
-    recon_dataset, post_recon_dataset = split_dataset_fn(
-        client_dataset)
+    recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
     post_recon_list = list(post_recon_dataset.as_numpy_iterator())
@@ -175,8 +171,7 @@ class ReconstructionUtilsTest(tf.test.TestCase):
 
     split_dataset_fn = reconstruction_utils.build_dataset_split_fn(
         split_dataset=True)
-    recon_dataset, post_recon_dataset = split_dataset_fn(
-        client_dataset)
+    recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
     post_recon_list = list(post_recon_dataset.as_numpy_iterator())
@@ -195,8 +190,7 @@ class ReconstructionUtilsTest(tf.test.TestCase):
         post_recon_steps_max=3,
         split_dataset=True)
 
-    recon_dataset, post_recon_dataset = split_dataset_fn(
-        client_dataset)
+    recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
     post_recon_list = list(post_recon_dataset.as_numpy_iterator())
@@ -215,8 +209,7 @@ class ReconstructionUtilsTest(tf.test.TestCase):
         post_recon_steps_max=0,
         split_dataset=True)
 
-    recon_dataset, post_recon_dataset = split_dataset_fn(
-        client_dataset)
+    recon_dataset, post_recon_dataset = split_dataset_fn(client_dataset)
 
     recon_list = list(recon_dataset.as_numpy_iterator())
     post_recon_list = list(post_recon_dataset.as_numpy_iterator())

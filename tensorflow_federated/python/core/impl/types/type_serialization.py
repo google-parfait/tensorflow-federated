@@ -123,8 +123,8 @@ def deserialize_type(
   function types is implemented.
 
   Args:
-    type_proto: An object that supports same interface as `pb.Type` (e.g.
-      pybind backend C++ `Type` protocol buffer messages), or `None`.
+    type_proto: An object that supports same interface as `pb.Type` (e.g. pybind
+      backend C++ `Type` protocol buffer messages), or `None`.
 
   Returns:
     The corresponding instance of computation_types.Type (or None if the

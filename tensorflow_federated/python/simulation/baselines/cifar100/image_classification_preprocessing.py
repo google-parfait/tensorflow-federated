@@ -36,10 +36,10 @@ def build_image_map(
   `tf.image.per_image_standardization`.
 
   Args:
-    crop_shape: A tuple (crop_height, crop_width, channels)
-      specifying the desired crop shape for pre-processing batches. This cannot
-      exceed (32, 32, 3) element-wise. The element in the last index should be
-      set to 3 to maintain the RGB image structure of the elements.
+    crop_shape: A tuple (crop_height, crop_width, channels) specifying the
+      desired crop shape for pre-processing batches. This cannot exceed (32, 32,
+      3) element-wise. The element in the last index should be set to 3 to
+      maintain the RGB image structure of the elements.
     distort: A boolean indicating whether to distort the image via random crops
       and flips. If set to False, the image is resized to the `crop_shape` via
       `tf.image.resize_with_crop_or_pad`.
@@ -117,6 +117,7 @@ def create_preprocess_fn(
     shuffle_buffer_size = NUM_EXAMPLES_PER_CLIENT
 
   image_map_fn = build_image_map(crop_shape, distort_image)
+
   def preprocess_fn(dataset):
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size)

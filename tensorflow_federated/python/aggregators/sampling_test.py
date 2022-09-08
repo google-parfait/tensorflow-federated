@@ -23,7 +23,6 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_test_utils
 
-
 # Convenience type aliases.
 FunctionType = computation_types.FunctionType
 SequenceType = computation_types.SequenceType

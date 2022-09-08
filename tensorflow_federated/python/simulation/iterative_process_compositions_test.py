@@ -424,5 +424,6 @@ class ConstructDatasetsOnClientsLearningProcessTest(absltest.TestCase):
         new_process.set_model_weights.type_signature.is_equivalent_to(
             process.set_model_weights.type_signature))
 
+
 if __name__ == '__main__':
   absltest.main()

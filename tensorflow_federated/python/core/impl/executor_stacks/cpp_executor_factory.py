@@ -30,7 +30,6 @@ from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.types import placements
 
-
 # Users likely do not intend to run 4 or more TensorFlow functions sequentially;
 # we special-case to warn users explicitly in this case, in addition to
 # logging in the case of any implied sequential execution.

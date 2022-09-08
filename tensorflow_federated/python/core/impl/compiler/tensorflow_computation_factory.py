@@ -247,7 +247,7 @@ def create_binary_operator(
   Args:
     operator: A callable taking two arguments representing the operation to
       encode For example: `tf.math.add`, `tf.math.multiply`, and
-        `tf.math.divide`.
+      `tf.math.divide`.
     operand_type: A `computation_types.Type` to use as the argument to the
       constructed binary operator; must contain only named tuples and tensor
       types.
@@ -311,8 +311,8 @@ def create_binary_operator_with_upcast(
       structure of the first type. This single tensor may be assignable to the
       tensor types at the leaves, or in the case that the leaves have fully
       defined shapes, this tensor may be `tf.broadcast`-ed to each of those
-      shapes. In the case of non-assignability and non-fully defined shapes
-      at the leaves of the structure, this function will raise.
+      shapes. In the case of non-assignability and non-fully defined shapes at
+      the leaves of the structure, this function will raise.
     operator: Callable defining the operator.
 
   Returns:

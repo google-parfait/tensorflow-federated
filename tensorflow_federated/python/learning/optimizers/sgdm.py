@@ -20,7 +20,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning.optimizers import optimizer
 
-
 _MOMENTUM_KEY = 'momentum'
 _ACCUMULATOR_KEY = 'accumulator'
 

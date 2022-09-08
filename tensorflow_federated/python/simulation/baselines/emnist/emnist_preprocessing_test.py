@@ -21,10 +21,8 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.emnist import emnist_preprocessing
 
-
 NUM_ONLY_DIGITS_CLIENTS = 3383
 TOTAL_NUM_CLIENTS = 3400
-
 
 TEST_DATA = collections.OrderedDict(
     label=([tf.constant(0, dtype=tf.int32)]),

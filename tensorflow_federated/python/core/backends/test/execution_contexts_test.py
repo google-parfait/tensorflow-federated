@@ -22,7 +22,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 
-
 _CLIENTS_INT = computation_types.at_clients(tf.int32)
 _CLIENTS_INT_LIST = computation_types.at_clients([tf.int32, tf.int32])
 

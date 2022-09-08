@@ -73,7 +73,7 @@ def compute_pad(
     A tuple of 2 tuples, each with 2 integers, indicating the left/right
       padding, and the top/down padding.
   """
-  padding = (kernel_size//2, kernel_size//2)
+  padding = (kernel_size // 2, kernel_size // 2)
   if enforce_odd:
     adjust = (1 - image_shape[0] % 2, 1 - image_shape[1] % 2)
   else:
@@ -130,12 +130,14 @@ def inverted_res_block(input_tensor,
 
   if expansion_layer:
     # We perform an initial pointwise convolution layer.
-    x = tf.keras.layers.Conv2D(expansion_factor * num_input_channels,
-                               kernel_size=1,
-                               padding='same',
-                               use_bias=False,
-                               activation=None,
-                               name=prefix + 'expand_conv')(x)
+    x = tf.keras.layers.Conv2D(
+        expansion_factor * num_input_channels,
+        kernel_size=1,
+        padding='same',
+        use_bias=False,
+        activation=None,
+        name=prefix + 'expand_conv')(
+            x)
     x = group_norm.GroupNormalization(
         groups=num_groups, axis=channel_axis, name=prefix + 'expand_gn')(
             x)
@@ -146,7 +148,7 @@ def inverted_res_block(input_tensor,
     x = tf.keras.layers.ReLU(6.0, name=prefix + 'expand_relu')(x)
 
   # We now use depthwise convolutions
-  if stride%2 == 0:
+  if stride % 2 == 0:
     padding = compute_pad(image_shape, 3, enforce_odd=True)
     x = tf.keras.layers.ZeroPadding2D(padding=padding, name=prefix + 'pad')(x)
 
@@ -157,7 +159,8 @@ def inverted_res_block(input_tensor,
       activation=None,
       use_bias=False,
       padding=padding_type,
-      name=prefix + 'depthwise_conv')(x)
+      name=prefix + 'depthwise_conv')(
+          x)
   x = group_norm.GroupNormalization(
       groups=num_groups, axis=channel_axis, name=prefix + 'depthwise_gn')(
           x)
@@ -169,12 +172,14 @@ def inverted_res_block(input_tensor,
 
   # Projection phase, using pointwise convolutions
   num_projection_filters = _make_divisible(int(filters * alpha), 8)
-  x = tf.keras.layers.Conv2D(num_projection_filters,
-                             kernel_size=1,
-                             padding='same',
-                             use_bias=False,
-                             activation=None,
-                             name=prefix + 'project_conv')(x)
+  x = tf.keras.layers.Conv2D(
+      num_projection_filters,
+      kernel_size=1,
+      padding='same',
+      use_bias=False,
+      activation=None,
+      name=prefix + 'project_conv')(
+          x)
   x = group_norm.GroupNormalization(
       groups=num_groups, axis=channel_axis, name=prefix + 'project_gn')(
           x)
@@ -234,8 +239,8 @@ def create_mobilenet_v2(input_shape: Tuple[int, int, int],
     alpha: A positive float multiplier for the number of filters in the
       projection pointwise convolutional layers. If set to `1.0`, we recover the
       default number of filters from the original paper.
-    pooling: A string indicating the pooling mode for the final
-      fully-connected layer. Can be one of 'avg' or 'max'.
+    pooling: A string indicating the pooling mode for the final fully-connected
+      layer. Can be one of 'avg' or 'max'.
     num_groups: A positive integer indicating number of groups to use in the
       GroupNorm layers.
     dropout_prob: An optional float between `0.0` and `1.0` representing the
@@ -260,7 +265,8 @@ def create_mobilenet_v2(input_shape: Tuple[int, int, int],
   img_input = tf.keras.layers.Input(shape=input_shape)
   initial_padding = compute_pad(image_shape, 3, enforce_odd=True)
   x = tf.keras.layers.ZeroPadding2D(
-      initial_padding, name='initial_pad')(img_input)
+      initial_padding, name='initial_pad')(
+          img_input)
   num_filters_first_block = _make_divisible(32 * alpha, 8)
   x = tf.keras.layers.Conv2D(
       num_filters_first_block,
@@ -456,10 +462,9 @@ def create_mobilenet_v2(input_shape: Tuple[int, int, int],
   else:
     raise ValueError('Found unexpected pooling argument {}'.format(pooling))
 
-  x = tf.keras.layers.Dense(num_classes,
-                            activation='softmax',
-                            use_bias=True,
-                            name='logits')(x)
+  x = tf.keras.layers.Dense(
+      num_classes, activation='softmax', use_bias=True, name='logits')(
+          x)
   model = tf.keras.models.Model(inputs=img_input, outputs=x)
 
   return model

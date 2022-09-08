@@ -69,7 +69,6 @@ from tensorflow_federated.python.core.impl.types.placements import SERVER
 from tensorflow_federated.python.core.impl.types.type_conversions import structure_from_tensor_type_tree
 from tensorflow_federated.python.core.impl.types.typed_object import TypedObject
 
-
 if sys.version_info[0] < 3 or sys.version_info[1] < 9:
   raise Exception('TFF only supports Python versions 3.9 or later.')
 

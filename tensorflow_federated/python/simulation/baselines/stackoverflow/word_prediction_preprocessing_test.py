@@ -20,7 +20,6 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.stackoverflow import word_prediction_preprocessing
 
-
 TEST_DATA = collections.OrderedDict(
     creation_date=(['unused date']),
     score=([tf.constant(0, dtype=tf.int64)]),

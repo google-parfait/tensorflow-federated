@@ -67,11 +67,10 @@ class HistogramClippingSumFactory(factory.UnweightedAggregationFactory):
 
     Args:
       clip_mechanism: A `str` representing the clipping mechanism. Currently
-        supported mechanisms are
-      - 'sub-sampling': (Default) Uniformly sample up to `max_records_per_user`
-        records without replacement from the client dataset.
-      - 'distinct': Uniquify client dataset and uniformly sample up to
-        `max_records_per_user` records without replacement from it.
+        supported mechanisms are - 'sub-sampling': (Default) Uniformly sample up
+        to `max_records_per_user` records without replacement from the client
+        dataset. - 'distinct': Uniquify client dataset and uniformly sample up
+        to `max_records_per_user` records without replacement from it.
       max_records_per_user: An `int` representing the maximum of records each
         user can include in their local histogram. Defaults to 10.
       inner_agg_factory: (Optional) An `UnweightedAggregationFactory` specifying

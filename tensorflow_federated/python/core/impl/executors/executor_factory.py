@@ -51,9 +51,8 @@ class ExecutorFactory(metaclass=abc.ABCMeta):
     `executor_base.Executor`.
 
     Args:
-      cardinalities: a dict mapping instances of
-        `placements.PlacementLiteral` to ints, specifying the population
-        size at each placement.
+      cardinalities: a dict mapping instances of `placements.PlacementLiteral`
+        to ints, specifying the population size at each placement.
 
     Returns:
       Instance of `executor_base.Executor`.

@@ -25,7 +25,6 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 
-
 # Convenience aliases.
 FederatedType = computation_types.FederatedType
 StructType = computation_types.StructType
@@ -188,6 +187,7 @@ class HasEmptyStateTest(parameterized.TestCase, absltest.TestCase):
   def test_stateful_process_is_true(self, state_type):
     process = create_test_process(state_type)
     self.assertTrue(iterative_process.is_stateful(process))
+
 
 if __name__ == '__main__':
   absltest.main()

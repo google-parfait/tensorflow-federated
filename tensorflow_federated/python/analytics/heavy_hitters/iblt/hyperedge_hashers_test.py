@@ -20,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.analytics.heavy_hitters.iblt import hyperedge_hashers
 
-
 # Table of critial values for chi square tests with 5% level of significance.
 # The keys in the table are degrees of freedom.
 _CHI_SQUARE_CRITICAL_VALUE = {

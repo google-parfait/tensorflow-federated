@@ -309,9 +309,7 @@ class FederatedEvaluationTest(parameterized.TestCase):
         ])
     self.assertEqual(
         result,
-        collections.OrderedDict(
-            eval=collections.OrderedDict(num_over=9.0),
-        ))
+        collections.OrderedDict(eval=collections.OrderedDict(num_over=9.0),))
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_quantized_conservatively(self):

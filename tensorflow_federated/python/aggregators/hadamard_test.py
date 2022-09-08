@@ -128,9 +128,10 @@ class FastWalshHadamardTransformTests(tf.test.TestCase, parameterized.TestCase):
     min_hx = tf.math.reduce_min(hx)
     max_hx = tf.math.reduce_max(hx)
     min_abs_hx = tf.math.reduce_min(tf.math.abs(hx))
-    self.assertAllClose(-1.0/16.0, min_hx)
-    self.assertAllClose(1.0/16.0, max_hx)
-    self.assertAllClose(1.0/16.0, min_abs_hx)
+    self.assertAllClose(-1.0 / 16.0, min_hx)
+    self.assertAllClose(1.0 / 16.0, max_hx)
+    self.assertAllClose(1.0 / 16.0, min_abs_hx)
+
 
 if __name__ == '__main__':
   tf.test.main()

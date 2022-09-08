@@ -131,7 +131,8 @@ def _norm_relu_conv(input_tensor, filters, kernel_size, norm, strides=(1, 1)):
       padding='same',
       use_bias=False,
       kernel_initializer='he_normal',
-      kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(x)
+      kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(
+          x)
   return x
 
 
@@ -188,7 +189,8 @@ def _shortcut(input_tensor, residual, norm):
       shortcut = tf.keras.layers.BatchNormalization(
           axis=channel_axis,
           momentum=BATCH_NORM_DECAY,
-          epsilon=BATCH_NORM_EPSILON)(shortcut)
+          epsilon=BATCH_NORM_EPSILON)(
+              shortcut)
     else:
       raise ValueError('The norm argument must be of type `NormLayer`.')
 
@@ -341,8 +343,8 @@ def create_resnet(
       rows, columns, and channels of an input. Can be in channel-first or
       channel-last format.
     num_classes: A positive integer describing the number of output classes.
-    residual_block: A `ResidualBlock` describing what type of residual block
-      is used throughout the ResNet.
+    residual_block: A `ResidualBlock` describing what type of residual block is
+      used throughout the ResNet.
     repetitions: An optional list of integers describing the number of blocks
       within each stage. If None, defaults to the resnet50 repetitions of [3, 4,
       6, 3].
@@ -354,8 +356,8 @@ def create_resnet(
       and width (respectively) in the initial convolutional layer.
     initial_max_pooling: Whether to use max pooling after the initial
       convolutional layer.
-    norm_layer: A `NormLayer` describing which normalization layer is used
-      in the resulting model.
+    norm_layer: A `NormLayer` describing which normalization layer is used in
+      the resulting model.
 
   Returns:
     An uncompiled `tf.keras.Model`.
@@ -417,7 +419,8 @@ def create_resnet(
 
   if initial_max_pooling:
     x = tf.keras.layers.MaxPooling2D(
-        pool_size=(3, 3), strides=initial_strides, padding='same')(x)
+        pool_size=(3, 3), strides=initial_strides, padding='same')(
+            x)
 
   filters = initial_filters
 
@@ -442,7 +445,8 @@ def create_resnet(
       activation='softmax',
       kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
       kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
-      bias_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(x)
+      bias_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(
+          x)
 
   model = tf.keras.models.Model(img_input, x)
   return model
@@ -459,8 +463,8 @@ def create_resnet18(
       rows, columns, and channels of an input. Can be in channel-first or
       channel-last format.
     num_classes: A positive integer describing the number of output classes.
-    norm_layer: A `NormLayer` describing which normalization layer is used
-      in the resulting model.
+    norm_layer: A `NormLayer` describing which normalization layer is used in
+      the resulting model.
 
   Returns:
     An uncompiled `tf.keras.Model`.
@@ -484,8 +488,8 @@ def create_resnet34(
       rows, columns, and channels of an input. Can be in channel-first or
       channel-last format.
     num_classes: A positive integer describing the number of output classes.
-    norm_layer: A `NormLayer` describing which normalization layer is used
-      in the resulting model.
+    norm_layer: A `NormLayer` describing which normalization layer is used in
+      the resulting model.
 
   Returns:
     An uncompiled `tf.keras.Model`.
@@ -509,8 +513,8 @@ def create_resnet50(
       rows, columns, and channels of an input. Can be in channel-first or
       channel-last format.
     num_classes: A positive integer describing the number of output classes.
-    norm_layer: A `NormLayer` describing which normalization layer is used
-      in the resulting model.
+    norm_layer: A `NormLayer` describing which normalization layer is used in
+      the resulting model.
 
   Returns:
     An uncompiled `tf.keras.Model`.
@@ -534,8 +538,8 @@ def create_resnet101(
       rows, columns, and channels of an input. Can be in channel-first or
       channel-last format.
     num_classes: A positive integer describing the number of output classes.
-    norm_layer: A `NormLayer` describing which normalization layer is used
-      in the resulting model.
+    norm_layer: A `NormLayer` describing which normalization layer is used in
+      the resulting model.
 
   Returns:
     An uncompiled `tf.keras.Model`.
@@ -559,8 +563,8 @@ def create_resnet152(
       rows, columns, and channels of an input. Can be in channel-first or
       channel-last format.
     num_classes: A positive integer describing the number of output classes.
-    norm_layer: A `NormLayer` describing which normalization layer is used
-      in the resulting model.
+    norm_layer: A `NormLayer` describing which normalization layer is used in
+      the resulting model.
 
   Returns:
     An uncompiled `tf.keras.Model`.

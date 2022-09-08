@@ -66,6 +66,7 @@ def get_emnist_dataset():
   """
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
       only_digits=True)
+
   def element_fn(element):
     return collections.OrderedDict(
         x=tf.expand_dims(element['pixels'], -1), y=element['label'])
@@ -76,9 +77,11 @@ def get_emnist_dataset():
     return dataset.map(element_fn).shuffle(buffer_size=418).repeat(
         count=FLAGS.client_epochs_per_round).batch(
             FLAGS.batch_size, drop_remainder=False)
+
   def preprocess_test_dataset(dataset):
     return dataset.map(element_fn).batch(
         FLAGS.test_batch_size, drop_remainder=False)
+
   emnist_train = emnist_train.preprocess(preprocess_train_dataset)
   emnist_test = preprocess_test_dataset(
       emnist_test.create_tf_dataset_from_all_clients())

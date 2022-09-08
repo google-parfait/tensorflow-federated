@@ -293,8 +293,8 @@ def build_apply_optimizer_finalizer(
 
   Args:
     optimizer_fn: A `tff.learning.optimizers.Optimizer` or a no-arg function
-      that returns a `tf.keras.optimizers.Optimizer`.
-      This optimizer is used to apply client updates to the server model.
+      that returns a `tf.keras.optimizers.Optimizer`. This optimizer is used to
+      apply client updates to the server model.
     model_weights_type: A non-federated `tff.Type` of the model weights to be
       optimized, which must have a `tff.learning.ModelWeights` container.
 

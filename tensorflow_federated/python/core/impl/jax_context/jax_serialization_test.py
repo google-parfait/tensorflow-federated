@@ -29,7 +29,6 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.impl.xla_context import xla_serialization
 
-
 # Convenience aliases.
 FunctionType = computation_types.FunctionType
 StructType = computation_types.StructType

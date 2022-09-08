@@ -641,8 +641,8 @@ def federated_secure_modular_sum(value, modulus):
   Args:
     value: An integer or nested structure of integers placed at `tff.CLIENTS`.
       Values outside of the range [0, modulus-1] will be considered equivalent
-      to mod(value, modulus), i.e. they will be projected into the range
-      [0, modulus-1] as part of the modular summation.
+      to mod(value, modulus), i.e. they will be projected into the range [0,
+      modulus-1] as part of the modular summation.
     modulus: A Python integer or nested structure of integers matching the
       structure of `value`. If integer `modulus` is used with a nested `value`,
       the same integer is used for each tensor in `value`.

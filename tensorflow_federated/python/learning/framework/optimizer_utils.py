@@ -66,8 +66,8 @@ class ClientOutput(object):
     weights_delta_weight: Weight to use in a weighted mean when aggregating
       `weights_delta`.
     model_output: A structure matching
-    `tff.learning.Model.report_local_unfinalized_metrics`, reflecting the
-    results of training on the input dataset.
+      `tff.learning.Model.report_local_unfinalized_metrics`, reflecting the
+      results of training on the input dataset.
     optimizer_output: Additional metrics or other outputs defined by the
       optimizer.
   """

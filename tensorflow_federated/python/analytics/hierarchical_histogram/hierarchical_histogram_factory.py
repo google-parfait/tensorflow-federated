@@ -65,21 +65,20 @@ def create_hierarchical_histogram_aggregation_factory(
     arity: An `int` representing the branching factor of the tree. Defaults to
       2.
    clip_mechanism: A `str` representing the clipping mechanism. Currently
-     supported mechanisms are
-      - 'sub-sampling': (Default) Uniformly sample up to `max_records_per_user`
-        records without replacement from the client dataset.
-      - 'distinct': Uniquify client dataset and uniformly sample up to
-        `max_records_per_user` records without replacement from it.
+     supported mechanisms are - 'sub-sampling': (Default) Uniformly sample up to
+     `max_records_per_user` records without replacement from the client dataset.
+     - 'distinct': Uniquify client dataset and uniformly sample up to
+     `max_records_per_user` records without replacement from it.
     max_records_per_user: An `int` representing the maximum of records each user
       can include in their local histogram. Defaults to 10.
     dp_mechanism: A `str` representing the differentially private mechanism to
-      use. Currently supported mechanisms are
-      - 'no-noise': (Default) Tree aggregation mechanism without noise.
-      - 'central-gaussian': Tree aggregation with central Gaussian mechanism.
-      - 'distributed-discrete-gaussian': Tree aggregation mechanism with
-        distributed discrete Gaussian mechanism in "The Distributed Discrete
-        Gaussian Mechanism for Federated Learning with Secure Aggregation. Peter
-        Kairouz, Ziyu Liu, Thomas Steinke".
+      use. Currently supported mechanisms are - 'no-noise': (Default) Tree
+      aggregation mechanism without noise. - 'central-gaussian': Tree
+      aggregation with central Gaussian mechanism. -
+      'distributed-discrete-gaussian': Tree aggregation mechanism with
+      distributed discrete Gaussian mechanism in "The Distributed Discrete
+      Gaussian Mechanism for Federated Learning with Secure Aggregation. Peter
+      Kairouz, Ziyu Liu, Thomas Steinke".
     noise_multiplier: A `float` specifying the noise multiplier (central noise
       stddev / L2 clip norm) for model updates. Only needed when `dp_mechanism`
       is not 'no-noise'. Defaults to 0.0.

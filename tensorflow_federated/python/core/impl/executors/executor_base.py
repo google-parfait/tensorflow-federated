@@ -89,10 +89,9 @@ class Executor(object, metaclass=abc.ABCMeta):
 
     Args:
       elements: A collection of `ExecutorValue`s to create a tuple from. The
-        collection may be of any kind accepted by
-        `structure.from_container`, including dictionaries and lists. The
-        `ExecutorValues` in the container must have been created by calling
-        `create_value` on this executor.
+        collection may be of any kind accepted by `structure.from_container`,
+        including dictionaries and lists. The `ExecutorValues` in the container
+        must have been created by calling `create_value` on this executor.
 
     Returns:
       An instance of `ExecutorValue` that represents the constructed tuple.

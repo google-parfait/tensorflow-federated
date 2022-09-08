@@ -21,7 +21,6 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.cifar100 import image_classification_preprocessing
 
-
 TEST_DATA = collections.OrderedDict(
     coarse_label=([tf.constant(1, dtype=tf.int64)]),
     image=([tf.zeros((32, 32, 3), dtype=tf.uint8)]),
