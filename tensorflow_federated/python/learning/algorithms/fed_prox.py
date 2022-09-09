@@ -40,6 +40,7 @@ from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
@@ -51,7 +52,7 @@ DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
 
 def build_weighted_fed_prox(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     proximal_strength: float,
     client_optimizer_fn: Union[optimizer_base.Optimizer,
                                Callable[[], tf.keras.optimizers.Optimizer]],
@@ -115,10 +116,12 @@ def build_weighted_fed_prox(
   or server optimizers.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
+      instance of a `tff.learning.models.FunctionalModel`. When passing a
+      callable, the callable must *not* capture TensorFlow tensors or variables
+      and use them.  The model must be constructed entirely from scratch on each
+      invocation, returning the same pre-constructed model each call will result
+      in an error.
     proximal_strength: A nonnegative float representing the parameter of
       FedProx's regularization term. When set to `0`, the algorithm reduces to
       FedAvg. Higher values prevent clients from moving too far from the server
@@ -158,22 +161,45 @@ def build_weighted_fed_prox(
     raise ValueError(
         'proximal_strength must be a nonnegative float, found {}'.format(
             proximal_strength))
+  if not callable(model_fn):
+    if not isinstance(model_fn, functional.FunctionalModel):
+      raise TypeError(
+          'If `model_fn` is not a callable, it must be an instance of '
+          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
+    if not isinstance(client_optimizer_fn, optimizer_base.Optimizer):
+      raise TypeError(
+          'When `model_fn` is a `tff.learning.models.FunctionalModel`, the '
+          '`client_optimizer_fn` must be a `tff.learning.optimizers.Optimizer`.'
+          f'Got {type(client_optimizer_fn)}.')
 
-  py_typecheck.check_callable(model_fn)
+    @tensorflow_computation.tf_computation()
+    def initial_model_weights_fn():
+      trainable_weights, non_trainable_weights = model_fn.initial_weights
+      return model_utils.ModelWeights(
+          tuple(tf.convert_to_tensor(w) for w in trainable_weights),
+          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
 
-  @tensorflow_computation.tf_computation()
-  def initial_model_weights_fn():
-    return model_utils.ModelWeights.from_model(model_fn())
+  else:
+    py_typecheck.check_callable(model_fn)
+
+    @tensorflow_computation.tf_computation()
+    def initial_model_weights_fn():
+      model = model_fn()
+      if not isinstance(model, model_lib.Model):
+        raise TypeError('When `model_fn` is a callable, it returns instances of'
+                        ' tff.learning.Model. Instead callable returned type: '
+                        f'{type(model)}')
+      return model_utils.ModelWeights.from_model(model)
 
   model_weights_type = initial_model_weights_fn.type_signature.result
-
   if model_distributor is None:
     model_distributor = distributors.build_broadcast_process(model_weights_type)
 
+  model_update_type = model_weights_type.trainable
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
-  aggregator = model_aggregator.create(model_weights_type.trainable,
+  aggregator = model_aggregator.create(model_update_type,
                                        computation_types.TensorType(tf.float32))
   process_signature = aggregator.next.type_signature
   input_client_value_type = process_signature.parameter[1]
@@ -187,13 +213,21 @@ def build_weighted_fed_prox(
 
   if metrics_aggregator is None:
     metrics_aggregator = metric_aggregator.sum_then_finalize
-  client_work = proximal_client_work.build_model_delta_client_work(
-      model_fn=model_fn,
-      optimizer=client_optimizer_fn,
-      client_weighting=client_weighting,
-      delta_l2_regularizer=proximal_strength,
-      metrics_aggregator=metrics_aggregator,
-      use_experimental_simulation_loop=use_experimental_simulation_loop)
+  if not callable(model_fn):
+    client_work = proximal_client_work.build_functional_model_delta_client_work(
+        model=model_fn,
+        optimizer=client_optimizer_fn,
+        client_weighting=client_weighting,
+        delta_l2_regularizer=proximal_strength,
+        metrics_aggregator=metrics_aggregator)
+  else:
+    client_work = proximal_client_work.build_model_delta_client_work(
+        model_fn=model_fn,
+        optimizer=client_optimizer_fn,
+        client_weighting=client_weighting,
+        delta_l2_regularizer=proximal_strength,
+        metrics_aggregator=metrics_aggregator,
+        use_experimental_simulation_loop=use_experimental_simulation_loop)
   finalizer = finalizers.build_apply_optimizer_finalizer(
       server_optimizer_fn, model_weights_type)
   return composers.compose_learning_process(initial_model_weights_fn,
@@ -202,7 +236,7 @@ def build_weighted_fed_prox(
 
 
 def build_unweighted_fed_prox(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     proximal_strength: float,
     client_optimizer_fn: Union[optimizer_base.Optimizer,
                                Callable[[], tf.keras.optimizers.Optimizer]],
@@ -263,10 +297,12 @@ def build_unweighted_fed_prox(
   or server optimizers.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
+      instance of a `tff.learning.models.FunctionalModel`. When passing a
+      callable, the callable must *not* capture TensorFlow tensors or variables
+      and use them.  The model must be constructed entirely from scratch on each
+      invocation, returning the same pre-constructed model each call will result
+      in an error.
     proximal_strength: A nonnegative float representing the parameter of
       FedProx's regularization term. When set to `0`, the algorithm reduces to
       FedAvg. Higher values prevent clients from moving too far from the server

@@ -72,14 +72,16 @@ def build_functional_linear_regression(
     predictions = predict_on_batch(weights, x=x, training=training)
     residuals = predictions - y
     num_examples = tf.gather(tf.shape(predictions), 0)
-    total_loss = tf.reduce_sum(tf.pow(residuals, 2))
+    total_loss = tf.math.reduce_sum(tf.math.pow(residuals, 2.0))
     average_loss = total_loss / tf.cast(num_examples, tf.float32)
     return model_lib.BatchOutput(
         loss=average_loss, predictions=predictions, num_examples=num_examples)
 
   @tf.function
   def initialize_metrics() -> functional.MetricsState:
-    return collections.OrderedDict(num_examples=tf.constant(0, tf.int32))
+    return collections.OrderedDict(
+        loss=tf.constant(0.0, tf.float32),
+        num_examples=tf.constant(0, tf.int32))
 
   @tf.function
   def update_metrics_state(
@@ -87,15 +89,19 @@ def build_functional_linear_regression(
       y_true: Any,
       y_pred: Any,
       sample_weight: Optional[Any] = None) -> functional.MetricsState:
-    del y_pred  # Unused.
     del sample_weight  # Unused.
     batch_size = tf.shape(y_true)[0]
-    return collections.OrderedDict(num_examples=state["num_examples"] +
-                                   batch_size)
+    loss = tf.math.reduce_sum(tf.math.pow(y_pred - y_true, 2.0))
+    return collections.OrderedDict(
+        loss=state["loss"] + loss,
+        num_examples=state["num_examples"] + batch_size)
 
   @tf.function
   def finalize_metrics(state: functional.MetricsState):
-    return state
+    return collections.OrderedDict(
+        loss=tf.math.divide_no_nan(state["loss"],
+                                   tf.cast(state["num_examples"], tf.float32)),
+        num_examples=state["num_examples"])
 
   return functional.FunctionalModel(
       initial_weights=initial_weights,

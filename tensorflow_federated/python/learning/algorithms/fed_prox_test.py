@@ -29,6 +29,7 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_prox
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import distributors
 
@@ -80,6 +81,27 @@ class FedProxConstructionTest(parameterized.TestCase):
       mock_method.assert_not_called()
     else:
       mock_method.assert_called()
+
+  @parameterized.named_parameters(
+      ('weighted', fed_prox.build_unweighted_fed_prox),
+      ('unweighted', fed_prox.build_weighted_fed_prox),
+  )
+  def test_build_functional_model_fed_prox(self, build_fed_prox):
+    model = test_models.build_functional_linear_regression(feature_dim=2)
+    build_fed_prox(
+        model_fn=model,
+        proximal_strength=1.0,
+        client_optimizer_fn=sgdm.build_sgdm(1.0))
+
+  def test_build_functional_model_fed_prox_non_tff_optimizer_fails(self):
+    model = test_models.build_functional_linear_regression(feature_dim=2)
+    with self.assertRaisesRegex(
+        TypeError,
+        'client_optimizer_fn` must be a `tff.learning.optimizers.Optimizer'):
+      fed_prox.build_weighted_fed_prox(
+          model_fn=model,
+          proximal_strength=1.0,
+          client_optimizer_fn=tf.keras.optimizers.SGD)
 
   @mock.patch.object(fed_prox, 'build_weighted_fed_prox')
   def test_build_weighted_fed_prox_called_by_unweighted_fed_prox(
