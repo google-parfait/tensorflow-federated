@@ -14,17 +14,23 @@
 """Gradient descent optimizer."""
 
 import collections
-from typing import Optional
+from typing import Any, Generic, TypeVar, Optional, OrderedDict
+
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.learning.optimizers import optimizer
 
 _MOMENTUM_KEY = 'momentum'
 _ACCUMULATOR_KEY = 'accumulator'
 
+Hparams = OrderedDict[str, float]
+State = TypeVar('State', bound=OrderedDict[str, Any])
+Weights = optimizer.Weights
 
-class _SGD(optimizer.Optimizer):
+
+class _SGD(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
   """Gradient descent optimizer, see `build_sgdm` for details."""
 
   def __init__(self, learning_rate: float, momentum: Optional[float] = None):
@@ -32,6 +38,9 @@ class _SGD(optimizer.Optimizer):
     py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
     if momentum is not None:
       _check_momentum(momentum)
+      self._hparams_keys = [optimizer.LEARNING_RATE_KEY, _MOMENTUM_KEY]
+    else:
+      self._hparams_keys = [optimizer.LEARNING_RATE_KEY]
     self._lr = learning_rate
     self._momentum = momentum
 
@@ -67,6 +76,17 @@ class _SGD(optimizer.Optimizer):
           (_ACCUMULATOR_KEY, updated_accumulator),
       ])
     return updated_state, updated_weights
+
+  def get_hparams(self, state: State) -> Hparams:
+    return collections.OrderedDict([(k, state[k]) for k in self._hparams_keys])
+
+  def set_hparams(self, state: State, hparams: Hparams) -> State:
+    # TODO(b/245962555): Find an alternative to `update_struct` if it interferes
+    # with typing guarantees.
+    # We use `tff.structure.update_struct` (rather than something like
+    # `copy.deepcopy`) to ensure that this can be called within a
+    # `tff.Computation`.
+    return structure.update_struct(state, **hparams)
 
 
 def _check_momentum(momentum):

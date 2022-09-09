@@ -14,17 +14,25 @@
 """RMSprop optimizer."""
 
 import collections
+from typing import Any, Generic, TypeVar, OrderedDict
+
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.learning.optimizers import optimizer
 
 _DECAY_KEY = 'decay'
 _PRECONDITIONER_KEY = 'preconditioner'
 _EPSILON_KEY = 'epsilon'
+_HPARAMS_KEYS = [optimizer.LEARNING_RATE_KEY, _DECAY_KEY, _EPSILON_KEY]
+
+Hparams = OrderedDict[str, float]
+State = TypeVar('State', bound=OrderedDict[str, Any])
+Weights = optimizer.Weights
 
 
-class _RmsProp(optimizer.Optimizer):
+class _RmsProp(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
   """RMSprop optimizer, see `build_rmsprop` for details."""
 
   def __init__(self,
@@ -75,15 +83,16 @@ class _RmsProp(optimizer.Optimizer):
     ])
     return updated_state, updated_weights
 
-  # TODO(b/240183407): Implement this method.
-  def get_hparams(self, state):
-    raise NotImplementedError('The get_hparams method is still being '
-                              'implemented and is not ready to use yet.')
+  def get_hparams(self, state: State) -> Hparams:
+    return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])
 
-  # TODO(b/240183407): Implement this method.
-  def set_hparams(self, state, hparams):
-    raise NotImplementedError('The set_hparams method is still being '
-                              'implemented and is not ready to use yet.')
+  def set_hparams(self, state: State, hparams: Hparams) -> State:
+    # TODO(b/245962555): Find an alternative to `update_struct` if it interferes
+    # with typing guarantees.
+    # We use `tff.structure.update_struct` (rather than something like
+    # `copy.deepcopy`) to ensure that this can be called within a
+    # `tff.Computation`.
+    return structure.update_struct(state, **hparams)
 
 
 def _check_decay(decay):

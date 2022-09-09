@@ -84,6 +84,8 @@ class _Adagrad(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
     return collections.OrderedDict([(k, state[k]) for k in _HPARAMS_KEYS])
 
   def set_hparams(self, state: State, hparams: Hparams) -> State:
+    # TODO(b/245962555): Find an alternative to `update_struct` if it interferes
+    # with typing guarantees.
     # We use `tff.structure.update_struct` (rather than something like
     # `copy.deepcopy`) to ensure that this can be called within a
     # `tff.Computation`.

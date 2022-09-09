@@ -166,6 +166,7 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     state = optimizer.initialize(spec)
     expected_hparams = collections.OrderedDict(learning_rate=0.1, epsilon=0.01)
     actual_hparams = optimizer.get_hparams(state)
+    self.assertIsInstance(actual_hparams, collections.OrderedDict)
     self.assertEqual(actual_hparams, expected_hparams)
 
   @parameterized.named_parameters(
@@ -179,9 +180,10 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     state = optimizer.initialize(spec)
     hparams = collections.OrderedDict(learning_rate=0.5, epsilon=2.0)
     expected_state = copy.deepcopy(state)
-    expected_state['learning_rate'] = 0.5
-    expected_state['epsilon'] = 2.0
+    for k, v in hparams.items():
+      expected_state[k] = v
     updated_state = optimizer.set_hparams(state, hparams)
+    self.assertIsInstance(updated_state, collections.OrderedDict)
     self.assertEqual(updated_state, expected_state)
 
   @parameterized.named_parameters(
@@ -190,7 +192,7 @@ class AdagradTest(optimizer_test_utils.TestCase, parameterized.TestCase):
       ('nested_spec', _NESTED_SPEC),
   )
   def test_set_get_hparams_is_no_op(self, spec):
-    optimizer = adagrad.build_adagrad(0.1)
+    optimizer = adagrad.build_adagrad(learning_rate=0.1)
     state = optimizer.initialize(spec)
     hparams = optimizer.get_hparams(state)
     updated_state = optimizer.set_hparams(state, hparams)

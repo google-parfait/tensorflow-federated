@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+import copy
+
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -154,6 +157,51 @@ class RmsPropTest(optimizer_test_utils.TestCase, parameterized.TestCase):
     state = optimizer.initialize(_SCALAR_SPEC)
     with self.assertRaises(ValueError):
       optimizer.next(state, tf.zeros([2]), tf.zeros([2]))
+
+  @parameterized.named_parameters(
+      ('scalar_spec', _SCALAR_SPEC),
+      ('struct_spec', _STRUCT_SPEC),
+      ('nested_spec', _NESTED_SPEC),
+  )
+  def test_get_hparams_returns_expected_result(self, spec):
+    optimizer = rmsprop.build_rmsprop(
+        learning_rate=0.1, decay=0.9, epsilon=0.01)
+    state = optimizer.initialize(spec)
+    expected_hparams = collections.OrderedDict(
+        learning_rate=0.1, decay=0.9, epsilon=0.01)
+    actual_hparams = optimizer.get_hparams(state)
+    self.assertIsInstance(actual_hparams, collections.OrderedDict)
+    self.assertEqual(actual_hparams, expected_hparams)
+
+  @parameterized.named_parameters(
+      ('scalar_spec', _SCALAR_SPEC),
+      ('struct_spec', _STRUCT_SPEC),
+      ('nested_spec', _NESTED_SPEC),
+  )
+  def test_set_hparams_returns_expected_result(self, spec):
+    optimizer = rmsprop.build_rmsprop(
+        learning_rate=0.1, decay=0.9, epsilon=0.01)
+    state = optimizer.initialize(spec)
+    hparams = collections.OrderedDict(
+        learning_rate=0.5, decay=0.51, epsilon=2.0)
+    expected_state = copy.deepcopy(state)
+    for k, v in hparams.items():
+      expected_state[k] = v
+    updated_state = optimizer.set_hparams(state, hparams)
+    self.assertIsInstance(updated_state, collections.OrderedDict)
+    self.assertEqual(updated_state, expected_state)
+
+  @parameterized.named_parameters(
+      ('scalar_spec', _SCALAR_SPEC),
+      ('struct_spec', _STRUCT_SPEC),
+      ('nested_spec', _NESTED_SPEC),
+  )
+  def test_set_get_hparams_is_no_op(self, spec):
+    optimizer = rmsprop.build_rmsprop(learning_rate=0.1)
+    state = optimizer.initialize(spec)
+    hparams = optimizer.get_hparams(state)
+    updated_state = optimizer.set_hparams(state, hparams)
+    self.assertEqual(state, updated_state)
 
 
 if __name__ == '__main__':
