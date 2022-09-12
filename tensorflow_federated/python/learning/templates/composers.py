@@ -36,6 +36,7 @@ from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.optimizers import sgdm
+from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
@@ -307,7 +308,7 @@ def build_basic_fedavg_process(model_fn: Callable[[], model_lib.Model],
   aggregator = mean.MeanFactory().create(
       client_work.next.type_signature.result.result.member.update,
       client_work.next.type_signature.result.result.member.update_weight)
-  finalizer = finalizers.build_apply_optimizer_finalizer(
+  finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
       sgdm.build_sgdm(1.0), model_weights_type)
 
   return compose_learning_process(initial_model_weights_fn, distributor,

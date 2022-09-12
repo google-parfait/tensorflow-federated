@@ -19,12 +19,51 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
+        ":apply_optimizer_finalizer",
         ":client_works",
         ":composers",
         ":distributors",
         ":finalizers",
         ":learning_process",
         ":model_delta_client_work",
+    ],
+)
+
+py_library(
+    name = "apply_optimizer_finalizer",
+    srcs = ["apply_optimizer_finalizer.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":finalizers",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
+    ],
+)
+
+py_test(
+    name = "apply_optimizer_finalizer_test",
+    srcs = ["apply_optimizer_finalizer_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":apply_optimizer_finalizer",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/impl/types:type_test_utils",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )
 
@@ -68,6 +107,7 @@ py_library(
     srcs = ["composers.py"],
     srcs_version = "PY3",
     deps = [
+        ":apply_optimizer_finalizer",
         ":client_works",
         ":distributors",
         ":finalizers",
@@ -163,18 +203,9 @@ py_library(
         ":hparams_base",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/learning:model_utils",
-        "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
-        "//tensorflow_federated/python/learning/optimizers:optimizer",
     ],
 )
 
@@ -186,7 +217,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":finalizers",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
@@ -195,8 +225,6 @@ py_test(
         "//tensorflow_federated/python/core/templates:errors",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_utils",
-        "//tensorflow_federated/python/learning/optimizers:optimizer",
-        "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )
 

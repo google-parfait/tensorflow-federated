@@ -13,13 +13,13 @@
 # limitations under the License.
 """Libraries of specialized processes used for building learning algorithms."""
 
+from tensorflow_federated.python.learning.templates.apply_optimizer_finalizer import build_apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates.client_works import ClientResult
 from tensorflow_federated.python.learning.templates.client_works import ClientWorkProcess
 from tensorflow_federated.python.learning.templates.composers import compose_learning_process
 from tensorflow_federated.python.learning.templates.composers import LearningAlgorithmState
 from tensorflow_federated.python.learning.templates.distributors import build_broadcast_process
 from tensorflow_federated.python.learning.templates.distributors import DistributionProcess
-from tensorflow_federated.python.learning.templates.finalizers import build_apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates.finalizers import FinalizerProcess
 from tensorflow_federated.python.learning.templates.learning_process import LearningProcess
 from tensorflow_federated.python.learning.templates.learning_process import LearningProcessOutput

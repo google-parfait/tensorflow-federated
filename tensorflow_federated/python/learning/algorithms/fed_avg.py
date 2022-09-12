@@ -50,9 +50,9 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
+from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
-from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
 from tensorflow_federated.python.learning.templates import model_delta_client_work
 
@@ -230,7 +230,7 @@ def build_weighted_fed_avg(
         client_weighting=client_weighting,
         metrics_aggregator=metrics_aggregator,
         use_experimental_simulation_loop=use_experimental_simulation_loop)
-  finalizer = finalizers.build_apply_optimizer_finalizer(
+  finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
       server_optimizer_fn, model_weights_type)
   return composers.compose_learning_process(initial_model_weights_fn,
                                             model_distributor, client_work,
