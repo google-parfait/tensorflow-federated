@@ -502,8 +502,9 @@ def federated_select(client_keys, max_key, server_val, select_fn):
     client_keys: `tff.CLIENTS`-placed one-dimensional fixed-size non-negative
       `int32` keys used to select values from `database` to load for each
       client.
-    max_key: A `tff.SERVER`-placed `int32` which is guaranteed to be greater
-      than any of `client_keys`. Lower values may permit more optimizations.
+    max_key: A `tff.SERVER`-placed `int32` indicating the maximum value of any
+      of `client_keys` (so that all client keys are in the range `[0, max_key]`,
+      inclusive). Lower values may permit more optimizations.
     server_val: `tff.SERVER`-placed value used as an input to `select_fn`.
     select_fn: A `tff.Computation` which accepts unplaced `server_val` and a
       `int32` client key and returns a value to be sent to the client.
