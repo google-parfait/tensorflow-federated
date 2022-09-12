@@ -255,6 +255,7 @@ py_library(
     srcs = ["learning_process.py"],
     srcs_version = "PY3",
     deps = [
+        ":hparams_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",

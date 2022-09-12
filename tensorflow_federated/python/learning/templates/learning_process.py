@@ -18,6 +18,8 @@
 # information.
 """Defines a template for stateful processes used for learning-oriented tasks."""
 
+from typing import Optional
+
 import attr
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -27,6 +29,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.learning.templates import hparams_base
 
 
 class LearningProcessPlacementError(TypeError):
@@ -77,22 +80,12 @@ class LearningProcess(iterative_process.IterativeProcess):
 
   This class inherits the constraints documented by
   `tff.templates.IterativeProcess`, including an `initialize` and `next`
-  attribute. The `LearningProcess` also contains an additional
-  `get_model_weights` attribute.
-
-  All of `initialize`, `next` and `get_model_weights`  must be
-  `tff.Computation`s, with the following type signatures:
-    - initialize: `( -> S@SERVER)`
-    - next: `(<S@SERVER, {D*}@CLIENTS> -> <state=S@SERVER, metrics=M@SERVER>)`
-    - get_model_weights: `(S -> M)`
-  where `{D*}@CLIENTS` represents the sequence of data at a client, with `D`
-  denoting the type of a single member of that sequence, and `M` representing
-  the (unplaced) output type of the `get_model_weights` function.
-
-  Note that here, "model weights" is a loosely-defined term intended to refer to
-  some kind of "representation" of the model being learned. This is typically
-  some nested structure of tensors, and is often suitable for evaluation
-  purposes.
+  attribute. The `LearningProcess` also contains additional attributes,
+  including `get_model_weights` and `get_hparams`. The former can be used to
+  get out structures suitable for evaluation purposes, while the latter can
+  be used to extract hyperparameters from the process. There are also
+  corresponding `set_model_weights` and `set_hparams` attributes that can set
+  these structures in a given state.
 
   For example, given a LearningProcess `process` and client data `data`, we
   could call the following to initialize, optionally load other model weights,
@@ -105,11 +98,39 @@ class LearningProcess(iterative_process.IterativeProcess):
   >>> model_weights = process.get_model_weights(state)
   """
 
-  def __init__(self, initialize_fn: computation_base.Computation,
+  def __init__(self,
+               initialize_fn: computation_base.Computation,
                next_fn: computation_base.Computation,
                get_model_weights: computation_base.Computation,
-               set_model_weights: computation_base.Computation):
+               set_model_weights: computation_base.Computation,
+               *,
+               get_hparams_fn: Optional[computation_base.Computation] = None,
+               set_hparams_fn: Optional[computation_base.Computation] = None):
     """Creates a `tff.templates.AggregationProcess`.
+
+    The `initialize_fn`, `next_fn`, `get_model_weights`, and `set_model_weights`
+    must have the following type signatures:
+
+    ```
+      - initialize_fn: ( -> S@SERVER)
+      - next_fn: ({D*}@CLIENTS> -> <state=S@SERVER, metrics=M@SERVER>)
+      - get_model_weights: (S -> W)
+      - set_model_weights: (<S, W> -> S)
+    ```
+    Here, `S` represents the state of the process, and {D*} represents a
+    sequence of data. `M` represents the metrics output by the process. Note
+    that while `initialize_fn`, and `next_fn` are federated computations,
+    `get_model_weights` and `set_model_weights` are unplaced.
+
+    If provided, the `get_hparams_fn` and `set_hparams_fn` must be non-federated
+    computations with the following type signatures:
+
+    ```
+      - get_hparams_fn: (S -> H)
+      - set_hparams_fn: (<S, H> -> S)
+    ```
+    Here, `S` must match the state `S` of `initialize_fn` and `next_fn`, and `H`
+    represents the hyperparameter type.
 
     Args:
       initialize_fn: A no-arg `tff.Computation` that creates the initial state
@@ -130,6 +151,15 @@ class LearningProcess(iterative_process.IterativeProcess):
         by `init_fn` and `M` is a representation of the model weights stored in
         `S`. This updates the model weights representation within the state with
         the incoming value and returns a new value of type `S`.
+      get_hparams_fn: An optional `tff.Computation` accepting the state `S` and
+        returning the hyperparameters `H`. If not provided, this defaults to a
+        computation that returns an empty ordered dictionary, regardless of the
+        contents of the state.
+      set_hparams_fn: An optional `tff.Computation` accepting the state `S` and
+        hyperparameters `H` (matching the output of `get_hparams_fn`) and
+        returning an updated state `S`. If not provided, this defaults to a
+        pass-through computation that returns the input state regardless of the
+        hparams passed in.
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
@@ -226,6 +256,23 @@ class LearningProcess(iterative_process.IterativeProcess):
           f'{next_fn_state_param}.')
     self._set_model_weights = set_model_weights
 
+    state_type = initialize_fn.type_signature.result.member
+    if get_hparams_fn is not None:
+      hparams_base.type_check_get_hparams_fn(get_hparams_fn, state_type)
+    else:
+      get_hparams_fn = hparams_base.build_basic_hparams_getter(state_type)
+
+    hparams_type = get_hparams_fn.type_signature.result
+
+    if set_hparams_fn is not None:
+      hparams_base.type_check_set_hparams_fn(set_hparams_fn, state_type)
+    else:
+      set_hparams_fn = hparams_base.build_basic_hparams_setter(
+          state_type, hparams_type)
+
+    self._get_hparams_fn = get_hparams_fn
+    self._set_hparams_fn = set_hparams_fn
+
   @property
   def initialize(self) -> computation_base.Computation:
     """A `tff.Computation` that initializes the process.
@@ -282,3 +329,31 @@ class LearningProcess(iterative_process.IterativeProcess):
       A `tff.Computation`.
     """
     return self._set_model_weights
+
+  @property
+  def get_hparams(self) -> computation_base.Computation:
+    """A `tff.Computation` returning the hyperparameters of a server state.
+
+    This computation accepts an unplaced state of the process (originally
+    produced by the `initialize` attribute), and returns an unplaced ordered
+    dictionary representing the hyperparameters of the state.
+
+    Returns:
+      A `tff.Computation`.
+    """
+    return self._get_hparams_fn
+
+  @property
+  def set_hparams(self) -> computation_base.Computation:
+    """A `tff.Computation` that sets the hyperparamters of a server state.
+
+    This computation accepts two arguments: an unplaced state of the process
+    (originally produced by the `initialize` attribute) and an ordered
+    dictionary representing the hyperparameters (matching the output of
+    `get_hparams`), and returns a new unplaced state with updated
+    hyperparameters.
+
+    Returns:
+      A `tff.Computation`.
+    """
+    return self._set_hparams_fn
