@@ -38,7 +38,7 @@ flags.DEFINE_integer(
     upper_bound=65535,
     help='The port to listen on.')
 
-GRPC_MAX_MESSAGE_LENGTH_BYTES = 1024 * 1024 * 1024
+GRPC_MAX_MESSAGE_LENGTH_BYTES = 2 * 1000 * 1000 * 1000
 GRPC_CHANNEL_OPTIONS = [
     ('grpc.max_message_length', GRPC_MAX_MESSAGE_LENGTH_BYTES),
     ('grpc.max_receive_message_length', GRPC_MAX_MESSAGE_LENGTH_BYTES),
