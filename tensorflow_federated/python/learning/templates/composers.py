@@ -45,7 +45,7 @@ from tensorflow_federated.python.learning.templates import model_delta_client_wo
 
 
 # TODO(b/190334722): Add SLO guarantees / backwards compatibility guarantees.
-@attr.s(eq=False, frozen=True)
+@attr.s(eq=True, order=False, frozen=True, slots=True)
 class LearningAlgorithmState:
   """A structure representing the state of a learning process.
 
