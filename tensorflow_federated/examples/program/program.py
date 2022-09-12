@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""An example of a federated program using TFFs native platform.
+r"""An example of a federated program using TFFs native platform.
 
 This federated program, from the perspective of the components:
 
@@ -35,6 +35,14 @@ From the perspective of roles/ownership:
 Please read
 https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/program/README.md for
 more documentation about this example.
+
+Usage:
+
+```
+bazel run //tensorflow_federated/examples/program:program -- \
+    --output_dir="/tmp/federated_program" \
+    --alsologtostderr
+```
 """
 
 import asyncio
