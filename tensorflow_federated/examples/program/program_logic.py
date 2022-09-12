@@ -315,8 +315,9 @@ async def train_federated_model(
         # Pack the program state; the program logic should save only what is
         # required to restore the exection of this program logic after a
         # failure.
-        program_state = (state, start_round)
-        tasks.add(program_state_manager.save(program_state, round_number))
+        program_state = (state, round_number)
+        version = round_number
+        tasks.add(program_state_manager.save(program_state, version))
 
     # Run one round of evaluation; similar to running one round of training
     # above, except using the `evaluation` computaiton and the
