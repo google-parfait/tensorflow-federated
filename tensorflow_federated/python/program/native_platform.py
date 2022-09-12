@@ -261,7 +261,9 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     if (number_of_clients is None or number_of_clients < 0 or
         number_of_clients > len(self._datasets)):
       raise ValueError('Expected `number_of_clients` to be a positive integer '
-                       'and less than the number of `datasets`.')
+                       'and less than the number of `datasets`. '
+                       f'number_of_clients: {number_of_clients}, '
+                       f'number of datasets: {len(self._datasets)}')
     return random.sample(population=self._datasets, k=number_of_clients)
 
 
