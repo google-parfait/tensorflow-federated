@@ -78,7 +78,7 @@ def build_model_delta_update_with_tff_optimizer(
       use_experimental_simulation_loop)
 
   @tf.function
-  def client_update(optimizer, initial_weights, data):
+  def client_update(optimizer, initial_weights, data, optimizer_hparams=None):
     model_weights = model_utils.ModelWeights.from_model(model)
     tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
                           initial_weights)
@@ -106,13 +106,19 @@ def build_model_delta_update_with_tff_optimizer(
       return num_examples_sum, optimizer_state
 
     def initial_state_for_reduce_fn():
+      initial_num_examples = tf.zeros(shape=[], dtype=tf.int64)
       # TODO(b/161529310): We flatten and convert the trainable specs to tuple,
       # as "for batch in data:" pattern would try to stack the tensors in list.
       trainable_tensor_specs = tf.nest.map_structure(
           lambda v: tf.TensorSpec(v.shape, v.dtype),
           tuple(tf.nest.flatten(model_weights.trainable)))
-      return (tf.zeros(shape=[], dtype=tf.int64),
-              optimizer.initialize(trainable_tensor_specs))
+      # TODO(b/245968233): Reduce to a single `initialize` call once TFF
+      # optimizers can inject hyperparameters upon initialization.
+      optimizer_state = optimizer.initialize(trainable_tensor_specs)
+      if optimizer_hparams is not None:
+        optimizer_state = optimizer.set_hparams(optimizer_state,
+                                                optimizer_hparams)
+      return (initial_num_examples, optimizer_state)
 
     num_examples, _ = dataset_reduce_fn(
         reduce_fn, data, initial_state_fn=initial_state_for_reduce_fn)
@@ -245,7 +251,11 @@ def build_model_delta_client_work(
       must be constructed entirely from scratch on each invocation, returning
       the same pre-constructed model each call will result in an error.
     optimizer: A `tff.learning.optimizers.Optimizer`, or a no-arg callable that
-      returns a `tf.keras.Optimizer`.
+      returns a `tf.keras.Optimizer`. If using a `tf.keras.Optimizer`, the
+      resulting process will have no hyperparameters in its state (ie.
+      `process.get_hparams` will return an empty dictionary), while if using
+      a `tff.learning.optimizers.Optimizer`, the process will have the same
+      hyperparameters as the optimizer.
     client_weighting:  A `tff.learning.ClientWeighting` value.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,
       `tff.learning.Model.metric_finalizers()`) and a
@@ -285,15 +295,62 @@ def build_model_delta_client_work(
 
   if isinstance(optimizer, optimizer_base.Optimizer):
 
-    @tensorflow_computation.tf_computation(weights_type, data_type)
-    def client_update_computation(initial_model_weights, dataset):
+    # We initialize the optimizer for the purposes of extracting its
+    # hyperparameters, using a "whimsy" spec.
+    whimsy_specs = tf.TensorSpec(shape=(), dtype=tf.float32)
+    whimsy_opt_state = optimizer.initialize(whimsy_specs)
+    initial_hparams = optimizer.get_hparams(whimsy_opt_state)
+
+    @federated_computation.federated_computation
+    def init_fn():
+      return intrinsics.federated_value(initial_hparams, placements.SERVER)
+
+    state_type = init_fn.type_signature.result.member
+    # In this case, the state is exactly equal to the hyperparameters being
+    # used by the underlying optimizer, so their type is the same.
+    hparams_type = state_type
+
+    @tensorflow_computation.tf_computation(state_type)
+    def get_hparams_fn(state):
+      return state
+
+    @tensorflow_computation.tf_computation(state_type, hparams_type)
+    def set_hparams_fn(state, hparams):
+      del state
+      return hparams
+
+    @tensorflow_computation.tf_computation(state_type, weights_type, data_type)
+    def client_update_computation(state, initial_model_weights, dataset):
+      optimizer_hparams = state
       client_update = build_model_delta_update_with_tff_optimizer(
           model_fn=model_fn,
           weighting=client_weighting,
           use_experimental_simulation_loop=use_experimental_simulation_loop)
-      return client_update(optimizer, initial_model_weights, dataset)
+      return client_update(optimizer, initial_model_weights, dataset,
+                           optimizer_hparams)
+
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result,
+        computation_types.at_clients(weights_type),
+        computation_types.at_clients(data_type))
+    def next_fn(state, weights, client_data):
+      state_at_clients = intrinsics.federated_broadcast(state)
+      client_result, model_outputs = intrinsics.federated_map(
+          client_update_computation, (state_at_clients, weights, client_data))
+      train_metrics = metrics_aggregation_fn(model_outputs)
+      measurements = intrinsics.federated_zip(
+          collections.OrderedDict(train=train_metrics))
+      return measured_process.MeasuredProcessOutput(state, client_result,
+                                                    measurements)
 
   else:
+
+    @federated_computation.federated_computation
+    def init_fn():
+      return intrinsics.federated_value((), placements.SERVER)
+
+    get_hparams_fn = None
+    set_hparams_fn = None
 
     @tensorflow_computation.tf_computation(weights_type, data_type)
     def client_update_computation(initial_model_weights, dataset):
@@ -304,23 +361,24 @@ def build_model_delta_client_work(
           use_experimental_simulation_loop=use_experimental_simulation_loop)
       return client_update(keras_optimizer, initial_model_weights, dataset)
 
-  @federated_computation.federated_computation
-  def init_fn():
-    return intrinsics.federated_value((), placements.SERVER)
+    @federated_computation.federated_computation(
+        init_fn.type_signature.result,
+        computation_types.at_clients(weights_type),
+        computation_types.at_clients(data_type))
+    def next_fn(state, weights, client_data):
+      client_result, model_outputs = intrinsics.federated_map(
+          client_update_computation, (weights, client_data))
+      train_metrics = metrics_aggregation_fn(model_outputs)
+      measurements = intrinsics.federated_zip(
+          collections.OrderedDict(train=train_metrics))
+      return measured_process.MeasuredProcessOutput(state, client_result,
+                                                    measurements)
 
-  @federated_computation.federated_computation(
-      init_fn.type_signature.result, computation_types.at_clients(weights_type),
-      computation_types.at_clients(data_type))
-  def next_fn(state, weights, client_data):
-    client_result, model_outputs = intrinsics.federated_map(
-        client_update_computation, (weights, client_data))
-    train_metrics = metrics_aggregation_fn(model_outputs)
-    measurements = intrinsics.federated_zip(
-        collections.OrderedDict(train=train_metrics))
-    return measured_process.MeasuredProcessOutput(state, client_result,
-                                                  measurements)
-
-  return client_works.ClientWorkProcess(init_fn, next_fn)
+  return client_works.ClientWorkProcess(
+      init_fn,
+      next_fn,
+      get_hparams_fn=get_hparams_fn,
+      set_hparams_fn=set_hparams_fn)
 
 
 def build_functional_model_delta_update(

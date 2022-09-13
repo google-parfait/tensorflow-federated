@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import keras_utils
@@ -42,19 +43,32 @@ class ModelDeltaClientWorkComputationTest(tf.test.TestCase,
                                           parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('tff_uniform', sgdm.build_sgdm(1.0),
-       client_weight_lib.ClientWeighting.UNIFORM),
-      ('tff_num_examples', sgdm.build_sgdm(1.0),
-       client_weight_lib.ClientWeighting.NUM_EXAMPLES),
-      ('keras_uniform', lambda: tf.keras.optimizers.SGD(1.0),
-       client_weight_lib.ClientWeighting.UNIFORM),
-      ('keras_num_examples', lambda: tf.keras.optimizers.SGD(1.0),
-       client_weight_lib.ClientWeighting.NUM_EXAMPLES))
-  def test_type_properties(self, optimizer, weighting):
+      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES))
+  def test_initialize_has_expected_type_signature_with_keras_optimizer(
+      self, weighting):
+    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
     model_fn = model_examples.LinearRegression
+
     client_work_process = model_delta_client_work.build_model_delta_client_work(
-        model_fn, optimizer, weighting)
-    self.assertIsInstance(client_work_process, client_works.ClientWorkProcess)
+        model_fn, optimizer_fn, weighting)
+
+    expected_state_type = computation_types.at_server(())
+    expected_initialize_type = computation_types.FunctionType(
+        parameter=None, result=expected_state_type)
+    expected_initialize_type.check_equivalent_to(
+        client_work_process.initialize.type_signature)
+
+  @parameterized.named_parameters(
+      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES))
+  def test_next_has_expected_type_signature_with_keras_optimizer(
+      self, weighting):
+    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+    model_fn = model_examples.LinearRegression
+
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        model_fn, optimizer_fn, weighting)
 
     mw_type = model_utils.ModelWeights(
         trainable=computation_types.to_type([(tf.float32, (2, 1)), tf.float32]),
@@ -72,12 +86,6 @@ class ModelDeltaClientWorkComputationTest(tf.test.TestCase,
         collections.OrderedDict(
             train=collections.OrderedDict(
                 loss=tf.float32, num_examples=tf.int32)))
-
-    expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
-    expected_initialize_type.check_equivalent_to(
-        client_work_process.initialize.type_signature)
-
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
@@ -86,21 +94,159 @@ class ModelDeltaClientWorkComputationTest(tf.test.TestCase,
         result=measured_process.MeasuredProcessOutput(
             expected_state_type, expected_result_type,
             expected_measurements_type))
-    expected_next_type.check_equivalent_to(
-        client_work_process.next.type_signature)
+    type_test_utils.assert_types_equivalent(
+        client_work_process.next.type_signature, expected_next_type)
 
-  def test_created_keras_optimizer_raises(self):
+  @parameterized.named_parameters(
+      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES))
+  def test_initialize_has_expected_type_signature_with_tff_optimizer(
+      self, weighting):
+    optimizer = sgdm.build_sgdm(learning_rate=1.0)
+    model_fn = model_examples.LinearRegression
+
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        model_fn, optimizer, weighting)
+
+    expected_state_type = computation_types.at_server(
+        collections.OrderedDict(learning_rate=tf.float32))
+    expected_initialize_type = computation_types.FunctionType(
+        parameter=None, result=expected_state_type)
+    type_test_utils.assert_types_equivalent(
+        client_work_process.initialize.type_signature, expected_initialize_type)
+
+  @parameterized.named_parameters(
+      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES))
+  def test_next_has_expected_type_signature_with_tff_optimizer(self, weighting):
+    optimizer = sgdm.build_sgdm(learning_rate=1.0)
+    model_fn = model_examples.LinearRegression
+
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        model_fn, optimizer, weighting)
+
+    mw_type = model_utils.ModelWeights(
+        trainable=computation_types.to_type([(tf.float32, (2, 1)), tf.float32]),
+        non_trainable=computation_types.to_type([tf.float32]))
+    expected_param_model_weights_type = computation_types.at_clients(mw_type)
+    expected_param_data_type = computation_types.at_clients(
+        computation_types.SequenceType(
+            computation_types.to_type(model_fn().input_spec)))
+    expected_result_type = computation_types.at_clients(
+        client_works.ClientResult(
+            update=mw_type.trainable,
+            update_weight=computation_types.TensorType(tf.float32)))
+    expected_state_type = computation_types.at_server(
+        collections.OrderedDict(learning_rate=tf.float32))
+    expected_measurements_type = computation_types.at_server(
+        collections.OrderedDict(
+            train=collections.OrderedDict(
+                loss=tf.float32, num_examples=tf.int32)))
+    expected_next_type = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            state=expected_state_type,
+            weights=expected_param_model_weights_type,
+            client_data=expected_param_data_type),
+        result=measured_process.MeasuredProcessOutput(
+            expected_state_type, expected_result_type,
+            expected_measurements_type))
+    type_test_utils.assert_types_equivalent(
+        client_work_process.next.type_signature, expected_next_type)
+
+  @parameterized.named_parameters(
+      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES))
+  def test_get_hparams_has_expected_type_signature_with_keras_optimizer(
+      self, weighting):
+    optimizer = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+    model_fn = model_examples.LinearRegression
+
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        model_fn, optimizer, weighting)
+
+    expected_state_type = collections.OrderedDict()
+    expected_hparams_type = expected_state_type
+    expected_get_hparams_type = computation_types.FunctionType(
+        parameter=expected_state_type, result=expected_hparams_type)
+    type_test_utils.assert_types_equivalent(
+        client_work_process.get_hparams.type_signature,
+        expected_get_hparams_type)
+
+  @parameterized.named_parameters(
+      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES))
+  def test_set_hparams_has_expected_type_signature_with_keras_optimizer(
+      self, weighting):
+    optimizer = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+    model_fn = model_examples.LinearRegression
+
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        model_fn, optimizer, weighting)
+
+    expected_state_type = collections.OrderedDict()
+    expected_hparams_type = expected_state_type
+    expected_parameter_type = computation_types.StructType([
+        ('state', expected_state_type), ('hparams', expected_hparams_type)
+    ])
+    expected_set_hparams_type = computation_types.FunctionType(
+        parameter=expected_parameter_type, result=expected_state_type)
+    type_test_utils.assert_types_equivalent(
+        client_work_process.set_hparams.type_signature,
+        expected_set_hparams_type)
+
+  @parameterized.named_parameters(
+      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES))
+  def test_get_hparams_has_expected_type_signature_with_tff_optimizer(
+      self, weighting):
+    optimizer = sgdm.build_sgdm(learning_rate=1.0)
+    model_fn = model_examples.LinearRegression
+
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        model_fn, optimizer, weighting)
+
+    expected_state_type = collections.OrderedDict(learning_rate=tf.float32)
+    expected_hparams_type = expected_state_type
+    expected_get_hparams_type = computation_types.FunctionType(
+        parameter=expected_state_type, result=expected_hparams_type)
+    type_test_utils.assert_types_equivalent(
+        client_work_process.get_hparams.type_signature,
+        expected_get_hparams_type)
+
+  @parameterized.named_parameters(
+      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES))
+  def test_set_hparams_has_expected_type_signature_with_tff_optimizer(
+      self, weighting):
+    optimizer = sgdm.build_sgdm(learning_rate=1.0)
+    model_fn = model_examples.LinearRegression
+
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        model_fn, optimizer, weighting)
+
+    expected_state_type = collections.OrderedDict(learning_rate=tf.float32)
+    expected_hparams_type = expected_state_type
+    expected_parameter_type = computation_types.StructType([
+        ('state', expected_state_type), ('hparams', expected_hparams_type)
+    ])
+    expected_set_hparams_type = computation_types.FunctionType(
+        parameter=expected_parameter_type, result=expected_state_type)
+    type_test_utils.assert_types_equivalent(
+        client_work_process.set_hparams.type_signature,
+        expected_set_hparams_type)
+
+  def test_raises_with_created_keras_optimizer(self):
     with self.assertRaises(TypeError):
       model_delta_client_work.build_model_delta_client_work(
           model_examples.LinearRegression,
-          tf.keras.optimizers.SGD(1.0),
+          tf.keras.optimizers.SGD(learning_rate=1.0),
           client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
 
-  def test_created_model_raises(self):
+  def test_raises_with_created_model(self):
     with self.assertRaises(TypeError):
       model_delta_client_work.build_model_delta_client_work(
           model_examples.LinearRegression(),
-          sgdm.build_sgdm(1.0),
+          sgdm.build_sgdm(learning_rate=1.0),
           client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
 
 
@@ -228,7 +374,7 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
 
     process = model_delta_client_work.build_model_delta_client_work(
         model_fn=create_model,
-        optimizer=sgdm.build_sgdm(1.0),
+        optimizer=sgdm.build_sgdm(learning_rate=1.0),
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
         metrics_aggregator=sum_then_finalize_then_times_two)
     client_model_weights = [create_test_initial_weights()]
@@ -258,10 +404,11 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
       mock_method.assert_called()
 
   @parameterized.named_parameters(
-      ('tff_simple', sgdm.build_sgdm(1.0)),
-      ('tff_momentum', sgdm.build_sgdm(1.0, momentum=0.9)),
-      ('keras_simple', lambda: tf.keras.optimizers.SGD(1.0)),
-      ('keras_momentum', lambda: tf.keras.optimizers.SGD(1.0, momentum=0.9)))
+      ('tff_simple', sgdm.build_sgdm(learning_rate=1.0)),
+      ('tff_momentum', sgdm.build_sgdm(learning_rate=1.0, momentum=0.9)),
+      ('keras_simple', lambda: tf.keras.optimizers.SGD(learning_rate=1.0)),
+      ('keras_momentum',
+       lambda: tf.keras.optimizers.SGD(learning_rate=1.0, momentum=0.9)))
   def test_execution_with_optimizer(self, optimizer):
     client_work_process = model_delta_client_work.build_model_delta_client_work(
         create_model,
@@ -274,6 +421,80 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
     output = client_work_process.next(state, client_model_weights, client_data)
 
     self.assertCountEqual(output.measurements.keys(), ['train'])
+
+  def test_get_hparams_returns_expected_result_with_tff_optimizer(self):
+    optimizer = sgdm.build_sgdm(learning_rate=1.0, momentum=0.9)
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        create_model,
+        optimizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    state = client_work_process.initialize()
+
+    hparams = client_work_process.get_hparams(state)
+
+    expected_hparams = collections.OrderedDict(learning_rate=1.0, momentum=0.9)
+    self.assertDictEqual(hparams, expected_hparams)
+
+  def test_get_hparams_returns_expected_result_with_keras_optimizer(self):
+    optimizer = lambda: tf.keras.optimizers.SGD(learning_rate=1.0, momentum=0.9)
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        create_model,
+        optimizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    state = client_work_process.initialize()
+
+    hparams = client_work_process.get_hparams(state)
+
+    expected_hparams = collections.OrderedDict()
+    self.assertDictEqual(hparams, expected_hparams)
+
+  def test_set_hparams_returns_expected_result_with_tff_optimizer(self):
+    optimizer = sgdm.build_sgdm(learning_rate=1.0, momentum=0.9)
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        create_model,
+        optimizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    state = client_work_process.initialize()
+    hparams = collections.OrderedDict(learning_rate=0.5, momentum=0.3)
+
+    state = client_work_process.set_hparams(state, hparams)
+
+    self.assertDictEqual(state, hparams)
+
+  def test_set_hparams_returns_expected_result_with_keras_optimizer(self):
+    optimizer = lambda: tf.keras.optimizers.SGD(learning_rate=1.0, momentum=0.9)
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        create_model,
+        optimizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    state = client_work_process.initialize()
+    hparams = collections.OrderedDict()
+
+    updated_state = client_work_process.set_hparams(state, hparams)
+
+    self.assertEqual(updated_state, state)
+
+  @parameterized.named_parameters(
+      ('uniform', client_weight_lib.ClientWeighting.UNIFORM),
+      ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES))
+  def test_tff_client_work_uses_optimizer_hparams(self, weighting):
+    dataset = create_test_dataset()
+    optimizer1 = sgdm.build_sgdm(learning_rate=0.0)
+    optimizer2 = sgdm.build_sgdm(learning_rate=0.1)
+    optimizer_hparams = collections.OrderedDict(learning_rate=1.0)
+
+    client_update_tff = model_delta_client_work.build_model_delta_update_with_tff_optimizer(
+        model_fn=create_model, weighting=weighting)
+    result1 = client_update_tff(optimizer1, create_test_initial_weights(),
+                                dataset, optimizer_hparams)
+    client_update_tff = model_delta_client_work.build_model_delta_update_with_tff_optimizer(
+        model_fn=create_model, weighting=weighting)
+    result2 = client_update_tff(optimizer2, create_test_initial_weights(),
+                                dataset, optimizer_hparams)
+
+    self.assertAllClose(result1[0].update, result2[0].update)
+    self.assertEqual(result1[0].update_weight, result2[0].update_weight)
+    self.assertAllClose(result1[1], result2[1])
 
 
 class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
@@ -361,7 +582,7 @@ class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
 
     process = model_delta_client_work.build_functional_model_delta_client_work(
         model=functional_model,
-        optimizer=sgdm.build_sgdm(1.0),
+        optimizer=sgdm.build_sgdm(learning_rate=1.0),
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
     num_clients = 3
     client_model_weights = [functional_model.initial_weights] * num_clients

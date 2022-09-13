@@ -327,6 +327,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:client_weight_lib",
         "//tensorflow_federated/python/learning:keras_utils",
