@@ -153,9 +153,9 @@ class BaselineTaskDatasets(object):
   def eval_preprocess_fn(self) -> Optional[PreprocessFnType]:
     return self._eval_preprocess_fn
 
-  @property
-  def element_type_structure(self):
-    return self._element_type_structure
+  # @property
+  # def element_type_structure(self):
+  #   return self._element_type_structure
 
   def _record_dataset_information(self):
     """Records a summary of the train, test, and validation data."""
