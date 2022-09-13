@@ -15,6 +15,7 @@
 import collections
 
 from absl.testing import parameterized
+import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
@@ -27,15 +28,18 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.optimizers import sgdm
+from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
+from tensorflow_federated.python.learning.templates import model_delta_client_work
 
 FLOAT_TYPE = computation_types.TensorType(tf.float32)
 MODEL_WEIGHTS_TYPE = computation_types.to_type(
@@ -113,6 +117,9 @@ def test_finalizer():
 
 
 class ComposeLearningProcessTest(tf.test.TestCase):
+
+  # TODO(b/246395691): Use mocks to test `compose_learning_process`, instead
+  # of actual execution using the basic FedAvg composer below.
 
   def test_learning_process_composes(self):
     process = composers.compose_learning_process(test_init_model_weights_fn,
@@ -306,6 +313,75 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     # We should be able to assign the back to the keras model without raising
     # an error.
     fedavg.get_model_weights(state).assign_weights_to(keras_model)
+
+  def test_get_hparams_returns_expected_result(self):
+    model_fn = model_examples.LinearRegression
+    client_learning_rate = 0.1
+    server_learning_rate = 1.0
+    fedavg = composers.build_basic_fedavg_process(
+        model_fn=model_fn,
+        client_learning_rate=client_learning_rate,
+        server_learning_rate=server_learning_rate)
+    state = fedavg.initialize()
+
+    hparams = fedavg.get_hparams(state)
+
+    self.assertIsInstance(hparams, collections.OrderedDict)
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        model_fn=model_fn,
+        optimizer=sgdm.build_sgdm(client_learning_rate),
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    client_work_hparams = client_work_process.get_hparams(state.client_work)
+    model_weights_type = fedavg.get_model_weights.type_signature.result
+    finalizer_process = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
+        sgdm.build_sgdm(server_learning_rate), model_weights_type)
+    finalizer_hparams = finalizer_process.get_hparams(state.finalizer)
+    expected_hparams = collections.OrderedDict(
+        client_work=client_work_hparams, finalizer=finalizer_hparams)
+    self.assertDictEqual(hparams, expected_hparams)
+
+  def test_set_hparams_returns_expected_result(self):
+    model_fn = model_examples.LinearRegression
+    client_learning_rate = 0.1
+    server_learning_rate = 1.0
+    fedavg = composers.build_basic_fedavg_process(
+        model_fn=model_fn,
+        client_learning_rate=client_learning_rate,
+        server_learning_rate=server_learning_rate)
+    client_work_process = model_delta_client_work.build_model_delta_client_work(
+        model_fn=model_fn,
+        optimizer=sgdm.build_sgdm(learning_rate=0.5),
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    client_work_hparams = client_work_process.get_hparams(
+        client_work_process.initialize())
+    model_weights_type = fedavg.get_model_weights.type_signature.result
+    finalizer_process = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
+        sgdm.build_sgdm(server_learning_rate), model_weights_type)
+    finalizer_hparams = finalizer_process.get_hparams(
+        finalizer_process.initialize())
+    hparams = collections.OrderedDict(
+        client_work=client_work_hparams, finalizer=finalizer_hparams)
+
+    state = fedavg.initialize()
+    updated_state = fedavg.set_hparams(state, hparams)
+
+    expected_client_work_state = client_work_process.set_hparams(
+        state.client_work, client_work_hparams)
+    expected_finalizer_state = finalizer_process.set_hparams(
+        state.finalizer, finalizer_hparams)
+    expected_state = attr.evolve(
+        state,
+        client_work=expected_client_work_state,
+        finalizer=expected_finalizer_state)
+    self.assertIsInstance(updated_state, composers.LearningAlgorithmState)
+    self.assertAllClose(updated_state.global_model_weights.trainable,
+                        expected_state.global_model_weights.trainable)
+    self.assertAllClose(updated_state.global_model_weights.non_trainable,
+                        expected_state.global_model_weights.non_trainable)
+    self.assertEqual(updated_state.distributor, expected_state.distributor)
+    self.assertEqual(updated_state.client_work, expected_state.client_work)
+    self.assertEqual(updated_state.aggregator, expected_state.aggregator)
+    self.assertEqual(updated_state.finalizer, expected_state.finalizer)
 
   def test_created_model_raises(self):
     with self.assertRaises(TypeError):

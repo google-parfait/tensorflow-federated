@@ -116,16 +116,22 @@ def compose_learning_process(
   └──────┘
   ```
 
+  The `get_hparams` computation of the created learning process produces a
+  nested ordered dictionary containing the result of `client_work.get_hparams`
+  and `finalizer.get_hparams`. The `set_hparams` computation operates similarly,
+  by delegating to `client_work.set_hparams` and `finalizer.set_hparams` to set
+  the hyperparameters in their associated states.
+
   Args:
     initial_model_weights_fn: A `tff.Computation` that returns (unplaced)
       initial model weights.
-    model_weights_distributor: A `DistributionProcess`.
-    client_work: A `ClientWorkProcess`.
+    model_weights_distributor: A `tff.learning.templates.DistributionProcess`.
+    client_work: A `tff.learning.templates.ClientWorkProcess`.
     model_update_aggregator: A `tff.templates.AggregationProcess`.
-    model_finalizer: A `FinalizerProcess`.
+    model_finalizer: A `tff.learning.templates.FinalizerProcess`.
 
   Returns:
-    A `LearningProcess`.
+    A `tff.learning.templates.LearningProcess`.
   """
   # pyformat: enable
   _validate_args(initial_model_weights_fn, model_weights_distributor,
@@ -186,9 +192,35 @@ def compose_learning_process(
   def set_model_weights_fn(state, model_weights):
     return attr.evolve(state, global_model_weights=model_weights)
 
-  return learning_process.LearningProcess(init_fn, next_fn,
-                                          get_model_weights_fn,
-                                          set_model_weights_fn)
+  @tensorflow_computation.tf_computation(state_parameter_type)
+  def get_hparams_fn(state):
+    client_work_hparams = client_work.get_hparams(state.client_work)
+    finalizer_hparams = model_finalizer.get_hparams(state.finalizer)
+    return collections.OrderedDict(
+        client_work=client_work_hparams, finalizer=finalizer_hparams)
+
+  hparams_type = get_hparams_fn.type_signature.result
+
+  @tensorflow_computation.tf_computation(state_parameter_type, hparams_type)
+  def set_hparams_fn(state, hparams):
+    updated_client_work_state = client_work.set_hparams(state.client_work,
+                                                        hparams['client_work'])
+    updated_finalizer_state = model_finalizer.set_hparams(
+        state.finalizer, hparams['finalizer'])
+    return LearningAlgorithmState(
+        global_model_weights=state.global_model_weights,
+        distributor=state.distributor,
+        client_work=updated_client_work_state,
+        aggregator=state.aggregator,
+        finalizer=updated_finalizer_state)
+
+  return learning_process.LearningProcess(
+      init_fn,
+      next_fn,
+      get_model_weights_fn,
+      set_model_weights_fn,
+      get_hparams_fn=get_hparams_fn,
+      set_hparams_fn=set_hparams_fn)
 
 
 def _validate_args(initial_model_weights_fn, model_weights_distributor,
@@ -240,7 +272,8 @@ def _validate_args(initial_model_weights_fn, model_weights_distributor,
 
 
 def build_basic_fedavg_process(model_fn: Callable[[], model_lib.Model],
-                               client_learning_rate: float):
+                               client_learning_rate: float,
+                               server_learning_rate: float = 1.0):
   """Builds vanilla Federated Averaging process.
 
   The created process is the basic form of the Federated Averaging algorithm as
@@ -287,6 +320,8 @@ def build_basic_fedavg_process(model_fn: Callable[[], model_lib.Model],
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
     client_learning_rate: A float. Learning rate for the SGD at clients.
+    server_learning_rate: A float representing the learning rate for the SGD
+      step occuring at the server. Defaults to 1.0.
 
   Returns:
     A `LearningProcess`.
@@ -309,7 +344,7 @@ def build_basic_fedavg_process(model_fn: Callable[[], model_lib.Model],
       client_work.next.type_signature.result.result.member.update,
       client_work.next.type_signature.result.result.member.update_weight)
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-      sgdm.build_sgdm(1.0), model_weights_type)
+      sgdm.build_sgdm(server_learning_rate), model_weights_type)
 
   return compose_learning_process(initial_model_weights_fn, distributor,
                                   client_work, aggregator, finalizer)
