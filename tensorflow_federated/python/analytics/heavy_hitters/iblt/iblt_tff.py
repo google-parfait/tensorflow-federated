@@ -59,39 +59,58 @@ class ServerOutput():
 
 def build_iblt_computation(
     *,
-    capacity: int = 1000,
     string_max_bytes: int = 10,
-    repetitions: int = 3,
-    seed: int = 0,
-    max_heavy_hitters: Optional[int] = None,
     max_words_per_user: Optional[int] = None,
-    k_anonymity: int = 1,
-    secure_sum_bitwidth: Optional[int] = None,
-    batch_size: int = 1,
     multi_contribution: bool = True,
+    capacity: int = 1000,
+    k_anonymity: int = 1,
+    max_heavy_hitters: Optional[int] = None,
     string_postprocessor: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
+    secure_sum_bitwidth: Optional[int] = None,
     decode_iblt_fn: Optional[Callable[..., Tuple[tf.Tensor, tf.Tensor,
                                                  tf.Tensor, tf.Tensor]]] = None,
+    seed: int = 0,
+    batch_size: int = 1,
+    repetitions: int = 3,
 ) -> computation_base.Computation:
   """Builds the `tff.Computation` for heavy-hitters discovery with IBLT.
 
   Args:
-    capacity: The capacity of the IBLT sketch. Defaults to `1000`.
-    string_max_bytes: The maximum length in byte sof a string in the IBLT.
-      Defaults to `10`. Must be positive.
-    repetitions: The number of repetitions in IBLT data structure (must be >=
-      3). Defaults to `3`. Must be at least `3`.
-    seed: An integer seed for hash functions. Defaults to `0`.
+    string_max_bytes: The maximum length in bytes of a string in the IBLT.
+      Strings longer than `string_max_bytes` will be truncated. Defaults to
+      `10`. Must be positive.
+    max_words_per_user: The maximum total count each client is allowed to
+      contribute across all words. If not `None`, must be a positive integer.
+      Defaults to `None`, which means all the clients contribute all their
+      words. Note that this does not cap the count of each individual word each
+      client can contribute. Set `multi_contirbution=False` to restrict the
+      per-client count for each word.
+    multi_contribution: Whether each client is allowed to contribute multiple
+      instances of each string, or only a count of one for each unique word.
+      Defaults to `True` meaning clients contribute the full count for each
+      contributed string. Note that this doesn't limit the total number of
+      strings each client can contribute. Set `max_words_per_user` to limit the
+      total number of strings per client.
+    capacity: The capacity of the IBLT sketch. The capacity should be set to be
+      the maximum number of unique strings expected across all clients in a
+      single iteration. The more the actual number of unique strings exceeds the
+      configured capacity, the more likely it is that the IBLT will fail to
+      decode results. IBLT capacity impacts the size of the IBLT data structure.
+      Large values will increase client memory usage and network I/O. If you
+      don't have an estimate for number of unique strings but can tolerate some
+      resource overhead, start by setting capacity high and then tuning down
+      based on heavy hitter results. Defaults to `1000`.
+    k_anonymity: Only return words contributed by at least k clients in a single
+      iteration. Must be a positive integer. Defaults to `1`.
     max_heavy_hitters: The maximum number of items to return. If the decoded
-      results have more than this number of items, will order decreasingly by
-      the estimated counts and return the top max_heavy_hitters items. Default
-      max_heavy_hitters == `None`, which means to return all the heavy hitters
-      in the result.
-    max_words_per_user: The maximum number of words each client is allowed to
-      contribute. If not `None`, must be a positive integer. Defaults to `None`,
-      which means all the clients contribute all their words.
-    k_anonymity: Only return words that appear in at least k clients. Must be a
-      positive integer. Defaults to `1`.
+      results have more than this number of items, the strings will be sorted
+      decreasingly by the estimated counts and return the top max_heavy_hitters
+      items. Default is `None`, which means to return all the heavy hitters in
+      the result.
+    string_postprocessor: A callable function that is run after strings are
+      decoded from the IBLT in order to postprocess them. It should accept a
+      single string tensor and output a single string tensor of the same shape.
+      If `None`, no postprocessing is done.
     secure_sum_bitwidth: The bitwidth used for federated secure sum. The default
       value is `None`, which disables secure sum. If not `None`, must be in the
       range `[1,62]`. Note that when this parameter is not `None`, the IBLT
@@ -99,18 +118,22 @@ def build_iblt_computation(
       to IBLT's default field size, and other values (client count, string count
       tensor) are aggregated via `federated_secure_sum` with
       `max_input=2**secure_sum_bitwidth - 1`.
-    batch_size: The number of elements in each batch of the dataset.  Defaults
-      to `1`, means the input dataset is processed by
-      `tf.data.Dataset.batch(1)`.  Must be a positive.
-    multi_contribution: Whether each client is allowed to contribute multiple
-      counts or only a count of one for each unique word. Defaults to `True`.
-    string_postprocessor: A callable function that is run after strings are
-      decoded from the IBLT in order to postprocess them. It should accept a
-      single string tensor and output a single string tensor of the same shape.
-      If `None`, no postprocessing is done.
     decode_iblt_fn: A function to decode key-value pairs from an IBLT sketch.
       Defaults to `None`, in this case `decode_iblt_fn` will be set to
       `iblt.decode_iblt_tf`.
+    seed: An integer seed for hash functions. Defaults to `0`.
+    batch_size: The number of elements in each batch of the dataset. Batching is
+      an optimization for pulling multiple inputs at a time from the input
+      `tf.data.Dataset`, amortizing the overhead cost of each read to the
+      `batch_size`. Consider batching if you observe poor client execution
+      performance or reading inputs is particularly expsensive. Defaults to `1`,
+      means the input dataset is processed by `tf.data.Dataset.batch(1)`.  Must
+      be positive.
+    repetitions: The number of repetitions in IBLT data structure. This sets the
+      number of hash functions to use in the IBLT. Additional repetitions will
+      significantly decrease the likelihood of decoding failures, at the expense
+      of multiplying the size of the data structure. Most callers should not
+      override the default. Defaults to `3`. Must be at least `3`.
 
   Returns:
     A `tff.Computation` that performs federated heavy hitter discovery.
