@@ -262,7 +262,9 @@ async def train_federated_model(
   # previous run, this program state can be used to restore the execution of
   # this program logic and skip unnecessary steps.
   if program_state_manager is not None:
-    structure = initialize()
+    state = initialize()
+    state = await tff.program.materialize_value(state)
+    structure = state, 0
     program_state, version = await program_state_manager.load_latest(structure)
   else:
     program_state = None
@@ -275,7 +277,8 @@ async def train_federated_model(
     # eachother. In this example the logic is simple, the unpacking logic is
     # inlined here and the packing logic is inlined below. If the logic is more
     # complicated it may be helpful to express these as dedicated functions.
-    state, start_round = program_state
+    state, round_number = program_state
+    start_round = round_number + 1
   else:
     logging.info('Initializing state')
     state = initialize()
