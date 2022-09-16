@@ -1,3 +1,24 @@
+# Release 0.36.0
+
+## Major Features and Improvements
+
+*   Added support for `tff.learning.models.FunctionalModel` to
+    `tff.learning.algorithms.build_fed_sgd` and
+    `tff.learning.algorithms.build_fed_prox`.
+*   Increased the gRPC message limit from 1 GB to 2 GB.
+*   Added hyperparameter getters/setters to various components in tff.learning.
+
+## Breaking Changes
+
+*   Updated `tensorflow` to version `2.10`.
+
+## Bug Fixes
+
+*   Improved documentation for
+    `tff.analytics.heavy_hitters.iblt.build_iblt_computation()`.
+*   Fixed incorrect docstring of `tff.federated_select`.
+*   Fixed typo in federated program example.
+
 # Release 0.35.0
 
 ## Major Features and Improvements
