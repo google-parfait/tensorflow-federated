@@ -357,6 +357,28 @@ def type_from_tensors(tensors):
   return computation_types.to_type(type_spec)
 
 
+def type_from_tensor_specs(tensor_specs):
+  """Builds a `tff.Type` from supplied tensors.
+
+  Args:
+    tensor_specs: A nested structure of tf.TensorSpec instances.
+
+  Returns:
+    The nested TensorType structure.
+  """
+
+  def _mapping_fn(x):
+    if not isinstance(x, tf.TensorSpec):
+      raise ValueError(f'Expected tf.TensorSpec but got "{type(x)}".')
+    return computation_types.TensorType(x.dtype.base_dtype, x.shape)
+
+  if isinstance(tensor_specs, structure.Struct):
+    type_spec = structure.map_structure(_mapping_fn, tensor_specs)
+  else:
+    type_spec = tf.nest.map_structure(_mapping_fn, tensor_specs)
+  return computation_types.to_type(type_spec)
+
+
 def is_container_type_without_names(container_type: Type[Any]) -> bool:
   """Returns whether `container_type`'s elements are unnamed."""
   return (issubclass(container_type, (list, tuple)) and
