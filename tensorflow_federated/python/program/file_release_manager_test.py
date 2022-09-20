@@ -576,6 +576,23 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(
     self.assertEqual(actual_values, expected_values)
 
   @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('negative', -1),
+      ('numpy', np.int32(1)),
+  )
+  async def test_does_not_raise_type_error_with_key(self, key):
+    file_path = self.create_tempfile()
+    os.remove(file_path)
+    release_mngr = file_release_manager.CSVFileReleaseManager(
+        file_path=file_path)
+
+    try:
+      await release_mngr._remove_values_greater_than(key)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
+
+  @parameterized.named_parameters(
       ('none', None),
       ('str', 'a'),
       ('list', []),
@@ -839,9 +856,10 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
-      ('negative_1', -1),
       ('0', 0),
       ('1', 1),
+      ('negative', -1),
+      ('np', np.int32(1)),
   )
   async def test_does_not_raise_type_error_with_key(self, key):
     file_path = self.create_tempfile()
@@ -937,6 +955,22 @@ class SavedModelFileReleaseManagerGetPathForKeyTest(parameterized.TestCase):
     actual_path = release_mngr._get_path_for_key(key)
 
     self.assertEqual(actual_path, expected_path)
+
+  @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('negative', -1),
+      ('np', np.int32(1)),
+  )
+  async def test_does_not_raise_type_error_with_key(self, key):
+    root_dir = self.create_tempdir()
+    release_mngr = file_release_manager.SavedModelFileReleaseManager(
+        root_dir=root_dir, prefix='a_')
+
+    try:
+      release_mngr._get_path_for_key(key)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -1121,9 +1155,10 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       self.assertEqual(kwargs, {'overwrite': True})
 
   @parameterized.named_parameters(
-      ('negative_1', -1),
       ('0', 0),
       ('1', 1),
+      ('negative', -1),
+      ('numpy', np.int32(1)),
   )
   async def test_does_not_raise_type_error_with_key(self, key):
     root_dir = self.create_tempdir()

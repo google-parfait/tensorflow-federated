@@ -26,6 +26,7 @@ import os.path
 from typing import Any, List, Optional, Union
 
 from absl import logging
+import numpy as np
 import tensorflow as tf
 import tree
 
@@ -148,7 +149,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     Args:
       version: The version used to construct the path.
     """
-    py_typecheck.check_type(version, int)
+    py_typecheck.check_type(version, (int, np.integer))
 
     basename = f'{self._prefix}{version}'
     return os.path.join(self._root_dir, basename)
@@ -206,7 +207,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
 
   async def _remove(self, version: int) -> None:
     """Removes program state for the given `version`."""
-    py_typecheck.check_type(version, int)
+    py_typecheck.check_type(version, (int, np.integer))
 
     path = self._get_path_for_version(version)
     if await file_utils.exists(path):
@@ -237,7 +238,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
       ProgramStateManagerStateAlreadyExistsError: If there is already program
         state for the given `version`.
     """
-    py_typecheck.check_type(version, int)
+    py_typecheck.check_type(version, (int, np.integer))
 
     path = self._get_path_for_version(version)
     if await file_utils.exists(path):

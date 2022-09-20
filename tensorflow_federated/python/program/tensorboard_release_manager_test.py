@@ -298,9 +298,10 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       mock_histogram.assert_not_called()
 
   @parameterized.named_parameters(
-      ('negative_1', -1),
       ('0', 0),
       ('1', 1),
+      ('negative', -1),
+      ('np', np.int32(1)),
   )
   async def test_does_not_raise_type_error_with_key(self, key):
     summary_dir = self.create_tempdir()

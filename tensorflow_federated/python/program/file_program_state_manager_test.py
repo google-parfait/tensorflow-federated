@@ -246,6 +246,22 @@ class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
     self.assertEqual(actual_path, expected_path)
 
   @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('negative', -1),
+      ('np', np.int32(1)),
+  )
+  async def test_does_not_raise_type_error_with_version(self, version):
+    root_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=root_dir, prefix='a_')
+
+    try:
+      program_state_mngr._get_path_for_version(version)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
+
+  @parameterized.named_parameters(
       ('none', None),
       ('str', 'a'),
       ('list', []),
@@ -458,6 +474,22 @@ class FileProgramStateManagerRemoveTest(parameterized.TestCase,
     self.assertCountEqual(os.listdir(root_dir), ['a_1'])
 
   @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('negative', -1),
+      ('np', np.int32(1)),
+  )
+  async def test_does_not_raise_type_error_with_version(self, version):
+    root_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=root_dir, prefix='a_')
+
+    try:
+      await program_state_mngr._remove(version)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
+
+  @parameterized.named_parameters(
       ('none', None),
       ('str', 'a'),
       ('list', []),
@@ -624,6 +656,22 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
     with self.assertRaises(
         program_state_manager.ProgramStateManagerStateAlreadyExistsError):
       await program_state_mngr.save('state_1', 1)
+
+  @parameterized.named_parameters(
+      ('0', 0),
+      ('1', 1),
+      ('negative', -1),
+      ('np', np.int32(1)),
+  )
+  async def test_does_not_raise_type_error_with_version(self, version):
+    root_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=root_dir, prefix='a_')
+
+    try:
+      await program_state_mngr.save('state', version)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),

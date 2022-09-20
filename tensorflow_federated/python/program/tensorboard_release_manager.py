@@ -80,7 +80,7 @@ class TensorBoardReleaseManager(release_manager.ReleaseManager):
         step in a federated program.
     """
     del type_signature  # Unused.
-    py_typecheck.check_type(key, int)
+    py_typecheck.check_type(key, (int, np.integer))
 
     materialized_value = await value_reference.materialize_value(value)
     flattened_value = structure_utils.flatten_with_name(materialized_value)

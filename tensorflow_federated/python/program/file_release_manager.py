@@ -229,7 +229,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
 
   async def _remove_values_greater_than(self, key: int) -> None:
     """Removes all values greater than `key` from the managed CSV."""
-    py_typecheck.check_type(key, int)
+    py_typecheck.check_type(key, (int, np.integer))
 
     if self._latest_key is None or key > self._latest_key:
       return
@@ -271,7 +271,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
         step in a federated program.
     """
     del type_signature  # Unused.
-    py_typecheck.check_type(key, int)
+    py_typecheck.check_type(key, (int, np.integer))
 
     _, materialized_value = await asyncio.gather(
         self._remove_values_greater_than(key - 1),
@@ -347,7 +347,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     Args:
       key: The key used to construct the path.
     """
-    py_typecheck.check_type(key, int)
+    py_typecheck.check_type(key, (int, np.integer))
 
     basename = f'{self._prefix}{key}'
     return os.path.join(self._root_dir, basename)
@@ -364,7 +364,7 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
       key: An integer used to reference the released `value`.
     """
     del type_signature  # Unused.
-    py_typecheck.check_type(key, int)
+    py_typecheck.check_type(key, (int, np.integer))
 
     path = self._get_path_for_key(key)
     materialized_value = await value_reference.materialize_value(value)
