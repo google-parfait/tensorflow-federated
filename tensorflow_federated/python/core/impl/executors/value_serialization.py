@@ -52,7 +52,7 @@ _DeserializeReturnType = Tuple[Any, computation_types.Type]
 # serialize to values larger than this will result in errors being raised.  This
 # likely occurs when the sequence is dependent on, and thus pulling in, many of
 # variables from the graph.
-_DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES = 20 * (1024**2)  # 20 MB
+_DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES = 100 * (1024**2)  # 100 MB
 
 
 class DatasetSerializationError(Exception):
