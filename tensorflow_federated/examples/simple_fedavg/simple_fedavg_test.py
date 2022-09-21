@@ -267,7 +267,7 @@ def _server_init(model, optimizer):
 class ServerTest(tf.test.TestCase):
 
   def _assert_server_update_with_all_ones(self, model_fn):
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
+    optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=0.1)
     model = model_fn()
     optimizer = optimizer_fn()
     state = _server_init(model, optimizer)
@@ -295,7 +295,7 @@ class ClientTest(tf.test.TestCase):
   def test_self_contained_example(self):
     client_data = _create_client_data()
     model = MnistModel()
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.01)
+    optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=0.01)
     losses = []
     for r in range(2):
       optimizer = optimizer_fn()
@@ -346,7 +346,11 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_build_fedavg_process(self):
     it_process = simple_fedavg_tff.build_federated_averaging_process(
-        _rnn_model_fn)
+        _rnn_model_fn,
+        server_optimizer_fn=lambda: tf.keras.optimizers.legacy.SGD(  # pylint: disable=g-long-lambda
+            learning_rate=1.0),
+        client_optimizer_fn=lambda: tf.keras.optimizers.legacy.SGD(  # pylint: disable=g-long-lambda
+            learning_rate=0.02))
     self.assertIsInstance(it_process, tff.templates.IterativeProcess)
     global_model_type, client_datasets_type = it_process.next.type_signature.parameter
     model_type = tff.learning.framework.weights_type_from_model(_rnn_model_fn)
@@ -369,7 +373,7 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
     it_process = simple_fedavg_tff.build_federated_averaging_process(
         _rnn_model_fn,
         client_optimizer_fn=functools.partial(
-            tf.keras.optimizers.Adagrad, learning_rate=0.01))
+            tf.keras.optimizers.legacy.Adagrad, learning_rate=0.01))
     server_state = it_process.initialize()
 
     def deterministic_batch():
