@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import sys
 
 from absl.testing import parameterized
 import numpy as np
@@ -92,6 +93,37 @@ class ValueSerializationtest(tf.test.TestCase, parameterized.TestCase):
                                            serialize_type_spec)
     self.assertEqual(y.dtype, serialize_type_spec.dtype.as_numpy_dtype)
     self.assertAllEqual(x, y)
+
+  @parameterized.named_parameters(
+      ('int32_array', [1, 2, 3], np.int32),
+      ('int64_array', [1, 2, 3], np.int64),
+      ('float16_array', [1.0, 2.0, 3.0], np.float16),
+      ('float32_array', [1.0, 2.0, 3.0], np.float32),
+      ('float64_array', [1.0, 2.0, 3.0], np.float64),
+      ('str_array', ['a', 'b', 'c'], np.dtype('<U1')),
+  )
+  def test_serialization_does_not_increase_numpy_refcount(self, value, dtype):
+    # TensorFlow's internal conversion `NdarraytoTensor` adds a "delayed
+    # refcount decrement" logic to the input numpy array and must be cleared
+    # manually later. This test ensures that serialization doesn't cause
+    # dangling references.
+    array = np.asarray(value, dtype=dtype)
+    type_spec = TensorType(dtype=tf.dtypes.as_dtype(dtype), shape=[3])
+    # `tensorflow::NdarrayToTensor` will increase the refcount on `array` each
+    # time it is called. If `TensorFlow::ClearDecrefCache` is not called this
+    # will grow linearly with calls. Correct behavior is for the refcount to
+    # increase by no more than one on the first use, and it should remain the
+    # same or one more than the refcount before any of the calls (not refcount +
+    # N).
+    before_refcount = sys.getrefcount(array)
+    value_serialization._serialize_tensor_value(array, type_spec)
+    value_serialization._serialize_tensor_value(array, type_spec)
+    value_serialization._serialize_tensor_value(array, type_spec)
+    value_serialization._serialize_tensor_value(array, type_spec)
+    value_serialization._serialize_tensor_value(array, type_spec)
+    after_refcount = sys.getrefcount(array)
+    self.assertBetween(
+        after_refcount, minv=before_refcount, maxv=before_refcount + 1)
 
   @parameterized.named_parameters(
       ('numpy', np.str_('abc')),

@@ -43,6 +43,7 @@ limitations under the License
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/python/lib/core/ndarray_tensor.h"
+#include "tensorflow/python/lib/core/ndarray_tensor_bridge.h"
 #include "tensorflow/python/lib/core/safe_ptr.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
@@ -197,22 +198,25 @@ struct type_caster<tensorflow::Tensor> {
  public:
   // Macro to create `value` variable which is used in `load` to store the
   // result of the conversion.
-  PYBIND11_TYPE_CASTER(tensorflow::Tensor, _("Tensor"));
+  PYBIND11_TYPE_CASTER(tensorflow::Tensor, const_name("Tensor"));
 
   // Pybind11 caster for PyArray (Python) -> tensorflow::Tensor (C++).
   bool load(handle src, bool) {
-    tensorflow::Safe_TF_TensorPtr tf_tensor_ptr;
-    tensorflow::Status status =
-        tensorflow::NdarrayToTensor(/*ctx=*/nullptr, src.ptr(), &tf_tensor_ptr);
-    if (!status.ok()) {
-      LOG(ERROR) << status;
-      return false;
+    {
+      tensorflow::Safe_TF_TensorPtr tf_tensor_ptr;
+      tensorflow::Status status = tensorflow::NdarrayToTensor(
+          /*ctx=*/nullptr, src.ptr(), &tf_tensor_ptr);
+      if (!status.ok()) {
+        LOG(ERROR) << status;
+        return false;
+      }
+      status = TF_TensorToTensor(tf_tensor_ptr.get(), &value);
+      if (!status.ok()) {
+        LOG(ERROR) << status;
+        return false;
+      }
     }
-    status = TF_TensorToTensor(tf_tensor_ptr.get(), &value);
-    if (!status.ok()) {
-      LOG(ERROR) << status;
-      return false;
-    }
+    tensorflow::ClearDecrefCache();
     return !PyErr_Occurred();
   }
 
