@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import sys
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -65,6 +66,9 @@ class TestCheckEquivalentTypesTest(absltest.TestCase):
 class TensorTypeTest(absltest.TestCase):
 
   def test_constructor_argument_normalization_error(self):
+    if ((sys.version_info[0] == 3 and sys.version_info[1] > 9) or
+        sys.version_info[0] > 3):
+      self.skipTest('b/248295968')
     with golden.check_raises_traceback(
         'constructor_argument_normalization_error.expected', TypeError):
       computation_types.TensorType()
