@@ -53,7 +53,7 @@ class SetModelWeightsTypeSignatureError(TypeError):
   """Raises when the type signature of `get_model_weights` is not correct."""
 
 
-@attr.s(frozen=True, eq=False, slots=True)
+@attr.s(frozen=True, eq=True, order=False, slots=True)
 class LearningProcessOutput:
   """A structure containing the output of a `LearningProcess.next` computation.
 
