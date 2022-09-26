@@ -41,7 +41,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
     mw_type = computation_types.to_type(
         model_utils.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+    optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
         optimizer_fn, mw_type)
@@ -55,7 +55,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
     mw_type = computation_types.to_type(
         model_utils.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+    optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
         optimizer_fn, mw_type)
@@ -79,7 +79,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
     mw_type = computation_types.to_type(
         model_utils.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+    optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
         optimizer_fn, mw_type)
@@ -95,7 +95,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
     mw_type = computation_types.to_type(
         model_utils.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+    optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
         optimizer_fn, mw_type)
@@ -232,7 +232,7 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       self.assertEqual((), output.measurements)
 
   def test_execution_with_keras_sgd_optimizer(self):
-    server_optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
+    server_optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(1.0)
     # Note that SGD only maintains a counter of how many times it has been
     # called. No other state is used.
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(

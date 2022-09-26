@@ -260,7 +260,7 @@ def _tff_optimizer(learning_rate=0.1):
 
 
 def _keras_optimizer_fn(learning_rate=0.1):
-  return lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
+  return lambda: tf.keras.optimizers.legacy.SGD(learning_rate=learning_rate)
 
 
 class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
@@ -272,7 +272,7 @@ class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=tf.keras.optimizers.SGD,
+        server_optimizer_fn=tf.keras.optimizers.legacy.SGD,
         model_update_aggregation_factory=aggregation_factory)
 
     if weighted:

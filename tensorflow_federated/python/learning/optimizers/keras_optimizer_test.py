@@ -130,7 +130,7 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_disjoint_init_and_next_false_keras_state_updated(self):
     """Tests optimizer state is updated inside of KerasOptimizer."""
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(0.1)
+    optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(0.1)
 
     @tf.function
     def training_loop(optimizer, variables):
