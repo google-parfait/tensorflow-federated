@@ -117,4 +117,4 @@ class TestCase(tf.test.TestCase):
         optimizer.apply_gradients(zip(grad, model_variables))
       return model_variables
 
-    self.assertAllClose(_run_tff(), _run_keras())
+    self.assertAllClose(_run_tff(), _run_keras(), rtol=5e-5, atol=5e-5)
