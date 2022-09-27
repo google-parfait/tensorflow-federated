@@ -58,7 +58,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
 
     Estimates value `C` at `q`'th quantile of input distribution and reports
     `rC + i` for multiplier `r` and increment `i`. The quantile `C` is estimated
-    using the geometric method described in Thakkar et al. 2019,
+    using the geometric method described in Andrew, Thakkar et al. 2021,
     "Differentially Private Learning with Adaptive Clipping"
     (https://arxiv.org/abs/1905.03871) without noise added.
 

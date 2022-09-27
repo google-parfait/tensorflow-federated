@@ -94,6 +94,10 @@ def robust_aggregator(
   clients, and clips in the L2 norm to moderately high norm for robustness to
   outliers.
 
+  Adaptive clipping approach is as described in Andrew, Thakkar et al. (2021)
+  https://arxiv.org/abs/1905.03871, which the robust_aggregator applies without
+  the addition of noise.
+
   For details on clipping and zeroing see `tff.aggregators.clipping_factory`
   and `tff.aggregators.zeroing_factory`. For details on the quantile-based
   adaptive algorithm see `tff.aggregators.PrivateQuantileEstimationProcess`.
@@ -143,7 +147,7 @@ def dp_aggregator(noise_multiplier: float,
   clients, and performs adaptive clipping and addition of Gaussian noise for
   differentially private learning. For details of the DP algorithm see McMahan
   et. al (2017) https://arxiv.org/abs/1710.06963. The adaptive clipping uses the
-  geometric method described in Thakkar et al. (2019)
+  geometric method described in Andrew, Thakkar et al. (2021)
   https://arxiv.org/abs/1905.03871.
 
   Args:
