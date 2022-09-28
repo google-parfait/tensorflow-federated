@@ -535,7 +535,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicValueAtClients(
-      ExecutorValue&& arg) const {
+      ExecutorValue&& arg) {
+    auto traceme = Trace("CallIntrinsicValueAtClients");
     if (arg.type() != ExecutorValue::ValueType::UNPLACED) {
       return absl::InvalidArgumentError(
           absl::StrCat("Cannot call federated_value_at_clients on value that "
@@ -550,19 +551,21 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicValueAtServer(
-      ExecutorValue&& arg) const {
+      ExecutorValue&& arg) {
+    auto traceme = Trace("CallIntrinsicValueAtServer");
     return ExecutorValue::CreateServerPlaced(TFF_TRY(arg.Embed(*server_)));
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicEvalAtServer(
-      ExecutorValue&& arg) const {
+  absl::StatusOr<ExecutorValue> CallIntrinsicEvalAtServer(ExecutorValue&& arg) {
+    auto traceme = Trace("CallIntrinsicEvalAtServer");
     auto embedded = TFF_TRY(arg.Embed(*server_));
     return ExecutorValue::CreateServerPlaced(ShareValueId(
         TFF_TRY(server_->CreateCall(embedded->ref(), absl::nullopt))));
   }
 
   absl::StatusOr<ExecutorValue> CallIntrinsicEvalAtClients(
-      ExecutorValue&& arg) const {
+      ExecutorValue&& arg) {
+    auto traceme = Trace("CallIntrinsicEvalAtClients");
     auto fn_to_eval =
         TFF_TRY(arg.GetUnplacedFunctionProto("federated_eval_at_clients_fn"));
     auto clients = NewClients();
@@ -581,8 +584,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     return ExecutorValue::CreateClientsPlaced(std::move(clients));
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicAggregate(
-      ExecutorValue&& arg) const {
+  absl::StatusOr<ExecutorValue> CallIntrinsicAggregate(ExecutorValue&& arg) {
+    auto traceme = Trace("CallIntrinsicAggregate");
     TFF_TRY(arg.CheckLenForUseAsArgument("federated_aggregate", 5));
     const auto& value = arg.structure()->at(0);
     if (value.type() != ExecutorValue::ValueType::CLIENTS) {
@@ -664,8 +667,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     return ExecutorValue::CreateServerPlaced(ShareValueId(std::move(result)));
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicBroadcast(
-      ExecutorValue&& arg) const {
+  absl::StatusOr<ExecutorValue> CallIntrinsicBroadcast(ExecutorValue&& arg) {
+    auto traceme = Trace("CallIntrinsicBroadcast");
     if (arg.type() != ExecutorValue::ValueType::SERVER) {
       return absl::InvalidArgumentError(
           "Attempted to broadcast a value not placed at server.");
@@ -676,7 +679,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     return AllEqualToAll(value);
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicMap(ExecutorValue&& arg) const {
+  absl::StatusOr<ExecutorValue> CallIntrinsicMap(ExecutorValue&& arg) {
+    auto traceme = Trace("CallIntrinsicMap");
     TFF_TRY(arg.CheckLenForUseAsArgument("federated_map", 2));
     const auto& fn = arg.structure()->at(0);
     const auto& data = arg.structure()->at(1);
@@ -710,8 +714,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     }
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicSelect_(
-      ExecutorValue&& arg) const {
+  absl::StatusOr<ExecutorValue> CallIntrinsicSelect_(ExecutorValue&& arg) {
+    auto traceme = Trace("CallIntrinsicSelect_");
     TFF_TRY(arg.CheckLenForUseAsArgument("federated_select", 4));
     const ExecutorValue& keys = arg.structure()->at(0);
     const ExecutorValue& max_key = arg.structure()->at(1);
@@ -794,8 +798,8 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     }
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicZipAtClients(
-      ExecutorValue&& arg) const {
+  absl::StatusOr<ExecutorValue> CallIntrinsicZipAtClients(ExecutorValue&& arg) {
+    auto traceme = Trace("CallIntrinsicZipAtClients");
     v0::Value zip_at_clients;
     zip_at_clients.mutable_computation()
         ->mutable_intrinsic()
@@ -843,13 +847,13 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     }
   }
 
-  absl::StatusOr<ExecutorValue> CallIntrinsicZipAtServer(
-      ExecutorValue&& arg) const {
+  absl::StatusOr<ExecutorValue> CallIntrinsicZipAtServer(ExecutorValue&& arg) {
+    auto traceme = Trace("CallIntrinsicZipAtServer");
     return ExecutorValue::CreateServerPlaced(TFF_TRY(ZipStructIntoServer(arg)));
   }
 
   absl::StatusOr<ExecutorValue> CallFederatedIntrinsic(
-      FederatedIntrinsic function, ExecutorValue arg) const {
+      FederatedIntrinsic function, ExecutorValue arg) {
     switch (function) {
       case FederatedIntrinsic::VALUE_AT_CLIENTS: {
         return CallIntrinsicValueAtClients(std::move(arg));

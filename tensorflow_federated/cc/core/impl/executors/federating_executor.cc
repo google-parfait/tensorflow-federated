@@ -386,6 +386,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         return ExecutorValue::CreateClientsPlaced(std::move(client_values));
       }
       case FederatedIntrinsic::AGGREGATE: {
+        auto traceme = Trace("CallFederatedAggregate");
         TFF_TRY(CheckLenForUseAsArgument(arg, "federated_aggregate", 5));
         const auto& value = arg.structure()->at(0);
         const auto& zero = arg.structure()->at(1);
@@ -412,11 +413,13 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
             ShareValueId(std::move(result)));
       }
       case FederatedIntrinsic::BROADCAST: {
+        auto traceme = Trace("CallFederatedBroadcast");
         TFF_TRY(arg.CheckArgumentType(ExecutorValue::ValueType::SERVER,
                                       "`federated_broadcast`"));
         return ClientsAllEqualValue(arg.server());
       }
       case FederatedIntrinsic::MAP: {
+        auto traceme = Trace("CallFederatedMap");
         TFF_TRY(CheckLenForUseAsArgument(arg, "federated_map", 2));
         const auto& fn = arg.structure()->at(0);
         auto child_fn = TFF_TRY(Embed(fn));
@@ -441,6 +444,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         }
       }
       case FederatedIntrinsic::SELECT: {
+        auto traceme = Trace("CallFederatedSelect");
         TFF_TRY(CheckLenForUseAsArgument(arg, "federated_select", 4));
         const auto& keys = arg.structure()->at(0);
         // Argument two (`max_key`) is unused in this impl.
@@ -461,6 +465,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
                                    select_fn_child_id);
       }
       case FederatedIntrinsic::ZIP_AT_CLIENTS: {
+        auto traceme = Trace("CallIntrinsicZipClients");
         Clients results = NewClients();
         for (uint32_t i = 0; i < num_clients_; i++) {
           results->push_back(TFF_TRY(ZipStructIntoClient(arg, i)));
@@ -468,6 +473,7 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         return ExecutorValue::CreateClientsPlaced(std::move(results));
       }
       case FederatedIntrinsic::ZIP_AT_SERVER: {
+        auto traceme = Trace("CallIntrinsicZipServer");
         return ExecutorValue::CreateServerPlaced(
             TFF_TRY(ZipStructIntoServer(arg)));
       }
