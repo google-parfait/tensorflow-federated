@@ -40,13 +40,14 @@ def build_uniform_sampling_fn(
       the sequence.
     replace: A boolean indicating whether the sampling is done with replacement
       (True) or without replacement (False).
-    random_seed: If random_seed is set as an integer, then we use it as a random
-      seed for which clients are sampled at each round. In this case, we set a
-      random seed before sampling clients according to a multiplicative linear
-      congruential generator (aka Lehmer generator, see 'The Art of Computer
-      Programming, Vol. 3' by Donald Knuth for reference). This does not affect
-      model initialization, shuffling, or other such aspects of the federated
-      training process.
+    random_seed: If an integer, it is used as a random seed for the client
+      sampling process. If None, a nondeterministic seed is used.
+
+  If an integer seed is provided, we set a random seed before sampling clients
+  according to a multiplicative linear congruential generator (aka Lehmer
+  generator, see 'The Art of Computer Programming, Vol. 3' by Donald Knuth for
+  reference). This does not affect model initialization, shuffling, or other
+  such aspects of the federated training process.
 
   Returns:
     A function that takes as input an integer `round_num` and integer `size` and
