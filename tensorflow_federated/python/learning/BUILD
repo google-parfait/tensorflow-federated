@@ -269,6 +269,7 @@ py_test(
     deps = [
         ":model",
         ":model_utils",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
