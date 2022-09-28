@@ -21,6 +21,7 @@
 from typing import Callable, Union
 
 import attr
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -72,6 +73,25 @@ class ModelWeights(object):
                             model.trainable_variables, self.trainable)
       tf.nest.map_structure(lambda var, t: var.assign(t),
                             model.non_trainable_variables, self.non_trainable)
+
+  def convert_variables_to_arrays(self) -> 'ModelWeights':
+    """Converts any internal `tf.Variable`s to numpy arrays."""
+
+    if not tf.compat.v1.executing_eagerly():
+      raise ValueError('Can only convert to numpy array in eager mode outside '
+                       'a @tf.function.')
+
+    if isinstance(self.trainable, structure.Struct):
+      new_trainable = structure.map_structure(np.array, self.trainable)
+    else:
+      new_trainable = tf.nest.map_structure(np.array, self.trainable)
+
+    if isinstance(self.non_trainable, structure.Struct):
+      new_non_trainable = structure.map_structure(np.array, self.non_trainable)
+    else:
+      new_non_trainable = tf.nest.map_structure(np.array, self.non_trainable)
+
+    return ModelWeights(new_trainable, new_non_trainable)
 
 
 def weights_type_from_model(
