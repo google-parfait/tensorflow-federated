@@ -639,29 +639,40 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     }
 
     // Materialize and merge the results from each child executor.
-    // TODO(b/192457028): parallelize this so that we're materializing more than
-    // one value at a time and so that we can begin merging as soon as any
-    // result is available.
-    absl::optional<OwnedValueId> current = absl::nullopt;
+    absl::Mutex mutex;
+    absl::optional<OwnedValueId> current ABSL_GUARDED_BY(mutex) = absl::nullopt;
+
+    ParallelTasks materialize_tasks;
+
     for (uint32_t i = 0; i < children_.size(); i++) {
-      const auto& child = children_[i].executor();
-      v0::Value child_result = TFF_TRY(child->Materialize(child_result_ids[i]));
-      if (!child_result.has_federated() ||
-          child_result.federated().type().placement().value().uri() !=
-              kServerUri) {
-        return absl::InternalError(
-            "Child executor returned non-server-placed value");
-      }
-      auto child_result_server_id =
-          TFF_TRY(server_->CreateValue(child_result.federated().value(0)));
-      if (current.has_value()) {
-        auto merge_arg = TFF_TRY(
-            server_->CreateStruct({current.value(), child_result_server_id}));
-        current = TFF_TRY(server_->CreateCall(merge_id->ref(), merge_arg));
-      } else {
-        current = std::move(child_result_server_id);
-      }
+      materialize_tasks.add_task([this, &child = children_[i].executor(),
+                                  &child_result_id = child_result_ids[i],
+                                  &merge_id, &current,
+                                  &mutex]() -> absl::Status {
+        v0::Value child_result = TFF_TRY(child->Materialize(child_result_id));
+        if (!child_result.has_federated() ||
+            child_result.federated().type().placement().value().uri() !=
+                kServerUri) {
+          return absl::InternalError(
+              "Child executor returned non-server-placed value");
+        }
+        auto child_result_server_id =
+            TFF_TRY(server_->CreateValue(child_result.federated().value(0)));
+
+        absl::MutexLock lock(&mutex);
+        if (current.has_value()) {
+          auto merge_arg = TFF_TRY(
+              server_->CreateStruct({current.value(), child_result_server_id}));
+          current = TFF_TRY(server_->CreateCall(merge_id->ref(), merge_arg));
+        } else {
+          current = std::move(child_result_server_id);
+        }
+        return absl::OkStatus();
+      });
     }
+
+    TFF_TRY(materialize_tasks.WaitAll());
+
     auto result =
         TFF_TRY(server_->CreateCall(report_id->ref(), current.value()));
     return ExecutorValue::CreateServerPlaced(ShareValueId(std::move(result)));
