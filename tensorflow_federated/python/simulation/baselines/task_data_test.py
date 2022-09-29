@@ -61,6 +61,7 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_raises_when_train_and_test_types_are_different_no_preprocessing(
       self):
+    self.skipTest('b/249818282')
     train_data = create_client_data(10)
     test_data = tf.data.Dataset.range(10, output_type=tf.int32)
     with self.assertRaisesRegex(
@@ -70,6 +71,7 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_raises_when_train_and_test_types_are_different_with_train_preprocessing(
       self):
+    self.skipTest('b/249818282')
     train_data = create_client_data(10)
     test_data = tf.data.Dataset.range(10)
     train_preprocess_fn = lambda x: x.map(lambda y: tf.cast(y, dtype=tf.int32))
@@ -83,6 +85,7 @@ class BaselineTaskDatasetsTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_raises_when_train_and_test_types_are_different_with_eval_preprocessing(
       self):
+    self.skipTest('b/249818282')
     train_data = create_client_data(10)
     test_data = tf.data.Dataset.range(10)
     eval_preprocess_fn = lambda x: x.map(lambda y: tf.cast(y, dtype=tf.int32))
