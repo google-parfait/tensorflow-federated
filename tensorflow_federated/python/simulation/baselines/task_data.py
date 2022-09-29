@@ -110,16 +110,13 @@ class BaselineTaskDatasets(object):
 
     post_preprocess_train_type = _get_element_spec(train_data,
                                                    train_preprocess_fn)
-    post_preprocess_test_type = _get_element_spec(test_data, eval_preprocess_fn)
-    if post_preprocess_train_type != post_preprocess_test_type:
-      raise ValueError(
-          'The train and test element structures after preprocessing must be '
-          'equal. Found train type {} and test type {}'.format(
-              post_preprocess_train_type, post_preprocess_test_type))
     if train_preprocess_fn is None:
       self._preprocess_train_data = train_data
     else:
       self._preprocess_train_data = train_data.preprocess(train_preprocess_fn)
+
+    # TODO(b/249818282): Add validation to ensure that this is compatible with
+    # the post-processed test dataset.
     self._element_type_structure = post_preprocess_train_type
 
     if validation_data is not None:
