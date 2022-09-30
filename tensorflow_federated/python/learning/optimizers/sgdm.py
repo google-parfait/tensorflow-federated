@@ -38,6 +38,8 @@ class _SGD(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
     py_typecheck.check_non_negative_float(learning_rate, 'learning rate')
     if momentum is not None:
       _check_momentum(momentum)
+
+    if momentum is not None and momentum > 0:
       self._hparams_keys = [optimizer.LEARNING_RATE_KEY, _MOMENTUM_KEY]
     else:
       self._hparams_keys = [optimizer.LEARNING_RATE_KEY]

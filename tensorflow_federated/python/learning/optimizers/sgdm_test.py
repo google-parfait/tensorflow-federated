@@ -208,8 +208,23 @@ class SGDTest(optimizer_test_utils.TestCase, parameterized.TestCase):
       ('struct_spec', _STRUCT_SPEC),
       ('nested_spec', _NESTED_SPEC),
   )
-  def test_set_hparams_returns_expected_result_without_momentum(self, spec):
+  def test_set_hparams_returns_expected_result_with_momentum_none(self, spec):
     optimizer = sgdm.build_sgdm(learning_rate=0.1, momentum=None)
+    state = optimizer.initialize(spec)
+    hparams = collections.OrderedDict(learning_rate=0.5)
+    expected_state = copy.deepcopy(state)
+    expected_state['learning_rate'] = 0.5
+    updated_state = optimizer.set_hparams(state, hparams)
+    self.assertIsInstance(updated_state, collections.OrderedDict)
+    self.assertEqual(updated_state, expected_state)
+
+  @parameterized.named_parameters(
+      ('scalar_spec', _SCALAR_SPEC),
+      ('struct_spec', _STRUCT_SPEC),
+      ('nested_spec', _NESTED_SPEC),
+  )
+  def test_set_hparams_returns_expected_result_with_momentum_zero(self, spec):
+    optimizer = sgdm.build_sgdm(learning_rate=0.1, momentum=0.0)
     state = optimizer.initialize(spec)
     hparams = collections.OrderedDict(learning_rate=0.5)
     expected_state = copy.deepcopy(state)
