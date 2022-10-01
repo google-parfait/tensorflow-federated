@@ -19,6 +19,7 @@ from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -30,11 +31,11 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_eval
 from tensorflow_federated.python.learning.metrics import aggregation_factory
-from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
@@ -114,8 +115,9 @@ def _get_finalized_metrics_type(metric_finalizers, unfinalized_metrics):
   return type_conversions.type_from_tensors(finalized_metrics)
 
 
-def _create_custom_metrics_aggregation_process(metric_finalizers,
-                                               local_unfinalized_metrics_type):
+def _create_custom_metrics_aggregation_factory(
+    metric_finalizers,
+    local_unfinalized_metrics_type) -> factory.UnweightedAggregationFactory:
   """Creates an `AggregationProcess` gets maximum and finalizes metrics."""
 
   @tensorflow_computation.tf_computation
@@ -163,7 +165,12 @@ def _create_custom_metrics_aggregation_process(metric_finalizers,
             (current_round_metrics, total_rounds_metrics)),
         measurements=intrinsics.federated_value((), placements.SERVER))
 
-  return aggregation_process.AggregationProcess(init_fn, next_fn)
+  class CustomAggregationFactory(factory.UnweightedAggregationFactory):
+
+    def create(self, type_spec) -> aggregation_process.AggregationProcess:
+      return aggregation_process.AggregationProcess(init_fn, next_fn)
+
+  return CustomAggregationFactory()
 
 
 class FedEvalProcessTest(tf.test.TestCase):
@@ -179,7 +186,8 @@ class FedEvalProcessTest(tf.test.TestCase):
     finalized_metrics_type = _get_finalized_metrics_type(
         metric_finalizers, unfinalized_metrics)
     metics_aggregator = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers).create(local_unfinalized_metrics_type)
+        metric_finalizers=metric_finalizers).create(
+            local_unfinalized_metrics_type)
     metics_aggregator_state_type = (
         metics_aggregator.initialize.type_signature.result.member)
 
@@ -299,18 +307,15 @@ class FedEvalProcessTest(tf.test.TestCase):
         test_distributor().next.type_signature.result.measurements.member)
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
-  def test_fed_eval_with_metrics_aggregation_process(self):
+  def test_fed_eval_with_metrics_aggregator(self):
     model_fn = TestModel
     test_model = model_fn()
-    unfinalized_metrics = test_model.report_local_unfinalized_metrics()
-    local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-        unfinalized_metrics)
-    metric_finalizers = test_model.metric_finalizers()
-
     eval_process = fed_eval.build_fed_eval(
         model_fn,
-        metrics_aggregation_process=_create_custom_metrics_aggregation_process(
-            metric_finalizers, local_unfinalized_metrics_type))
+        metrics_aggregator_factory=_create_custom_metrics_aggregation_factory(
+            metric_finalizers=test_model.metric_finalizers(),
+            local_unfinalized_metrics_type=type_conversions.type_from_tensors(
+                test_model.report_local_unfinalized_metrics())))
     state = eval_process.initialize()
     self.assertEqual(state.client_work,
                      collections.OrderedDict([('num_over', 0.0)]))
@@ -335,15 +340,15 @@ class FedEvalProcessTest(tf.test.TestCase):
                 current_round_metrics=collections.OrderedDict(num_over=6.0),
                 total_rounds_metrics=collections.OrderedDict(num_over=6.0))))
 
-  def test_invalid_metrics_aggregation_process_raises(self):
-    test_model = TestModel()
-    metrics_aggregator = aggregator.sum_then_finalize(
-        test_model.metric_finalizers(),
-        type_conversions.type_from_tensors(
-            test_model.report_local_unfinalized_metrics()))
+  def test_invalid_metrics_aggregation_factory_raises(self):
     with self.assertRaisesRegex(TypeError, 'AggregationProcess'):
+      test_model = TestModel()
       fed_eval.build_fed_eval(
-          TestModel, metrics_aggregation_process=metrics_aggregator)
+          TestModel,
+          metrics_aggregator_factory=aggregation_factory.SumThenFinalizeFactory(
+              metric_finalizers=test_model.metric_finalizers()).create(
+                  type_conversions.type_from_tensors(
+                      test_model.report_local_unfinalized_metrics())))
 
   def test_invalid_model_distributor_raises(self):
     model_distributor = tensorflow_computation.tf_computation(lambda x: x)
@@ -357,6 +362,18 @@ class FedEvalProcessTest(tf.test.TestCase):
     mock_model_fn = mock.Mock(side_effect=TestModel)
     fed_eval.build_fed_eval(mock_model_fn)
     self.assertEqual(mock_model_fn.call_count, 3)
+
+  def test_only_secure_aggregation(self):
+    test_model = TestModel()
+    metrics_aggregation_factory = aggregation_factory.SumThenFinalizeFactory(
+        metric_finalizers=test_model.metric_finalizers(),
+        inner_summation_factory=aggregation_factory.SecureSumFactory())
+    # Assert that the resulting process has only secure aggregation.
+    evaluation_process = fed_eval.build_fed_eval(
+        model_fn=TestModel,
+        metrics_aggregator_factory=metrics_aggregation_factory)
+    static_assert.assert_not_contains_unsecure_aggregation(
+        evaluation_process.next)
 
 
 if __name__ == '__main__':

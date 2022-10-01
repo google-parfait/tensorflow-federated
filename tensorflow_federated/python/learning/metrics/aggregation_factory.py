@@ -79,6 +79,8 @@ def _intialize_unfinalized_metrics_accumulators(local_unfinalized_metrics_type,
                       'with the `local_unfinalized_metrics_type`, expect: '
                       f'{local_unfinalized_metrics_type}, found: '
                       f'{initial_unfinalized_metrics_type}.')
+    return intrinsics.federated_value(initial_unfinalized_metrics,
+                                      placements.SERVER)
 
   @tensorflow_computation.tf_computation
   def create_all_zero_state():
@@ -86,11 +88,7 @@ def _intialize_unfinalized_metrics_accumulators(local_unfinalized_metrics_type,
         lambda t: tf.zeros(shape=t.shape, dtype=t.dtype),
         local_unfinalized_metrics_type)
 
-  if initial_unfinalized_metrics is None:
-    return intrinsics.federated_eval(create_all_zero_state, placements.SERVER)
-
-  return intrinsics.federated_value(initial_unfinalized_metrics,
-                                    placements.SERVER)
+  return intrinsics.federated_eval(create_all_zero_state, placements.SERVER)
 
 
 # TODO(b/227811468): Support other inner aggregators for SecAgg and DP.
@@ -121,6 +119,7 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
   """
 
   def __init__(self,
+               *,
                metric_finalizers: model_lib.MetricFinalizersType,
                initial_unfinalized_metrics: Optional[OrderedDict[str,
                                                                  Any]] = None,

@@ -82,7 +82,7 @@ class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
        collections.OrderedDict(loss=[1.0, 2.0])))
   def test_type_properties(self, metric_finalizers, unfinalized_metrics):
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers)
+        metric_finalizers=metric_finalizers)
     self.assertIsInstance(aggregate_factory,
                           factory.UnweightedAggregationFactory)
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
@@ -142,7 +142,8 @@ class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
         local_unfinalized_metrics)
 
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers, inner_summation_factory=secure_summation_factory)
+        metric_finalizers=metric_finalizers,
+        inner_summation_factory=secure_summation_factory)
     process = aggregate_factory.create(local_unfinalized_metrics_type)
 
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
@@ -188,7 +189,8 @@ class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
         tf.function(func=lambda x: x + 1)]))
   def test_incorrect_finalizers_type_raises(self, bad_finalizers):
     with self.assertRaises(TypeError):
-      aggregation_factory.SumThenFinalizeFactory(bad_finalizers)
+      aggregation_factory.SumThenFinalizeFactory(
+          metric_finalizers=bad_finalizers)
 
   @parameterized.named_parameters(
       ('federated_type',
@@ -200,7 +202,7 @@ class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x))
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers)
+        metric_finalizers=metric_finalizers)
     with self.assertRaisesRegex(TypeError,
                                 'Expected .*`tff.types.StructWithPythonType`'):
       aggregate_factory.create(bad_unfinalized_metrics_type)
@@ -209,7 +211,7 @@ class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
     metric_finalizers = collections.OrderedDict(
         num_examples=tf.function(func=lambda x: x))
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers)
+        metric_finalizers=metric_finalizers)
     local_unfinalized_metrics_type = computation_types.StructWithPythonType(
         collections.OrderedDict(
             x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
@@ -227,7 +229,7 @@ class SumThenFinalizeFactoryComputationTest(tf.test.TestCase,
         collections.OrderedDict(num_examples=1.0))
     initial_unfinalized_metrics = collections.OrderedDict(num_examples=[1.0])
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers,
+        metric_finalizers=metric_finalizers,
         initial_unfinalized_metrics=initial_unfinalized_metrics)
     with self.assertRaisesRegex(TypeError, 'initial unfinalized metrics type'):
       aggregate_factory.create(local_unfinalized_metrics_type)
@@ -248,7 +250,7 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
         local_unfinalized_metrics)
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers)
+        metric_finalizers=metric_finalizers)
     process = aggregate_factory.create(local_unfinalized_metrics_type)
 
     state = process.initialize()
@@ -290,7 +292,7 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     initial_unfinalized_metrics = collections.OrderedDict(
         num_examples=2.0, loss=[3.0, 2.0])
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers,
+        metric_finalizers=metric_finalizers,
         initial_unfinalized_metrics=initial_unfinalized_metrics)
     process = aggregate_factory.create(local_unfinalized_metrics_type)
 
@@ -326,7 +328,8 @@ class SumThenFinalizeFactoryExecutionTest(tf.test.TestCase):
     secure_sum_factory = aggregation_factory.SecureSumFactory()
 
     aggregate_factory = aggregation_factory.SumThenFinalizeFactory(
-        metric_finalizers, inner_summation_factory=secure_sum_factory)
+        metric_finalizers=metric_finalizers,
+        inner_summation_factory=secure_sum_factory)
     process = aggregate_factory.create(local_unfinalized_metrics_type)
     state = process.initialize()
     init_inner_summation_process_state, unfinalized_metrics_accumulators = state

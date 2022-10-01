@@ -23,6 +23,7 @@ from typing import Callable, Optional
 
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
@@ -31,7 +32,6 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import federated_evaluation
 from tensorflow_federated.python.learning import model as model_lib
@@ -46,7 +46,7 @@ from tensorflow_federated.python.learning.templates import learning_process
 
 def _build_fed_eval_client_work(
     model_fn: Callable[[], model_lib.Model],
-    metrics_aggregation_process: aggregation_process.AggregationProcess,
+    metrics_aggregator_factory: Optional[factory.UnweightedAggregationFactory],
     model_weights_type: computation_types.StructType,
     use_experimental_simulation_loop: bool = False
 ) -> client_works.ClientWorkProcess:
@@ -55,16 +55,12 @@ def _build_fed_eval_client_work(
   with tf.Graph().as_default():
     model = model_fn()
     batch_type = computation_types.to_type(model.input_spec)
-    if metrics_aggregation_process is None:
-      metrics_finalizers = model.metric_finalizers()
-      local_unfinalized_metrics_type = type_conversions.type_from_tensors(
-          model.report_local_unfinalized_metrics())
-      metrics_aggregation_process = aggregation_factory.SumThenFinalizeFactory(
-          metrics_finalizers).create(local_unfinalized_metrics_type)
-    else:
-      py_typecheck.check_type(metrics_aggregation_process,
-                              aggregation_process.AggregationProcess,
-                              'metrics_aggregation_process')
+    if metrics_aggregator_factory is None:
+      metrics_aggregator_factory = aggregation_factory.SumThenFinalizeFactory(
+          metric_finalizers=model.metric_finalizers())
+    metrics_aggregation_process = metrics_aggregator_factory.create(
+        type_conversions.type_from_tensors(
+            model.report_local_unfinalized_metrics()))
 
   @federated_computation.federated_computation
   def init_fn():
@@ -128,8 +124,8 @@ def _build_identity_finalizer(
 def build_fed_eval(
     model_fn: Callable[[], model_lib.Model],
     model_distributor: Optional[distributors.DistributionProcess] = None,
-    metrics_aggregation_process: Optional[
-        aggregation_process.AggregationProcess] = None,
+    metrics_aggregator_factory: Optional[
+        factory.UnweightedAggregationFactory] = None,
     use_experimental_simulation_loop: bool = False
 ) -> learning_process.LearningProcess:
   """Builds a learning process that performs federated evaluation.
@@ -176,15 +172,16 @@ def build_fed_eval(
       support the signature `(input_values@SERVER -> output_values@CLIENTS)` and
       have empty state. If None, the server model is broadcast to the clients
       using the default `tff.federated_broadcast`.
-    metrics_aggregation_process: An optional `tff.templates.AggregationProcess`
-      which aggregates the local unfinalized metrics at clients to server and
-      finalizes the metrics at server. The `tff.templates.AggregationProcess`
-      accumulates unfinalized metrics across round in the state, and produces a
-      tuple of current round metrics and total rounds metrics in the result. If
-      None, the `tff.templates.AggregationProcess` created by the
-      `SumThenFinalizeFactory` with metric finalizers defined in the model is
-      used.
-    use_experimental_simulation_loop: Controls the reduce loop function for
+    metrics_aggregator_factory: An optional
+      `tff.aggregators.UnweightedAggregationFactory` which aggregates the local
+      unfinalized metrics at clients to server. The factory can produce
+      `tff.templates.AggregationProcess` that accumulate unfinalized metrics
+      across round in the state, and produces a tuple of current round metrics
+      and total rounds metrics in the result. If `None`, then
+      `SumThenFinalizeFactory` will be used with the metric finalizers from the
+      `model_fn`.
+    use_experimental_simulation_loop: Controls the reduce loop
+      function for
       input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
@@ -195,6 +192,10 @@ def build_fed_eval(
     TypeError: If any argument type mismatches.
   """
   py_typecheck.check_callable(model_fn, 'model_fn')
+  if metrics_aggregator_factory is not None:
+    py_typecheck.check_type(metrics_aggregator_factory,
+                            factory.UnweightedAggregationFactory,
+                            'metrics_aggregator_factory')
 
   @tensorflow_computation.tf_computation()
   def initial_model_weights_fn():
@@ -209,10 +210,12 @@ def build_fed_eval(
                             'model_distributor')
 
   client_work = _build_fed_eval_client_work(model_fn,
-                                            metrics_aggregation_process,
+                                            metrics_aggregator_factory,
                                             model_weights_type,
                                             use_experimental_simulation_loop)
 
+  # We create a MeanFactory that only aggregates an empty tuple (), meaning
+  # no model weights are sent back to the server.
   client_work_result_type = computation_types.at_clients(
       client_works.ClientResult(update=(), update_weight=()))
   model_update_type = client_work_result_type.member.update
