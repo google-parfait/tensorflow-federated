@@ -15,9 +15,10 @@
 
 import asyncio
 import collections
+import inspect
 import random
 import typing
-from typing import Any, Awaitable, Coroutine, List, Optional, Sequence
+from typing import Any, Awaitable, List, Optional, Sequence
 
 import tensorflow as tf
 
@@ -34,24 +35,24 @@ from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import value_reference
 
 
-class CoroValueReference(value_reference.MaterializableValueReference):
-  """A `tff.program.MaterializableValueReference` backed by a coroutine."""
+class AwaitableValueReference(value_reference.MaterializableValueReference):
+  """A `tff.program.MaterializableValueReference` backed by an `Awaitable`."""
 
-  def __init__(self, coro: Coroutine[Any, Any,
-                                     value_reference.MaterializablePythonType],
+  def __init__(self,
+               awaitable: Awaitable[value_reference.MaterializablePythonType],
                type_signature: value_reference.MaterializableTffType):
-    """Returns an initialized `tff.program.CoroValueReference`.
+    """Returns an initialized `tff.program.AwaitableValueReference`.
 
     Args:
-      coro: An `asyncio.Coroutine` that returns the referenced value.
+      awaitable: An `Awaitable` that returns the referenced value.
       type_signature: The `tff.Type` of this object.
     """
-    if not asyncio.iscoroutine(coro):
-      raise TypeError(f'Expected a `Coroutine`, found {type(coro)}')
+    if not inspect.isawaitable(awaitable):
+      raise TypeError(f'Expected a `Awaitable`, found {type(awaitable)}')
     py_typecheck.check_type(
         type_signature, typing.get_args(value_reference.MaterializableTffType))
 
-    self._coro = coro
+    self._awaitable = awaitable
     self._type_signature = type_signature
     self._value = None
 
@@ -63,33 +64,36 @@ class CoroValueReference(value_reference.MaterializableValueReference):
   async def get_value(self) -> value_reference.MaterializablePythonType:
     """Returns the referenced value as a numpy scalar or array."""
     if self._value is None:
-      self._value = await self._coro
+      self._value = await self._awaitable
     return self._value
 
   def __eq__(self, other: Any) -> bool:
     if self is other:
       return True
-    elif not isinstance(other, CoroValueReference):
+    elif not isinstance(other, AwaitableValueReference):
       return NotImplemented
     return (self._type_signature == other._type_signature and
-            self._coro == other._coro)
+            self._awaitable == other._awaitable)
 
 
-def _create_structure_of_coro_references(
-    coro: Coroutine[Any, Any,
-                    Any], type_signature: computation_types.Type) -> Any:
-  """Returns a structure of `tff.program.CoroValueReference`s."""
-  if not asyncio.iscoroutine(coro):
-    raise TypeError(f'Expected a `Coroutine`, found {type(coro)}')
+def _create_structure_of_awaitable_references(
+    awaitable: Awaitable[Any], type_signature: computation_types.Type) -> Any:
+  """Returns a structure of `tff.program.AwaitableValueReference`s."""
+  if not inspect.isawaitable(awaitable):
+    raise TypeError(f'Expected an `Awaitable`, found {type(awaitable)}')
   py_typecheck.check_type(type_signature, computation_types.Type)
 
   if type_signature.is_struct():
 
-    async def _to_structure(coro: Coroutine[Any, Any, Any]) -> structure.Struct:
-      return structure.from_container(await coro)
+    async def _to_structure(
+        awaitable: Awaitable[structure.Struct]) -> structure.Struct:
+      return structure.from_container(await awaitable)
 
-    coro = _to_structure(coro)
-    shared_awaitable = async_utils.SharedAwaitable(coro)
+    awaitable = _to_structure(awaitable)
+    # A `async_utils.SharedAwaitable` is required to materialize structures of
+    # values sequentially or concurrently. This happens when `get_item` is
+    # invoked for eaceh element.
+    shared_awaitable = async_utils.SharedAwaitable(awaitable)
 
     async def _get_item(awaitable: Awaitable[structure.Struct],
                         index: int) -> Any:
@@ -99,17 +103,23 @@ def _create_structure_of_coro_references(
     elements = []
     element_types = structure.iter_elements(type_signature)
     for index, (name, element_type) in enumerate(element_types):
-      element_coro = _get_item(shared_awaitable, index)
-      element = _create_structure_of_coro_references(element_coro, element_type)
+      element_awaitable = _get_item(shared_awaitable, index)
+      # A `async_utils.SharedAwaitable` is required to materialize structures of
+      # values multiple times. This happens when a value is released using
+      # multiple `tff.program.ReleaseManager`s.
+      element_shared_awaitable = async_utils.SharedAwaitable(element_awaitable)
+      element = _create_structure_of_awaitable_references(
+          element_shared_awaitable, element_type)
       elements.append((name, element))
     return structure.Struct(elements)
   elif (type_signature.is_federated() and
         type_signature.placement == placements.SERVER):
-    return _create_structure_of_coro_references(coro, type_signature.member)
+    return _create_structure_of_awaitable_references(awaitable,
+                                                     type_signature.member)
   elif type_signature.is_sequence():
-    return CoroValueReference(coro, type_signature)
+    return AwaitableValueReference(awaitable, type_signature)
   elif type_signature.is_tensor():
-    return CoroValueReference(coro, type_signature)
+    return AwaitableValueReference(awaitable, type_signature)
   else:
     raise NotImplementedError(f'Unexpected type found: {type_signature}.')
 
@@ -128,11 +138,11 @@ async def _materialize_structure_of_value_references(
   if type_signature.is_struct():
     value = structure.from_container(value)
     element_types = list(structure.iter_elements(type_signature))
-    element_coros = [
+    element_awaitables = [
         _materialize_structure_of_value_references(v, t)
         for v, (_, t) in zip(value, element_types)
     ]
-    elements = await asyncio.gather(*element_coros)
+    elements = await asyncio.gather(*element_awaitables)
     elements = [(n, v) for v, (n, _) in zip(elements, element_types)]
     return structure.Struct(elements)
   elif (type_signature.is_federated() and
@@ -198,7 +208,7 @@ class NativeFederatedContext(federated_context.FederatedContext):
       return await context.invoke(comp, arg)
 
     result_coro = _invoke(self._context, comp, arg)
-    result = _create_structure_of_coro_references(result_coro, result_type)
+    result = _create_structure_of_awaitable_references(result_coro, result_type)
     result = type_conversions.type_to_py_container(result, result_type)
     return result
 

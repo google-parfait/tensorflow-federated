@@ -36,19 +36,19 @@ async def _coro(value: Any) -> Any:
   return value
 
 
-class CoroValueReferenceTest(parameterized.TestCase,
-                             unittest.IsolatedAsyncioTestCase):
+class AwaitableValueReferenceTest(parameterized.TestCase,
+                                  unittest.IsolatedAsyncioTestCase):
 
   @parameterized.named_parameters(
       ('tensor', _coro(1), computation_types.TensorType(tf.int32)),
       ('sequence', _coro([1, 2, 3]), computation_types.SequenceType(tf.int32)),
   )
   def test_init_does_not_raise_type_error_with_type_signature(
-      self, coro, type_signature):
+      self, awaitable, type_signature):
 
     try:
-      native_platform.CoroValueReference(
-          coro=coro, type_signature=type_signature)
+      native_platform.AwaitableValueReference(
+          awaitable=awaitable, type_signature=type_signature)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
 
@@ -59,12 +59,12 @@ class CoroValueReferenceTest(parameterized.TestCase,
       ('str', 'a'),
       ('list', []),
   )
-  def test_init_raises_type_error_with_coro(self, coro):
+  def test_init_raises_type_error_with_awaitable(self, awaitable):
     type_signature = computation_types.TensorType(tf.int32)
 
     with self.assertRaises(TypeError):
-      native_platform.CoroValueReference(
-          coro=coro, type_signature=type_signature)
+      native_platform.AwaitableValueReference(
+          awaitable=awaitable, type_signature=type_signature)
 
   @parameterized.named_parameters(
       ('federated', computation_types.FederatedType(tf.int32,
@@ -72,52 +72,53 @@ class CoroValueReferenceTest(parameterized.TestCase,
       ('struct', computation_types.StructWithPythonType([], list)),
   )
   def test_init_raises_type_error_with_type_signature(self, type_signature):
-    coro = _coro(1)
+    awaitable = _coro(1)
 
     with self.assertRaises(TypeError):
-      native_platform.CoroValueReference(
-          coro=coro, type_signature=type_signature)
+      native_platform.AwaitableValueReference(
+          awaitable=awaitable, type_signature=type_signature)
 
   @parameterized.named_parameters(
       ('bool', _coro(True), computation_types.TensorType(tf.bool), True),
       ('int', _coro(1), computation_types.TensorType(tf.int32), 1),
       ('str', _coro('a'), computation_types.TensorType(tf.string), 'a'),
   )
-  async def test_get_value_returns_value(self, coro, type_signature,
+  async def test_get_value_returns_value(self, awaitable, type_signature,
                                          expected_value):
-    value_reference = native_platform.CoroValueReference(
-        coro=coro, type_signature=type_signature)
+    value_reference = native_platform.AwaitableValueReference(
+        awaitable=awaitable, type_signature=type_signature)
 
     actual_value = await value_reference.get_value()
 
     self.assertEqual(actual_value, expected_value)
 
 
-class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
-                                          unittest.IsolatedAsyncioTestCase):
+class CreateStructureOfAwaitableReferencesTest(parameterized.TestCase,
+                                               unittest.IsolatedAsyncioTestCase
+                                              ):
 
   # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
        _coro(1),
        computation_types.TensorType(tf.int32),
-       native_platform.CoroValueReference(
+       native_platform.AwaitableValueReference(
            _coro(1), computation_types.TensorType(tf.int32))),
       ('federated',
        _coro(1),
        computation_types.FederatedType(tf.int32, placements.SERVER),
-       native_platform.CoroValueReference(
+       native_platform.AwaitableValueReference(
            _coro(1), computation_types.TensorType(tf.int32))),
       ('struct_unnamed',
        _coro([True, 1, 'a']),
        computation_types.StructWithPythonType([
            tf.bool, tf.int32, tf.string], list),
        structure.Struct([
-           (None, native_platform.CoroValueReference(
+           (None, native_platform.AwaitableValueReference(
                _coro(True), computation_types.TensorType(tf.bool))),
-           (None, native_platform.CoroValueReference(
+           (None, native_platform.AwaitableValueReference(
                _coro(1), computation_types.TensorType(tf.int32))),
-           (None, native_platform.CoroValueReference(
+           (None, native_platform.AwaitableValueReference(
                _coro('a'), computation_types.TensorType(tf.string))),
        ])),
       ('struct_named',
@@ -128,11 +129,11 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
            ('c', tf.string),
        ], collections.OrderedDict),
        structure.Struct([
-           ('a', native_platform.CoroValueReference(
+           ('a', native_platform.AwaitableValueReference(
                _coro(True), computation_types.TensorType(tf.bool))),
-           ('b', native_platform.CoroValueReference(
+           ('b', native_platform.AwaitableValueReference(
                _coro(1), computation_types.TensorType(tf.int32))),
-           ('c', native_platform.CoroValueReference(
+           ('c', native_platform.AwaitableValueReference(
                _coro('a'), computation_types.TensorType(tf.string))),
        ])),
       ('struct_nested',
@@ -151,22 +152,22 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
        ], collections.OrderedDict),
        structure.Struct([
            ('x', structure.Struct([
-               ('a', native_platform.CoroValueReference(
+               ('a', native_platform.AwaitableValueReference(
                    _coro(True), computation_types.TensorType(tf.bool))),
-               ('b', native_platform.CoroValueReference(
+               ('b', native_platform.AwaitableValueReference(
                    _coro(1), computation_types.TensorType(tf.int32))),
            ])),
            ('y', structure.Struct([
-               ('c', native_platform.CoroValueReference(
+               ('c', native_platform.AwaitableValueReference(
                    _coro('a'), computation_types.TensorType(tf.string))),
            ])),
        ])),
   )
   # pyformat: enable
   async def test_returns_value_materialized_sequentially(
-      self, coro, type_signature, expected_value):
-    actual_value = native_platform._create_structure_of_coro_references(
-        coro=coro, type_signature=type_signature)
+      self, awaitable, type_signature, expected_value):
+    actual_value = native_platform._create_structure_of_awaitable_references(
+        awaitable=awaitable, type_signature=type_signature)
 
     if (type_signature.is_struct() and
         not structure.is_same_structure(actual_value, expected_value)):
@@ -183,23 +184,23 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
       ('tensor',
        _coro(1),
        computation_types.TensorType(tf.int32),
-       native_platform.CoroValueReference(
+       native_platform.AwaitableValueReference(
            _coro(1), computation_types.TensorType(tf.int32))),
       ('federated',
        _coro(1),
        computation_types.FederatedType(tf.int32, placements.SERVER),
-       native_platform.CoroValueReference(
+       native_platform.AwaitableValueReference(
            _coro(1), computation_types.TensorType(tf.int32))),
       ('struct_unnamed',
        _coro([True, 1, 'a']),
        computation_types.StructWithPythonType([
            tf.bool, tf.int32, tf.string], list),
        structure.Struct([
-           (None, native_platform.CoroValueReference(
+           (None, native_platform.AwaitableValueReference(
                _coro(True), computation_types.TensorType(tf.bool))),
-           (None, native_platform.CoroValueReference(
+           (None, native_platform.AwaitableValueReference(
                _coro(1), computation_types.TensorType(tf.int32))),
-           (None, native_platform.CoroValueReference(
+           (None, native_platform.AwaitableValueReference(
                _coro('a'), computation_types.TensorType(tf.string))),
        ])),
       ('struct_named',
@@ -210,11 +211,11 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
            ('c', tf.string),
        ], collections.OrderedDict),
        structure.Struct([
-           ('a', native_platform.CoroValueReference(
+           ('a', native_platform.AwaitableValueReference(
                _coro(True), computation_types.TensorType(tf.bool))),
-           ('b', native_platform.CoroValueReference(
+           ('b', native_platform.AwaitableValueReference(
                _coro(1), computation_types.TensorType(tf.int32))),
-           ('c', native_platform.CoroValueReference(
+           ('c', native_platform.AwaitableValueReference(
                _coro('a'), computation_types.TensorType(tf.string))),
        ])),
       ('struct_nested',
@@ -233,22 +234,22 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
        ], collections.OrderedDict),
        structure.Struct([
            ('x', structure.Struct([
-               ('a', native_platform.CoroValueReference(
+               ('a', native_platform.AwaitableValueReference(
                    _coro(True), computation_types.TensorType(tf.bool))),
-               ('b', native_platform.CoroValueReference(
+               ('b', native_platform.AwaitableValueReference(
                    _coro(1), computation_types.TensorType(tf.int32))),
            ])),
            ('y', structure.Struct([
-               ('c', native_platform.CoroValueReference(
+               ('c', native_platform.AwaitableValueReference(
                    _coro('a'), computation_types.TensorType(tf.string))),
            ])),
        ])),
   )
   # pyformat: enable
   async def test_returns_value_materialized_concurrently(
-      self, coro, type_signature, expected_value):
-    actual_value = native_platform._create_structure_of_coro_references(
-        coro=coro, type_signature=type_signature)
+      self, awaitable, type_signature, expected_value):
+    actual_value = native_platform._create_structure_of_awaitable_references(
+        awaitable=awaitable, type_signature=type_signature)
 
     if (type_signature.is_struct() and
         not structure.is_same_structure(actual_value, expected_value)):
@@ -267,19 +268,73 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
       ('tensor',
        _coro(1),
        computation_types.TensorType(tf.int32),
-       native_platform.CoroValueReference(
+       native_platform.AwaitableValueReference(
            _coro(1), computation_types.TensorType(tf.int32))),
       ('federated',
        _coro(1),
        computation_types.FederatedType(tf.int32, placements.SERVER),
-       native_platform.CoroValueReference(
+       native_platform.AwaitableValueReference(
            _coro(1), computation_types.TensorType(tf.int32))),
+      ('struct_unnamed',
+       _coro([True, 1, 'a']),
+       computation_types.StructWithPythonType([
+           tf.bool, tf.int32, tf.string], list),
+       structure.Struct([
+           (None, native_platform.AwaitableValueReference(
+               _coro(True), computation_types.TensorType(tf.bool))),
+           (None, native_platform.AwaitableValueReference(
+               _coro(1), computation_types.TensorType(tf.int32))),
+           (None, native_platform.AwaitableValueReference(
+               _coro('a'), computation_types.TensorType(tf.string))),
+       ])),
+      ('struct_named',
+       _coro(collections.OrderedDict([('a', True), ('b', 1), ('c', 'a')])),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+       ], collections.OrderedDict),
+       structure.Struct([
+           ('a', native_platform.AwaitableValueReference(
+               _coro(True), computation_types.TensorType(tf.bool))),
+           ('b', native_platform.AwaitableValueReference(
+               _coro(1), computation_types.TensorType(tf.int32))),
+           ('c', native_platform.AwaitableValueReference(
+               _coro('a'), computation_types.TensorType(tf.string))),
+       ])),
+      ('struct_nested',
+       _coro(collections.OrderedDict([
+           ('x', collections.OrderedDict([('a', True), ('b', 1)])),
+           ('y', collections.OrderedDict([('c', 'a')])),
+       ])),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
+       structure.Struct([
+           ('x', structure.Struct([
+               ('a', native_platform.AwaitableValueReference(
+                   _coro(True), computation_types.TensorType(tf.bool))),
+               ('b', native_platform.AwaitableValueReference(
+                   _coro(1), computation_types.TensorType(tf.int32))),
+           ])),
+           ('y', structure.Struct([
+               ('c', native_platform.AwaitableValueReference(
+                   _coro('a'), computation_types.TensorType(tf.string))),
+           ])),
+       ])),
   )
   # pyformat: enable
-  async def test_returns_value_materialized_multiple(self, coro, type_signature,
+  async def test_returns_value_materialized_multiple(self, awaitable,
+                                                     type_signature,
                                                      expected_value):
-    actual_value = native_platform._create_structure_of_coro_references(
-        coro=coro, type_signature=type_signature)
+    actual_value = native_platform._create_structure_of_awaitable_references(
+        awaitable=awaitable, type_signature=type_signature)
 
     if (type_signature.is_struct() and
         not structure.is_same_structure(actual_value, expected_value)):
@@ -297,48 +352,6 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
         *[v.get_value() for v in actual_flattened])
     self.assertEqual(actual_materialized, expected_materialized)
 
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('struct_unnamed',
-       _coro([True, 1, 'a']),
-       computation_types.StructWithPythonType(
-           [tf.bool, tf.int32, tf.string], list)),
-      ('struct_named',
-       _coro(collections.OrderedDict([('a', True), ('b', 1), ('c', 'a')])),
-       computation_types.StructWithPythonType([
-           ('a', tf.bool),
-           ('b', tf.int32),
-           ('c', tf.string),
-       ], collections.OrderedDict)),
-      ('struct_nested',
-       _coro(collections.OrderedDict([
-           ('x', collections.OrderedDict([('a', True), ('b', 1)])),
-           ('y', collections.OrderedDict([('c', 'a')])),
-       ])),
-       computation_types.StructWithPythonType([
-           ('x', computation_types.StructWithPythonType([
-               ('a', tf.bool),
-               ('b', tf.int32),
-           ], collections.OrderedDict)),
-           ('y', computation_types.StructWithPythonType([
-               ('c', tf.string),
-           ], collections.OrderedDict)),
-       ], collections.OrderedDict)),
-  )
-  # pyformat: enable
-  async def test_returns_value_materialized_multiple_raises_runtime_error(
-      self, coro, type_signature):
-    # TODO(b/246161724): Materializing a structure multiple times should not
-    # raise a runtime error.
-    actual_value = native_platform._create_structure_of_coro_references(
-        coro=coro, type_signature=type_signature)
-
-    flattened = structure.flatten(actual_value)
-    with self.assertRaises(RuntimeError):
-      await asyncio.gather(*[v.get_value() for v in flattened],
-                           *[v.get_value() for v in flattened],
-                           *[v.get_value() for v in flattened])
-
   @parameterized.named_parameters(
       ('none', None),
       ('bool', True),
@@ -346,12 +359,12 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
       ('str', 'a'),
       ('list', []),
   )
-  def test_raises_type_error_with_coro(self, coro):
+  def test_raises_type_error_with_awaitable(self, awaitable):
     type_signature = computation_types.TensorType(tf.int32)
 
     with self.assertRaises(TypeError):
-      native_platform._create_structure_of_coro_references(
-          coro=coro, type_signature=type_signature)
+      native_platform._create_structure_of_awaitable_references(
+          awaitable=awaitable, type_signature=type_signature)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -361,11 +374,11 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
       ('list', []),
   )
   def test_raises_type_error_with_type_signature(self, type_signature):
-    coro = _coro(1)
+    awaitable = _coro(1)
 
     with self.assertRaises(TypeError):
-      native_platform._create_structure_of_coro_references(
-          coro=coro, type_signature=type_signature)
+      native_platform._create_structure_of_awaitable_references(
+          awaitable=awaitable, type_signature=type_signature)
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -377,11 +390,11 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
   # pyformat: enable
   def test_raises_not_implemented_error_with_type_signature(
       self, type_signature):
-    coro = _coro(1)
+    awaitable = _coro(1)
 
     with self.assertRaises(NotImplementedError):
-      native_platform._create_structure_of_coro_references(
-          coro=coro, type_signature=type_signature)
+      native_platform._create_structure_of_awaitable_references(
+          awaitable=awaitable, type_signature=type_signature)
 
 
 class MaterializeStructureOfValueReferencesTest(parameterized.TestCase,
@@ -391,22 +404,22 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase,
   # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
-       native_platform.CoroValueReference(
+       native_platform.AwaitableValueReference(
            _coro(1), computation_types.TensorType(tf.int32)),
        computation_types.TensorType(tf.int32),
        1),
       ('federated',
-       native_platform.CoroValueReference(
+       native_platform.AwaitableValueReference(
            _coro(1), computation_types.TensorType(tf.int32)),
        computation_types.FederatedType(tf.int32, placements.SERVER),
        1),
       ('struct_unnamed',
        [
-           native_platform.CoroValueReference(
+           native_platform.AwaitableValueReference(
                _coro(True), computation_types.TensorType(tf.bool)),
-           native_platform.CoroValueReference(
+           native_platform.AwaitableValueReference(
                _coro(1), computation_types.TensorType(tf.int32)),
-           native_platform.CoroValueReference(
+           native_platform.AwaitableValueReference(
                _coro('a'), computation_types.TensorType(tf.string)),
        ],
        computation_types.StructWithPythonType(
@@ -414,11 +427,11 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase,
        structure.Struct([(None, True), (None, 1), (None, 'a')])),
       ('struct_named',
        collections.OrderedDict([
-           ('a', native_platform.CoroValueReference(
+           ('a', native_platform.AwaitableValueReference(
                _coro(True), computation_types.TensorType(tf.bool))),
-           ('b', native_platform.CoroValueReference(
+           ('b', native_platform.AwaitableValueReference(
                _coro(1), computation_types.TensorType(tf.int32))),
-           ('c', native_platform.CoroValueReference(
+           ('c', native_platform.AwaitableValueReference(
                _coro('a'), computation_types.TensorType(tf.string))),
        ]),
        computation_types.StructWithPythonType([
@@ -430,13 +443,13 @@ class MaterializeStructureOfValueReferencesTest(parameterized.TestCase,
       ('struct_nested',
        collections.OrderedDict([
            ('x', collections.OrderedDict([
-               ('a', native_platform.CoroValueReference(
+               ('a', native_platform.AwaitableValueReference(
                    _coro(True), computation_types.TensorType(tf.bool))),
-               ('b', native_platform.CoroValueReference(
+               ('b', native_platform.AwaitableValueReference(
                    _coro(1), computation_types.TensorType(tf.int32))),
            ])),
            ('y', collections.OrderedDict([
-               ('c', native_platform.CoroValueReference(
+               ('c', native_platform.AwaitableValueReference(
                    _coro('a'), computation_types.TensorType(tf.string))),
            ])),
        ]),
