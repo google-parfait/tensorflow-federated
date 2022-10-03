@@ -50,7 +50,7 @@ class CoroValueReferenceTest(parameterized.TestCase,
       native_platform.CoroValueReference(
           coro=coro, type_signature=type_signature)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -163,23 +163,181 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
        ])),
   )
   # pyformat: enable
-  async def test_returns_value(self, coro, type_signature, expected_value):
+  async def test_returns_value_materialized_sequentially(
+      self, coro, type_signature, expected_value):
     actual_value = native_platform._create_structure_of_coro_references(
         coro=coro, type_signature=type_signature)
 
-    if (isinstance(actual_value, structure.Struct) and
-        isinstance(expected_value, structure.Struct)):
-      structure.is_same_structure(actual_value, expected_value)
-      actual_value = structure.flatten(actual_value)
-      expected_value = structure.flatten(expected_value)
-      for a, b in zip(actual_value, expected_value):
-        a = await a.get_value()
-        b = await b.get_value()
-        self.assertEqual(a, b)
-    else:
-      actual_value = await actual_value.get_value()
-      expected_value = await expected_value.get_value()
-      self.assertEqual(actual_value, expected_value)
+    if (type_signature.is_struct() and
+        not structure.is_same_structure(actual_value, expected_value)):
+      self.fail('Expected the structures to be the same, found '
+                f'{actual_value} and {expected_value}')
+    actual_flattened = structure.flatten(actual_value)
+    actual_materialized = [await v.get_value() for v in actual_flattened]
+    expected_flattened = structure.flatten(expected_value)
+    expected_materialized = [await v.get_value() for v in expected_flattened]
+    self.assertEqual(actual_materialized, expected_materialized)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('tensor',
+       _coro(1),
+       computation_types.TensorType(tf.int32),
+       native_platform.CoroValueReference(
+           _coro(1), computation_types.TensorType(tf.int32))),
+      ('federated',
+       _coro(1),
+       computation_types.FederatedType(tf.int32, placements.SERVER),
+       native_platform.CoroValueReference(
+           _coro(1), computation_types.TensorType(tf.int32))),
+      ('struct_unnamed',
+       _coro([True, 1, 'a']),
+       computation_types.StructWithPythonType([
+           tf.bool, tf.int32, tf.string], list),
+       structure.Struct([
+           (None, native_platform.CoroValueReference(
+               _coro(True), computation_types.TensorType(tf.bool))),
+           (None, native_platform.CoroValueReference(
+               _coro(1), computation_types.TensorType(tf.int32))),
+           (None, native_platform.CoroValueReference(
+               _coro('a'), computation_types.TensorType(tf.string))),
+       ])),
+      ('struct_named',
+       _coro(collections.OrderedDict([('a', True), ('b', 1), ('c', 'a')])),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+       ], collections.OrderedDict),
+       structure.Struct([
+           ('a', native_platform.CoroValueReference(
+               _coro(True), computation_types.TensorType(tf.bool))),
+           ('b', native_platform.CoroValueReference(
+               _coro(1), computation_types.TensorType(tf.int32))),
+           ('c', native_platform.CoroValueReference(
+               _coro('a'), computation_types.TensorType(tf.string))),
+       ])),
+      ('struct_nested',
+       _coro(collections.OrderedDict([
+           ('x', collections.OrderedDict([('a', True), ('b', 1)])),
+           ('y', collections.OrderedDict([('c', 'a')])),
+       ])),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict),
+       structure.Struct([
+           ('x', structure.Struct([
+               ('a', native_platform.CoroValueReference(
+                   _coro(True), computation_types.TensorType(tf.bool))),
+               ('b', native_platform.CoroValueReference(
+                   _coro(1), computation_types.TensorType(tf.int32))),
+           ])),
+           ('y', structure.Struct([
+               ('c', native_platform.CoroValueReference(
+                   _coro('a'), computation_types.TensorType(tf.string))),
+           ])),
+       ])),
+  )
+  # pyformat: enable
+  async def test_returns_value_materialized_concurrently(
+      self, coro, type_signature, expected_value):
+    actual_value = native_platform._create_structure_of_coro_references(
+        coro=coro, type_signature=type_signature)
+
+    if (type_signature.is_struct() and
+        not structure.is_same_structure(actual_value, expected_value)):
+      self.fail('Expected the structures to be the same, found '
+                f'{actual_value} and {expected_value}')
+    actual_flattened = structure.flatten(actual_value)
+    actual_materialized = await asyncio.gather(
+        *[v.get_value() for v in actual_flattened])
+    expected_flattened = structure.flatten(expected_value)
+    expected_materialized = await asyncio.gather(
+        *[v.get_value() for v in expected_flattened])
+    self.assertEqual(actual_materialized, expected_materialized)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('tensor',
+       _coro(1),
+       computation_types.TensorType(tf.int32),
+       native_platform.CoroValueReference(
+           _coro(1), computation_types.TensorType(tf.int32))),
+      ('federated',
+       _coro(1),
+       computation_types.FederatedType(tf.int32, placements.SERVER),
+       native_platform.CoroValueReference(
+           _coro(1), computation_types.TensorType(tf.int32))),
+  )
+  # pyformat: enable
+  async def test_returns_value_materialized_multiple(self, coro, type_signature,
+                                                     expected_value):
+    actual_value = native_platform._create_structure_of_coro_references(
+        coro=coro, type_signature=type_signature)
+
+    if (type_signature.is_struct() and
+        not structure.is_same_structure(actual_value, expected_value)):
+      self.fail('Expected the structures to be the same, found '
+                f'{actual_value} and {expected_value}')
+    actual_flattened = structure.flatten(actual_value)
+    actual_materialized = await asyncio.gather(
+        *[v.get_value() for v in actual_flattened],
+        *[v.get_value() for v in actual_flattened],
+        *[v.get_value() for v in actual_flattened])
+    expected_flattened = structure.flatten(expected_value)
+    expected_materialized = await asyncio.gather(
+        *[v.get_value() for v in expected_flattened],
+        *[v.get_value() for v in actual_flattened],
+        *[v.get_value() for v in actual_flattened])
+    self.assertEqual(actual_materialized, expected_materialized)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('struct_unnamed',
+       _coro([True, 1, 'a']),
+       computation_types.StructWithPythonType(
+           [tf.bool, tf.int32, tf.string], list)),
+      ('struct_named',
+       _coro(collections.OrderedDict([('a', True), ('b', 1), ('c', 'a')])),
+       computation_types.StructWithPythonType([
+           ('a', tf.bool),
+           ('b', tf.int32),
+           ('c', tf.string),
+       ], collections.OrderedDict)),
+      ('struct_nested',
+       _coro(collections.OrderedDict([
+           ('x', collections.OrderedDict([('a', True), ('b', 1)])),
+           ('y', collections.OrderedDict([('c', 'a')])),
+       ])),
+       computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType([
+               ('c', tf.string),
+           ], collections.OrderedDict)),
+       ], collections.OrderedDict)),
+  )
+  # pyformat: enable
+  async def test_returns_value_materialized_multiple_raises_runtime_error(
+      self, coro, type_signature):
+    # TODO(b/246161724): Materializing a structure multiple times should not
+    # raise a runtime error.
+    actual_value = native_platform._create_structure_of_coro_references(
+        coro=coro, type_signature=type_signature)
+
+    flattened = structure.flatten(actual_value)
+    with self.assertRaises(RuntimeError):
+      await asyncio.gather(*[v.get_value() for v in flattened],
+                           *[v.get_value() for v in flattened],
+                           *[v.get_value() for v in flattened])
 
   @parameterized.named_parameters(
       ('none', None),
@@ -224,33 +382,6 @@ class CreateStructureOfCoroReferencesTest(parameterized.TestCase,
     with self.assertRaises(NotImplementedError):
       native_platform._create_structure_of_coro_references(
           coro=coro, type_signature=type_signature)
-
-  async def test_returned_structure_materialized_sequentially(self):
-    coro = _coro([True, 1, 'a'])
-    type_signature = computation_types.StructWithPythonType(
-        [tf.bool, tf.int32, tf.string], list)
-
-    result = native_platform._create_structure_of_coro_references(
-        coro=coro, type_signature=type_signature)
-
-    actual_values = []
-    for value in result:
-      actual_value = await value.get_value()
-      actual_values.append(actual_value)
-    expected_values = [True, 1, 'a']
-    self.assertEqual(actual_values, expected_values)
-
-  async def test_returned_structure_materialized_concurrently(self):
-    coro = _coro([True, 1, 'a'])
-    type_signature = computation_types.StructWithPythonType(
-        [tf.bool, tf.int32, tf.string], list)
-
-    result = native_platform._create_structure_of_coro_references(
-        coro=coro, type_signature=type_signature)
-
-    actual_values = await asyncio.gather(*[v.get_value() for v in result])
-    expected_values = [True, 1, 'a']
-    self.assertEqual(actual_values, expected_values)
 
 
 class MaterializeStructureOfValueReferencesTest(parameterized.TestCase,
@@ -358,7 +489,7 @@ class NativeFederatedContextTest(parameterized.TestCase,
     try:
       native_platform.NativeFederatedContext(context)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -403,23 +534,6 @@ class NativeFederatedContextTest(parameterized.TestCase,
     with self.assertRaises(TypeError):
       context.invoke(comp, None)
 
-  def test_invoke_does_not_raise_value_error_with_comp(self):
-    context = execution_contexts.create_local_async_python_execution_context()
-    context = native_platform.NativeFederatedContext(context)
-
-    @tensorflow_computation.tf_computation()
-    def return_one():
-      return 1
-
-    try:
-      with mock.patch.object(
-          federated_context,
-          'contains_only_server_placed_data',
-          return_value=True):
-        context.invoke(return_one, None)
-    except ValueError:
-      self.fail('Raised ValueError unexpectedly.')
-
   def test_invoke_raises_value_error_with_comp(self):
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
@@ -435,7 +549,7 @@ class NativeFederatedContextTest(parameterized.TestCase,
           return_value=False):
         context.invoke(return_one, None)
 
-  async def test_computation_returns_result(self):
+  async def test_call_computation_returns_result(self):
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
@@ -461,7 +575,7 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
       native_platform.DatasetDataSourceIterator(
           datasets=datasets, federated_type=federated_type)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -616,7 +730,7 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
     try:
       native_platform.ClientIdDataSourceIterator(client_ids=client_ids)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
