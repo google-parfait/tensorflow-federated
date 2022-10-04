@@ -13,7 +13,9 @@
 # limitations under the License.
 """Libraries for creating federated programs."""
 
+from tensorflow_federated.python.program.client_id_data_source import *
 from tensorflow_federated.python.program.data_source import *
+from tensorflow_federated.python.program.dataset_data_source import *
 from tensorflow_federated.python.program.federated_context import *
 from tensorflow_federated.python.program.file_program_state_manager import *
 from tensorflow_federated.python.program.file_release_manager import *

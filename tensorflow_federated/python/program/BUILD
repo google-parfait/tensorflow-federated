@@ -20,7 +20,9 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        ":client_id_data_source",
         ":data_source",
+        ":dataset_data_source",
         ":federated_context",
         ":file_program_state_manager",
         ":file_release_manager",
@@ -35,10 +37,48 @@ py_library(
 )
 
 py_library(
+    name = "client_id_data_source",
+    srcs = ["client_id_data_source.py"],
+    deps = [
+        ":data_source",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_test(
+    name = "client_id_data_source_test",
+    srcs = ["client_id_data_source_test.py"],
+    deps = [":client_id_data_source"],
+)
+
+py_library(
     name = "data_source",
     srcs = ["data_source.py"],
     srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
+)
+
+py_library(
+    name = "dataset_data_source",
+    srcs = ["dataset_data_source.py"],
+    deps = [
+        ":data_source",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_test(
+    name = "dataset_data_source_test",
+    srcs = ["dataset_data_source_test.py"],
+    deps = [
+        ":dataset_data_source",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
 )
 
 py_library(
@@ -187,7 +227,6 @@ py_library(
     srcs = ["native_platform.py"],
     srcs_version = "PY3",
     deps = [
-        ":data_source",
         ":federated_context",
         ":value_reference",
         "//tensorflow_federated/python/common_libs:async_utils",
