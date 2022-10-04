@@ -1,3 +1,41 @@
+# Release 0.37.0
+
+## Major Features and Improvements
+
+*   Added support for Python 3.10.
+*   Improved support for `numpy` values in the `tff.program` API.
+*   Increased dataset serialization size limit to 100MB.
+*   Added a new method `tff.learning.ModelWeights.convert_variables_to_arrays`.
+*   Added new metrics aggregation factories under `tff.learning.metrics`.
+*   Parallelized aggregation in `tff.framework.ComposingExecutorFactory`.
+
+## Breaking Changes
+
+*   Updated to use `jax` and `jaxlib` version `0.3.14`.
+*   Renamed `tff.program.CoroValueReference` to
+    `tff.program.AwaitableValueReference` to reflect the relaxed contract.
+
+## Bug Fixes
+
+*   Improved documentation for `tff.simulation.build_uniform_sampling_fn`,
+    `tff.learning.robust_aggregator`,
+    `tff.aggregators.PrivateQuantileEstimationProcess`.
+*   Fixed documentation bug for tutorial “High-performance Simulation with
+    Kubernetes”.
+*   Fixed bug where momentum hyperparameters were added to SGDM optimizer when
+    momentum was set to 0.
+*   Removed assertion that preprocessed datasets in a
+    `tff.simulation.baselines.BaselineTask` have the same element structure.
+*   Fixed a memory leak when moving numpy arrays across the Python and C++
+    boundary in the C++ executor.
+*   Fixed bug in the federated program API when using multiple release managers
+    to release the same value.
+
+## Thanks to our Contributors
+
+This release contains contributions from many people at Google, as well as:
+Madhava Jay, nbishdev@
+
 # Release 0.36.0
 
 ## Major Features and Improvements
