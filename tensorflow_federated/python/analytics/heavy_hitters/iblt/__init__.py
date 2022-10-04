@@ -18,6 +18,7 @@ from tensorflow_federated.python.analytics.heavy_hitters.iblt.chunkers import cr
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.hyperedge_hashers import CoupledHyperEdgeHasher
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.hyperedge_hashers import RandomHyperEdgeHasher
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_lib import decode_iblt_tf
+from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_lib import DEFAULT_REPETITIONS
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_lib import IbltDecoder
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_lib import IbltEncoder
 from tensorflow_federated.python.analytics.heavy_hitters.iblt.iblt_tensor import decode_iblt_tensor_tf
