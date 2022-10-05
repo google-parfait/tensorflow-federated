@@ -16,7 +16,7 @@
 from tensorflow_federated.python.core.impl.context_stack import context_base
 
 
-class JaxComputationContext(context_base.Context):
+class JaxComputationContext(context_base.SyncContext):
   """An experimental context for building JAX computations."""
 
   def __init__(self):

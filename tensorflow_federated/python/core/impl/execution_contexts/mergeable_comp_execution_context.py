@@ -528,7 +528,7 @@ async def _invoke_mergeable_comp_form(
   return repackaged_values
 
 
-class MergeableCompExecutionContext(context_base.Context):
+class MergeableCompExecutionContext(context_base.SyncContext):
   """Context which executes mergeable computations in subrounds.
 
   This context relies on retrying behavior of the  underlying asynchronous

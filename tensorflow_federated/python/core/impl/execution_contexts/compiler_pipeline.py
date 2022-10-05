@@ -37,9 +37,10 @@ class CompilerPipeline:
   Different TFF backends may accept different executable artifacts; e.g. a
   backend that supports only a map-reduce execution model may accept instances
   of `tff.backends.mapreduce.MapReduceForm`. The TFF representation of such a
-  backend takes the form of an instance of `tff.framework.Context`, which would
-  be initialized with a `CompilerPipeline` whose `compilation_fn` accepts
-  `tff.Computations` and returns MapReduceForms.
+  backend takes the form of an instance of `tff.framework.SyncContext` or
+  `tff.framework.AsyncContext` , which would be initialized with a
+  `CompilerPipeline` whose `compilation_fn` accepts `tff.Computations` and
+  returns MapReduceForms.
   """
 
   def __init__(self, compilation_fn: Callable[[computation_base.Computation],

@@ -28,7 +28,7 @@ class CreateTestExecutionTest(tf.test.TestCase):
 
   def test_returns_cpp_context(self):
     context = cpp_execution_contexts.create_test_cpp_execution_context()
-    self.assertIsInstance(context, context_base.Context)
+    self.assertIsInstance(context, context_base.SyncContext)
 
 
 class SecureModularSumTest(parameterized.TestCase, tf.test.TestCase):

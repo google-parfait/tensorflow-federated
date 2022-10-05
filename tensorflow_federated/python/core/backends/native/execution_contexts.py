@@ -340,7 +340,7 @@ def create_localhost_cpp_execution_context(
       a single computation in the CPP runtime. If `None`, there is no limit.
 
   Returns:
-    An instance of `context_base.Context` representing the TFF-C++ runtime.
+    An instance of `tff.framework.SyncContext` representing the TFF-C++ runtime.
   """
   service_binary = binary_path
 

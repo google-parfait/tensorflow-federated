@@ -21,20 +21,11 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
-from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import data_source
 from tensorflow_federated.python.program import dataset_data_source
 from tensorflow_federated.python.program import prefetching_data_source
-
-
-def _get_contexts():
-  return [
-      ('python_local',
-       execution_contexts.create_local_async_python_execution_context),
-  ]
 
 
 class PrefetchingDataSourceTest(parameterized.TestCase,
@@ -47,20 +38,20 @@ class PrefetchingDataSourceTest(parameterized.TestCase,
   def test_init_sets_federated_type(self, tensors, dtype):
     datasets = [tf.data.Dataset.from_tensor_slices(tensors)] * 3
     ds = dataset_data_source.DatasetDataSource(datasets)
+    context = execution_contexts.create_local_async_python_execution_context()
 
     prefetching_ds = prefetching_data_source.PrefetchingDataSource(
         data_source=ds,
         total_rounds=5,
         num_rounds_to_prefetch=3,
         num_clients_to_prefetch=2,
-        context=get_context_stack.get_context_stack().current,
+        context=context,
         buffer_size=0)
 
     federated_type = computation_types.FederatedType(
         computation_types.SequenceType(dtype), placements.CLIENTS)
     self.assertEqual(prefetching_ds.federated_type, federated_type)
 
-  @context_stack_test_utils.with_contexts(_get_contexts())
   async def test_select_calls_prefetches_data(self):
     ds = mock.create_autospec(data_source.FederatedDataSource, autospec=True)
     ds_iterator = mock.create_autospec(
@@ -69,13 +60,14 @@ class PrefetchingDataSourceTest(parameterized.TestCase,
         tf.int32, placements.CLIENTS)
     ds_iterator.select.return_value = [1, 2]
     ds.iterator.return_value = ds_iterator
+    context = execution_contexts.create_local_async_python_execution_context()
 
     prefetching_ds = prefetching_data_source.PrefetchingDataSource(
         data_source=ds,
         total_rounds=5,
         num_rounds_to_prefetch=3,
         num_clients_to_prefetch=2,
-        context=get_context_stack.get_context_stack().current,
+        context=context,
         buffer_size=0)
 
     ds_iterator.select.assert_not_called()

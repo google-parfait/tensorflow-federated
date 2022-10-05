@@ -53,7 +53,7 @@ def contains_only_server_placed_data(
   return type_analysis.contains_only(type_signature, predicate)
 
 
-class FederatedContext(context_base.Context):
+class FederatedContext(context_base.SyncContext):
   """An abstract interface representing a federated context.
 
   A federated context supports invoking a limited set of `tff.Computation`s,

@@ -44,6 +44,7 @@ class ContextStack(metaclass=abc.ABCMeta):
       The installed context.
 
     Raises:
-      TypeError: If `ctx` is not a valid instance of `context_base.Context`.
+      TypeError: If `ctx` is not a valid instance of
+        `tff.framework.AsyncContext` or `tff.framework.SyncContext`.
     """
     raise NotImplementedError

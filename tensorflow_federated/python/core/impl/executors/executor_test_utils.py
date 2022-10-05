@@ -103,7 +103,7 @@ class BasicTestExFactory(executor_factory.ExecutorFactory):
     pass
 
 
-class TestExecutionContext(context_base.Context):
+class TestExecutionContext(context_base.SyncContext):
   """Minimal execution context for testing executors."""
 
   def __init__(self, ex_factory):

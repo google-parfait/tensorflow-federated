@@ -34,7 +34,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
 
   def test_constructs_local_context(self):
     context = cpp_execution_contexts.create_local_cpp_execution_context()
-    self.assertIsInstance(context, context_base.Context)
+    self.assertIsInstance(context, context_base.SyncContext)
 
   def test_constructs_remote_context(self):
     targets = ['fake_target']
@@ -43,7 +43,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
     ]
     context = cpp_execution_contexts.create_remote_cpp_execution_context(
         channels=channels)
-    self.assertIsInstance(context, context_base.Context)
+    self.assertIsInstance(context, context_base.SyncContext)
 
   def test_returns_same_python_structure(self):
 

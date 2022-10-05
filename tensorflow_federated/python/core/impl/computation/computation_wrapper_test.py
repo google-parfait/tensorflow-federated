@@ -63,7 +63,7 @@ class ZeroTracedFunction(computation_impl.ConcreteComputation):
     super().__init__(test_proto, context_stack_impl.context_stack, fn_type)
 
 
-class ContextForTest(context_base.Context):
+class ContextForTest(context_base.SyncContext):
 
   def invoke(self, zero_traced_fn, arg):
     return Result(
