@@ -23,7 +23,7 @@ from tensorflow_federated.python.simulation.baselines import task_data
 
 
 @attr.s(frozen=True, init=True)
-class BaselineTask(object):
+class BaselineTask:
   """Specification for a baseline learning simulation.
 
   Attributes:

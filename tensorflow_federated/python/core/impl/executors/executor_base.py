@@ -24,7 +24,7 @@ from typing import Optional
 from tensorflow_federated.python.core.impl.executors import executor_value_base as evb
 
 
-class Executor(object, metaclass=abc.ABCMeta):
+class Executor(metaclass=abc.ABCMeta):
   """Represents the abstract interface that all executors must implement."""
 
   # TODO(b/134543154): Migrate the reference executor over this new interface.

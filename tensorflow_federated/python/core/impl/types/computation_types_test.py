@@ -272,7 +272,7 @@ class StructWithPythonTypeTest(absltest.TestCase):
   def test_py_attr_class(self):
 
     @attr.s
-    class TestFoo(object):
+    class TestFoo:
       a = attr.ib()
 
     t = computation_types.StructWithPythonType([('a', tf.int32)], TestFoo)
@@ -652,7 +652,7 @@ class ToTypeTest(absltest.TestCase):
   def test_attrs_instance(self):
 
     @attr.s
-    class TestFoo(object):
+    class TestFoo:
       a = attr.ib()
       b = attr.ib()
 
@@ -664,12 +664,12 @@ class ToTypeTest(absltest.TestCase):
   def test_nested_attrs_class(self):
 
     @attr.s
-    class TestFoo(object):
+    class TestFoo:
       a = attr.ib()
       b = attr.ib()
 
     @attr.s
-    class TestFoo2(object):
+    class TestFoo2:
       c = attr.ib()
 
     t = computation_types.to_type(

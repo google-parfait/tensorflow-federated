@@ -23,7 +23,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
-class Struct(object):
+class Struct:
   """Represents a struct-like structure with named and/or unnamed fields.
 
   `Struct`s are similar to `collections.namedtuple` in that their elements can

@@ -108,7 +108,7 @@ def local_recon_model_fn():
 
 
 @attr.s(eq=False, frozen=True)
-class MnistVariables(object):
+class MnistVariables:
   """Structure for variables in an MNIST model."""
   weights = attr.ib()
   bias = attr.ib()

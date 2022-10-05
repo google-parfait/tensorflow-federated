@@ -42,7 +42,7 @@ class AggregationKind(enum.Enum):
   SECURE = 2
 
 
-class IntrinsicDef(object):
+class IntrinsicDef:
   """Represents the definition of an intrinsic.
 
   This class represents the ultimate source of ground truth about what kinds of

@@ -398,7 +398,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
       comp, transform, symbol_tree, identifier_seq)
 
 
-class SymbolTree(object):
+class SymbolTree:
   """Data structure to hold variable bindings as we walk an AST.
 
   `SymbolTree` is designed to be constructed and mutatated as we traverse an
@@ -776,7 +776,7 @@ def _walk_to_root(node):
   return node
 
 
-class SequentialBindingNode(object):
+class SequentialBindingNode:
   """Represents a node in a context tree with sequential-binding semantics.
 
   `SequentialBindingNode`s are designed to be constructed and pushed into
@@ -896,7 +896,7 @@ class SequentialBindingNode(object):
     return self._children.get(comp_id)
 
 
-class BoundVariableTracker(object, metaclass=abc.ABCMeta):
+class BoundVariableTracker(metaclass=abc.ABCMeta):
   """Abstract class representing a mutable variable binding."""
 
   def __init__(self, name, value):
@@ -1160,7 +1160,7 @@ def get_map_of_unbound_references(
   return references
 
 
-class TransformSpec(object, metaclass=abc.ABCMeta):
+class TransformSpec(metaclass=abc.ABCMeta):
   """"Base class to express the should_transform/transform interface."""
 
   def __init__(self, global_transform=False):

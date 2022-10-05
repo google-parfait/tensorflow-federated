@@ -235,7 +235,7 @@ class InferTypeTest(parameterized.TestCase, tf.test.TestCase):
   def test_with_nested_dataclass(self):
 
     @dataclasses.dataclass
-    class TestDataclass(object):
+    class TestDataclass:
       a: int
       b: OrderedDict[str, Any]
 
@@ -249,7 +249,7 @@ class InferTypeTest(parameterized.TestCase, tf.test.TestCase):
   def test_with_nested_attrs_class(self):
 
     @attr.s
-    class TestAttrClass(object):
+    class TestAttrClass:
       a = attr.ib()
       b = attr.ib()
 
@@ -655,7 +655,7 @@ class TypeToPyContainerTest(tf.test.TestCase):
         test_named_tuple(a=1, b=2.0))
 
     @attr.s
-    class TestFoo(object):
+    class TestFoo:
       a = attr.ib()
       b = attr.ib()
 
@@ -679,7 +679,7 @@ class TypeToPyContainerTest(tf.test.TestCase):
         computation_types.StructWithPythonType(types, test_named_tuple))
 
     @attr.s
-    class TestFoo(object):
+    class TestFoo:
       a = attr.ib()
       b = attr.ib()
 

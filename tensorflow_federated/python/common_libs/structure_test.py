@@ -435,7 +435,7 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
   def test_from_container_with_attrs_class(self):
 
     @attr.s
-    class TestFoo(object):
+    class TestFoo:
       x = attr.ib()
       y = attr.ib()
 
@@ -564,7 +564,7 @@ class StructTest(tf.test.TestCase, parameterized.TestCase):
   def test_update_struct_attrs(self):
 
     @attr.s
-    class TestAttrsClass(object):
+    class TestAttrsClass:
       a = attr.ib()
       b = attr.ib()
       c = attr.ib()

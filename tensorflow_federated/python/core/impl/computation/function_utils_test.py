@@ -406,7 +406,7 @@ class PolymorphicComputationTest(absltest.TestCase):
       def unpack(self):
         return self._unpack
 
-    class TestFunctionFactory(object):
+    class TestFunctionFactory:
 
       def __init__(self):
         self._count = 0

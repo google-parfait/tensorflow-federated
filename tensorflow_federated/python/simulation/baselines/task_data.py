@@ -45,7 +45,7 @@ def _get_element_spec(data: CentralOrClientData,
   return element_spec
 
 
-class BaselineTaskDatasets(object):
+class BaselineTaskDatasets:
   """A convenience class for a task's data and preprocessing logic.
 
   Attributes:

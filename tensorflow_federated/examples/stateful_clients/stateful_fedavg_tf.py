@@ -38,7 +38,7 @@ def get_model_weights(
     return model.weights
 
 
-class KerasModelWrapper(object):
+class KerasModelWrapper:
   """A standalone keras wrapper to be used in TFF."""
 
   def __init__(self, keras_model, input_spec, loss):
@@ -94,7 +94,7 @@ def keras_evaluate(model, test_data, metric):
 
 
 @attr.s(eq=False, frozen=True, slots=True)
-class ClientState(object):
+class ClientState:
   """Structure for state on the client.
 
   Fields:
@@ -108,7 +108,7 @@ class ClientState(object):
 
 
 @attr.s(eq=False, frozen=True, slots=True)
-class ClientOutput(object):
+class ClientOutput:
   """Structure for outputs returned from clients during federated optimization.
 
   Fields:
@@ -128,7 +128,7 @@ class ClientOutput(object):
 
 
 @attr.s(eq=False, frozen=True, slots=True)
-class ServerState(object):
+class ServerState:
   """Structure for state on the server.
 
   Fields:
@@ -144,7 +144,7 @@ class ServerState(object):
 
 
 @attr.s(eq=False, frozen=True, slots=True)
-class BroadcastMessage(object):
+class BroadcastMessage:
   """Structure for tensors broadcasted by server during federated optimization.
 
   Fields:

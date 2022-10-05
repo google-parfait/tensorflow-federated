@@ -61,7 +61,7 @@ def _check_returns_tuple(label: str, comp: computation_base.Computation,
         f'that is not a tuple of length {length}.')
 
 
-class BroadcastForm(object):
+class BroadcastForm:
   """Standardized representation of server-to-client logic.
 
   This class is designed to represent computations of the form:

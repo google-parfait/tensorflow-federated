@@ -35,7 +35,7 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import placements
 
 
-class TestEnv(object):
+class TestEnv:
   """A test environment that consists of a single client and backend service."""
 
   def __init__(self,

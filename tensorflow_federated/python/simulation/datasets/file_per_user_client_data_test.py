@@ -67,7 +67,7 @@ def _create_example(features):
       feature=output_features)).SerializeToString()
 
 
-class FakeUserData(object):
+class FakeUserData:
   """Container object that creates fake per-user data.
 
   Using the fake test data, create temporary per-user TFRecord files used for

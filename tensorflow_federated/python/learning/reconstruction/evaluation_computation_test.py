@@ -42,7 +42,7 @@ def _create_input_spec():
 
 
 @attr.s(eq=False, frozen=True)
-class LinearModelVariables(object):
+class LinearModelVariables:
   """Structure for variables in `LinearModel`."""
   weights = attr.ib()
   bias = attr.ib()

@@ -45,7 +45,7 @@ BatchOutput.__doc__ = (
   """)
 
 
-class Model(object, metaclass=abc.ABCMeta):
+class Model(metaclass=abc.ABCMeta):
   """Represents a model for use in TensorFlow Federated.
 
   Each `Model` will work on a set of `tf.Variables`, and each method should be

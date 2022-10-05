@@ -32,7 +32,7 @@ import tensorflow_federated as tff
 
 
 @attr.s(eq=False, frozen=True, slots=True)
-class ClientOutput(object):
+class ClientOutput:
   """Structure for outputs returned from clients during federated optimization.
 
   Attributes:
@@ -49,7 +49,7 @@ class ClientOutput(object):
 
 
 @attr.s(eq=False, frozen=True, slots=True)
-class ServerState(object):
+class ServerState:
   """Structure for state on the server.
 
   Attributes:
@@ -64,7 +64,7 @@ class ServerState(object):
 
 
 @attr.s(eq=False, frozen=True, slots=True)
-class BroadcastMessage(object):
+class BroadcastMessage:
   """Structure for tensors broadcasted by server during federated optimization.
 
   Attributes:

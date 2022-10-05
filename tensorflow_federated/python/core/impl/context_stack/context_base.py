@@ -16,7 +16,7 @@
 import abc
 
 
-class Context(object, metaclass=abc.ABCMeta):
+class Context(metaclass=abc.ABCMeta):
   """`Context` objects evaluate invocations of computations.
 
   Invocations of TensorFlow Federated computations need to be treated

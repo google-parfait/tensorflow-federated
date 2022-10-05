@@ -86,10 +86,10 @@ class PyTypeCheckTest(parameterized.TestCase):
   def test_is_attr(self):
 
     @attr.s
-    class TestAttrClass(object):
+    class TestAttrClass:
       a = attr.ib(default=0)
 
-    class TestClass(object):
+    class TestClass:
       a = 0
 
     self.assertTrue(py_typecheck.is_attrs(TestAttrClass))

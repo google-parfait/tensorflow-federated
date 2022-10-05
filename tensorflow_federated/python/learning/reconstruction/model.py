@@ -24,7 +24,7 @@ import attr
 
 
 @attr.s(eq=False, frozen=True, slots=True)
-class BatchOutput(object):
+class BatchOutput:
   """A structure that holds the output of a `tff.learning.reconstruction.Model`.
 
   Note: All fields are optional (may be None).
@@ -39,7 +39,7 @@ class BatchOutput(object):
   num_examples = attr.ib()
 
 
-class Model(object, metaclass=abc.ABCMeta):
+class Model(metaclass=abc.ABCMeta):
   """Represents a reconstruction model for use in Tensorflow Federated.
 
   `tff.learning.reconstruction.Model`s are used to train models that reconstruct

@@ -23,7 +23,7 @@ from tensorflow_federated.python.simulation.baselines.stackoverflow import const
 
 
 @attr.s(eq=False, frozen=True)
-class SpecialTokens(object):
+class SpecialTokens:
   """Structure for Special tokens.
 
   Attributes:

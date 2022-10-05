@@ -367,7 +367,7 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_capture_result_with_attrs_of_constants(self):
 
     @attr.s
-    class TestFoo(object):
+    class TestFoo:
       x = attr.ib()
       y = attr.ib()
 
@@ -381,7 +381,7 @@ class GraphUtilsTest(tf.test.TestCase):
   def test_capture_result_with_dataclass_of_constants(self):
 
     @dataclasses.dataclass
-    class TestFoo(object):
+    class TestFoo:
       x: Any
       y: Any
 

@@ -87,7 +87,7 @@ OptimizerFn = Union[Callable[[], tf.keras.optimizers.Optimizer],
 
 
 @attr.s(eq=False, frozen=True)
-class ClientOutput(object):
+class ClientOutput:
   """Structure for outputs returned from clients during training.
 
   Attributes:

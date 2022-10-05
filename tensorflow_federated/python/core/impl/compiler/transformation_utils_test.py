@@ -588,7 +588,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_bad_mock_class_fails_symbol_tree(self):
 
-    class BadMock(object):
+    class BadMock:
       pass
 
     with self.assertRaisesRegex(TypeError, 'subclass'):

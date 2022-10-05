@@ -178,7 +178,7 @@ def create_compiled_identity(
       proto, name, type_signature=function_type)
 
 
-class SelectionSpec(object):
+class SelectionSpec:
   """Data class representing map from input tuple to selection of result.
 
   Attributes:

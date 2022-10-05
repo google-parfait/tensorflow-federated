@@ -419,7 +419,7 @@ class MapReduceFormTest(absltest.TestCase):
   def test_summary(self):
     mrf = mapreduce_test_utils.get_temperature_sensor_example().mrf
 
-    class CapturePrint(object):
+    class CapturePrint:
 
       def __init__(self):
         self.summary = ''

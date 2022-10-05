@@ -26,7 +26,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
 
 
-class CompilerPipeline(object):
+class CompilerPipeline:
   """An interface for generating executable artifacts.
 
   The `CompilerPipeline` holds very little logic; caching for the

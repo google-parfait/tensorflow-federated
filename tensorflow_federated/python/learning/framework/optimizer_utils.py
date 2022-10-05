@@ -58,7 +58,7 @@ class ProcessTypeError(Exception):
 
 
 @attr.s(eq=False, frozen=True)
-class ClientOutput(object):
+class ClientOutput:
   """Structure for outputs returned from clients during federated optimization.
 
   Attributes:
@@ -77,7 +77,7 @@ class ClientOutput(object):
   optimizer_output = attr.ib(default=None)
 
 
-class ClientDeltaFn(object, metaclass=abc.ABCMeta):
+class ClientDeltaFn(metaclass=abc.ABCMeta):
   """Represents a client computation that produces an update to a model."""
 
   @property
@@ -113,7 +113,7 @@ class ClientDeltaFn(object, metaclass=abc.ABCMeta):
 
 
 @attr.s(eq=False, frozen=True)
-class ServerState(object):
+class ServerState:
   """Represents the state of the server carried between rounds.
 
   Attributes:

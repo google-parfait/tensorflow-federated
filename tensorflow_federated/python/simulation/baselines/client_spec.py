@@ -25,7 +25,7 @@ def _check_positive(instance, attribute, value):
 
 
 @attr.s(eq=False, order=False, frozen=True)
-class ClientSpec(object):
+class ClientSpec:
   """Contains information for configuring clients within a training task.
 
   Attributes:

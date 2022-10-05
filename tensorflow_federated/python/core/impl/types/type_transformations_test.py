@@ -324,7 +324,7 @@ class VisitPreorderTest(parameterized.TestCase):
   # pyformat: enable
   def test_preorder_call_count(self, type_signature, expected_count):
 
-    class Counter(object):
+    class Counter:
       k = 0
 
     def _count_hits(given_type, arg):

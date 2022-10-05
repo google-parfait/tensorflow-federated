@@ -154,7 +154,7 @@ def federated_max(value):
 
 
 @attr.s
-class _Samples(object):
+class _Samples:
   """Class representing internal sample data structure.
 
   The class contains two parts, `accumulators` and `rands`, that are parallel

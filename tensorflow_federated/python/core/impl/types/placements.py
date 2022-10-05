@@ -19,7 +19,7 @@
 """Placement literals for use in computation and type definitions."""
 
 
-class PlacementLiteral(object):
+class PlacementLiteral:
   """A representation of one of the globally recognized placement literals."""
 
   def __init__(self, name, uri, default_all_equal, description):

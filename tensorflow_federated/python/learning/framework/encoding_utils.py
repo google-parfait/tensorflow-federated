@@ -55,7 +55,7 @@ _ALLOWED_ENCODERS = (tensor_encoding.core.SimpleEncoder,
 
 
 @attr.s(eq=False, frozen=True)
-class _NestGatherEncoder(object):
+class _NestGatherEncoder:
   """Structure for holding `tf_computations` needed for encoded_sum."""
   get_params_fn = attr.ib()
   encode_fn = attr.ib()

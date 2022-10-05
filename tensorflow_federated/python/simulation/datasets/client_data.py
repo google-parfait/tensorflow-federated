@@ -75,7 +75,7 @@ class InvalidRandomSeedError(TypeError):
     super().__init__(message)
 
 
-class ClientData(object, metaclass=abc.ABCMeta):
+class ClientData(metaclass=abc.ABCMeta):
   """Object to hold a federated dataset.
 
   The federated dataset is represented as a list of client ids, and

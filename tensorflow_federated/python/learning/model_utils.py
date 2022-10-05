@@ -32,7 +32,7 @@ from tensorflow_federated.python.learning import model as model_lib
 
 
 @attr.s(eq=False, frozen=True, slots=True)
-class ModelWeights(object):
+class ModelWeights:
   """A container for the trainable and non-trainable variables of a `Model`.
 
   Note this does not include the model's local variables.

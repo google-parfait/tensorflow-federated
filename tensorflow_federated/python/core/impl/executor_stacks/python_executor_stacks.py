@@ -131,7 +131,7 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
 
 
 @attr.s(auto_attribs=True, eq=False, order=False, frozen=True)
-class SizeInfo(object):
+class SizeInfo:
   """Structure for size information from SizingExecutorFactory.get_size_info().
 
   Attribues:

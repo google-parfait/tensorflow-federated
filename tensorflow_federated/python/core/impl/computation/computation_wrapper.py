@@ -168,7 +168,7 @@ class _TracingError(Exception):
   """Cleanup error provided to generators upon errors during tracing."""
 
 
-class PythonTracingStrategy(object):
+class PythonTracingStrategy:
   """A wrapper strategy that directly traces the function being wrapped.
 
   This strategy relies on directly invoking the Python function being wrapped
@@ -238,7 +238,7 @@ class PythonTracingStrategy(object):
     return wrapped_fn_generator.send(result)
 
 
-class ComputationWrapper(object):
+class ComputationWrapper:
   """A class for creating wrappers that convert functions into computations.
 
   Here's how one can use `ComputationWrapper` to construct a decorator/wrapper

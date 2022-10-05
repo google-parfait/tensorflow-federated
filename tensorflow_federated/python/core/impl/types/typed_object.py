@@ -18,7 +18,7 @@ import abc
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
-class TypedObject(object, metaclass=abc.ABCMeta):
+class TypedObject(metaclass=abc.ABCMeta):
   """An abstract interface for things that possess TFF type signatures."""
 
   @property

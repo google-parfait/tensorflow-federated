@@ -130,7 +130,7 @@ class TypesNotIdenticalError(TypeError):
     self.second_type = second_type
 
 
-class Type(object, metaclass=abc.ABCMeta):
+class Type(metaclass=abc.ABCMeta):
   """An abstract interface for all classes that represent TFF types."""
 
   def compact_representation(self) -> str:

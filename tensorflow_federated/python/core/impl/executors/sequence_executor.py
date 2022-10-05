@@ -35,7 +35,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
-class _AsyncFromSyncIterator(object):
+class _AsyncFromSyncIterator:
   """Wraps a regular sync iterator as an asynchronous one."""
 
   def __init__(self, sync_iter):
@@ -48,7 +48,7 @@ class _AsyncFromSyncIterator(object):
       raise StopAsyncIteration  # pylint: disable=raise-missing-from
 
 
-class _SyncFromAsyncIterable(object):
+class _SyncFromAsyncIterable:
   """Wraps an asynchronous iteble as a regular sync iterable and generator."""
 
   def __init__(self, async_iterable):
@@ -154,7 +154,7 @@ class _SequenceFromMap(_Sequence):
     return _AsyncMapIterator(self._source, self._map_fn, self._target_executor)
 
 
-class _AsyncMapIterator(object):
+class _AsyncMapIterator:
   """An async iterator based on a mapping function."""
 
   def __init__(self, source: _Sequence,

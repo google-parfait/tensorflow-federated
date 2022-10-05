@@ -18,7 +18,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.impl.types import computation_types
 
 
-class DataBackend(object, metaclass=abc.ABCMeta):
+class DataBackend(metaclass=abc.ABCMeta):
   """Abstract interface for data backends.
 
   A data backend is a component that can resolve symbolic references to data

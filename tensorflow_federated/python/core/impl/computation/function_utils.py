@@ -476,7 +476,7 @@ def create_argument_unpacking_fn(
     return functools.partial(_ensure_arg_type, parameter_type)
 
 
-class PolymorphicComputation(object):
+class PolymorphicComputation:
   """A generic polymorphic function that accepts arguments of diverse types."""
 
   def __init__(self, concrete_function_factory: Callable[
