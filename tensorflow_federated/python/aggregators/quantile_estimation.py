@@ -18,6 +18,8 @@
 # information.
 """Iterative process for quantile estimation."""
 
+from typing import Optional
+
 import tensorflow as tf
 import tensorflow_privacy as tfp
 
@@ -103,16 +105,16 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
     else:
       return quantile.map(_affine_transform(multiplier, increment))
 
-  def __init__(
-      self,
-      quantile_estimator_query: tfp.QuantileEstimatorQuery,
-      record_aggregation_factory: factory.UnweightedAggregationFactory = None):
+  def __init__(self,
+               quantile_estimator_query: tfp.QuantileEstimatorQuery,
+               record_aggregation_factory: Optional[
+                   factory.UnweightedAggregationFactory] = None):
     """Initializes `PrivateQuantileEstimationProcess`.
 
     Args:
       quantile_estimator_query: A `tfp.QuantileEstimatorQuery` for estimating
         quantiles with differential privacy.
-      record_aggregation_factory: A
+      record_aggregation_factory: An optional
         `tff.aggregators.UnweightedAggregationFactory` to aggregate counts of
         values below the current estimate. If `None`, defaults to
         `tff.aggregators.SumFactory`.
