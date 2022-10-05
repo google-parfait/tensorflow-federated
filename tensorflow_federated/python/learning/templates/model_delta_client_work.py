@@ -253,8 +253,8 @@ def build_model_delta_client_work(
     optimizer: A `tff.learning.optimizers.Optimizer`, or a no-arg callable that
       returns a `tf.keras.Optimizer`. If using a `tf.keras.Optimizer`, the
       resulting process will have no hyperparameters in its state (ie.
-      `process.get_hparams` will return an empty dictionary), while if using
-      a `tff.learning.optimizers.Optimizer`, the process will have the same
+      `process.get_hparams` will return an empty dictionary), while if using a
+      `tff.learning.optimizers.Optimizer`, the process will have the same
       hyperparameters as the optimizer.
     client_weighting:  A `tff.learning.ClientWeighting` value.
     metrics_aggregator: A function that takes in the metric finalizers (i.e.,

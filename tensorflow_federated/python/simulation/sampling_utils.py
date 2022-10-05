@@ -34,6 +34,12 @@ def build_uniform_sampling_fn(
     random_seed: Optional[int] = None) -> Callable[[int, int], List[T]]:
   """Builds the function for sampling from the input iterator at each round.
 
+  If an integer `random_seed` is provided, we set a random seed before sampling
+  clients according to a multiplicative linear congruential generator (aka
+  Lehmer generator, see 'The Art of Computer Programming, Vol. 3' by Donald
+  Knuth for reference). This does not affect model initialization, shuffling, or
+  other such aspects of the federated training process.
+
   Args:
     sample_range: A 1-D array-like sequence, to be used as input to
       `np.random.choice`. Samples are generated randomly from the elements of
@@ -42,12 +48,6 @@ def build_uniform_sampling_fn(
       (True) or without replacement (False).
     random_seed: If an integer, it is used as a random seed for the client
       sampling process. If None, a nondeterministic seed is used.
-
-  If an integer seed is provided, we set a random seed before sampling clients
-  according to a multiplicative linear congruential generator (aka Lehmer
-  generator, see 'The Art of Computer Programming, Vol. 3' by Donald Knuth for
-  reference). This does not affect model initialization, shuffling, or other
-  such aspects of the federated training process.
 
   Returns:
     A function that takes as input an integer `round_num` and integer `size` and
