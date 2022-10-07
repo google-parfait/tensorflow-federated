@@ -174,7 +174,7 @@ class BinaryChunker(Chunker):
 
     if (string_max_bytes <= 0 or string_max_bytes > max_chunk_value):
       raise ValueError(
-          f'string_max_bytes must be between [1, {max_chunk_value=}]. '
+          f'string_max_bytes must be between [1, {max_chunk_value}]. '
           f'Found: {string_max_bytes}')
 
     if dtype not in (tf.int32, tf.int64):
