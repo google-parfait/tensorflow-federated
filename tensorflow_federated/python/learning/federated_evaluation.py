@@ -169,22 +169,22 @@ def build_federated_evaluation(
       metrics_aggregation_computation = aggregator.sum_then_finalize(
           model.metric_finalizers(), unfinalized_metrics_type)
 
+  local_eval = build_local_evaluation(model_fn, model_weights_type, batch_type,
+                                      use_experimental_simulation_loop)
+
   @federated_computation.federated_computation(
       computation_types.at_server(model_weights_type),
       computation_types.at_clients(SequenceType(batch_type)))
   def server_eval(server_model_weights, federated_dataset):
-    client_eval = build_local_evaluation(model_fn, model_weights_type,
-                                         batch_type,
-                                         use_experimental_simulation_loop)
     if broadcast_process is not None:
       # TODO(b/179091838): Zip the measurements from the broadcast_process with
       # the result of `model_metrics` below to avoid dropping these metrics.
       broadcast_output = broadcast_process.next(broadcast_process.initialize(),
                                                 server_model_weights)
       client_outputs = intrinsics.federated_map(
-          client_eval, (broadcast_output.result, federated_dataset))
+          local_eval, (broadcast_output.result, federated_dataset))
     else:
-      client_outputs = intrinsics.federated_map(client_eval, [
+      client_outputs = intrinsics.federated_map(local_eval, [
           intrinsics.federated_broadcast(server_model_weights),
           federated_dataset
       ])
