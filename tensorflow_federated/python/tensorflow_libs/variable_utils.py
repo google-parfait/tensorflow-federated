@@ -115,7 +115,7 @@ class TensorVariable:
       return
     if not self._shape.is_compatible_with(tf.TensorShape(value.shape)):
       raise ValueError(
-          'Cannot assign value to variable {self!r}. The TensorVariable shape '
+          f'Cannot assign value to variable {self!r}. The TensorVariable shape '
           f'{self._shape}, and the value shape {value.shape} are incompatible.')
 
   def assign_add(self, value, use_locking=False, name=None, read_value=True):
