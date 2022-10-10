@@ -44,7 +44,7 @@ class NumExamplesCounter(tf.keras.metrics.Sum):
       raise ValueError('NumExamplesCounter only works with `numpy.ndarray` or '
                        '`tensorflow.Tensor` types. Received a structure with '
                        'other values; consider using `np.asarray` or '
-                       f'`tf.convert_to_tensor`. Got: {labels}')
+                       '`tf.convert_to_tensor`.')
     return super().update_state(tf.shape(labels[0])[0], sample_weight=None)
 
 

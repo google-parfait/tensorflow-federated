@@ -20,6 +20,7 @@
 
 import collections
 import functools
+import itertools
 from typing import Any, Callable, List, OrderedDict, Tuple, TypeVar, Union
 
 import tensorflow as tf
@@ -120,42 +121,13 @@ def create_functional_metric_fns(
   # `tf.keras.metrics.Metric.variables` to match the order that they are created
   # at runtime. If this changes, `build_replace_variable_with_parameter_creator`
   # will yield the wrong parameters in `update` and `finalize` calls.
-  #
-  # The variable creation index is not necessarily the same ordering a
-  # `tf.nest.flatten()` call on the variable attributes of the metrics, so we
-  # must record the index of the creation during initialization.
-  variable_creation_indices = []
-
-  class IndexedTensorVariableCreator:
-    """A variable creator functor that tracks the index of creation."""
-
-    def __init__(self):
-      self._current_index = 0
-
-    def __call__(self, next_creator_fn, **kwargs):
-      tensor_variable = variable_utils.create_tensor_variable(
-          next_creator_fn, **kwargs)
-      tensor_variable.index = self._current_index
-      self._current_index += 1
-      return tensor_variable
 
   @tf.function
   def initialize():
-    with tf.variable_creator_scope(IndexedTensorVariableCreator()):
-      tensor_variable_structure = tf.nest.map_structure(
-          lambda m: tuple(m.variables), metrics_constructor())
-    nonlocal variable_creation_indices
-    variable_creation_indices = [
-        tensor_variable.index
-        for tensor_variable in tf.nest.flatten(tensor_variable_structure)
-    ]
-    return tensor_variable_structure
-
-  # Force tracing and creation of `variable_creation_indices`. This must happen
-  # in a graph context so that we get the same Keras behavior as when
-  # `initialize` eventualy is run inside a `tff.tf_computation`.
-  with tf.Graph().as_default():
-    initialize.get_concrete_function()
+    with tf.variable_creator_scope(variable_utils.create_tensor_variable):
+      return tf.nest.map_structure(
+          lambda m: [v.read_value() for v in m.variables],
+          metrics_constructor())
 
   def build_replace_variable_with_parameter_creator(parameters):
     """Create a creation function that replaces variables with parameters.
@@ -169,15 +141,19 @@ def create_functional_metric_fns(
       A callable that can be used in a `tf.variable_creator_scope` to replace
       `tf.Variable` creation with `tf.function` parameters.
     """
-    parameter_index_iter = iter(variable_creation_indices)
-    flattened_parameters = tf.nest.flatten(parameters)
+    if isinstance(parameters, collections.OrderedDict):
+      parameter_iterator = itertools.chain(*parameters.values())
+    elif isinstance(parameters, list):
+      parameter_iterator = iter(parameters)
+    else:
+      raise TypeError('Internal coding error: `parameters` must be a `list` or '
+                      f'`OrderedDict` type, got {type(parameters)}.')
 
     def creator_fn(next_creator_fn, **kwargs):
       del next_creator_fn  # Unused.
       kwargs.pop('initial_value')
       return variable_utils.TensorVariable(
-          initial_value=flattened_parameters[next(parameter_index_iter)],
-          **kwargs)
+          initial_value=next(parameter_iterator), **kwargs)
 
     return creator_fn
 
@@ -202,7 +178,7 @@ def create_functional_metric_fns(
       # directly.
       update_state_fn = _get_unwrapped_py_func(metric.update_state)
       update_state_fn(y_true=y_true, y_pred=y_pred)
-      return tuple(metric.variables)
+      return [v.read_value() for v in metric.variables]
 
     with tf.variable_creator_scope(
         build_replace_variable_with_parameter_creator(state)):

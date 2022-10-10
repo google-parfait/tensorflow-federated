@@ -222,20 +222,17 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
   def test_composite_metrics_fn(self):
     initialize, update, finalize = keras_utils.create_functional_metric_fns(
         collections.OrderedDict(
-            precision_at_5=lambda: tf.keras.metrics.Precision(thresholds=[0.5]),
             accuracy=tf.keras.metrics.Accuracy,
-            num_examples=counters.NumExamplesCounter,
-        ))
-    metrics_by_name = collections.OrderedDict(
-        precision_at_5=tf.keras.metrics.Precision(thresholds=[0.5]),
-        accuracy=tf.keras.metrics.Accuracy(),
-        num_examples=counters.NumExamplesCounter(),
+            precision_at_5=lambda: tf.keras.metrics.Precision(thresholds=[0.5]))
     )
+    metrics_by_name = collections.OrderedDict(
+        accuracy=tf.keras.metrics.Accuracy(),
+        precision_at_5=tf.keras.metrics.Precision(thresholds=[0.5]))
     state = initialize()
     self.assertAllClose(
         state, tf.nest.map_structure(lambda m: m.variables, metrics_by_name))
-    predictions = np.asarray([0.25, 0.5, 1.0])
-    labels = np.asarray([0.0, 0.0, 1.0])
+    predictions = [0.25, 0.5, 1.0]
+    labels = [0.0, 0.0, 1.0]
     state = update(state, y_true=labels, y_pred=predictions)
     tf.nest.map_structure(
         lambda m: m.update_state(y_true=labels, y_pred=predictions),
