@@ -109,12 +109,14 @@ class CheckInFederatedContextTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()
 
+  # pyformat: disable
   @parameterized.named_parameters(
-      ('local_cpp_async',
+      ('async_cpp',
        execution_contexts.create_local_async_python_execution_context()),
-      ('local_cpp_sync',
+      ('sync_cpp',
        execution_contexts.create_local_python_execution_context()),
   )
+  # pyformat: enable
   def test_raises_value_error_with_context(self, context):
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()

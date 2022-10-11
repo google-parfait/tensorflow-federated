@@ -15,11 +15,16 @@
 
 import contextlib
 import threading
+import typing
+from typing import Generator, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
+
+
+SyncOrAsyncContext = Union[context_base.Context, context_base.AsyncContext]
 
 
 class ContextStackImpl(context_stack_base.ContextStack, threading.local):
@@ -29,26 +34,28 @@ class ContextStackImpl(context_stack_base.ContextStack, threading.local):
     super().__init__()
     self._stack = [default_context]
 
-  def set_default_context(self, ctx):
+  def set_default_context(self, ctx: SyncOrAsyncContext) -> None:
     """Places `ctx` at the bottom of the stack.
 
     Args:
       ctx: An instance of `context_base.Context`.
     """
-    py_typecheck.check_type(ctx, context_base.Context)
+    py_typecheck.check_type(ctx, typing.get_args(SyncOrAsyncContext))
     assert self._stack
     self._stack[0] = ctx
 
   @property
-  def current(self):
+  def current(self) -> SyncOrAsyncContext:
     assert self._stack
     ctx = self._stack[-1]
-    assert isinstance(ctx, context_base.Context)
+    assert isinstance(ctx, typing.get_args(SyncOrAsyncContext))
     return ctx
 
   @contextlib.contextmanager
-  def install(self, ctx):
-    py_typecheck.check_type(ctx, context_base.Context)
+  def install(
+      self,
+      ctx: SyncOrAsyncContext) -> Generator[SyncOrAsyncContext, None, None]:
+    py_typecheck.check_type(ctx, typing.get_args(SyncOrAsyncContext))
     self._stack.append(ctx)
     try:
       yield ctx

@@ -378,19 +378,20 @@ class MergeableCompExecutionContextValue(typed_object.TypedObject):
     return self._partitioned_value
 
 
-async def _invoke_up_to_merge_and_return_context(comp: MergeableCompForm, arg,
-                                                 context: context_base.Context):
+async def _invoke_up_to_merge_and_return_context(
+    comp: MergeableCompForm, arg, context: context_base.AsyncContext):
   return await context.invoke(comp.up_to_merge, arg)
 
 
 async def _merge_results(comp: MergeableCompForm, merge_partial, value_to_merge,
-                         context: context_base.Context):
+                         context: context_base.AsyncContext):
   return await context.invoke(
       comp.merge, structure.Struct.unnamed(merge_partial, value_to_merge))
 
 
 async def _compute_after_merged(comp: MergeableCompForm, original_arg,
-                                merge_result, context: context_base.Context):
+                                merge_result,
+                                context: context_base.AsyncContext):
   if original_arg is not None:
     arg = structure.Struct.unnamed(original_arg, merge_result)
   else:
@@ -399,10 +400,11 @@ async def _compute_after_merged(comp: MergeableCompForm, original_arg,
 
 
 async def _run_in_async_context_pool(
-    task_fn: Callable[[Any, context_base.Context],
+    task_fn: Callable[[Any, context_base.AsyncContext],
                       asyncio.Task], arg_list: Sequence[Any],
-    execution_contexts: Sequence[context_base.Context], initial_result: Any,
-    postprocessing_hook: Callable[[Any, Any, context_base.Context],
+    execution_contexts: Sequence[context_base.AsyncContext],
+    initial_result: Any,
+    postprocessing_hook: Callable[[Any, Any, context_base.AsyncContext],
                                   Awaitable[Any]]):
   """Runs the tasks against the execution pool, sequentializing the extra work.
 
@@ -453,7 +455,7 @@ async def _run_in_async_context_pool(
 
 async def _invoke_merge_in_async_pool(
     comp: MergeableCompForm, arg_list: Sequence[Any],
-    execution_contexts: Sequence[context_base.Context]):
+    execution_contexts: Sequence[context_base.AsyncContext]):
   """Invokes up to merge and merge in a pool of async contexts."""
 
   def task_fn(x, context):
@@ -475,7 +477,7 @@ async def _invoke_merge_in_async_pool(
 
 async def _invoke_after_merge_in_async_pool(
     comp: MergeableCompForm, merge_result: Any, arg_list: Sequence[Any],
-    execution_contexts: Sequence[context_base.Context]) -> Sequence[Any]:
+    execution_contexts: Sequence[context_base.AsyncContext]) -> Sequence[Any]:
   """Invokes after_merge in a pool of async contexts, returning result."""
 
   def task_fn(x, context):
@@ -496,7 +498,7 @@ async def _invoke_after_merge_in_async_pool(
 
 async def _invoke_mergeable_comp_form(
     comp: MergeableCompForm, arg: Optional[MergeableCompExecutionContextValue],
-    execution_contexts: Sequence[context_base.Context]):
+    execution_contexts: Sequence[context_base.AsyncContext]):
   """Invokes `comp` on `arg`, repackaging the results to a single value."""
 
   if arg is not None:
@@ -538,7 +540,7 @@ class MergeableCompExecutionContext(context_base.Context):
 
   def __init__(
       self,
-      async_contexts: Sequence[context_base.Context],
+      async_contexts: Sequence[context_base.AsyncContext],
       compiler_fn: Optional[Callable[[computation_base.Computation],
                                      MergeableCompForm]] = None,
       num_subrounds: Optional[int] = None,
@@ -559,11 +561,7 @@ class MergeableCompExecutionContext(context_base.Context):
     """
     self._async_runner = async_utils.AsyncThreadRunner()
     for ctx in async_contexts:
-      py_typecheck.check_type(ctx, context_base.Context)
-      if not asyncio.iscoroutinefunction(ctx.invoke):
-        raise ValueError('Async context argument to '
-                         'MergeableCompExecutionContext must implement invoke '
-                         'as a coroutine function.')
+      py_typecheck.check_type(ctx, context_base.AsyncContext)
     self._async_execution_contexts = async_contexts
     self._num_subrounds = (
         num_subrounds

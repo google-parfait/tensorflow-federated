@@ -396,7 +396,7 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
         sync_execution_context.ExecutionContext(
             python_executor_stacks.local_executor_factory()) for _ in range(1)
     ]
-    with self.assertRaises(ValueError):
+    with self.assertRaises(TypeError):
       mergeable_comp_execution_context.MergeableCompExecutionContext(contexts)
 
   def test_invoke_raises_computation_no_compiler(self):

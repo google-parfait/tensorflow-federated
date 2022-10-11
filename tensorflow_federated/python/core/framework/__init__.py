@@ -20,7 +20,9 @@ from tensorflow_federated.python.core.impl.compiler.tree_transformations import 
 from tensorflow_federated.python.core.impl.computation.computation_impl import ConcreteComputation
 from tensorflow_federated.python.core.impl.computation.computation_serialization import deserialize_computation
 from tensorflow_federated.python.core.impl.computation.computation_serialization import serialize_computation
+from tensorflow_federated.python.core.impl.context_stack.context_base import AsyncContext
 from tensorflow_federated.python.core.impl.context_stack.context_base import Context
+from tensorflow_federated.python.core.impl.context_stack.context_base import SyncContext
 from tensorflow_federated.python.core.impl.context_stack.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context

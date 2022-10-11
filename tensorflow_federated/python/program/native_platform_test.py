@@ -24,6 +24,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -496,29 +497,28 @@ class NativeFederatedContextTest(parameterized.TestCase,
                                  unittest.IsolatedAsyncioTestCase,
                                  tf.test.TestCase):
 
-  def test_init_does_not_raise_type_error_with_context(self):
-    context = execution_contexts.create_local_async_python_execution_context()
-
+  @parameterized.named_parameters(
+      ('async_cpp',
+       execution_contexts.create_local_async_python_execution_context()),
+      ('async_python',
+       execution_contexts.create_local_async_python_execution_context()),
+  )
+  def test_init_does_not_raise_type_error_with_context(self, context):
     try:
       native_platform.NativeFederatedContext(context)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
 
+  # pyformat: disable
   @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('str', 'a'),
-      ('list', []),
+      ('sync_cpp',
+       execution_contexts.create_local_python_execution_context()),
+      ('sync_python',
+       execution_contexts.create_local_python_execution_context()),
   )
+  # pyformat: enable
   def test_init_raises_type_error_with_context(self, context):
     with self.assertRaises(TypeError):
-      native_platform.NativeFederatedContext(context)
-
-  def test_init_raises_value_error_with_context(self):
-    context = execution_contexts.create_local_python_execution_context()
-
-    with self.assertRaises(ValueError):
       native_platform.NativeFederatedContext(context)
 
   async def test_invoke_returns_result(self):

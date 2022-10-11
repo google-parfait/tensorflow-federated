@@ -257,7 +257,7 @@ def set_remote_async_python_execution_context(channels,
 
 
 def create_mergeable_comp_execution_context(
-    async_contexts: Sequence[context_base.Context],
+    async_contexts: Sequence[context_base.AsyncContext],
     num_subrounds: Optional[int] = None,
 ) -> mergeable_comp_execution_context.MergeableCompExecutionContext:
   """Creates context which compiles to and executes mergeable comp form.
@@ -285,7 +285,7 @@ def create_mergeable_comp_execution_context(
 
 
 def set_mergeable_comp_execution_context(
-    async_contexts: Sequence[context_base.Context],
+    async_contexts: Sequence[context_base.AsyncContext],
     num_subrounds: Optional[int] = None,
 ):
   """Sets context which compiles to and executes mergeable comp form.

@@ -82,8 +82,8 @@ async def _ingest(executor, val, type_spec):
 
   Args:
     executor: An instance of `executor_base.Executor`.
-    val: The first argument to `context_base.Context.ingest()`.
-    type_spec: The second argument to `context_base.Context.ingest()`.
+    val: The first argument to `AsyncExecutionContext.ingest()`.
+    type_spec: The second argument to `AsyncExecutionContext.ingest()`.
 
   Returns:
     The result of the ingestion.
@@ -127,8 +127,8 @@ async def _invoke(executor, comp, arg, result_type: computation_types.Type):
 
   Args:
     executor: An instance of `executor_base.Executor`.
-    comp: The first argument to `context_base.Context.invoke()`.
-    arg: The optional second argument to `context_base.Context.invoke()`.
+    comp: The first argument to `AsyncExecutionContext.invoke()`.
+    arg: The optional second argument to `AsyncExecutionContext.invoke()`.
     result_type: The type signature of the result. This is used to convert the
       execution result into the proper container types.
 
@@ -144,7 +144,7 @@ async def _invoke(executor, comp, arg, result_type: computation_types.Type):
   return type_conversions.type_to_py_container(result_val, result_type)
 
 
-class AsyncExecutionContext(context_base.Context):
+class AsyncExecutionContext(context_base.AsyncContext):
   """An asynchronous execution context backed by an `executor_base.Executor`.
 
   This context's `ingest` and `invoke` methods return Python coroutine objects

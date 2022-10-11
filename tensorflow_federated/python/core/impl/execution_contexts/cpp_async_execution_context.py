@@ -48,7 +48,7 @@ def _is_retryable_absl_status(exception):
           exception.status.code() in get_absl_retryable_error_codes())
 
 
-class AsyncSerializeAndExecuteCPPContext(context_base.Context):
+class AsyncSerializeAndExecuteCPPContext(context_base.AsyncContext):
   """An async execution context delegating to CPP Executor bindings."""
 
   def __init__(

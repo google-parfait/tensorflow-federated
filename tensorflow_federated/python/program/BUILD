@@ -62,40 +62,6 @@ py_library(
 )
 
 py_library(
-    name = "prefetching_data_source",
-    srcs = ["prefetching_data_source.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":data_source",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
-        "//tensorflow_federated/python/core/impl/executors:cardinality_carrying_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_value_base",
-        "//tensorflow_federated/python/core/impl/executors:ingestable_base",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_test(
-    name = "prefetching_data_source_test",
-    srcs = ["prefetching_data_source_test.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":data_source",
-        ":dataset_data_source",
-        ":prefetching_data_source",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_test_utils",
-        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_library(
     name = "dataset_data_source",
     srcs = ["dataset_data_source.py"],
     deps = [
@@ -287,6 +253,40 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_library(
+    name = "prefetching_data_source",
+    srcs = ["prefetching_data_source.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":data_source",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/execution_contexts:async_execution_context",
+        "//tensorflow_federated/python/core/impl/executors:cardinality_carrying_base",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
+        "//tensorflow_federated/python/core/impl/executors:executor_value_base",
+        "//tensorflow_federated/python/core/impl/executors:ingestable_base",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_test(
+    name = "prefetching_data_source_test",
+    srcs = ["prefetching_data_source_test.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":data_source",
+        ":dataset_data_source",
+        ":prefetching_data_source",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_test_utils",
+        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],

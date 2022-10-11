@@ -153,21 +153,16 @@ async def _materialize_structure_of_value_references(
 
 
 class NativeFederatedContext(federated_context.FederatedContext):
-  """A `tff.program.FederatedContext` backed by a `tff.framework.Context`."""
+  """A `tff.program.FederatedContext` backed by an `tff.framework.AsyncContext`.
+  """
 
-  def __init__(self, context: context_base.Context):
+  def __init__(self, context: context_base.AsyncContext):
     """Returns an initialized `tff.program.NativeFederatedContext`.
 
     Args:
-      context: A `tff.framework.Context` with an async `invoke`.
-
-    Raises:
-      ValueError: If `context` does not have an async `invoke`.
+      context: An `tff.framework.AsyncContext`.
     """
-    py_typecheck.check_type(context, context_base.Context)
-    if not asyncio.iscoroutinefunction(context.invoke):
-      raise ValueError('Expected a `context` with an async `invoke`, received '
-                       f'{context}.')
+    py_typecheck.check_type(context, context_base.AsyncContext)
 
     self._context = context
 
@@ -195,7 +190,7 @@ class NativeFederatedContext(federated_context.FederatedContext):
           'structures, server-placed values, or tensors, found '
           f'\'{result_type}\'.')
 
-    async def _invoke(context: context_base.Context,
+    async def _invoke(context: context_base.AsyncContext,
                       comp: computation_base.Computation, arg: Any) -> Any:
       if comp.type_signature.parameter is not None:
         arg = await _materialize_structure_of_value_references(
