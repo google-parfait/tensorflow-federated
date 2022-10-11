@@ -193,6 +193,10 @@ class AsyncExecutionContext(context_base.Context):
       ex_factory.clean_up_executor({**cardinalities})
       raise
 
+  @property
+  def executor_factory(self) -> executor_factory.ExecutorFactory:
+    return self._executor_factory
+
   @retrying.retry(
       retry_on_exception_filter=_is_retryable_error,
       wait_max_ms=30 * 1000,
