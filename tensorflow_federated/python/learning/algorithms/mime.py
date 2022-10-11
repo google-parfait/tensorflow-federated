@@ -28,7 +28,7 @@ Breaking the centralized barrier for cross-device federated learning.
 """
 
 import collections
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 import tensorflow as tf
 
@@ -49,6 +49,7 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
@@ -279,8 +280,230 @@ def _build_mime_lite_client_work(
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
 
+def _build_functional_client_update_fn_for_mime_lite(
+    *,
+    model: functional.FunctionalModel,
+    optimizer: optimizer_base.Optimizer,
+    client_weighting: client_weight_lib.ClientWeighting,
+    use_experimental_simulation_loop: bool = False) -> Callable[..., Any]:
+  """Builds the `tf_computation` for Mime Lite client training for FunctionalModels.
+  """
+
+  @tensorflow_computation.tf_computation
+  def client_update_fn(global_optimizer_state, incoming_weights, data):
+    dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
+        use_experimental_simulation_loop)
+    weight_tensor_specs = tf.nest.map_structure(
+        lambda t: tf.TensorSpec(shape=t.shape, dtype=t.dtype),
+        model.initial_weights)
+
+    @tf.function
+    def client_update(global_optimizer_state: Any,
+                      incoming_weights: model_utils.ModelWeights,
+                      data: tf.data.Dataset) -> Any:
+      trainable_weights, _ = incoming_weights
+
+      def full_gradient_reduce_fn(state, batch):
+        """Sums individual gradients, to be later divided by num_examples."""
+        gradient_sum, num_examples_sum = state
+        with tf.GradientTape() as tape:
+          tape.watch(trainable_weights)
+          output = model.forward_pass(incoming_weights, batch, training=True)
+        if output.num_examples is None:
+          num_examples = tf.shape(output.predictions, out_type=tf.int64)[0]
+        else:
+          num_examples = tf.cast(output.num_examples, tf.int64)
+        gradients = tape.gradient(output.loss, trainable_weights)
+        gradient_sum = tf.nest.map_structure(
+            lambda g_sum, g: g_sum + g * tf.cast(num_examples, g.dtype),
+            gradient_sum, gradients)
+        num_examples_sum += num_examples
+        return gradient_sum, num_examples_sum
+
+      def initial_state_for_full_gradient_reduce_fn():
+        trainable_specs, _ = weight_tensor_specs
+        initial_gradient_sum = tuple(
+            tf.zeros(spec.shape, spec.dtype) for spec in trainable_specs)
+        initial_num_examples_sum = tf.constant(0, tf.int64)
+        return initial_gradient_sum, initial_num_examples_sum
+
+      # Compute the average gradient over all examples without updating the
+      # model.
+      full_gradient, num_examples = dataset_reduce_fn(
+          full_gradient_reduce_fn, data,
+          initial_state_for_full_gradient_reduce_fn)
+      full_gradient = tf.nest.map_structure(
+          lambda g: tf.math.divide_no_nan(g, tf.cast(num_examples, g.dtype)),
+          full_gradient)
+
+      def train_reduce_fn(state, batch):
+        model_weights, metrics_state = state
+        trainable_weights, non_trainable_weights = model_weights
+        with tf.GradientTape() as tape:
+          tape.watch(trainable_weights)
+          output = model.forward_pass(
+              model_weights=model_weights, batch_input=batch, training=True)
+        gradients = tape.gradient(output.loss, trainable_weights)
+        if isinstance(batch, collections.abc.Mapping):
+          labels = batch['y']
+        elif isinstance(batch, collections.abc.Sequence):
+          _, labels = batch
+        else:
+          raise TypeError(
+              'Examples yielded from the dataset must be either a '
+              '`collections.abc.Mapping` or a `collections.abc.Sequence`. Got '
+              f'{type(batch)}')
+        metrics_state = model.update_metrics_state(
+            metrics_state, y_true=labels, y_pred=output.predictions)
+        # Mime Lite keeps optimizer state unchanged during local training.
+        _, updated_weights = optimizer.next(global_optimizer_state,
+                                            trainable_weights, gradients)
+        return (updated_weights, non_trainable_weights), metrics_state
+
+      def initial_training_weights():
+        return incoming_weights, model.initialize_metrics_state()
+
+      model_weights, unfinalized_metrics = dataset_reduce_fn(
+          train_reduce_fn, data, initial_state_fn=initial_training_weights)
+
+      incoming_training_weights, _ = incoming_weights
+      trainable_weights, _ = model_weights
+      client_weights_delta = tf.nest.map_structure(tf.subtract,
+                                                   incoming_training_weights,
+                                                   trainable_weights)
+
+      client_weights_delta, has_non_finite_delta = (
+          tensor_utils.zero_all_if_any_non_finite(client_weights_delta))
+      client_weight = _choose_client_weight(client_weighting,
+                                            has_non_finite_delta, num_examples)
+      return client_works.ClientResult(
+          update=client_weights_delta,
+          update_weight=client_weight), unfinalized_metrics, full_gradient
+
+    # Convert `tff.learning.ModelWeights` type weights back into the initial
+    # shape used by the model.
+    incoming_weights = (incoming_weights.trainable,
+                        incoming_weights.non_trainable)
+    return client_update(global_optimizer_state, incoming_weights, data)
+
+  return client_update_fn
+
+
+def _build_mime_lite_functional_client_work(
+    model: functional.FunctionalModel,
+    optimizer: optimizer_base.Optimizer,
+    client_weighting: client_weight_lib.ClientWeighting,
+    full_gradient_aggregator: Optional[
+        factory.WeightedAggregationFactory] = None,
+    metrics_aggregator: Optional[Callable[[
+        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
+    ], computation_base.Computation]] = None,
+    use_experimental_simulation_loop: bool = False
+) -> client_works.ClientWorkProcess:
+  """Creates a `ClientWorkProcess` for MimeLite with FunctionalModels.
+
+  Args:
+    model: A `tff.learning.models.FunctionalModel`.
+    optimizer: A `tff.learning.optimizers.Optimizer` which will be used for both
+      creating and updating a global optimizer state, as well as optimization at
+      clients given the global state, which is fixed during the optimization.
+    client_weighting: A member of `tff.learning.ClientWeighting` that specifies
+      a built-in weighting method.
+    full_gradient_aggregator: An optional
+      `tff.aggregators.WeightedAggregationFactory` used to aggregate the full
+      gradients on client datasets. If `None`, this is set to
+      `tff.aggregators.MeanFactory`.
+    metrics_aggregator: A function that takes in the metric finalizers (i.e.,
+      `tff.learning.Model.metric_finalizers()`) and a
+      `tff.types.StructWithPythonType` of the unfinalized metrics (i.e., the TFF
+      type of `tff.learning.Model.report_local_unfinalized_metrics()`), and
+      returns a `tff.Computation` for aggregating the unfinalized metrics. If
+      `None`, this is set to `tff.learning.metrics.sum_then_finalize`.
+    use_experimental_simulation_loop: Controls the reduce loop function for
+      input dataset. An experimental reduce loop is used for simulation. It is
+      currently necessary to set this flag to True for performant GPU
+      simulations.
+
+  Returns:
+    A `ClientWorkProcess`.
+  """
+  py_typecheck.check_type(model, functional.FunctionalModel)
+  py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
+  py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
+  if full_gradient_aggregator is None:
+    full_gradient_aggregator = mean.MeanFactory()
+  py_typecheck.check_type(full_gradient_aggregator,
+                          factory.WeightedAggregationFactory)
+  if metrics_aggregator is None:
+    metrics_aggregator = metric_aggregator.sum_then_finalize
+
+  data_type = computation_types.SequenceType(model.input_spec)
+  trainable_weights, non_trainable_weights = model.initial_weights
+  weights_type = type_conversions.infer_type(
+      model_utils.ModelWeights(
+          tuple(trainable_weights), tuple(non_trainable_weights)))
+  weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
+
+  full_gradient_aggregator = full_gradient_aggregator.create(
+      weights_type.trainable, computation_types.TensorType(tf.float32))
+
+  @federated_computation.federated_computation
+  def init_fn():
+    optimizer_state = intrinsics.federated_eval(
+        tensorflow_computation.tf_computation(
+            lambda: optimizer.initialize(weight_tensor_specs.trainable)),
+        placements.SERVER)
+    aggregator_state = full_gradient_aggregator.initialize()
+    return intrinsics.federated_zip((optimizer_state, aggregator_state))
+
+  client_update_fn = _build_functional_client_update_fn_for_mime_lite(
+      model=model,
+      optimizer=optimizer,
+      client_weighting=client_weighting,
+      use_experimental_simulation_loop=use_experimental_simulation_loop)
+
+  aggregator_state_type, _ = init_fn.type_signature.result.member
+
+  @tensorflow_computation.tf_computation(aggregator_state_type,
+                                         weights_type.trainable)
+  def update_optimizer_state(state, aggregate_gradient):
+    whimsy_weights = tf.nest.map_structure(lambda g: tf.zeros(g.shape, g.dtype),
+                                           aggregate_gradient)
+    updated_state, _ = optimizer.next(state, whimsy_weights, aggregate_gradient)
+    return updated_state
+
+  @federated_computation.federated_computation(
+      init_fn.type_signature.result, computation_types.at_clients(weights_type),
+      computation_types.at_clients(data_type))
+  def next_fn(state, weights, client_data):
+    optimizer_state, aggregator_state = state
+    optimizer_state_at_clients = intrinsics.federated_broadcast(optimizer_state)
+    client_result, unfinalized_metrics, full_gradient = (
+        intrinsics.federated_map(
+            client_update_fn,
+            (optimizer_state_at_clients, weights, client_data)))
+    full_gradient_agg_output = full_gradient_aggregator.next(
+        aggregator_state, full_gradient, client_result.update_weight)
+    updated_optimizer_state = intrinsics.federated_map(
+        update_optimizer_state,
+        (optimizer_state, full_gradient_agg_output.result))
+
+    new_state = intrinsics.federated_zip(
+        (updated_optimizer_state, full_gradient_agg_output.state))
+
+    metrics_aggregation_fn = metrics_aggregator(
+        model.finalize_metrics, unfinalized_metrics.type_signature.member)
+    train_metrics = metrics_aggregation_fn(unfinalized_metrics)
+    measurements = intrinsics.federated_zip(
+        collections.OrderedDict(train=train_metrics))
+    return measured_process.MeasuredProcessOutput(new_state, client_result,
+                                                  measurements)
+
+  return client_works.ClientWorkProcess(init_fn, next_fn)
+
+
 def _build_scheduled_mime_lite_client_work(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     learning_rate_fn: Callable[[int], float],
     optimizer: optimizer_base.Optimizer,
     client_weighting: client_weight_lib.ClientWeighting,
@@ -294,10 +517,12 @@ def _build_scheduled_mime_lite_client_work(
   """Creates `ClientWorkProcess` for Mimelite with learning rate schedule.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
+      instance of a `tff.learning.models.FunctionalModel`. When passing a
+      callable, the callable must *not* capture TensorFlow tensors or variables
+      and use them.  The model must be constructed entirely from scratch on each
+      invocation, returning the same pre-constructed model each call will result
+      in an error.
     learning_rate_fn: A callable accepting an integer round number and returning
       a float to be used as a learning rate for the optimizer.
     optimizer: A `tff.learning.optimizers.Optimizer` which will be used for both
@@ -323,21 +548,23 @@ def _build_scheduled_mime_lite_client_work(
   Returns:
     A `ClientWorkProcess`.
   """
-  with tf.Graph().as_default():
-    # Wrap model construction in a graph to avoid polluting the global context
-    # with variables created for this model.
-    model = model_fn()
+  if callable(model_fn):
+    client_work = _build_mime_lite_client_work(
+        model_fn, optimizer, client_weighting, full_gradient_aggregator,
+        metrics_aggregator, use_experimental_simulation_loop)
+  elif isinstance(model_fn, functional.FunctionalModel):
+    client_work = _build_mime_lite_functional_client_work(
+        model_fn, optimizer, client_weighting, full_gradient_aggregator,
+        metrics_aggregator, use_experimental_simulation_loop)
+  else:
+    raise TypeError('When `model_fn` is not a callable, it must be an instance'
+                    ' of tff.learning.models.FunctionalModel. Instead got a: '
+                    f'{type(model_fn)}')
 
-  data_type = computation_types.SequenceType(model.input_spec)
-  weights_type = model_utils.weights_type_from_model(model)
-
-  client_work = _build_mime_lite_client_work(model_fn, optimizer,
-                                             client_weighting,
-                                             full_gradient_aggregator,
-                                             metrics_aggregator,
-                                             use_experimental_simulation_loop)
-
-  mime_state_type = client_work.initialize.type_signature.result.member
+  federated_mime_state_type, federated_weights_type, federated_data_type = client_work.next.type_signature.parameter
+  data_type = federated_data_type.member
+  weights_type = federated_weights_type.member
+  mime_state_type = federated_mime_state_type.member
 
   @tensorflow_computation.tf_computation(mime_state_type)
   def initialize_learning_rate(mime_state):
@@ -380,7 +607,7 @@ def _build_scheduled_mime_lite_client_work(
 
 
 def build_weighted_mime_lite(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     base_optimizer: optimizer_base.Optimizer,
     server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
     client_weighting: Optional[
@@ -448,10 +675,12 @@ def build_weighted_mime_lite(
   incurring additional computation and memory cost at clients.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
+      instance of a `tff.learning.models.FunctionalModel`. When passing a
+      callable, the callable must *not* capture TensorFlow tensors or variables
+      and use them.  The model must be constructed entirely from scratch on each
+      invocation, returning the same pre-constructed model each call will result
+      in an error.
     base_optimizer: A `tff.learning.optimizers.Optimizer` which will be used for
       both creating and updating a global optimizer state, as well as
       optimization at clients given the global state, which is fixed during the
@@ -485,14 +714,32 @@ def build_weighted_mime_lite(
   Returns:
     A `tff.learning.templates.LearningProcess`.
   """
-  py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(base_optimizer, optimizer_base.Optimizer)
   py_typecheck.check_type(server_optimizer, optimizer_base.Optimizer)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
+  if not callable(model_fn):
+    if not isinstance(model_fn, functional.FunctionalModel):
+      raise TypeError(
+          'If `model_fn` is not a callable, it must be an instance of '
+          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
 
-  @tensorflow_computation.tf_computation()
-  def initial_model_weights_fn():
-    return model_utils.ModelWeights.from_model(model_fn())
+    @tensorflow_computation.tf_computation
+    def initial_model_weights_fn():
+      trainable_weights, non_trainable_weights = model_fn.initial_weights
+      return model_utils.ModelWeights(
+          tuple(tf.convert_to_tensor(w) for w in trainable_weights),
+          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
+
+  else:
+
+    @tensorflow_computation.tf_computation
+    def initial_model_weights_fn():
+      model = model_fn()
+      if not isinstance(model, model_lib.Model):
+        raise TypeError('When `model_fn` is a callable, it returns instances of'
+                        ' tff.learning.Model. Instead callable returned type: '
+                        f'{type(model)}')
+      return model_utils.ModelWeights.from_model(model)
 
   model_weights_type = initial_model_weights_fn.type_signature.result
   if model_distributor is None:
@@ -500,20 +747,34 @@ def build_weighted_mime_lite(
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
+  model_update_type = model_weights_type.trainable
   model_aggregator = model_aggregator.create(
-      model_weights_type.trainable, computation_types.TensorType(tf.float32))
+      model_update_type, computation_types.TensorType(tf.float32))
   if full_gradient_aggregator is None:
     full_gradient_aggregator = mean.MeanFactory()
   py_typecheck.check_type(full_gradient_aggregator,
                           factory.WeightedAggregationFactory)
 
-  client_work = _build_mime_lite_client_work(
-      model_fn=model_fn,
-      optimizer=base_optimizer,
-      client_weighting=client_weighting,
-      full_gradient_aggregator=full_gradient_aggregator,
-      metrics_aggregator=metrics_aggregator,
-      use_experimental_simulation_loop=use_experimental_simulation_loop)
+  if callable(model_fn):
+    client_work = _build_mime_lite_client_work(
+        model_fn=model_fn,
+        optimizer=base_optimizer,
+        client_weighting=client_weighting,
+        full_gradient_aggregator=full_gradient_aggregator,
+        metrics_aggregator=metrics_aggregator,
+        use_experimental_simulation_loop=use_experimental_simulation_loop)
+  elif isinstance(model_fn, functional.FunctionalModel):
+    client_work = _build_mime_lite_functional_client_work(
+        model=model_fn,
+        optimizer=base_optimizer,
+        client_weighting=client_weighting,
+        full_gradient_aggregator=full_gradient_aggregator,
+        metrics_aggregator=metrics_aggregator,
+        use_experimental_simulation_loop=use_experimental_simulation_loop)
+  else:
+    raise TypeError('When `model_fn` is not a callable, it must be an instance'
+                    ' of tff.learning.models.FunctionalModel. Instead got a: '
+                    f'{type(model_fn)}')
   finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
       server_optimizer, model_weights_type)
   return composers.compose_learning_process(initial_model_weights_fn,
@@ -643,7 +904,7 @@ def build_unweighted_mime_lite(
 
 
 def build_mime_lite_with_optimizer_schedule(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     learning_rate_fn: Callable[[int], float],
     base_optimizer: optimizer_base.Optimizer,
     server_optimizer: optimizer_base.Optimizer = sgdm.build_sgdm(1.0),
@@ -712,10 +973,12 @@ def build_mime_lite_with_optimizer_schedule(
   incurring additional computation and memory cost at clients.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
+      instance of a `tff.learning.models.FunctionalModel`. When passing a
+      callable, the callable must *not* capture TensorFlow tensors or variables
+      and use them.  The model must be constructed entirely from scratch on each
+      invocation, returning the same pre-constructed model each call will result
+      in an error.
     learning_rate_fn: A callable accepting an integer round number and returning
       a float to be used as a learning rate for the optimizer.
       `learning_rate_fn` must be serializable by Tensorflow (e.g. via
@@ -753,15 +1016,33 @@ def build_mime_lite_with_optimizer_schedule(
   Returns:
     A `tff.learning.templates.LearningProcess`.
   """
-  py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(base_optimizer, optimizer_base.Optimizer)
   py_typecheck.check_type(server_optimizer, optimizer_base.Optimizer)
   py_typecheck.check_callable(learning_rate_fn)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
+  if not callable(model_fn):
+    if not isinstance(model_fn, functional.FunctionalModel):
+      raise TypeError(
+          'If `model_fn` is not a callable, it must be an instance of '
+          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
 
-  @tensorflow_computation.tf_computation()
-  def initial_model_weights_fn():
-    return model_utils.ModelWeights.from_model(model_fn())
+    @tensorflow_computation.tf_computation
+    def initial_model_weights_fn():
+      trainable_weights, non_trainable_weights = model_fn.initial_weights
+      return model_utils.ModelWeights(
+          tuple(tf.convert_to_tensor(w) for w in trainable_weights),
+          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
+
+  else:
+
+    @tensorflow_computation.tf_computation
+    def initial_model_weights_fn():
+      model = model_fn()
+      if not isinstance(model, model_lib.Model):
+        raise TypeError('When `model_fn` is a callable, it returns instances of'
+                        ' tff.learning.Model. Instead callable returned type: '
+                        f'{type(model)}')
+      return model_utils.ModelWeights.from_model(model)
 
   model_weights_type = initial_model_weights_fn.type_signature.result
   if model_distributor is None:
@@ -769,8 +1050,9 @@ def build_mime_lite_with_optimizer_schedule(
   if model_aggregator is None:
     model_aggregator = mean.MeanFactory()
   py_typecheck.check_type(model_aggregator, factory.WeightedAggregationFactory)
+  model_update_type = model_weights_type.trainable
   model_aggregator = model_aggregator.create(
-      model_weights_type.trainable, computation_types.TensorType(tf.float32))
+      model_update_type, computation_types.TensorType(tf.float32))
   if full_gradient_aggregator is None:
     full_gradient_aggregator = mean.MeanFactory()
   py_typecheck.check_type(full_gradient_aggregator,

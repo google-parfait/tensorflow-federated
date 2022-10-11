@@ -16,6 +16,7 @@ import collections
 from unittest import mock
 
 from absl.testing import parameterized
+import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory_utils
@@ -30,6 +31,7 @@ from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import client_weight_lib
+from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
@@ -37,6 +39,9 @@ from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.algorithms import mime
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator as metrics_aggregator
+from tensorflow_federated.python.learning.metrics import counters
+from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.optimizers import adagrad
 from tensorflow_federated.python.learning.optimizers import adam
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
@@ -138,10 +143,10 @@ def _create_dataset():
       collections.OrderedDict(
           x=[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
           y=[[0.0], [0.0], [1.0], [1.0]]))
-  # Repeat the dataset 2 times with batches of 3 examples,
-  # producing 3 minibatches (the last one with only 2 examples).
-  # Note that `batch` is required for this dataset to be useable,
-  # as it adds the batch dimension which is expected by the model.
+  # Repeat the dataset 2 times with batches of 3 examples, producing 3
+  # minibatches (the last one with only 2 examples).  Note that `batch` is
+  # required for this dataset to be useable, as it adds the batch dimension
+  # which is expected by the model.
   return dataset.repeat(2).batch(3)
 
 
@@ -217,6 +222,91 @@ class MimeLiteClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
         metrics_aggregator=sum_then_finalize_then_times_two)
     client_model_weights = [_initial_weights()]
     client_data = [_create_dataset()]
+    output = process.next(process.initialize(), client_model_weights,
+                          client_data)
+    # Train metrics should be multiplied by two by the custom aggregator.
+    self.assertEqual(output.measurements['train']['num_examples'], 16)
+
+
+class MimeLiteFunctionalClientWorkExecutionTest(tf.test.TestCase,
+                                                parameterized.TestCase):
+
+  @parameterized.named_parameters(('non-simulation', False),
+                                  ('simulation', True))
+  @mock.patch.object(
+      dataset_reduce,
+      '_dataset_reduce_fn',
+      wraps=dataset_reduce._dataset_reduce_fn)
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+    model = test_models.build_functional_linear_regression()
+    process = mime._build_mime_lite_functional_client_work(
+        model=model,
+        optimizer=sgdm.build_sgdm(learning_rate=0.1, momentum=0.9),
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        use_experimental_simulation_loop=simulation)
+    client_data = [_create_dataset().map(lambda d: (d['x'], d['y']))]
+    client_model_weights = [model.initial_weights]
+    process.next(process.initialize(), client_model_weights, client_data)
+    if simulation:
+      mock_method.assert_not_called()
+    else:
+      mock_method.assert_called()
+
+  @parameterized.named_parameters(
+      ('adagrad', adagrad.build_adagrad(0.1)),
+      ('adam', adam.build_adam(0.1)),
+      ('rmsprop', rmsprop.build_rmsprop(0.1)),
+      ('sgd', sgdm.build_sgdm(0.1)),
+      ('sgdm', sgdm.build_sgdm(0.1, momentum=0.9)),
+      ('yogi', yogi.build_yogi(0.1)),
+  )
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_execution_with_optimizer(self, optimizer):
+    model = test_models.build_functional_linear_regression()
+    process = mime._build_mime_lite_functional_client_work(
+        model=model,
+        optimizer=optimizer,
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    client_data = [_create_dataset().map(lambda d: (d['x'], d['y']))]
+    client_model_weights = [model.initial_weights]
+    state = process.initialize()
+    output = process.next(state, client_model_weights, client_data)
+    self.assertEqual(8, output.measurements['train']['num_examples'])
+
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_custom_metrics_aggregator(self):
+
+    def sum_then_finalize_then_times_two(metric_finalizers,
+                                         local_unfinalized_metrics_type):
+
+      @federated_computation.federated_computation(
+          computation_types.at_clients(local_unfinalized_metrics_type))
+      def aggregation_computation(client_local_unfinalized_metrics):
+        unfinalized_metrics_sum = intrinsics.federated_sum(
+            client_local_unfinalized_metrics)
+
+        @tensorflow_computation.tf_computation(local_unfinalized_metrics_type)
+        def finalizer_computation(unfinalized_metrics):
+          finalized_metrics = collections.OrderedDict(
+              (metric_name, finalized_value * 2)
+              for metric_name, finalized_value in metric_finalizers(
+                  unfinalized_metrics).items())
+          return finalized_metrics
+
+        return intrinsics.federated_map(finalizer_computation,
+                                        unfinalized_metrics_sum)
+
+      return aggregation_computation
+
+    model = test_models.build_functional_linear_regression()
+    process = mime._build_mime_lite_functional_client_work(
+        model=model,
+        optimizer=sgdm.build_sgdm(learning_rate=0.01, momentum=0.9),
+        client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        metrics_aggregator=sum_then_finalize_then_times_two)
+    client_model_weights = [model.initial_weights]
+    client_data = [_create_dataset().map(lambda d: (d['x'], d['y']))]
     output = process.next(process.initialize(), client_model_weights,
                           client_data)
     # Train metrics should be multiplied by two by the custom aggregator.
@@ -469,6 +559,73 @@ class ScheduledMimeLiteTest(tf.test.TestCase):
           x + 1.0)
 
     self.assertEqual(mock_learning_rate_fn.call_count, 2)
+
+
+class FunctionalMimeLiteTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('sgdm_sgd', sgdm.build_sgdm(0.1, 0.9), sgdm.build_sgdm(1.0)),
+      ('sgdm_sgdm', sgdm.build_sgdm(0.1, 0.9), sgdm.build_sgdm(1.0, 0.9)),
+      ('sgdm_adam', sgdm.build_sgdm(0.1, 0.9), adam.build_adam(1.0)),
+      ('adagrad_sgdm', adagrad.build_adagrad(0.1), sgdm.build_sgdm(1.0, 0.9)),
+  )
+  @tensorflow_test_utils.skip_test_for_multi_gpu
+  def test_functional_matches_variable_model(self, base_optimizer,
+                                             server_optimizer):
+    dataset = _create_dataset()
+
+    def create_keras_model():
+      return tf.keras.Sequential([
+          tf.keras.layers.InputLayer(input_shape=(2,)),
+          tf.keras.layers.Dense(
+              units=1, kernel_initializer='zeros', bias_initializer='zeros'),
+      ])
+
+    def create_functional_model():
+      return functional.functional_model_from_keras(
+          create_keras_model(),
+          loss_fn=tf.keras.losses.MeanSquaredError(),
+          input_spec=dataset.element_spec,
+          metrics_constructor=collections.OrderedDict(
+              loss=tf.keras.metrics.MeanSquaredError,
+              num_examples=counters.NumExamplesCounter,
+              num_batches=counters.NumBatchesCounter,
+          ))
+
+    def create_tff_model():
+      return keras_utils.from_keras_model(
+          create_keras_model(),
+          loss=tf.keras.losses.MeanSquaredError(),
+          input_spec=dataset.element_spec)
+
+    functional_learning_process = mime.build_weighted_mime_lite(
+        model_fn=create_functional_model(),
+        base_optimizer=base_optimizer,
+        server_optimizer=server_optimizer)
+    variable_learning_process = mime.build_weighted_mime_lite(
+        model_fn=create_tff_model,
+        base_optimizer=base_optimizer,
+        server_optimizer=server_optimizer)
+
+    variable_state = variable_learning_process.initialize()
+    functional_state = functional_learning_process.initialize()
+
+    named_client_data = [dataset]
+    for round_num in range(10):
+      variable_output = variable_learning_process.next(variable_state,
+                                                       named_client_data)
+      variable_state = variable_output.state
+      functional_output = functional_learning_process.next(
+          functional_state, named_client_data)
+      functional_state = functional_output.state
+      self.assertAllClose(
+          variable_output.metrics,
+          functional_output.metrics,
+          msg=f'Round {round_num}')
+      self.assertAllClose(
+          attr.asdict(variable_state),
+          attr.asdict(functional_state),
+          msg=f'Round {round_num}')
 
 
 if __name__ == '__main__':
