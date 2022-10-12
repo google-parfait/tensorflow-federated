@@ -215,22 +215,59 @@ TEST_F(XLAExecutorTest, RoundTripStringTensorFails) {
           HasSubstr("Unsupported type in DataTypeToPrimitiveType: 'string'")));
 }
 
-TEST_F(XLAExecutorTest, CreateStructFailsUnimplemented) {
-  v0::Value tensor_pb = TensorV(2);
-
-  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_tensor,
-                           test_executor_->CreateValue(tensor_pb));
-  EXPECT_THAT(test_executor_->CreateStruct({embedded_tensor.ref()}),
-              StatusIs(absl::StatusCode::kUnimplemented));
+TEST_F(XLAExecutorTest, CreateStructOneElement) {
+  v0::Value input = TensorV(5);
+  TFF_ASSERT_OK_AND_ASSIGN(auto value, test_executor_->CreateValue(input));
+  TFF_ASSERT_OK_AND_ASSIGN(auto struct_, test_executor_->CreateStruct({value}));
+  CheckMaterializeEqual(struct_, StructV({input}));
 }
 
-TEST_F(XLAExecutorTest, CreateSelectionFailsUnimplemented) {
-  v0::Value tensor_pb = TensorV(2);
+TEST_F(XLAExecutorTest, CreateStructSeveralElements) {
+  v0::Value t1 = TensorV(5);
+  v0::Value t2 = TensorV(6);
+  v0::Value t3 = TensorV(7);
+  v0::Value struct_ = StructV({TensorV(5), TensorV(6), TensorV(7)});
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(t1));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(t2));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t3id, test_executor_->CreateValue(t3));
+  TFF_ASSERT_OK_AND_ASSIGN(auto structid,
+                           test_executor_->CreateStruct({t1id, t2id, t3id}));
+  CheckMaterializeEqual(structid, struct_);
+}
 
-  TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId embedded_tensor,
-                           test_executor_->CreateValue(tensor_pb));
-  EXPECT_THAT(test_executor_->CreateSelection(embedded_tensor.ref(), 0),
-              StatusIs(absl::StatusCode::kUnimplemented));
+TEST_F(XLAExecutorTest, CreateSelectionFromCreateValue) {
+  v0::Value input = StructV({TensorV(1), TensorV(2)});
+  TFF_ASSERT_OK_AND_ASSIGN(auto vid, test_executor_->CreateValue(input));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateSelection(vid, 1));
+  CheckMaterializeEqual(t1id, TensorV(2));
+}
+
+TEST_F(XLAExecutorTest, CreateSelectionFromCreateStruct) {
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(TensorV(1)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(TensorV(2)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto structid,
+                           test_executor_->CreateStruct({t1id, t2id}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto selectedid,
+                           test_executor_->CreateSelection(structid, 1));
+  CheckMaterializeEqual(selectedid, TensorV(2));
+}
+
+TEST_F(XLAExecutorTest, CreateSelectionNonStructImmediate) {
+  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(TensorV(1)));
+  CheckMaterializeEqual(id, TensorV(1));
+  EXPECT_THAT(
+      test_executor_->CreateSelection(id, 0),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("Cannot create selection on non-struct value.")));
+}
+
+TEST_F(XLAExecutorTest, CreateSelectionOOBImmediate) {
+  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(StructV({})));
+  CheckMaterializeEqual(id, StructV({}));
+  EXPECT_THAT(
+      test_executor_->CreateSelection(id, 0),
+      StatusIs(absl::StatusCode::kInvalidArgument,
+               HasSubstr("Attempted to access index 0 of a 0-length struct.")));
 }
 
 TEST_F(XLAExecutorTest, CreateValueComputationNonFunctionalTypeFails) {

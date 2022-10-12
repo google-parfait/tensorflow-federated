@@ -433,12 +433,30 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ValueFuture> CreateStruct(
       std::vector<ValueFuture> members) final {
-    return absl::UnimplementedError("Not implemented yet");
+    return Map(std::move(members),
+               [](std::vector<XLAExecutorValue>&& elements)
+                   -> absl::StatusOr<XLAExecutorValue> {
+                 return XLAExecutorValue(elements);
+               });
   }
 
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
                                               const uint32_t index) final {
-    return absl::UnimplementedError("Not implemented yet");
+    return Map(std::vector<ValueFuture>({value}),
+               [index](std::vector<XLAExecutorValue>&& values)
+                   -> absl::StatusOr<XLAExecutorValue> {
+                 XLAExecutorValue& value = values[0];
+                 if (value.type() != XLAExecutorValue::ValueType::STRUCT) {
+                   return absl::InvalidArgumentError(
+                       "Cannot create selection on non-struct value.");
+                 }
+                 if (value.structure().size() <= index) {
+                   return absl::InvalidArgumentError(absl::StrCat(
+                       "Attempted to access index ", index, " of a ",
+                       value.structure().size(), "-length struct."));
+                 }
+                 return XLAExecutorValue(value.structure()[index]);
+               });
   }
 
   absl::Status Materialize(ValueFuture value, v0::Value* value_pb) final {
