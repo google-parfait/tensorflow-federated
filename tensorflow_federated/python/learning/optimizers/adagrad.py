@@ -14,7 +14,7 @@
 """Adagrad optimizer."""
 
 import collections
-from typing import Any, Generic, TypeVar, OrderedDict
+from typing import Any, OrderedDict
 
 import tensorflow as tf
 
@@ -27,11 +27,11 @@ _PRECONDITIONER_KEY = 'preconditioner'
 _HPARAMS_KEYS = [optimizer.LEARNING_RATE_KEY, _EPSILON_KEY]
 
 Hparams = OrderedDict[str, float]
-State = TypeVar('State', bound=OrderedDict[str, Any])
+State = OrderedDict[str, Any]
 Weights = optimizer.Weights
 
 
-class _Adagrad(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
+class _Adagrad(optimizer.Optimizer[State, Weights, Hparams]):
   """Adagrad optimizer, see `build_adagrad` for details."""
 
   def __init__(self,

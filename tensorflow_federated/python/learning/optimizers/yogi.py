@@ -14,7 +14,7 @@
 """Yogi optimizer."""
 
 import collections
-from typing import Any, Generic, TypeVar, OrderedDict
+from typing import Any, OrderedDict
 
 import tensorflow as tf
 
@@ -33,11 +33,11 @@ _HPARAMS_KEYS = [
 ]
 
 Hparams = OrderedDict[str, float]
-State = TypeVar('State', bound=OrderedDict[str, Any])
+State = OrderedDict[str, Any]
 Weights = optimizer.Weights
 
 
-class _Yogi(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
+class _Yogi(optimizer.Optimizer[State, Weights, Hparams]):
   """Yogi optimizer, see `build_yogi` for details."""
 
   def __init__(self,
@@ -57,7 +57,7 @@ class _Yogi(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
     self._epsilon = epsilon
     self._initial_preconditioner_value = initial_preconditioner_value
 
-  def initialize(self, specs):
+  def initialize(self, specs: Any) -> State:
     initial_accumulator = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype), specs)
 
@@ -78,7 +78,8 @@ class _Yogi(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
     ])
     return state
 
-  def next(self, state, weights, gradients):
+  def next(self, state: State, weights: Weights,
+           gradients: Any) -> tuple[State, Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[optimizer.LEARNING_RATE_KEY]

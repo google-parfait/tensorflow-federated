@@ -15,18 +15,18 @@
 
 import abc
 import collections
-from typing import Any, Generic, TypeVar, OrderedDict
+from typing import Any, Generic, TypeVar
 
 import tensorflow as tf
 
 LEARNING_RATE_KEY = 'learning_rate'
 
-Hparams = OrderedDict[str, Any]
+Hparams = TypeVar('Hparams')
 State = TypeVar('State')
 Weights = TypeVar('Weights')
 
 
-class Optimizer(abc.ABC, Generic[State, Weights]):
+class Optimizer(abc.ABC, Generic[State, Weights, Hparams]):
   """Represents an optimizer for use in TensorFlow Federated.
 
   Its pair of `initialize` and `next` methods define the optimization

@@ -14,7 +14,7 @@
 """RMSprop optimizer."""
 
 import collections
-from typing import Any, Generic, TypeVar, OrderedDict
+from typing import Any, OrderedDict
 
 import tensorflow as tf
 
@@ -28,11 +28,11 @@ _EPSILON_KEY = 'epsilon'
 _HPARAMS_KEYS = [optimizer.LEARNING_RATE_KEY, _DECAY_KEY, _EPSILON_KEY]
 
 Hparams = OrderedDict[str, float]
-State = TypeVar('State', bound=OrderedDict[str, Any])
+State = OrderedDict[str, Any]
 Weights = optimizer.Weights
 
 
-class _RmsProp(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
+class _RmsProp(optimizer.Optimizer[State, Weights, Hparams]):
   """RMSprop optimizer, see `build_rmsprop` for details."""
 
   def __init__(self,
@@ -47,7 +47,7 @@ class _RmsProp(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
     self._decay = decay
     self._epsilon = epsilon
 
-  def initialize(self, specs):
+  def initialize(self, specs: Any) -> State:
     initial_preconditioner = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype), specs)
     state = collections.OrderedDict([
@@ -58,7 +58,8 @@ class _RmsProp(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
     ])
     return state
 
-  def next(self, state, weights, gradients):
+  def next(self, state: State, weights: Weights,
+           gradients: Any) -> tuple[State, Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[optimizer.LEARNING_RATE_KEY]
