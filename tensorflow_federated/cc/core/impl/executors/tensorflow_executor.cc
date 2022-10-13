@@ -916,10 +916,14 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
     static constexpr absl::string_view kExecutorName = "TensorFlowExecutor";
     return kExecutorName;
   }
+
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
-    return ReadyFuture(TFF_TRY(CreateValueAny(value_pb)));
+    return ThreadRun([value_pb, this]() -> absl::StatusOr<ExecutorValue> {
+      return TFF_TRY(CreateValueAny(value_pb));
+    });
   }
+
   absl::StatusOr<ValueFuture> CreateCall(
       ValueFuture function, absl::optional<ValueFuture> argument) final {
     return ThreadRun([function = std::move(function),

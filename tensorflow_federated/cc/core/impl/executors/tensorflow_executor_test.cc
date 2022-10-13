@@ -353,6 +353,7 @@ TEST_F(TensorFlowExecutorTest, CreateSelectionFromCreateStruct) {
 
 TEST_F(TensorFlowExecutorTest, CreateSelectionNonStructImmediate) {
   TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(TensorV(1)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1, test_executor_->Materialize(id));
   EXPECT_THAT(test_executor_->CreateSelection(id, 0),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "Cannot create selection on non-struct value."));
@@ -360,6 +361,7 @@ TEST_F(TensorFlowExecutorTest, CreateSelectionNonStructImmediate) {
 
 TEST_F(TensorFlowExecutorTest, CreateSelectionOOBImmediate) {
   TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(StructV({})));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1, test_executor_->Materialize(id));
   EXPECT_THAT(test_executor_->CreateSelection(id, 0),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "Attempted to access index 0 of a 0-length struct."));
