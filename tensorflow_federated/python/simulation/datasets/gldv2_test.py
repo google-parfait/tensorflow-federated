@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import gldv2
@@ -62,6 +64,19 @@ class GLDV2Test(tf.test.TestCase):
     features = gldv2._create_dataset_with_mapping(tmp_dir.full_path, mapping)
     self.assertSequenceEqual(features, expected_features)
 
+  def test_get_synthetic(self):
+    client_data = gldv2.get_synthetic()
+    self.assertLen(client_data.client_ids, 1)
+    expected_element_type = collections.OrderedDict([
+        ('image/decoded', tf.TensorSpec(shape=(600, 800, 3), dtype=tf.uint8)),
+        ('class', tf.TensorSpec(shape=(1,), dtype=tf.int64))
+    ])
+    self.assertEqual(client_data.element_type_structure, expected_element_type)
+    data = client_data.create_tf_dataset_for_client(client_data.client_ids[0])
+    images = [element['image/decoded'] for element in data]
+    self.assertLen(images, 3)
+    labels = [element['class'] for element in data]
+    self.assertEqual(labels, [[0], [1], [2]])
 
 if __name__ == '__main__':
   tf.test.main()

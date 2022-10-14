@@ -22,16 +22,14 @@ import shutil
 import sys
 import tempfile
 import traceback
-
-from typing import Dict
-from typing import List
-from typing import Set
-from typing import Tuple
+from typing import Dict, List, Set, Tuple
 
 import tensorflow as tf
 
+from tensorflow_federated.python.simulation.datasets import client_data
+from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
 from tensorflow_federated.python.simulation.datasets import vision_datasets_utils
-from tensorflow_federated.python.simulation.datasets.client_data import ClientData
+
 
 FED_GLD_SPLIT_FILE_BUNDLE = 'landmarks-user-160k'
 FED_GLD_SPLIT_FILE_DOWNLOAD_URL = 'http://storage.googleapis.com/gresearch/federated-vision-datasets/%s.zip' % FED_GLD_SPLIT_FILE_BUNDLE
@@ -51,6 +49,7 @@ MINI_GLD_CACHE = 'gld23k'
 TRAIN_SUB_DIR = 'train'
 TEST_FILE_NAME = 'test.tfRecord'
 LOGGER = 'gldv2'
+ClientData = client_data.ClientData
 
 
 def _listener_process(queue: multiprocessing.Queue, log_file: str):
@@ -423,3 +422,20 @@ def load_data(num_worker: int = 1,
     return mini_gld_train, mini_gld_test
   else:
     return fed_gld_train, fed_gld_test
+
+
+def get_synthetic() -> ClientData:
+  """Returns a small synthetic dataset for testing.
+
+  The single client produced has 3 examples generated pseudo-randomly.
+
+  Returns:
+    A `tff.simulation.datasets.ClientData`.
+  """
+  images = tf.random.stateless_uniform(
+      shape=(3, 600, 800, 3), minval=0, maxval=255, dtype=tf.int32, seed=(0, 0))
+  labels = tf.constant([[0], [1], [2]], dtype=tf.int64)
+  data = collections.OrderedDict([('image/decoded',
+                                   tf.cast(images, dtype=tf.uint8)),
+                                  ('class', labels)])
+  return from_tensor_slices_client_data.TestClientData({'synthetic': data})
