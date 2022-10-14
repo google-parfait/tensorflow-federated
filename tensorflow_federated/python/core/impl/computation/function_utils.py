@@ -33,6 +33,12 @@ from tensorflow_federated.python.core.impl.types import typed_object
 from tensorflow_federated.python.tensorflow_libs import function
 
 
+def is_function(maybe_fn):
+  return (isinstance(
+      maybe_fn, (types.FunctionType, types.MethodType, functools.partial)) or
+          function.is_tf_function(maybe_fn))
+
+
 def get_signature(
     fn: Union[types.FunctionType, types.MethodType]) -> inspect.Signature:
   """Returns the `inspect.Signature` structure for the given function or method.
@@ -46,7 +52,7 @@ def get_signature(
   Raises:
     TypeError: if the argument is not of a supported type.
   """
-  if isinstance(fn, (types.FunctionType, types.MethodType)):
+  if is_function(fn):
     return inspect.signature(fn)
   elif function.is_tf_function(fn):
     return inspect.signature(fn.python_function)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import functools
 
 from absl.testing import absltest
 import attr
@@ -166,6 +167,13 @@ class ComputationWrapperTest(absltest.TestCase):
 
   def test_as_wrapper_without_arguments_on_no_parameter_lambda(self):
     self.assert_is_return_ten_fn(test_wrap(lambda: 10))
+
+  def test_as_wrapper_without_arguments_on_no_parameter_partial(self):
+
+    def identity(x):
+      return x
+
+    self.assert_is_return_ten_fn(test_wrap(functools.partial(identity, 10)))
 
   def test_as_decorator_with_empty_arguments_on_no_parameter_py_fn(self):
 

@@ -105,7 +105,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/tensorflow_libs:function",
     ],
 )
 

@@ -16,12 +16,12 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""Utilities for constructing decorators/wrappers for functions and tf.function."""
+"""Utilities for constructing decorators/wrappers for functions and tf.function.
+"""
 
 import collections
 import functools
 import inspect
-import types
 from typing import Optional, Tuple
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -30,7 +30,6 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.tensorflow_libs import function
 
 
 def _parameters(fn):
@@ -143,11 +142,6 @@ def _parameter_type(
   # Zip them up into a structure using the names from the function as keys.
   return computation_types.StructWithPythonType(
       list(zip(parameter_names, parameter_types)), collections.OrderedDict)
-
-
-def is_function(maybe_fn):
-  return (isinstance(maybe_fn, (types.FunctionType, types.MethodType)) or
-          function.is_tf_function(maybe_fn))
 
 
 class ComputationReturnedNoneError(ValueError):
@@ -430,7 +424,7 @@ class ComputationWrapper:
       TypeError: if the arguments are of the wrong types.
       ValueError: if the function to wrap returns `None`.
     """
-    if not args or not is_function(args[0]):
+    if not args or not function_utils.is_function(args[0]):
       # If invoked as a decorator, and with an empty argument list as "@xyz()"
       # applied to a function definition, expect the Python function being
       # decorated to be passed in the subsequent call, and potentially create
@@ -506,7 +500,7 @@ class ComputationWrapper:
 
 def _check_returns_type_helper(fn, expected_return_type):
   """Helper for `check_returns_type`."""
-  if not is_function(fn):
+  if not function_utils.is_function(fn):
     raise ValueError(f'`assert_raises` expected a function, but found {fn}.')
 
   @functools.wraps(fn)
@@ -574,7 +568,7 @@ def check_returns_type(*args):
   """
   if not args:
     raise ValueError('`assert_return`s called without a return type')
-  if is_function(args[0]):
+  if function_utils.is_function(args[0]):
     # If the first argument on the list is a Python function or a
     # tf.function, this is the one that's being wrapped. This is the case of
     # either a decorator invocation without arguments as "@xyz" applied to a
