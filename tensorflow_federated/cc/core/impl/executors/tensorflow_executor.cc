@@ -46,6 +46,7 @@ limitations under the License
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow/core/platform/macros.h"
 #include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/platform/threadpool.h"
 #include "tensorflow/core/platform/tstring.h"
 #include "tensorflow/core/public/session.h"
 #include "tensorflow_federated/cc/core/impl/executors/dataset_from_tensor_structures.h"
@@ -775,7 +776,13 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   // concurrent invocations of session.run to that number. Zero or negative
   // provides effectively unlimited concurrency.
   explicit TensorFlowExecutor(int32_t max_concurrent_computation_calls)
-      : max_concurrent_computation_calls_(max_concurrent_computation_calls) {}
+      : max_concurrent_computation_calls_(max_concurrent_computation_calls),
+        thread_pool_(tensorflow::Env::Default(), "TFF_TensorFlowExecutor",
+                     // Use a threadpool with CPU * 4 or the user specified
+                     // maximum.
+                     ((max_concurrent_computation_calls > 0)
+                          ? max_concurrent_computation_calls
+                          : std::thread::hardware_concurrency() * 4)) {}
 
  private:
   // A hash map of compiler generated TensorFlow function ids to already
@@ -783,7 +790,11 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   absl::flat_hash_map<uint64_t, std::shared_ptr<Computation>> function_cache_
       ABSL_GUARDED_BY(function_cache_mutex_);
   absl::Mutex function_cache_mutex_;
+  // TODO(b/254454077): now that TensorFlowExecutor has a thread pool, clean-up
+  // the usage of `max_concurrent_computaiton_calls` to move all parallellism
+  // limits ot the thread pool.
   int32_t max_concurrent_computation_calls_;
+  tensorflow::thread::ThreadPool thread_pool_;
 
   absl::StatusOr<ExecutorValue> CreateValueAny(const v0::Value& value_pb) {
     VLOG(2) << "Creating value: " << value_pb.Utf8DebugString();
@@ -919,32 +930,36 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
-    return ThreadRun([value_pb, this]() -> absl::StatusOr<ExecutorValue> {
-      return TFF_TRY(CreateValueAny(value_pb));
-    });
+    return ThreadRun(
+        [value_pb, this]() -> absl::StatusOr<ExecutorValue> {
+          return TFF_TRY(CreateValueAny(value_pb));
+        },
+        &thread_pool_);
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
       ValueFuture function, absl::optional<ValueFuture> argument) final {
-    return ThreadRun([function = std::move(function),
-                      argument = std::move(
-                          argument)]() -> absl::StatusOr<ExecutorValue> {
-      ExecutorValue fn = TFF_TRY(Wait(function));
-      absl::optional<ExecutorValue> arg = absl::nullopt;
-      if (argument.has_value()) {
-        arg = TFF_TRY(Wait(argument.value()));
-      }
-      if (fn.type() == ExecutorValue::ValueType::COMPUTATION) {
-        return fn.computation()->Call(std::move(arg));
-      } else if (fn.type() == ExecutorValue::ValueType::INTRINSIC) {
-        return CallIntrinsic(fn.intrinsic(), std::move(arg));
-      } else {
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Expected `function` argument to `TensorFlowExecutor::CreateCall` "
-            "to be a computation or intrinsic, but found type ",
-            fn.type()));
-      }
-    });
+    return ThreadRun(
+        [function = std::move(function),
+         argument = std::move(argument)]() -> absl::StatusOr<ExecutorValue> {
+          ExecutorValue fn = TFF_TRY(Wait(function));
+          absl::optional<ExecutorValue> arg = absl::nullopt;
+          if (argument.has_value()) {
+            arg = TFF_TRY(Wait(argument.value()));
+          }
+          if (fn.type() == ExecutorValue::ValueType::COMPUTATION) {
+            return fn.computation()->Call(std::move(arg));
+          } else if (fn.type() == ExecutorValue::ValueType::INTRINSIC) {
+            return CallIntrinsic(fn.intrinsic(), std::move(arg));
+          } else {
+            return absl::InvalidArgumentError(absl::StrCat(
+                "Expected `function` argument to "
+                "`TensorFlowExecutor::CreateCall` "
+                "to be a computation or intrinsic, but found type ",
+                fn.type()));
+          }
+        },
+        &thread_pool_);
   }
   absl::StatusOr<ValueFuture> CreateStruct(
       std::vector<ValueFuture> elements) final {
@@ -954,29 +969,32 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
             -> absl::StatusOr<ExecutorValue> {
           return ExecutorValue(std::make_shared<std::vector<ExecutorValue>>(
               std::move(elements)));
-        });
+        },
+        &thread_pool_);
   }
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
                                               const uint32_t index) final {
-    return Map(std::vector<ValueFuture>({value}),
-               [index](std::vector<ExecutorValue>&& values)
-                   -> absl::StatusOr<ExecutorValue> {
-                 ExecutorValue& value = values[0];
-                 if (value.type() != ExecutorValue::ValueType::STRUCT) {
-                   return absl::InvalidArgumentError(
-                       ERR_LOG("Cannot create selection on non-struct value."));
-                 }
-                 if (value.elements().size() <= index) {
-                   return absl::InvalidArgumentError(ERR_LOG(absl::StrCat(
-                       "Attempted to access index ", index, " of a ",
-                       value.elements().size(), "-length struct.")));
-                 }
-                 return ExecutorValue(value.elements()[index]);
-               });
+    return Map(
+        std::vector<ValueFuture>({value}),
+        [index](std::vector<ExecutorValue>&& values)
+            -> absl::StatusOr<ExecutorValue> {
+          ExecutorValue& value = values[0];
+          if (value.type() != ExecutorValue::ValueType::STRUCT) {
+            return absl::InvalidArgumentError(
+                ERR_LOG("Cannot create selection on non-struct value."));
+          }
+          if (value.elements().size() <= index) {
+            return absl::InvalidArgumentError(ERR_LOG(
+                absl::StrCat("Attempted to access index ", index, " of a ",
+                             value.elements().size(), "-length struct.")));
+          }
+          return ExecutorValue(value.elements()[index]);
+        },
+        &thread_pool_);
   }
   absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) {
     ExecutorValue value = TFF_TRY(Wait(std::move(value_fut)));
-    ParallelTasks tasks;
+    ParallelTasks tasks(&thread_pool_);
     TFF_TRY(MaterializeValue(value, value_pb, tasks));
     TFF_TRY(tasks.WaitAll());
     return absl::OkStatus();

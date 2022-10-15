@@ -16,6 +16,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"
 
 #include <functional>
+#include <future>  // NOLINT
 #include <thread>  // NOLINT
 #include <utility>
 
@@ -34,13 +35,17 @@ void ParallelTasks::add_task(std::function<absl::Status()> task) {
     absl::WriterMutexLock lock(&shared_inner_->mutex_);
     shared_inner_->remaining_tasks_ += 1;
   }
-  std::thread task_thread([inner = shared_inner_, task = std::move(task)]() {
+  auto void_task = [inner = shared_inner_, task = std::move(task)]() {
     absl::Status result = task();
     absl::WriterMutexLock lock(&inner->mutex_);
     inner->status_.Update(std::move(result));
     inner->remaining_tasks_ -= 1;
-  });
-  task_thread.detach();
+  };
+  if (thread_pool_ != nullptr) {
+    thread_pool_->Schedule(std::move(void_task));
+  } else {
+    std::async(std::launch::async, std::move(void_task));
+  }
 }
 
 absl::Status ParallelTasks::WaitAll() {

@@ -31,19 +31,44 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/platform/threadpool.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 
 namespace tensorflow_federated {
 
-// Runs the provided provided no-arg function on
-// another thread, returning a future to the result.
+// Runs the provided provided no-arg function on another thread, returning a
+// future to the result.
+//
+// If `thread_pool` is `nullptr`, each task will be scheduled on a newly
+// created thread.  If `thread_pool` is not `nullptr`, will use the thread
+// pool to schedule tasks.
+//
+// IMPORTANT: if the `thread_pool` argument is not nullptr, this method
+// _requires_ that work scheduled to run only depends on (communicates with)
+// other `ThreadRun` calls via the returned futures. This ensures that the
+// threads won't arrive in deadlock because they form a DAG of dependencies and
+// are scheduled first-to-last. Introducing additional synchronization mechanism
+// between the work scheduled here needs to be _very_ careful.
 template <typename Func,
           typename ReturnValue = typename std::result_of_t<Func()>>
-std::shared_future<ReturnValue> ThreadRun(Func lambda) {
-  std::packaged_task<ReturnValue()> task(lambda);
+std::shared_future<ReturnValue> ThreadRun(
+    Func lambda, tensorflow::thread::ThreadPool* thread_pool = nullptr) {
+  using TaskT = std::packaged_task<ReturnValue()>;
+  TaskT task(lambda);
   auto future_ptr = std::shared_future<ReturnValue>(task.get_future());
-  std::thread th(std::move(task));
-  th.detach();
+  if (thread_pool != nullptr) {
+    // Attempting to directly move the task results in a compiler error,
+    // possibly when trying to construct the `std::function<void()>` which may
+    // be trying to make a _copy_ of the lambda capture values which are not
+    // always copy constructable (especially in the case of ExecutorValue).
+    // Wrapping in a `shared_ptr` makes this possible.
+    thread_pool->Schedule(
+        [t = std::make_shared<TaskT>(std::move(task))]() { (*t)(); });
+  } else {
+    std::thread th(std::move(task));
+    th.detach();
+  }
   return future_ptr;
 }
 
@@ -63,7 +88,7 @@ auto Wait(const ValueFuture& future) {
 
 // Extracts the `ExecutorValue`s from `successfully_completed_futures`.
 template <typename ExecutorValue>
-auto GetAll(
+std::vector<ExecutorValue> GetAll(
     const absl::Span<const std::shared_future<absl::StatusOr<ExecutorValue>>>
         successfully_completed_futures) {
   std::vector<ExecutorValue> out;
@@ -140,14 +165,18 @@ auto AllReady(const std::vector<ValueFuture>& futures) {
 //
 // If all of `futures` have completed already, `lambda` will be run on the
 // current thread. If any `futures` have already failed, this function will
-// immediately return the result of their failure.
+// immediately return the result of their failure. If not all `futures` are
+// completed when called, a new lambda will be created a run in a separated
+// thread to await their results, and the `lambda` argument will be run on that
+// thread if and when `futures` all complete successfully.
 //
-// If not all `futures` are completed, a new thread will be spawned to await
-// their results, and `lambda` will be run on that thread if and when `futures`
-// all complete successfully.
+// If `thread_pool` is `nullptr`, a new thread will be created for the lambda
+// that will await results. If `thread_pool` is not `nullptr`, the newly created
+// waiting lambda will be scheduled on the thread pool.
 template <typename Func, typename ValueFuture>
-absl::StatusOr<ValueFuture> Map(std::vector<ValueFuture>&& futures,
-                                Func lambda) {
+absl::StatusOr<ValueFuture> Map(
+    std::vector<ValueFuture>&& futures, Func lambda,
+    tensorflow::thread::ThreadPool* thread_pool = nullptr) {
   bool all_ready = TFF_TRY(AllReady(futures));
   if (all_ready) {
     return ReadyFuture(TFF_TRY(lambda(GetAll(futures))));
@@ -157,23 +186,37 @@ absl::StatusOr<ValueFuture> Map(std::vector<ValueFuture>&& futures,
           -> absl::StatusOr<std::remove_const_t<
               std::remove_reference_t<decltype(futures[0].get().value())>>> {
         return lambda(TFF_TRY(WaitAll(futures)));
-      });
+      },
+      thread_pool);
 }
 
 class ParallelTasksInner_ {
  private:
+  friend class ParallelTasks;
   bool AllDone_() ABSL_SHARED_LOCKS_REQUIRED(mutex_);
   absl::Mutex mutex_;
   absl::Status status_ ABSL_GUARDED_BY(mutex_) = absl::OkStatus();
   uint32_t remaining_tasks_ ABSL_GUARDED_BY(mutex_) = 0;
-  friend class ParallelTasks;
 };
 
 // A group of `absl::Status`-returning functions to be run in parallel.
 class ParallelTasks {
  public:
-  // Default constructor.
-  ParallelTasks() : shared_inner_(std::make_shared<ParallelTasksInner_>()) {}
+  // Creates a ParallelTasks object.
+  //
+  // If `thread_pool` is `nullptr`, each task will be scheduled on a newly
+  // created thread.  If `thread_pool` is not `nullptr`, will use the thread
+  // pool to schedule tasks.
+  //
+  // IMPORTANT: if the `thread_pool` argument is not nullptr, this method
+  // _requires_ that work scheduled to run only depends on (communicates with)
+  // other `ThreadRun` calls via the returned futures. This ensures that the
+  // threads won't arrive in deadlock because they form a DAG of dependencies
+  // and are scheduled first-to-last. Introducing additional synchronization
+  // mechanism between the work scheduled here needs to be _very_ careful.
+  explicit ParallelTasks(tensorflow::thread::ThreadPool* thread_pool = nullptr)
+      : shared_inner_(std::make_shared<ParallelTasksInner_>()),
+        thread_pool_(thread_pool) {}
 
   // Move constructor.
   ParallelTasks(ParallelTasks&& other)
@@ -208,6 +251,7 @@ class ParallelTasks {
 
  private:
   std::shared_ptr<ParallelTasksInner_> shared_inner_;
+  tensorflow::thread::ThreadPool* thread_pool_ = nullptr;
 };
 
 }  // namespace tensorflow_federated
