@@ -35,8 +35,8 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_examples
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.optimizers import optimizer
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
@@ -144,7 +144,7 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
     new_non_trainable = [np.array(3), b'bytes check', 6, 3.0]
 
     state = optimizer_utils.ServerState(
-        model=model_utils.ModelWeights(
+        model=model_weights.ModelWeights(
             trainable=trainable, non_trainable=non_trainable),
         optimizer_state=[],
         delta_aggregate_state=tf.constant(0),
@@ -174,7 +174,7 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
     trainable = [np.array([1.0, 2.0]), np.array([[1.0]]), np.int64(3)]
     non_trainable = [np.array(1), b'bytes type', 5, 2.0]
     state = optimizer_utils.ServerState(
-        model=model_utils.ModelWeights(
+        model=model_weights.ModelWeights(
             trainable=trainable, non_trainable=non_trainable),
         optimizer_state=[],
         delta_aggregate_state=tf.constant(0),
@@ -285,7 +285,7 @@ class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
     server_state_type = computation_types.FederatedType(
         optimizer_utils.ServerState(
-            model=model_utils.ModelWeights(
+            model=model_weights.ModelWeights(
                 trainable=[
                     computation_types.TensorType(tf.float32, [2, 1]),
                     computation_types.TensorType(tf.float32)
@@ -344,20 +344,20 @@ class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
     def _model_fn_with_zero_weights():
       linear_regression_model = model_examples.LinearRegression
-      weights = model_utils.ModelWeights.from_model(linear_regression_model)
+      weights = model_weights.ModelWeights.from_model(linear_regression_model)
       zero_trainable = [tf.zeros_like(x) for x in weights.trainable]
       zero_non_trainable = [tf.zeros_like(x) for x in weights.non_trainable]
-      zero_weights = model_utils.ModelWeights(
+      zero_weights = model_weights.ModelWeights(
           trainable=zero_trainable, non_trainable=zero_non_trainable)
       zero_weights.assign_weights_to(linear_regression_model)
       return linear_regression_model
 
     def _model_fn_with_one_weights():
       linear_regression_model = model_examples.LinearRegression
-      weights = model_utils.ModelWeights.from_model(linear_regression_model)
+      weights = model_weights.ModelWeights.from_model(linear_regression_model)
       ones_trainable = [tf.ones_like(x) for x in weights.trainable]
       ones_non_trainable = [tf.ones_like(x) for x in weights.non_trainable]
-      ones_weights = model_utils.ModelWeights(
+      ones_weights = model_weights.ModelWeights(
           trainable=ones_trainable, non_trainable=ones_non_trainable)
       ones_weights.assign_weights_to(linear_regression_model)
       return linear_regression_model
@@ -439,7 +439,7 @@ class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       ('keras_optimizer', _keras_optimizer_fn),
   ])
   def test_construction_with_aggregation_process(self, server_optimizer):
-    model_update_type = model_utils.weights_type_from_model(
+    model_update_type = model_weights.weights_type_from_model(
         model_examples.LinearRegression).trainable
     model_update_aggregator = TestMeasuredMeanFactory()
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
@@ -476,7 +476,7 @@ class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters([('tff_optimizer', _tff_optimizer),
                                    ('keras_optimizer', _keras_optimizer_fn)])
   def test_construction_with_broadcast_process(self, server_optimizer):
-    model_weights_type = model_utils.weights_type_from_model(
+    model_weights_type = model_weights.weights_type_from_model(
         model_examples.LinearRegression)
     broadcast_process = _build_test_measured_broadcast(model_weights_type)
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
@@ -506,7 +506,7 @@ class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
                                    ('keras_optimizer', _keras_optimizer_fn)])
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_orchestration_execute_measured_process(self, server_optimizer):
-    model_weights_type = model_utils.weights_type_from_model(
+    model_weights_type = model_weights.weights_type_from_model(
         model_examples.LinearRegression)
     learning_rate = 1.0
     server_optimizer_fn = server_optimizer(learning_rate)
@@ -569,7 +569,7 @@ class ModelDeltaOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_execute_measured_process_with_custom_metrics_aggregator(
       self, server_optimizer):
-    model_weights_type = model_utils.weights_type_from_model(
+    model_weights_type = model_weights.weights_type_from_model(
         model_examples.LinearRegression)
     learning_rate = 1.0
     server_optimizer_fn = server_optimizer(learning_rate)

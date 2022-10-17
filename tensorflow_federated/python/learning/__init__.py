@@ -35,6 +35,7 @@ model training. See `tff.learning.Model` for the overall base class, and
 `tff.learning.models` for related model classes.
 """
 
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.learning import algorithms
 from tensorflow_federated.python.learning import framework
 from tensorflow_federated.python.learning import metrics
@@ -59,5 +60,5 @@ from tensorflow_federated.python.learning.model_update_aggregator import dp_aggr
 from tensorflow_federated.python.learning.model_update_aggregator import entropy_compression_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import robust_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import secure_aggregator
-from tensorflow_federated.python.learning.model_utils import ModelWeights
+from tensorflow_federated.python.learning.models.model_weights import ModelWeights
 from tensorflow_federated.python.learning.personalization_eval import build_personalization_eval

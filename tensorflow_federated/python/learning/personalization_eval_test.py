@@ -23,9 +23,9 @@ from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning import personalization_eval as p13n_eval
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.models import model_weights
 
 # TODO(b/160896627): Switch to `dataset.reduce` once multi-GPU supports it.
 dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(simulation_flag=True)
@@ -142,7 +142,7 @@ def _create_zero_model_weights(model_fn):
   """Creates the model weights with all zeros."""
   whimsy_model = model_fn()
   return tf.nest.map_structure(
-      tf.zeros_like, model_utils.ModelWeights.from_model(whimsy_model))
+      tf.zeros_like, model_weights.ModelWeights.from_model(whimsy_model))
 
 
 class PersonalizationEvalTest(tf.test.TestCase, parameterized.TestCase):

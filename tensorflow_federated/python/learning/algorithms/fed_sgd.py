@@ -43,10 +43,10 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
@@ -73,7 +73,7 @@ def _build_client_update(model: model_lib.Model,
 
   @tf.function
   def client_update(initial_weights, dataset):
-    model_weights = model_utils.ModelWeights.from_model(model)
+    model_weights = model_weights_lib.ModelWeights.from_model(model)
     tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
                           initial_weights)
 
@@ -161,7 +161,7 @@ def _build_fed_sgd_client_work(
     metrics_aggregation_fn = metrics_aggregator(model.metric_finalizers(),
                                                 unfinalized_metrics_type)
   data_type = computation_types.SequenceType(model.input_spec)
-  weights_type = model_utils.weights_type_from_model(model)
+  weights_type = model_weights_lib.weights_type_from_model(model)
 
   @federated_computation.federated_computation
   def init_fn():
@@ -293,7 +293,7 @@ def _build_functional_fed_sgd_client_work(
 
   # Wrap in a `ModelWeights` structure that is required by the `finalizer.`
   trainable_weights, non_trainable_weights = model.initial_weights
-  weights_type = model_utils.ModelWeights(
+  weights_type = model_weights_lib.ModelWeights(
       tuple(ndarray_to_tensorspec(w) for w in trainable_weights),
       tuple(ndarray_to_tensorspec(w) for w in non_trainable_weights))
 
@@ -411,7 +411,7 @@ def build_fed_sgd(
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
       trainable_weights, non_trainable_weights = model_fn.initial_weights
-      return model_utils.ModelWeights(
+      return model_weights_lib.ModelWeights(
           tuple(tf.convert_to_tensor(w) for w in trainable_weights),
           tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
 
@@ -425,7 +425,7 @@ def build_fed_sgd(
         raise TypeError('When `model_fn` is a callable, it returns instances of'
                         ' tff.learning.Model. Instead callable returned type: '
                         f'{type(model)}')
-      return model_utils.ModelWeights.from_model(model)
+      return model_weights_lib.ModelWeights.from_model(model)
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 

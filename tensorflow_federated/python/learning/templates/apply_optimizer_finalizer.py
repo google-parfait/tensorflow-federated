@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import finalizers
@@ -111,7 +111,7 @@ def build_apply_optimizer_finalizer(
   """Builds finalizer that applies a step of an optimizer.
 
   The provided `model_weights_type` must be a non-federated `tff.Type` with the
-  `tff.learning.ModelWeights` container.
+  `tff.learning.models.ModelWeights` container.
 
   The 2nd input argument of the created `FinalizerProcess.next` expects a value
   matching `model_weights_type` and its 3rd argument expects value matching
@@ -126,13 +126,14 @@ def build_apply_optimizer_finalizer(
       that returns a `tf.keras.optimizers.Optimizer`. This optimizer is used to
       apply client updates to the server model.
     model_weights_type: A non-federated `tff.Type` of the model weights to be
-      optimized, which must have a `tff.learning.ModelWeights` container.
+      optimized, which must have a `tff.learning.models.ModelWeights` container.
 
   Returns:
     A `FinalizerProcess` that applies the `optimizer`.
 
   Raises:
-    TypeError: If `value_type` does not have a `tff.learning.ModelWeights`
+    TypeError: If `value_type` does not have a
+    `tff.learning.model.sModelWeights`
       Python container, or contains a `tff.types.FederatedType`.
   """
   if not isinstance(optimizer_fn, optimizer_base.Optimizer):
@@ -145,11 +146,11 @@ def build_apply_optimizer_finalizer(
           'a no-arg callable returning a `tf.keras.optimizers.Optimizer`.')
 
   if (not model_weights_type.is_struct_with_python() or
-      model_weights_type.python_container != model_utils.ModelWeights or
+      model_weights_type.python_container != model_weights.ModelWeights or
       type_analysis.contains_federated_types(model_weights_type)):
     raise TypeError(
         f'Provided value_type must be a tff.types.StructType with its python '
-        f'container being tff.learning.ModelWeights, not containing a '
+        f'container being tff.learning.models.ModelWeights, not containing a '
         f'tff.types.FederatedType, but found: {model_weights_type}')
 
   if isinstance(optimizer_fn, optimizer_base.Optimizer):
@@ -171,7 +172,8 @@ def build_apply_optimizer_finalizer(
     optimizer_state, new_trainable_weights = intrinsics.federated_map(
         next_tf, (state, weights.trainable, update))
     new_weights = intrinsics.federated_zip(
-        model_utils.ModelWeights(new_trainable_weights, weights.non_trainable))
+        model_weights.ModelWeights(new_trainable_weights,
+                                   weights.non_trainable))
     empty_measurements = intrinsics.federated_value((), placements.SERVER)
     return measured_process.MeasuredProcessOutput(optimizer_state, new_weights,
                                                   empty_measurements)

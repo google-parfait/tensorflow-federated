@@ -15,12 +15,37 @@ package_group(
 licenses(["notice"])
 
 py_library(
+    name = "model_weights",
+    srcs = ["model_weights.py"],
+    srcs_version = "PY3",
+    visibility = [
+        ":models_packages",
+        "//tensorflow_federated/python/learning:__pkg__",
+        "//tensorflow_federated/python/learning:learning_users",
+        "//tensorflow_federated/python/learning/algorithms:__pkg__",
+        "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
+        "//tensorflow_federated/python/learning/framework:__pkg__",
+        "//tensorflow_federated/python/learning/reconstruction:__pkg__",
+        "//tensorflow_federated/python/learning/templates:__pkg__",
+        "//tensorflow_federated/python/learning/templates:templates_packages",
+    ],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/learning:model",
+    ],
+)
+
+py_library(
     name = "models",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:learning_packages"],
     deps = [
         ":functional",
+        ":model_weights",
         ":serialization",
     ],
 )
@@ -68,6 +93,19 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/learning:model",
+    ],
+)
+
+py_test(
+    name = "model_weights_test",
+    srcs = ["model_weights_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":model_weights",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning:model",
     ],
 )

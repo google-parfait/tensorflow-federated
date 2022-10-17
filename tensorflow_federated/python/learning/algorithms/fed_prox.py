@@ -38,9 +38,9 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import composers
@@ -175,7 +175,7 @@ def build_weighted_fed_prox(
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
       trainable_weights, non_trainable_weights = model_fn.initial_weights
-      return model_utils.ModelWeights(
+      return model_weights.ModelWeights(
           tuple(tf.convert_to_tensor(w) for w in trainable_weights),
           tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
 
@@ -189,7 +189,7 @@ def build_weighted_fed_prox(
         raise TypeError('When `model_fn` is a callable, it returns instances of'
                         ' tff.learning.Model. Instead callable returned type: '
                         f'{type(model)}')
-      return model_utils.ModelWeights.from_model(model)
+      return model_weights.ModelWeights.from_model(model)
 
   model_weights_type = initial_model_weights_fn.type_signature.result
   if model_distributor is None:

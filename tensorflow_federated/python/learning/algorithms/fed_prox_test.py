@@ -25,10 +25,10 @@ from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_prox
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import distributors
@@ -137,7 +137,8 @@ class FedProxConstructionTest(parameterized.TestCase):
 
   def test_raises_on_invalid_distributor(self):
     model_weights_type = type_conversions.type_from_tensors(
-        model_utils.ModelWeights.from_model(model_examples.LinearRegression()))
+        model_weights.ModelWeights.from_model(
+            model_examples.LinearRegression()))
     distributor = distributors.build_broadcast_process(model_weights_type)
     invalid_distributor = iterative_process.IterativeProcess(
         distributor.initialize, distributor.next)

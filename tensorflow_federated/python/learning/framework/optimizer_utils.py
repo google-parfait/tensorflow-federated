@@ -40,8 +40,8 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.optimizers import keras_optimizer
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -200,7 +200,7 @@ def state_with_new_model_weights(
   assert_weight_lists_match(server_state.model.non_trainable,
                             non_trainable_weights)
   new_server_state = ServerState(
-      model=model_utils.ModelWeights(
+      model=model_weights_lib.ModelWeights(
           trainable=trainable_weights, non_trainable=non_trainable_weights),
       optimizer_state=server_state.optimizer_state,
       delta_aggregate_state=server_state.delta_aggregate_state,
@@ -211,7 +211,7 @@ def state_with_new_model_weights(
 def _apply_delta(
     *,
     optimizer: tf.keras.optimizers.Optimizer,
-    model_variables: model_utils.ModelWeights,
+    model_variables: model_weights_lib.ModelWeights,
     delta,
 ) -> None:
   """Applies `delta` to `model` using `optimizer`."""
@@ -319,7 +319,7 @@ def _build_one_round_computation(
   # should re-evaluate what happens here.
   with tf.Graph().as_default():
     whimsy_model_for_metadata = model_fn()
-    model_weights = model_utils.ModelWeights.from_model(
+    model_weights = model_weights_lib.ModelWeights.from_model(
         whimsy_model_for_metadata)
     model_weights_type = type_conversions.type_from_tensors(model_weights)
 
@@ -588,9 +588,9 @@ def build_model_delta_optimizer_process(
 
   @tensorflow_computation.tf_computation
   def model_and_optimizer_init_fn(
-  ) -> Tuple[model_utils.ModelWeights, List[tf.Variable]]:
+  ) -> Tuple[model_weights_lib.ModelWeights, List[tf.Variable]]:
     """Returns initial model weights and state of the global optimizer."""
-    model_variables = model_utils.ModelWeights.from_model(model_fn())
+    model_variables = model_weights_lib.ModelWeights.from_model(model_fn())
     optimizer = keras_optimizer.build_or_verify_tff_optimizer(
         server_optimizer_fn,
         model_variables.trainable,

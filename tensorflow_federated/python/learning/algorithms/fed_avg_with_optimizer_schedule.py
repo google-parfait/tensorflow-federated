@@ -36,9 +36,9 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_avg
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
@@ -101,7 +101,7 @@ def build_scheduled_client_work(
     metrics_aggregation_fn = metrics_aggregator(
         whimsy_model.metric_finalizers(), unfinalized_metrics_type)
   data_type = computation_types.SequenceType(whimsy_model.input_spec)
-  weights_type = model_utils.weights_type_from_model(whimsy_model)
+  weights_type = model_weights.weights_type_from_model(whimsy_model)
 
   if isinstance(whimsy_optimizer, optimizer_base.Optimizer):
     build_client_update_fn = model_delta_client_work.build_model_delta_update_with_tff_optimizer
@@ -249,7 +249,7 @@ def build_weighted_fed_avg_with_optimizer_schedule(
 
   @tensorflow_computation.tf_computation()
   def initial_model_weights_fn():
-    return model_utils.ModelWeights.from_model(model_fn())
+    return model_weights.ModelWeights.from_model(model_fn())
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 

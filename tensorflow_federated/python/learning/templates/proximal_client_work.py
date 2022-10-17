@@ -40,10 +40,10 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -82,7 +82,7 @@ def build_model_delta_update_with_tff_optimizer(
 
   @tf.function
   def client_update(optimizer, initial_weights, data):
-    model_weights = model_utils.ModelWeights.from_model(model)
+    model_weights = model_weights_lib.ModelWeights.from_model(model)
     tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
                           initial_weights)
 
@@ -172,7 +172,7 @@ def build_model_delta_update_with_keras_optimizer(
 
   @tf.function
   def client_update(optimizer, initial_weights, data):
-    model_weights = model_utils.ModelWeights.from_model(model)
+    model_weights = model_weights_lib.ModelWeights.from_model(model)
     tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
                           initial_weights)
 
@@ -396,7 +396,7 @@ def build_model_delta_client_work(
     metrics_aggregation_fn = metrics_aggregator(model.metric_finalizers(),
                                                 unfinalized_metrics_type)
   data_type = computation_types.SequenceType(model.input_spec)
-  weights_type = model_utils.weights_type_from_model(model)
+  weights_type = model_weights_lib.weights_type_from_model(model)
 
   if isinstance(optimizer, optimizer_base.Optimizer):
 
@@ -491,7 +491,7 @@ def build_functional_model_delta_client_work(
     return tf.TensorSpec(shape=ndarray.shape, dtype=ndarray.dtype)
 
   # Wrap in a `ModelWeights` structure that is required by the `finalizer.`
-  weights_type = model_utils.ModelWeights(
+  weights_type = model_weights_lib.ModelWeights(
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[0]),
       tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]))
 

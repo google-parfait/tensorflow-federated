@@ -46,10 +46,10 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator as metric_aggregator
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
@@ -85,11 +85,11 @@ def _build_client_update_fn_for_mime_lite(
     dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
         use_experimental_simulation_loop)
     weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(
-        model_utils.weights_type_from_model(model))
+        model_weights_lib.weights_type_from_model(model))
 
     @tf.function
     def client_update(global_optimizer_state, initial_weights, data):
-      model_weights = model_utils.ModelWeights.from_model(model)
+      model_weights = model_weights_lib.ModelWeights.from_model(model)
       tf.nest.map_structure(lambda a, b: a.assign(b), model_weights,
                             initial_weights)
 
@@ -227,7 +227,7 @@ def _build_mime_lite_client_work(
     metrics_aggregation_fn = metrics_aggregator(model.metric_finalizers(),
                                                 unfinalized_metrics_type)
   data_type = computation_types.SequenceType(model.input_spec)
-  weights_type = model_utils.weights_type_from_model(model)
+  weights_type = model_weights_lib.weights_type_from_model(model)
   weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
 
   full_gradient_aggregator = full_gradient_aggregator.create(
@@ -299,7 +299,7 @@ def _build_functional_client_update_fn_for_mime_lite(
 
     @tf.function
     def client_update(global_optimizer_state: Any,
-                      incoming_weights: model_utils.ModelWeights,
+                      incoming_weights: model_weights_lib.ModelWeights,
                       data: tf.data.Dataset) -> Any:
       trainable_weights, _ = incoming_weights
 
@@ -380,8 +380,8 @@ def _build_functional_client_update_fn_for_mime_lite(
           update=client_weights_delta,
           update_weight=client_weight), unfinalized_metrics, full_gradient
 
-    # Convert `tff.learning.ModelWeights` type weights back into the initial
-    # shape used by the model.
+    # Convert `tff.learning.models.ModelWeights` type weights back into the
+    # initial shape used by the model.
     incoming_weights = (incoming_weights.trainable,
                         incoming_weights.non_trainable)
     return client_update(global_optimizer_state, incoming_weights, data)
@@ -440,7 +440,7 @@ def _build_mime_lite_functional_client_work(
   data_type = computation_types.SequenceType(model.input_spec)
   trainable_weights, non_trainable_weights = model.initial_weights
   weights_type = type_conversions.infer_type(
-      model_utils.ModelWeights(
+      model_weights_lib.ModelWeights(
           tuple(trainable_weights), tuple(non_trainable_weights)))
   weight_tensor_specs = type_conversions.type_to_tf_tensor_specs(weights_type)
 
@@ -726,7 +726,7 @@ def build_weighted_mime_lite(
     @tensorflow_computation.tf_computation
     def initial_model_weights_fn():
       trainable_weights, non_trainable_weights = model_fn.initial_weights
-      return model_utils.ModelWeights(
+      return model_weights_lib.ModelWeights(
           tuple(tf.convert_to_tensor(w) for w in trainable_weights),
           tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
 
@@ -739,7 +739,7 @@ def build_weighted_mime_lite(
         raise TypeError('When `model_fn` is a callable, it returns instances of'
                         ' tff.learning.Model. Instead callable returned type: '
                         f'{type(model)}')
-      return model_utils.ModelWeights.from_model(model)
+      return model_weights_lib.ModelWeights.from_model(model)
 
   model_weights_type = initial_model_weights_fn.type_signature.result
   if model_distributor is None:
@@ -1029,7 +1029,7 @@ def build_mime_lite_with_optimizer_schedule(
     @tensorflow_computation.tf_computation
     def initial_model_weights_fn():
       trainable_weights, non_trainable_weights = model_fn.initial_weights
-      return model_utils.ModelWeights(
+      return model_weights_lib.ModelWeights(
           tuple(tf.convert_to_tensor(w) for w in trainable_weights),
           tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
 
@@ -1042,7 +1042,7 @@ def build_mime_lite_with_optimizer_schedule(
         raise TypeError('When `model_fn` is a callable, it returns instances of'
                         ' tff.learning.Model. Instead callable returned type: '
                         f'{type(model)}')
-      return model_utils.ModelWeights.from_model(model)
+      return model_weights_lib.ModelWeights.from_model(model)
 
   model_weights_type = initial_model_weights_fn.type_signature.result
   if model_distributor is None:

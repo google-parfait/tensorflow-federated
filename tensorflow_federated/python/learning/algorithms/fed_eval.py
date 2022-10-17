@@ -35,8 +35,8 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import federated_evaluation
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.metrics import aggregation_factory
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
@@ -198,7 +198,7 @@ def build_fed_eval(
 
   @tensorflow_computation.tf_computation()
   def initial_model_weights_fn():
-    return model_utils.ModelWeights.from_model(model_fn())
+    return model_weights_lib.ModelWeights.from_model(model_fn())
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 

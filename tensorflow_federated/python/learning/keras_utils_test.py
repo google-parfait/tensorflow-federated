@@ -31,9 +31,9 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.metrics import counters
+from tensorflow_federated.python.learning.models import model_weights
 
 
 def _create_whimsy_types(feature_dims):
@@ -486,7 +486,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(m['mean_absolute_error'][1], 4)
 
     # Ensure we can assign the FL trained model weights to a new model.
-    tff_weights = model_utils.ModelWeights.from_model(tff_model)
+    tff_weights = model_weights.ModelWeights.from_model(tff_model)
     keras_model = model_examples.build_multiple_inputs_keras_model()
     tff_weights.assign_weights_to(keras_model)
     loaded_model = keras_utils.from_keras_model(
@@ -538,7 +538,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(m['mean_absolute_error'][1], 4)
 
     # Ensure we can assign the FL trained model weights to a new model.
-    tff_weights = model_utils.ModelWeights.from_model(tff_model)
+    tff_weights = model_weights.ModelWeights.from_model(tff_model)
     keras_model = model_examples.build_conv_batch_norm_keras_model()
     tff_weights.assign_weights_to(keras_model)
 
@@ -587,7 +587,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
           optimizer.apply_gradients(
               zip(gradients, tff_model.trainable_variables))
         return (tff_model.report_local_unfinalized_metrics(),
-                model_utils.ModelWeights.from_model(tff_model))
+                model_weights.ModelWeights.from_model(tff_model))
 
       return _train_loop()
 
@@ -935,7 +935,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['mean_absolute_error'][1], 6)
 
     # Ensure we can assign the FL trained model weights to a new model.
-    tff_weights = model_utils.ModelWeights.from_model(tff_model)
+    tff_weights = model_weights.ModelWeights.from_model(tff_model)
     keras_model = model_examples.build_lookup_table_keras_model()
     tff_weights.assign_weights_to(keras_model)
     loaded_model = keras_utils.from_keras_model(
@@ -978,7 +978,7 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['mean_absolute_error'][1], 2)
 
     # Ensure we can assign the FL trained model weights to a new model.
-    tff_weights = model_utils.ModelWeights.from_model(tff_model)
+    tff_weights = model_weights.ModelWeights.from_model(tff_model)
     keras_model = model_examples.build_lookup_table_keras_model()
     tff_weights.assign_weights_to(keras_model)
     loaded_model = keras_utils.from_keras_model(

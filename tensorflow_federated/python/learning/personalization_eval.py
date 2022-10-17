@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 
 
 def build_personalization_eval(model_fn,
@@ -89,7 +89,7 @@ def build_personalization_eval(model_fn,
     A federated `tff.Computation` with the functional type signature
     `(<model_weights@SERVER, input@CLIENTS> -> personalization_metrics@SERVER)`:
 
-    *   `model_weights` is a `tff.learning.ModelWeights`.
+    *   `model_weights` is a `tff.learning.models.ModelWeights`.
     *   Each client's input is an `OrderedDict` of two required keys
         `train_data` and `test_data`; each key is mapped to an unbatched
         `tf.data.Dataset`. If extra context (e.g., extra datasets) is used in
@@ -118,7 +118,7 @@ def build_personalization_eval(model_fn,
   with tf.Graph().as_default():
     py_typecheck.check_callable(model_fn)
     model = model_fn()
-    model_weights_type = model_utils.weights_type_from_model(model)
+    model_weights_type = model_weights_lib.weights_type_from_model(model)
     batch_tff_type = computation_types.to_type(model.input_spec)
 
   # Define the `tff.Type` of each client's input. Since batching (as well as
@@ -225,7 +225,7 @@ def _compute_baseline_metrics(model_fn, initial_model_weights, test_data,
                               baseline_evaluate_fn):
   """Evaluate the model with weights being the `initial_model_weights`."""
   model = model_fn()
-  model_weights = model_utils.ModelWeights.from_model(model)
+  model_weights = model_weights_lib.ModelWeights.from_model(model)
 
   @tf.function
   def assign_and_compute():
@@ -241,7 +241,7 @@ def _compute_p13n_metrics(model_fn, initial_model_weights, train_data,
                           test_data, personalize_fn_dict, context):
   """Train and evaluate the personalized models."""
   model = model_fn()
-  model_weights = model_utils.ModelWeights.from_model(model)
+  model_weights = model_weights_lib.ModelWeights.from_model(model)
   # Construct the `personalize_fn` (and the associated `tf.Variable`s) here.
   # This ensures that the new variables are created in the graphs that TFF
   # controls. This is the key reason why we need `personalize_fn_dict` to

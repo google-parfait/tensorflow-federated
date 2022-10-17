@@ -22,7 +22,7 @@ from typing import Callable, Optional, Tuple
 
 import tensorflow as tf
 
-from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.reconstruction import model as model_lib
 
 # Type alias for a function that takes in a TF dataset and produces two TF
@@ -149,16 +149,16 @@ def build_dataset_split_fn(recon_epochs: int = 1,
   return dataset_split_fn
 
 
-def get_global_variables(model: model_lib.Model) -> model_utils.ModelWeights:
+def get_global_variables(model: model_lib.Model) -> model_weights.ModelWeights:
   """Gets global variables from a `Model` as `ModelWeights`."""
-  return model_utils.ModelWeights(
+  return model_weights.ModelWeights(
       trainable=model.global_trainable_variables,
       non_trainable=model.global_non_trainable_variables)
 
 
-def get_local_variables(model: model_lib.Model) -> model_utils.ModelWeights:
+def get_local_variables(model: model_lib.Model) -> model_weights.ModelWeights:
   """Gets local variables from a `Model` as `ModelWeights`."""
-  return model_utils.ModelWeights(
+  return model_weights.ModelWeights(
       trainable=model.local_trainable_variables,
       non_trainable=model.local_non_trainable_variables)
 

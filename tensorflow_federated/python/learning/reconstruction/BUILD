@@ -38,7 +38,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":model",
-        "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/models:model_weights",
     ],
 )
 
@@ -50,7 +50,7 @@ py_test(
     deps = [
         ":keras_utils",
         ":reconstruction_utils",
-        "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/models:model_weights",
     ],
 )
 
@@ -134,8 +134,8 @@ py_test(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:client_weight_lib",
-        "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/metrics:counters",
+        "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )

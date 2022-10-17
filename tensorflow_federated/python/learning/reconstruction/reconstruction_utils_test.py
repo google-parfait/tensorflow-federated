@@ -17,7 +17,7 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.reconstruction import keras_utils
 from tensorflow_federated.python.learning.reconstruction import reconstruction_utils
 
@@ -228,7 +228,7 @@ class ReconstructionUtilsTest(tf.test.TestCase):
 
     global_weights = reconstruction_utils.get_global_variables(model)
 
-    self.assertIsInstance(global_weights, model_utils.ModelWeights)
+    self.assertIsInstance(global_weights, model_weights.ModelWeights)
     # The last layer of the Keras model, which is a local Dense layer, contains
     # 2 trainable variables for the weights and bias.
     self.assertEqual(global_weights.trainable,
@@ -246,7 +246,7 @@ class ReconstructionUtilsTest(tf.test.TestCase):
 
     local_weights = reconstruction_utils.get_local_variables(model)
 
-    self.assertIsInstance(local_weights, model_utils.ModelWeights)
+    self.assertIsInstance(local_weights, model_weights.ModelWeights)
     # The last layer of the Keras model, which is a local Dense layer, contains
     # 2 trainable variables for the weights and bias.
     self.assertEqual(local_weights.trainable,

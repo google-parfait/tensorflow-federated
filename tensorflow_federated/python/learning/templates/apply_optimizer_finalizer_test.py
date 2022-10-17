@@ -23,14 +23,14 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.optimizers import optimizer as optimizer_base
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 
 SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
 MODEL_WEIGHTS_TYPE = computation_types.at_server(
-    computation_types.to_type(model_utils.ModelWeights(tf.float32, ())))
+    computation_types.to_type(model_weights.ModelWeights(tf.float32, ())))
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
 
@@ -39,7 +39,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
 
   def test_initialize_has_expected_type_with_keras_optimizer(self):
     mw_type = computation_types.to_type(
-        model_utils.ModelWeights(
+        model_weights.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
     optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
@@ -53,7 +53,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
 
   def test_next_has_expected_type_with_keras_optimizer(self):
     mw_type = computation_types.to_type(
-        model_utils.ModelWeights(
+        model_weights.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
     optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
@@ -77,7 +77,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
 
   def test_get_hparams_has_expected_type_with_keras_optimizer(self):
     mw_type = computation_types.to_type(
-        model_utils.ModelWeights(
+        model_weights.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
     optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
@@ -93,7 +93,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
 
   def test_set_hparams_has_expected_type_with_keras_optimizer(self):
     mw_type = computation_types.to_type(
-        model_utils.ModelWeights(
+        model_weights.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
     optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(learning_rate=1.0)
 
@@ -112,7 +112,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
 
   def test_initialize_has_expected_type_with_tff_optimizer(self):
     mw_type = computation_types.to_type(
-        model_utils.ModelWeights(
+        model_weights.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
@@ -129,7 +129,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
 
   def test_next_has_expected_type_with_tff_optimizer(self):
     mw_type = computation_types.to_type(
-        model_utils.ModelWeights(
+        model_weights.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
@@ -155,7 +155,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
 
   def test_get_hparams_has_expected_type_with_tff_optimizer(self):
     mw_type = computation_types.to_type(
-        model_utils.ModelWeights(
+        model_weights.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
@@ -172,7 +172,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
 
   def test_set_hparams_has_expected_type_with_tff_optimizer(self):
     mw_type = computation_types.to_type(
-        model_utils.ModelWeights(
+        model_weights.ModelWeights(
             trainable=(tf.float32, tf.float32), non_trainable=tf.float32))
 
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
@@ -195,7 +195,7 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
       ('federated_type', MODEL_WEIGHTS_TYPE),
       ('model_weights_of_federated_types',
        computation_types.to_type(
-           model_utils.ModelWeights(SERVER_FLOAT, SERVER_FLOAT))),
+           model_weights.ModelWeights(SERVER_FLOAT, SERVER_FLOAT))),
       ('not_model_weights', computation_types.to_type(
           (tf.float32, tf.float32))),
       ('function_type', computation_types.FunctionType(None,
@@ -220,7 +220,7 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
         sgdm.build_sgdm(1.0), MODEL_WEIGHTS_TYPE.member)
 
-    weights = model_utils.ModelWeights(1.0, ())
+    weights = model_weights.ModelWeights(1.0, ())
     update = 0.1
     optimizer_state = finalizer.initialize()
     for i in range(5):
@@ -238,7 +238,7 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
         server_optimizer_fn, MODEL_WEIGHTS_TYPE.member)
 
-    weights = model_utils.ModelWeights(1.0, ())
+    weights = model_weights.ModelWeights(1.0, ())
     update = 0.1
     optimizer_state = finalizer.initialize()
     for i in range(5):
@@ -255,7 +255,7 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
         sgdm.build_sgdm(1.0, momentum=momentum), MODEL_WEIGHTS_TYPE.member)
 
-    weights = model_utils.ModelWeights(1.0, ())
+    weights = model_weights.ModelWeights(1.0, ())
     update = 0.1
     expected_velocity = 0.0
     optimizer_state = finalizer.initialize()
@@ -278,7 +278,7 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
     finalizer = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
         server_optimizer_fn, MODEL_WEIGHTS_TYPE.member)
 
-    weights = model_utils.ModelWeights(1.0, ())
+    weights = model_weights.ModelWeights(1.0, ())
     update = 0.1
     expected_velocity = 0.0
     optimizer_state = finalizer.initialize()

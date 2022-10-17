@@ -32,9 +32,9 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 
 # Convenience aliases.
 SequenceType = computation_types.SequenceType
@@ -81,7 +81,7 @@ def build_local_evaluation(
     """Returns local outputs after evaluting `model_weights` on `dataset`."""
     with tf.init_scope():
       model = model_fn()
-    model_weights = model_utils.ModelWeights.from_model(model)
+    model_weights = model_weights_lib.ModelWeights.from_model(model)
     tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
                           incoming_model_weights)
 
@@ -158,7 +158,7 @@ def build_federated_evaluation(
   # with some other mechanism.
   with tf.Graph().as_default():
     model = model_fn()
-    model_weights_type = model_utils.weights_type_from_model(model)
+    model_weights_type = model_weights_lib.weights_type_from_model(model)
     batch_type = computation_types.to_type(model.input_spec)
     unfinalized_metrics_type = type_conversions.type_from_tensors(
         model.report_local_unfinalized_metrics())

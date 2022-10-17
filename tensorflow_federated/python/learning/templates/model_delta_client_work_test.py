@@ -30,10 +30,10 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import model_delta_client_work
@@ -70,7 +70,7 @@ class ModelDeltaClientWorkComputationTest(tf.test.TestCase,
     client_work_process = model_delta_client_work.build_model_delta_client_work(
         model_fn, optimizer_fn, weighting)
 
-    mw_type = model_utils.ModelWeights(
+    mw_type = model_weights_lib.ModelWeights(
         trainable=computation_types.to_type([(tf.float32, (2, 1)), tf.float32]),
         non_trainable=computation_types.to_type([tf.float32]))
     expected_param_model_weights_type = computation_types.at_clients(mw_type)
@@ -125,7 +125,7 @@ class ModelDeltaClientWorkComputationTest(tf.test.TestCase,
     client_work_process = model_delta_client_work.build_model_delta_client_work(
         model_fn, optimizer, weighting)
 
-    mw_type = model_utils.ModelWeights(
+    mw_type = model_weights_lib.ModelWeights(
         trainable=computation_types.to_type([(tf.float32, (2, 1)), tf.float32]),
         non_trainable=computation_types.to_type([tf.float32]))
     expected_param_model_weights_type = computation_types.at_clients(mw_type)
@@ -263,8 +263,8 @@ def create_test_dataset() -> tf.data.Dataset:
   return dataset.repeat(2).batch(3)
 
 
-def create_test_initial_weights() -> model_utils.ModelWeights:
-  return model_utils.ModelWeights(
+def create_test_initial_weights() -> model_weights_lib.ModelWeights:
+  return model_weights_lib.ModelWeights(
       trainable=[tf.zeros((2, 1)), tf.constant(0.0)], non_trainable=[0.0])
 
 
@@ -538,7 +538,7 @@ class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
     client_update_model_fn = model_delta_client_work.build_model_delta_update_with_tff_optimizer(
         model_fn=model_fn, weighting=weighting)
     model_fn_optimizer = sgdm.build_sgdm(learning_rate=0.1)
-    model_fn_weights = model_utils.ModelWeights.from_model(model_fn())
+    model_fn_weights = model_weights_lib.ModelWeights.from_model(model_fn())
 
     functional_model_weights = functional_model.initial_weights
     for _ in range(10):

@@ -22,11 +22,11 @@ import tensorflow as tf
 from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_sgd
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 
@@ -52,8 +52,8 @@ def _build_functional_model() -> functional.FunctionalModel:
   return test_models.build_functional_linear_regression(feature_dim=2)
 
 
-def _initial_weights() -> model_utils.ModelWeights:
-  return model_utils.ModelWeights(
+def _initial_weights() -> model_weights.ModelWeights:
+  return model_weights.ModelWeights(
       trainable=[tf.constant([[0.0], [0.0]]),
                  tf.constant(0.0)],
       non_trainable=[0.0])

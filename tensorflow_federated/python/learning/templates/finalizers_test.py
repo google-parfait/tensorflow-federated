@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.templates import finalizers
 
 SERVER_INT = computation_types.FederatedType(tf.int32, placements.SERVER)
@@ -31,7 +31,7 @@ SERVER_FLOAT = computation_types.FederatedType(tf.float32, placements.SERVER)
 CLIENTS_INT = computation_types.FederatedType(tf.int32, placements.CLIENTS)
 CLIENTS_FLOAT = computation_types.FederatedType(tf.float32, placements.CLIENTS)
 MODEL_WEIGHTS_TYPE = computation_types.at_server(
-    computation_types.to_type(model_utils.ModelWeights(tf.float32, ())))
+    computation_types.to_type(model_weights.ModelWeights(tf.float32, ())))
 MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
 
@@ -52,7 +52,7 @@ def test_initialize_fn():
 
 def test_finalizer_result(weights, update):
   return intrinsics.federated_zip(
-      model_utils.ModelWeights(federated_add(weights.trainable, update), ()))
+      model_weights.ModelWeights(federated_add(weights.trainable, update), ()))
 
 
 @federated_computation.federated_computation(SERVER_INT, MODEL_WEIGHTS_TYPE,
@@ -166,10 +166,10 @@ class FinalizerTest(tf.test.TestCase):
 
     @tensorflow_computation.tf_computation(
         tf.int32,
-        computation_types.to_type(model_utils.ModelWeights(tf.float32,
-                                                           ())), tf.float32)
+        computation_types.to_type(model_weights.ModelWeights(tf.float32,
+                                                             ())), tf.float32)
     def next_fn(state, weights, update):
-      new_weigths = model_utils.ModelWeights(weights.trainable + update, ())
+      new_weigths = model_weights.ModelWeights(weights.trainable + update, ())
       return MeasuredProcessOutput(state, new_weigths, 0)
 
     with self.assertRaises(errors.TemplateNotFederatedError):

@@ -27,9 +27,9 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model_examples
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.models import functional
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import client_works
@@ -54,7 +54,7 @@ class ProximalClientWorkComputationTest(tf.test.TestCase,
         model_fn, optimizer, weighting, delta_l2_regularizer=0.1)
     self.assertIsInstance(client_work_process, client_works.ClientWorkProcess)
 
-    mw_type = model_utils.ModelWeights(
+    mw_type = model_weights.ModelWeights(
         trainable=computation_types.to_type([(tf.float32, (2, 1)), tf.float32]),
         non_trainable=computation_types.to_type([tf.float32]))
     expected_param_model_weights_type = computation_types.at_clients(mw_type)
@@ -133,8 +133,8 @@ def create_test_dataset() -> tf.data.Dataset:
   return dataset.repeat(2).batch(3)
 
 
-def create_test_initial_weights() -> model_utils.ModelWeights:
-  return model_utils.ModelWeights(
+def create_test_initial_weights() -> model_weights.ModelWeights:
+  return model_weights.ModelWeights(
       trainable=[tf.zeros((2, 1)), tf.constant(0.0)], non_trainable=[0.0])
 
 

@@ -38,8 +38,8 @@ from tensorflow_federated.python.core.templates import aggregation_process as ag
 from tensorflow_federated.python.core.templates import iterative_process as iterative_process_lib
 from tensorflow_federated.python.core.templates import measured_process as measured_process_lib
 from tensorflow_federated.python.learning import client_weight_lib
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.metrics import counters
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.reconstruction import keras_utils
 from tensorflow_federated.python.learning.reconstruction import model as model_lib
@@ -988,14 +988,14 @@ class TrainingProcessTest(tf.test.TestCase, parameterized.TestCase):
     state = it_process.initialize()
 
     self.assertIsInstance(
-        it_process.get_model_weights(state), model_utils.ModelWeights)
+        it_process.get_model_weights(state), model_weights.ModelWeights)
     self.assertAllClose(state.model.trainable,
                         it_process.get_model_weights(state).trainable)
 
     for _ in range(3):
       state, _ = it_process.next(state, federated_data)
       self.assertIsInstance(
-          it_process.get_model_weights(state), model_utils.ModelWeights)
+          it_process.get_model_weights(state), model_weights.ModelWeights)
       self.assertAllClose(state.model.trainable,
                           it_process.get_model_weights(state).trainable)
 

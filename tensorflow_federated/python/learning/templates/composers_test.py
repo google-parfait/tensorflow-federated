@@ -31,7 +31,7 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
-from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
@@ -43,7 +43,7 @@ from tensorflow_federated.python.learning.templates import model_delta_client_wo
 
 FLOAT_TYPE = computation_types.TensorType(tf.float32)
 MODEL_WEIGHTS_TYPE = computation_types.to_type(
-    model_utils.ModelWeights(FLOAT_TYPE, ()))
+    model_weights_lib.ModelWeights(FLOAT_TYPE, ()))
 CLIENTS_SEQUENCE_FLOAT_TYPE = computation_types.at_clients(
     computation_types.SequenceType(FLOAT_TYPE))
 
@@ -59,7 +59,8 @@ def empty_init_fn():
 
 @tensorflow_computation.tf_computation()
 def test_init_model_weights_fn():
-  return model_utils.ModelWeights(trainable=tf.constant(1.0), non_trainable=())
+  return model_weights_lib.ModelWeights(
+      trainable=tf.constant(1.0), non_trainable=())
 
 
 def test_distributor():
@@ -109,7 +110,7 @@ def test_finalizer():
         tensorflow_computation.tf_computation(lambda x, y: x + y),
         (weights.trainable, updates))
     new_weights = intrinsics.federated_zip(
-        model_utils.ModelWeights(new_weights, ()))
+        model_weights_lib.ModelWeights(new_weights, ()))
     return measured_process.MeasuredProcessOutput(state, new_weights,
                                                   empty_at_server())
 
@@ -149,7 +150,7 @@ class ComposeLearningProcessTest(tf.test.TestCase):
     @tensorflow_computation.tf_computation(
         computation_types.TensorType(tf.float32))
     def init_model_weights_fn(x):
-      return model_utils.ModelWeights(trainable=x, non_trainable=())
+      return model_weights_lib.ModelWeights(trainable=x, non_trainable=())
 
     with self.assertRaisesRegex(TypeError, 'Computation'):
       composers.compose_learning_process(init_model_weights_fn,
@@ -159,7 +160,7 @@ class ComposeLearningProcessTest(tf.test.TestCase):
   def test_not_tff_computation_init_raises(self):
 
     def init_model_weights_fn():
-      return model_utils.ModelWeights(
+      return model_weights_lib.ModelWeights(
           trainable=tf.constant(1.0), non_trainable=())
 
     with self.assertRaisesRegex(TypeError, 'Computation'):
@@ -237,7 +238,8 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
 
   def _test_batch_loss(self, model, weights):
     tf.nest.map_structure(lambda w, v: w.assign(v),
-                          model_utils.ModelWeights.from_model(model), weights)
+                          model_weights_lib.ModelWeights.from_model(model),
+                          weights)
     for batch in self._test_data().take(1):
       batch_output = model.forward_pass(batch, training=False)
     return batch_output.loss
@@ -291,7 +293,7 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     )
     keras_model.compile(optimizer='adam', loss='mse')
     keras_model.fit(self._test_data().map(lambda d: (d['x'], d['y'])))
-    pretrained_weights = model_utils.ModelWeights.from_model(keras_model)
+    pretrained_weights = model_weights_lib.ModelWeights.from_model(keras_model)
     # Assert the initial state weights are not the same as the pretrained model.
     initial_weights = fedavg.get_model_weights(state)
     self.assertNotAllClose(

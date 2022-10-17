@@ -27,7 +27,8 @@ py_library(
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
         ":optimizer_utils",
-        "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/common_libs:deprecation",
+        "//tensorflow_federated/python/learning/models:model_weights",
     ],
 )
 
@@ -63,8 +64,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model",
-        "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/learning/metrics:aggregator",
+        "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
@@ -95,7 +96,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
-        "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/learning/optimizers:sgdm",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",

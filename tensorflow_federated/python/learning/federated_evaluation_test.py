@@ -32,9 +32,9 @@ from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import federated_evaluation
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.models import model_weights
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
@@ -209,9 +209,9 @@ def _build_expected_broadcaster_next_signature():
           (),
       ]), ('non_trainable', [])]))
   value_type = computation_types.at_server(
-      model_utils.weights_type_from_model(TestModelQuant))
+      model_weights.weights_type_from_model(TestModelQuant))
   result_type = computation_types.at_clients(
-      model_utils.weights_type_from_model(TestModelQuant))
+      model_weights.weights_type_from_model(TestModelQuant))
   measurements_type = computation_types.at_server(())
   return computation_types.FunctionType(
       parameter=collections.OrderedDict(state=state_type, value=value_type),
@@ -222,7 +222,7 @@ def _build_expected_broadcaster_next_signature():
 def _build_expected_test_quant_model_eval_signature():
   """Returns signature for build_federated_evaluation using TestModelQuant."""
   weights_parameter_type = computation_types.at_server(
-      model_utils.weights_type_from_model(TestModelQuant))
+      model_weights.weights_type_from_model(TestModelQuant))
   data_parameter_type = computation_types.at_clients(
       computation_types.SequenceType(
           collections.OrderedDict(
@@ -242,7 +242,7 @@ class FederatedEvaluationTest(parameterized.TestCase):
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_local_evaluation(self):
-    model_weights_type = model_utils.weights_type_from_model(TestModel)
+    model_weights_type = model_weights.weights_type_from_model(TestModel)
     batch_type = computation_types.to_type(TestModel().input_spec)
     client_evaluate = federated_evaluation.build_local_evaluation(
         TestModel, model_weights_type, batch_type)
@@ -277,7 +277,7 @@ class FederatedEvaluationTest(parameterized.TestCase):
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation(self):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
-    model_weights_type = model_utils.weights_type_from_model(TestModel)
+    model_weights_type = model_weights.weights_type_from_model(TestModel)
     type_test_utils.assert_types_equivalent(
         evaluate.type_signature,
         FunctionType(
@@ -347,7 +347,7 @@ class FederatedEvaluationTest(parameterized.TestCase):
         _model_fn_from_keras, use_experimental_simulation_loop=simulation)
     initial_weights = tf.nest.map_structure(
         lambda x: x.read_value(),
-        model_utils.ModelWeights.from_model(_model_fn_from_keras()))
+        model_weights.ModelWeights.from_model(_model_fn_from_keras()))
 
     def _input_dict(temps):
       return collections.OrderedDict(
@@ -377,7 +377,7 @@ class FederatedEvaluationTest(parameterized.TestCase):
         _model_fn_from_keras, use_experimental_simulation_loop=False)
     initial_weights = tf.nest.map_structure(
         lambda x: x.read_value(),
-        model_utils.ModelWeights.from_model(_model_fn_from_keras()))
+        model_weights.ModelWeights.from_model(_model_fn_from_keras()))
 
     def _input_dict(temps):
       return collections.OrderedDict(
@@ -402,7 +402,7 @@ class FederatedEvaluationTest(parameterized.TestCase):
         _model_fn_from_keras, use_experimental_simulation_loop=True)
     initial_weights = tf.nest.map_structure(
         lambda x: x.read_value(),
-        model_utils.ModelWeights.from_model(_model_fn_from_keras()))
+        model_weights.ModelWeights.from_model(_model_fn_from_keras()))
 
     def _input_dict(temps):
       return collections.OrderedDict(

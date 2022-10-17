@@ -31,10 +31,10 @@ from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model
-from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.algorithms import fed_eval
 from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
 from tensorflow_federated.python.learning.templates import learning_process
@@ -171,7 +171,7 @@ class FedEvalProcessTest(tf.test.TestCase):
   def test_fed_eval_process_type_properties(self):
     model_fn = TestModel
     test_model = model_fn()
-    model_weights_type = model_utils.weights_type_from_model(test_model)
+    model_weights_type = model_weights_lib.weights_type_from_model(test_model)
     metric_finalizers = test_model.metric_finalizers()
     unfinalized_metrics = test_model.report_local_unfinalized_metrics()
     local_unfinalized_metrics_type = type_conversions.type_from_tensors(
@@ -239,9 +239,11 @@ class FedEvalProcessTest(tf.test.TestCase):
     # Update the state with the model weights to be evaluated, and verify that
     # the `get_model_weights` method returns the same model weights.
     state = eval_process.initialize()
-    model_weights = model_utils.ModelWeights(trainable=[5.0], non_trainable=[])
+    model_weights = model_weights_lib.ModelWeights(
+        trainable=[5.0], non_trainable=[])
     new_state = eval_process.set_model_weights(
-        state, model_utils.ModelWeights(trainable=[5.0], non_trainable=[]))
+        state,
+        model_weights_lib.ModelWeights(trainable=[5.0], non_trainable=[]))
     tf.nest.map_structure(self.assertAllEqual, model_weights,
                           eval_process.get_model_weights(new_state))
 
@@ -269,7 +271,7 @@ class FedEvalProcessTest(tf.test.TestCase):
                 total_rounds_metrics=collections.OrderedDict(num_over=9.0))))
 
   def test_fed_eval_with_model_distributor(self):
-    model_weights_type = model_utils.weights_type_from_model(TestModel)
+    model_weights_type = model_weights_lib.weights_type_from_model(TestModel)
 
     def test_distributor():
 

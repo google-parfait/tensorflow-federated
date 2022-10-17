@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.optimizers import sgdm
 from tensorflow_federated.python.learning.templates import apply_optimizer_finalizer
 from tensorflow_federated.python.learning.templates import client_works
@@ -331,7 +331,7 @@ def build_basic_fedavg_process(model_fn: Callable[[], model_lib.Model],
 
   @tensorflow_computation.tf_computation()
   def initial_model_weights_fn():
-    return model_utils.ModelWeights.from_model(model_fn())
+    return model_weights_lib.ModelWeights.from_model(model_fn())
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 
