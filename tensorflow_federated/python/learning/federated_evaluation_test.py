@@ -34,7 +34,6 @@ from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
-from tensorflow_federated.python.learning.framework import encoding_utils
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
@@ -309,86 +308,7 @@ class FederatedEvaluationTest(parameterized.TestCase):
         ])
     self.assertEqual(
         result,
-        collections.OrderedDict(eval=collections.OrderedDict(num_over=9.0),))
-
-  @tensorflow_test_utils.skip_test_for_multi_gpu
-  def test_federated_evaluation_quantized_conservatively(self):
-    # Set up a uniform quantization encoder as the broadcaster.
-    broadcaster = (
-        encoding_utils.build_encoded_broadcast_process_from_model(
-            TestModelQuant, _build_simple_quant_encoder(12)))
-    type_test_utils.assert_types_equivalent(
-        broadcaster.next.type_signature,
-        _build_expected_broadcaster_next_signature())
-    evaluate = federated_evaluation.build_federated_evaluation(
-        TestModelQuant, broadcast_process=broadcaster)
-    # Confirm that the type signature matches what is expected.
-    type_test_utils.assert_types_identical(
-        evaluate.type_signature,
-        _build_expected_test_quant_model_eval_signature())
-
-    def _temp_dict(temps):
-      return {'temp': np.array(temps, dtype=np.float32)}
-
-    result = evaluate(
-        collections.OrderedDict(
-            trainable=[[5.0, 10.0, 5.0, 7.0]], non_trainable=[]), [
-                [
-                    _temp_dict([1.0, 10.0, 2.0, 7.0]),
-                    _temp_dict([6.0, 11.0, 5.0, 8.0])
-                ],
-                [_temp_dict([9.0, 12.0, 13.0, 7.0])],
-                [
-                    _temp_dict([1.0, 22.0, 23.0, 24.0]),
-                    _temp_dict([5.0, 10.0, 5.0, 7.0])
-                ],
-            ])
-    # This conservative quantization should not be too lossy.
-    # When comparing the data examples to trainable, there are 8 times
-    # where the index and value match.
-    self.assertEqual(
-        result,
-        collections.OrderedDict(eval=collections.OrderedDict(num_same=8.0)))
-
-  @tensorflow_test_utils.skip_test_for_multi_gpu
-  def test_federated_evaluation_quantized_aggressively(self):
-    # Set up a uniform quantization encoder as the broadcaster.
-    broadcaster = (
-        encoding_utils.build_encoded_broadcast_process_from_model(
-            TestModelQuant, _build_simple_quant_encoder(2)))
-    type_test_utils.assert_types_equivalent(
-        broadcaster.next.type_signature,
-        _build_expected_broadcaster_next_signature())
-    evaluate = federated_evaluation.build_federated_evaluation(
-        TestModelQuant, broadcast_process=broadcaster)
-    # Confirm that the type signature matches what is expected.
-    type_test_utils.assert_types_identical(
-        evaluate.type_signature,
-        _build_expected_test_quant_model_eval_signature())
-
-    def _temp_dict(temps):
-      return {'temp': np.array(temps, dtype=np.float32)}
-
-    result = evaluate(
-        collections.OrderedDict(
-            trainable=[[5.0, 10.0, 5.0, 7.0]], non_trainable=[]), [
-                [
-                    _temp_dict([1.0, 10.0, 2.0, 7.0]),
-                    _temp_dict([6.0, 11.0, 5.0, 8.0])
-                ],
-                [_temp_dict([9.0, 12.0, 13.0, 7.0])],
-                [
-                    _temp_dict([1.0, 22.0, 23.0, 24.0]),
-                    _temp_dict([5.0, 10.0, 5.0, 7.0])
-                ],
-            ])
-    # This very aggressive quantization should be so lossy that some of the
-    # data is changed during encoding so the number that are equal between
-    # the original and the final result should not be 8 as it is in the
-    # conservative quantization test above.
-    self.assertEqual(list(result.keys()), ['eval'])
-    self.assertContainsSubset(result['eval'].keys(), ['num_same'])
-    self.assertLess(result['eval']['num_same'], 8.0)
+        collections.OrderedDict(eval=collections.OrderedDict(num_over=9.0)))
 
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_fails_stateful_broadcast(self):
