@@ -1,3 +1,36 @@
+# Release 0.38.0
+
+## Major Features and Improvements
+
+*   Added `tff.learning.models.FunctionalModel` support to
+    `tff.learning.algorithms.build_mime_lite`.
+*   Updated `tensorflow-privacy` to version `0.8.6`.
+*   Added an abstract interface describing an asynchronous context
+*   Removed references to `tff.framework.Context`.
+*   Added `tff.simulation.datasets.gldv2.get_synthetic`.
+*   Added prefetching data source in `tff.program.PrefetchingDataSource`.
+
+## Breaking Changes
+
+*   Deleted deprecated
+    `tff.learning.framework.build_encoded_broadcast_process_from_model`.
+*   Deprecated `tff.learning.ModelWeights` and alias
+    `tff.learning.framework.ModelWeights`, has now moved to
+    `tff.learning.models.ModelWeights`. Code should be updated before the next
+    release.
+
+## Bug Fixes
+
+*   Fixed a bug with variable creation order of metrics in
+    `tff.learning.models.functional_model_from_keras`.
+*   Improved `tff.tf_computation` tracing to also trace `functools.partial`
+    objects.
+
+## Known Bugs
+
+*   Colab compatibility: TFF requires Python 3.9 while Colab runtime uses Python
+    3.7.
+
 # Release 0.37.0
 
 ## Major Features and Improvements
