@@ -16,7 +16,7 @@
 from tensorflow_federated.python.core.impl.context_stack import context_base
 
 
-class RuntimeErrorContext(context_base.Context):
+class RuntimeErrorContext(context_base.SyncContext):
   """A context that will fail if you execute against it."""
 
   def _raise_runtime_error(self):
@@ -36,6 +36,6 @@ class RuntimeErrorContext(context_base.Context):
     self._raise_runtime_error()
 
 
-def create_runtime_error_context() -> context_base.Context:
+def create_runtime_error_context() -> RuntimeErrorContext:
   """Creates a context that will raise an error when computations are invoked."""
   return RuntimeErrorContext()

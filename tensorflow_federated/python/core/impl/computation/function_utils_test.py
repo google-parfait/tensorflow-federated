@@ -362,7 +362,7 @@ class PolymorphicComputationTest(absltest.TestCase):
 
   def test_call_returns_result(self):
 
-    class TestContext(context_base.Context):
+    class TestContext(context_base.SyncContext):
 
       def ingest(self, val, type_spec):
         return val

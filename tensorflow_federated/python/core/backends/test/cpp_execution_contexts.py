@@ -24,7 +24,7 @@ from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_f
 def create_test_cpp_execution_context(
     *,
     default_num_clients: int = 0,
-    max_concurrent_computation_calls: int = -1) -> context_base.Context:
+    max_concurrent_computation_calls: int = -1) -> context_base.SyncContext:
   """Creates an execution context for local testing of computations.
 
   Test execution contexts are useful for simulating the behavior of secure

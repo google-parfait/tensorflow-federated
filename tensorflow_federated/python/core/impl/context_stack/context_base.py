@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defines `Context`, an interface which evaluates computation invocations.
+"""Defines context interfaces which evaluates computation invocations.
 
 Invocations of TensorFlow Federated computations need to be treated differently
-depending on the `tff.framework.Context` in which they are invoked. For example:
+depending on the context in which they are invoked. For example:
 
 *   During top-level Python simulations, computation invocations result in the
     computation being serialized and evaluated by the TensorFlow native runtime.
@@ -24,7 +24,7 @@ depending on the `tff.framework.Context` in which they are invoked. For example:
     graph.
 
 Code can customize the way in which each of these calls are evaluated by setting
-a specific `tff.framework.Context` using a global or thread-local context stack.
+a specific context using a global or thread-local context stack.
 """
 
 import abc
@@ -36,7 +36,7 @@ class ContextError(RuntimeError):
 
 
 class SyncContext(metaclass=abc.ABCMeta):
-  """A synchronous `tff.framework.Context` to evaluate of computations."""
+  """A synchronous context to evaluate of computations."""
 
   @abc.abstractmethod
   def invoke(self, comp: Any, arg: Any) -> Any:
@@ -59,7 +59,7 @@ class SyncContext(metaclass=abc.ABCMeta):
 
 
 class AsyncContext(metaclass=abc.ABCMeta):
-  """An asynchronous `tff.framework.Context` to evaluate of computations."""
+  """An asynchronous context to evaluate of computations."""
 
   @abc.abstractmethod
   async def invoke(self, comp: Any, arg: Any) -> Any:
@@ -79,8 +79,3 @@ class AsyncContext(metaclass=abc.ABCMeta):
       The result of invocation, which is context-dependent.
     """
     raise NotImplementedError
-
-
-# TODO(b/252845240): Deprecate usages of `Context` in favor of either
-# `SyncContext` or `AsyncContext`.
-Context = SyncContext

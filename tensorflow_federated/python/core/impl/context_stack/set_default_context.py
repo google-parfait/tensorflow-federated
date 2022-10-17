@@ -21,7 +21,7 @@ def set_default_context(ctx):
   """Places `ctx` at the bottom of the stack.
 
   Args:
-    ctx: An instance of `context_base.Context`.
+    ctx: A `tff.framework.AsyncContext` or `tff.framework.SyncContext`.
   """
   context_stack_impl.context_stack.set_default_context(ctx)
 

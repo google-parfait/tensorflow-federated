@@ -40,7 +40,7 @@ def get_session_token() -> tf.Tensor:
   return context.session_token
 
 
-class TensorFlowComputationContext(context_base.Context):
+class TensorFlowComputationContext(context_base.SyncContext):
   """The context for building TensorFlow computations."""
 
   def __init__(self, graph, session_token):

@@ -18,7 +18,6 @@ import threading
 from typing import Any, Awaitable, Callable, List, Mapping, Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
 from tensorflow_federated.python.core.impl.executors import cardinality_carrying_base
 from tensorflow_federated.python.core.impl.executors import executor_base
@@ -235,7 +234,8 @@ class PrefetchingDataSource(tff_data_source.FederatedDataSource):
     Raises:
       ValueError: If the argument values are outside the supported range.
     """
-    py_typecheck.check_type(context, context_base.Context)
+    py_typecheck.check_type(context,
+                            async_execution_context.AsyncExecutionContext)
     py_typecheck.check_type(data_source, tff_data_source.FederatedDataSource)
     if num_clients_to_prefetch < 1:
       raise ValueError(

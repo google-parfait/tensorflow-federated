@@ -19,7 +19,7 @@ from tensorflow_federated.python.core.impl.execution_contexts import cpp_async_e
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 
 
-class SyncSerializeAndExecuteCPPContext(context_base.Context):
+class SyncSerializeAndExecuteCPPContext(context_base.SyncContext):
   """A synchronous execution context delegating to CPP Executor bindings."""
 
   def __init__(

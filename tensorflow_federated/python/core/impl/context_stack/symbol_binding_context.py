@@ -19,7 +19,7 @@ from typing import Any, List, Tuple
 from tensorflow_federated.python.core.impl.context_stack import context_base
 
 
-class SymbolBindingContext(context_base.Context, metaclass=abc.ABCMeta):
+class SymbolBindingContext(context_base.SyncContext, metaclass=abc.ABCMeta):
   """Interface for contexts which handle binding and tracking of references."""
 
   @abc.abstractmethod

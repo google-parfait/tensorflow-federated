@@ -44,7 +44,7 @@ def create_local_cpp_execution_context(
       limit.
 
   Returns:
-    An instance of `context_base.Context` representing the TFF-C++ runtime.
+    An instance of `tff.framework.SyncContext` representing the TFF-C++ runtime.
   """
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
@@ -67,7 +67,7 @@ def create_local_async_cpp_execution_context(
       limit.
 
   Returns:
-    An instance of `context_base.Context` representing the TFF-C++ runtime.
+    An instance of `context_base.AsyncContext` representing the TFF-C++ runtime.
   """
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
