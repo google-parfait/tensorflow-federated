@@ -37,6 +37,19 @@ py_test(
 )
 
 py_library(
+    name = "deprecation",
+    srcs = ["deprecation.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "deprecation_test",
+    srcs = ["deprecation_test.py"],
+    srcs_version = "PY3",
+    deps = [":deprecation"],
+)
+
+py_library(
     name = "named_containers",
     srcs = ["named_containers.py"],
     srcs_version = "PY3",
