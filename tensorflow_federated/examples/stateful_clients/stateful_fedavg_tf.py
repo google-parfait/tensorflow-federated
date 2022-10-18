@@ -29,10 +29,10 @@ ModelOutputs = collections.namedtuple('ModelOutputs', 'loss')
 
 def get_model_weights(
     model: Union[tff.learning.Model, 'KerasModelWrapper']
-) -> Union[tff.learning.ModelWeights, ModelWeights]:
+) -> Union[tff.learning.models.ModelWeights, ModelWeights]:
   """Gets the appropriate ModelWeights object based on the model type."""
   if isinstance(model, tff.learning.Model):
-    return tff.learning.ModelWeights.from_model(model)
+    return tff.learning.models.ModelWeights.from_model(model)
   else:
     # Using simple_fedavg custom Keras wrapper.
     return model.weights

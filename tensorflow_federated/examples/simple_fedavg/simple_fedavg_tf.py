@@ -53,8 +53,8 @@ class ServerState:
   """Structure for state on the server.
 
   Attributes:
-    model:  A `tff.learning.ModelWeights` structure, containing Tensors or
-      Variables.
+    model:  A `tff.learning.models.ModelWeights` structure, containing Tensors
+      or Variables.
     optimizer_state: Variables of optimizer.
     round_num: The current round in the training process.
   """
@@ -68,8 +68,8 @@ class BroadcastMessage:
   """Structure for tensors broadcasted by server during federated optimization.
 
   Attributes:
-    model_weights: A `tff.learning.ModelWeights` structure, containing Tensors
-      or Variables.
+    model_weights: A `tff.learning.models.ModelWeights` structure, containing
+      Tensors or Variables.
     round_num: Round index to broadcast. We use `round_num` as an example to
       show how to broadcast auxiliary information that can be helpful on
       clients. It is not explicitly used, but can be applied to enable learning
@@ -95,7 +95,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
     An updated `ServerState`.
   """
   # Initialize the model with the current state.
-  model_weights = tff.learning.ModelWeights.from_model(model)
+  model_weights = tff.learning.models.ModelWeights.from_model(model)
   tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
                         server_state.model)
   tf.nest.map_structure(lambda v, t: v.assign(t), server_optimizer.variables(),
@@ -147,7 +147,7 @@ def client_update(model, dataset, server_message, client_optimizer):
   Returns:
     A `ClientOutput` instance with a model update to aggregate on the server.
   """
-  model_weights = tff.learning.ModelWeights.from_model(model)
+  model_weights = tff.learning.models.ModelWeights.from_model(model)
   initial_weights = server_message.model_weights
   tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
                         initial_weights)

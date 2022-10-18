@@ -303,7 +303,7 @@ def _build_client_update_fn(
 
     Args:
       dataset: A `tf.data.Dataset` that provides training examples.
-      initial_model_weights: A `tff.learning.ModelWeights` containing the
+      initial_model_weights: A `tff.learning.models.ModelWeights` containing the
         starting global trainable and non-trainable weights.
 
     Returns:

@@ -144,7 +144,7 @@ class MnistModel(tff.learning.Model):
 
   @property
   def weights(self):
-    return tff.learning.ModelWeights(
+    return tff.learning.models.ModelWeights(
         trainable=self.trainable_variables,
         non_trainable=self.non_trainable_variables)
 

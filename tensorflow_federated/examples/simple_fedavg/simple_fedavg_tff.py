@@ -43,7 +43,7 @@ def _initialize_optimizer_vars(model: tff.learning.Model,
   # creates the variables on first usage of the optimizer. Optimizers such as
   # Adam, Adagrad, or using momentum need to create a new set of variables shape
   # like the model weights.
-  model_weights = tff.learning.ModelWeights.from_model(model)
+  model_weights = tff.learning.models.ModelWeights.from_model(model)
   zero_gradient = [tf.zeros_like(t) for t in model_weights.trainable]
   optimizer.apply_gradients(zip(zero_gradient, model_weights.trainable))
   assert optimizer.variables()
@@ -75,7 +75,7 @@ def build_federated_averaging_process(
   @tff.tf_computation
   def server_init_tf():
     model = model_fn()
-    model_weights = tff.learning.ModelWeights.from_model(model)
+    model_weights = tff.learning.models.ModelWeights.from_model(model)
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(

@@ -16,7 +16,8 @@
 # This modules disables the Pytype analyzer, see
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
-"""Defines a template for stateful processes used for learning-oriented tasks."""
+"""Defines a template for stateful processes used for learning-oriented tasks.
+"""
 
 from typing import Optional
 
@@ -306,8 +307,9 @@ class LearningProcess(iterative_process.IterativeProcess):
     This computation accepts an unplaced state of the process (originally
     produced by the `initialize` attribute), and returns an unplaced
     representation of the model weights of the state. Note that this
-    representation need not take the form of a `tff.learning.ModelWeights`
-    object, and may depend on the specific `LearningProcess` in question.
+    representation need not take the form of a
+    `tff.learning.models.ModelWeights` object, and may depend on the specific
+    `LearningProcess` in question.
 
     Returns:
       A `tff.Computation`.
@@ -322,7 +324,8 @@ class LearningProcess(iterative_process.IterativeProcess):
     (originally produced by the `initialize` attribute) and a new structure of
     tensors representing the model weights, and returns new unplaced state with
     the updated model weights. Note that the model weights representation need
-    not take the form of a `tff.learning.ModelWeights` object, and may depend on
+    not take the form of a `tff.learning.models.ModelWeights` object, and may
+    depend on
     the specific `LearningProcess` in question.
 
     Returns:
