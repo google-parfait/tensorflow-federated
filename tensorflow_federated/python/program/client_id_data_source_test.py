@@ -14,19 +14,24 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import tensorflow as tf
 
+from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.program import client_id_data_source
 
 
 class ClientIdDataSourceIteratorTest(parameterized.TestCase):
 
-  def test_init_does_not_raise_type_error(self):
+  def test_init_sets_federated_type(self):
     client_ids = ['a', 'b', 'c']
 
-    try:
-      client_id_data_source.ClientIdDataSourceIterator(client_ids=client_ids)
-    except TypeError:
-      self.fail('Raised `TypeError` unexpectedly.')
+    iterator = client_id_data_source.ClientIdDataSourceIterator(
+        client_ids=client_ids)
+
+    federated_type = computation_types.FederatedType(tf.string,
+                                                     placements.CLIENTS)
+    self.assertEqual(iterator.federated_type, federated_type)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -89,6 +94,15 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
 
 
 class ClientIdDataSourceTest(parameterized.TestCase):
+
+  def test_init_sets_federated_type(self):
+    client_ids = ['a', 'b', 'c']
+
+    data_source = client_id_data_source.ClientIdDataSource(client_ids)
+
+    federated_type = computation_types.FederatedType(tf.string,
+                                                     placements.CLIENTS)
+    self.assertEqual(data_source.federated_type, federated_type)
 
   @parameterized.named_parameters(
       ('none', None),

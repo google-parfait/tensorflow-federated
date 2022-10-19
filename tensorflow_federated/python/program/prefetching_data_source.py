@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Data source that performs prefetching."""
+"""Utilities for prefetching federated data."""
 
 import asyncio
 import threading
@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.program import data_source as tff_data_source
+from tensorflow_federated.python.program import data_source as data_source_lib
 
 
 class FetchedValue(ingestable_base.Ingestable,
@@ -77,53 +77,64 @@ class FetchedValue(ingestable_base.Ingestable,
       return self._executor_value
 
 
-class PrefetchingDataSourceIterator(tff_data_source.FederatedDataSourceIterator
+class PrefetchingDataSourceIterator(data_source_lib.FederatedDataSourceIterator
                                    ):
-  """An instance of `DataSourceIterator` with built-in prefetching."""
+  """A `tff.program.FederatedDataSourceIterator` that prefetches data."""
 
-  def __init__(
-      self,
-      data_iterator: tff_data_source.FederatedDataSourceIterator,
-      total_rounds: int,
-      num_rounds_to_prefetch: int,
-      num_clients_to_prefetch: Optional[int],
-      # TODO(b/193543632): C++ execution is not fully supported in OSS.
-      context: async_execution_context.AsyncExecutionContext,
-      buffer_size: int = 0,
-  ):
-    """Constructs this data source iterator.
+  def __init__(self,
+               iterator: data_source_lib.FederatedDataSourceIterator,
+               context: async_execution_context.AsyncExecutionContext,
+               total_rounds: int,
+               num_rounds_to_prefetch: int,
+               num_clients_to_prefetch: int,
+               threshold: int = 0):
+    """Returns an initialized `tff.program.FederatedDataSourceIterator`.
 
     Args:
-      data_iterator: An iterstor over the original data source.
-      total_rounds: The total (maximum) number of rounds to fetch.
-      num_rounds_to_prefetch: The number of rounds to fetch in advance.
-      num_clients_to_prefetch: The number of clients to prefetch per round,
-        which must be identical across all rounds; attempts to sample any other
-        number of clients from this data source will fail.
-      context: The current context stack. Now only syncronous execution context
-        is supported.
-      buffer_size: The number below which the data source starts to prefetching.
+      iterator: A `tff.program.FederatedDataSourceIterator` used to prefetch
+        data from.
+      context: The `async_execution_context.AsyncExecutionContext` to prefetch
+        data in.
+      total_rounds: The total number of rounds.
+      num_rounds_to_prefetch: The number of rounds to prefetch.
+      num_clients_to_prefetch: The number of clients to prefetch per round. Must
+        be greater than 1 and must be identical across all rounds; attempts to
+        select any other number of clients will fail.
+      threshold: The threshold below which the data source starts prefetching.
 
     Raises:
-      RuntimeError: if the iterator is not being created in a valid execution
-        context, same as the context for all the subsequent selections.
+      ValueError: If `num_clients_to_prefetch` is not greater than 1.
     """
-    self._cardinality = {placements.CLIENTS: num_clients_to_prefetch}
-    self._executor_factory = context.executor_factory
-    self._data_iterator = data_iterator
+    py_typecheck.check_type(iterator,
+                            data_source_lib.FederatedDataSourceIterator)
+    py_typecheck.check_type(context,
+                            async_execution_context.AsyncExecutionContext)
+    py_typecheck.check_type(total_rounds, int)
+    py_typecheck.check_type(num_rounds_to_prefetch, int)
+    py_typecheck.check_type(num_clients_to_prefetch, int)
+    py_typecheck.check_type(threshold, int)
+    if num_clients_to_prefetch < 1:
+      raise ValueError(
+          'Expected `num_clients_to_prefetch` to be greater than 1, found '
+          f'{num_clients_to_prefetch}.')
+
+    self._iterator = iterator
     self._total_rounds = total_rounds
     self._num_rounds_to_prefetch = num_rounds_to_prefetch
-    self._buffer_size = buffer_size
     self._num_clients_to_prefetch = num_clients_to_prefetch
-    self._lock = threading.Lock()
+    self._threshold = threshold
+    self._executor_factory = context.executor_factory
+    self._cardinality = {placements.CLIENTS: num_clients_to_prefetch}
     self._num_rounds_prefetched = 0
-    self._prefetched_round_data = []
+    self._prefetched_data = []
+    self._lock = threading.Lock()
     self._active_threads = []
+
     self._start_prefetching()
 
   def _single_round_fn(self):
-    round_data = self._data_iterator.select(
-        number_of_clients=self._num_clients_to_prefetch)  # gen-stub-imports
+    data = self._iterator.select(
+        self._num_clients_to_prefetch)  # gen-stub-imports
 
     # We assume the executor factory uses a cache, so most calls to this
     # function should result in a hit.
@@ -134,39 +145,38 @@ class PrefetchingDataSourceIterator(tff_data_source.FederatedDataSourceIterator
     # goes down, the stack will be rebuilt and this state lost--but this is a
     # quick-and-dirty version of 'persistent values' that should help amortize
     # the cost of this work.
-    if isinstance(round_data, ingestable_base.Ingestable):
-      executor_value_coro = round_data.ingest(executor_at_invocation)
+    if isinstance(data, ingestable_base.Ingestable):
+      executor_value_coro = data.ingest(executor_at_invocation)
 
       async def defining_coro_fn(executor):
-        return await round_data.ingest(executor)
+        return await data.ingest(executor)
 
     else:
       executor_value_coro = executor_at_invocation.create_value(
-          round_data, self._data_iterator.federated_type)
+          data, self._iterator.federated_type)
 
       async def defining_coro_fn(executor):
-        return await executor.create_value(round_data,
-                                           self._data_iterator.federated_type)
+        return await executor.create_value(data, self._iterator.federated_type)
 
     event_loop = asyncio.new_event_loop()
     executor_value = event_loop.run_until_complete(executor_value_coro)
-    fetched_round_data = FetchedValue(executor_at_invocation, executor_value,
-                                      self._cardinality, defining_coro_fn)
+    fetched_data = FetchedValue(executor_at_invocation, executor_value,
+                                self._cardinality, defining_coro_fn)
 
     with self._lock:
-      self._prefetched_round_data.append(fetched_round_data)
+      self._prefetched_data.append(fetched_data)
 
   def _start_prefetching(self) -> None:
     with self._lock:
       if self._active_threads:
         # Already prefetching
         return
-      if len(self._prefetched_round_data) > self._buffer_size:
-        # Only fetch data when _prefetched_round_data has a low volume of data
+      if len(self._prefetched_data) > self._threshold:
+        # Only fetch data when _prefetched_data has a low volume of data
         # to avoid new threads created in each round.
         return
       num_to_prefetch = min(
-          self._num_rounds_to_prefetch - len(self._prefetched_round_data),
+          self._num_rounds_to_prefetch - len(self._prefetched_data),
           self._total_rounds - self._num_rounds_prefetched)
       if num_to_prefetch < 1:
         # Already have enough
@@ -185,80 +195,106 @@ class PrefetchingDataSourceIterator(tff_data_source.FederatedDataSourceIterator
     for thread in threads:
       thread.join()
     with self._lock:
-      if len(self._prefetched_round_data) < 1:
+      if len(self._prefetched_data) < 1:
         raise RuntimeError('Failed to prefetch at least one item.')
 
   @property
   def federated_type(self) -> computation_types.FederatedType:
-    return self._data_iterator.federated_type
+    """The type of the data returned by calling `select`."""
+    return self._iterator.federated_type
 
   def select(self, number_of_clients: Optional[int] = None) -> Any:
-    if number_of_clients != self._num_clients_to_prefetch:
+    """Returns a new selection of data from this iterator.
+
+    Args:
+      number_of_clients: A number of clients to use when selecting data. Must be
+        a positive integer and equal to `num_clients_to_prefetch`.
+
+    Raises:
+      ValueError: If `number_of_clients` is not a positive integer or if
+        `number_of_clients` is not equal to `num_clients_to_prefetch`.
+    """
+    if number_of_clients is not None:
+      py_typecheck.check_type(number_of_clients, int)
+    if (number_of_clients is None or number_of_clients < 0 or
+        number_of_clients != self._num_clients_to_prefetch):
       raise ValueError(
-          'The requested number of clients is {}, but this prefetching '
-          'data source is already hard-wired to fetch {} clients/round '
-          'and cannot accept dynamically changing different numbers of '
-          'clients on a per-round basis.'.format(number_of_clients,
-                                                 self._num_clients_to_prefetch))
+          'Expected `number_of_clients` to be a positive integer and equal to '
+          '`num_clients_to_prefetch`, found '
+          f'`number_of_clients`: {number_of_clients}, '
+          f'`num_clients_to_prefetch`: {self._num_clients_to_prefetch}')
+
     self._finish_prefetching()
     with self._lock:
-      round_data = self._prefetched_round_data[0]
-      self._prefetched_round_data = self._prefetched_round_data[1:]
+      data = self._prefetched_data[0]
+      self._prefetched_data = self._prefetched_data[1:]
     self._start_prefetching()
-    return round_data
+    return data
 
 
-class PrefetchingDataSource(tff_data_source.FederatedDataSource):
-  """An instance of `DataSource` that performs prefetching."""
+class PrefetchingDataSource(data_source_lib.FederatedDataSource):
+  """A `tff.program.FederatedDataSource` that prefetches data."""
 
   def __init__(self,
-               data_source: tff_data_source.FederatedDataSource,
+               data_source: data_source_lib.FederatedDataSource,
+               context: async_execution_context.AsyncExecutionContext,
                total_rounds: int,
                num_rounds_to_prefetch: int,
                num_clients_to_prefetch: int,
-               context: async_execution_context.AsyncExecutionContext,
-               buffer_size: int = 0):
-    """Constructs this data source.
+               threshold: int = 0):
+    """Returns an initialized `tff.program.PrefetchingDataSource`.
 
     Args:
-      data_source: The original source of data.
-      total_rounds: The total (maximum) number of rounds to fetch.
-      num_rounds_to_prefetch: The number of rounds to fetch in advance.
-      num_clients_to_prefetch: The number of clients per round, which must be
-        identical across all rounds; attempts to sample any other number of
-        clients from this data source will fail.
-      context: The current context stack. Now only syncronous execution context
-        is supported.
-      buffer_size: The number below which the data source starts to prefetching.
+      data_source: A `tff.program.FederatedDataSource` used to prefetch data
+        from.
+      context: The `async_execution_context.AsyncExecutionContext` to prefetch
+        data in.
+      total_rounds: The total number of rounds.
+      num_rounds_to_prefetch: The number of rounds to prefetch.
+      num_clients_to_prefetch: The number of clients to prefetch per round. Must
+        be greater than 1 and must be the same across all rounds; attempts to
+        select any other number of clients will fail.
+      threshold: The threshold below which the data source starts prefetching.
 
     Raises:
-      ValueError: If the argument values are outside the supported range.
+      ValueError: If `num_clients_to_prefetch` is not greater than 1.
     """
+    py_typecheck.check_type(data_source, data_source_lib.FederatedDataSource)
     py_typecheck.check_type(context,
                             async_execution_context.AsyncExecutionContext)
-    py_typecheck.check_type(data_source, tff_data_source.FederatedDataSource)
+    py_typecheck.check_type(total_rounds, int)
+    py_typecheck.check_type(num_rounds_to_prefetch, int)
+    py_typecheck.check_type(num_clients_to_prefetch, int)
+    py_typecheck.check_type(threshold, int)
     if num_clients_to_prefetch < 1:
       raise ValueError(
-          f'The number of clients per round {num_clients_to_prefetch} is smaller '
-          'than 1.')
+          'Expected `num_clients_to_prefetch` to be greater than 1, found '
+          f'{num_clients_to_prefetch}.')
+
     self._data_source = data_source
+    self._context = context
     self._total_rounds = total_rounds
     self._num_rounds_to_prefetch = num_rounds_to_prefetch
     self._num_clients_to_prefetch = num_clients_to_prefetch
-    self._buffer_size = buffer_size
-    self._context = context
+    self._threshold = threshold
 
   @property
   def federated_type(self) -> computation_types.FederatedType:
+    """The type of the data returned by calling `select` on an iterator."""
     return self._data_source.federated_type
 
   @property
-  def capabilities(self) -> List[tff_data_source.Capability]:
+  def capabilities(self) -> List[data_source_lib.Capability]:
+    """The list of capabilities supported by this data source."""
     return self._data_source.capabilities
 
   def iterator(self) -> PrefetchingDataSourceIterator:
-    return PrefetchingDataSourceIterator(self._data_source.iterator(),
-                                         self._total_rounds,
-                                         self._num_rounds_to_prefetch,
-                                         self._num_clients_to_prefetch,
-                                         self._context, self._buffer_size)
+    """Returns a new iterator for retrieving data from this data source."""
+    iterator = self._data_source.iterator()
+    return PrefetchingDataSourceIterator(
+        iterator=iterator,
+        context=self._context,
+        total_rounds=self._total_rounds,
+        num_rounds_to_prefetch=self._num_rounds_to_prefetch,
+        num_clients_to_prefetch=self._num_clients_to_prefetch,
+        threshold=self._threshold)

@@ -72,7 +72,7 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     """Returns a new selection of data from this iterator.
 
     Args:
-      number_of_clients: A number of clients to use when selecting data, must be
+      number_of_clients: A number of clients to use when selecting data. Must be
         a positive integer and less than the number of `datasets`.
 
     Raises:
@@ -83,10 +83,12 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
       py_typecheck.check_type(number_of_clients, int)
     if (number_of_clients is None or number_of_clients < 0 or
         number_of_clients > len(self._datasets)):
-      raise ValueError('Expected `number_of_clients` to be a positive integer '
-                       'and less than the number of `datasets`, found '
-                       f'number_of_clients: {number_of_clients}, '
-                       f'number of datasets: {len(self._datasets)}')
+      raise ValueError(
+          'Expected `number_of_clients` to be a positive integer and less than '
+          'the number of `datasets`, found '
+          f'`number_of_clients`: {number_of_clients}, '
+          f'number of `datasets`: {len(self._datasets)}')
+
     return random.sample(self._datasets, number_of_clients)
 
 
@@ -103,7 +105,8 @@ class DatasetDataSource(data_source.FederatedDataSource):
 
     Args:
       datasets: A sequence of `tf.data.Dataset's to use to yield the data from
-        this data source.
+        this data source. Must not be empty and each `tf.data.Dataset' must have
+        the same type specification.
 
     Raises:
       ValueError: If `datasets` is empty or if each `tf.data.Dataset` in

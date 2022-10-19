@@ -21,41 +21,404 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.program import data_source
-from tensorflow_federated.python.program import dataset_data_source
+from tensorflow_federated.python.program import data_source as data_source_lib
 from tensorflow_federated.python.program import prefetching_data_source
+
+
+class PrefetchingDataSourceIteratorTest(parameterized.TestCase):
+
+  def test_init_does_not_raise_type_error(self):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    try:
+      prefetching_data_source.PrefetchingDataSourceIterator(
+          iterator=mock_iterator,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=1)
+    except TypeError:
+      self.fail('Raised `TypeError` unexpectedly.')
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('bool', True),
+      ('int', 1),
+      ('str', 'a'),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_iterator(self, iterator):
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSourceIterator(
+          iterator=iterator,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=1)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('async_python',
+       execution_contexts.create_local_async_python_execution_context()),
+  )
+  # pyformat: enable
+  def test_init_does_not_raise_type_error_with_context(self, context):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+
+    try:
+      prefetching_data_source.PrefetchingDataSourceIterator(
+          iterator=mock_iterator,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=1)
+    except TypeError:
+      self.fail('Raised `TypeError` unexpectedly.')
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('sync_cpp',
+       execution_contexts.create_local_python_execution_context()),
+      ('sync_python',
+       execution_contexts.create_local_python_execution_context()),
+  )
+  # pyformat: enable
+  def test_init_raises_type_error_with_context(self, context):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSourceIterator(
+          iterator=mock_iterator,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('str', 'a'),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_total_rounds(self, total_rounds):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSourceIterator(
+          iterator=mock_iterator,
+          context=context,
+          total_rounds=total_rounds,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('str', 'a'),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_num_rounds_to_prefetch(
+      self, num_rounds_to_prefetch):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSourceIterator(
+          iterator=mock_iterator,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=num_rounds_to_prefetch,
+          num_clients_to_prefetch=2,
+          threshold=1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('str', 'a'),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_num_clients_to_prefetch(
+      self, num_clients_to_prefetch):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSourceIterator(
+          iterator=mock_iterator,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=10,
+          num_clients_to_prefetch=num_clients_to_prefetch,
+          threshold=1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('str', 'a'),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_threshold(self, threshold):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSourceIterator(
+          iterator=mock_iterator,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=10,
+          num_clients_to_prefetch=2,
+          threshold=threshold)
+
+  @parameterized.named_parameters(
+      ('zero', 0),
+      ('negative', -1),
+  )
+  def test_init_raises_value_error_with_num_clients_to_prefetch(
+      self, num_clients_to_prefetch):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(ValueError):
+      prefetching_data_source.PrefetchingDataSourceIterator(
+          iterator=mock_iterator,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=num_clients_to_prefetch,
+          threshold=1)
+
+  @parameterized.named_parameters(
+      ('str', 'a'),
+      ('list', []),
+  )
+  def test_select_raises_type_error_with_number_of_clients(
+      self, number_of_clients):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+    context = execution_contexts.create_local_async_python_execution_context()
+    iterator = prefetching_data_source.PrefetchingDataSourceIterator(
+        iterator=mock_iterator,
+        context=context,
+        total_rounds=10,
+        num_rounds_to_prefetch=3,
+        num_clients_to_prefetch=2,
+        threshold=1)
+
+    with self.assertRaises(TypeError):
+      iterator.select(number_of_clients)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('negative', -1),
+      ('different', 4),
+  )
+  def test_select_raises_value_error_with_number_of_clients(
+      self, number_of_clients):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+    context = execution_contexts.create_local_async_python_execution_context()
+    iterator = prefetching_data_source.PrefetchingDataSourceIterator(
+        iterator=mock_iterator,
+        context=context,
+        total_rounds=10,
+        num_rounds_to_prefetch=3,
+        num_clients_to_prefetch=2,
+        threshold=1)
+
+    with self.assertRaises(ValueError):
+      iterator.select(number_of_clients)
 
 
 class PrefetchingDataSourceTest(parameterized.TestCase,
                                 unittest.IsolatedAsyncioTestCase):
 
-  @parameterized.named_parameters(
-      ('int', [1, 2, 3], tf.int32),
-      ('str', ['a', 'b', 'c'], tf.string),
-  )
-  def test_init_sets_federated_type(self, tensors, dtype):
-    datasets = [tf.data.Dataset.from_tensor_slices(tensors)] * 3
-    ds = dataset_data_source.DatasetDataSource(datasets)
+  def test_init_does_not_raise_type_error(self):
+    mock_data_source = mock.create_autospec(data_source_lib.FederatedDataSource)
     context = execution_contexts.create_local_async_python_execution_context()
 
-    prefetching_ds = prefetching_data_source.PrefetchingDataSource(
-        data_source=ds,
-        total_rounds=5,
-        num_rounds_to_prefetch=3,
-        num_clients_to_prefetch=2,
-        context=context,
-        buffer_size=0)
+    try:
+      prefetching_data_source.PrefetchingDataSource(
+          data_source=mock_data_source,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=1)
+    except TypeError:
+      self.fail('Raised `TypeError` unexpectedly.')
 
-    federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(dtype), placements.CLIENTS)
-    self.assertEqual(prefetching_ds.federated_type, federated_type)
+  @parameterized.named_parameters(
+      ('none', None),
+      ('bool', True),
+      ('int', 1),
+      ('str', 'a'),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_data_source(self, data_source):
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSource(
+          data_source=data_source,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=1)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('async_python',
+       execution_contexts.create_local_async_python_execution_context()),
+  )
+  # pyformat: enable
+  def test_init_does_not_raise_type_error_with_context(self, context):
+    mock_data_source = mock.create_autospec(data_source_lib.FederatedDataSource)
+
+    try:
+      prefetching_data_source.PrefetchingDataSource(
+          data_source=mock_data_source,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=1)
+    except TypeError:
+      self.fail('Raised `TypeError` unexpectedly.')
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('sync_cpp',
+       execution_contexts.create_local_python_execution_context()),
+      ('sync_python',
+       execution_contexts.create_local_python_execution_context()),
+  )
+  # pyformat: enable
+  def test_init_raises_type_error_with_context(self, context):
+    mock_data_source = mock.create_autospec(data_source_lib.FederatedDataSource)
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSource(
+          data_source=mock_data_source,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('str', 'a'),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_total_rounds(self, total_rounds):
+    mock_data_source = mock.create_autospec(data_source_lib.FederatedDataSource)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSource(
+          data_source=mock_data_source,
+          context=context,
+          total_rounds=total_rounds,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('str', 'a'),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_num_rounds_to_prefetch(
+      self, num_rounds_to_prefetch):
+    mock_data_source = mock.create_autospec(data_source_lib.FederatedDataSource)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSource(
+          data_source=mock_data_source,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=num_rounds_to_prefetch,
+          num_clients_to_prefetch=2,
+          threshold=1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('str', 'a'),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_num_clients_to_prefetch(
+      self, num_clients_to_prefetch):
+    mock_data_source = mock.create_autospec(data_source_lib.FederatedDataSource)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSource(
+          data_source=mock_data_source,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=num_clients_to_prefetch,
+          threshold=1)
+
+  @parameterized.named_parameters(
+      ('none', None),
+      ('str', 'a'),
+      ('list', [True, 1, 'a']),
+  )
+  def test_init_raises_type_error_with_threshold(self, threshold):
+    mock_data_source = mock.create_autospec(data_source_lib.FederatedDataSource)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(TypeError):
+      prefetching_data_source.PrefetchingDataSource(
+          data_source=mock_data_source,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=2,
+          threshold=threshold)
+
+  @parameterized.named_parameters(
+      ('zero', 0),
+      ('negative', -1),
+  )
+  def test_init_raises_value_error_with_num_clients_to_prefetch(
+      self, num_clients_to_prefetch):
+    mock_data_source = mock.create_autospec(data_source_lib.FederatedDataSource)
+    context = execution_contexts.create_local_async_python_execution_context()
+
+    with self.assertRaises(ValueError):
+      prefetching_data_source.PrefetchingDataSource(
+          data_source=mock_data_source,
+          context=context,
+          total_rounds=10,
+          num_rounds_to_prefetch=3,
+          num_clients_to_prefetch=num_clients_to_prefetch,
+          threshold=1)
 
   async def test_select_calls_prefetches_data(self):
-    ds = mock.create_autospec(data_source.FederatedDataSource, autospec=True)
+    ds = mock.create_autospec(data_source_lib.FederatedDataSource)
     ds_iterator = mock.create_autospec(
-        data_source.FederatedDataSourceIterator, autospec=True)
+        data_source_lib.FederatedDataSourceIterator)
     ds_iterator.federated_type = computation_types.FederatedType(
         tf.int32, placements.CLIENTS)
     ds_iterator.select.return_value = [1, 2]
@@ -64,11 +427,11 @@ class PrefetchingDataSourceTest(parameterized.TestCase,
 
     prefetching_ds = prefetching_data_source.PrefetchingDataSource(
         data_source=ds,
+        context=context,
         total_rounds=5,
         num_rounds_to_prefetch=3,
         num_clients_to_prefetch=2,
-        context=context,
-        buffer_size=0)
+        threshold=0)
 
     ds_iterator.select.assert_not_called()
     # The first round of prefetching

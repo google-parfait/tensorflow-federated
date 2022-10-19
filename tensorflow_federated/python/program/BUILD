@@ -51,7 +51,11 @@ py_library(
 py_test(
     name = "client_id_data_source_test",
     srcs = ["client_id_data_source_test.py"],
-    deps = [":client_id_data_source"],
+    deps = [
+        ":client_id_data_source",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
 )
 
 py_library(
@@ -281,7 +285,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":data_source",
-        ":dataset_data_source",
         ":prefetching_data_source",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
