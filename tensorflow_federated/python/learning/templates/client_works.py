@@ -118,10 +118,6 @@ def _type_check_next_fn_parameters(next_fn: computation_base.Computation):
     raise errors.TemplatePlacementError(
         f'The third input argument of `next_fn` must be placed at CLIENTS '
         f'but found {client_data_param}.')
-  if client_data_param.placement != placements.CLIENTS:
-    raise errors.TemplatePlacementError(
-        f'The third input argument of `next_fn` must be placed at CLIENTS '
-        f'but found {client_data_param}.')
   if not _is_allowed_client_data_type(client_data_param.member):
     raise ClientDataTypeError(
         f'The third input argument of `next_fn` must be a sequence or '
