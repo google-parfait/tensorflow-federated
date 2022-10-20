@@ -56,14 +56,14 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
 
   @property
   def federated_type(self) -> computation_types.FederatedType:
-    """The type of the data returned by calling `select` on an iterator."""
+    """The type of the data returned by calling `select`."""
     return self._federated_type
 
   def select(self, number_of_clients: Optional[int] = None) -> Any:
     """Returns a new selection of client ids from this iterator.
 
     Args:
-      number_of_clients: A number of clients to use when selecting data, must be
+      number_of_clients: A number of clients to use when selecting data. Must be
         a positive integer and less than the total number of `client_ids`.
 
     Raises:
@@ -74,26 +74,27 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
       py_typecheck.check_type(number_of_clients, int)
     if (number_of_clients is None or number_of_clients < 0 or
         number_of_clients > len(self._client_ids)):
-      raise ValueError('Expected `number_of_clients` to be a positive integer '
-                       'and less than the number of `client_ids`, found '
-                       f'number_of_clients: {number_of_clients}, '
-                       f'number of client_ids: {len(self._client_ids)}')
+      raise ValueError(
+          'Expected `number_of_clients` to be a positive integer and less than '
+          'the number of `client_ids`, found '
+          f'`number_of_clients`: {number_of_clients}, '
+          f'number of `client_ids`: {len(self._client_ids)}')
+
     return random.sample(self._client_ids, number_of_clients)
 
 
 class ClientIdDataSource(data_source.FederatedDataSource):
-  """A tff.program.FederatedDataSource managing data in form of client ids."""
+  """A `tff.program.FederatedDataSource` backed by client ids."""
 
   def __init__(self, client_ids: Sequence[str]):
     """Returns an initialized `tff.program.ClientIdDataSource`.
 
     Args:
-      client_ids: A sequence of client ids to use to yield the ids from this
-        data source.
+      client_ids: A sequence of strings used to yield the client ids from this
+        data source. Must not be empty.
 
     Raises:
-      ValueError: If `client_ids` is empty or not a sequence, or if one of the
-        ids is not a string.
+      ValueError: If `client_ids` is empty.
     """
     py_typecheck.check_type(client_ids, collections.abc.Sequence)
     for client_id in client_ids:
