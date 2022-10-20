@@ -287,6 +287,7 @@ abstract types in addition to those defined earlier:
 
 # TODO(b/138261370): Cover this in the general set of guidelines for deployment.
 
+from tensorflow_federated.python.core.backends.mapreduce.compiler import consolidate_and_extract_local_processing
 from tensorflow_federated.python.core.backends.mapreduce.compiler import parse_tff_to_tf
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import check_computation_compatible_with_map_reduce_form
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_broadcast_form_for_computation
