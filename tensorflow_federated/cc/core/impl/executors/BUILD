@@ -734,6 +734,7 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@com_google_absl//absl/types:variant",
         "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:lib",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
         "@org_tensorflow//tensorflow/core/common_runtime:core",
         "@org_tensorflow//tensorflow/core/common_runtime:session",
@@ -790,6 +791,7 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
+        "@org_tensorflow//tensorflow/core:lib",
     ],
 )
 
@@ -802,6 +804,9 @@ cc_test(
         ":threading",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+        "@org_tensorflow//tensorflow/core:lib",
     ],
 )
 

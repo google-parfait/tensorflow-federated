@@ -21,6 +21,10 @@ limitations under the License
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/status/status.h"
+#include "absl/synchronization/notification.h"
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
+#include "tensorflow/core/platform/threadpool.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
 
 namespace tensorflow_federated {
@@ -56,10 +60,10 @@ TEST_F(ThreadingTest, ParallelTasksOneOkOneErrorIsError) {
 }
 
 TEST_F(ThreadingTest, ParallelTasksWaitsForAll) {
-  const uint32_t NUM_TASKS = 5000;
-  std::atomic<uint32_t> counter(0);
+  const int32_t NUM_TASKS = 5000;
+  std::atomic<int32_t> counter(0);
   ParallelTasks tasks;
-  for (uint32_t i = 0; i < NUM_TASKS; i++) {
+  for (int32_t i = 0; i < NUM_TASKS; i++) {
     tasks.add_task([&counter]() {
       counter.fetch_add(1);
       return absl::OkStatus();
@@ -67,6 +71,32 @@ TEST_F(ThreadingTest, ParallelTasksWaitsForAll) {
   }
   EXPECT_THAT(tasks.WaitAll(), IsOk());
   EXPECT_EQ(counter.load(), NUM_TASKS);
+}
+
+TEST_F(ThreadingTest, ParallelTasksWithThreadPool) {
+  const int32_t NUM_THREADS = 3;
+  tensorflow::thread::ThreadPool thread_pool(tensorflow::Env::Default(),
+                                             "test_thread_pool", NUM_THREADS);
+  std::atomic<int32_t> counter(0);
+  absl::Notification event;
+  ParallelTasks tasks(&thread_pool);
+  for (int32_t i = 0; i < NUM_THREADS * 2; i++) {
+    tasks.add_task([&counter, &event]() {
+      counter.fetch_add(1);
+      event.WaitForNotification();
+      return absl::OkStatus();
+    });
+  }
+  // Sleep a few seconds to ensure NUM_THREADS have run.
+  absl::SleepFor(absl::Seconds(10));
+  // Assert that only NUM_THREADS have run, as they are waiting for notification
+  // to complete before the threadpool can schedule the remaining threads.
+  EXPECT_EQ(counter.load(), NUM_THREADS);
+  // Notify the threads to complete, freeing the threadpool to run the remaining
+  // tasks.
+  event.Notify();
+  EXPECT_THAT(tasks.WaitAll(), IsOk());
+  EXPECT_EQ(counter.load(), NUM_THREADS * 2);
 }
 
 }  // namespace
