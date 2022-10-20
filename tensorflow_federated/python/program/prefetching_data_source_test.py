@@ -209,8 +209,7 @@ class PrefetchingDataSourceIteratorTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  def test_select_raises_type_error_with_number_of_clients(
-      self, number_of_clients):
+  def test_select_raises_type_error_with_num_clients(self, num_clients):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator)
     context = execution_contexts.create_local_async_python_execution_context()
@@ -223,15 +222,14 @@ class PrefetchingDataSourceIteratorTest(parameterized.TestCase):
         prefetch_threshold=1)
 
     with self.assertRaises(TypeError):
-      iterator.select(number_of_clients)
+      iterator.select(num_clients)
 
   @parameterized.named_parameters(
       ('none', None),
       ('negative', -1),
       ('different', 4),
   )
-  def test_select_raises_value_error_with_number_of_clients(
-      self, number_of_clients):
+  def test_select_raises_value_error_with_num_clients(self, num_clients):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator)
     context = execution_contexts.create_local_async_python_execution_context()
@@ -244,7 +242,7 @@ class PrefetchingDataSourceIteratorTest(parameterized.TestCase):
         prefetch_threshold=1)
 
     with self.assertRaises(ValueError):
-      iterator.select(number_of_clients)
+      iterator.select(num_clients)
 
 
 class PrefetchingDataSourceTest(parameterized.TestCase,
@@ -439,17 +437,17 @@ class PrefetchingDataSourceTest(parameterized.TestCase,
     # The first round of prefetching
     prefetching_iter = prefetching_ds.iterator()
     for _ in range(2):
-      prefetching_iter.select(number_of_clients=2)
+      prefetching_iter.select(num_clients=2)
       self.assertEqual(ds_iterator.select.call_count, 3)
-    prefetching_iter.select(number_of_clients=2)
+    prefetching_iter.select(num_clients=2)
     # The second round of prefetching
     await asyncio.sleep(0.1)
     self.assertEqual(ds_iterator.select.call_count, 5)
     for _ in range(2):
-      prefetching_iter.select(number_of_clients=2)
+      prefetching_iter.select(num_clients=2)
       self.assertEqual(ds_iterator.select.call_count, 5)
     with self.assertRaises(RuntimeError):
-      prefetching_iter.select(number_of_clients=2)
+      prefetching_iter.select(num_clients=2)
 
 
 if __name__ == '__main__':

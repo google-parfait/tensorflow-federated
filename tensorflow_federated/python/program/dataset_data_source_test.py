@@ -92,16 +92,16 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
       ('2', 1),
       ('3', 2),
   )
-  def test_select_returns_dataset(self, number_of_clients):
+  def test_select_returns_dataset(self, num_clients):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
     federated_type = computation_types.FederatedType(
         computation_types.SequenceType(tf.int32), placements.CLIENTS)
     iterator = dataset_data_source.DatasetDataSourceIterator(
         datasets=datasets, federated_type=federated_type)
 
-    actual_datasets = iterator.select(number_of_clients)
+    actual_datasets = iterator.select(num_clients)
 
-    self.assertLen(actual_datasets, number_of_clients)
+    self.assertLen(actual_datasets, num_clients)
     for actual_dataset in actual_datasets:
       expected_dataset = tf.data.Dataset.from_tensor_slices([1, 2, 3])
       self.assertSameElements(actual_dataset, expected_dataset)
@@ -110,8 +110,7 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  def test_select_raises_type_error_with_number_of_clients(
-      self, number_of_clients):
+  def test_select_raises_type_error_with_num_clients(self, num_clients):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
     federated_type = computation_types.FederatedType(
         computation_types.SequenceType(tf.int32), placements.CLIENTS)
@@ -119,15 +118,14 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
         datasets=datasets, federated_type=federated_type)
 
     with self.assertRaises(TypeError):
-      iterator.select(number_of_clients)
+      iterator.select(num_clients)
 
   @parameterized.named_parameters(
       ('none', None),
       ('negative', -1),
       ('greater', 4),
   )
-  def test_select_raises_value_error_with_number_of_clients(
-      self, number_of_clients):
+  def test_select_raises_value_error_with_num_clients(self, num_clients):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
     federated_type = computation_types.FederatedType(
         computation_types.SequenceType(tf.int32), placements.CLIENTS)
@@ -135,7 +133,7 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
         datasets=datasets, federated_type=federated_type)
 
     with self.assertRaises(ValueError):
-      iterator.select(number_of_clients)
+      iterator.select(num_clients)
 
 
 class DatasetDataSourceTest(parameterized.TestCase):

@@ -53,14 +53,14 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
       ('2', 1),
       ('3', 2),
   )
-  def test_select_returns_data(self, number_of_clients):
+  def test_select_returns_data(self, num_clients):
     client_ids = ['a', 'b', 'c']
     iterator = client_id_data_source.ClientIdDataSourceIterator(
         client_ids=client_ids)
 
-    actual_client_ids = iterator.select(number_of_clients)
+    actual_client_ids = iterator.select(num_clients)
 
-    self.assertLen(actual_client_ids, number_of_clients)
+    self.assertLen(actual_client_ids, num_clients)
     for actual_client_id in actual_client_ids:
       self.assertIn(actual_client_id, client_ids)
       self.assertIsInstance(actual_client_id, str)
@@ -69,28 +69,26 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
       ('str', 'a'),
       ('list', []),
   )
-  def test_select_raises_type_error_with_number_of_clients(
-      self, number_of_clients):
+  def test_select_raises_type_error_with_num_clients(self, num_clients):
     client_ids = ['a', 'b', 'c']
     iterator = client_id_data_source.ClientIdDataSourceIterator(
         client_ids=client_ids)
 
     with self.assertRaises(TypeError):
-      iterator.select(number_of_clients)
+      iterator.select(num_clients)
 
   @parameterized.named_parameters(
       ('none', None),
       ('negative', -1),
       ('greater', 4),
   )
-  def test_select_raises_value_error_with_number_of_clients(
-      self, number_of_clients):
+  def test_select_raises_value_error_with_num_clients(self, num_clients):
     client_ids = ['a', 'b', 'c']
     iterator = client_id_data_source.ClientIdDataSourceIterator(
         client_ids=client_ids)
 
     with self.assertRaises(ValueError):
-      iterator.select(number_of_clients)
+      iterator.select(num_clients)
 
 
 class ClientIdDataSourceTest(parameterized.TestCase):

@@ -74,7 +74,7 @@ def main():
 
   # Parameters set by the program.
   total_rounds = 10
-  number_of_clients = 3
+  num_clients = 3
 
   # Configure the platform-specific components.
   context = tff.program.NativeFederatedContext(...)
@@ -100,7 +100,7 @@ def main():
       train=train,
       data_source=data_source,
       total_rounds=total_rounds,
-      number_of_clients=number_of_clients,
+      num_clients=num_clients,
       output_managers=output_managers,
       program_state_manager=program_state_manager)
 ```
@@ -109,8 +109,8 @@ def main():
 
 The **Parameters** are the inputs to the [program](#program), these inputs may
 be set by the [customer](#customer) if they are exposed as flags to the program
-or they may be set by the program. For example, `total_rounds` and
-`number_of_clients` are parameters in the example of a program above.
+or they may be set by the program. For example, `total_rounds` and `num_clients`
+are parameters in the example of a program above.
 
 ### Platform-Specific Components
 
@@ -205,7 +205,7 @@ def train_federated_model(
     train: tff.Computation,
     data_source: tff.program.FederatedDataSource,
     total_rounds: int,
-    number_of_clients: int,
+    num_clients: int,
     output_managers: Optional[List[tff.program.ReleaseManager]] = None,
     program_state_manager: Optional[tff.program.ProgramStateManager] = None):
   state = initialize()
@@ -213,7 +213,7 @@ def train_federated_model(
 
   data_iterator = data_source.iterator()
   for round_number in range(1, total_rounds + 1):
-    train_data = data_iterator.select(number_of_clients)
+    train_data = data_iterator.select(num_clients)
     state, metrics = train(state, train_data)
 
     if output_managers is not None:

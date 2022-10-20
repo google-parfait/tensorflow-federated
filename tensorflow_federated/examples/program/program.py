@@ -59,6 +59,9 @@ from tensorflow_federated.examples.program import program_logic
 
 _OUTPUT_DIR = flags.DEFINE_string('output_dir', None, 'The output path.')
 
+_TOTAL_ROUNDS = 10
+_NUM_CLIENTS = 1
+
 
 def _filter_metrics(path: Tuple[Union[str, int], ...]) -> bool:
   if path == (computations.METRICS_TOTAL_SUM,):
@@ -70,9 +73,6 @@ def _filter_metrics(path: Tuple[Union[str, int], ...]) -> bool:
 def main(argv: Sequence[str]) -> None:
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
-
-  total_rounds = 10
-  number_of_clients = 3
 
   # Configure the platform-specific components; in this example, the TFF native
   # platform is used, but this example could use any platform that conforms to
@@ -147,8 +147,8 @@ def main(argv: Sequence[str]) -> None:
           train_data_source=train_data_source,
           evaluation=evaluation,
           evaluation_data_source=evaluation_data_source,
-          total_rounds=total_rounds,
-          number_of_clients=number_of_clients,
+          total_rounds=_TOTAL_ROUNDS,
+          num_clients=_NUM_CLIENTS,
           train_metrics_manager=train_metrics_manager,
           evaluation_metrics_manager=evaluation_metrics_manager,
           model_output_manager=model_output_manager,

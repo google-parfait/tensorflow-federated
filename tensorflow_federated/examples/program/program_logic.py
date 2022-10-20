@@ -187,7 +187,7 @@ async def train_federated_model(
     evaluation: tff.Computation,
     evaluation_data_source: tff.program.FederatedDataSource,
     total_rounds: int,
-    number_of_clients: int,
+    num_clients: int,
     train_metrics_manager: Optional[tff.program.ReleaseManager] = None,
     evaluation_metrics_manager: Optional[tff.program.ReleaseManager] = None,
     model_output_manager: Optional[tff.program.ReleaseManager] = None,
@@ -243,7 +243,7 @@ async def train_federated_model(
     evaluation_data_source: A `tff.program.FederatedDataSource` which returns
       client data used during evaluation.
     total_rounds: The number of training rounds to run.
-    number_of_clients: The number of clients per round of training.
+    num_clients: The number of clients per round of training.
     train_metrics_manager: An optional `tff.program.ReleaseManager` used to
       release training metrics.
     evaluation_metrics_manager: An optional `tff.program.ReleaseManager` used to
@@ -303,7 +303,7 @@ async def train_federated_model(
       tasks.add_callable(
           functools.partial(logging.info, 'Running round %d of training',
                             round_number))
-      train_data = train_data_iterator.select(number_of_clients)
+      train_data = train_data_iterator.select(num_clients)
       state, metrics = train(state, train_data)
 
       # Release the training metrics.
@@ -328,7 +328,7 @@ async def train_federated_model(
     tasks.add_callable(
         functools.partial(logging.info, 'Running one round of evaluation'))
     evaluation_data_iterator = evaluation_data_source.iterator()
-    evaluation_data = evaluation_data_iterator.select(number_of_clients)
+    evaluation_data = evaluation_data_iterator.select(num_clients)
     evaluation_metrics = evaluation(state, evaluation_data)
 
     # Release the evaluation metrics.

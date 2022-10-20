@@ -80,19 +80,19 @@ class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def select(self, number_of_clients: Optional[int] = None) -> Any:
+  def select(self, num_clients: Optional[int] = None) -> Any:
     """Returns a new selection of federated data from this iterator.
 
     The selection contains data distributed across a cohort of logical clients.
     The manner in which this cohort is constructed is a function of the
-    arguments supplied here by the caller (such as `number_of_clients`) as well
-    as by the capabilities of the data source itself (e.g., whether it offers
-    data selected uniformly at random, performs sampling without replacement,
+    arguments supplied here by the caller (such as `num_clients`) as well as by
+    the capabilities of the data source itself (e.g., whether it offers data
+    selected uniformly at random, performs sampling without replacement,
     guarantees determinism, etc.).
 
     Args:
-      number_of_clients: Optional, the number of clients to select. Must be a
-        positive integer, or `None` if unspecified.
+      num_clients: Optional, the number of clients to select. Must be a positive
+        integer, or `None` if unspecified.
 
     Returns:
       An object of type `federated_type` representing the selected data, and
