@@ -287,6 +287,7 @@ py_test(
         ":data_source",
         ":prefetching_data_source",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
