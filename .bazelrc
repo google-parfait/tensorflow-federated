@@ -141,7 +141,7 @@ common --experimental_repo_remote_exec
 build --config=v2
 build --distinct_host_configuration=false
 
-build:cuda --action_env=TF_CUDA_VERSION="11.2"
+build:cuda --action_env=TF_CUDA_VERSION="11"
 build:cuda --action_env=TF_CUDNN_VERSION="8"
 build:cuda --repo_env=TF_CUDA_COMPUTE_CAPABILITIES="sm_60,sm_70,sm_75,compute_80"
 build:cuda --action_env=GCC_HOST_COMPILER_PATH="/dt9/usr/bin/gcc"
