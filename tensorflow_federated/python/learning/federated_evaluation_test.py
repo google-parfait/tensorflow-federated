@@ -32,9 +32,13 @@ from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.learning import federated_evaluation
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
+from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.metrics import counters
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights
+from tensorflow_federated.python.learning.models import test_models
 from tensorflow_federated.python.tensorflow_libs import tensorflow_test_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
@@ -428,6 +432,126 @@ class FederatedEvaluationTest(parameterized.TestCase):
   def test_no_unsecure_aggregation_with_secure_metrics_finalizer(self):
     evaluate_comp = federated_evaluation.build_federated_evaluation(
         _model_fn_from_keras,
+        metrics_aggregator=aggregator.secure_sum_then_finalize)
+    static_assert.assert_not_contains_unsecure_aggregation(evaluate_comp)
+
+
+class FunctionalFederatedEvaluationTest(tf.test.TestCase):
+
+  def create_test_datasets(self) -> tf.data.Dataset:
+    dataset1 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
+            y=[[0.0], [0.0], [1.0], [1.0]]))
+    dataset2 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]],
+            y=[[1.0], [2.0], [3.0], [4.0]]))
+    return [dataset1.repeat(2).batch(3), dataset2.repeat(2).batch(3)]
+
+  def test_raises_on_non_callable_or_functional_model(self):
+    with self.assertRaisesRegex(TypeError, 'is not a callable'):
+      federated_evaluation.build_federated_evaluation(model_fn=0)
+
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_functional_local_evaluation_matches_non_functional(self):
+    dataset = self.create_test_datasets()[0]
+    batch_type = computation_types.to_type(dataset.element_spec)
+    loss_fn = tf.keras.losses.MeanSquaredError
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=2)
+
+    # Defining artifacts using `tff.learning.Model`
+    def tff_model_fn():
+      keras_model = model_examples.build_linear_regression_keras_functional_model(
+          feature_dims=2)
+      return keras_utils.from_keras_model(
+          keras_model, loss=loss_fn(), input_spec=batch_type)
+
+    tff_model = tff_model_fn()
+    model_weights_type = model_weights.weights_type_from_model(tff_model)
+    eval_weights = model_weights.ModelWeights.from_model(tff_model)
+
+    local_eval = federated_evaluation.build_local_evaluation(
+        tff_model_fn, model_weights_type, batch_type)
+    local_output = local_eval(eval_weights, dataset)
+
+    # Defining artifacts using `tff.learning.models.FunctionalModel`
+    def build_metrics_fn():
+      return collections.OrderedDict(
+          loss=tf.keras.metrics.MeanSquaredError(),
+          num_examples=counters.NumExamplesCounter(),
+          num_batches=counters.NumBatchesCounter())
+
+    functional_model = functional.functional_model_from_keras(
+        keras_model,
+        loss_fn=loss_fn(),
+        input_spec=batch_type,
+        metrics_constructor=build_metrics_fn)
+
+    def ndarray_to_tensorspec(ndarray):
+      return tf.TensorSpec(
+          shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype))
+
+    weights_type = tf.nest.map_structure(ndarray_to_tensorspec,
+                                         functional_model.initial_weights)
+    functional_eval = federated_evaluation.build_functional_local_evaluation(
+        functional_model, weights_type, batch_type)
+    functional_output = functional_eval(functional_model.initial_weights,
+                                        dataset)
+
+    # Testing equality
+    self.assertDictEqual(local_output['local_outputs'], functional_output)
+
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_functional_evaluation_matches_non_functional(self):
+    datasets = self.create_test_datasets()
+    batch_type = computation_types.to_type(datasets[0].element_spec)
+    loss_fn = tf.keras.losses.MeanSquaredError
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=2)
+    metrics_aggregator = aggregator.sum_then_finalize
+
+    # Defining artifacts using `tff.learning.Model`
+    def tff_model_fn():
+      keras_model = model_examples.build_linear_regression_keras_functional_model(
+          feature_dims=2)
+      return keras_utils.from_keras_model(
+          keras_model, loss=loss_fn(), input_spec=batch_type)
+
+    federated_eval = federated_evaluation._build_federated_evaluation(
+        model_fn=tff_model_fn,
+        broadcast_process=None,
+        metrics_aggregator=metrics_aggregator,
+        use_experimental_simulation_loop=False)
+    tff_model = tff_model_fn()
+    eval_weights = model_weights.ModelWeights.from_model(tff_model)
+    eval_metrics = federated_eval(eval_weights, datasets)
+
+    # Defining artifacts using `tff.learning.models.FunctionalModel`
+    def build_metrics_fn():
+      return collections.OrderedDict(
+          loss=tf.keras.metrics.MeanSquaredError(),
+          num_examples=counters.NumExamplesCounter(),
+          num_batches=counters.NumBatchesCounter())
+
+    functional_model = functional.functional_model_from_keras(
+        keras_model,
+        loss_fn=loss_fn(),
+        input_spec=batch_type,
+        metrics_constructor=build_metrics_fn)
+    functional_eval = federated_evaluation._build_functional_federated_evaluation(
+        model=functional_model,
+        broadcast_process=None,
+        metrics_aggregator=metrics_aggregator)
+    functional_metrics = functional_eval(functional_model.initial_weights,
+                                         datasets)
+    self.assertDictEqual(eval_metrics, functional_metrics)
+
+  def test_no_unsecure_aggregation_with_secure_metrics_finalizer(self):
+    functional_model = test_models.build_functional_linear_regression()
+    evaluate_comp = federated_evaluation.build_federated_evaluation(
+        functional_model,
         metrics_aggregator=aggregator.secure_sum_then_finalize)
     static_assert.assert_not_contains_unsecure_aggregation(evaluate_comp)
 

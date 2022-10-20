@@ -19,7 +19,7 @@
 """A simple implementation of federated evaluation."""
 
 import collections
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import tensorflow as tf
 
@@ -34,10 +34,14 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 
 # Convenience aliases.
 SequenceType = computation_types.SequenceType
+MetricsAggregator = Callable[
+    [model_lib.MetricFinalizersType, computation_types.StructWithPythonType],
+    computation_base.Computation]
 
 
 def build_local_evaluation(
@@ -106,21 +110,72 @@ def build_local_evaluation(
   return client_eval
 
 
+def build_functional_local_evaluation(
+    model: functional.FunctionalModel,
+    model_weights_type: computation_types.StructType,
+    batch_type: Union[computation_types.StructType,
+                      computation_types.TensorType],
+) -> computation_base.Computation:
+  """Creates client evaluation logic for a functional model.
+
+  This produces an unplaced function that evaluates a
+  `tff.learning.models.FunctionalModel` on a `tf.data.Dataset`. This function
+  can be mapped to placed data.
+
+  The TFF type notation for the returned computation is:
+
+  ```
+  (<M, D*> → <local_outputs=N>)
+  ```
+
+  Where `M` is the model weights type structure, `D` is the type structure of a
+  single data point, and `N` is the type structure of the local metrics.
+
+  Args:
+    model: A `tff.learning.models.FunctionalModel`.
+    model_weights_type: The `tff.Type` of the model parameters that will be used
+      in the forward pass.
+    batch_type: The type of one entry in the dataset.
+
+  Returns:
+    A federated computation (an instance of `tff.Computation`) that accepts
+    model parameters and sequential data, and returns the evaluation metrics.
+  """
+
+  @tensorflow_computation.tf_computation(model_weights_type,
+                                         SequenceType(batch_type))
+  @tf.function
+  def local_eval(weights, dataset):
+    metrics_state = model.initialize_metrics_state()
+    for batch in iter(dataset):
+      output = model.forward_pass(weights, batch, training=False)
+      if isinstance(batch, collections.abc.Mapping):
+        labels = batch['y']
+      else:
+        _, labels = batch
+      metrics_state = model.update_metrics_state(
+          metrics_state, y_pred=output.predictions, y_true=labels)
+    unfinalized_metrics = metrics_state
+    return unfinalized_metrics
+
+  return local_eval
+
+
 def build_federated_evaluation(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
-    metrics_aggregator: Optional[Callable[[
-        model_lib.MetricFinalizersType, computation_types.StructWithPythonType
-    ], computation_base.Computation]] = None,
+    metrics_aggregator: Optional[MetricsAggregator] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> computation_base.Computation:
   """Builds the TFF computation for federated evaluation of the given model.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
+      instance of a `tff.learning.models.FunctionalModel`. When passing a
+      callable, the callable must *not* capture TensorFlow tensors or variables
+      and use them.  The model must be constructed entirely from scratch on each
+      invocation, returning the same pre-constructed model each call will result
+      in an error.
     broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENTS)` and have empty state. If
@@ -143,6 +198,12 @@ def build_federated_evaluation(
     A federated computation (an instance of `tff.Computation`) that accepts
     model parameters and federated data, and returns the evaluation metrics.
   """
+  if not callable(model_fn):
+    if not isinstance(model_fn, functional.FunctionalModel):
+      raise TypeError(
+          'If `model_fn` is not a callable, it must be an instance '
+          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
+
   if broadcast_process is not None:
     if not isinstance(broadcast_process, measured_process.MeasuredProcess):
       raise ValueError('`broadcast_process` must be a `MeasuredProcess`, got '
@@ -152,6 +213,29 @@ def build_federated_evaluation(
           'Cannot create a federated evaluation with a stateful '
           'broadcast process, must be stateless (have empty state), has state: '
           f'{broadcast_process.initialize.type_signature.result!r}')
+
+  if metrics_aggregator is None:
+    metrics_aggregator = aggregator.sum_then_finalize
+
+  if not callable(model_fn):
+    return _build_functional_federated_evaluation(
+        model=model_fn,
+        broadcast_process=broadcast_process,
+        metrics_aggregator=metrics_aggregator)
+  else:
+    return _build_federated_evaluation(
+        model_fn=model_fn,
+        broadcast_process=broadcast_process,
+        metrics_aggregator=metrics_aggregator,
+        use_experimental_simulation_loop=use_experimental_simulation_loop)
+
+
+def _build_federated_evaluation(
+    *, model_fn: Callable[[], model_lib.Model],
+    broadcast_process: Optional[measured_process.MeasuredProcess],
+    metrics_aggregator: MetricsAggregator,
+    use_experimental_simulation_loop: bool) -> computation_base.Computation:
+  """Builds a federated evaluation computation for a `tff.learning.Model`."""
   # Construct the model first just to obtain the metadata and define all the
   # types needed to define the computations that follow.
   # TODO(b/124477628): Ideally replace the need for stamping throwaway models
@@ -160,17 +244,17 @@ def build_federated_evaluation(
     model = model_fn()
     model_weights_type = model_weights_lib.weights_type_from_model(model)
     batch_type = computation_types.to_type(model.input_spec)
+
     unfinalized_metrics_type = type_conversions.type_from_tensors(
         model.report_local_unfinalized_metrics())
-    if metrics_aggregator is not None:
-      metrics_aggregation_computation = metrics_aggregator(
-          model.metric_finalizers(), unfinalized_metrics_type)
-    else:
-      metrics_aggregation_computation = aggregator.sum_then_finalize(
-          model.metric_finalizers(), unfinalized_metrics_type)
+    metrics_aggregation_computation = metrics_aggregator(
+        model.metric_finalizers(), unfinalized_metrics_type)
 
-  local_eval = build_local_evaluation(model_fn, model_weights_type, batch_type,
-                                      use_experimental_simulation_loop)
+  local_eval = build_local_evaluation(
+      model_fn=model_fn,
+      model_weights_type=model_weights_type,
+      batch_type=batch_type,
+      use_experimental_simulation_loop=use_experimental_simulation_loop)
 
   @federated_computation.federated_computation(
       computation_types.at_server(model_weights_type),
@@ -193,3 +277,42 @@ def build_federated_evaluation(
     return intrinsics.federated_zip(collections.OrderedDict(eval=model_metrics))
 
   return server_eval
+
+
+def _build_functional_federated_evaluation(
+    *, model: functional.FunctionalModel,
+    broadcast_process: Optional[measured_process.MeasuredProcess],
+    metrics_aggregator: MetricsAggregator) -> computation_base.Computation:
+  """Builds a federated evaluation computation for a functional model."""
+
+  def ndarray_to_tensorspec(ndarray):
+    return tf.TensorSpec(
+        shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype))
+
+  weights_type = tf.nest.map_structure(ndarray_to_tensorspec,
+                                       model.initial_weights)
+  batch_type = computation_types.to_type(model.input_spec)
+  local_eval = build_functional_local_evaluation(model, weights_type,
+                                                 batch_type)
+
+  @federated_computation.federated_computation(
+      computation_types.at_server(weights_type),
+      computation_types.at_clients(SequenceType(batch_type)))
+  def federated_eval(server_weights, client_data):
+    if broadcast_process is not None:
+      # TODO(b/179091838): Zip the measurements from the broadcast_process with
+      # the result of `model_metrics` below to avoid dropping these metrics.
+      broadcast_output = broadcast_process.next(broadcast_process.initialize(),
+                                                server_weights)
+      client_weights = broadcast_output.result
+    else:
+      client_weights = intrinsics.federated_broadcast(server_weights)
+    unfinalized_metrics = intrinsics.federated_map(
+        local_eval, (client_weights, client_data))
+    metrics_aggregation_fn = metrics_aggregator(
+        model.finalize_metrics, unfinalized_metrics.type_signature.member)
+    finalized_metrics = metrics_aggregation_fn(unfinalized_metrics)
+    return intrinsics.federated_zip(
+        collections.OrderedDict(eval=finalized_metrics))
+
+  return federated_eval
