@@ -55,6 +55,38 @@ py_library(
 )
 
 py_library(
+    name = "cpp_to_python_executor",
+    srcs = ["cpp_to_python_executor.py"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
+    deps = [
+        ":executor_base",
+        ":executor_bindings",
+        ":executor_value_base",
+        ":value_serialization",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/common_libs:tracing",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_test(
+    name = "cpp_to_python_executor_test",
+    srcs = ["cpp_to_python_executor_test.py"],
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
+    deps = [
+        ":cpp_to_python_executor",
+        ":executor_bindings",
+        ":value_serialization",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
     name = "data_backend_base",
     srcs = ["data_backend_base.py"],
     srcs_version = "PY3",
