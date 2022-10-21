@@ -114,7 +114,8 @@ class LearningProcess(iterative_process.IterativeProcess):
 
     ```
       - initialize_fn: ( -> S@SERVER)
-      - next_fn: ({D*}@CLIENTS> -> <state=S@SERVER, metrics=M@SERVER>)
+      - next_fn: (<S@SERVER, {D*}@CLIENTS> -> <state=S@SERVER,
+      metrics=M@SERVER>)
       - get_model_weights: (S -> W)
       - set_model_weights: (<S, W> -> S)
     ```
