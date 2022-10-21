@@ -51,7 +51,7 @@ class GetModelWeightsTypeSignatureError(TypeError):
 
 
 class SetModelWeightsTypeSignatureError(TypeError):
-  """Raises when the type signature of `get_model_weights` is not correct."""
+  """Raises when the type signature of `set_model_weights` is not correct."""
 
 
 @attr.s(frozen=True, eq=True, order=False, slots=True)
