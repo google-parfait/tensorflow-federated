@@ -44,7 +44,7 @@ void ParallelTasks::add_task(std::function<absl::Status()> task) {
   if (thread_pool_ != nullptr) {
     thread_pool_->Schedule(std::move(void_task));
   } else {
-    std::async(std::launch::async, std::move(void_task));
+    (void)std::async(std::launch::async, std::move(void_task));
   }
 }
 
