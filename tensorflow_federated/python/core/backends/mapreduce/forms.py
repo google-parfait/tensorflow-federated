@@ -17,9 +17,12 @@ from typing import Callable, Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import typed_object
 
@@ -31,6 +34,41 @@ def _check_tensorflow_computation(label, comp):
   if which_comp != 'tensorflow':
     raise TypeError('Expected all computations supplied as arguments to '
                     'be plain TensorFlow, found {}.'.format(which_comp))
+
+
+def _check_lambda_computation(label, comp):
+  py_typecheck.check_type(comp, computation_impl.ConcreteComputation, label)
+  comp_proto = computation_impl.ConcreteComputation.get_proto(comp)
+  which_comp = comp_proto.WhichOneof('computation')
+  if which_comp != 'lambda':
+    raise TypeError('Expected all computations supplied as arguments to '
+                    'be Lambda computations, found {}.'.format(which_comp))
+  tree_analysis.check_contains_no_unbound_references(comp.to_building_block())
+  tree_analysis.check_has_unique_names(comp.to_building_block())
+
+
+def _check_flattened_intrinsic_args_are_selections(
+    value: building_blocks.ComputationBuildingBlock,
+    expected_reference_name: str):
+  """Checks that the flattened args of an intrinsic call are all Selections."""
+  inner_values = []
+  if value.is_struct():
+    inner_values = structure.flatten(value)
+  else:
+    inner_values = [value]
+
+  for inner_value in inner_values:
+    if not inner_value.is_selection():
+      raise TypeError(
+          'Expected that all arguments to an intrinsic call are selections or '
+          '(potentially nested) structs of selections, but found {}'.format(
+              inner_value.type_signature))
+    if inner_value.source.is_reference(
+    ) and inner_value.source.name != expected_reference_name:
+      raise TypeError(
+          'Expected that all arguments to an intrinsic call are ultimately '
+          'selections of the top-level lambda parameter {} but found selection '
+          'source {}'.format(expected_reference_name, inner_value.source.name))
 
 
 def _is_assignable_from_or_both_none(first, second):
@@ -204,7 +242,6 @@ class MapReduceForm(typed_object.TypedObject):
   instantiated by a programmer directly but targeted by a sequence of
   transformations that take a `tff.Computation` and produce the appropriate
   pieces of logic.
-
   """
 
   def __init__(
@@ -449,4 +486,313 @@ class MapReduceForm(typed_object.TypedObject):
       # Add sufficient padding to align first column;
       # len('secure_modular_sum_modulus') == 26
       print_fn('{:<26}: {}'.format(
+          label, comp.type_signature.compact_representation()))
+
+
+class DistributeAggregateForm(typed_object.TypedObject):
+  """Standard representation of logic deployable to a federated learning system.
+
+  This class docstring describes the purpose of `DistributeAggregateForm` as a
+  data structure. For a discussion of how an instance of
+  `DistributeAggregateForm` maps to a single federated round, see the [package-
+  level docstring](
+  https://www.tensorflow.org/federated/api_docs/python/tff/backends/mapreduce).
+
+  This standardized representation can be used to describe a range of
+  computations that constitute one round of processing in a federated learning
+  system such as the one described in the following paper:
+
+  "Towards Federated Learning at Scale: System Design"
+  https://arxiv.org/pdf/1902.01046.pdf
+
+  It should be noted that not every computation that proceeds in synchronous
+  rounds is representable as an instance of this class. In particular, this
+  representation is not suitable for computations that involve multiple back-
+  and-forths between the server and clients.
+
+  Each of the variable constituents of the form are TFF Lambda Computations
+  (as defined in `computation.proto`). Systems that cannot run TFF directly can
+  convert these TFF Lambda Computations into TensorFlow code using TFF helper
+  functions. Generally this class will not be instantiated by a programmer
+  directly but instead targeted by a sequence of transformations that take a
+  `tff.Computation` and produce the appropriate pieces of logic.
+  """
+
+  def __init__(
+      self, type_signature: computation_types.FunctionType,
+      server_prepare: computation_impl.ConcreteComputation,
+      server_to_client_broadcast: computation_impl.ConcreteComputation,
+      client_work: computation_impl.ConcreteComputation,
+      client_to_server_aggregation: computation_impl.ConcreteComputation,
+      server_result: computation_impl.ConcreteComputation):
+    """Constructs a representation of a round for a federated learning system.
+
+    Note: All the computations supplied here as arguments must be TFF Lambda
+    Computations (as defined in `computation.proto`).
+
+    Args:
+      type_signature: The type signature of the corresponding `tff.Computation`
+        that is equivalent to the pieces of logic encoded in this data
+        structure.
+      server_prepare: The computation that prepares the input for the clients
+        and computes intermediate server state that will be needed in later
+        stages.
+      server_to_client_broadcast: The computation that represents broadcasting
+        data from the server to the clients.
+      client_work: The client-side work computation.
+      client_to_server_aggregation: The computation that aggregates the client
+        results at the server, potentially using intermediate state generated by
+        the server_prepare phase.
+      server_result: The computation that combines the aggregated client
+        results, the intermediate state, and the original server state for the
+        round to produce the new server state as well as server-side output.
+    """
+    for label, comp in (
+        ('server_prepare', server_prepare),
+        ('server_to_client_broadcast', server_to_client_broadcast),
+        ('client_work', client_work),
+        ('client_to_server_aggregation', client_to_server_aggregation),
+        ('server_result', server_result),
+    ):
+      _check_lambda_computation(label, comp)
+
+    # The server_prepare function should take an arbitrary length input that
+    # represents the server state and produce 2 results (data to broadcast and
+    # temporary state). It should contain only server placements.
+    _check_returns_tuple('server_prepare', server_prepare, length=2)
+    tree_analysis.check_has_single_placement(server_prepare.to_building_block(),
+                                             placements.SERVER)
+
+    # The broadcast function can take an arbitrary number of inputs and produce
+    # an arbitrary number of outputs. It should contain a block of locals that
+    # are exclusively broadcast-type intrinsics and should return the results of
+    # these intrinsics in the order they are computed.
+    expected_return_references = []
+    for local_name, local_value in server_to_client_broadcast.to_building_block(
+    ).result.locals:
+      local_value.check_call()
+      local_value.function.check_intrinsic()
+      if not local_value.function.intrinsic_def().broadcast_kind:
+        raise ValueError(
+            'Expected only broadcast intrinsics but found {}'.format(
+                local_value.function.uri))
+      _check_flattened_intrinsic_args_are_selections(
+          local_value.argument,
+          server_to_client_broadcast.to_building_block().parameter_name)
+      expected_return_references.append(local_name)
+    server_to_client_broadcast.to_building_block().result.result.check_struct()
+    return_references = [
+        reference.name for reference in
+        server_to_client_broadcast.to_building_block().result.result
+    ]
+    if expected_return_references != return_references:
+      raise ValueError(
+          'Expected the broadcast function to return references {} but '
+          'received {}'.format(expected_return_references, return_references))
+
+    # The client_work function should take 2 inputs (client data and broadcasted
+    # data) and produce an output of arbitrary length that represents the data
+    # to aggregate. It should contain only CLIENTS placements.
+    _check_accepts_tuple('client_work', client_work, length=2)
+    tree_analysis.check_has_single_placement(client_work.to_building_block(),
+                                             placements.CLIENTS)
+
+    # The client_to_server_aggregation function should take 2 inputs (temporary
+    # state and client results) and produce an output of arbitrary length that
+    # represents the aggregated data. It should contain a block of locals that
+    # are exclusively aggregation-type intrinsics and should return the results
+    # of these intrinsics in the order they are computed.
+    _check_accepts_tuple(
+        'client_to_server_aggregation', client_to_server_aggregation, length=2)
+    expected_return_references = []
+    for local_name, local_value in client_to_server_aggregation.to_building_block(
+    ).result.locals:
+      local_value.check_call()
+      local_value.function.check_intrinsic()
+      if not local_value.function.intrinsic_def().aggregation_kind:
+        raise ValueError(
+            'Expected only aggregation intrinsics but found {}'.format(
+                local_value.function.uri))
+      _check_flattened_intrinsic_args_are_selections(
+          local_value.argument,
+          client_to_server_aggregation.to_building_block().parameter_name)
+      expected_return_references.append(local_name)
+    client_to_server_aggregation.to_building_block().result.result.check_struct(
+    )
+    return_references = [
+        reference.name for reference in
+        client_to_server_aggregation.to_building_block().result.result
+    ]
+    if expected_return_references != return_references:
+      raise ValueError(
+          'Expected the aggregation function to return references {} but '
+          'received {}'.format(expected_return_references, return_references))
+
+    # The server_result function should take 3 inputs (server state, temporary
+    # state, and aggregate client data) and produce 2 outputs (new server state
+    # and server output). It should contain only SERVER placements.
+    _check_accepts_tuple('server_result', server_result, length=3)
+    _check_returns_tuple('server_result', server_result, length=2)
+    tree_analysis.check_has_single_placement(server_result.to_building_block(),
+                                             placements.SERVER)
+
+    # The broadcast input data types in the 'server_prepare' result and
+    # 'server_to_client_broadcast' argument should match.
+    if not _is_assignable_from_or_both_none(
+        server_to_client_broadcast.type_signature.parameter,
+        server_prepare.type_signature.result[0]):
+      raise TypeError(
+          'The `server_to_client_broadcast` computation expects an argument '
+          'type {} that does not match the corresponding result type {} of '
+          '`server_prepare`.'.format(
+              server_to_client_broadcast.type_signature.parameter,
+              server_prepare.type_signature.result[0]))
+
+    # The broadcast output data types in the 'server_to_client_broadcast' result
+    # and 'client_work' argument should match.
+    if not _is_assignable_from_or_both_none(
+        client_work.type_signature.parameter[1],
+        server_to_client_broadcast.type_signature.result):
+      raise TypeError(
+          'The `client_work` computation expects an argument type {} '
+          'that does not match the corresponding result type {} of '
+          '`server_to_client_broadcast`.'.format(
+              client_work.type_signature.parameter[1],
+              server_to_client_broadcast.type_signature.result))
+
+    # The aggregation input data types in the 'client_work' result and
+    # 'client_to_server_aggregation' argument should match.
+    if not _is_assignable_from_or_both_none(
+        client_to_server_aggregation.type_signature.parameter[1],
+        client_work.type_signature.result):
+      raise TypeError(
+          'The `client_to_server_aggregation` computation expects an argument '
+          'type {} that does not match the corresponding result type {} of '
+          '`client_work`.'.format(
+              client_to_server_aggregation.type_signature.parameter[1],
+              client_work.type_signature.result))
+
+    # The aggregation output data types in the 'client_to_server_aggregation'
+    # result and 'server_result' argument should match.
+    if not _is_assignable_from_or_both_none(
+        server_result.type_signature.parameter[2],
+        client_to_server_aggregation.type_signature.result):
+      raise TypeError(
+          'The `server_result` computation expects an argument type {} '
+          'that does not match the corresponding result type {} of '
+          '`client_to_server_aggregation`.'.format(
+              server_result.type_signature.parameter[2],
+              client_to_server_aggregation.type_signature.result))
+
+    # The temporary state data types in the 'server_prepare' result,
+    # 'client_to_server_aggregation' argument, and 'server_result' argument
+    # should match.
+    if (not _is_assignable_from_or_both_none(
+        client_to_server_aggregation.type_signature.parameter[0],
+        server_prepare.type_signature.result[1]) or
+        not _is_assignable_from_or_both_none(
+            server_result.type_signature.parameter[1],
+            server_prepare.type_signature.result[1])):
+      raise TypeError(
+          'The `client_to_server_aggregation` computation expects an argument '
+          'type {} and the `server_result` computation expects an argument '
+          'type {} that does not match the corresponding result type {} of '
+          '`server_prepare`.'.format(
+              client_to_server_aggregation.type_signature.parameter[0],
+              server_result.type_signature.parameter[1],
+              server_prepare.type_signature.result[1]))
+
+    # The server state data types in the original computation argument, the
+    # 'server_prepare' argument, the 'server_result' argument, the
+    # 'server_result' result, and the original computation result should match.
+    if (not _is_assignable_from_or_both_none(
+        server_prepare.type_signature.parameter, type_signature.parameter[0]) or
+        not _is_assignable_from_or_both_none(
+            server_result.type_signature.parameter[0],
+            type_signature.parameter[0]) or
+        not _is_assignable_from_or_both_none(
+            server_result.type_signature.result[0], type_signature.parameter[0])
+        or not _is_assignable_from_or_both_none(type_signature.result[0],
+                                                type_signature.parameter[0])):
+      raise TypeError(
+          'The original computation argument type {}, '
+          'the `server_prepare` computation argument type {}, '
+          'the `server_result` computation argument type {}, '
+          'the `server_result` computation result type {}, '
+          'and the original computation result type {} should all match.'
+          .format(type_signature.parameter[0],
+                  server_prepare.type_signature.parameter,
+                  server_result.type_signature.parameter[0],
+                  server_result.type_signature.result[0],
+                  type_signature.result[0]))
+
+    # The data types of the client data in the original computation argument
+    # and the 'client_work' argument should match.
+    if not _is_assignable_from_or_both_none(
+        client_work.type_signature.parameter[0], type_signature.parameter[1]):
+      raise TypeError(
+          'The `client_work` computation expects an argument type {} '
+          'that does not match the original computation argument type {}.'
+          .format(client_work.type_signature.parameter[0],
+                  type_signature.parameter[1]))
+
+    # The server-side output data types in the original computation result and
+    # the 'server_result' result should match.
+    if not _is_assignable_from_or_both_none(
+        server_result.type_signature.result[1], type_signature.result[1]):
+      raise TypeError(
+          'The `server_result` computation expects an result type {} '
+          'that does not match the original computation result type {}.'.format(
+              server_result.type_signature.result[1], type_signature.result[1]))
+
+    self._type_signature = type_signature
+    self._server_prepare = server_prepare
+    self._server_to_client_broadcast = server_to_client_broadcast
+    self._client_work = client_work
+    self._client_to_server_aggregation = client_to_server_aggregation
+    self._server_result = server_result
+
+  @property
+  def type_signature(self) -> computation_types.FunctionType:
+    """Returns the TFF type of the equivalent `tff.Computation`."""
+    return self._type_signature
+
+  @property
+  def server_prepare(self) -> computation_impl.ConcreteComputation:
+    return self._server_prepare
+
+  @property
+  def server_to_client_broadcast(self) -> computation_impl.ConcreteComputation:
+    return self._server_to_client_broadcast
+
+  @property
+  def client_work(self) -> computation_impl.ConcreteComputation:
+    return self._client_work
+
+  @property
+  def client_to_server_aggregation(
+      self) -> computation_impl.ConcreteComputation:
+    return self._client_to_server_aggregation
+
+  @property
+  def server_result(self) -> computation_impl.ConcreteComputation:
+    return self._server_result
+
+  def summary(self, print_fn: Callable[..., None] = print) -> None:
+    """Prints a string summary of the `DistributeAggregateForm`.
+
+    Args:
+      print_fn: Print function to use. It will be called on each line of the
+        summary in order to capture the string summary.
+    """
+    for label, comp in (
+        ('server_prepare', self.server_prepare),
+        ('server_to_client_broadcast', self.server_to_client_broadcast),
+        ('client_work', self.client_work),
+        ('client_to_server_aggregation', self.client_to_server_aggregation),
+        ('server_result', self.server_result),
+    ):
+      # Add sufficient padding to align first column;
+      # len('client_to_server_aggregation') == 28
+      print_fn('{:<28}: {}'.format(
           label, comp.type_signature.compact_representation()))

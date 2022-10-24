@@ -22,47 +22,27 @@ many examples of TFF computations, including those constructed by
 `tff.learning`, can be compiled by TFF into a form that can be deployed on such
 systems.
 
-This package defines a data structure `MapReduceForm`, parameterized by
-TensorFlow functions, which expresses the logic of a single MapReduce-style
-round (plus initialization) and serves as a target for TFF's compiler pipeline.
+This package defines a few data structures: `BroadcastForm`, `MapReduceForm`,
+and `DistributeAggregateForm`. `DistributeAggregateForm` will eventually replace
+`BroadcastForm` and `MapReduceForm`.
 
-`MapReduceForm` serves as the conceptual core of this package, and represents
-a manner of specifying a round of federated computation quite distinct from
-TFF's usual `computation.proto`. However, as `MapReduceForm` can express only a
-strict subset of the logic expressible via `computation.proto`, we discuss the
-mapping between the two here.
-
-Instead of `computation.proto` directly, we standardize on
-`tff.templates.IterativeProcess` as the basis for targeting the canonical
-mapreduce representation, as this type of processing is most common in federated
-learning scenarios, where different rounds typically involve different subsets
-of a potentially very large number of participating clients. The iterative
-aspect of the computation allows for it to not only model processes that evolve
-over time, but also ones that might involve a very large client population in
-which not all participants (clients, data shards, etc.) may be present at the
-same time, and the iterative approach may instead be dictated by data
-availability or scalability considerations. Related to the above, the fact that
-in practical scenarios the set of clients involved in a federated computation
-will (often) vary from round to round, the server state is necessary to connect
-subsequent rounds into a single contiguous logical sequence.
-
-Conceptually, `next`, the iterator part of an iterative process, is modeled
-in the same way as any stateful computation in TFF. I.e., one that takes the
-server state as the first component of the input, and returns updated server
-state as the first component of the output. If there is no need for server
-state, the input/output state should be modeled as an empty tuple.
-
-In addition to updating state, `next` additionally takes client-side data as
-input, and can produce results on server side in addition to state intended to
-be passed to the next round. As is the case for the server state, if this
-is undesired it should be modeled as an empty tuple.
-
-The type signature of `next`, in the concise TFF type notation (as defined in
-TFF's `computation.proto`), is as follows:
+The type signature of a TFF computation `round_comp` that can be converted into
+`MapReduceForm` or `DistributeAggregateForm` is as follows:
 
 ```
 (<S@SERVER,{D}@CLIENTS> -> <S@SERVER,X@SERVER>)
 ```
+
+The server state is the first component of the input, and the computation
+returns updated server state as the first component of the output. Since the
+set of clients involved in a federated computation will (often) vary from round
+to round, the server state is sometimes needed to connect subsequent rounds
+into a single contiguous logical sequence. If there is no need for server
+state, the input/output state should be modeled as an empty tuple. The
+computation can also take client-side data as input, and can produce results
+on server side in addition to state intended to be passed to the next round.
+As is the case for the server state, if this is undesired it should be modeled
+as an empty tuple.
 
 The above type signature involves the following abstract types:
 
@@ -71,9 +51,6 @@ The above type signature involves the following abstract types:
   state would typically include the weights of the model being trained. The
   weights would be updated in each round as the model is trained on more and
   more of the clients' data, and hence the server state would evolve as well.
-
-  Note: This is also the type of the output of the `initialize` that produces
-  the server state to feed into the first round.
 
 * `D` represents the type of per-client units of data that serve as the input
   to the computation. Often, this would be a sequence type, i.e., a dataset
@@ -88,28 +65,23 @@ to the following pseudocode loop:
 
 ```python
 client_data = ...
-server_state = initialize()
+server_state = initialize_comp()
 while True:
-  server_state, server_outputs = next(server_state, client_data)
+  server_state, server_outputs = round_comp(server_state, client_data)
 ```
 
-The logic of `next` in `MapReduceForm` is factored into seven
-variable components `prepare`, `work`, `zero`, `accumulate`, `merge`,
-`report`, and `update` (in addition to `initialize` that produces the server
-state component for the initial round and `bitwidth`, `max_input`, and `modulus`
-that specify runtime parameters for `federated_secure_sum_*` intrinsics). The
-pseudocode below uses common syntactic shortcuts (such as implicit zipping) for
-brevity.
-
-For a concise representation of the logic embedded in the discussion below,
-specifying the manner in which an instance `mrf` of `MapReduceForm` maps to
-a single federated round, see the definitions of `init_computation` and
-`next_computation` in
-`form_utils.get_iterative_process_for_map_reduce_form`.
+In `MapReduceForm`, the logic of `round_comp` is factored into seven main
+components that are all TensorFlow functions: `prepare`, `work`, `zero`,
+`accumulate`, `merge`, `report`, and `update`. There are also additional
+`secure_sum_bitwidth`, `secure_sum_max_input`, and `secure_modular_sum_modulus`
+TensorFlow function components that specify runtime parameters for
+`federated_secure_sum_*` intrinsics). The pseudocode below uses common
+syntactic shortcuts (such as implicit zipping) when showing how an instance of
+`MapReduceForm` maps to a single federated round.
 
 ```python
 @tff.federated_computation
-def next(server_state, client_data):
+def round_comp(server_state, client_data):
 
   # The server prepares an input to be broadcast to all clients that controls
   # what will happen in this round.
@@ -152,12 +124,10 @@ def next(server_state, client_data):
   return new_server_state, server_output
 ```
 
-The above characterization of `next` forms the relationship between
-`MapReduceForm` and `tff.templates.IterativeProcess`. It depends on the seven
-pieces of pure TensorFlow logic defined as follows. Please also consult the
-documentation for related federated operators for more detail (particularly
-the `tff.federated_aggregate()`, as several of the components below correspond
-directly to the parameters of that operator).
+Details on the seven main pieces of pure TensorFlow logic in the `MapReduceForm`
+are below. Please also consult the documentation for related federated operators
+for more detail (particularly the `tff.federated_aggregate()`, as several of the
+components below correspond directly to the parameters of that operator).
 
 * `prepare` represents the preparatory steps taken by the server to generate
   inputs that will be broadcast to the clients and that, together with the
@@ -173,12 +143,6 @@ directly to the parameters of that operator).
   by the blocks of TensorFlow below (`zero`, `accumulate`, `merge`, and
   `report`), and the second index will be passed to
   `federated_secure_sum_bitwidth`. Its type signature is `(<D,C> -> <U,V>)`.
-
-* `bitwidth` is the TensorFlow computation that produces an integer specifying
-  the bitwidth for inputs to secure sum. `bitwidth` will be used by the system
-  to compute appropriate parameters for the secure sum protocol. Exactly how
-  this computation is performed is left to the runtime implementation of
-  `federated_secure_sum_bitwidth`.
 
 * `zero` is the TensorFlow computation that produces the initial state of
   accumulators that are used to combine updates collected from subsets of the
@@ -232,6 +196,94 @@ abstract types in addition to those defined earlier:
 * `R` is the type of the final result of aggregating all client updates, the
   global update to be incorporated into the server state at the end of the
   round (and to produce the server-side output).
+
+
+In `DistributeAggregateForm`, the logic of `round_comp` is factored into five
+main components that are all TFF Lambda Computations (as defined in
+`computation.proto`): `server_prepare`, `server_to_client_broadcast`,
+`client_work`, `client_to_server_aggregation`, and `server_result`. The
+pseudocode below shows how an instance of `DistributeAggregateForm` maps to a
+single federated round.
+
+```python
+@tff.federated_computation
+def round_comp(server_state, client_data):
+  # The server prepares an input to be broadcast to all clients and generates
+  # a temporary state that may be used by later parts of the computation.
+  context_at_server, post_client_work_state = server_prepare(server_state)
+
+  # Broadcast context_at_server to the clients.
+  context_at_clients = server_to_client_broadcast(context_at_server)
+
+  # The clients all independently do local work and produce updates.
+  work_at_clients = client_work(client_data, context_at_clients)
+
+  # Aggregate the client updates.
+  intermediate_result_at_server = client_to_server_aggregation(
+      post_client_work_state, work_at_clients)
+
+  # Finally, the server produces a new state as well as server-side output to
+  # emit from this round.
+  new_server_state, server_output = server_result(
+      server_data, post_client_work_state, intermediate_result_at_server)
+
+  # The updated server state and server-side output are returned as results of
+  # this round.
+  return new_server_state, server_output
+```
+
+Details on the five components of `DistributeAggregateForm` are below.
+
+* `server_prepare` represents the preparatory steps taken by the server to
+  generate 1) inputs that will be broadcast to the clients and 2) a temporary
+  state that may be needed by the `client_to_server_aggregation` and
+  `server_result` components. The entire lambda may contain only SERVER
+  placements, and its type signature is `(S -> <B_I, T>)`.
+
+* `server_to_client_broadcast` represents the broadcast of data from the server
+  to the clients. It contains a block of locals that are exclusively intrinsics
+  with IntrinsicDef.broadcast_kind and that depend only on the
+  `server_to_client_broadcast` args. It returns the results of these intrinsics
+  in the order they are computed. Its type signature is `(B_I -> B_O)`.
+
+* `client_work` represents the totality of client-side processing. It takes a
+  tuple of client data and client input that was broadcasted by the server, and
+  returns the client update to be aggregated (across all the clients). The
+  entire lambda may contain only CLIENTS placements, and its type signature is
+  `(<D, B_O> -> A_I)`.
+
+* `client_to_server_aggregation` represents the aggregation of data from the
+  clients to the server. It may incorporate the temporary state that was
+  generated by the `server_prepare` component to set dynamic aggregation
+  parameters. It contains a block of locals that are exclusively intrinsics with
+  IntrinsicDef.aggregation_kind and that depend only on the
+  `client_to_server_aggregation` args. It returns the results of these
+  intrinsics in the order they are computed. Its type signature is
+  `(<T, A_I> -> A_O)`.
+
+* `server_result` represents the post-processing steps taken by the server.
+  It may depend on the original server state, the temporary state that was
+  generated by the `server_prepare` component, and the data that was aggregated
+  from the clients. It will generate a new server state to feed into the next
+  round and an additional server-side output to be reported externally as one of
+  the results of this round. In federated learning scenarios, the server-side
+  outputs might include things like loss and accuracy metrics, and the server
+  state to be carried over may include the model weights. The entire lambda may
+  contain only SERVER placements, and its type signature is
+  `(<S, T, A_O> -> <S, X>)`.
+
+The above TFF Lambda Computations' type signatures involves the following
+abstract types in addition to those defined earlier:
+
+* `B_I` is the type of the broadcast inputs.
+
+* `B_O` is the type of the broadcast outputs.
+
+* `A_I` is the type of the aggregation inputs.
+
+* `A_O` is the type of the aggregation outputs.
+
+* `T` is the type of the temporary state.
 """
 
 # TODO(b/138261370): Cover this in the general set of guidelines for deployment.
@@ -244,4 +296,5 @@ from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_c
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_map_reduce_form_for_computation
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_state_initialization_computation_for_map_reduce_form
 from tensorflow_federated.python.core.backends.mapreduce.forms import BroadcastForm
+from tensorflow_federated.python.core.backends.mapreduce.forms import DistributeAggregateForm
 from tensorflow_federated.python.core.backends.mapreduce.forms import MapReduceForm

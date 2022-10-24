@@ -86,9 +86,12 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:typed_object",
     ],
@@ -100,10 +103,14 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":distribute_aggregate_test_utils",
         ":forms",
         ":mapreduce_test_utils",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 
@@ -153,6 +160,17 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
         "//tensorflow_federated/python/core/templates:iterative_process",
+    ],
+)
+
+py_library(
+    name = "distribute_aggregate_test_utils",
+    testonly = True,
+    srcs = ["distribute_aggregate_test_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
 
