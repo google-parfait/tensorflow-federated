@@ -107,7 +107,7 @@ class LearningProcess(iterative_process.IterativeProcess):
                *,
                get_hparams_fn: Optional[computation_base.Computation] = None,
                set_hparams_fn: Optional[computation_base.Computation] = None):
-    """Creates a `tff.templates.AggregationProcess`.
+    """Creates a `tff.learning.templates.LearningProcess`.
 
     The `initialize_fn`, `next_fn`, `get_model_weights`, and `set_model_weights`
     must have the following type signatures:
@@ -280,7 +280,7 @@ class LearningProcess(iterative_process.IterativeProcess):
     """A `tff.Computation` that initializes the process.
 
     This computation must have no input arguments, and its output must be the
-    initial state of the iterative process, placed at `SERVER`.
+    initial state of the learning process, placed at `SERVER`.
 
     Returns:
       A `tff.Computation`.
