@@ -61,6 +61,7 @@ REQUIRED_PACKAGES = [
     'attrs~=21.4',
     'cachetools~=3.1',
     'dm-tree==0.1.7',
+    'dp-accounting==0.3.0',
     'farmhashpy==0.4.0',
     'grpcio~=1.46',
     'jaxlib==0.3.14',
