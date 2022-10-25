@@ -19,7 +19,8 @@
 """Helper class for representing fully-specified data-yeilding computations."""
 
 import asyncio
-from typing import Any, List, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -31,7 +32,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types.type_serialization import serialize_type
 
 
-def CreateDataDescriptor(arg_uris: List[str], arg_type: computation_types.Type):
+def CreateDataDescriptor(arg_uris: list[str], arg_type: computation_types.Type):
   """Constructs a `DataDescriptor` instance targeting a `tff.DataBackend`.
 
   Args:

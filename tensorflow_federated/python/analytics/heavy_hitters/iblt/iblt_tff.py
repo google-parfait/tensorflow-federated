@@ -13,7 +13,7 @@
 # limitations under the License.
 """Heavy hitters discovery using IBLT."""
 
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional
 
 import attr
 import numpy as np
@@ -67,7 +67,7 @@ def build_iblt_computation(
     max_heavy_hitters: Optional[int] = None,
     string_postprocessor: Optional[Callable[[tf.Tensor], tf.Tensor]] = None,
     secure_sum_bitwidth: Optional[int] = None,
-    decode_iblt_fn: Optional[Callable[..., Tuple[tf.Tensor, tf.Tensor,
+    decode_iblt_fn: Optional[Callable[..., tuple[tf.Tensor, tf.Tensor,
                                                  tf.Tensor, tf.Tensor]]] = None,
     seed: int = 0,
     batch_size: int = 1,

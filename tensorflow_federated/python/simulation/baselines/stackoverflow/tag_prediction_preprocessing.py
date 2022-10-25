@@ -13,7 +13,7 @@
 # limitations under the License.
 """Preprocessing library for Stack Overflow tag prediction tasks."""
 
-from typing import Callable, List
+from typing import Callable
 
 import tensorflow as tf
 
@@ -21,8 +21,8 @@ from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines.stackoverflow import constants
 
 
-def build_to_ids_fn(word_vocab: List[str],
-                    tag_vocab: List[str]) -> Callable[[tf.Tensor], tf.Tensor]:
+def build_to_ids_fn(word_vocab: list[str],
+                    tag_vocab: list[str]) -> Callable[[tf.Tensor], tf.Tensor]:
   """Constructs a function mapping examples to sequences of token indices."""
   word_vocab_size = len(word_vocab)
   word_table_values = tf.range(word_vocab_size, dtype=tf.int64)
@@ -59,8 +59,8 @@ def build_to_ids_fn(word_vocab: List[str],
 
 def create_preprocess_fn(
     preprocess_spec: client_spec.ClientSpec,
-    word_vocab: List[str],
-    tag_vocab: List[str],
+    word_vocab: list[str],
+    tag_vocab: list[str],
     num_parallel_calls: int = tf.data.experimental.AUTOTUNE
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
   """Creates a preprocessing function for Stack Overflow tag prediction data.

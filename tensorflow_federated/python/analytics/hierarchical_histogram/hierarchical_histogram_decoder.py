@@ -14,7 +14,6 @@
 """Decoder class for hierarchical histograms."""
 
 import math
-from typing import Tuple
 
 import numpy as np
 
@@ -116,7 +115,7 @@ class HierarchicalHistogramDecoder():
     right_most_child = int((index + 1) * (self._arity**reverse_depth) - 1)
     return right_most_child
 
-  def _left_right_most_leaf(self, layer: int, index: int) -> Tuple[int, int]:
+  def _left_right_most_leaf(self, layer: int, index: int) -> tuple[int, int]:
     """Returns the leftmost and rightmost leaves from a node.
 
     Returns a tuple of the leftmost and rightmost leaves within the subtree of
@@ -405,7 +404,7 @@ class HierarchicalHistogramDecoder():
 
     return quantile  # pytype: disable=name-error  # py310-upgrade
 
-  def quantile_query(self, q) -> Tuple[float, float]:
+  def quantile_query(self, q) -> tuple[float, float]:
     """Queries the q-quantile in a hierarchical historgram.
 
     Args:

@@ -13,7 +13,7 @@
 # limitations under the License.
 """An example of running a TFF computation with a scalar-value DataBackend."""
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from absl import app
 import tensorflow as tf

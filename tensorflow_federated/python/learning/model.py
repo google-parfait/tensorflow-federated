@@ -20,13 +20,14 @@
 
 import abc
 import collections
-from typing import Any, Callable, OrderedDict, Sequence
+from collections.abc import Sequence
+from typing import Any, Callable
 
 import tensorflow as tf
 
 MODEL_ARG_NAME = 'x'
 MODEL_LABEL_NAME = 'y'
-MetricFinalizersType = OrderedDict[str, Callable[[Any], Any]]
+MetricFinalizersType = collections.OrderedDict[str, Callable[[Any], Any]]
 
 BatchOutput = collections.namedtuple(
     'BatchOutput', ['loss', 'predictions', 'num_examples'],
@@ -196,8 +197,9 @@ class Model(metaclass=abc.ABCMeta):
     """.format(MODEL_ARG_NAME)
 
   @abc.abstractmethod
-  def report_local_unfinalized_metrics(self) -> OrderedDict[str, Any]:
-    """Creates an `OrderedDict` of metric names to unfinalized values.
+  def report_local_unfinalized_metrics(
+      self) -> collections.OrderedDict[str, Any]:
+    """Creates an `collections.OrderedDict` of metric names to unfinalized values.
 
     For a metric, its unfinalized values are given as a structure (typically a
     list) of tensors representing values from aggregating over *all* previous
@@ -230,7 +232,8 @@ class Model(metaclass=abc.ABCMeta):
     in multiple ways.
 
     Returns:
-      An `OrderedDict` of metric names to unfinalized values. The metric names
+      An `collections.OrderedDict` of metric names to unfinalized values. The
+      metric names
       must be the same as those expected by the `metric_finalizers()` method.
       One should be able to use the unfinalized metric values (returned by this
       method) as the input to the finalizers (returned by `metric_finalizers()`)
@@ -240,9 +243,10 @@ class Model(metaclass=abc.ABCMeta):
     """
     pass
 
+  # TODO(b/233054212): re-enable lint
   @abc.abstractmethod
-  def metric_finalizers(self) -> MetricFinalizersType:
-    """Creates an `OrderedDict` of metric names to finalizers.
+  def metric_finalizers(self) -> MetricFinalizersType:  # pylint: disable=g-bare-generic
+    """Creates an `collections.OrderedDict` of metric names to finalizers.
 
     This method and the `report_local_unfinalized_metrics()` method should have
     the same keys (i.e., metric names). A finalizer returned by this method is a
@@ -256,7 +260,8 @@ class Model(metaclass=abc.ABCMeta):
     of `report_local_unfinalized_metrics()` for more information.
 
     Returns:
-      An `OrderedDict` of metric names to finalizers. The metric names must be
+      An `collections.OrderedDict` of metric names to finalizers. The metric
+      names must be
       the same as those from the `report_local_unfinalized_metrics()` method. A
       finalizer is a `tf.function` (or `tff.tf_computation`) decorated callable
       that takes in a metric's unfinalized values, and returns the finalized

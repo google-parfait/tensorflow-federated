@@ -14,7 +14,7 @@
 """Library for creating baseline tasks on CIFAR-100."""
 
 import enum
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import tensorflow as tf
 
@@ -45,7 +45,7 @@ DEFAULT_CROP_WIDTH = 24
 
 
 def _get_resnet_model(model_id: Union[str, ResnetModel],
-                      input_shape: Tuple[int, int, int]) -> tf.keras.Model:
+                      input_shape: tuple[int, int, int]) -> tf.keras.Model:
   """Constructs a `tf.keras.Model` for digit recognition."""
   try:
     model_enum = ResnetModel(model_id)

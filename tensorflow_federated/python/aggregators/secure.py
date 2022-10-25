@@ -22,7 +22,7 @@ import collections
 import enum
 import math
 import typing
-from typing import Optional, Union, Set
+from typing import Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -616,7 +616,7 @@ def _create_update_state_two_processes(upper_bound_process,
 
 
 def _unique_dtypes_in_structure(
-    type_spec: computation_types.Type) -> Set[tf.dtypes.DType]:
+    type_spec: computation_types.Type) -> set[tf.dtypes.DType]:
   """Returns a set of unique dtypes in `type_spec`.
 
   Args:

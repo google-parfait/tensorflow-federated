@@ -23,7 +23,7 @@ import collections
 import itertools
 import operator
 import typing
-from typing import Callable, Dict, Set, Tuple
+from typing import Callable
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -124,7 +124,7 @@ def transform_postorder(comp, transform):
         'Unrecognized computation building block: {}'.format(str(comp)))
 
 
-TransformReturnType = Tuple[building_blocks.ComputationBuildingBlock, bool]
+TransformReturnType = tuple[building_blocks.ComputationBuildingBlock, bool]
 
 
 def transform_preorder(
@@ -1108,7 +1108,7 @@ def get_unique_names(comp):
 
 def get_map_of_unbound_references(
     comp: building_blocks.ComputationBuildingBlock
-) -> Dict[building_blocks.ComputationBuildingBlock, Set[str]]:
+) -> dict[building_blocks.ComputationBuildingBlock, set[str]]:
   """Gets a Python `dict` of unbound references in `comp`, keyed by Python `id`.
 
   Compuations that are equal will have the same collections of unbounded

@@ -18,7 +18,6 @@
 # information.
 """The implementation of a context to use in building federated computations."""
 
-from typing import List, Tuple
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -100,7 +99,7 @@ class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
 
   @property
   def symbol_bindings(
-      self) -> List[Tuple[str, building_blocks.ComputationBuildingBlock]]:
+      self) -> list[tuple[str, building_blocks.ComputationBuildingBlock]]:
     return self._symbol_bindings
 
   def invoke(self, comp, arg):

@@ -18,7 +18,7 @@
 # information.
 """Utilities for serializing and deserializing XLA code."""
 
-from typing import List, Optional
+from typing import Optional
 
 from jax.lib import xla_client
 import numpy as np
@@ -73,7 +73,7 @@ def unpack_xla_computation(any_pb):
 
 
 def _make_xla_binding_for_type(
-    tensor_indexes: List[int],
+    tensor_indexes: list[int],
     type_spec: Optional[computation_types.Type]) -> Optional[pb.Xla.Binding]:
   """Generates an XLA binding for TFF type `type_spec`.
 

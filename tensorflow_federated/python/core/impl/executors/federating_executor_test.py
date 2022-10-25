@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Iterable, List, Tuple, Type
+from collections.abc import Iterable
+from typing import Any, Type
 import unittest
 
 from absl.testing import absltest
@@ -57,7 +58,7 @@ def create_test_executor(
   return federating_executor.FederatingExecutor(factory, create_bottom_stack())
 
 
-def get_named_parameters_for_supported_intrinsics() -> List[Tuple[str, Any]]:
+def get_named_parameters_for_supported_intrinsics() -> list[tuple[str, Any]]:
   # pyformat: disable
   return [
       ('intrinsic_def_federated_aggregate',

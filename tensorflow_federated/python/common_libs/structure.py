@@ -14,8 +14,9 @@
 """Container for structures with named and/or unnamed fields."""
 
 import collections
+from collections.abc import Iterable, Iterator, Mapping
 import typing
-from typing import Any, Callable, Dict, Optional, OrderedDict, Iterable, Iterator, List, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import attr
 import tensorflow as tf
@@ -67,7 +68,7 @@ class Struct:
     """Constructs a new `Struct` with all unnamed elements."""
     return cls(tuple((None, v) for v in args))
 
-  def __init__(self, elements: Iterable[Tuple[Optional[str], Any]]):
+  def __init__(self, elements: Iterable[tuple[Optional[str], Any]]):
     """Constructs a new `Struct` with the given elements.
 
     Args:
@@ -79,7 +80,7 @@ class Struct:
       TypeError: if the `elements` are not a list, or if any of the items on
         the list is not a pair with a string at the first position.
     """
-    py_typecheck.check_type(elements, collections.abc.Iterable)
+    py_typecheck.check_type(elements, Iterable)
     values = []
     names = []
     name_to_index = {}
@@ -195,7 +196,7 @@ class Struct:
     return to_odict(self, recursive=recursive)
 
 
-def name_list(struct: Struct) -> List[str]:
+def name_list(struct: Struct) -> list[str]:
   """Returns a `list` of the names of the named fields in `struct`.
 
   Args:
@@ -210,12 +211,12 @@ def name_list(struct: Struct) -> List[str]:
   return [n for n in names if n is not None]
 
 
-def name_list_with_nones(struct: Struct) -> List[Optional[str]]:
+def name_list_with_nones(struct: Struct) -> list[Optional[str]]:
   """Returns an iterator over the names of all fields in `struct`."""
   return struct._name_array  # pylint: disable=protected-access
 
 
-def to_elements(struct: Struct) -> List[Tuple[Optional[str], Any]]:
+def to_elements(struct: Struct) -> list[tuple[Optional[str], Any]]:
   """Retrieves the list of (name, value) pairs from a `Struct`.
 
   Modeled as a module function rather than a method of `Struct` to avoid
@@ -238,7 +239,7 @@ def to_elements(struct: Struct) -> List[Tuple[Optional[str], Any]]:
   # pylint: enable=protected-access
 
 
-def iter_elements(struct: Struct) -> Iterator[Tuple[Optional[str], Any]]:
+def iter_elements(struct: Struct) -> Iterator[tuple[Optional[str], Any]]:
   """Returns an iterator over (name, value) pairs from a `Struct`.
 
   Modeled as a module function rather than a method of `Struct` to avoid
@@ -261,8 +262,9 @@ def iter_elements(struct: Struct) -> Iterator[Tuple[Optional[str], Any]]:
   # pylint: enable=protected-access
 
 
-def to_odict(struct: Struct, recursive: bool = False) -> OrderedDict[str, Any]:
-  """Returns `struct` as an `OrderedDict`, if possible.
+def to_odict(struct: Struct,
+             recursive: bool = False) -> collections.OrderedDict[str, Any]:
+  """Returns `struct` as an `collections.OrderedDict`, if possible.
 
   Args:
     struct: An `Struct`.
@@ -274,12 +276,13 @@ def to_odict(struct: Struct, recursive: bool = False) -> OrderedDict[str, Any]:
   py_typecheck.check_type(struct, Struct)
 
   def _to_odict(
-      elements: List[tuple[Optional[str], Any]]) -> OrderedDict[str, Any]:
+      elements: list[tuple[Optional[str], Any]]
+  ) -> collections.OrderedDict[str, Any]:
     for name, _ in elements:
       if name is None:
         raise ValueError('Cannot convert an `Struct` with unnamed entries to a '
                          '`collections.OrderedDict`: {}'.format(struct))
-    elements = typing.cast(List[tuple[str, Any]], elements)
+    elements = typing.cast(list[tuple[str, Any]], elements)
     return collections.OrderedDict(elements)
 
   if recursive:
@@ -290,11 +293,13 @@ def to_odict(struct: Struct, recursive: bool = False) -> OrderedDict[str, Any]:
 
 def to_odict_or_tuple(
     struct: Struct,
-    recursive: bool = True) -> Union[OrderedDict[str, Any], Tuple[Any, ...]]:
-  """Returns `struct` as an `OrderedDict` or `tuple`, if possible.
+    recursive: bool = True
+) -> Union[collections.OrderedDict[str, Any], tuple[Any, ...]]:
+  """Returns `struct` as an `collections.OrderedDict` or `tuple`, if possible.
 
   If all elements of `struct` have names, convert `struct` to an
-  `OrderedDict`. If no element has a name, convert `struct` to a `tuple`. If
+  `collections.OrderedDict`. If no element has a name, convert `struct` to a
+  `tuple`. If
   `struct` has both named and unnamed elements, raise an error.
 
   Args:
@@ -308,15 +313,16 @@ def to_odict_or_tuple(
   py_typecheck.check_type(struct, Struct)
 
   def _to_odict_or_tuple(
-      elements: List[tuple[Optional[str], Any]]
-  ) -> Union[OrderedDict[str, Any], Tuple[Any, ...]]:
+      elements: list[tuple[Optional[str], Any]]
+  ) -> Union[collections.OrderedDict[str, Any], tuple[Any, ...]]:
     fields_are_named = tuple(name is not None for name, _ in elements)
     if any(fields_are_named):
       if not all(fields_are_named):
         raise ValueError(
             'Cannot convert a `Struct` with both named and unnamed '
-            'entries to an OrderedDict or tuple: {!r}'.format(struct))
-      elements = typing.cast(List[tuple[str, Any]], elements)
+            'entries to an collections.OrderedDict or tuple: {!r}'.format(
+                struct))
+      elements = typing.cast(list[tuple[str, Any]], elements)
       return collections.OrderedDict(elements)
     else:
       return tuple(value for _, value in elements)
@@ -354,7 +360,7 @@ def flatten(struct):
     return result
 
 
-def pack_sequence_as(structure, flat_sequence: List[Any]):
+def pack_sequence_as(structure, flat_sequence: list[Any]):
   """Returns a list of values in a possibly recursively nested `Struct`.
 
   Args:
@@ -565,7 +571,7 @@ def from_container(value: Any, recursive=False) -> Struct:
 
 def to_container_recursive(
     value: Struct,
-    container_fn: Callable[[List[Tuple[Optional[str], Any]]], Any],
+    container_fn: Callable[[list[tuple[Optional[str], Any]]], Any],
 ) -> Any:
   """Recursively converts the `Struct` `value` to a new container type.
 
@@ -610,7 +616,7 @@ def has_field(structure: Struct, field: str) -> bool:
   return field in names
 
 
-def name_to_index_map(structure: Struct) -> Dict[str, int]:
+def name_to_index_map(structure: Struct) -> dict[str, int]:
   """Returns map from names in `structure` to their indices.
 
   Args:
@@ -648,7 +654,7 @@ def update_struct(structure, **kwargs):
   """
   if not (py_typecheck.is_named_tuple(structure) or
           py_typecheck.is_attrs(structure) or
-          isinstance(structure, (Struct, collections.abc.Mapping))):
+          isinstance(structure, (Struct, Mapping))):
     raise TypeError('`structure` must be a structure with named fields (e.g. '
                     'dict, attrs class, collections.namedtuple, '
                     'tff.structure.Struct), but found {}'.format(
@@ -674,6 +680,6 @@ def update_struct(structure, **kwargs):
     # Create a copy to prevent mutation of the original `structure`
     dictionary = type(structure)(**structure)
   dictionary.update(kwargs)
-  if isinstance(structure, collections.abc.Mapping):
+  if isinstance(structure, Mapping):
     return dictionary
   return type(structure)(**dictionary)

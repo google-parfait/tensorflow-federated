@@ -23,7 +23,7 @@ means that this library:
 import asyncio
 import os
 import os.path
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 from absl import logging
 import numpy as np
@@ -97,7 +97,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     self._keep_total = keep_total
     self._keep_first = keep_first
 
-  async def get_versions(self) -> Optional[List[int]]:
+  async def get_versions(self) -> Optional[list[int]]:
     """Returns a list of saved versions or `None`.
 
     Returns:

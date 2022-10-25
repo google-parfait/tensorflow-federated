@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Hashers that implement different hash function families to use with IBLTs."""
-from typing import List, Tuple
 
 import farmhash
 import numpy as np
@@ -84,7 +83,7 @@ class RandomHyperEdgeHasher():
     self._table_size = table_size
     self._repetitions = repetitions
 
-  def get_hash_indices(self, data_strings: List[str]) -> List[List[int]]:
+  def get_hash_indices(self, data_strings: list[str]) -> list[list[int]]:
     """Computes the indices at which `data_strings` in IBLT.
 
     Args:
@@ -172,7 +171,7 @@ class CoupledHyperEdgeHasher():
     self._rescale_factor = rescale_factor
     self._rescaled_table_size = table_size / (self._rescale_factor + 1.0)
 
-  def _get_hash_indices_single(self, data_string: str) -> List[int]:
+  def _get_hash_indices_single(self, data_string: str) -> list[int]:
     """Computes the indices of `data_string` in IBLT."""
     position = self._hash_to_float(data_string,
                                    (0.5, self._rescale_factor + 0.5))
@@ -184,7 +183,7 @@ class CoupledHyperEdgeHasher():
           int(np.floor((position + offset) * self._rescaled_table_size)))
     return hash_indices
 
-  def get_hash_indices(self, data_strings: List[str]) -> List[List[int]]:
+  def get_hash_indices(self, data_strings: list[str]) -> list[list[int]]:
     """Computes the indices at which the given strings in IBLT.
 
     Args:
@@ -201,7 +200,7 @@ class CoupledHyperEdgeHasher():
 
   def _hash_to_float(self,
                      input_string: str,
-                     hash_range: Tuple[float, float],
+                     hash_range: tuple[float, float],
                      precision: int = tf.int32.max) -> float:
     """Hashes a string and returns a `float`.
 
@@ -229,7 +228,7 @@ class CoupledHyperEdgeHasher():
 
   def _hash_to_float_tf(self,
                         input_strings: tf.Tensor,
-                        hash_range: Tuple[float, float],
+                        hash_range: tuple[float, float],
                         precision: int = tf.int32.max) -> tf.Tensor:
     """Hashes a `tf.strings` 1-d tensor and returns a `tf.float32` 1-d tensor.
 

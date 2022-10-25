@@ -19,7 +19,7 @@
 """A library of transformations for ASTs."""
 
 import collections
-from typing import Callable, Dict
+from typing import Callable
 
 import tensorflow as tf
 
@@ -402,7 +402,7 @@ def _apply_generic_op(op, arg):
 
 
 def get_intrinsic_reductions(
-) -> Dict[str, Callable[[building_blocks.ComputationBuildingBlock],
+) -> dict[str, Callable[[building_blocks.ComputationBuildingBlock],
                         building_blocks.ComputationBuildingBlock]]:
   """Returns map from intrinsic to reducing function.
 
@@ -593,7 +593,7 @@ def _ensure_structure(int_or_structure, int_or_structure_type,
 
 
 def _get_secure_intrinsic_reductions(
-) -> Dict[str, Callable[[building_blocks.ComputationBuildingBlock],
+) -> dict[str, Callable[[building_blocks.ComputationBuildingBlock],
                         building_blocks.ComputationBuildingBlock]]:
   """Returns map from intrinsic to reducing function.
 

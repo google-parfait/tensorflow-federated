@@ -55,7 +55,7 @@
 """
 
 import abc
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -462,7 +462,7 @@ class FederatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def create_struct(
-      self, elements: List[executor_value_base.ExecutorValue]
+      self, elements: list[executor_value_base.ExecutorValue]
   ) -> executor_value_base.ExecutorValue:
     """Creates an embedded tuple of the given `elements`.
 

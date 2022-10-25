@@ -18,7 +18,7 @@
 # information.
 """Classes/functions for statically asserting properties of TFF computations."""
 
-from typing import List, Optional
+from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.computation import computation_impl
 
 
-def _raise_expected_none(calls: List[building_blocks.Call],
+def _raise_expected_none(calls: list[building_blocks.Call],
                          kind: str) -> Optional[str]:
   assert len(calls) != 0  # pylint: disable=g-explicit-length-test
   msg = 'Expected no {} aggregations, found {}:'.format(kind, len(calls))

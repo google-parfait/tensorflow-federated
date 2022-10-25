@@ -18,10 +18,11 @@
 # information.
 """A library of construction functions for building block structures."""
 
+from collections.abc import Iterator, Sequence
 import functools
 import random
 import string
-from typing import AbstractSet, Any, Callable, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import tensorflow as tf
 
@@ -42,12 +43,12 @@ from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 Index = Union[str, int]
-Path = Union[Index, Tuple[Index, ...]]
+Path = Union[Index, tuple[Index, ...]]
 
 
 def select_output_from_lambda(
     comp: building_blocks.Lambda,
-    paths: Union[Path, List[Path]]) -> building_blocks.Lambda:
+    paths: Union[Path, list[Path]]) -> building_blocks.Lambda:
   """Constructs a new function with result of selecting `paths` from `comp`.
 
   Args:
@@ -1287,8 +1288,7 @@ def create_federated_value(
   return building_blocks.Call(intrinsic, value)
 
 
-def _check_placements(
-    placement_values: AbstractSet[placements.PlacementLiteral]):
+def _check_placements(placement_values: set[placements.PlacementLiteral]):
   """Checks if the placements of the values being zipped are compatible."""
   if not placement_values:
     raise TypeError('federated_zip is only supported on nested structures '
@@ -1823,7 +1823,7 @@ def zip_to_match_type(
 
       def _remove_placement(
           subtype: computation_types.Type
-      ) -> Tuple[computation_types.Type, bool]:
+      ) -> tuple[computation_types.Type, bool]:
         if subtype.is_federated():
           placements_encountered.add(subtype.placement)
           return subtype.member, True

@@ -16,7 +16,7 @@
 import concurrent
 import contextlib
 import time
-from typing import Any, List, Optional, Tuple
+from typing import Any, Optional
 
 from absl import logging
 import grpc
@@ -34,7 +34,7 @@ def server_context(ex_factory: executor_factory.ExecutorFactory,
                    num_threads: int,
                    port: int,
                    credentials: Optional[grpc.ServerCredentials] = None,
-                   options: Optional[List[Tuple[Any, Any]]] = None):
+                   options: Optional[list[tuple[Any, Any]]] = None):
   """Context manager yielding gRPC server hosting simulation component.
 
   Args:
@@ -91,7 +91,7 @@ def run_server(ex_factory: executor_factory.ExecutorFactory,
                num_threads: int,
                port: int,
                credentials: Optional[grpc.ServerCredentials] = None,
-               options: Optional[List[Tuple[Any, Any]]] = None):
+               options: Optional[list[tuple[Any, Any]]] = None):
   """Runs a gRPC server hosting a simulation component in this process.
 
   The server runs indefinitely, but can be stopped by a keyboard interrupt.

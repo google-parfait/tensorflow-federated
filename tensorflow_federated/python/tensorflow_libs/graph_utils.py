@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tools for operating on TensorFlow graphs."""
 
-from typing import Dict
 
 import tensorflow as tf
 
@@ -41,7 +40,7 @@ def make_control_dependency(name: str) -> str:
 
 
 def add_control_dep_mappings(
-    input_map: Dict[str, tf.Tensor]) -> Dict[str, tf.Tensor]:
+    input_map: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
   """Add control dependency mappings for all tensors in an input map.
 
   Intended to be used for the `input_map` argument of

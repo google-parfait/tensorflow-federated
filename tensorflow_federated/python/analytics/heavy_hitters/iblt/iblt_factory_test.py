@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for iblt_factory.py."""
 import collections
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Union
 
 from absl import logging
 from absl.testing import parameterized
@@ -58,8 +58,8 @@ WHIMSY_SEED = 42
 
 
 def _generate_client_data(
-    input_structure: List[Tuple[List[Union[str, bytes]], List[List[int]]]]
-) -> List[tf.data.Dataset]:
+    input_structure: list[tuple[list[Union[str, bytes]], list[list[int]]]]
+) -> list[tf.data.Dataset]:
   client_data = []
   for input_strings, string_values in input_structure:
     client = collections.OrderedDict([
@@ -244,7 +244,7 @@ class IbltFactoryTest(tf.test.TestCase, parameterized.TestCase):
     non_unicode_string = b'\xFF' * 5
     # Each line represents a single clients' data;
     # Each binary key has two int64 values at the corresponding tuple position.
-    client_data: List[tf.data.Dataset] = _generate_client_data([
+    client_data: list[tf.data.Dataset] = _generate_client_data([
         ([b'AAA', b'BBB', non_unicode_string], [[1, 2], [3, 4], [5, 6]]),
         ([b'CCC', non_unicode_string], [[7, 8], [9, 10]]),
         ([b'AAA'], [[11, 12]]),

@@ -28,7 +28,8 @@ model with `tff.learning.models.model_from_functional`.
 """
 
 import collections
-from typing import Any, Callable, Dict, List, Mapping, OrderedDict, Optional, Sequence, Tuple, TypeVar, Union
+from collections.abc import Mapping, Sequence
+from typing import Any, Callable, Optional, TypeVar, Union
 
 import numpy as np
 import tensorflow as tf
@@ -41,9 +42,10 @@ from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 Weight = Union[np.ndarray, int, float]
 WeightStruct = Union[Sequence[Weight], Mapping[str, Weight]]
-ModelWeights = Tuple[WeightStruct, WeightStruct]
-MetricsState = TypeVar('MetricsState', bound=OrderedDict[str, Any])
-FunctionalMetricFinalizersType = Callable[[MetricsState], OrderedDict[str, Any]]
+ModelWeights = tuple[WeightStruct, WeightStruct]
+MetricsState = TypeVar('MetricsState', bound=collections.OrderedDict[str, Any])
+FunctionalMetricFinalizersType = Callable[[MetricsState],
+                                          collections.OrderedDict[str, Any]]
 InitializeMetricsStateFn = Callable[[], MetricsState]
 UpdateMetricsStateFn = Callable[[MetricsState, Any, Any, Any], MetricsState]
 FinalizeMetricsFn = Callable[[MetricsState], Any]
@@ -75,7 +77,7 @@ def noop_update_metrics(state: MetricsState,
 
 
 @tf.function
-def noop_finalize_metrics(state: MetricsState) -> Tuple[Any, ...]:
+def noop_finalize_metrics(state: MetricsState) -> tuple[Any, ...]:
   del state  # Unused.
   return collections.OrderedDict()
 
@@ -90,7 +92,7 @@ class FunctionalModel():
       forward_pass_fn: Callable[[ModelWeights, Any, bool],
                                 model_lib.BatchOutput],
       predict_on_batch_fn: Callable[[ModelWeights, Any, bool], Any],
-      metrics_fns: Tuple[InitializeMetricsStateFn, UpdateMetricsStateFn,
+      metrics_fns: tuple[InitializeMetricsStateFn, UpdateMetricsStateFn,
                          FinalizeMetricsFn] = (empty_metrics_state,
                                                noop_update_metrics,
                                                noop_finalize_metrics),
@@ -217,7 +219,8 @@ class FunctionalModel():
         state, y_true=y_true, y_pred=y_pred, sample_weight=sample_weight)
 
   @tf.function
-  def finalize_metrics(self, state: MetricsState) -> OrderedDict[str, Any]:
+  def finalize_metrics(
+      self, state: MetricsState) -> collections.OrderedDict[str, Any]:
     return self._finalize_metrics(state)
 
   @property
@@ -258,15 +261,15 @@ class _ModelFromFunctional(model_lib.Model):
             'each metric should have a unique name.')
 
   @property
-  def trainable_variables(self) -> Tuple[tf.Variable, ...]:
+  def trainable_variables(self) -> tuple[tf.Variable, ...]:
     return self._trainable_variables
 
   @property
-  def non_trainable_variables(self) -> Tuple[tf.Variable, ...]:
+  def non_trainable_variables(self) -> tuple[tf.Variable, ...]:
     return self._non_trainable_variables
 
   @property
-  def local_variables(self) -> Tuple[tf.Variable, ...]:
+  def local_variables(self) -> tuple[tf.Variable, ...]:
     metrics_variables = [self._loss_sum, self._num_examples]
     for metric in self._metrics:
       metrics_variables.extend(metric.variables)
@@ -286,7 +289,7 @@ class _ModelFromFunctional(model_lib.Model):
     self._num_examples.assign_add(batch_output.num_examples)
     self._loss_sum.assign_add(batch_output.loss *
                               tf.cast(batch_output.num_examples, tf.float32))
-    if isinstance(batch_input, collections.abc.Mapping):
+    if isinstance(batch_input, Mapping):
       y_true = batch_input.get('y')
     else:
       y_true = batch_input[1]
@@ -304,7 +307,7 @@ class _ModelFromFunctional(model_lib.Model):
 
   @tf.function
   def report_local_unfinalized_metrics(
-      self) -> OrderedDict[str, List[tf.Tensor]]:
+      self) -> collections.OrderedDict[str, list[tf.Tensor]]:
     outputs = collections.OrderedDict(
         loss=[self._loss_sum,
               tf.cast(self._num_examples, tf.float32)])
@@ -312,7 +315,7 @@ class _ModelFromFunctional(model_lib.Model):
       outputs[metric.name] = [v.read_value() for v in metric.variables]
     return outputs
 
-  def metric_finalizers(self) -> Dict[str, finalizer.KerasMetricFinalizer]:
+  def metric_finalizers(self) -> dict[str, finalizer.KerasMetricFinalizer]:
     finalizers = collections.OrderedDict(
         # `loss` result is computed by `loss_sum` / `num_examples`.
         loss=tf.function(func=lambda x: x[0] / x[1]))
@@ -549,10 +552,10 @@ def functional_model_from_keras(
   def forward_pass(model_weights: ModelWeights,
                    batch_input: Any,
                    training: bool = True) -> model_lib.BatchOutput:
-    if isinstance(batch_input, collections.abc.Mapping):
+    if isinstance(batch_input, Mapping):
       x = batch_input['x']
       y = batch_input['y']
-    elif isinstance(batch_input, collections.abc.Sequence):
+    elif isinstance(batch_input, Sequence):
       x, y = batch_input
     else:
       raise ValueError(

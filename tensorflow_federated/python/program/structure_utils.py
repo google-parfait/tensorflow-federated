@@ -13,12 +13,13 @@
 # limitations under the License.
 """Utilities for working with structured data."""
 
-from typing import Any, Iterable, List, Tuple
+from collections.abc import Iterable
+from typing import Any
 
 import tree
 
 
-def flatten_with_name(structure: Any) -> List[Tuple[str, Any]]:
+def flatten_with_name(structure: Any) -> list[tuple[str, Any]]:
   """Creates a flattened representation of the `structure` with names.
 
   Args:

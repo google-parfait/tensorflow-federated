@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-from typing import List
 
 from absl.testing import parameterized
 import numpy as np
@@ -106,7 +105,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def assertInnerSumPlusOnePerformed(
       self, output: measured_process.MeasuredProcessOutput, l2_clip: float,
-      client_data: List[float]):
+      client_data: list[float]):
     """Asserts one step of SumPlusOneFactory was performed in inner aggregation.
 
     This includes three tests:

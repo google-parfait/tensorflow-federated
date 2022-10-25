@@ -19,8 +19,7 @@
 """ExecutorFactory interface and simple implementation."""
 
 import abc
-from typing import Mapping
-
+from collections.abc import Mapping
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.types import placements
 

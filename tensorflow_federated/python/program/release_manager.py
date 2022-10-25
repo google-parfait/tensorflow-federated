@@ -16,7 +16,8 @@
 import abc
 import asyncio
 import collections
-from typing import Any, Callable, Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Any, Callable, Optional, Union
 
 import tree
 
@@ -74,7 +75,7 @@ class FilteringReleaseManager(ReleaseManager):
   """
 
   def __init__(self, release_manager: ReleaseManager,
-               filter_fn: Callable[[Tuple[Union[str, int], ...]], bool]):
+               filter_fn: Callable[[tuple[Union[str, int], ...]], bool]):
     """Returns an initialized `tff.program.FilteringReleaseManager`.
 
     The `filter_fn` is a `Callable` that has a single parameter `path` and
@@ -115,7 +116,7 @@ class FilteringReleaseManager(ReleaseManager):
       key: An optional value used to reference the released `value`.
     """
 
-    def _fn(path: Tuple[Union[str, int], ...],
+    def _fn(path: tuple[Union[str, int], ...],
             subtree: tree.Structure) -> Optional[tree.Structure]:
       if not tree.is_nested(subtree):
         if self._filter_fn(path):
@@ -169,7 +170,7 @@ class GroupingReleaseManager(ReleaseManager):
     Raises:
       ValueError: If `release_managers` is empty.
     """
-    py_typecheck.check_type(release_managers, collections.abc.Sequence)
+    py_typecheck.check_type(release_managers, Sequence)
     if not release_managers:
       raise ValueError('Expected `release_managers` to not be empty.')
     for release_manager in release_managers:

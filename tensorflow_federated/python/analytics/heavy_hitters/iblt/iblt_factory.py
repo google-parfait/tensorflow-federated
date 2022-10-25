@@ -14,7 +14,7 @@
 """Factory for string aggregation using IBLT."""
 
 import collections
-from typing import Tuple, Optional
+from typing import Optional
 
 import attr
 import tensorflow as tf
@@ -47,7 +47,7 @@ class ServerOutput():
 
 @tf.function
 def _parse_client_dict(dataset: tf.data.Dataset,
-                       string_max_bytes: int) -> Tuple[tf.Tensor, tf.Tensor]:
+                       string_max_bytes: int) -> tuple[tf.Tensor, tf.Tensor]:
   """Parses the dictionary in the input `dataset` to key and value lists.
 
   Args:

@@ -18,7 +18,6 @@ import concurrent
 import contextlib
 import pprint
 import textwrap
-from typing import Set
 
 from absl import logging
 
@@ -31,7 +30,7 @@ from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
-def get_absl_retryable_error_codes() -> Set[absl_status.StatusCode]:
+def get_absl_retryable_error_codes() -> set[absl_status.StatusCode]:
   """Returns Absl retryable error codes."""
   # TODO(b/237122326): Move this function into executors_errors when
   # absl_status works in OSS.

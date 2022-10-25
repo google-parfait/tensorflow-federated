@@ -18,8 +18,9 @@
 # information.
 """A simple executor that operates synchronously in eager TensorFlow mode."""
 
+from collections.abc import Iterable, MutableMapping
 import itertools
-from typing import Any, Iterable, MutableMapping, Optional
+from typing import Any, Optional
 import uuid
 
 from absl import logging

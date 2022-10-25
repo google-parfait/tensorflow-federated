@@ -19,8 +19,9 @@
 """A library of classes representing computations in a deserialized form."""
 
 import abc
+from collections.abc import Iterable, Iterator
 import enum
-from typing import Any, Iterable, Iterator, List, Optional, Tuple, Type
+from typing import Any, Optional, Type
 import zlib
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -796,7 +797,7 @@ class Block(ComputationBuildingBlock):
 
   def __init__(
       self,
-      local_symbols: Iterable[Tuple[str, ComputationBuildingBlock]],
+      local_symbols: Iterable[tuple[str, ComputationBuildingBlock]],
       result: ComputationBuildingBlock,
   ):
     """Creates a block of TFF code.
@@ -853,7 +854,7 @@ class Block(ComputationBuildingBlock):
     return True
 
   @property
-  def locals(self) -> List[Tuple[str, ComputationBuildingBlock]]:
+  def locals(self) -> list[tuple[str, ComputationBuildingBlock]]:
     return list(self._locals)
 
   @property
@@ -1134,7 +1135,7 @@ def _string_representation(
   """
   py_typecheck.check_type(comp, ComputationBuildingBlock)
 
-  def _join(components: Iterable[List[str]]) -> List[str]:
+  def _join(components: Iterable[list[str]]) -> list[str]:
     """Returns a `list` of strings by combining each component in `components`.
 
     >>> _join([['a'], ['b'], ['c']])

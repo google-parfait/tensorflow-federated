@@ -19,9 +19,10 @@
 """AggregationFactory for Federated Learning metrics."""
 
 import collections
+from collections.abc import Mapping
 import dataclasses
 import math
-from typing import Any, Optional, OrderedDict, Tuple, Union
+from typing import Any, Optional, Union
 
 import tensorflow as tf
 import tree
@@ -122,23 +123,23 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
 
   def __init__(self,
                metric_finalizers: model_lib.MetricFinalizersType,
-               initial_unfinalized_metrics: Optional[OrderedDict[str,
-                                                                 Any]] = None,
+               initial_unfinalized_metrics: Optional[collections.OrderedDict[
+                   str, Any]] = None,
                inner_summation_factory: Optional[
                    factory.UnweightedAggregationFactory] = None):
     """Initialize the `SumThenFinalizeFactory`.
 
     Args:
-      metric_finalizers: An `OrderedDict` of metric names to finalizers, should
-        have same keys as the unfinalized metrics. A finalizer is a function
-        (typically a `tf.function` decorated callable or a `tff.tf_computation`
-        decoreated TFF Computation) that takes in a metric's unfinalized values,
-        and returns the finalized metric values. This can be obtained from
-        `tff.learning.Model.metric_finalizers()`.
-      initial_unfinalized_metrics: Optional. An `OrderedDict` of metric names to
-        the initial values of local unfinalized metrics, its structure should
-        match that of `local_unfinalized_metrics_type`. If not specified,
-        defaults to zero.
+      metric_finalizers: An `collections.OrderedDict` of metric names to
+        finalizers, should have same keys as the unfinalized metrics. A
+        finalizer is a function (typically a `tf.function` decorated callable or
+        a `tff.tf_computation` decoreated TFF Computation) that takes in a
+        metric's unfinalized values, and returns the finalized metric values.
+        This can be obtained from `tff.learning.Model.metric_finalizers()`.
+      initial_unfinalized_metrics: Optional. An `collections.OrderedDict` of
+        metric names to the initial values of local unfinalized metrics, its
+        structure should match that of `local_unfinalized_metrics_type`. If not
+        specified, defaults to zero.
       inner_summation_factory: Optional. A
         `tff.aggregators.UnweightedAggregationFactory` that creates a
         `tff.templates.AggregationProcess` to sum the metrics from clients to
@@ -172,8 +173,8 @@ class SumThenFinalizeFactory(factory.UnweightedAggregationFactory):
 
     Args:
       local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
-        `OrderedDict` as the Python container) of a client's local unfinalized
-        metrics. Let `local_unfinalized_metrics` be the output of
+        `collections.OrderedDict` as the Python container) of a client's local
+        unfinalized metrics. Let `local_unfinalized_metrics` be the output of
         `tff.learning.Model.report_local_unfinalized_metrics()`, its type can be
         obtained by
         `tff.framework.type_from_tensors(local_unfinalized_metrics)`.
@@ -272,13 +273,14 @@ class _MetricRange:
             type(self.lower) is type(other.lower) and self.lower == other.lower)
 
 
-UserMetricValueRange = Union[Tuple[float, float], Tuple[int, int], _MetricRange]
-UserMetricValueRangeDict = OrderedDict[str, Union[UserMetricValueRange,
-                                                  'UserMetricValueRangeDict']]
-MetricValueRange = Union[Tuple[float, float], Tuple[int, int],
-                         Tuple[None, estimation_process.EstimationProcess]]
-MetricValueRangeDict = OrderedDict[str, Union[MetricValueRange,
-                                              'MetricValueRangeDict']]
+UserMetricValueRange = Union[tuple[float, float], tuple[int, int], _MetricRange]
+UserMetricValueRangeDict = collections.OrderedDict[str, Union[
+    UserMetricValueRange, 'UserMetricValueRangeDict']]
+MetricValueRange = Union[tuple[float, float], tuple[int, int],
+                         tuple[None, estimation_process.EstimationProcess]]
+MetricValueRangeDict = collections.OrderedDict[str,
+                                               Union[MetricValueRange,
+                                                     'MetricValueRangeDict']]
 
 DEFAULT_FIXED_SECURE_LOWER_BOUND = 0
 # Use a power of 2 minus one to more accurately encode floating dtypes that
@@ -320,12 +322,13 @@ def _check_user_metric_value_range(value_range: UserMetricValueRange):
                     f'threshold type {type(upper)}.')
 
 
+# TODO(b/233054212): re-enable lint
 def create_default_secure_sum_quantization_ranges(
     local_unfinalized_metrics_type: computation_types.StructWithPythonType,
     lower_bound: Optional[Union[int, float]] = DEFAULT_FIXED_SECURE_LOWER_BOUND,
     upper_bound: Optional[Union[int, float]] = DEFAULT_FIXED_SECURE_UPPER_BOUND,
     use_auto_tuned_bounds_for_float_values: Optional[bool] = True
-) -> MetricValueRangeDict:
+) -> MetricValueRangeDict:  # pylint: disable=g-bare-generic
   """Create a nested structure of quantization ranges for secure sum encoding.
 
   Args:
@@ -398,9 +401,12 @@ def create_default_secure_sum_quantization_ranges(
       create_default_range, local_unfinalized_metrics_type)
 
 
+# TODO(b/233054212): re-enable lint
+# pylint: disable=g-bare-generic
 def fill_missing_values_with_defaults(
     default_values: MetricValueRangeDict,
     user_values: UserMetricValueRangeDict) -> MetricValueRangeDict:
+  # pylint: enable=g-bare-generic
   """Fill missing user provided metric value ranges with default ranges.
 
   Args:
@@ -415,7 +421,7 @@ def fill_missing_values_with_defaults(
       elements are not allowed types of `MetricValueRange`.
     ValueError: If the value has length other than two.
   """
-  if isinstance(default_values, collections.abc.Mapping):
+  if isinstance(default_values, Mapping):
     if user_values is None:
       user_values = {}
     filled_with_defaults_values = []
@@ -480,15 +486,19 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
   aggregation progress. The `next` function takes the `state` and local
   unfinalized metrics reported from `tff.CLIENTS`, and returns a
   `tff.templates.MeasuredProcessOutput` object with the following properties:
-    - `state`: an `OrderedDict` of the `state`s of the inner secure aggregation
-      processes.
-    - `result`: an `OrderedDict` of secure summed unfinalized metrics.
-    - `measurements`: an `OrderedDict` of the measurements of inner secure
+    - `state`: an `collections.OrderedDict` of the `state`s of the inner secure
       aggregation processes.
+    - `result`: an `collections.OrderedDict` of secure summed unfinalized
+      metrics.
+    - `measurements`: an `collections.OrderedDict` of the measurements of inner
+      secure aggregation processes.
   """
 
+  # TODO(b/233054212): re-enable lint
+  # pylint: disable=g-bare-generic
   def __init__(self,
                metric_value_ranges: Optional[UserMetricValueRangeDict] = None):
+    # pylint: enable=g-bare-generic
     """Initializes `SecureSumFactory`.
 
     Since secure summation works in fixed-point arithmetic space, floating point
@@ -540,8 +550,8 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 
     Args:
       local_unfinalized_metrics_type: A `tff.types.StructWithPythonType` (with
-        `OrderedDict` as the Python container) of a client's local unfinalized
-        metrics. Let `local_unfinalized_metrics` be the output of
+        `collections.OrderedDict` as the Python container) of a client's local
+        unfinalized metrics. Let `local_unfinalized_metrics` be the output of
         `tff.learning.Model.report_local_unfinalized_metrics()`, its type can be
         obtained by
         `tff.framework.type_from_tensors(local_unfinalized_metrics)`.

@@ -18,7 +18,7 @@
 # information.
 """Bindings for C++ executor stack construction."""
 
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 # Required to load TF Python extension.
 import tensorflow as tf  # pylint: disable=unused-import

@@ -14,7 +14,7 @@
 """Libraries for the Shakespeare dataset for federated learning simulation."""
 
 import collections
-from typing import Optional, Tuple
+from typing import Optional
 
 import tensorflow as tf
 
@@ -36,7 +36,7 @@ def _add_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
 
 def load_data(
     cache_dir: Optional[str] = None
-) -> Tuple[client_data.ClientData, client_data.ClientData]:
+) -> tuple[client_data.ClientData, client_data.ClientData]:
   """Loads the federated Shakespeare dataset.
 
   Downloads and caches the dataset locally. If previously downloaded, tries to

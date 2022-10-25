@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List, Optional
+from typing import Any, Optional
 import unittest
 from unittest import mock
 
@@ -30,7 +30,7 @@ class _TestProgramStateManager(program_state_manager.ProgramStateManager):
   stubs or mocked.
   """
 
-  async def get_versions(self) -> Optional[List[int]]:
+  async def get_versions(self) -> Optional[list[int]]:
     raise NotImplementedError
 
   async def load(self, version: int, structure: Any) -> Any:

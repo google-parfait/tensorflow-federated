@@ -20,7 +20,7 @@ with IBLTs.
 import abc
 import enum
 import math
-from typing import Tuple, Optional
+from typing import Optional
 
 from absl import logging
 import numpy as np
@@ -48,7 +48,7 @@ class Chunker(abc.ABC):
 
   @abc.abstractmethod
   def encode_tensorflow(
-      self, input_strings: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+      self, input_strings: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
     """Encodes `input_strings` to tensors.
 
     Args:
@@ -216,7 +216,7 @@ class BinaryChunker(Chunker):
 
   @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.string)])
   def encode_tensorflow(
-      self, input_strings: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+      self, input_strings: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
     """Encodes `input_strings` to tensors.
 
     Args:
@@ -490,7 +490,7 @@ class UTF8Chunker(Chunker):
     return self._num_chunks
 
   def encode_tensorflow(
-      self, input_strings: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+      self, input_strings: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
     """Encodes `input_strings` to tensors.
 
     Args:

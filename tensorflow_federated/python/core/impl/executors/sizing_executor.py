@@ -19,7 +19,6 @@
 """Utils for testing executors."""
 
 import collections
-from typing import List, Tuple
 
 import tensorflow as tf
 
@@ -32,7 +31,7 @@ from tensorflow_federated.python.core.impl.types import typed_object
 # This type is used to pass around information related to tensors. The int
 # describes the number of elements of a tensor, the DType is the same tensor's
 # DType.
-SizeAndDTypes = List[Tuple[int, tf.dtypes.DType]]
+SizeAndDTypes = list[tuple[int, tf.dtypes.DType]]
 
 
 def get_type_information(value, type_spec):

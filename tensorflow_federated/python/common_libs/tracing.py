@@ -34,7 +34,7 @@ import random
 import sys
 import threading
 import time
-from typing import Any, ContextManager, Dict, Generator, Generic, List, Optional, Tuple, TypeVar, Union
+from typing import Any, ContextManager, Generator, Generic, Optional, TypeVar, Union
 
 from absl import logging
 
@@ -90,9 +90,9 @@ class TracingProvider(Generic[T], metaclass=abc.ABCMeta):
       sub_scope: str,
       nonce: int,
       parent_span_yield: Optional[T],
-      fn_args: Optional[Tuple[Any, ...]],
-      fn_kwargs: Optional[Dict[str, Any]],
-      trace_opts: Dict[str, Any],
+      fn_args: Optional[tuple[Any, ...]],
+      fn_kwargs: Optional[dict[str, Any]],
+      trace_opts: dict[str, Any],
   ) -> Generator[T, TraceResult, None]:
     """Create a new tracing span.
 
@@ -145,9 +145,9 @@ class LoggingTracingProvider(TracingProvider):
       sub_scope: str,
       nonce: int,
       parent_span_yield: Optional[None],
-      fn_args: Optional[Tuple[Any, ...]],
-      fn_kwargs: Optional[Dict[str, Any]],
-      trace_opts: Dict[str, Any],
+      fn_args: Optional[tuple[Any, ...]],
+      fn_kwargs: Optional[dict[str, Any]],
+      trace_opts: dict[str, Any],
   ) -> Generator[None, TraceResult, None]:
     assert parent_span_yield is None
     del parent_span_yield, fn_args, fn_kwargs, trace_opts
@@ -262,7 +262,7 @@ def trace(fn=None, **trace_kwargs):
 # in a synchronous context.
 
 # A single yielded value for each currently-active TracingProvider.
-SpanYields = List[Any]
+SpanYields = list[Any]
 
 
 class ThreadLocalSpanYields(threading.local):
@@ -417,7 +417,7 @@ def add_tracing_provider(tracing_provider: TracingProvider):
   _global_tracing_providers.append(tracing_provider)
 
 
-def set_tracing_providers(tracing_providers: List[TracingProvider]):
+def set_tracing_providers(tracing_providers: list[TracingProvider]):
   """Set the global list of tracing providers, replacing any existing."""
   py_typecheck.check_type(tracing_providers, list)
   for tp in tracing_providers:
@@ -426,7 +426,7 @@ def set_tracing_providers(tracing_providers: List[TracingProvider]):
   _global_tracing_providers = tracing_providers
 
 
-def _func_to_class_and_method(fn) -> Tuple[str, str]:
+def _func_to_class_and_method(fn) -> tuple[str, str]:
   """Returns the names of the function's class and method."""
   split = fn.__qualname__.split('.')
   if len(split) >= 2:

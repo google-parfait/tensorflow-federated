@@ -19,10 +19,11 @@
 """A set of utility methods for serializing Value protos using pybind11 bindings."""
 
 import collections
+from collections.abc import Collection, Mapping, Sequence
 import os
 import os.path
 import tempfile
-from typing import Any, Collection, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Optional, Union
 import warnings
 import zipfile
 
@@ -45,8 +46,8 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
-_SerializeReturnType = Tuple[executor_pb2.Value, computation_types.Type]
-_DeserializeReturnType = Tuple[Any, computation_types.Type]
+_SerializeReturnType = tuple[executor_pb2.Value, computation_types.Type]
+_DeserializeReturnType = tuple[Any, computation_types.Type]
 
 # The maximum size allowed for serialized sequence values. Sequence that
 # serialize to values larger than this will result in errors being raised.  This
@@ -83,7 +84,7 @@ def _value_proto_for_np_array(
 @tracing.trace
 def _serialize_tensor_value(
     value: Any, type_spec: computation_types.TensorType
-) -> Tuple[executor_pb2.Value, computation_types.TensorType]:
+) -> tuple[executor_pb2.Value, computation_types.TensorType]:
   """Serializes a tensor value into `executor_pb2.Value`.
 
   Args:
@@ -220,7 +221,7 @@ def _check_container_compat_with_tf_nest(type_spec: computation_types.Type):
 @tracing.trace
 def _serialize_sequence_value(
     value: Union[Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES],
-                 List[Any]], type_spec: computation_types.SequenceType
+                 list[Any]], type_spec: computation_types.SequenceType
 ) -> computation_types.SequenceType:
   """Serializes a `tf.data.Dataset` value into `executor_pb2.Value`.
 
@@ -459,7 +460,7 @@ def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
   type_analysis.check_tensorflow_compatible_type(element_type)
 
   def transform_to_tff_known_type(
-      type_spec: computation_types.Type) -> Tuple[computation_types.Type, bool]:
+      type_spec: computation_types.Type) -> tuple[computation_types.Type, bool]:
     """Transforms `StructType` to `StructWithPythonType`."""
     if type_spec.is_struct() and not type_spec.is_struct_with_python():
       field_is_named = tuple(
@@ -692,7 +693,7 @@ CardinalitiesType = Mapping[placements.PlacementLiteral, int]
 
 
 def serialize_cardinalities(
-    cardinalities: CardinalitiesType) -> List[executor_pb2.Cardinality]:
+    cardinalities: CardinalitiesType) -> list[executor_pb2.Cardinality]:
   serialized_cardinalities = []
   for placement, cardinality in cardinalities.items():
     cardinality_message = executor_pb2.Cardinality(

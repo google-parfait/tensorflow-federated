@@ -18,7 +18,7 @@
 # information.
 """Shared utils for Federated Reconstruction training and evaluation."""
 
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional
 
 import tensorflow as tf
 
@@ -34,12 +34,12 @@ from tensorflow_federated.python.learning.reconstruction import model as model_l
 # entirely, etc. See `build_dataset_split_fn` for a builder, although users can
 # also specify their own `DatasetSplitFn`s (see `simple_dataset_split_fn` for an
 # example).
-DatasetSplitFn = Callable[[tf.data.Dataset, tf.Tensor], Tuple[tf.data.Dataset,
+DatasetSplitFn = Callable[[tf.data.Dataset, tf.Tensor], tuple[tf.data.Dataset,
                                                               tf.data.Dataset]]
 
 
 def simple_dataset_split_fn(
-    client_dataset: tf.data.Dataset) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
+    client_dataset: tf.data.Dataset) -> tuple[tf.data.Dataset, tf.data.Dataset]:
   """An example of a `DatasetSplitFn` that returns the original client data.
 
   Both the reconstruction data and post-reconstruction data will result from
@@ -112,7 +112,7 @@ def build_dataset_split_fn(recon_epochs: int = 1,
 
   def dataset_split_fn(
       client_dataset: tf.data.Dataset
-  ) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
+  ) -> tuple[tf.data.Dataset, tf.data.Dataset]:
     """A `DatasetSplitFn` built with the given arguments.
 
     Args:

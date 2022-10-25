@@ -22,7 +22,7 @@
 import collections
 import functools
 import inspect
-from typing import Optional, Tuple
+from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -91,7 +91,7 @@ def _wrap_concrete(fn_name: Optional[str],
 
 
 def _parameter_type(
-    parameters, parameter_types: Tuple[computation_types.Type, ...]
+    parameters, parameter_types: tuple[computation_types.Type, ...]
 ) -> Optional[computation_types.Type]:
   """Bundle any user-provided parameter types into a single argument type."""
   parameter_names = [parameter.name for parameter in parameters]

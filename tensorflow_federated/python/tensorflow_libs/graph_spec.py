@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """TFF-independent data class for the data TFF keeps in its TF protos."""
-from typing import Optional, Sequence
+from collections.abc import Sequence
+from typing import Optional
 
 import attr
 import tensorflow as tf

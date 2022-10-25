@@ -18,10 +18,11 @@
 # information.
 """Utilities for Python functions, defuns, and other types of callables."""
 
+from collections.abc import Mapping, Sequence
 import functools
 import inspect
 import types
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -144,7 +145,7 @@ def is_argument_struct(arg) -> bool:
 
 
 def unpack_args_from_struct(
-    struct_with_args) -> Tuple[List[Any], Dict[str, Any]]:
+    struct_with_args) -> tuple[list[Any], dict[str, Any]]:
   """Extracts argument types from a struct.
 
   Args:
@@ -375,7 +376,7 @@ def _infer_unpack_needed(fn: types.FunctionType,
   return unpack
 
 
-_Arguments = Tuple[List[Any], Dict[str, Any]]
+_Arguments = tuple[list[Any], dict[str, Any]]
 
 
 def _unpack_arg(arg_types, kwarg_types, arg) -> _Arguments:

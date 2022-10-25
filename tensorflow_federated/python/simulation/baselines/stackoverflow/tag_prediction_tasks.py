@@ -13,7 +13,7 @@
 # limitations under the License.
 """Library for creating tag prediction tasks on Stack Overflow."""
 
-from typing import List, Optional
+from typing import Optional
 
 import tensorflow as tf
 
@@ -38,8 +38,8 @@ def _build_logistic_regression_model(input_size: int, output_size: int):
 def create_tag_prediction_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec],
-    word_vocab: List[str],
-    tag_vocab: List[str],
+    word_vocab: list[str],
+    tag_vocab: list[str],
     train_data: client_data.ClientData,
     test_data: client_data.ClientData,
     validation_data: client_data.ClientData,

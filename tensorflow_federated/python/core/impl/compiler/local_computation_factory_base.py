@@ -19,12 +19,11 @@
 """Defines the interface for factories of framework-specific computations."""
 
 import abc
-from typing import Tuple
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.impl.types import computation_types
 
-ComputationProtoAndType = Tuple[pb.Computation, computation_types.Type]
+ComputationProtoAndType = tuple[pb.Computation, computation_types.Type]
 
 
 class LocalComputationFactory(metaclass=abc.ABCMeta):

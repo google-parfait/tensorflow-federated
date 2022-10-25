@@ -13,8 +13,9 @@
 # limitations under the License.
 """Utilities for sampling clients, either randomly or pseudo-randomly."""
 
+from collections.abc import Sequence
 import functools
-from typing import Callable, List, Optional, Sequence, TypeVar
+from typing import Callable, Optional, TypeVar
 
 import numpy as np
 
@@ -31,7 +32,7 @@ T = TypeVar('T')
 def build_uniform_sampling_fn(
     sample_range: Sequence[T],
     replace: bool = False,
-    random_seed: Optional[int] = None) -> Callable[[int, int], List[T]]:
+    random_seed: Optional[int] = None) -> Callable[[int, int], list[T]]:
   """Builds the function for sampling from the input iterator at each round.
 
   If an integer `random_seed` is provided, we set a random seed before sampling

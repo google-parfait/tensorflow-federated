@@ -48,7 +48,7 @@ Federated Reconstruction: Partially Local Federated Learning
 import collections
 import functools
 import typing
-from typing import Callable, List, Optional, Union
+from typing import Callable, Optional, Union
 
 import attr
 import tensorflow as tf
@@ -80,7 +80,7 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 AggregationFactory = Union[factory.WeightedAggregationFactory,
                            factory.UnweightedAggregationFactory]
 LossFn = Callable[[], tf.keras.losses.Loss]
-MetricsFn = Callable[[], List[tf.keras.metrics.Metric]]
+MetricsFn = Callable[[], list[tf.keras.metrics.Metric]]
 ModelFn = Callable[[], model_lib.Model]
 OptimizerFn = Union[Callable[[], tf.keras.optimizers.Optimizer],
                     optimizer_base.Optimizer]

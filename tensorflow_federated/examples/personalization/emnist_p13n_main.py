@@ -15,7 +15,6 @@
 
 import collections
 import functools
-from typing import Dict, List, Tuple
 
 from absl import app
 import numpy as np
@@ -27,7 +26,7 @@ from tensorflow_federated.examples.personalization.p13n_utils import evaluate_fn
 
 
 def _get_emnist_datasets(
-) -> Tuple[List[tf.data.Dataset], List[Dict[str, tf.data.Dataset]]]:
+) -> tuple[list[tf.data.Dataset], list[dict[str, tf.data.Dataset]]]:
   """Pre-process EMNIST-62 dataset for FedAvg and personalization."""
 
   def element_fn(element):

@@ -21,10 +21,11 @@
 import abc
 import atexit
 import collections
+from collections.abc import Iterable, Mapping, Sequence
 import difflib
 import enum
 import typing
-from typing import Any, Dict, Optional, Sequence, Type as TypingType, TypeVar, Union
+from typing import Any, Optional, Type as TypingType, TypeVar, Union
 import weakref
 
 import attr
@@ -308,7 +309,7 @@ class _ValueWithHash():
 # stored as a field of each class because some class objects themselves would
 # begin destruction before the map fields of other classes, causing errors
 # during destruction.
-_intern_pool: Dict[typing.Type[Any], Dict[Any, Any]] = (
+_intern_pool: dict[typing.Type[Any], dict[Any, Any]] = (
     collections.defaultdict(lambda: {}))
 
 
@@ -545,7 +546,7 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
 
   @classmethod
   def _normalize_init_args(cls, elements, convert=True):
-    py_typecheck.check_type(elements, collections.abc.Iterable)
+    py_typecheck.check_type(elements, Iterable)
     if convert:
       if py_typecheck.is_named_tuple(elements):
         elements = typing.cast(Any, elements)
@@ -1086,7 +1087,7 @@ def to_type(spec) -> Union[TensorType, StructType, StructWithPythonType]:
     return StructWithPythonType(spec, type(spec))
   elif py_typecheck.is_attrs(spec):
     return _to_type_from_attrs(spec)
-  elif isinstance(spec, collections.abc.Mapping):
+  elif isinstance(spec, Mapping):
     # This is an unsupported mapping, likely a `dict`. StructType adds an
     # ordering, which the original container did not have.
     raise TypeError(

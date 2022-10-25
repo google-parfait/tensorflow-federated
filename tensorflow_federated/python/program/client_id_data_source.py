@@ -13,9 +13,9 @@
 # limitations under the License.
 """Utilities for representing data sources backed by client ids."""
 
-import collections
+from collections.abc import Sequence
 import random
-from typing import Any, List, Optional, Sequence
+from typing import Any, Optional
 
 import tensorflow as tf
 
@@ -44,7 +44,7 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
     Raises:
       ValueError: If `client_ids` is empty.
     """
-    py_typecheck.check_type(client_ids, collections.abc.Sequence)
+    py_typecheck.check_type(client_ids, Sequence)
     for client_id in client_ids:
       py_typecheck.check_type(client_id, str)
     if not client_ids:
@@ -95,7 +95,7 @@ class ClientIdDataSource(data_source.FederatedDataSource):
     Raises:
       ValueError: If `client_ids` is empty.
     """
-    py_typecheck.check_type(client_ids, collections.abc.Sequence)
+    py_typecheck.check_type(client_ids, Sequence)
     for client_id in client_ids:
       py_typecheck.check_type(client_id, str)
     if not client_ids:
@@ -112,7 +112,7 @@ class ClientIdDataSource(data_source.FederatedDataSource):
     return self._federated_type
 
   @property
-  def capabilities(self) -> List[data_source.Capability]:
+  def capabilities(self) -> list[data_source.Capability]:
     """The list of capabilities supported by this data source."""
     return self._capabilities
 

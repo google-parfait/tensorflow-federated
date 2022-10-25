@@ -18,7 +18,7 @@
 # information.
 """Python interface to C++ Executor implementations."""
 
-from typing import Mapping
+from collections.abc import Mapping
 
 # Required to load TF Python extension.
 import tensorflow as tf  # pylint: disable=unused-import

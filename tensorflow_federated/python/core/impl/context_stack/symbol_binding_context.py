@@ -14,7 +14,7 @@
 """Defines interface for contexts which can bind symbols."""
 
 import abc
-from typing import Any, List, Tuple
+from typing import Any
 
 from tensorflow_federated.python.core.impl.context_stack import context_base
 
@@ -29,6 +29,6 @@ class SymbolBindingContext(context_base.SyncContext, metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def symbol_bindings(self) -> List[Tuple[str, Any]]:
+  def symbol_bindings(self) -> list[tuple[str, Any]]:
     """Returns all symbols bound in this context."""
     raise NotImplementedError

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Execution contexts for the native backend."""
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.impl.context_stack import set_default_context

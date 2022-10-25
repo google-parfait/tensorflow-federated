@@ -19,7 +19,7 @@
 """A library of static analysis functions for ASTs."""
 
 import functools
-from typing import Callable, List, Optional, Tuple, Type, Union
+from typing import Callable, Optional, Type, Union
 
 import tensorflow as tf
 
@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 
 _TypeOrTupleOfTypes = Union[
     Type[building_blocks.ComputationBuildingBlock],
-    Tuple[Type[building_blocks.ComputationBuildingBlock], ...]]
+    tuple[Type[building_blocks.ComputationBuildingBlock], ...]]
 
 
 def visit_preorder(
@@ -327,7 +327,7 @@ def extract_nodes_consuming(tree, predicate):
 def _extract_calls_with_fn_consuming_arg(
     tree: building_blocks.ComputationBuildingBlock, *,
     fn_predicate: _BuildingBlockPredicate,
-    arg_predicate: _BuildingBlockPredicate) -> List[building_blocks.Call]:
+    arg_predicate: _BuildingBlockPredicate) -> list[building_blocks.Call]:
   """Extracts calls depending on function and arg predicates.
 
   This function returns all calls in `tree` whose fns consume nodes matching
@@ -681,7 +681,7 @@ def find_aggregations_in_tree(
     comp,
     kind_predicate: Callable[[intrinsic_defs.AggregationKind],
                              bool] = lambda k: k is not None,
-) -> List[building_blocks.Call]:
+) -> list[building_blocks.Call]:
   """Finds aggregating calls with kind matching `kind_predicate` in `comp`.
 
   An "aggregating call" for the purpose of this function is a call to an
@@ -702,7 +702,7 @@ def find_aggregations_in_tree(
       indirect structures.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  aggregation_calls: List[building_blocks.Call] = []
+  aggregation_calls: list[building_blocks.Call] = []
 
   def record_intrinsic_calls(comp):
     """Identifies matching calls and adds them to `aggregation_calls`."""
@@ -744,7 +744,7 @@ def find_aggregations_in_tree(
 
 def find_secure_aggregation_in_tree(
     comp: building_blocks.ComputationBuildingBlock
-) -> List[building_blocks.Call]:
+) -> list[building_blocks.Call]:
   """See documentation on `tree_contains_aggregation` for details."""
   return find_aggregations_in_tree(
       comp, lambda kind: kind == intrinsic_defs.AggregationKind.SECURE)
@@ -752,7 +752,7 @@ def find_secure_aggregation_in_tree(
 
 def find_unsecure_aggregation_in_tree(
     comp: building_blocks.ComputationBuildingBlock
-) -> List[building_blocks.Call]:
+) -> list[building_blocks.Call]:
   """See documentation on `tree_contains_aggregation` for details."""
   return find_aggregations_in_tree(
       comp, lambda kind: kind == intrinsic_defs.AggregationKind.DEFAULT)

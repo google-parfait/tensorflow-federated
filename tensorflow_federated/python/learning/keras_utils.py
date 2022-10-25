@@ -19,7 +19,8 @@
 """Utility methods for working with Keras in TensorFlow Federated."""
 
 import collections
-from typing import Callable, List, Optional, OrderedDict, Sequence, Union
+from collections.abc import Mapping, Sequence
+from typing import Callable, Optional, Union
 import warnings
 
 from absl import logging
@@ -35,7 +36,7 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import finalizer
 
-Loss = Union[tf.keras.losses.Loss, List[tf.keras.losses.Loss]]
+Loss = Union[tf.keras.losses.Loss, list[tf.keras.losses.Loss]]
 
 
 # TODO(b/197746608): Remove the code path that takes in constructed Keras
@@ -44,9 +45,9 @@ def from_keras_model(
     keras_model: tf.keras.Model,
     loss: Loss,
     input_spec,
-    loss_weights: Optional[List[float]] = None,
-    metrics: Optional[Union[List[tf.keras.metrics.Metric],
-                            List[Callable[[], tf.keras.metrics.Metric]]]] = None
+    loss_weights: Optional[list[float]] = None,
+    metrics: Optional[Union[list[tf.keras.metrics.Metric],
+                            list[Callable[[], tf.keras.metrics.Metric]]]] = None
 ) -> model_lib.Model:
   """Builds a `tff.learning.Model` from a `tf.keras.Model`.
 
@@ -169,7 +170,7 @@ def from_keras_model(
     tf.nest.map_structure(
         lambda s: py_typecheck.check_type(s, tensor_spec, 'input spec member'),
         input_spec)
-  if isinstance(input_spec, collections.abc.Mapping):
+  if isinstance(input_spec, Mapping):
     if model_lib.MODEL_ARG_NAME not in input_spec:
       raise ValueError(
           'The `input_spec` is a collections.abc.Mapping (e.g., a dict), so it '
@@ -286,9 +287,9 @@ class _KerasModel(model_lib.Model):
   """Internal wrapper class for tf.keras.Model objects."""
 
   def __init__(self, keras_model: tf.keras.Model, input_spec,
-               loss_fns: List[tf.keras.losses.Loss], loss_weights: List[float],
-               metrics: Union[List[tf.keras.metrics.Metric],
-                              List[Callable[[], tf.keras.metrics.Metric]]]):
+               loss_fns: list[tf.keras.losses.Loss], loss_weights: list[float],
+               metrics: Union[list[tf.keras.metrics.Metric],
+                              list[Callable[[], tf.keras.metrics.Metric]]]):
     self._keras_model = keras_model
     self._input_spec = input_spec
     self._loss_fns = loss_fns
@@ -401,7 +402,7 @@ class _KerasModel(model_lib.Model):
     return self._keras_model(x, training=training)
 
   def _forward_pass(self, batch_input, training=True):
-    if isinstance(batch_input, collections.abc.Mapping):
+    if isinstance(batch_input, Mapping):
       inputs = batch_input.get('x')
     else:
       inputs = batch_input[0]
@@ -410,7 +411,7 @@ class _KerasModel(model_lib.Model):
                      f'Instead have keys {list(batch_input.keys())}')
     predictions = self.predict_on_batch(inputs, training)
 
-    if isinstance(batch_input, collections.abc.Mapping):
+    if isinstance(batch_input, Mapping):
       y_true = batch_input.get('y')
     else:
       y_true = batch_input[1]
@@ -459,14 +460,17 @@ class _KerasModel(model_lib.Model):
 
   @tf.function
   def report_local_unfinalized_metrics(
-      self) -> OrderedDict[str, List[tf.Tensor]]:
-    """Creates an `OrderedDict` of metric names to unfinalized values.
+      self) -> collections.OrderedDict[str, list[tf.Tensor]]:
+    """Creates an `collections.OrderedDict` of metric names to unfinalized values.
 
     Returns:
-      An `OrderedDict` of metric names to lists of unfinalized metric values.
+      An `collections.OrderedDict` of metric names to lists of unfinalized
+      metric values.
       For a Keras metric, its unfinalized values are the tensor values of its
-      variables tracked during local training. The returned `OrderedDict` has
-      the same keys (metric names) as the `OrderedDict` returned by the method
+      variables tracked during local training. The returned
+      `collections.OrderedDict` has
+      the same keys (metric names) as the `collections.OrderedDict` returned by
+      the method
       `metric_finalizers()`, and can be used as input to the finalizers to get
       the finalized metric values. This method and the `metric_finalizers()`
       method can be used to construct a cross-client metrics aggregator when
@@ -478,11 +482,12 @@ class _KerasModel(model_lib.Model):
     return outputs
 
   def metric_finalizers(
-      self) -> OrderedDict[str, finalizer.KerasMetricFinalizer]:
-    """Creates an `OrderedDict` of metric names to finalizers.
+      self) -> collections.OrderedDict[str, finalizer.KerasMetricFinalizer]:
+    """Creates an `collections.OrderedDict` of metric names to finalizers.
 
     Returns:
-      An `OrderedDict` of metric names to finalizers. A finalizer of a Keras
+      An `collections.OrderedDict` of metric names to finalizers. A finalizer of
+      a Keras
       metric is a `tf.function` decorated callable that takes in this metric's
       unfinalized values (created by `report_local_unfinalized_metrics`), and
       returns the metric value computed by `tf.keras.metrics.Metric.result()`.

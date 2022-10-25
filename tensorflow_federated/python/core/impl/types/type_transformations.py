@@ -17,7 +17,7 @@
 # information.
 """A library of transformation functions for computation types."""
 
-from typing import Callable, Tuple, TypeVar
+from typing import Callable, TypeVar
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -42,7 +42,7 @@ def strip_placement(
 def transform_type_postorder(
     type_signature: computation_types.Type,
     transform_fn: Callable[[computation_types.Type],
-                           Tuple[computation_types.Type, bool]]):
+                           tuple[computation_types.Type, bool]]):
   """Walks type tree of `type_signature` postorder, calling `transform_fn`.
 
   Args:

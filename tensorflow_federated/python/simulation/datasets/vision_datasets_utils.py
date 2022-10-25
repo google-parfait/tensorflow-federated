@@ -18,9 +18,6 @@ import logging
 import os
 
 from typing import ByteString
-from typing import Dict
-from typing import List
-from typing import Tuple
 
 import tensorflow as tf
 
@@ -32,7 +29,7 @@ KEY_IMAGE_DECODED = 'image/decoded'
 KEY_CLASS = 'class'
 
 
-def read_csv(path: str) -> List[Dict[str, str]]:
+def read_csv(path: str) -> list[dict[str, str]]:
   """Reads a csv file, and returns the content inside a list of dictionaries.
 
   Args:
@@ -85,7 +82,7 @@ def load_tfrecord(fname: str, logger_tag: str) -> tf.data.Dataset:
 
 def load_data_from_cache(cache_dir: str, train_sub_dir: str,
                          test_file_name: str,
-                         logger_tag: str) -> Tuple[ClientData, tf.data.Dataset]:
+                         logger_tag: str) -> tuple[ClientData, tf.data.Dataset]:
   """Load train and test data from the TFRecord files.
 
   Args:
@@ -123,7 +120,7 @@ def create_example(image_bytes: bytes, label: int) -> tf.train.Example:
 
 
 def decode_bytes(key_bytes: ByteString,
-                 serialized_value_bytes: ByteString) -> Dict[str, tf.Tensor]:
+                 serialized_value_bytes: ByteString) -> dict[str, tf.Tensor]:
   """Convert a serialized `tf.train.Example` to a feature dict."""
   del key_bytes  # Unused.
   feature_description = {

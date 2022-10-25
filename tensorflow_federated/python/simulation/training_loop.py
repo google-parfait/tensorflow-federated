@@ -15,8 +15,9 @@
 
 import asyncio
 import collections
+from collections.abc import Iterable, MutableMapping
 import time
-from typing import Any, Callable, Iterable, MutableMapping, Optional, OrderedDict, Tuple
+from typing import Any, Callable, Optional
 
 from absl import logging
 
@@ -37,9 +38,10 @@ EVALUATION_METRICS_PREFIX = 'evaluation/'
 EVALUATION_TIME_KEY = 'evaluation_time_in_seconds'
 
 
-def _run_training(training_fn: computation_base.Computation,
-                  client_selection_fn: Callable[[int], Any], state: Any,
-                  round_num: int) -> Tuple[Any, OrderedDict[str, Any]]:
+def _run_training(
+    training_fn: computation_base.Computation,
+    client_selection_fn: Callable[[int], Any], state: Any,
+    round_num: int) -> tuple[Any, collections.OrderedDict[str, Any]]:
   """Runs one round of federated training."""
   logging.info('Running training at round %d', round_num)
   training_time_start = time.time()
@@ -53,7 +55,7 @@ def _run_training(training_fn: computation_base.Computation,
 
 def _run_evaluation(evaluation_fn: Callable[[Any, Any], MetricsType],
                     client_selection_fn: Callable[[int], Any], state: Any,
-                    round_num: int) -> OrderedDict[str, Any]:
+                    round_num: int) -> collections.OrderedDict[str, Any]:
   """Runs one round of federated evaluation."""
   logging.info('Running evaluation at round %d', round_num)
   evaluation_time_start = time.time()

@@ -47,7 +47,7 @@
 """
 
 import asyncio
-from typing import Any, Dict, List
+from typing import Any
 
 from absl import logging
 import tensorflow as tf
@@ -147,7 +147,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
 
   @classmethod
   def factory(cls,
-              target_executors: Dict[str, executor_base.Executor],
+              target_executors: dict[str, executor_base.Executor],
               local_computation_factory: local_computation_factory_base
               .LocalComputationFactory = tensorflow_computation_factory
               .TensorFlowComputationFactory()):
@@ -160,7 +160,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
 
   def __init__(self,
                executor: federating_executor.FederatingExecutor,
-               target_executors: Dict[str, executor_base.Executor],
+               target_executors: dict[str, executor_base.Executor],
                local_computation_factory: local_computation_factory_base
                .LocalComputationFactory = tensorflow_computation_factory
                .TensorFlowComputationFactory()):
@@ -493,7 +493,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
   @tracing.trace
   async def reduce(
       self,
-      val: List[executor_value_base.ExecutorValue],
+      val: list[executor_value_base.ExecutorValue],
       zero: executor_value_base.ExecutorValue,
       op: pb.Computation,
       op_type: computation_types.FunctionType,

@@ -14,7 +14,6 @@
 """Utilities for testing the mapreduce backend."""
 
 import collections
-from typing import Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -165,7 +164,7 @@ def get_temperature_sensor_example():
 def get_federated_sum_example(
     *,
     secure_sum: bool = False
-) -> Tuple[forms.MapReduceForm, computation_base.Computation]:
+) -> tuple[forms.MapReduceForm, computation_base.Computation]:
   """Constructs `forms.MapReduceForm` which performs a sum aggregation.
 
   Args:

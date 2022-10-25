@@ -13,13 +13,12 @@
 # limitations under the License.
 """Utilities for testing remote runtimes."""
 
+from collections.abc import Sequence
 import contextlib
 import os
 import signal
 import subprocess
 import sys
-from typing import List, Sequence
-
 from absl import logging
 import grpc
 import tensorflow as tf
@@ -42,7 +41,7 @@ def create_localhost_remote_context(ports: Sequence[str],
 
 
 def create_inprocess_worker_contexts(
-    ports: Sequence[str]) -> List[contextlib.AbstractContextManager[None]]:
+    ports: Sequence[str]) -> list[contextlib.AbstractContextManager[None]]:
   """Constructs inprocess workers listening on `ports`.
 
   Starting and running inprocess workers and aggregators leads to lower
@@ -68,7 +67,7 @@ def create_inprocess_worker_contexts(
 
 def create_inprocess_aggregator_contexts(
     worker_ports: Sequence[str], aggregator_ports: Sequence[str]
-) -> List[contextlib.AbstractContextManager[None]]:
+) -> list[contextlib.AbstractContextManager[None]]:
   """Constructs inprocess aggregators listening on `aggregator_ports`.
 
   See comment in `create_inprocess_worker_contexts` for reasons to prefer
@@ -100,7 +99,7 @@ def create_inprocess_aggregator_contexts(
 
 def create_standalone_subprocess_aggregator_contexts(
     worker_ports: Sequence[str], aggregator_ports: Sequence[str]
-) -> List[contextlib.AbstractContextManager[None]]:
+) -> list[contextlib.AbstractContextManager[None]]:
   """Constructs aggregators in subprocess listening on appropriate ports.
 
   See comment in `create_inprocess_worker_contexts` for reasons to prefer

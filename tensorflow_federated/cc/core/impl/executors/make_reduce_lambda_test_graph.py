@@ -13,9 +13,8 @@
 # limitations under the License.
 """Writes a lambda GraphDef to a file for testing dataset reduction."""
 
+from collections.abc import Sequence
 import operator
-from typing import Sequence
-
 from absl import app
 from absl import flags
 import tensorflow as tf

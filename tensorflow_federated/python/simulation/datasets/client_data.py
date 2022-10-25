@@ -14,8 +14,8 @@
 """Library methods for working with centralized data used in simulation."""
 
 import abc
-import collections
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union
+from collections.abc import Iterable, Sequence
+from typing import Any, Callable, Optional, Union
 
 from absl import logging
 import numpy as np
@@ -112,7 +112,7 @@ class ClientData(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def client_ids(self) -> List[str]:
+  def client_ids(self) -> list[str]:
     """A list of string identifiers for clients in this dataset."""
     pass
 
@@ -292,7 +292,7 @@ class ClientData(metaclass=abc.ABCMeta):
       client_data: 'ClientData',
       num_test_clients: int,
       seed: Optional[Union[int, Sequence[int]]] = None
-  ) -> Tuple['ClientData', 'ClientData']:
+  ) -> tuple['ClientData', 'ClientData']:
     """Returns a pair of (train, test) `ClientData`.
 
     This method partitions the clients of `client_data` into two `ClientData`
@@ -435,7 +435,7 @@ class ConcreteClientData(ClientData):
         is, it must be compatible with both `tf.function` and `tff.Computation`
         wrappers.
     """
-    py_typecheck.check_type(client_ids, collections.abc.Iterable)
+    py_typecheck.check_type(client_ids, Iterable)
     py_typecheck.check_callable(serializable_dataset_fn)
 
     if not client_ids:
@@ -448,7 +448,7 @@ class ConcreteClientData(ClientData):
     self._element_type_structure = example_dataset.element_spec
 
   @property
-  def client_ids(self) -> List[str]:
+  def client_ids(self) -> list[str]:
     return self._client_ids
 
   @property

@@ -59,7 +59,7 @@ tf.strings.to_hash_bucket_fast() changes, then IbltDecoder.get_freq_estimates()
 would fail.
 """
 
-from typing import Dict, Optional, Union, Tuple
+from typing import Optional, Union
 
 import tensorflow as tf
 
@@ -81,7 +81,7 @@ def _internal_parameters(
     capacity: int,
     repetitions: int,
     hash_family: Optional[str] = None,
-    hash_family_params: Optional[Dict[str, Union[int, float]]] = None,
+    hash_family_params: Optional[dict[str, Union[int, float]]] = None,
 ):
   """Computes internal IBLT parameters based on constructor parameters.
 
@@ -210,7 +210,7 @@ class IbltDecoder:
       seed: int = 0,
       repetitions: int = DEFAULT_REPETITIONS,
       hash_family: Optional[str] = None,
-      hash_family_params: Optional[Dict[str, Union[int, float]]] = None,
+      hash_family_params: Optional[dict[str, Union[int, float]]] = None,
       field_size: int = DEFAULT_FIELD_SIZE,
   ):
     """Initializes the IBLT Decoder.
@@ -406,7 +406,7 @@ class IbltDecoder:
     return iblt, hash_indices, data_string, count
 
   @tf.function
-  def get_freq_estimates_tf(self) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+  def get_freq_estimates_tf(self) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     """Decodes key-value pairs from an IBLT.
 
     Returns:
@@ -764,9 +764,9 @@ def decode_iblt_tf(
     seed: int = 0,
     repetitions: int = DEFAULT_REPETITIONS,
     hash_family: Optional[str] = None,
-    hash_family_params: Optional[Dict[str, Union[int, float]]] = None,
+    hash_family_params: Optional[dict[str, Union[int, float]]] = None,
     field_size: int = DEFAULT_FIELD_SIZE,
-) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
   """Decode a IBLT sketch.
 
   This function wraps `IbltDecoder` to decode `iblt` and returns frequencies

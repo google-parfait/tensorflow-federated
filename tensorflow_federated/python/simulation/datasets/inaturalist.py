@@ -17,9 +17,6 @@ import enum
 import logging
 import os
 
-from typing import Dict
-from typing import List
-from typing import Tuple
 
 import tensorflow as tf
 
@@ -58,7 +55,7 @@ class INaturalistSplit(enum.Enum):
 
 def _load_data_from_cache(
     cache_dir: str,
-    split: INaturalistSplit) -> Tuple[ClientData, tf.data.Dataset]:
+    split: INaturalistSplit) -> tuple[ClientData, tf.data.Dataset]:
   """Load train and test data from the TFRecord files.
 
   Args:
@@ -73,7 +70,7 @@ def _load_data_from_cache(
                                     LOGGER)
 
 
-def _generate_image_map(image_dir: str) -> Dict[str, str]:
+def _generate_image_map(image_dir: str) -> dict[str, str]:
   """Create an dictionary with key as image id, value as path to the image file.
 
   Args:
@@ -93,8 +90,8 @@ def _generate_image_map(image_dir: str) -> Dict[str, str]:
 
 
 def _create_dataset_with_mapping(
-    image_path_map: Dict[str, str],
-    image_class_list: List[Dict[str, str]]) -> List[tf.train.Example]:
+    image_path_map: dict[str, str],
+    image_class_list: list[dict[str, str]]) -> list[tf.train.Example]:
   """Builds a dataset based on the mapping file and the images in the image dir.
 
   Args:
@@ -119,7 +116,7 @@ def _create_dataset_with_mapping(
   return examples
 
 
-def _create_train_data_files(image_path_map: Dict[str, str], cache_dir: str,
+def _create_train_data_files(image_path_map: dict[str, str], cache_dir: str,
                              split: INaturalistSplit, train_path: str):
   """Create the train data and persist it into a separate file per user.
 
@@ -158,7 +155,7 @@ def _create_train_data_files(image_path_map: Dict[str, str], cache_dir: str,
                   user_id, len(examples), cache_dir)
 
 
-def _create_test_data_file(image_path_map: Dict[str, str], cache_dir: str,
+def _create_test_data_file(image_path_map: dict[str, str], cache_dir: str,
                            split: INaturalistSplit, mapping_file: str):
   """Create the test data and persist it into a file.
 
@@ -187,7 +184,7 @@ def _create_test_data_file(image_path_map: Dict[str, str], cache_dir: str,
 
 def _generate_data_from_image_dir(
     image_dir: str, cache_dir: str,
-    split: INaturalistSplit) -> Tuple[ClientData, tf.data.Dataset]:
+    split: INaturalistSplit) -> tuple[ClientData, tf.data.Dataset]:
   """Generate dataset from the images.
 
   Args:
@@ -223,7 +220,7 @@ def load_data(
     image_dir: str = 'images',
     cache_dir: str = 'cache',
     split: INaturalistSplit = INaturalistSplit.USER_120K
-) -> Tuple[ClientData, tf.data.Dataset]:
+) -> tuple[ClientData, tf.data.Dataset]:
   """Loads a federated version of the iNaturalist 2017 dataset.
 
   If the dataset is loaded for the first time, the images for the entire

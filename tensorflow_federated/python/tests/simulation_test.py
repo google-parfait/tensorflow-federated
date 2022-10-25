@@ -13,7 +13,7 @@
 # limitations under the License.
 """End-to-end tests for simulations using TFF."""
 
-from typing import Callable, List
+from typing import Callable
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -48,7 +48,7 @@ class FederatedTasksTest(tf.test.TestCase, parameterized.TestCase):
 
     process = learning_process_builder(baseline_task.model_fn)
 
-    def client_selection_fn(round_num: int) -> List[tf.data.Dataset]:
+    def client_selection_fn(round_num: int) -> list[tf.data.Dataset]:
       del round_num
       return baseline_task.datasets.sample_train_clients(num_clients=1)
 

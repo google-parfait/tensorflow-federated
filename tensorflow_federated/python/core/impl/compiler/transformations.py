@@ -23,7 +23,6 @@ an AST either pointwise or serially.
 """
 
 import collections
-from typing import Dict, List, Set, Tuple
 
 import attr
 
@@ -192,15 +191,15 @@ def to_call_dominant(
   return comp
 
 
-_NamedBinding = Tuple[str, building_blocks.ComputationBuildingBlock]
+_NamedBinding = tuple[str, building_blocks.ComputationBuildingBlock]
 
 
 @attr.s
 class _IntrinsicDependencies:
-  uri_to_locals: Dict[str, List[_NamedBinding]] = attr.ib(
+  uri_to_locals: dict[str, list[_NamedBinding]] = attr.ib(
       factory=lambda: collections.defaultdict(list))
-  locals_dependent_on_intrinsics: List[_NamedBinding] = attr.ib(factory=list)
-  locals_not_dependent_on_intrinsics: List[_NamedBinding] = attr.ib(
+  locals_dependent_on_intrinsics: list[_NamedBinding] = attr.ib(factory=list)
+  locals_not_dependent_on_intrinsics: list[_NamedBinding] = attr.ib(
       factory=list)
 
 
@@ -209,14 +208,14 @@ class _NonAlignableAlongIntrinsicError(ValueError):
 
 
 def _compute_intrinsic_dependencies(
-    intrinsic_uris: Set[str],
+    intrinsic_uris: set[str],
     parameter_name: str,
-    locals_list: List[_NamedBinding],
+    locals_list: list[_NamedBinding],
     comp_repr,
 ) -> _IntrinsicDependencies:
   """Computes which locals have dependencies on which called intrinsics."""
   result = _IntrinsicDependencies()
-  intrinsic_dependencies_for_ref: Dict[str, Set[str]] = {}
+  intrinsic_dependencies_for_ref: dict[str, set[str]] = {}
   # Start by marking `comp.parameter_name` as independent of intrinsics.
   intrinsic_dependencies_for_ref[parameter_name] = set()
   for local_name, local_value in locals_list:
@@ -277,14 +276,14 @@ class _MergedIntrinsic:
   uri: str = attr.ib()
   args: building_blocks.ComputationBuildingBlock = attr.ib()
   return_type: computation_types.Type = attr.ib()
-  unpack_to_locals: List[str] = attr.ib()
+  unpack_to_locals: list[str] = attr.ib()
 
 
 def _compute_merged_intrinsics(
-    intrinsic_defaults: List[building_blocks.Call],
-    uri_to_locals: Dict[str, List[_NamedBinding]],
+    intrinsic_defaults: list[building_blocks.Call],
+    uri_to_locals: dict[str, list[_NamedBinding]],
     name_generator,
-) -> List[_MergedIntrinsic]:
+) -> list[_MergedIntrinsic]:
   """Computes a `_MergedIntrinsic` for each intrinsic in `intrinsic_defaults`.
 
   Args:
@@ -345,7 +344,7 @@ def _compute_merged_intrinsics(
 
 def _merge_args(
     abstract_parameter_type,
-    args: List[building_blocks.ComputationBuildingBlock],
+    args: list[building_blocks.ComputationBuildingBlock],
     name_generator,
 ) -> building_blocks.ComputationBuildingBlock:
   """Merges the arguments of multiple function invocations into one.
@@ -443,8 +442,8 @@ def _merge_args(
 
 def force_align_and_split_by_intrinsics(
     comp: building_blocks.Lambda,
-    intrinsic_defaults: List[building_blocks.Call],
-) -> Tuple[building_blocks.Lambda, building_blocks.Lambda]:
+    intrinsic_defaults: list[building_blocks.Call],
+) -> tuple[building_blocks.Lambda, building_blocks.Lambda]:
   """Divides `comp` into before-and-after of calls to one ore more intrinsics.
 
   The input computation `comp` must have the following properties:

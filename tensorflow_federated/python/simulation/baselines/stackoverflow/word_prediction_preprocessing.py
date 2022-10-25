@@ -13,7 +13,7 @@
 # limitations under the License.
 """Preprocessing library for Stack Overflow next-word prediction tasks."""
 
-from typing import Callable, List, Tuple
+from typing import Callable
 
 import attr
 import tensorflow as tf
@@ -41,7 +41,7 @@ class SpecialTokens:
     return 3 + len(self.out_of_vocab)
 
 
-def split_input_target(chunk: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+def split_input_target(chunk: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
   """Generate input and target data.
 
   The task of language model is to predict the next word.
@@ -58,7 +58,7 @@ def split_input_target(chunk: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
 
 
 def build_to_ids_fn(
-    vocab: List[str],
+    vocab: list[str],
     max_sequence_length: int,
     num_out_of_vocab_buckets: int = 1) -> Callable[[tf.Tensor], tf.Tensor]:
   """Constructs function mapping examples to sequences of token indices."""
@@ -107,7 +107,7 @@ def get_special_tokens(vocab_size: int,
 
 def create_preprocess_fn(
     preprocess_spec: client_spec.ClientSpec,
-    vocab: List[str],
+    vocab: list[str],
     sequence_length: int = constants.DEFAULT_SEQUENCE_LENGTH,
     num_out_of_vocab_buckets: int = 1,
     num_parallel_calls: int = tf.data.experimental.AUTOTUNE

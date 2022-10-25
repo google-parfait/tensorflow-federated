@@ -19,8 +19,9 @@
 """Factory for aggregations parameterized by TensorFlow Privacy DPQueries."""
 
 import collections
+from collections.abc import Collection
 import typing
-from typing import Collection, Optional, Tuple
+from typing import Optional
 import warnings
 from absl import logging
 
@@ -42,7 +43,7 @@ from tensorflow_federated.python.core.templates import measured_process
 def adaptive_clip_noise_params(
     noise_multiplier: float,
     expected_clients_per_round: float,
-    clipped_count_stddev: Optional[float] = None) -> Tuple[float, float]:
+    clipped_count_stddev: Optional[float] = None) -> tuple[float, float]:
   """Computes noising parameters for the adaptive L2 clipping procedure.
 
   The adaptive clipping method (described in https://arxiv.org/abs/1905.03871)

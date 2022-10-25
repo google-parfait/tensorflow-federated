@@ -19,9 +19,10 @@
 """Execution context for single-aggregation computations."""
 
 import asyncio
+from collections.abc import Sequence
 import functools
 import math
-from typing import Any, Awaitable, Callable, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Awaitable, Callable, Optional, TypeVar, Union
 
 import attr
 from tensorflow_federated.python.common_libs import async_utils
@@ -269,7 +270,7 @@ def _partition_value(
 
 
 def _split_value_into_subrounds(value: Value, type_spec: computation_types.Type,
-                                num_desired_subrounds: int) -> List[Value]:
+                                num_desired_subrounds: int) -> list[Value]:
   """Partitions clients-placed values to subrounds, replicating other values.
 
   This function should be applied to an argument of a computation which is
@@ -330,7 +331,7 @@ def _split_value_into_subrounds(value: Value, type_spec: computation_types.Type,
 
 
 def _repackage_partitioned_values(
-    after_merge_results: Union[List[Value], Tuple[Value, ...]],
+    after_merge_results: Union[list[Value], tuple[Value, ...]],
     result_type_spec: computation_types.Type) -> Value:
   """Inverts `_split_value_into_subrounds` above."""
   py_typecheck.check_type(after_merge_results, (tuple, list))

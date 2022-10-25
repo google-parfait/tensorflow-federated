@@ -22,7 +22,7 @@ Note: Refer to `get_computation_for_map_reduce_form()` for the meaning of
 variable names used in this module.
 """
 
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Optional
 
 import tensorflow as tf
 
@@ -266,7 +266,7 @@ def check_computation_compatible_with_map_reduce_form(
     comp: computation_base.Computation,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
-) -> Tuple[building_blocks.ComputationBuildingBlock,
+) -> tuple[building_blocks.ComputationBuildingBlock,
            building_blocks.ComputationBuildingBlock]:
   """Tests compatibility with `tff.backends.mapreduce.MapReduceForm`.
 
@@ -410,7 +410,7 @@ def _construct_selection_from_federated_tuple(
 def _replace_selections(
     bb: building_blocks.ComputationBuildingBlock,
     ref_name: str,
-    path_to_replacement: Dict[Tuple[int, ...],
+    path_to_replacement: dict[tuple[int, ...],
                               building_blocks.ComputationBuildingBlock],
 ) -> building_blocks.ComputationBuildingBlock:
   """Identifies selection pattern and replaces with new binding.

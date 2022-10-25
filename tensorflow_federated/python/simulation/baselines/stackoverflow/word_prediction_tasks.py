@@ -13,7 +13,7 @@
 # limitations under the License.
 """Library for creating word prediction tasks on Stack Overflow."""
 
-from typing import List, Optional
+from typing import Optional
 
 import tensorflow as tf
 
@@ -34,7 +34,7 @@ def create_word_prediction_task_from_datasets(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec],
     sequence_length: int,
-    vocab: List[str],
+    vocab: list[str],
     num_out_of_vocab_buckets: int,
     train_data: client_data.ClientData,
     test_data: client_data.ClientData,

@@ -17,7 +17,7 @@ For architectural details, see the original paper,
 https://arxiv.org/abs/1801.04381.
 """
 import math
-from typing import Optional, Tuple
+from typing import Optional
 
 import tensorflow as tf
 
@@ -57,9 +57,9 @@ def _make_divisible(value: float, divisor: int) -> int:
 
 
 def compute_pad(
-    image_shape: Tuple[int, int],
+    image_shape: tuple[int, int],
     kernel_size: int,
-    enforce_odd: bool = True) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+    enforce_odd: bool = True) -> tuple[tuple[int, int], tuple[int, int]]:
   """Computes a padding length for a given image shape and kernel.
 
   Args:
@@ -225,7 +225,7 @@ def _validate_input_args(input_shape, alpha, pooling, num_groups, dropout_prob,
             num_classes))
 
 
-def create_mobilenet_v2(input_shape: Tuple[int, int, int],
+def create_mobilenet_v2(input_shape: tuple[int, int, int],
                         alpha: float = 1.0,
                         pooling: str = 'avg',
                         num_groups: int = 2,

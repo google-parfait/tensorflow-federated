@@ -13,9 +13,8 @@
 # limitations under the License.
 """Writes out a GraphDef which performs a reduce over a structural dataset."""
 
+from collections.abc import Sequence
 import operator
-from typing import Sequence
-
 from absl import app
 from absl import flags
 import tensorflow as tf

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple
 from unittest import mock
 
 from absl.testing import parameterized
@@ -73,7 +72,7 @@ class HierarchicalHistogramTest(tf.test.TestCase, parameterized.TestCase):
       expected_clients_per_round: int = 10,
       bits: int = 22,
       enable_secure_sum: bool = False,
-  ) -> Tuple[tf.RaggedTensor, tf.RaggedTensor]:
+  ) -> tuple[tf.RaggedTensor, tf.RaggedTensor]:
     """Runs the Hierarchical Histogram computation and returns the results.
 
     Runs the computation with both `build_hierarchical_histogram_computation`

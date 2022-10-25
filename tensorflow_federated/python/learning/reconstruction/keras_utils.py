@@ -19,7 +19,8 @@
 """Utilities for constructing reconstruction models from Keras models."""
 
 import collections
-from typing import Any, Iterable, List, OrderedDict
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 import tensorflow as tf
 
@@ -172,7 +173,7 @@ class _KerasModel(model_lib.Model):
   def forward_pass(self, batch_input, training=True):
     if hasattr(batch_input, '_asdict'):
       batch_input = batch_input._asdict()
-    if isinstance(batch_input, collections.abc.Mapping):
+    if isinstance(batch_input, Mapping):
       inputs = batch_input.get('x')
     else:
       inputs = batch_input[0]
@@ -181,7 +182,7 @@ class _KerasModel(model_lib.Model):
                      'Instead have keys {}'.format(list(batch_input.keys())))
     predictions = self._keras_model(inputs, training=training)
 
-    if isinstance(batch_input, collections.abc.Mapping):
+    if isinstance(batch_input, Mapping):
       y_true = batch_input.get('y')
     else:
       y_true = batch_input[1]
@@ -222,7 +223,8 @@ class MeanLossMetric(tf.keras.metrics.Mean):
 
 
 def read_metric_variables(
-    metrics: List[tf.keras.metrics.Metric]) -> OrderedDict[str, Any]:
+    metrics: list[tf.keras.metrics.Metric]
+) -> collections.OrderedDict[str, Any]:
   """Reads values from Keras metric variables."""
   metric_variables = collections.OrderedDict()
   for metric in metrics:
@@ -233,7 +235,7 @@ def read_metric_variables(
 # TODO(b/219753531): Revisit the `federated_output_computation` when rewriting
 # the FedRecon to use the new composable APIs.
 def federated_output_computation_from_metrics(
-    metrics: List[tf.keras.metrics.Metric]
+    metrics: list[tf.keras.metrics.Metric]
 ) -> federated_computation.federated_computation:
   """Produces a federated computation for aggregating Keras metrics.
 

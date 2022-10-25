@@ -14,8 +14,9 @@
 """Utilities for prefetching federated data."""
 
 import asyncio
+from collections.abc import Mapping
 import threading
-from typing import Any, Awaitable, Callable, List, Mapping, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
@@ -285,7 +286,7 @@ class PrefetchingDataSource(data_source_lib.FederatedDataSource):
     return self._data_source.federated_type
 
   @property
-  def capabilities(self) -> List[data_source_lib.Capability]:
+  def capabilities(self) -> list[data_source_lib.Capability]:
     """The list of capabilities supported by this data source."""
     return self._data_source.capabilities
 

@@ -14,7 +14,7 @@
 """Classes for loading and preprocessing data for federated baseline tasks."""
 
 import collections
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -187,7 +187,7 @@ class BaselineTaskDatasets:
       self,
       num_clients: int,
       replace: bool = False,
-      random_seed: Optional[int] = None) -> List[tf.data.Dataset]:
+      random_seed: Optional[int] = None) -> list[tf.data.Dataset]:
     """Samples training clients uniformly at random.
 
     Args:

@@ -46,8 +46,9 @@ bazel run //tensorflow_federated/examples/program:program -- \
 """
 
 import asyncio
+from collections.abc import Sequence
 import os.path
-from typing import Sequence, Tuple, Union
+from typing import Union
 
 from absl import app
 from absl import flags
@@ -63,7 +64,7 @@ _TOTAL_ROUNDS = 10
 _NUM_CLIENTS = 1
 
 
-def _filter_metrics(path: Tuple[Union[str, int], ...]) -> bool:
+def _filter_metrics(path: tuple[Union[str, int], ...]) -> bool:
   if path == (computations.METRICS_TOTAL_SUM,):
     return True
   else:

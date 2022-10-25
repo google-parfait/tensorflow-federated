@@ -13,7 +13,7 @@
 # limitations under the License.
 """Expands ClientData by performing transformations."""
 
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Optional
 
 import tensorflow as tf
 
@@ -37,7 +37,7 @@ class TransformingClientData(client_data.ClientData):
   def __init__(self,
                base_client_data: client_data.ClientData,
                make_transform_fn: Callable[[str], Callable[[Any], Any]],
-               expand_client_id: Optional[Callable[[str], List[str]]] = None,
+               expand_client_id: Optional[Callable[[str], list[str]]] = None,
                reduce_client_id: Optional[Callable[[str], str]] = None):
     """Initializes the TransformingClientData.
 
@@ -87,7 +87,7 @@ class TransformingClientData(client_data.ClientData):
     self._element_type_structure = example_dataset.element_spec
 
   @property
-  def client_ids(self) -> List[str]:
+  def client_ids(self) -> list[str]:
     return self._client_ids
 
   def _create_dataset(self, client_id: str) -> tf.data.Dataset:

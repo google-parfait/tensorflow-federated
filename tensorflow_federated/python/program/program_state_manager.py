@@ -14,7 +14,7 @@
 """Utilities for saving and loading program state in a federated program."""
 
 import abc
-from typing import Any, List, Optional, Tuple
+from typing import Any, Optional
 
 
 class ProgramStateManagerStateAlreadyExistsError(Exception):
@@ -38,7 +38,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
   """
 
   @abc.abstractmethod
-  async def get_versions(self) -> Optional[List[int]]:
+  async def get_versions(self) -> Optional[list[int]]:
     """Returns a list of saved versions or `None`.
 
     Returns:
@@ -64,7 +64,7 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     """
     raise NotImplementedError
 
-  async def load_latest(self, structure: Any) -> Tuple[Any, int]:
+  async def load_latest(self, structure: Any) -> tuple[Any, int]:
     """Returns the latest saved program state and version or (`None`, 0).
 
     Args:

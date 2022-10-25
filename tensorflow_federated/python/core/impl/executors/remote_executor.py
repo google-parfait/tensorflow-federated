@@ -18,7 +18,7 @@
 # information.
 """A local proxy for a remote executor service hosted on a separate machine."""
 
-from typing import Mapping
+from collections.abc import Mapping
 import weakref
 
 from absl import logging

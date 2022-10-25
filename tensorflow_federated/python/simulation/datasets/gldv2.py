@@ -22,7 +22,6 @@ import shutil
 import sys
 import tempfile
 import traceback
-from typing import Dict, List, Set, Tuple
 
 import tensorflow as tf
 
@@ -83,7 +82,7 @@ def _listener_process(queue: multiprocessing.Queue, log_file: str):
 
 
 def _create_dataset_with_mapping(
-    image_dir: str, mapping: List[Dict[str, str]]) -> List[tf.train.Example]:
+    image_dir: str, mapping: list[dict[str, str]]) -> list[tf.train.Example]:
   """Builds a dataset based on the mapping file and the images in the image dir.
 
   Args:
@@ -174,7 +173,7 @@ def _create_test_data_file(cache_dir: str, image_dir: str, mapping_file: str):
 
 def _create_federated_gld_dataset(
     cache_dir: str, image_dir: str, train_mapping_file: str,
-    test_mapping_file: str) -> Tuple[ClientData, tf.data.Dataset]:
+    test_mapping_file: str) -> tuple[ClientData, tf.data.Dataset]:
   """Generate fedreated GLDv2 dataset with the downloaded images.
 
   Args:
@@ -203,7 +202,7 @@ def _create_federated_gld_dataset(
 
 
 def _create_mini_gld_dataset(
-    cache_dir: str, image_dir: str) -> Tuple[ClientData, tf.data.Dataset]:
+    cache_dir: str, image_dir: str) -> tuple[ClientData, tf.data.Dataset]:
   """Generate mini federated GLDv2 dataset with the downloaded images.
 
   Args:
@@ -240,7 +239,7 @@ def _create_mini_gld_dataset(
       logger_tag=LOGGER)
 
 
-def _filter_images(shard: int, all_images: Set[str], image_dir: str,
+def _filter_images(shard: int, all_images: set[str], image_dir: str,
                    base_url: str):
   """Download full GLDv2 dataset, only keep images that are included in the federated gld v2 dataset.
 
@@ -294,7 +293,7 @@ def _filter_images(shard: int, all_images: Set[str], image_dir: str,
 
 def _download_data(
     num_worker: int, cache_dir: str, base_url: str
-) -> Tuple[ClientData, tf.data.Dataset, ClientData, tf.data.Dataset]:
+) -> tuple[ClientData, tf.data.Dataset, ClientData, tf.data.Dataset]:
   """Create a `tff.simulation.datasets.ClientData` for the chosen data split.
 
   Download the entire GLD v2 dataset, subset the dataset to only include the

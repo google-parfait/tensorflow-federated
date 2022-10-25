@@ -49,7 +49,7 @@
 """
 
 import asyncio
-from typing import Any, List
+from typing import Any
 
 import tensorflow as tf
 
@@ -153,7 +153,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
   @classmethod
   def factory(cls,
               server_executor: executor_base.Executor,
-              target_executors: List[executor_base.Executor],
+              target_executors: list[executor_base.Executor],
               local_computation_factory: local_computation_factory_base
               .LocalComputationFactory = tensorflow_computation_factory
               .TensorFlowComputationFactory()):
@@ -168,7 +168,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
   def __init__(self,
                executor: federating_executor.FederatingExecutor,
                server_executor: executor_base.Executor,
-               target_executors: List[executor_base.Executor],
+               target_executors: list[executor_base.Executor],
                local_computation_factory: local_computation_factory_base
                .LocalComputationFactory = tensorflow_computation_factory
                .TensorFlowComputationFactory()):

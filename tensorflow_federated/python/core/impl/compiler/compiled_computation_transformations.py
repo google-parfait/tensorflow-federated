@@ -19,7 +19,6 @@
 """A library of transformations for compiled computations."""
 
 import ctypes
-from typing import FrozenSet, Tuple
 
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -171,7 +170,7 @@ class VerifyAllowedOps(transformation_utils.TransformSpec):
   the computations on which it is called.
   """
 
-  def __init__(self, allowed_op_names: FrozenSet[str]):
+  def __init__(self, allowed_op_names: frozenset[str]):
     self._allowed_op_names = allowed_op_names
 
   def should_transform(self,
@@ -181,7 +180,7 @@ class VerifyAllowedOps(transformation_utils.TransformSpec):
 
   def transform(
       self, comp: building_blocks.ComputationBuildingBlock
-  ) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+  ) -> tuple[building_blocks.ComputationBuildingBlock, bool]:
     if not self.should_transform(comp):
       return comp, False
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
@@ -192,8 +191,8 @@ class VerifyAllowedOps(transformation_utils.TransformSpec):
 
 def check_allowed_ops(
     comp: building_blocks.ComputationBuildingBlock,
-    allowed_op_names: FrozenSet[str]
-) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+    allowed_op_names: frozenset[str]
+) -> tuple[building_blocks.ComputationBuildingBlock, bool]:
   """Checks any Tensorflow computation contains only allowed ops."""
   transform_spec = VerifyAllowedOps(allowed_op_names)
   return transformation_utils.transform_postorder(comp,
@@ -212,7 +211,7 @@ class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
   the computations on which it is called.
   """
 
-  def __init__(self, disallowed_op_names: FrozenSet[str]):
+  def __init__(self, disallowed_op_names: frozenset[str]):
     self._disallowed_op_names = disallowed_op_names
 
   def should_transform(self,
@@ -222,7 +221,7 @@ class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
 
   def transform(
       self, comp: building_blocks.ComputationBuildingBlock
-  ) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+  ) -> tuple[building_blocks.ComputationBuildingBlock, bool]:
     if not self.should_transform(comp):
       return comp, False
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
@@ -233,8 +232,8 @@ class RaiseOnDisallowedOp(transformation_utils.TransformSpec):
 
 def check_disallowed_ops(
     comp: building_blocks.ComputationBuildingBlock,
-    disallowed_op_names: FrozenSet[str]
-) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+    disallowed_op_names: frozenset[str]
+) -> tuple[building_blocks.ComputationBuildingBlock, bool]:
   """Raises error on disallowed ops in any Tensorflow computation."""
   transform_spec = RaiseOnDisallowedOp(disallowed_op_names)
   return transformation_utils.transform_postorder(comp,

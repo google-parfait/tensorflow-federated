@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Custom exceptions and symbols for TFF executors."""
-from typing import Any, Set
+from typing import Any
 
 import grpc
 
@@ -45,7 +45,7 @@ class CardinalityError(Exception):
   """Raised when a value in a stack does not match the stack's cardinality."""
 
 
-def get_grpc_retryable_error_codes() -> Set[grpc.StatusCode]:
+def get_grpc_retryable_error_codes() -> set[grpc.StatusCode]:
   """Returns gRPC retryable error codes."""
   return set([
       grpc.StatusCode.UNAVAILABLE,

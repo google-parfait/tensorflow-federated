@@ -22,12 +22,13 @@ means that this library:
 
 import asyncio
 import collections
+from collections.abc import Iterable, Mapping, Sequence
 import csv
 import enum
 import os
 import os.path
 import random
-from typing import Any, Dict, Iterable, List, Mapping, Tuple, Sequence, Union
+from typing import Any, Union
 
 import numpy as np
 import tensorflow as tf
@@ -139,7 +140,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
       self._write_values([self._key_fieldname], [])
       self._latest_key = None
 
-  def _read_values(self) -> Tuple[List[str], List[Dict[str, Any]]]:
+  def _read_values(self) -> tuple[list[str], list[dict[str, Any]]]:
     """Returns a tuple of fieldnames and values from the managed CSV."""
     with tf.io.gfile.GFile(self._file_path, 'r') as file:
       reader = csv.DictReader(file)
@@ -153,14 +154,14 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
   def _write_values(self, fieldnames: Sequence[str],
                     values: Iterable[Mapping[str, Any]]) -> None:
     """Writes `fieldnames` and `values` to the managed CSV."""
-    py_typecheck.check_type(fieldnames, collections.abc.Sequence)
+    py_typecheck.check_type(fieldnames, Sequence)
     if isinstance(fieldnames, str):
       raise TypeError('Expected `Sequence` of `str`, found `str`')
     for fieldname in fieldnames:
       py_typecheck.check_type(fieldname, str)
-    py_typecheck.check_type(values, collections.abc.Iterable)
+    py_typecheck.check_type(values, Iterable)
     for value in values:
-      py_typecheck.check_type(value, collections.abc.Mapping)
+      py_typecheck.check_type(value, Mapping)
       for key in value.keys():
         py_typecheck.check_type(key, str)
 
@@ -182,7 +183,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
 
   async def _write_value(self, value: Mapping[str, Any]) -> None:
     """Writes `value` to the managed CSV."""
-    py_typecheck.check_type(value, collections.abc.Mapping)
+    py_typecheck.check_type(value, Mapping)
     for key in value.keys():
       py_typecheck.check_type(key, str)
 
@@ -194,11 +195,11 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
 
   async def _append_value(self, value: Mapping[str, Any]) -> None:
     """Appends `value` to the managed CSV."""
-    py_typecheck.check_type(value, collections.abc.Mapping)
+    py_typecheck.check_type(value, Mapping)
     for key in value.keys():
       py_typecheck.check_type(key, str)
 
-    def _read_fieldnames_only() -> List[Any]:
+    def _read_fieldnames_only() -> list[Any]:
       with tf.io.gfile.GFile(self._file_path, 'r') as file:
         reader = csv.DictReader(file)
         if reader.fieldnames is not None:

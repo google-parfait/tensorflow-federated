@@ -15,7 +15,7 @@
 
 import abc
 import enum
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from tensorflow_federated.python.core.impl.types import computation_types
 
@@ -132,7 +132,7 @@ class FederatedDataSource(metaclass=abc.ABCMeta):
 
   @property
   @abc.abstractmethod
-  def capabilities(self) -> List[Capability]:
+  def capabilities(self) -> list[Capability]:
     """The list of capabilities supported by this data source."""
     raise NotImplementedError
 

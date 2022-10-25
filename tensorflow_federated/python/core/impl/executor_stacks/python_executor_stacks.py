@@ -18,9 +18,10 @@
 # information.
 """A collection of constructors for basic types of executor stacks."""
 
+from collections.abc import Sequence
 from concurrent import futures
 import math
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Optional, Union
 import warnings
 
 from absl import logging
@@ -144,10 +145,10 @@ class SizeInfo:
     `aggregate_bits`: A list of shape [number_of_execs] representing the
       number of aggregated bits passed through each executor.
   """
-  broadcast_history: Dict[Any, sizing_executor.SizeAndDTypes]
-  aggregate_history: Dict[Any, sizing_executor.SizeAndDTypes]
-  broadcast_bits: List[int]
-  aggregate_bits: List[int]
+  broadcast_history: dict[Any, sizing_executor.SizeAndDTypes]
+  aggregate_history: dict[Any, sizing_executor.SizeAndDTypes]
+  broadcast_bits: list[int]
+  aggregate_bits: list[int]
 
 
 class SizingExecutorFactory(ResourceManagingExecutorFactory):
@@ -156,8 +157,8 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
   def __init__(
       self,
       executor_stack_fn: Callable[[executor_factory.CardinalitiesType],
-                                  Tuple[executor_base.Executor,
-                                        List[sizing_executor.SizingExecutor]]]):
+                                  tuple[executor_base.Executor,
+                                        list[sizing_executor.SizingExecutor]]]):
     """Initializes `SizingExecutorFactory`.
 
     Args:
@@ -202,7 +203,7 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
     """
     size_ex_dict = self._sizing_executors
 
-    def _extract_history(sizing_exs: List[sizing_executor.SizingExecutor]):
+    def _extract_history(sizing_exs: list[sizing_executor.SizingExecutor]):
       broadcast_history, aggregate_history = [], []
       for ex in sizing_exs:
         broadcast_history.extend(ex.broadcast_history)
@@ -390,7 +391,7 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
     self._local_computation_factory = local_computation_factory
 
   @property
-  def sizing_executors(self) -> List[sizing_executor.SizingExecutor]:
+  def sizing_executors(self) -> list[sizing_executor.SizingExecutor]:
     if not self._use_sizing:
       raise ValueError('This federated factory is not configured to produce '
                        'size information. Construct a new federated factory, '
@@ -448,7 +449,7 @@ def create_minimal_length_flat_stack_fn(
     max_clients_per_stack: int,
     federated_stack_factory: executor_factory.ExecutorFactory
 ) -> Callable[[executor_factory.CardinalitiesType],
-              List[executor_base.Executor]]:
+              list[executor_base.Executor]]:
   """Creates a function returning a list of executors to run `cardinalities`.
 
   This list is of minimal length among all lists subject to the constraint that
@@ -473,7 +474,7 @@ def create_minimal_length_flat_stack_fn(
 
   def create_executor_list(
       cardinalities: executor_factory.CardinalitiesType
-  ) -> List[executor_base.Executor]:
+  ) -> list[executor_base.Executor]:
     num_clients = cardinalities.get(placements.CLIENTS, 0)
     if num_clients < 0:
       raise ValueError('Number of clients cannot be negative.')
@@ -933,7 +934,7 @@ def _configure_remote_workers(default_num_clients, stubs, thread_pool_executor,
 
 
 def remote_executor_factory(
-    channels: List[grpc.Channel],
+    channels: list[grpc.Channel],
     thread_pool_executor: Optional[futures.Executor] = None,
     dispose_batch_size: int = 20,
     max_fanout: int = 100,
@@ -985,7 +986,7 @@ def remote_executor_factory(
 
 
 def remote_executor_factory_from_stubs(
-    stubs: List[Union[remote_executor_grpc_stub.RemoteExecutorGrpcStub,
+    stubs: list[Union[remote_executor_grpc_stub.RemoteExecutorGrpcStub,
                       remote_executor_stub.RemoteExecutorStub]],
     thread_pool_executor: Optional[futures.Executor] = None,
     dispose_batch_size: int = 20,

@@ -14,7 +14,7 @@
 
 import collections
 import itertools
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -40,8 +40,8 @@ DATA = [
 ]
 
 
-def _iblt_test_data_sampler(data: List[List[str]],
-                            batch_size: int = 1) -> List[tf.data.Dataset]:
+def _iblt_test_data_sampler(data: list[list[str]],
+                            batch_size: int = 1) -> list[tf.data.Dataset]:
   """Returns a deterministic batched sample.
 
   Args:
@@ -69,7 +69,7 @@ class SamplePostProcessor:
 
 
 def _execute_computation(
-    data: List[List[str]],
+    data: list[list[str]],
     *,
     batch_size: int = 1,
     capacity: int = 1000,
@@ -82,7 +82,7 @@ def _execute_computation(
     secure_sum_bitwidth: Optional[int] = None,
     multi_contribution: bool = True,
     string_postprocessor: Optional[Callable[[tf.Tensor], tf.Tensor]] = None
-) -> Tuple[Dict[str, tf.Tensor], tf.Tensor, tf.Tensor]:
+) -> tuple[dict[str, tf.Tensor], tf.Tensor, tf.Tensor]:
   """Executes one round of IBLT computation over the given datasets.
 
   Args:

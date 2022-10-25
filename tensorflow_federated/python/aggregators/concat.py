@@ -19,7 +19,6 @@
 """Factory for concatenation of input to a single tensor."""
 
 import functools
-from typing import Tuple
 
 import tensorflow as tf
 
@@ -76,7 +75,7 @@ def _next_fn_impl(state,
 
 def create_concat_fns(
     value_type: factory.ValueType
-) -> Tuple[computation_base.Computation, computation_base.Computation]:
+) -> tuple[computation_base.Computation, computation_base.Computation]:
   """Creates the forward and backward flattening/concatenation functions."""
   # As the factory alters the tensor specs, we compute the Python structure
   # of the types for the unconcat procedure.

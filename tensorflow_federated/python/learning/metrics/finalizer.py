@@ -20,7 +20,7 @@
 
 import inspect
 
-from typing import Any, Callable, List, Union
+from typing import Any, Callable, Union
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -29,7 +29,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 # in the unfinalized values of this Keras metric (i.e., the tensor values of the
 # variables in `keras_metric.variables`), and returns the value of
 # `keras_metric.result()`.
-KerasMetricFinalizer = Callable[[List[tf.Tensor]], Any]
+KerasMetricFinalizer = Callable[[list[tf.Tensor]], Any]
 
 
 # TODO(b/197746608): removes the code path that takes in a constructed Keras
@@ -55,7 +55,7 @@ def create_keras_metric_finalizer(
   """
 
   @tf.function
-  def finalizer(unfinalized_metric_values: List[tf.Tensor]):
+  def finalizer(unfinalized_metric_values: list[tf.Tensor]):
 
     # Construct a new keras metirc here, which is necessary because this
     # `tf.function` may be invoked in a different context as the `model_fn`, and

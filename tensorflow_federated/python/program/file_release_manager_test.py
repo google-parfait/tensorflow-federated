@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import collections
+from collections.abc import Iterable, Mapping, Sequence
 import csv
 import os
 import os.path
 import shutil
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple, Union
+from typing import Any, Union
 import unittest
 from unittest import mock
 
@@ -35,7 +36,7 @@ from tensorflow_federated.python.program import program_test_utils
 
 def _read_values_from_csv(
     file_path: Union[str, os.PathLike[str]]
-) -> Tuple[List[str], List[Dict[str, Any]]]:
+) -> tuple[list[str], list[dict[str, Any]]]:
   with tf.io.gfile.GFile(file_path, 'r') as file:
     reader = csv.DictReader(file)
     fieldnames = list(reader.fieldnames)

@@ -20,8 +20,9 @@
 
 import abc
 import collections
+from collections.abc import Sequence
 import typing
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import attr
 import numpy as np
@@ -131,8 +132,8 @@ class ServerState:
 
 def state_with_new_model_weights(
     server_state: ServerState,
-    trainable_weights: List[np.ndarray],
-    non_trainable_weights: List[np.ndarray],
+    trainable_weights: list[np.ndarray],
+    non_trainable_weights: list[np.ndarray],
 ) -> ServerState:
   """Returns a `ServerState` with updated model weights.
 
@@ -179,8 +180,7 @@ def state_with_new_model_weights(
         raise TypeError('Element is not the same tensor type. old '
                         f'({old_value.dtype}, {old_value.shape}) != '
                         f'new ({new_value.dtype}, {new_value.shape})')
-    elif (isinstance(new_value, collections.abc.Sequence) and
-          isinstance(old_value, collections.abc.Sequence)):
+    elif (isinstance(new_value, Sequence) and isinstance(old_value, Sequence)):
       if len(old_value) != len(new_value):
         raise TypeError('Model weights have different lengths: '
                         f'(old) {len(old_value)} != (new) {len(new_value)})\n'
@@ -588,7 +588,7 @@ def build_model_delta_optimizer_process(
 
   @tensorflow_computation.tf_computation
   def model_and_optimizer_init_fn(
-  ) -> Tuple[model_weights_lib.ModelWeights, List[tf.Variable]]:
+  ) -> tuple[model_weights_lib.ModelWeights, list[tf.Variable]]:
     """Returns initial model weights and state of the global optimizer."""
     model_variables = model_weights_lib.ModelWeights.from_model(model_fn())
     optimizer = keras_optimizer.build_or_verify_tff_optimizer(

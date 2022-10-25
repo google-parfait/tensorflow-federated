@@ -19,9 +19,10 @@
 """Utilities for interacting with and manipulating TensorFlow graphs."""
 
 import collections
+from collections.abc import Iterable, Mapping
 import itertools
 import typing
-from typing import Any, Iterable, Optional, Tuple, Type
+from typing import Any, Optional, Type
 
 import numpy as np
 import tensorflow as tf
@@ -178,7 +179,7 @@ class UnsupportedGraphResultError(InvalidGraphResultError):
 def capture_result_from_graph(
     result: Any,
     graph: tf.Graph,
-) -> Tuple[computation_types.Type, pb.TensorFlow.Binding]:
+) -> tuple[computation_types.Type, pb.TensorFlow.Binding]:
   """Captures a result stamped into a tf.Graph as a type signature and binding.
 
   Args:
@@ -203,10 +204,10 @@ def capture_result_from_graph(
   """
 
   def _get_bindings_for_elements(
-      name_value_pairs: Iterable[Tuple[str, Any]],
+      name_value_pairs: Iterable[tuple[str, Any]],
       graph: tf.Graph,
       container_type: Optional[Type[Any]],
-  ) -> Tuple[computation_types.Type, pb.TensorFlow.Binding]:
+  ) -> tuple[computation_types.Type, pb.TensorFlow.Binding]:
     """Build `(type_spec, binding)` tuple for name value pairs."""
     element_name_type_binding_triples = [
         ((k,) + capture_result_from_graph(v, graph))
@@ -279,7 +280,7 @@ def capture_result_from_graph(
   elif isinstance(result, structure.Struct):
     return _get_bindings_for_elements(
         structure.to_elements(result), graph, None)
-  elif isinstance(result, collections.abc.Mapping):
+  elif isinstance(result, Mapping):
     for key in result:
       if not isinstance(key, str):
         key_type_str = py_typecheck.type_string(type(key))
@@ -1031,8 +1032,7 @@ def coerce_dataset_elements_to_tff_type_spec(
         return elements
 
       field_types = structure.iter_elements(type_spec)
-      if (issubclass(py_type, collections.abc.Mapping) or
-          py_typecheck.is_attrs(py_type)):
+      if (issubclass(py_type, Mapping) or py_typecheck.is_attrs(py_type)):
         values = collections.OrderedDict(
             (name, _to_representative_value(field_type, elements[name]))
             for name, field_type in field_types)
@@ -1102,7 +1102,7 @@ def uniquify_shared_names_with_suffix(graph_def: tf.compat.v1.GraphDef,
 def deserialize_and_call_tf_computation(
     computation_proto: pb.Computation, arg: Any, graph: tf.Graph,
     shared_names_suffix: str,
-    session_token_tensor: tf.Tensor) -> Tuple[str, Any]:
+    session_token_tensor: tf.Tensor) -> tuple[str, Any]:
   """Deserializes a TF computation and inserts it into `graph`.
 
   This method performs an action that can be considered roughly the opposite of

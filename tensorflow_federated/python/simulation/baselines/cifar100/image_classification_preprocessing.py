@@ -13,8 +13,8 @@
 # limitations under the License.
 """Preprocessing library for CIFAR-100 classification tasks."""
 
-import collections
-from typing import Callable, Sequence, Tuple, Union
+from collections.abc import Iterable, Sequence
+from typing import Callable, Union
 
 import tensorflow as tf
 
@@ -28,7 +28,7 @@ NUM_EXAMPLES_PER_CLIENT = 500
 def build_image_map(
     crop_shape: Union[tf.Tensor, Sequence[int]],
     distort: bool = False
-) -> Callable[[tf.Tensor], Tuple[tf.Tensor, tf.Tensor]]:
+) -> Callable[[tf.Tensor], tuple[tf.Tensor, tf.Tensor]]:
   """Builds a function that crops and normalizes CIFAR-100 elements.
 
   The image is first converted to a `tf.float32`, then cropped (according to
@@ -73,7 +73,7 @@ def build_image_map(
 
 def create_preprocess_fn(
     preprocess_spec: client_spec.ClientSpec,
-    crop_shape: Tuple[int, int, int] = CIFAR_SHAPE,
+    crop_shape: tuple[int, int, int] = CIFAR_SHAPE,
     distort_image=False,
     num_parallel_calls: int = tf.data.experimental.AUTOTUNE
 ) -> Callable[[tf.data.Dataset], tf.data.Dataset]:
@@ -105,7 +105,7 @@ def create_preprocess_fn(
     ValueError: If `num_epochs` is a non-positive integer, if `crop_shape` is
       iterable but not length 3.
   """
-  if not isinstance(crop_shape, collections.abc.Iterable):
+  if not isinstance(crop_shape, Iterable):
     raise TypeError('Argument crop_shape must be an iterable.')
   crop_shape = tuple(crop_shape)
   if len(crop_shape) != 3:

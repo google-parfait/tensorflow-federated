@@ -42,7 +42,8 @@ of `(x, y, ..., z)` shaped tensors, and a scalar denoting the number of
 non-decoded strings. If the value tensor is empty, value_shape = (), the output
 value tensor is also empty (returned as a tf.constant([])).
 """
-from typing import Dict, Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Optional, Union
 
 import numpy as np
 import tensorflow as tf
@@ -88,7 +89,7 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
       self, iblt: tf.Tensor, iblt_values: tf.Tensor,
       out_strings: tf.TensorArray, out_counts: tf.TensorArray,
       out_tensor_values: tf.TensorArray
-  ) -> Tuple[tf.Tensor, tf.Tensor, tf.TensorArray, tf.TensorArray,
+  ) -> tuple[tf.Tensor, tf.Tensor, tf.TensorArray, tf.TensorArray,
              tf.TensorArray]:
     """Peels an element from IBLT and adds new peelable elements to queue."""
     repetition, index = self.q.dequeue()
@@ -126,7 +127,7 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
 
   @tf.function
   def get_freq_estimates_tf(
-      self) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+      self) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
     """Decodes key-value pairs from an IBLT.
 
     Returns:
@@ -184,7 +185,7 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
     ), num_not_decoded
 
   def get_freq_estimates(
-      self) -> Tuple[Dict[Optional[str], int], Dict[Optional[str], np.ndarray]]:
+      self) -> tuple[dict[Optional[str], int], dict[Optional[str], np.ndarray]]:
     """Decodes key-value pairs from an IBLT.
 
     Note that this method only works for UTF-8 strings, and when running TF in
@@ -274,7 +275,7 @@ class IbltTensorEncoder(iblt_lib.IbltEncoder):
 
   @tf.function
   def compute_iblt(self, input_strings: tf.Tensor,
-                   input_values: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+                   input_values: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
     """Returns Tensor containing the values of the IBLT data structure.
 
     Args:
@@ -345,9 +346,9 @@ def decode_iblt_tensor_tf(
     seed: int = 0,
     repetitions: int = iblt_lib.DEFAULT_REPETITIONS,
     hash_family: Optional[str] = None,
-    hash_family_params: Optional[Dict[str, Union[int, float]]] = None,
+    hash_family_params: Optional[dict[str, Union[int, float]]] = None,
     field_size: int = iblt_lib.DEFAULT_FIELD_SIZE,
-) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+) -> tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
   """Decode a IBLT sketch.
 
   This function wraps `IbltDecoder` to decode `iblt` and returns frequencies

@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for iblt_tensor.py."""
+from collections.abc import Sequence
 import functools
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Optional, Union
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -47,9 +48,9 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
       seed: int = 0,
       repetitions: int = iblt_lib.DEFAULT_REPETITIONS,
       hash_family: Optional[str] = None,
-      hash_family_params: Optional[Dict[str, Union[int, float]]] = None,
+      hash_family_params: Optional[dict[str, Union[int, float]]] = None,
       field_size: int = iblt_lib.DEFAULT_FIELD_SIZE,
-  ) -> Tuple[Dict[Optional[str], int], Dict[Optional[str], Sequence[Any]]]:
+  ) -> tuple[dict[Optional[str], int], dict[Optional[str], Sequence[Any]]]:
     iblt_decoder = iblt_tensor.IbltTensorDecoder(
         iblt=iblt,
         iblt_values=iblt_values,
@@ -90,9 +91,9 @@ class IbltTensorTest(tf.test.TestCase, parameterized.TestCase):
       seed: int = 0,
       repetitions: int = iblt_lib.DEFAULT_REPETITIONS,
       hash_family: Optional[str] = None,
-      hash_family_params: Optional[Dict[str, Union[int, float]]] = None,
+      hash_family_params: Optional[dict[str, Union[int, float]]] = None,
       field_size: int = iblt_lib.DEFAULT_FIELD_SIZE,
-  ) -> Tuple[Dict[Optional[str], int], Dict[Optional[str], Sequence[Any]]]:
+  ) -> tuple[dict[Optional[str], int], dict[Optional[str], Sequence[Any]]]:
     decoding_graph = iblt_tensor.decode_iblt_tensor_tf(
         iblt=iblt,
         iblt_values=iblt_values,

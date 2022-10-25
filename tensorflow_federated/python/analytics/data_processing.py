@@ -14,7 +14,7 @@
 """A set of utility functions for data processing."""
 
 import collections
-from typing import Optional, Tuple
+from typing import Optional
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -273,7 +273,7 @@ def get_unique_elements(dataset: tf.data.Dataset,
 # The current implementation iterates `dataset` twice, which is not optimal.
 def get_unique_elements_with_counts(
     dataset: tf.data.Dataset,
-    string_max_bytes: Optional[int] = None) -> Tuple[tf.Tensor, tf.Tensor]:
+    string_max_bytes: Optional[int] = None) -> tuple[tf.Tensor, tf.Tensor]:
   """Gets unique elements and their counts from the input `dataset`.
 
   This method returns a tuple of `elements` and `counts`, where `elements` are
@@ -336,7 +336,7 @@ def get_unique_elements_with_counts(
 def get_top_elements_with_counts(
     dataset: tf.data.Dataset,
     max_user_contribution: int,
-    string_max_bytes: Optional[int] = None) -> Tuple[tf.Tensor, tf.Tensor]:
+    string_max_bytes: Optional[int] = None) -> tuple[tf.Tensor, tf.Tensor]:
   """Gets top unique elements from the input `dataset`.
 
   This method returns a tuple of `elements` and `counts`, where `elements` are

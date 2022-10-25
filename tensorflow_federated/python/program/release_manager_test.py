@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import collections
-from typing import Tuple, Union
+from typing import Union
 import unittest
 from unittest import mock
 
@@ -149,7 +149,7 @@ class FilteringReleaseManager(parameterized.TestCase,
 
   async def test_release_filters_value_and_type_signature(self):
 
-    def _filter_fn(path: Tuple[Union[str, int], ...]) -> bool:
+    def _filter_fn(path: tuple[Union[str, int], ...]) -> bool:
       return path == (0,) or path == (3, 0) or path == (4, 'a')
 
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Preprocessing library for Shakespeare next-character prediction tasks."""
 
-from typing import Callable, Tuple
+from typing import Callable
 
 import tensorflow as tf
 
@@ -28,7 +28,7 @@ CHAR_VOCAB = list(
 DEFAULT_SHUFFLE_BUFFER_SIZE = 50
 
 
-def get_special_tokens() -> Tuple[int, int, int, int]:
+def get_special_tokens() -> tuple[int, int, int, int]:
   """Gets tokens dataset preprocessing code will add to Shakespeare.
 
   Returns:
@@ -76,7 +76,7 @@ def _build_tokenize_fn(split_length: int = DEFAULT_SEQUENCE_LENGTH + 1):
   return to_tokens_and_pad
 
 
-def _split_target(sequence_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+def _split_target(sequence_batch: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
   """Split a N + 1 sequence into shifted-by-1 sequences for input and output."""
   input_text = tf.map_fn(lambda x: x[:-1], sequence_batch)
   target_text = tf.map_fn(lambda x: x[1:], sequence_batch)

@@ -13,9 +13,9 @@
 # limitations under the License.
 """Implementations of `ClientData` backed by a file system."""
 
-import collections
+from collections.abc import Mapping
 import os.path
-from typing import Callable, Mapping
+from typing import Callable
 
 import tensorflow as tf
 
@@ -41,7 +41,7 @@ class FilePerUserClientData(client_data.ClientData):
         strings and tensors) and returns a `tf.data.Dataset` corresponding to
         this path.
     """
-    py_typecheck.check_type(client_ids_to_files, collections.abc.Mapping)
+    py_typecheck.check_type(client_ids_to_files, Mapping)
     if not client_ids_to_files:
       raise ValueError('`client_ids` must have at least one client ID')
     py_typecheck.check_callable(dataset_fn)

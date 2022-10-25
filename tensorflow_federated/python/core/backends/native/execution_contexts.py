@@ -13,13 +13,14 @@
 # limitations under the License.
 """Execution contexts for the native backend."""
 
+from collections.abc import Sequence
 from concurrent import futures
 import os
 import signal
 import subprocess
 import sys
 import time
-from typing import List, Optional, Sequence, Tuple
+from typing import Optional
 
 from absl import logging
 import grpc
@@ -219,7 +220,7 @@ def set_remote_python_execution_context(
 
 
 def create_remote_async_python_execution_context(
-    channels: List[grpc.Channel],
+    channels: list[grpc.Channel],
     thread_pool_executor: Optional[futures.Executor] = None,
     dispose_batch_size: int = 20,
     max_fanout: int = 100,
@@ -344,7 +345,7 @@ def create_localhost_cpp_execution_context(
   """
   service_binary = binary_path
 
-  def start_process() -> Tuple[subprocess.Popen[bytes], int]:
+  def start_process() -> tuple[subprocess.Popen[bytes], int]:
     port = portpicker.pick_unused_port()
     args = [
         service_binary, f'--port={port}',

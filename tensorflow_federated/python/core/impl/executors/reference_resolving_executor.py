@@ -19,7 +19,7 @@
 """An executor that understands lambda expressions and related abstractions."""
 
 import asyncio
-from typing import Set, Union
+from typing import Union
 
 import cachetools
 
@@ -58,7 +58,7 @@ class _UnboundRefChecker:
     ref_cache_size = 10000
     self._evaluated_comps = cachetools.LRUCache(ref_cache_size)
 
-  def __call__(self, proto: pb.Computation) -> Set[str]:
+  def __call__(self, proto: pb.Computation) -> set[str]:
     """Returns the names of any unbound references in `proto`."""
     py_typecheck.check_type(proto, pb.Computation)
     evaluated = self._evaluated_comps.get(_hash_proto(proto))

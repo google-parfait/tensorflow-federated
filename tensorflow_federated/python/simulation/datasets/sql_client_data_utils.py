@@ -14,10 +14,11 @@
 """Utilities for constructing, serializing and parsing SQL-backed ClientData."""
 
 import collections
+from collections.abc import Mapping
 import os
 import sqlite3
 import tempfile
-from typing import Callable, List, Mapping
+from typing import Callable
 
 from absl import logging
 import tensorflow as tf
@@ -51,7 +52,7 @@ def _int64_feature(tensor) -> tf.train.Feature:
 def _validate_element_spec(element_spec: Mapping[str, tf.TensorSpec]):
   """Validate the type of element_spec."""
 
-  if not isinstance(element_spec, collections.abc.Mapping):
+  if not isinstance(element_spec, Mapping):
     raise ElementSpecCompatibilityError(
         f'{element_spec} has type {type(element_spec)}, but expected '
         f'`Mapping[str, tf.TensorSpec]`.')
@@ -131,7 +132,7 @@ def _build_parser(
 
 
 def save_to_sql_client_data(
-    client_ids: List[str],
+    client_ids: list[str],
     dataset_fn: Callable[[str], tf.data.Dataset],
     database_filepath: str,
     allow_overwrite: bool = False,

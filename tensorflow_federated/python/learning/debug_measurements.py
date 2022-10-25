@@ -19,7 +19,7 @@
 """Library of aggregator measurements useful for debugging learning processes."""
 
 import collections
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 import tensorflow as tf
 
@@ -165,9 +165,9 @@ def _calculate_client_update_statistics_mixed_dtype(client_updates,
 
 
 def _build_aggregator_measurement_fns(
-    client_measurement_fn: Callable[..., Dict[
+    client_measurement_fn: Callable[..., dict[
         str, Any]] = _calculate_client_update_statistics,
-    server_measurement_fn: Callable[..., Dict[
+    server_measurement_fn: Callable[..., dict[
         str, Any]] = _calculate_server_update_statistics,
     weighted_aggregator: bool = True) ->...:
   """Create measurement functions suitable for debugging learning processes.

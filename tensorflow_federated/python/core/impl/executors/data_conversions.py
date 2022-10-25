@@ -18,9 +18,7 @@
 # information.
 """Helpers for converting Python data representations for CPP bindings."""
 
-import collections
-from typing import Mapping
-
+from collections.abc import Mapping
 from tensorflow_federated.python.core.impl.types import placements
 
 
@@ -28,7 +26,7 @@ def convert_cardinalities_dict_to_string_keyed(
     cardinalities: Mapping[placements.PlacementLiteral,
                            int]) -> Mapping[str, int]:
   """Ensures incoming cardinalities dict is formatted correctly."""
-  if not isinstance(cardinalities, collections.abc.Mapping):
+  if not isinstance(cardinalities, Mapping):
     raise TypeError('`cardinalities` must be a `Mapping`. Received a type: '
                     f'{type(cardinalities)}.')
   uri_cardinalities = {}
