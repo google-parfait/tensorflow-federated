@@ -49,11 +49,11 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
       client_id_data_source.ClientIdDataSourceIterator(client_ids=client_ids)
 
   @parameterized.named_parameters(
-      ('1', 0),
-      ('2', 1),
-      ('3', 2),
+      ('zero', 0),
+      ('one', 1),
+      ('two', 2),
   )
-  def test_select_returns_data(self, num_clients):
+  def test_select_returns_client_ids_with_num_clients(self, num_clients):
     client_ids = ['a', 'b', 'c']
     iterator = client_id_data_source.ClientIdDataSourceIterator(
         client_ids=client_ids)

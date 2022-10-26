@@ -206,13 +206,42 @@ class PrefetchingDataSourceIteratorTest(parameterized.TestCase,
           num_clients_to_prefetch=num_clients_to_prefetch,
           prefetch_threshold=1)
 
+  @parameterized.named_parameters(
+      ('one', 1),
+      ('two', 2),
+  )
+  async def test_select_returns_data_with_num_clients(self, num_clients):
+    mock_iterator = mock.create_autospec(
+        data_source_lib.FederatedDataSourceIterator)
+    mock_iterator.select.return_value = list(range(num_clients))
+    mock_iterator.federated_type = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS)
+    context = execution_contexts.create_local_async_python_execution_context()
+    iterator = prefetching_data_source.PrefetchingDataSourceIterator(
+        iterator=mock_iterator,
+        context=context,
+        total_rounds=5,
+        num_rounds_to_prefetch=3,
+        num_clients_to_prefetch=num_clients,  # Must be the same.
+        prefetch_threshold=1)
+
+    data = iterator.select(num_clients)
+
+    @federated_computation.federated_computation(iterator.federated_type)
+    def _identity(x):
+      return x
+
+    actual_value = await context.invoke(_identity, data)
+    expected_value = list(range(num_clients))
+    self.assertEqual(actual_value, expected_value)
+
   # pyformat: disable
   @parameterized.named_parameters(
       ('async_python',
        execution_contexts.create_local_async_python_execution_context()),
   )
   # pyformat: enable
-  async def test_select_returns_data(self, context):
+  async def test_select_returns_data_with_context(self, context):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator)
     mock_iterator.select.return_value = [1, 2, 3]
@@ -241,7 +270,7 @@ class PrefetchingDataSourceIteratorTest(parameterized.TestCase,
        execution_contexts.create_local_async_python_execution_context()),
   )
   # pyformat: enable
-  def test_select_prefetches_data(self, context):
+  def test_select_prefetches_data_with_context(self, context):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator)
     mock_iterator.select.return_value = [1, 2, 3]

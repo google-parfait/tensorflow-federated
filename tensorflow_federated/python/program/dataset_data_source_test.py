@@ -88,11 +88,11 @@ class DatasetDataSourceIteratorTest(parameterized.TestCase, tf.test.TestCase):
           datasets=datasets, federated_type=federated_type)
 
   @parameterized.named_parameters(
-      ('1', 0),
-      ('2', 1),
-      ('3', 2),
+      ('zero', 0),
+      ('one', 1),
+      ('two', 2),
   )
-  def test_select_returns_dataset(self, num_clients):
+  def test_select_returns_datasets_with_num_clients(self, num_clients):
     datasets = [tf.data.Dataset.from_tensor_slices([1, 2, 3])] * 3
     federated_type = computation_types.FederatedType(
         computation_types.SequenceType(tf.int32), placements.CLIENTS)
