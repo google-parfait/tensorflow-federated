@@ -19,6 +19,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
 
+from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.analytics.hierarchical_histogram import build_tree_from_leaf
 from tensorflow_federated.python.analytics.hierarchical_histogram import hierarchical_histogram_factory as hihi_factory
@@ -60,7 +61,14 @@ class TreeAggregationFactoryComputationTest(tf.test.TestCase,
     query_metrics_type = type_conversions.type_from_tensors(
         query.derive_metrics(query_state))
 
-    server_state_type = computation_types.at_server((query_state_type, ()))
+    template_type = type_conversions.type_to_tf_tensor_specs(value_type)
+    initial_sample_state = query.initial_sample_state(template_type)
+    dp_event_type = type_conversions.type_from_tensors(
+        query.get_noised_result(initial_sample_state, query_state)[2])
+
+    server_state_type = computation_types.at_server(
+        differential_privacy.DPAggregatorState(query_state_type, (),
+                                               dp_event_type, tf.bool))
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type)
     self.assertTrue(
@@ -127,7 +135,17 @@ class TreeAggregationFactoryComputationTest(tf.test.TestCase,
     query_metrics_type = type_conversions.type_from_tensors(
         query.derive_metrics(query_state))
 
-    server_state_type = computation_types.at_server((query_state_type, ()))
+    # template_type is not derived from value_type in this test because the
+    # outer factory converts the ints to floats before they reach the query.
+    inner_value_type = computation_types.to_type((tf.float32, (value_shape,)))
+    template_type = type_conversions.type_to_tf_tensor_specs(inner_value_type)
+    initial_sample_state = query.initial_sample_state(template_type)
+    dp_event_type = type_conversions.type_from_tensors(
+        query.get_noised_result(initial_sample_state, query_state)[2])
+
+    server_state_type = computation_types.at_server(
+        differential_privacy.DPAggregatorState(query_state_type, (),
+                                               dp_event_type, tf.bool))
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type)
     self.assertTrue(
@@ -142,7 +160,6 @@ class TreeAggregationFactoryComputationTest(tf.test.TestCase,
           secure_lower_threshold=tf.float32)
     else:
       expected_measurements_dp = ()
-
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             dp_query_metrics=query_metrics_type, dp=expected_measurements_dp))
@@ -196,13 +213,19 @@ class TreeAggregationFactoryComputationTest(tf.test.TestCase,
     query_metrics_type = type_conversions.type_from_tensors(
         query.derive_metrics(query_state))
 
-    server_state_type = computation_types.at_server((query_state_type, ()))
+    template_type = type_conversions.type_to_tf_tensor_specs(value_type)
+    initial_sample_state = query.initial_sample_state(template_type)
+    dp_event_type = type_conversions.type_from_tensors(
+        query.get_noised_result(initial_sample_state, query_state)[2])
+
+    server_state_type = computation_types.at_server(
+        differential_privacy.DPAggregatorState(query_state_type, (),
+                                               dp_event_type, tf.bool))
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type)
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
             expected_initialize_type))
-
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(dp_query_metrics=query_metrics_type, dp=()))
 

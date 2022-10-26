@@ -389,10 +389,10 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
     # Check the norm used for DP operations. The norm inflation from rounding
     # should be small as `bits` is large.
-    new_scaled_inflated_l2 = dp_state[0].l2_norm_bound
+    new_scaled_inflated_l2 = dp_state.query_state.l2_norm_bound
     self.assertAllClose(new_scaled_inflated_l2 / new_scale, new_clip, atol=1e-4)
     if mechanism == 'distributed_skellam':
-      new_scaled_inflated_l1 = dp_state[0].l1_norm_bound
+      new_scaled_inflated_l1 = dp_state.query_state.l1_norm_bound
       expected_l1 = tf.math.ceil(
           new_scaled_inflated_l2 *
           tf.minimum(new_scaled_inflated_l2, tf.sqrt(padded_dim)))
