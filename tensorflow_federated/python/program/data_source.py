@@ -121,7 +121,9 @@ class FederatedDataSource(metaclass=abc.ABCMeta):
 
   * Construct a new iterator for this data source by invoking `iterator` on it.
     Each iterator represents an independent pass over the data from this data
-    source. See the descriptions of capabilities for the formal guarantees.
+    source.
+
+  See `tff.program.Capability` for the descriptions of the formal guarantees.
   """
 
   @property
