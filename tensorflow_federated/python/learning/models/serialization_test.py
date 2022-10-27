@@ -552,5 +552,5 @@ if __name__ == '__main__':
   # This conflict does not occur in the C++ executor that does not use the eager
   # context.
   tf.config.optimizer.set_experimental_options({'disable_meta_optimizer': True})
-  execution_contexts.set_local_python_execution_context()
+  execution_contexts.set_localhost_cpp_execution_context()
   tf.test.main()

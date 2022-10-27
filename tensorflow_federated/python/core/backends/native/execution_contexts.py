@@ -16,7 +16,9 @@
 from collections.abc import Sequence
 from concurrent import futures
 import os
+import os.path
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -24,6 +26,7 @@ from typing import Optional
 
 from absl import logging
 import grpc
+import lzma  # pylint: disable=g-bad-import-order
 import portpicker
 
 from tensorflow_federated.python.core.backends.native import compiler
@@ -39,6 +42,13 @@ from tensorflow_federated.python.core.impl.executors import remote_executor_grpc
 from tensorflow_federated.python.core.impl.types import placements
 
 _LOCALHOST_SERVER_WAIT_TIME_SEC = 1.
+
+_GRPC_MAX_MESSAGE_LENGTH_BYTES = 2 * 1000 * 1000 * 1000
+_GRPC_CHANNEL_OPTIONS = [
+    ('grpc.max_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
+    ('grpc.max_receive_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
+    ('grpc.max_send_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES)
+]
 
 
 def _make_basic_python_execution_context(*, executor_fn, compiler_fn,
@@ -308,21 +318,40 @@ def set_mergeable_comp_execution_context(
 
 
 def set_localhost_cpp_execution_context(
-    binary_path: str,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = 1,
 ):
   """Sets default context to a localhost TFF executor."""
   context = create_localhost_cpp_execution_context(
-      binary_path=binary_path,
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
   )
   context_stack_impl.context_stack.set_default_context(context)
 
 
+def _decompress_file(compressed_path, output_path):
+  """Decompresses a compressed file to the given `output_path`."""
+  if not os.path.isfile(compressed_path):
+    raise FileNotFoundError(
+        f'Did not find a compressed file at: {compressed_path}')
+
+  with lzma.open(compressed_path) as compressed_file:
+    contents = compressed_file.read()
+
+  with open(output_path, 'wb') as binary_file:
+    binary_file.write(contents)
+
+  os.chmod(
+      output_path,
+      stat.S_IRUSR |
+      stat.S_IWUSR |
+      stat.S_IXUSR |
+      stat.S_IRGRP |
+      stat.S_IXGRP |
+      stat.S_IXOTH)  # pyformat: disable
+
+
 def create_localhost_cpp_execution_context(
-    binary_path: str,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = 0,
 ) -> sync_execution_context.ExecutionContext:
@@ -333,7 +362,6 @@ def create_localhost_cpp_execution_context(
   execution context to talk to this worker.
 
   Args:
-    binary_path: The absolute path to the binary defining the TFF-C++ worker.
     default_num_clients: The number of clients to use as the default
       cardinality, if thus number cannot be inferred by the arguments of a
       computation.
@@ -342,14 +370,40 @@ def create_localhost_cpp_execution_context(
 
   Returns:
     An instance of `tff.framework.SyncContext` representing the TFF-C++ runtime.
+
+  Raises:
+    RuntimeError: If an internal C++ worker binary can not be found.
   """
-  service_binary = binary_path
+
+  # This path is specified relative to this file because the relative location
+  # of the worker binary will remain the same when this function is executed
+  # from the Python package and from a Bazel test.
+  data_dir = os.path.join(
+      os.path.dirname(__file__), '..', '..', '..', '..', 'data')
+  binary_name = 'worker_binary'
+  binary_path = os.path.join(data_dir, binary_name)
+
+  if not os.path.isfile(binary_path):
+    logging.debug('Did not find a worker binary at: %s', binary_path)
+    compressed_path = os.path.join(data_dir, f'{binary_name}.xz')
+
+    try:
+      _decompress_file(compressed_path, binary_path)
+      logging.debug('Did not find a compressed worker binary at: %s',
+                    compressed_path)
+    except FileNotFoundError as e:
+      raise RuntimeError(
+          f'Expected either a worker binary at {binary_path} or a compressed '
+          f'worker binary at {compressed_path}, found neither.') from e
+  else:
+    logging.debug('Found a worker binary at: %s', binary_path)
 
   def start_process() -> tuple[subprocess.Popen[bytes], int]:
     port = portpicker.pick_unused_port()
     args = [
-        service_binary, f'--port={port}',
-        f'--max_concurrent_computation_calls={max_concurrent_computation_calls}'
+        binary_path,
+        f'--port={port}',
+        f'--max_concurrent_computation_calls={max_concurrent_computation_calls}',
     ]
     logging.debug('Starting TFF C++ server on port: %s', port)
     return subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr), port
@@ -388,7 +442,8 @@ def create_localhost_cpp_execution_context(
         self._process.wait()
       # Start a process and block til the associated stub is ready.
       process, port = start_process()
-      channel = grpc.insecure_channel('localhost:{}'.format(port))
+      target = f'localhost:{port}'
+      channel = grpc.insecure_channel(target, _GRPC_CHANNEL_OPTIONS)
       stub = remote_executor_grpc_stub.RemoteExecutorGrpcStub(channel)
       self._process = process
       self._stub = stub
