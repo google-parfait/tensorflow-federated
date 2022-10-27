@@ -1,0 +1,35 @@
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@rules_python//python:defs.bzl", "py_library")
+
+package(default_visibility = [
+    ":data_packages",
+    ":data_users",
+])
+
+package_group(
+    name = "data_packages",
+    packages = ["//tensorflow_federated/data/..."],
+)
+
+package_group(
+    name = "data_users",
+    includes = [
+        "//tensorflow_federated/python:python_packages",
+        "//tensorflow_federated/tools:tools_packages",
+    ],
+)
+
+licenses(["notice"])
+
+py_library(
+    name = "data",
+    srcs = ["__init__.py"],
+    srcs_version = "PY3",
+    visibility = ["//tensorflow_federated/tools/python_package:python_package_tool"],
+)
+
+copy_file(
+    name = "_worker_binary",
+    src = "//tensorflow_federated/cc/simulation:worker_binary",
+    out = "worker_binary",
+)

@@ -73,6 +73,17 @@ main() {
   pip install --upgrade "pip"
   pip --version
 
+  # Compress the worker binary.
+  xz --version
+  xz --extreme --keep "tensorflow_federated/data/worker_binary"
+  xz --list "tensorflow_federated/data/worker_binary.xz"
+
+  local actual_size="$(du "tensorflow_federated/data/worker_binary.xz" | sed $'s/\t.*//')"
+  local maximum_size=50000
+  if ["${actual_size}" -ge "${maximum_size}"]; then
+    echo "Expected the file size of the worker_binary to be less than ${maximum_size}, it was ${actual_size}." 1>&2
+  fi
+
   # Build the Python package.
   pip install --upgrade setuptools wheel
   python "tensorflow_federated/tools/python_package/setup.py" bdist_wheel \

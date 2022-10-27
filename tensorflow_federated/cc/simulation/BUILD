@@ -11,8 +11,10 @@ package_group(
 package_group(
     name = "simulation_users",
     includes = [
+        "//tensorflow_federated/data:data_packages",
         "//tensorflow_federated/python/simulation:simulation_packages",
         "//tensorflow_federated/python/tests:tests_packages",
+        "//tensorflow_federated/tools:tools_packages",
     ],
 )
 
