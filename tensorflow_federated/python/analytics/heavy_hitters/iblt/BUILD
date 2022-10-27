@@ -23,9 +23,39 @@ py_library(
     deps = [
         ":chunkers",
         ":hyperedge_hashers",
+        ":iblt_clipping",
         ":iblt_lib",
         ":iblt_tensor",
         ":iblt_tff",
+    ],
+)
+
+py_library(
+    name = "iblt_clipping",
+    srcs = ["iblt_clipping.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":iblt_factory",
+        "//tensorflow_federated/python/aggregators:factory",
+        "//tensorflow_federated/python/analytics:data_processing",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+    ],
+)
+
+py_test(
+    name = "iblt_clipping_test",
+    srcs = ["iblt_clipping_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":iblt_clipping",
+        ":iblt_factory",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
 

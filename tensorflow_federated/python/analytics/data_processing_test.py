@@ -594,54 +594,6 @@ class DataProcessingTest(parameterized.TestCase,
         TypeError, '`dataset.element_spec.dtype` must be `tf.string`.'):
       data_processing.get_top_multi_elements(ds, max_user_contribution=10)
 
-  @parameterized.named_parameters(
-      ('basic', ['a', 'a', 'a', 'b', 'b', 'c'], 10, True, 1, 20, False, {
-          'a': 3,
-          'b': 2,
-          'c': 1
-      }),
-      ('unique', ['a', 'a', 'a', 'b', 'b', 'c'], 10, True, 1, 20, True, {
-          'a': [3, 1],
-          'b': [2, 1],
-          'c': [1, 1]
-      }),
-      ('max_words', ['a', 'ab', 'a', 'cc', 'a', 'b', 'c', 'd'
-                    ], 4, True, 1, 20, False, {
-                        'a': 2,
-                        'ab': 1,
-                        'cc': 1
-                    }),
-      ('single_contrib', ['a', 'ab', 'a', 'cc', 'a', 'b', 'c', 'd'
-                         ], 4, False, 1, 20, False, {
-                             'a': 1,
-                             'ab': 1,
-                             'cc': 1,
-                             'b': 1
-                         }),
-      ('max_bytes', ['aaaaaaa', 'a', 'b', 'c', 'dddddd', 'a'
-                    ], 10, True, 1, 1, False, {
-                        'a': 3,
-                        'b': 1,
-                        'c': 1,
-                        'd': 1
-                    }),
-  )
-  def test_get_clipped_elements_with_counts(self, input_data, max_words,
-                                            multi_contribution, batch_size,
-                                            string_max_bytes, unique_counts,
-                                            expected):
-    ds = tf.data.Dataset.from_tensor_slices(input_data).batch(
-        batch_size=batch_size)
-
-    result = data_processing.get_clipped_elements_with_counts(
-        ds, max_words, multi_contribution, batch_size, string_max_bytes,
-        unique_counts)
-    result_dict = {}
-    dtype = list if unique_counts else int
-    for x in result.as_numpy_iterator():
-      result_dict[x['key'].decode('utf-8', 'ignore')] = dtype(x['value'])
-    self.assertDictEqual(result_dict, expected)
-
 
 class ToStackedTensorTest(tf.test.TestCase):
 

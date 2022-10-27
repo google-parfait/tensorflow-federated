@@ -13,7 +13,6 @@
 # limitations under the License.
 """A set of utility functions for data processing."""
 
-import collections
 from typing import Optional
 import tensorflow as tf
 
@@ -531,77 +530,3 @@ def to_stacked_tensor(ds: tf.data.Dataset) -> tf.Tensor:
     return tf.nest.map_structure(append_tensor, old_state, input_element)
 
   return ds.reduce(initial_state, reduce_func)
-
-
-@tf.function
-def get_clipped_elements_with_counts(
-    dataset: tf.data.Dataset,
-    max_words_per_user: Optional[int] = None,
-    multi_contribution: bool = True,
-    batch_size: int = 1,
-    string_max_bytes: int = 10,
-    unique_counts: bool = False) -> tf.data.Dataset:
-  """Gets elements and corresponding clipped counts from the input `dataset`.
-
-  Returns a dataset that yields `OrderedDict`s with two keys: `key` with
-  `tf.string` scalar value, and `value' with list of tf.int64 scalar values.
-  The list is of length one or two, with each entry representing the (clipped)
-  count for a given word and (if unique_counts=True) the constant 1.  The
-  primary intended use case for this function is to preprocess client-data
-  before sending it through `tff.analytics.IbltFactory` for heavy hitter
-  calculations.
-
-  Args:
-    dataset: The input `tf.data.Dataset` whose elements are to be counted.
-    max_words_per_user: The maximum total count each client is allowed to
-      contribute across all words. If not `None`, must be a positive integer.
-      Defaults to `None`, which means all the clients contribute all their
-      words. Note that this does not cap the count of each individual word each
-      client can contribute. Set `multi_contirbution=False` to restrict the
-      per-client count for each word.
-    multi_contribution: Whether each client is allowed to contribute multiple
-      instances of each string, or only a count of one for each unique word.
-      Defaults to `True` meaning clients contribute the full count for each
-      contributed string. Note that this doesn't limit the total number of
-      strings each client can contribute. Set `max_words_per_user` to limit the
-      total number of strings per client.
-    batch_size: The number of elements in each batch of the dataset. Batching is
-      an optimization for pulling multiple inputs at a time from the input
-      `tf.data.Dataset`, amortizing the overhead cost of each read to the
-      `batch_size`. Consider batching if you observe poor client execution
-      performance or reading inputs is particularly expsensive. Defaults to `1`,
-      means the input dataset is processed by `tf.data.Dataset.batch(1)`. Must
-      be positive.
-    string_max_bytes: The maximum length in bytes of a string in the IBLT.
-      Strings longer than `string_max_bytes` will be truncated. Defaults to
-      `10`. Must be positive.
-    unique_counts: If True, the value for every element is the array [count, 1].
-
-  Returns:
-    A dataset containing an OrderedDict of elements and corresponding counts.
-  """
-  if max_words_per_user is not None:
-    if multi_contribution:
-      k_words, counts = get_capped_elements_with_counts(
-          dataset,
-          max_words_per_user,
-          batch_size=batch_size,
-          string_max_bytes=string_max_bytes)
-    else:
-      # `tff.analytics.data_processing.get_top_elements` returns the top
-      # `max_words_per_user` words in client's local histogram. Each element
-      # appears at most once in the list.
-      k_words, counts = get_top_elements_with_counts(
-          dataset, max_words_per_user, string_max_bytes=string_max_bytes)
-      counts = tf.ones_like(counts)
-  else:
-    k_words, counts = get_unique_elements_with_counts(
-        dataset, string_max_bytes=string_max_bytes)
-    if not multi_contribution:
-      counts = tf.ones_like(counts)
-  if unique_counts:
-    values = tf.stack([counts, tf.ones_like(counts)], axis=1)
-  else:
-    values = counts
-  client = collections.OrderedDict([('key', k_words), ('value', values)])
-  return tf.data.Dataset.from_tensor_slices(client)
