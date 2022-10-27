@@ -138,6 +138,10 @@ py_test(
 py_library(
     name = "execution_contexts",
     srcs = ["execution_contexts.py"],
+    data = [
+        "//tensorflow_federated/data:worker_binary",
+        "//tensorflow_federated/data:worker_binary.xz",
+    ],
     srcs_version = "PY3",
     deps = [
         ":compiler",

@@ -16,7 +16,9 @@
 from collections.abc import Sequence
 from concurrent import futures
 import os
+import os.path
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -24,6 +26,7 @@ from typing import Optional
 
 from absl import logging
 import grpc
+import lzma  # pylint: disable=g-bad-import-order
 import portpicker
 
 from tensorflow_federated.python.core.backends.native import compiler
@@ -308,13 +311,11 @@ def set_mergeable_comp_execution_context(
 
 
 def set_localhost_cpp_execution_context(
-    binary_path: str,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = 1,
 ):
   """Sets default context to a localhost TFF executor."""
   context = create_localhost_cpp_execution_context(
-      binary_path=binary_path,
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
   )
@@ -322,7 +323,6 @@ def set_localhost_cpp_execution_context(
 
 
 def create_localhost_cpp_execution_context(
-    binary_path: str,
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = 0,
 ) -> sync_execution_context.ExecutionContext:
@@ -333,7 +333,6 @@ def create_localhost_cpp_execution_context(
   execution context to talk to this worker.
 
   Args:
-    binary_path: The absolute path to the binary defining the TFF-C++ worker.
     default_num_clients: The number of clients to use as the default
       cardinality, if thus number cannot be inferred by the arguments of a
       computation.
@@ -342,14 +341,71 @@ def create_localhost_cpp_execution_context(
 
   Returns:
     An instance of `tff.framework.SyncContext` representing the TFF-C++ runtime.
+
+  Raises:
+    RuntimeError: If an internal C++ worker binary can not be found.
   """
-  service_binary = binary_path
+  data_dir = os.path.join(
+      os.path.dirname(__file__),
+      '..',
+      '..',
+      '..',
+      '..',
+      'data',
+  )
+  binary_name = 'worker_binary'
+  binary_path = os.path.join(data_dir, binary_name)
+  print('')
+  print('---binary_path')
+  print(binary_path)
+  print(os.path.isfile(binary_path))
+
+  if not os.path.isfile(binary_path):
+    compressed_path = os.path.join(data_dir, f'{binary_name}.xz')
+    print('')
+    print('---compressed_path')
+    print(compressed_path)
+    print(os.path.isfile(compressed_path))
+
+    kokoro_path = os.path.join(
+        os.path.dirname(__file__),
+        '..',
+        '..',
+        '..',
+        '..',
+        'cc',
+        'simulation',
+        'worker_binary',
+    )
+    print('')
+    print('---kokoro_path')
+    print(kokoro_path)
+    print(os.path.isfile(kokoro_path))
+
+    if not os.path.isfile(compressed_path):
+      raise RuntimeError()
+
+    with lzma.open(compressed_path) as compressed_file:
+      contents = compressed_file.read()
+
+    with open(binary_path, 'wb') as binary_file:
+      binary_file.write(contents)
+
+    os.chmod(
+        binary_path,
+        stat.S_IRUSR |
+        stat.S_IWUSR |
+        stat.S_IXUSR |
+        stat.S_IRGRP |
+        stat.S_IXGRP |
+        stat.S_IXOTH)  # pyformat: disable
 
   def start_process() -> tuple[subprocess.Popen[bytes], int]:
     port = portpicker.pick_unused_port()
     args = [
-        service_binary, f'--port={port}',
-        f'--max_concurrent_computation_calls={max_concurrent_computation_calls}'
+        binary_path,
+        f'--port={port}',
+        f'--max_concurrent_computation_calls={max_concurrent_computation_calls}',
     ]
     logging.debug('Starting TFF C++ server on port: %s', port)
     return subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr), port

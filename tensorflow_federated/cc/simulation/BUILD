@@ -13,6 +13,7 @@ package_group(
     includes = [
         "//tensorflow_federated/python/simulation:simulation_packages",
         "//tensorflow_federated/python/tests:tests_packages",
+        "//tensorflow_federated/tools:tools_packages",
     ],
 )
 
@@ -51,6 +52,7 @@ cc_library(
 cc_binary(
     name = "worker_binary",
     linkopts = ["-lrt"],
+    visibility = ["//visibility:public"],
     deps = [
         ":worker_main",
     ],

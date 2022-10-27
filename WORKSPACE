@@ -7,6 +7,17 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_r
 # Direct dependencies
 #
 
+http_archive(
+    name = "liblzma",
+    build_file = "//third_party:liblzma.BUILD",
+    sha256 = "f6f4910fd033078738bd82bfba4f49219d03b17eb0794eb91efbae419f4aba10",
+    strip_prefix = "xz-5.2.5",
+    urls = [
+        "https://storage.googleapis.com/tensorstore-bazel-mirror/tukaani.org/xz/xz-5.2.5.tar.gz",
+        "https://tukaani.org/xz/xz-5.2.5.tar.gz",
+    ],
+)
+
 git_repository(
     name = "bazel_skylib",
     remote = "https://github.com/bazelbuild/bazel-skylib.git",

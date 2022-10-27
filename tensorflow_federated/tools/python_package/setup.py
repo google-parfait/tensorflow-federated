@@ -94,6 +94,9 @@ def get_package_name(requirement: str) -> str:
 setuptools.setup(
     name=PROJECT_NAME,
     version=VERSION,
+    package_data={
+        'tensorflow_federated': ['data/worker_binary.xz'],
+    },
     description=DOCLINES[0],
     long_description='\n'.join(DOCLINES[2:]),
     long_description_content_type='text/plain',
