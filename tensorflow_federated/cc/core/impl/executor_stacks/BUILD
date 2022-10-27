@@ -34,6 +34,7 @@ cc_library(
     name = "local_stacks",
     srcs = ["local_stacks.cc"],
     hdrs = ["local_stacks.h"],
+    copts = ["-Wthread-safety-analysis"],
     deps = [
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
         "//tensorflow_federated/cc/core/impl/executors:executor",
@@ -48,6 +49,7 @@ cc_library(
 cc_test(
     name = "local_stacks_test",
     srcs = ["local_stacks_test.cc"],
+    copts = ["-Wthread-safety-analysis"],
     deps = [
         ":local_stacks",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
@@ -63,6 +65,7 @@ cc_library(
     name = "remote_stacks",
     srcs = ["remote_stacks.cc"],
     hdrs = ["remote_stacks.h"],
+    copts = ["-Wthread-safety-analysis"],
     deps = [
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
         "//tensorflow_federated/cc/core/impl/executors:composing_executor",
@@ -83,6 +86,7 @@ cc_library(
 cc_test(
     name = "remote_stacks_test",
     srcs = ["remote_stacks_test.cc"],
+    copts = ["-Wthread-safety-analysis"],
     deps = [
         ":remote_stacks",
         "//tensorflow_federated/cc/common_libs:oss_test_main",

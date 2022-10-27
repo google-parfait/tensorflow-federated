@@ -4,16 +4,16 @@ package(default_visibility = [
 ])
 
 package_group(
+    name = "simulation_packages",
+    packages = ["//tensorflow_federated/cc/simulation/..."],
+)
+
+package_group(
     name = "simulation_users",
     includes = [
         "//tensorflow_federated/python/simulation:simulation_packages",
         "//tensorflow_federated/python/tests:tests_packages",
     ],
-)
-
-package_group(
-    name = "simulation_packages",
-    packages = ["//tensorflow_federated/cc/simulation/..."],
 )
 
 licenses(["notice"])
@@ -22,6 +22,7 @@ cc_library(
     name = "servers",
     srcs = ["servers.cc"],
     hdrs = ["servers.h"],
+    copts = ["-Wthread-safety-analysis"],
     deps = [
         "//tensorflow_federated/cc/core/impl/executor_stacks:local_stacks",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
@@ -39,6 +40,7 @@ cc_library(
 cc_library(
     name = "worker_main",
     srcs = ["worker_main.cc"],
+    copts = ["-Wthread-safety-analysis"],
     deps = [
         ":servers",
         "//tensorflow_federated/cc/core/impl/executors:cardinalities",
@@ -50,6 +52,7 @@ cc_library(
 
 cc_binary(
     name = "worker_binary",
+    copts = ["-Wthread-safety-analysis"],
     linkopts = ["-lrt"],
     deps = [
         ":worker_main",
