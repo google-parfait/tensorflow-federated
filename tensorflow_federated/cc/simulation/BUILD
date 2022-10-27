@@ -4,16 +4,16 @@ package(default_visibility = [
 ])
 
 package_group(
+    name = "simulation_packages",
+    packages = ["//tensorflow_federated/cc/simulation/..."],
+)
+
+package_group(
     name = "simulation_users",
     includes = [
         "//tensorflow_federated/python/simulation:simulation_packages",
         "//tensorflow_federated/python/tests:tests_packages",
     ],
-)
-
-package_group(
-    name = "simulation_packages",
-    packages = ["//tensorflow_federated/cc/simulation/..."],
 )
 
 licenses(["notice"])
