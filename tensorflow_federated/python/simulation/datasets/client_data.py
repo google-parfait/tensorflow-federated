@@ -224,10 +224,16 @@ class ClientData(metaclass=abc.ABCMeta):
     Returns:
       A `tf.data.Dataset` object.
     """
-    check_numpy_random_seed(seed)
-    client_ids = self.client_ids.copy()
-    np.random.RandomState(seed=seed).shuffle(client_ids)
-    nested_dataset = tf.data.Dataset.from_tensor_slices(client_ids)
+    if seed is not None:
+      if len(seed) == 1:
+        seed = (seed, seed)
+      elif len(seed) != 2:
+        raise ValueError(
+            '`seed` must be `None` or a sequence of length one or two.'
+            f'Got: {seed!r}')
+    shuffled_client_ids = tf.random.experimental.stateless_shuffle(
+        self.client_ids, seed=seed)
+    nested_dataset = tf.data.Dataset.from_tensor_slices(shuffled_client_ids)
     # We apply serializable_dataset_fn here to avoid loading all client datasets
     # in memory, which is slow. Note that tf.data.Dataset.map implicitly wraps
     # the input mapping in a tf.function.
