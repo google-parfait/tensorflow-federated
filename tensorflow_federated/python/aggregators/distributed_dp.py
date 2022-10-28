@@ -473,7 +473,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       new_central_stddev = new_l2_clip * self._value_noise_mult
       new_local_stddev = new_central_stddev / math.sqrt(self._num_clients)
       # Update DP params: norm bounds (uninflated/inflated) and local stddev.
-      dp_query_state, dp_inner_agg_state = dp_state
+      dp_query_state = dp_state.query_state
       if self._mechanism == 'distributed_dgauss':
         new_dp_query_state = dp_query_state._replace(
             l2_norm_bound=new_scaled_inflated_l2,
@@ -483,7 +483,9 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
             l1_norm_bound=new_scaled_l1,
             l2_norm_bound=new_scaled_inflated_l2,
             local_stddev=new_local_stddev * new_scale)
-      new_dp_state = (new_dp_query_state, dp_inner_agg_state)
+      new_dp_state = differential_privacy.DPAggregatorState(
+          new_dp_query_state, dp_state.agg_state, dp_state.dp_event,
+          dp_state.is_init_state)
       discrete_state['inner_agg_process'] = new_dp_state
       discrete_state['prior_norm_bound'] = new_l2_clip
       return agg_state
@@ -501,7 +503,7 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
   def _derive_measurements(self, agg_state, agg_measurements):
     _, discrete_state, dp_state = self._unpack_state(agg_state)
     l2_clip_metrics, _, dp_metrics = self._unpack_measurements(agg_measurements)
-    dp_query_state, _ = dp_state
+    dp_query_state, _, _, _ = dp_state
 
     actual_num_clients = intrinsics.federated_secure_sum_bitwidth(
         intrinsics.federated_value(1, placements.CLIENTS), bitwidth=1)

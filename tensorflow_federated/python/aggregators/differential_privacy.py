@@ -21,10 +21,11 @@
 import collections
 from collections.abc import Collection
 import typing
-from typing import Optional
+from typing import Any, NamedTuple, Optional
 import warnings
 from absl import logging
 
+import dp_accounting
 import tensorflow as tf
 import tensorflow_privacy as tfp
 
@@ -36,8 +37,20 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
+
+
+class ExtractingDpEventFromInitialStateError(ValueError):
+  pass
+
+
+class DPAggregatorState(NamedTuple):
+  query_state: Any
+  agg_state: Any
+  dp_event: dp_accounting.dp_event.DpEvent
+  is_init_state: bool
 
 
 def adaptive_clip_noise_params(
@@ -115,6 +128,10 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
   mode of aggregation is consistent with the DPQuery. Note that the DPQuery's
   built-in aggregation functions (accumulate_preprocessed_record and
   merge_sample_states) are ignored in favor of the provided aggregator.
+
+  The state of the created `AggregationProcess` contains a DPEvent released by
+  the DPQuery that can be extracted using `differential_privacy.
+  extract_dp_event_from_state`.
   """
 
   @classmethod
@@ -331,7 +348,9 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
 
     query_initial_state_fn = tensorflow_computation.tf_computation(
         self._query.initial_global_state)
-
+    tensor_spec = type_conversions.type_to_tf_tensor_specs(value_type)
+    query_sample_state_fn = tensorflow_computation.tf_computation(
+        lambda: self._query.initial_sample_state(tensor_spec))
     query_state_type = query_initial_state_fn.type_signature.result
     derive_sample_params = tensorflow_computation.tf_computation(
         self._query.derive_sample_params, query_state_type)
@@ -352,15 +371,26 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation()
     def init_fn():
-      return intrinsics.federated_zip(
-          (intrinsics.federated_eval(query_initial_state_fn, placements.SERVER),
-           record_agg_process.initialize()))
+      query_initial_state = intrinsics.federated_eval(query_initial_state_fn,
+                                                      placements.SERVER)
+      query_sample_state = intrinsics.federated_eval(query_sample_state_fn,
+                                                     placements.SERVER)
+      _, _, dp_event = intrinsics.federated_map(
+          get_noised_result, (query_sample_state, query_initial_state))
+      is_init_state = intrinsics.federated_value(True, placements.SERVER)
+      init_state = DPAggregatorState(
+          query_initial_state,
+          record_agg_process.initialize(),
+          dp_event,
+          is_init_state,
+      )
+      return intrinsics.federated_zip(init_state)
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
         computation_types.FederatedType(value_type, placements.CLIENTS))
     def next_fn(state, value):
-      query_state, agg_state = state
+      query_state, agg_state, _, _ = state
 
       params = intrinsics.federated_broadcast(
           intrinsics.federated_map(derive_sample_params, query_state))
@@ -368,12 +398,19 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
 
       record_agg_output = record_agg_process.next(agg_state, record)
 
-      result, new_query_state, _ = intrinsics.federated_map(
+      result, new_query_state, dp_event = intrinsics.federated_map(
           get_noised_result, (record_agg_output.result, query_state))
+
+      is_init_state = intrinsics.federated_value(False, placements.SERVER)
 
       query_metrics = intrinsics.federated_map(derive_metrics, new_query_state)
 
-      new_state = (new_query_state, record_agg_output.state)
+      new_state = DPAggregatorState(
+          new_query_state,
+          record_agg_output.state,
+          dp_event,
+          is_init_state,
+      )
       measurements = collections.OrderedDict(
           dp_query_metrics=query_metrics, dp=record_agg_output.measurements)
       return measured_process.MeasuredProcessOutput(
@@ -381,6 +418,39 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
           intrinsics.federated_zip(measurements))
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
+
+
+def extract_dp_event_from_state(
+    state: DPAggregatorState) -> dp_accounting.dp_event.DpEvent:
+  """Extracts a DPEvent from a DP AggregationProcess' state.
+
+  The intended use of this method is to call it on each state generated by a
+  call to process.next(), and then keep a ledger of all the DPEvents extracted
+  in this manner. For aggregation processes created by
+  DifferentiallyPrivateFactory, initialize() returns a state with a placeholder
+  DPEvent. That event is not meant to be used for accounting purposes, so this
+  method raises a ValueError if it is called on a state returned from
+  initialize().
+
+  Args:
+    state: The state output by process.next(), where process is a
+      `tff.templates.AggregationProcess` created by
+      `DifferentiallyPrivateFactory`.
+
+  Returns:
+    A DPEvent corresponding to the DP aggregation that produced this state.
+
+  Raises:
+    ExtractingDpEventFromInitialStateError: If the state is the one returned by
+      initialize.
+  """
+
+  if state.is_init_state:
+    raise ExtractingDpEventFromInitialStateError(
+        'State was generated by a call to process.initialize(), whose DPEvent '
+        'is a placeholder. extract_dp_event_from_state only accepts states '
+        'from calls to process.next().')
+  return state.dp_event
 
 
 def _check_float_positive(value, label):

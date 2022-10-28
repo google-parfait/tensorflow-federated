@@ -57,14 +57,20 @@ class DPFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     inner_state_type = tf.int32 if inner_agg_factory else ()
 
+    initial_sample_state = _test_dp_query.initial_sample_state(
+        type_conversions.type_to_tf_tensor_specs(value_type))
+    dp_event_type = type_conversions.type_from_tensors(
+        _test_dp_query.get_noised_result(initial_sample_state, query_state)[2])
+
     server_state_type = computation_types.at_server(
-        (query_state_type, inner_state_type))
+        differential_privacy.DPAggregatorState(query_state_type,
+                                               inner_state_type, dp_event_type,
+                                               tf.bool))
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type)
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
             expected_initialize_type))
-
     inner_measurements_type = tf.int32 if inner_agg_factory else ()
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
@@ -122,7 +128,8 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     """
     self.assertAllClose(
         sum([min(x, l2_clip) for x in client_data]) + 1.0, output.result)
-    self.assertAllEqual(1, output.state[1])  # incremented by one each time.
+    self.assertAllEqual(1,
+                        output.state.agg_state)  # incremented by one each time.
     self.assertAllEqual(aggregator_test_utils.MEASUREMENT_CONSTANT,
                         output.measurements['dp'])
 
@@ -168,7 +175,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     process = factory_.create(value_type)
 
     state = process.initialize()
-    self.assertAllEqual(0, state[1])
+    self.assertAllEqual(0, state.agg_state)
 
     client_data = [0.5, 1.0, 1.5]
     output = process.next(state, client_data)
@@ -188,7 +195,7 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     process = tree_factory.create(value_type)
 
     state = process.initialize()
-    self.assertAllEqual(0, state[1])
+    self.assertAllEqual(0, state.agg_state)
 
     client_data = [0.5, 1.0, 1.5]
     output = process.next(state, client_data)
@@ -218,6 +225,30 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     expected_result = 0.5 + 1.5 + 5 / 3
     output = process.next(output.state, client_data)
     self.assertAllClose(expected_result, output.result)
+
+  def test_extract_dp_event_from_state(self):
+    value_type = computation_types.to_type(tf.float32)
+    factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
+    process = factory_.create(value_type)
+    state = process.initialize()
+    client_data = [0.0]
+    output = process.next(state, client_data)
+    event = differential_privacy.extract_dp_event_from_state(output.state)
+    initial_sample_state = _test_dp_query.initial_sample_state(
+        type_conversions.type_to_tf_tensor_specs(value_type))
+    query_state = _test_dp_query.initial_global_state()
+    expected_dp_event = _test_dp_query.get_noised_result(
+        initial_sample_state, query_state)[2]
+    self.assertEqual(event, expected_dp_event)
+
+  def test_error_when_extracting_from_initial_state(self):
+    value_type = computation_types.to_type(tf.float32)
+    factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
+    process = factory_.create(value_type)
+    state = process.initialize()
+    with self.assertRaises(
+        differential_privacy.ExtractingDpEventFromInitialStateError):
+      differential_privacy.extract_dp_event_from_state(state)
 
   def test_noise(self):
     noise = 3.14159
