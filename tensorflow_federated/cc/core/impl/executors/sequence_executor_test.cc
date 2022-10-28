@@ -400,6 +400,51 @@ TEST_F(SequenceExecutorTest, CreateCallNestedStructureSequenceReduce) {
   ExpectMaterialize(call_id, expected_sum_result);
 }
 
+TEST_F(SequenceExecutorTest, CreateCreateSequenceReduceStructuredZero) {
+  int dataset_len = 10;
+  v0::Value expected_sum_result = TensorV(45l);
+  v0::Value sequence_value_pb = SequenceV(1, dataset_len, 1);
+  v0::Value zero_one = TensorV(static_cast<int64_t>(100));
+  v0::Value zero_two = TensorV(static_cast<int64_t>(101));
+  v0::Value reduce_fn = IntrinsicV("some_passthru_intrinsic");
+
+  // Since we pull elements out of the sequence in the sequence
+  // executor, we never create the sequence in the target.
+  auto embedded_accumulator_element0_id =
+      mock_executor_->ExpectCreateValue(zero_one);
+  auto embedded_accumulator_element1_id =
+      mock_executor_->ExpectCreateValue(zero_two);
+  auto embedded_accumulator_id = mock_executor_->ExpectCreateStruct(
+      {embedded_accumulator_element0_id, embedded_accumulator_element1_id});
+  auto embedded_reduce_fn_id = mock_executor_->ExpectCreateValue(reduce_fn);
+
+  for (int i = 1; i < dataset_len; i++) {
+    auto embedded_dataset_element =
+        mock_executor_->ExpectCreateValue(TensorV(static_cast<int64_t>(i)));
+    auto embedded_arg_struct = mock_executor_->ExpectCreateStruct(
+        {embedded_accumulator_id, embedded_dataset_element});
+    embedded_accumulator_id = mock_executor_->ExpectCreateCall(
+        embedded_reduce_fn_id, embedded_arg_struct);
+  }
+  mock_executor_->ExpectMaterialize(embedded_accumulator_id,
+                                    expected_sum_result);
+
+  auto sequence_reduce_id = TFF_ASSERT_OK(
+      test_executor_->CreateValue(IntrinsicV(kSequenceReduceUri)));
+  auto sequence_id =
+      TFF_ASSERT_OK(test_executor_->CreateValue(sequence_value_pb));
+  auto fn_id = TFF_ASSERT_OK(test_executor_->CreateValue(reduce_fn));
+  auto zero_element0_id = TFF_ASSERT_OK(test_executor_->CreateValue(zero_one));
+  auto zero_element1_id = TFF_ASSERT_OK(test_executor_->CreateValue(zero_two));
+  auto zero_id = TFF_ASSERT_OK(
+      test_executor_->CreateStruct({zero_element0_id, zero_element1_id}));
+  auto struct_id = TFF_ASSERT_OK(
+      test_executor_->CreateStruct({sequence_id, zero_id, fn_id}));
+  auto call_id =
+      TFF_ASSERT_OK(test_executor_->CreateCall(sequence_reduce_id, struct_id));
+  ExpectMaterialize(call_id, expected_sum_result);
+}
+
 TEST_F(SequenceExecutorTest, CreateCreateCallTensorSequenceReduce) {
   int dataset_len = 10;
   v0::Value expected_sum_result = TensorV(45l);

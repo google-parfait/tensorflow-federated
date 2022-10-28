@@ -512,9 +512,10 @@ ReferenceResolvingExecutor::Evaluate(
     case v0::Computation::kTensorflow:
     case v0::Computation::kIntrinsic:
     case v0::Computation::kData:
-    case v0::Computation::kPlacement: {
+    case v0::Computation::kPlacement:
+    case v0::Computation::kXla: {
       // Note: we're copying the Computation proto here, possibly a TensorFlow
-      // graph which might have large cosntants, possibly making it expensive.
+      // graph which might have large constants, possibly making it expensive.
       // However, we've taken this approach because we don't always have a
       // `Value` for each `Computation` proto (see `v0::Block::local`); this
       // code is simpler and more homogenous. If profiling shows this is a

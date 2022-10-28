@@ -280,9 +280,9 @@ TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationTensorflow) {
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationXla) {
   v0::Value xla_value_pb;
   xla_value_pb.mutable_computation()->mutable_xla();
+  mock_executor_->ExpectCreateValue(xla_value_pb);
   EXPECT_THAT(test_executor_->CreateValue(xla_value_pb),
-              StatusIs(StatusCode::kUnimplemented,
-                       "Evaluate not implemented for computation type [12]"));
+              IsOkAndHolds(HasValueId(0)));
 }
 
 TEST_F(ReferenceResolvingExecutorTest, CreateValueComputationData) {

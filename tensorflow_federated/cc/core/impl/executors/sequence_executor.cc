@@ -559,7 +559,10 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
     TFF_TRY(CheckLenForUseAsArgument(arg, kSequenceReduceUri, 3));
     auto arg_struct = arg.struct_value();
     SequenceExecutorValue sequence_value = arg_struct->at(0);
-    SequenceExecutorValue zero_value = arg_struct->at(1);
+    // The zero may have been created as the result of, e.g., a CreateStruct
+    // call; we must embed it here.
+    SequenceExecutorValue zero_value = SequenceExecutorValue::CreateEmbedded(
+        TFF_TRY(Embed(arg_struct->at(1))));
     SequenceExecutorValue fn_value = arg_struct->at(2);
 
     TFF_TRY(sequence_value.CheckTypeForArgument(
@@ -575,7 +578,6 @@ class SequenceExecutor : public ExecutorBase<ValueFuture> {
 
     std::unique_ptr<SequenceIterator> iterator =
         TFF_TRY(sequence->CreateIterator());
-    v0::Value value;
     OwnedValueId accumulator = std::move(*initial_value);
     absl::optional<Embedded> embedded_value =
         TFF_TRY(iterator->GetNextEmbedded(*target_executor_));
