@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import functools
 from unittest import mock
 
 from absl.testing import absltest
@@ -30,10 +31,14 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
+from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.algorithms import fed_eval
 from tensorflow_federated.python.learning.metrics import aggregation_factory
 from tensorflow_federated.python.learning.metrics import aggregator
+from tensorflow_federated.python.learning.metrics import counters
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.templates import composers
 from tensorflow_federated.python.learning.templates import distributors
@@ -360,6 +365,60 @@ class FedEvalProcessTest(tf.test.TestCase):
     fed_eval.build_fed_eval(mock_model_fn)
     self.assertEqual(mock_model_fn.call_count, 3)
 
+
+class FunctionalFedEvalProcessTest(tf.test.TestCase):
+
+  def create_test_datasets(self) -> tf.data.Dataset:
+    dataset1 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
+            y=[[0.0], [0.0], [1.0], [1.0]]))
+    dataset2 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]],
+            y=[[1.0], [2.0], [3.0], [4.0]]))
+    return [dataset1.repeat(2).batch(3), dataset2.repeat(2).batch(3)]
+
+  def test_raises_on_non_callable_or_functional_model(self):
+    with self.assertRaisesRegex(TypeError, 'is not a callable'):
+      fed_eval.build_fed_eval(model_fn=0)
+
+  @tensorflow_test_utils.skip_test_for_gpu
+  def test_functional_evaluation_matches_non_functional(self):
+    datasets = self.create_test_datasets()
+    batch_type = computation_types.to_type(datasets[0].element_spec)
+    loss_fn = tf.keras.losses.MeanSquaredError
+    keras_model_fn = functools.partial(
+        model_examples.build_linear_regression_keras_functional_model,
+        feature_dims=2)
+
+    # Defining artifacts using `tff.learning.Model`
+    def tff_model_fn():
+      keras_model = keras_model_fn()
+      return keras_utils.from_keras_model(
+          keras_model, loss=loss_fn(), input_spec=batch_type)
+
+    eval_process = fed_eval.build_fed_eval(tff_model_fn)
+    eval_state = eval_process.initialize()
+    eval_output = eval_process.next(eval_state, datasets)
+
+    # Defining artifacts using `tff.learning.models.FunctionalModel`
+    def build_metrics_fn():
+      return collections.OrderedDict(
+          loss=tf.keras.metrics.MeanSquaredError(),
+          num_examples=counters.NumExamplesCounter(),
+          num_batches=counters.NumBatchesCounter())
+
+    functional_model = functional.functional_model_from_keras(
+        keras_model=keras_model_fn,
+        loss_fn=loss_fn(),
+        input_spec=batch_type,
+        metrics_constructor=build_metrics_fn)
+    functional_eval_process = fed_eval.build_fed_eval(functional_model)
+    functional_eval_state = functional_eval_process.initialize()
+    functional_eval_output = functional_eval_process.next(
+        functional_eval_state, datasets)
+    self.assertDictEqual(eval_output.metrics, functional_eval_output.metrics)
 
 if __name__ == '__main__':
   execution_contexts.set_local_python_execution_context()

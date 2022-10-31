@@ -19,7 +19,7 @@
 """An implementation of stateful federated evaluation."""
 
 import collections
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import tensorflow as tf
 
@@ -36,6 +36,7 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import federated_evaluation
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import aggregation_factory
+from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 from tensorflow_federated.python.learning.templates import client_works
 from tensorflow_federated.python.learning.templates import composers
@@ -44,9 +45,12 @@ from tensorflow_federated.python.learning.templates import finalizers
 from tensorflow_federated.python.learning.templates import learning_process
 
 
+_AggregationProcess = aggregation_process.AggregationProcess
+
+
 def _build_fed_eval_client_work(
     model_fn: Callable[[], model_lib.Model],
-    metrics_aggregation_process: aggregation_process.AggregationProcess,
+    metrics_aggregation_process: Optional[_AggregationProcess],
     model_weights_type: computation_types.StructType,
     use_experimental_simulation_loop: bool = False
 ) -> client_works.ClientWorkProcess:
@@ -62,8 +66,7 @@ def _build_fed_eval_client_work(
       metrics_aggregation_process = aggregation_factory.SumThenFinalizeFactory(
           metrics_finalizers).create(local_unfinalized_metrics_type)
     else:
-      py_typecheck.check_type(metrics_aggregation_process,
-                              aggregation_process.AggregationProcess,
+      py_typecheck.check_type(metrics_aggregation_process, _AggregationProcess,
                               'metrics_aggregation_process')
 
   @federated_computation.federated_computation
@@ -83,6 +86,68 @@ def _build_fed_eval_client_work(
                                              (model_weights, client_data))
     metrics_output = metrics_aggregation_process.next(
         state, model_outputs.local_outputs)
+    current_round_metrics, total_rounds_metrics = metrics_output.result
+    measurements = intrinsics.federated_zip(
+        collections.OrderedDict(
+            eval=collections.OrderedDict(
+                current_round_metrics=current_round_metrics,
+                total_rounds_metrics=total_rounds_metrics)))
+    # Return empty result as no model update will be performed for evaluation.
+    empty_client_result = intrinsics.federated_value(
+        client_works.ClientResult(update=(), update_weight=()),
+        placements.CLIENTS)
+    return measured_process.MeasuredProcessOutput(metrics_output.state,
+                                                  empty_client_result,
+                                                  measurements)
+
+  return client_works.ClientWorkProcess(init_fn, next_fn)
+
+
+def _build_functional_fed_eval_client_work(
+    model: functional.FunctionalModel,
+    metrics_aggregation_process: Optional[_AggregationProcess],
+    model_weights_type: computation_types.StructType,
+) -> client_works.ClientWorkProcess:
+  """Builds a `ClientWorkProcess` that performs model evaluation at clients."""
+
+  def ndarray_to_tensorspec(ndarray):
+    return tf.TensorSpec(
+        shape=ndarray.shape, dtype=tf.dtypes.as_dtype(ndarray.dtype))
+
+  # Wrap in a `ModelWeights` structure that is required by the `finalizer.`
+  weights_type = model_weights_lib.ModelWeights(
+      tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[0]),
+      tuple(ndarray_to_tensorspec(w) for w in model.initial_weights[1]))
+  tuple_weights_type = (weights_type.trainable, weights_type.non_trainable)
+  batch_type = computation_types.to_type(model.input_spec)
+  local_eval = federated_evaluation.build_functional_local_evaluation(
+      model, tuple_weights_type, batch_type)
+
+  if metrics_aggregation_process is None:
+    unfinalized_metrics_type = local_eval.type_signature.result
+    metrics_aggregation_process = aggregation_factory.SumThenFinalizeFactory(
+        model.finalize_metrics).create(unfinalized_metrics_type)
+
+  @federated_computation.federated_computation
+  def init_fn():
+    return metrics_aggregation_process.initialize()
+
+  @tensorflow_computation.tf_computation(
+      model_weights_type, computation_types.SequenceType(batch_type))
+  def client_update_computation(model_weights, client_data):
+    # Switch to the tuple expected by FunctionalModel.
+    tuple_weights = (model_weights.trainable, model_weights.non_trainable)
+    return local_eval(tuple_weights, client_data)
+
+  @federated_computation.federated_computation(
+      init_fn.type_signature.result,
+      computation_types.at_clients(model_weights_type),
+      computation_types.at_clients(computation_types.SequenceType(batch_type)))
+  def next_fn(state, model_weights, client_data):
+    unfinalized_metrics = intrinsics.federated_map(client_update_computation,
+                                                   (model_weights, client_data))
+    metrics_output = metrics_aggregation_process.next(state,
+                                                      unfinalized_metrics)
     current_round_metrics, total_rounds_metrics = metrics_output.result
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(
@@ -126,7 +191,7 @@ def _build_identity_finalizer(
 
 
 def build_fed_eval(
-    model_fn: Callable[[], model_lib.Model],
+    model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     model_distributor: Optional[distributors.DistributionProcess] = None,
     metrics_aggregation_process: Optional[
         aggregation_process.AggregationProcess] = None,
@@ -167,10 +232,12 @@ def build_fed_eval(
   evaluation process.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
-      must *not* capture TensorFlow tensors or variables and use them. The model
-      must be constructed entirely from scratch on each invocation, returning
-      the same pre-constructed model each call will result in an error.
+    model_fn: A no-arg function that returns a `tff.learning.Model`, or an
+      instance of a `tff.learning.models.FunctionalModel`. When passing a
+      callable, the callable must *not* capture TensorFlow tensors or variables
+      and use them.  The model must be constructed entirely from scratch on each
+      invocation, returning the same pre-constructed model each call will result
+      in an error.
     model_distributor: An optional `tff.learning.templates.DistributionProcess`
       that broadcasts the model weights on the server to the clients. It must
       support the signature `(input_values@SERVER -> output_values@CLIENTS)` and
@@ -194,11 +261,23 @@ def build_fed_eval(
   Raises:
     TypeError: If any argument type mismatches.
   """
-  py_typecheck.check_callable(model_fn, 'model_fn')
+  if not callable(model_fn):
+    if not isinstance(model_fn, functional.FunctionalModel):
+      raise TypeError(
+          'If `model_fn` is not a callable, it must be an instance '
+          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
 
-  @tensorflow_computation.tf_computation()
-  def initial_model_weights_fn():
-    return model_weights_lib.ModelWeights.from_model(model_fn())
+    @tensorflow_computation.tf_computation()
+    def initial_model_weights_fn():
+      trainable_weights, non_trainable_weights = model_fn.initial_weights
+      return model_weights_lib.ModelWeights(
+          tuple(tf.convert_to_tensor(w) for w in trainable_weights),
+          tuple(tf.convert_to_tensor(w) for w in non_trainable_weights))
+  else:
+
+    @tensorflow_computation.tf_computation()
+    def initial_model_weights_fn():
+      return model_weights_lib.ModelWeights.from_model(model_fn())
 
   model_weights_type = initial_model_weights_fn.type_signature.result
 
@@ -208,10 +287,14 @@ def build_fed_eval(
     py_typecheck.check_type(model_distributor, distributors.DistributionProcess,
                             'model_distributor')
 
-  client_work = _build_fed_eval_client_work(model_fn,
-                                            metrics_aggregation_process,
-                                            model_weights_type,
-                                            use_experimental_simulation_loop)
+  if not callable(model_fn):
+    client_work = _build_functional_fed_eval_client_work(
+        model_fn, metrics_aggregation_process, model_weights_type)
+  else:
+    client_work = _build_fed_eval_client_work(model_fn,
+                                              metrics_aggregation_process,
+                                              model_weights_type,
+                                              use_experimental_simulation_loop)
 
   client_work_result_type = computation_types.at_clients(
       client_works.ClientResult(update=(), update_weight=()))

@@ -38,9 +38,11 @@ from tensorflow_federated.python.learning.models import functional
 from tensorflow_federated.python.learning.models import model_weights as model_weights_lib
 
 # Convenience aliases.
-SequenceType = computation_types.SequenceType
-MetricsAggregator = Callable[
-    [model_lib.MetricFinalizersType, computation_types.StructWithPythonType],
+_SequenceType = computation_types.SequenceType
+_MetricsAggregatorFirstArgType = Union[
+    model_lib.MetricFinalizersType, functional.FunctionalMetricFinalizersType]
+_MetricsAggregator = Callable[
+    [_MetricsAggregatorFirstArgType, computation_types.StructWithPythonType],
     computation_base.Computation]
 
 
@@ -79,7 +81,7 @@ def build_local_evaluation(
   """
 
   @tensorflow_computation.tf_computation(model_weights_type,
-                                         SequenceType(batch_type))
+                                         _SequenceType(batch_type))
   @tf.function
   def client_eval(incoming_model_weights, dataset):
     """Returns local outputs after evaluting `model_weights` on `dataset`."""
@@ -143,7 +145,7 @@ def build_functional_local_evaluation(
   """
 
   @tensorflow_computation.tf_computation(model_weights_type,
-                                         SequenceType(batch_type))
+                                         _SequenceType(batch_type))
   @tf.function
   def local_eval(weights, dataset):
     metrics_state = model.initialize_metrics_state()
@@ -164,7 +166,7 @@ def build_functional_local_evaluation(
 def build_federated_evaluation(
     model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
-    metrics_aggregator: Optional[MetricsAggregator] = None,
+    metrics_aggregator: Optional[_MetricsAggregator] = None,
     use_experimental_simulation_loop: bool = False,
 ) -> computation_base.Computation:
   """Builds the TFF computation for federated evaluation of the given model.
@@ -233,7 +235,7 @@ def build_federated_evaluation(
 def _build_federated_evaluation(
     *, model_fn: Callable[[], model_lib.Model],
     broadcast_process: Optional[measured_process.MeasuredProcess],
-    metrics_aggregator: MetricsAggregator,
+    metrics_aggregator: _MetricsAggregator,
     use_experimental_simulation_loop: bool) -> computation_base.Computation:
   """Builds a federated evaluation computation for a `tff.learning.Model`."""
   # Construct the model first just to obtain the metadata and define all the
@@ -258,7 +260,7 @@ def _build_federated_evaluation(
 
   @federated_computation.federated_computation(
       computation_types.at_server(model_weights_type),
-      computation_types.at_clients(SequenceType(batch_type)))
+      computation_types.at_clients(_SequenceType(batch_type)))
   def server_eval(server_model_weights, federated_dataset):
     if broadcast_process is not None:
       # TODO(b/179091838): Zip the measurements from the broadcast_process with
@@ -282,7 +284,7 @@ def _build_federated_evaluation(
 def _build_functional_federated_evaluation(
     *, model: functional.FunctionalModel,
     broadcast_process: Optional[measured_process.MeasuredProcess],
-    metrics_aggregator: MetricsAggregator) -> computation_base.Computation:
+    metrics_aggregator: _MetricsAggregator) -> computation_base.Computation:
   """Builds a federated evaluation computation for a functional model."""
 
   def ndarray_to_tensorspec(ndarray):
@@ -297,7 +299,7 @@ def _build_functional_federated_evaluation(
 
   @federated_computation.federated_computation(
       computation_types.at_server(weights_type),
-      computation_types.at_clients(SequenceType(batch_type)))
+      computation_types.at_clients(_SequenceType(batch_type)))
   def federated_eval(server_weights, client_data):
     if broadcast_process is not None:
       # TODO(b/179091838): Zip the measurements from the broadcast_process with
