@@ -534,6 +534,17 @@ class ToTypeTest(absltest.TestCase):
     self.assertIsInstance(t, computation_types.TensorType)
     self.assertEqual(str(t), 'float32[?,3]')
 
+  def test_tf_data_dataspec(self):
+    test_shape = [None, 3]
+    test_dtype = tf.int64
+    s = tf.data.DatasetSpec(
+        element_spec=tf.TensorSpec(test_shape, dtype=test_dtype))
+    t = computation_types.to_type(s)
+    type_test_utils.assert_types_identical(
+        t,
+        computation_types.SequenceType(
+            computation_types.TensorType(shape=test_shape, dtype=test_dtype)))
+
   def test_tf_type_and_shape(self):
     s = (tf.int32, [10])
     t = computation_types.to_type(s)

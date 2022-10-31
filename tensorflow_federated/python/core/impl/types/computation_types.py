@@ -998,7 +998,9 @@ def at_clients(type_spec: Any, all_equal: bool = False) -> FederatedType:
   return FederatedType(type_spec, placements.CLIENTS, all_equal=all_equal)
 
 
-def to_type(spec) -> Union[TensorType, StructType, StructWithPythonType]:
+def to_type(
+    spec: ...
+) -> Union[TensorType, StructType, StructWithPythonType, SequenceType]:
   """Converts the argument into an instance of `tff.Type`.
 
   Examples of arguments convertible to tensor types:
@@ -1065,6 +1067,8 @@ def to_type(spec) -> Union[TensorType, StructType, StructWithPythonType]:
     return TensorType(spec)
   elif isinstance(spec, tf.TensorSpec):
     return TensorType(spec.dtype, spec.shape)
+  elif isinstance(spec, tf.data.DatasetSpec):
+    return SequenceType(element=to_type(spec.element_spec))
   elif (isinstance(spec, tuple) and (len(spec) == 2) and
         _is_dtype_spec(spec[0]) and
         (isinstance(spec[1], tf.TensorShape) or
