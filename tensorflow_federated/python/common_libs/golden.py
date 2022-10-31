@@ -23,9 +23,12 @@ from typing import Optional
 
 from absl import flags
 
-flags.DEFINE_multi_string('golden', [], 'List of golden files available.')
-flags.DEFINE_bool('update_goldens', False, 'Set true to update golden files.')
-flags.DEFINE_bool('verbose', False, 'Set true to show golden diff output.')
+_GOLDEN = flags.DEFINE_multi_string('golden', [],
+                                    'List of golden files available.')
+_UPDATE_GOLDENS = flags.DEFINE_bool('update_goldens', False,
+                                    'Set true to update golden files.')
+_VERBOSE = flags.DEFINE_bool('verbose', False,
+                             'Set true to show golden diff output.')
 
 FLAGS = flags.FLAGS
 
@@ -43,7 +46,7 @@ def _filename_to_golden_path(filename: str) -> str:
   global _filename_to_golden_map
   if _filename_to_golden_map is None:
     _filename_to_golden_map = {}
-    for golden_path in FLAGS.golden:
+    for golden_path in _GOLDEN.value:
       name = os.path.basename(golden_path)
       old_path = _filename_to_golden_map.get(name)
       if old_path is not None and old_path != golden_path:
@@ -65,7 +68,7 @@ def check_string(filename: str, value: str):
   if not value.endswith('\n'):
     value = value + '\n'
   golden_path = _filename_to_golden_path(filename)
-  if FLAGS.update_goldens:
+  if _UPDATE_GOLDENS.value:
     with open(golden_path, 'w') as f:
       f.write(value)
     return
@@ -77,7 +80,7 @@ def check_string(filename: str, value: str):
              'no longer match the current value.\n'
              'To update the golden file, rerun this target with:\n'
              '`--test_arg=--update_goldens --test_strategy=local`\n')
-  if FLAGS.verbose:
+  if _VERBOSE.value:
     message += 'Full diff:\n'
     split_value = value.split('\n')
     split_golden = golden_contents.split('\n')
@@ -106,7 +109,8 @@ def traceback_string(exc_type, exc_value, tb) -> str:
 
 
 def check_raises_traceback(
-    filename: str, exception) -> contextlib.AbstractContextManager[None]:
+    filename: str,
+    exception: Exception) -> contextlib.AbstractContextManager[None]:
   """Check for `exception` to be raised, generating a golden traceback."""
   # Note: does not use `@contextlib.contextmanager` because that adds
   # this function to the traceback.
@@ -127,7 +131,7 @@ class _TracebackManager():
     if not issubclass(exc_type, self._exception):
       message = f'Exception `{self._exception.__name__}` was not thrown.'
       if exc_value is not None:
-        message += ' A different exception was thrown, and can be seen above.'
+        message += f' A different exception was thrown: {exc_type.__name__}'
       raise RuntimeError(message)
     traceback_str = traceback_string(exc_type, exc_value, tb)
     check_string(self._filename, traceback_str)
