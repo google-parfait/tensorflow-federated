@@ -79,3 +79,28 @@ def unpack_graph_def(any_pb):
     raise ValueError(
         'Unable to unpack value [{}] as a tf.compat.v1.GraphDef'.format(any_pb))
   return graph_def
+
+
+# The FunctionDef protocol buffer message type isn't exposed in the `tensorflow`
+# package, this is a less than ideal workaround.
+FunctionDef = type(tf.compat.v1.GraphDef().library.function.add())
+
+
+def pack_function_def(function_def: FunctionDef) -> any_pb2.Any:
+  """Pack a `FunctionDef` into a proto3 `Any` message.
+
+  Args:
+    function_def: the `FunctionDef` to pack into a protocol buffer message.
+
+  Returns:
+    A `google.protobuf.Any` protocol buffer message.
+
+  Raises:
+    TypeError: if `function_def` is not a `FunctionDef`.
+  """
+  py_typecheck.check_type(function_def, FunctionDef)
+  # Perform deterministic Any packing by setting the fields explicitly and not
+  # using the Any.Pack() method.
+  return any_pb2.Any(
+      type_url='type.googleapis.com/' + function_def.DESCRIPTOR.full_name,
+      value=function_def.SerializeToString(deterministic=True))
