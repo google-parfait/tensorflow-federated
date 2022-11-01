@@ -92,7 +92,7 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
     test_client_ids = list(test_client_dataset_mapping.keys())
 
-    dataset_fn = lambda cid: test_client_dataset_mapping[cid]
+    dataset_fn = lambda client_id: test_client_dataset_mapping[client_id]
 
     database_filepath = os.path.join(self.get_temp_dir(), 'db')
 
@@ -106,9 +106,45 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
 
     self.assertCountEqual(rebuilt_cd.client_ids, test_client_ids)
 
-    for cid in rebuilt_cd.client_ids:
-      rebuilt_ds = rebuilt_cd.create_tf_dataset_for_client(cid)
-      ds = test_client_dataset_mapping[cid]
+    for client_id in rebuilt_cd.client_ids:
+      rebuilt_ds = rebuilt_cd.create_tf_dataset_for_client(client_id)
+      ds = test_client_dataset_mapping[client_id]
+
+      for rebuilt_odict, original_odict in zip(rebuilt_ds, ds):
+        self.assertAllEqual(rebuilt_odict, original_odict)
+
+  def test_save_to_sql_client_data_with_split_names(self):
+    test_ds1 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']))
+    test_ds2 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e']))
+    test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
+    test_client_ids = list(test_client_dataset_mapping.keys())
+    test_split_name_1, test_split_name_2 = 'first', 'second'
+    test_split_names = {'foo': test_split_name_1, 'bar': test_split_name_2}
+
+    dataset_fn = lambda client_id: test_client_dataset_mapping[client_id]
+
+    database_filepath = os.path.join(self.get_temp_dir(), 'db')
+
+    sql_client_data_utils.save_to_sql_client_data(
+        client_ids=test_client_ids,
+        dataset_fn=dataset_fn,
+        database_filepath=database_filepath,
+        allow_overwrite=False,
+        split_names_by_client_id=test_split_names)
+
+    self.assertTrue(tf.io.gfile.exists(database_filepath))
+
+    rebuilt_cd = sql_client_data_utils.load_and_parse_sql_client_data(
+        database_filepath, test_ds1.element_spec, test_split_name_1)
+
+    self.assertEqual(rebuilt_cd.client_ids, [test_client_ids[0]])
+
+    for client_id in rebuilt_cd.client_ids:
+      rebuilt_ds = rebuilt_cd.create_tf_dataset_for_client(client_id)
+      ds = test_client_dataset_mapping[client_id]
 
       for rebuilt_odict, original_odict in zip(rebuilt_ds, ds):
         self.assertEqual(
@@ -116,6 +152,49 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
 
         for key in rebuilt_odict.keys():
           self.assertAllEqual(rebuilt_odict[key], original_odict[key])
+
+  def test_save_to_sql_client_data_with_empty_split_names(self):
+    test_ds1 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']))
+    test_ds2 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e']))
+    test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
+    test_client_ids = list(test_client_dataset_mapping.keys())
+
+    dataset_fn = lambda client_id: test_client_dataset_mapping[client_id]
+
+    database_filepath = os.path.join(self.get_temp_dir(), 'db')
+
+    with self.assertRaises(ValueError):
+      sql_client_data_utils.save_to_sql_client_data(
+          client_ids=test_client_ids,
+          dataset_fn=dataset_fn,
+          database_filepath=database_filepath,
+          allow_overwrite=False,
+          split_names_by_client_id={})
+
+  def test_save_to_sql_client_data_with_missing_split_name(self):
+    test_ds1 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            i=[1, 2, 3], f=[4.0, 5.0, 6.0], s=['a', 'b', 'c']))
+    test_ds2 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(i=[4, 5], f=[7.0, 8.0], s=['d', 'e']))
+    test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
+    test_client_ids = list(test_client_dataset_mapping.keys())
+    test_split_names = {'foo': 'first'}
+
+    dataset_fn = lambda client_id: test_client_dataset_mapping[client_id]
+
+    database_filepath = os.path.join(self.get_temp_dir(), 'db')
+
+    with self.assertRaises(ValueError):
+      sql_client_data_utils.save_to_sql_client_data(
+          client_ids=test_client_ids,
+          dataset_fn=dataset_fn,
+          database_filepath=database_filepath,
+          allow_overwrite=False,
+          split_names_by_client_id=test_split_names)
 
   def test_save_to_sql_client_can_overwrite_if_enabled(self):
     test_ds1 = tf.data.Dataset.from_tensor_slices(
@@ -126,7 +205,7 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
     test_client_ids = list(test_client_dataset_mapping.keys())
 
-    dataset_fn = lambda cid: test_client_dataset_mapping[cid]
+    dataset_fn = lambda client_id: test_client_dataset_mapping[client_id]
 
     database_filepath = os.path.join(self.get_temp_dir(), 'db')
 
@@ -145,9 +224,9 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
 
     self.assertCountEqual(rebuilt_cd.client_ids, test_client_ids)
 
-    for cid in rebuilt_cd.client_ids:
-      rebuilt_ds = rebuilt_cd.create_tf_dataset_for_client(cid)
-      ds = test_client_dataset_mapping[cid]
+    for client_id in rebuilt_cd.client_ids:
+      rebuilt_ds = rebuilt_cd.create_tf_dataset_for_client(client_id)
+      ds = test_client_dataset_mapping[client_id]
 
       for rebuilt_odict, original_odict in zip(rebuilt_ds, ds):
         self.assertEqual(
@@ -166,7 +245,7 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
     test_client_ids = list(test_client_dataset_mapping.keys())
 
-    dataset_fn = lambda cid: test_client_dataset_mapping[cid]
+    dataset_fn = lambda client_id: test_client_dataset_mapping[client_id]
 
     database_filepath = os.path.join(self.get_temp_dir(), 'db')
 
@@ -190,7 +269,7 @@ class SqlClientDataUtilsTest(tf.test.TestCase):
     test_client_dataset_mapping = {'foo': test_ds1, 'bar': test_ds2}
     test_client_ids = list(test_client_dataset_mapping.keys())
 
-    dataset_fn = lambda cid: test_client_dataset_mapping[cid]
+    dataset_fn = lambda client_id: test_client_dataset_mapping[client_id]
 
     database_filepath = os.path.join(self.get_temp_dir(), 'db')
 

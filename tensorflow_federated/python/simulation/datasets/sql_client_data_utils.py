@@ -18,13 +18,16 @@ from collections.abc import Mapping
 import os
 import sqlite3
 import tempfile
-from typing import Callable
+from typing import Callable, Optional
 
 from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import client_data
 from tensorflow_federated.python.simulation.datasets import sql_client_data
+
+
+_DEFAULT_SPLIT_NAME = 'default_split'
 
 
 class ElementSpecCompatibilityError(TypeError):
@@ -136,6 +139,7 @@ def save_to_sql_client_data(
     dataset_fn: Callable[[str], tf.data.Dataset],
     database_filepath: str,
     allow_overwrite: bool = False,
+    split_names_by_client_id: Optional[Mapping[str, str]] = None,
 ) -> None:
   """Serialize a federated dataset into a SQL database compatible with `SqlClientData`.
 
@@ -150,6 +154,8 @@ def save_to_sql_client_data(
     database_filepath: A `str` filepath to the SQL database.
     allow_overwrite: A boolean indicating whether to allow overwriting if file
       already exists at dataset_filepath.
+    split_names_by_client_id: An optional mapping from client identifier to a
+      `str` identifier for the split (e.g. `"train"`) the client belongs to.
 
   Raises:
     FileExistsError: if file exists at `dataset_filepath` and `allow_overwrite`
@@ -157,6 +163,8 @@ def save_to_sql_client_data(
     ElementSpecCompatibilityError: if the element_spec of local datasets are not
       identical across clients, or if the element_spec of datasets are not of
       type `Mapping[str, TensorSpec]`.
+    ValueError: If `split_names_by_client_id` is passed and is missing an entry
+      for a client in `client_ids`.
   """
 
   if tf.io.gfile.exists(database_filepath) and not allow_overwrite:
@@ -209,17 +217,24 @@ def save_to_sql_client_data(
             '{example_client_id}' which has element type {example_element_spec}.
             """)
 
+      if split_names_by_client_id is not None:
+        split_name = split_names_by_client_id.get(client_id)
+        if split_name is None:
+          raise ValueError(f'No split defined for client {client_id}')
+      else:
+        split_name = _DEFAULT_SPLIT_NAME
+
       num_elem = 0
       for elem in local_ds:
         num_elem += 1
         con.execute(
             'INSERT INTO examples '
             '(split_name, client_id, serialized_example_proto) '
-            'VALUES (?, ?, ?);', ('N/A', client_id, serializer(elem)))
+            'VALUES (?, ?, ?);', (split_name, client_id, serializer(elem)))
 
       con.execute(
           'INSERT INTO client_metadata (client_id, split_name, num_examples) '
-          'VALUES (?, ?, ?);', (client_id, 'N/A', num_elem))
+          'VALUES (?, ?, ?);', (client_id, split_name, num_elem))
 
   if tf.io.gfile.exists(database_filepath):
     tf.io.gfile.remove(database_filepath)
@@ -231,7 +246,8 @@ def save_to_sql_client_data(
 
 def load_and_parse_sql_client_data(
     database_filepath: str,
-    element_spec: Mapping[str, tf.TensorSpec]) -> client_data.ClientData:
+    element_spec: Mapping[str, tf.TensorSpec],
+    split_name: Optional[str] = None) -> client_data.ClientData:
   """Load a `ClientData` arises by parsing a serialized `SqlClientData`.
 
   Args:
@@ -241,6 +257,9 @@ def load_and_parse_sql_client_data(
     element_spec: The `element_spec` of the local dataset. This is used to parse
       the serialized `tff.simulation.datasets.SqlClientData`. The `element_spec`
       must be of type `Mapping[str, TensorSpec]`.
+    split_name: An optional `str` identifier for the split of the database to
+        use. This filters clients and examples based on the `split_name` column.
+        A value of `None` means no filtering, selecting all examples.
 
   Returns:
     A `tff.simulation.datasets.ClientData` instance arised from parsing a
@@ -267,5 +286,5 @@ def load_and_parse_sql_client_data(
     database_filepath = tmp_database_filepath
     logging.info('Finished fetching SQL database to local.')
 
-  return sql_client_data.SqlClientData(database_filepath).preprocess(
-      dataset_parser)
+  return sql_client_data.SqlClientData(database_filepath,
+                                       split_name).preprocess(dataset_parser)
