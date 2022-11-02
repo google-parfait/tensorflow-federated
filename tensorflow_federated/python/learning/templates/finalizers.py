@@ -66,7 +66,7 @@ class FinalizerProcess(measured_process.MeasuredProcess):
 
     The `result` field of the returned `tff.templates.MeasuredProcessOutput`
     must be placed at `SERVER`, be of type matching that of second input
-    argument (`B`) and represents the updated ("finalized") model parameters.
+    argument (`A`) and represents the updated ("finalized") model parameters.
 
     If provided, the `get_hparams_fn` and `set_hparams_fn` must be non-federated
     computations with the following type signatures:
