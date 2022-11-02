@@ -14,8 +14,9 @@
 """Implementation of Python executor interface backed by a C++ executor."""
 
 import asyncio
+from collections.abc import Sequence
 import concurrent
-from typing import Any, Optional, Sequence
+from typing import Any, Optional
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing

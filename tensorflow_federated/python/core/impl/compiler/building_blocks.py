@@ -21,7 +21,7 @@
 import abc
 from collections.abc import Iterable, Iterator
 import enum
-from typing import Any, Optional, Type
+from typing import Any, Optional
 import zlib
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -48,7 +48,7 @@ def _check_computation_oneof(
 
 class UnexpectedBlockError(TypeError):
 
-  def __init__(self, expected: Type['ComputationBuildingBlock'],
+  def __init__(self, expected: type['ComputationBuildingBlock'],
                actual: 'ComputationBuildingBlock'):
     message = f'Expected block of kind {expected}, found block {actual}'
     super().__init__(message)
@@ -72,7 +72,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
 
   @classmethod
   def from_proto(
-      cls: Type['ComputationBuildingBlock'],
+      cls: type['ComputationBuildingBlock'],
       computation_proto: pb.Computation,
   ) -> 'ComputationBuildingBlock':
     """Returns an instance of a derived class based on 'computation_proto'.
@@ -281,7 +281,7 @@ class Reference(ComputationBuildingBlock):
 
   @classmethod
   def from_proto(
-      cls: Type['Reference'],
+      cls: type['Reference'],
       computation_proto: pb.Computation,
   ) -> 'Reference':
     _check_computation_oneof(computation_proto, 'reference')
@@ -347,7 +347,7 @@ class Selection(ComputationBuildingBlock):
 
   @classmethod
   def from_proto(
-      cls: Type['Selection'],
+      cls: type['Selection'],
       computation_proto: pb.Computation,
   ) -> 'Selection':
     _check_computation_oneof(computation_proto, 'selection')
@@ -463,7 +463,7 @@ class Struct(ComputationBuildingBlock, structure.Struct):
 
   @classmethod
   def from_proto(
-      cls: Type['Struct'],
+      cls: type['Struct'],
       computation_proto: pb.Computation,
   ) -> 'Struct':
     _check_computation_oneof(computation_proto, 'struct')
@@ -560,7 +560,7 @@ class Call(ComputationBuildingBlock):
 
   @classmethod
   def from_proto(
-      cls: Type['Call'],
+      cls: type['Call'],
       computation_proto: pb.Computation,
   ) -> 'Call':
     _check_computation_oneof(computation_proto, 'call')
@@ -656,7 +656,7 @@ class Lambda(ComputationBuildingBlock):
 
   @classmethod
   def from_proto(
-      cls: Type['Lambda'],
+      cls: type['Lambda'],
       computation_proto: pb.Computation,
   ) -> 'Lambda':
     _check_computation_oneof(computation_proto, 'lambda')
@@ -786,7 +786,7 @@ class Block(ComputationBuildingBlock):
 
   @classmethod
   def from_proto(
-      cls: Type['Block'],
+      cls: type['Block'],
       computation_proto: pb.Computation,
   ) -> 'Block':
     _check_computation_oneof(computation_proto, 'block')
@@ -880,7 +880,7 @@ class Intrinsic(ComputationBuildingBlock):
 
   @classmethod
   def from_proto(
-      cls: Type['Intrinsic'],
+      cls: type['Intrinsic'],
       computation_proto: pb.Computation,
   ) -> 'Intrinsic':
     _check_computation_oneof(computation_proto, 'intrinsic')
@@ -949,7 +949,7 @@ class Data(ComputationBuildingBlock):
 
   @classmethod
   def from_proto(
-      cls: Type['Data'],
+      cls: type['Data'],
       computation_proto: pb.Computation,
   ) -> 'Data':
     _check_computation_oneof(computation_proto, 'data')
@@ -1072,7 +1072,7 @@ class Placement(ComputationBuildingBlock):
 
   @classmethod
   def from_proto(
-      cls: Type['Placement'],
+      cls: type['Placement'],
       computation_proto: pb.Computation,
   ) -> 'Placement':
     _check_computation_oneof(computation_proto, 'placement')

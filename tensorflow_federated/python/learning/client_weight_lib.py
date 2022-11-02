@@ -18,8 +18,9 @@
 # information.
 """Enums for client weighting in learning methods."""
 
+from collections.abc import Callable
 import enum
-from typing import Any, Callable, Union
+from typing import Any, Union
 
 import tensorflow as tf
 

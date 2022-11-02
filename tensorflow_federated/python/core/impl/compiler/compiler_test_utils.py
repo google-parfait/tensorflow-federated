@@ -15,8 +15,6 @@
 
 import collections
 
-from typing import OrderedDict
-
 from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -45,14 +43,14 @@ def _name_compiled_computations(
 
 
 def check_computations(
-    filename: str,
-    computations: OrderedDict[str, building_blocks.ComputationBuildingBlock]
+    filename: str, computations: collections.OrderedDict[
+        str, building_blocks.ComputationBuildingBlock]
 ) -> None:
   """Check the AST of computations matches the contents of the golden file.
 
   Args:
     filename: String filename of the golden file.
-    computations: An OrderedDict of computation names to
+    computations: An `collections.OrderedDict` of computation names to
       `building_blocks.ComputationBuildingBlock`.
 
   Raises:

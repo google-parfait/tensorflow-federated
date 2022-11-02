@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterable
 import itertools
-from typing import Iterable
 
 from absl.testing import parameterized
-
 import numpy as np
 import tensorflow as tf
 

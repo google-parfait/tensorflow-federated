@@ -14,10 +14,11 @@
 """Utilities for working with file systems."""
 
 import asyncio
+from collections.abc import Callable
 import functools
 import os
 import random
-from typing import Any, Callable, Union
+from typing import Any, Union
 
 import tensorflow as tf
 

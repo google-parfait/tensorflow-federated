@@ -18,8 +18,9 @@
 # information.
 """Generic aggregator for model updates in federated averaging."""
 
+from collections.abc import Callable
 import math
-from typing import Callable, Optional
+from typing import Optional
 
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import distributed_dp

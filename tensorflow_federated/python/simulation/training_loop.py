@@ -15,9 +15,9 @@
 
 import asyncio
 import collections
-from collections.abc import Iterable, MutableMapping
+from collections.abc import Callable, Iterable, MutableMapping
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from absl import logging
 

@@ -27,6 +27,7 @@ various boundaries, namely between asyncio and regular python code:
 
 import abc
 import asyncio
+from collections.abc import Generator
 import contextlib
 import functools
 import inspect
@@ -34,7 +35,7 @@ import random
 import sys
 import threading
 import time
-from typing import Any, ContextManager, Generator, Generic, Optional, TypeVar, Union
+from typing import Any, Generic, Optional, TypeVar, Union
 
 from absl import logging
 
@@ -119,7 +120,9 @@ class TracingProvider(Generic[T], metaclass=abc.ABCMeta):
     """
     raise NotImplementedError
 
-  def wrap_rpc(self, parent_span_yield: Optional[T]) -> ContextManager[None]:
+  def wrap_rpc(
+      self, parent_span_yield: Optional[T]
+  ) -> contextlib.AbstractContextManager[None]:
     """Wrap an RPC call so that it can carry over the `parent_span_yield`."""
     del parent_span_yield
     return contextlib.nullcontext()

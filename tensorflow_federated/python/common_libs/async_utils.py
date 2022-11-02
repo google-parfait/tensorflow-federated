@@ -14,10 +14,10 @@
 """Concurrency utilities for use with Python `async`."""
 
 import asyncio
+from collections.abc import Callable
 import contextlib
 import sys
 import threading
-from typing import Callable
 
 from absl import logging
 

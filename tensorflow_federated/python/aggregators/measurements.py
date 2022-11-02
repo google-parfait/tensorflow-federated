@@ -18,9 +18,10 @@
 # information.
 """Aggregation factory for adding custom measurements."""
 
+from collections.abc import Callable
 import inspect
 import typing
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck

@@ -14,8 +14,8 @@
 """End-to-end example testing Federated Averaging with CNN and RNN."""
 
 import collections
+from collections.abc import Callable
 import functools
-from typing import Callable
 
 from absl.testing import parameterized
 import attr

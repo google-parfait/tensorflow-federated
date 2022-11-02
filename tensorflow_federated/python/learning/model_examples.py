@@ -19,8 +19,9 @@
 """Simple examples implementing the Model interface."""
 
 import collections
+from collections.abc import Callable
 import functools
-from typing import Callable, Union
+from typing import Union
 
 import tensorflow as tf
 

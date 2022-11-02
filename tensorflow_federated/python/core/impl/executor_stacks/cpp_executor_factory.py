@@ -18,9 +18,8 @@
 # information.
 """A collection of constructors for basic types of executor stacks."""
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 import math
-from typing import Callable
 
 from absl import logging
 import cachetools

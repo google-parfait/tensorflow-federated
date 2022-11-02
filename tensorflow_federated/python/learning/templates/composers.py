@@ -19,7 +19,7 @@
 """Methods for composing learning components into a LearningProcess."""
 
 import collections
-from typing import Callable
+from collections.abc import Callable
 
 import attr
 

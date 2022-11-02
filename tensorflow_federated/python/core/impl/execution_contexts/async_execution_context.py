@@ -19,10 +19,9 @@
 """A context for execution based on an embedded executor instance."""
 
 import asyncio
+from collections.abc import Callable
 import contextlib
-from typing import Any
-from typing import Callable
-from typing import Optional
+from typing import Any, Optional
 
 import tensorflow as tf
 

@@ -22,7 +22,8 @@ Note: Refer to `get_computation_for_map_reduce_form()` for the meaning of
 variable names used in this module.
 """
 
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 import tensorflow as tf
 

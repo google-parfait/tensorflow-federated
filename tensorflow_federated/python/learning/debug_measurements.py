@@ -19,7 +19,8 @@
 """Library of aggregator measurements useful for debugging learning processes."""
 
 import collections
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import tensorflow as tf
 

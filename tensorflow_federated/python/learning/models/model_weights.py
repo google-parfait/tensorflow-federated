@@ -18,7 +18,8 @@
 # information.
 """Utility methods for working with TensorFlow Federated Model objects."""
 
-from typing import Callable, Union
+from collections.abc import Callable
+from typing import Union
 
 import attr
 import numpy as np

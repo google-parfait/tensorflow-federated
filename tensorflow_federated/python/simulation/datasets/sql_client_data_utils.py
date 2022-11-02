@@ -14,11 +14,11 @@
 """Utilities for constructing, serializing and parsing SQL-backed ClientData."""
 
 import collections
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 import os
 import sqlite3
 import tempfile
-from typing import Callable, Optional
+from typing import Optional
 
 from absl import logging
 import tensorflow as tf

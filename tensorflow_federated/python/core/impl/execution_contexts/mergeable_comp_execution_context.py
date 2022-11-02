@@ -19,10 +19,10 @@
 """Execution context for single-aggregation computations."""
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Awaitable, Sequence, Callable
 import functools
 import math
-from typing import Any, Awaitable, Callable, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
 
 import attr
 from tensorflow_federated.python.common_libs import async_utils

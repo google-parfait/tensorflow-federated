@@ -19,8 +19,8 @@
 """Factory for aggregations parameterized by tensor_encoding Encoders."""
 
 import collections
+from collections.abc import Callable
 import typing
-from typing import Callable
 
 import tensorflow as tf
 import tree

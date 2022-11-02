@@ -14,7 +14,8 @@
 """Helpers for learning rate scheduling."""
 
 import collections
-from typing import Callable
+from collections.abc import Callable
+
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck

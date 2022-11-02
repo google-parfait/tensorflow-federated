@@ -13,7 +13,7 @@
 # limitations under the License.
 """End-to-end tests for simulations using TFF."""
 
-from typing import Callable
+from collections.abc import Callable
 
 from absl.testing import parameterized
 import tensorflow as tf

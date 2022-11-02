@@ -13,8 +13,9 @@
 # limitations under the License.
 """Implementation of `ClientData` backed by an SQL database."""
 
+from collections.abc import Iterator
 import sqlite3
-from typing import Iterator, Optional
+from typing import Optional
 
 from absl import logging
 import tensorflow as tf

@@ -19,7 +19,7 @@
 """A library of transformations for ASTs."""
 
 import collections
-from typing import Callable
+from collections.abc import Callable
 
 import tensorflow as tf
 

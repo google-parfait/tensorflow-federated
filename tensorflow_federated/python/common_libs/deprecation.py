@@ -13,8 +13,9 @@
 # limitations under the License.
 """A module for utilities to notify users of deprecated APIs."""
 
+from collections.abc import Callable
 import functools
-from typing import Callable, TypeVar
+from typing import TypeVar
 import warnings
 
 from absl import logging

@@ -19,7 +19,8 @@
 """A library of static analysis functions for computation types."""
 
 import collections
-from typing import Any, Callable, Optional, OrderedDict
+from collections.abc import Callable
+from typing import Any, Optional, OrderedDict
 
 import tensorflow as tf
 

@@ -13,7 +13,8 @@
 # limitations under the License.
 """Preprocessing library for EMNIST baseline tasks."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 import tensorflow as tf
 

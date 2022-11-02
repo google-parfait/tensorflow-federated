@@ -19,7 +19,8 @@
 """An implementation of Federated Averaging with client optimizer scheduling."""
 
 import collections
-from typing import Callable, Optional, Union
+from collections.abc import Callable
+from typing import Optional, Union
 
 import tensorflow as tf
 

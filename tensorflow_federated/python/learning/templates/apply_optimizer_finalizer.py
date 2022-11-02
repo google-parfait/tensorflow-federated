@@ -18,7 +18,8 @@
 # information.
 """Abstractions for finalization in learning algorithms."""
 
-from typing import Callable, Union
+from collections.abc import Callable
+from typing import Union
 
 import tensorflow as tf
 

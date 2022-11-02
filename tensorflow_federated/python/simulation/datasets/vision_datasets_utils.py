@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utility methods for vision simulation datasets: gldv2 and iNaturalist."""
+
 import collections
 import csv
 import logging
 import os
-
 from typing import ByteString
 
 import tensorflow as tf

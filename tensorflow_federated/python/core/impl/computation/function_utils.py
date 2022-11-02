@@ -18,11 +18,11 @@
 # information.
 """Utilities for Python functions, defuns, and other types of callables."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 import functools
 import inspect
 import types
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utilities for baseline tasks."""
 
-from typing import Callable
+from collections.abc import Callable
 
 import attr
 import tensorflow as tf

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from collections.abc import Iterable
-from typing import Any, Type
+from typing import Any
 import unittest
 
 from absl.testing import absltest
@@ -37,7 +37,7 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-def all_isinstance(objs: Iterable[Any], classinfo: Type[Any]) -> bool:
+def all_isinstance(objs: Iterable[Any], classinfo: type[Any]) -> bool:
   return all(isinstance(x, classinfo) for x in objs)
 
 

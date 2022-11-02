@@ -14,8 +14,8 @@
 """End-to-end example testing the FedAvg algorithm with stateful clients."""
 
 import collections
+from collections.abc import Callable
 import functools
-from typing import Callable
 
 from absl.testing import parameterized
 import numpy as np

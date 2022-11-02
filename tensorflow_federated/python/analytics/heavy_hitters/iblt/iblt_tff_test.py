@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import collections
+from collections.abc import Callable
 import itertools
-from typing import Callable, Optional
+from typing import Optional
 
 from absl.testing import absltest
 from absl.testing import parameterized

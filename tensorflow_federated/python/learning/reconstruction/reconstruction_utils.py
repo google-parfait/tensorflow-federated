@@ -18,7 +18,8 @@
 # information.
 """Shared utils for Federated Reconstruction training and evaluation."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 import tensorflow as tf
 

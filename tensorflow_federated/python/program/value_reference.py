@@ -22,7 +22,8 @@ unplaced.
 
 import abc
 import asyncio
-from typing import Any, Iterable, Union
+from collections.abc import Iterable
+from typing import Any, Union
 
 import numpy as np
 import tree

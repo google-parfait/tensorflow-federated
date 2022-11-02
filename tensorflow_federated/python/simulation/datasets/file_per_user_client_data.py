@@ -13,9 +13,8 @@
 # limitations under the License.
 """Implementations of `ClientData` backed by a file system."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 import os.path
-from typing import Callable
 
 import tensorflow as tf
 

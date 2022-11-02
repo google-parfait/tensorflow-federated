@@ -14,9 +14,9 @@
 """Container for structures with named and/or unnamed fields."""
 
 import collections
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 import typing
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 import attr
 import tensorflow as tf

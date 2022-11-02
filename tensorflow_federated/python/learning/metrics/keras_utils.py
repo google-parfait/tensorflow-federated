@@ -19,8 +19,9 @@
 """Module for Keras metrics integration."""
 
 import collections
+from collections.abc import Callable
 import functools
-from typing import Any, Callable, OrderedDict, TypeVar, Union
+from typing import Any, OrderedDict, TypeVar, Union
 
 import tensorflow as tf
 

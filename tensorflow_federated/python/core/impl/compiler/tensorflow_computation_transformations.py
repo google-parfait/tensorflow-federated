@@ -19,7 +19,7 @@
 """A library of transformations for tensorflow computations."""
 
 import itertools
-from typing import FrozenSet, Optional
+from typing import Optional
 
 import tensorflow as tf
 
@@ -84,8 +84,8 @@ class DisallowedOpInTensorFlowComputationError(Exception):
 
 
 def _check_ops(proto: computation_pb2.Computation,
-               allowed_op_names: Optional[FrozenSet[str]] = None,
-               disallowed_op_names: Optional[FrozenSet[str]] = None):
+               allowed_op_names: Optional[frozenset[str]] = None,
+               disallowed_op_names: Optional[frozenset[str]] = None):
   """Checks the ops in the TensorFlow computation.
 
   If allowed_op_names is specified, then _check_ops checks the incoming proto
@@ -135,7 +135,7 @@ def _check_ops(proto: computation_pb2.Computation,
 
 
 def check_allowed_ops(proto: computation_pb2.Computation,
-                      allowed_op_names: FrozenSet[str]):
+                      allowed_op_names: frozenset[str]):
   """Checks the TensorFlow computation contains allowed ops.
 
   Args:
@@ -151,7 +151,7 @@ def check_allowed_ops(proto: computation_pb2.Computation,
 
 
 def check_no_disallowed_ops(proto: computation_pb2.Computation,
-                            disallowed_op_names: FrozenSet[str]):
+                            disallowed_op_names: frozenset[str]):
   """Checks the TensorFlow computation for disallowed ops.
 
   Args:

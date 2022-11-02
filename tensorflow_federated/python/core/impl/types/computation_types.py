@@ -25,7 +25,7 @@ from collections.abc import Iterable, Mapping, Sequence
 import difflib
 import enum
 import typing
-from typing import Any, Optional, Type as TypingType, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
 import weakref
 
 import attr
@@ -42,7 +42,7 @@ C = TypeVar('C')
 
 class UnexpectedTypeError(TypeError):
 
-  def __init__(self, expected: TypingType['Type'], actual: 'Type'):
+  def __init__(self, expected: type['Type'], actual: 'Type'):
     message = f'Expected type of kind {expected}, found type {actual}'
     super().__init__(message)
     self.actual = actual
@@ -599,7 +599,7 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
     return (element for _, element in structure.iter_elements(self))
 
   @property
-  def python_container(self) -> Optional[TypingType[Any]]:
+  def python_container(self) -> Optional[type[Any]]:
     return None
 
   def is_struct(self) -> bool:
@@ -655,7 +655,7 @@ class StructWithPythonType(StructType, metaclass=_Intern):
     return True
 
   @property
-  def python_container(self) -> TypingType[Any]:
+  def python_container(self) -> type[Any]:
     return self._container_type
 
   def __repr__(self):
