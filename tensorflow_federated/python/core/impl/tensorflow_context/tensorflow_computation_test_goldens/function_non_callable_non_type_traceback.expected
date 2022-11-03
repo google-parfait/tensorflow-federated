@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "python/core/impl/computation/computation_wrapper.py", in __call__
+    provided_types.append(computation_types.to_type(args[0]))
+  File "python/core/impl/types/computation_types.py", in to_type
+    raise TypeError(
+TypeError: Unable to interpret an argument of type int as a type spec.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "python/core/impl/tensorflow_context/tensorflow_computation_test.py", in test_error_on_non_callable_non_type
+    tensorflow_computation.experimental_tf_fn_computation(5)
+  File "python/core/impl/computation/computation_wrapper.py", in __call__
+    raise TypeError(
+TypeError: Expected a function or a type, found 5.

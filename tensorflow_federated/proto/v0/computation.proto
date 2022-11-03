@@ -96,11 +96,17 @@ message Computation {
     // composed into larger computations with the use of the compositional
     // constructs defined below.
 
-    // TensorFlow computation. TensorFlow computations have functional type
-    // signatures that cannot contain FederatedTypes, as they execute locally.
-    // In order to construct a TensorFlow computation that maps a federated
-    // value pointwise, one must use a federated map intrinsic (to be defined).
+    // TensorFlow computations have functional type signatures that cannot
+    // contain FederatedTypes, as they execute locally.  In order to construct a
+    // TensorFlow computation that maps a federated value pointwise, one must
+    // use a federated map intrinsic.
+    //
+    // TensorFlow GraphDef-based computation.
+    // TODO(b/257250551) rename to `TensorFlowGraph` and `tensorflow_graph` to
+    // clarify difference with the `FunctionDef` version below.
     TensorFlow tensorflow = 2;
+    // TensorFlow FunctionDef-based computation.
+    TensorFlowFunction tensorflow_function = 13;
 
     // A built-in federated communication operator such as broadcast, federated
     // sum, etc., or one of the custom operators added to the framework, and
@@ -187,7 +193,7 @@ message Computation {
     // of current limitations).
     Xla xla = 12;
 
-    // NEXT ID: 13
+    // NEXT ID: 14
   }
 }
 
@@ -509,7 +515,7 @@ message PlacementType {
 // A representation of a section of TensorFlow code.
 //
 // The type signature associated with this type of computation must be defined
-// only in terms of tensors, Structs, and sequences. Sequences cannot be nested.
+// only in terms of tensors, structs, and sequences. Sequences cannot be nested.
 //
 // At the moment, we only allow sequences as a parameters (note that pointwise
 // transformations of sequences can still be expressed using a map intrinsic).
@@ -546,16 +552,11 @@ message TensorFlow {
 
   // A serialized representation of a TensorFlow graph to execute.
   //
-  // Stores a tensorflow.GraphDef message.
-  // Note: This representation may evolve, e.g., get replaced with a MetaGraph,
-  // SavedModel, or a similar structure. Dependencies on the exact form of the
-  // graph encoding used here should be kept to minimum, and proxied by wrapper
-  // libraries for composing computations in python/core/impl/.
-  //
-  // TODO(b/117428091): Update this representation based on the emerging TF 2.0
-  // serialization standards as needed if/when they meet the constraints of the
-  // target production environments, and provided that they don't introduce
-  // additional complexity.
+  // Stores a tensorflow.GraphDef message. For a TF 2.0 style representation
+  // using tensorflow.FunctionDef, see the TensorFlowFunction message.
+  // Dependencies on the exact form of the graph encoding used here should be
+  // kept to minimum, and proxied by wrapper libraries for composing
+  // computations in python/core/impl/.
   google.protobuf.Any graph_def = 1;
 
   // String name of an initialization op to run on the graph before fetching
@@ -657,6 +658,105 @@ message TensorFlow {
     uint64 id = 1;
   }
   CacheKey cache_key = 5;
+}
+
+// !!! EXPERIMENTAL !!!
+// An alternate representation of a section of TensorFlow code.
+//
+// The type signature associated with this type of computation must be defined
+// only in terms of tensors, structs, and sequences. Sequences cannot be nested.
+//
+// Note that unlike in polymorphic functions created by tf.function without
+// input_signature argument specified (the common practice), the chosen
+// representation requires all type signatures, including those of individual
+// elements of a sequence, to be fully specified.
+//
+// While we will offer support for writing polymorphic TensorFlow logic, types
+// will be captured automatically and made concrete based on usage at the Python
+// level of the API. Users of TFF will not need to declare them explicitly, but
+// template specialization will happen before computation logic gets serialized
+// in these messages.
+message TensorFlowFunction {
+  // A serialized tensorflow.FunctionDef.
+  google.protobuf.Any function_def = 1;
+
+  // A pair of bindings for the parameter and the result. The parameter binding
+  // can be omitted if the computation does not declare a parameter. The result
+  // binding is mandatory, as all TensorFlow computations must declare results.
+  Binding parameter = 2;
+  Binding result = 3;
+
+  // A general representation of a binding of either a parameter or a result to
+  // a part of the TensorFlow function. Note that the structure of the binding
+  // is nested, and parallels the structure of the corresponding part of the
+  // type signature.
+  message Binding {
+    oneof binding {
+      // A binding associated with a struct in the type signature. Specifies an
+      // individual binding for each element of the struct.
+      StructBinding structure = 1;
+
+      // A binding associated with a (logical) tensor in the type signature.
+      // Associates that tensor to one or more (concrete) function arguments or
+      // results in the function.
+      TensorBinding tensor = 2;
+
+      // A binding associated with a sequence. Associates the sequence with a
+      // part of the TensorFlow graph that will represent a tf.data.Dataset,
+      // next element, or an equivalent iterator-like structure.
+      SequenceBinding sequence = 3;
+    }
+  }
+
+  // A binding of a Struct declared in the type signature to parts of the
+  // TensorFlow function.
+  message StructBinding {
+    // Bindings for elements of the Struct. The number of elements in this field
+    // must be equal to the number of Struct elements declared in the type
+    // signature, with the k-th binding declared here corresponding to the k-th
+    // Struct element in the type signature. The element names are omitted since
+    // they are redundant (correspondence is established by element order).
+    repeated Binding element = 1;
+  }
+
+  // A representation of a single tensor declared in the type signature in the
+  // serialized graph representation embedded here.
+  message TensorBinding {
+    oneof binding {
+      // The name of a function argument in the TensorFlow FunctionDef that
+      // corresponds to a single tensor component in the type signature.
+      string arg_name = 1;
+    }
+  }
+
+  // A representation of a sequence declared in the type signature.
+  message SequenceBinding {
+    oneof binding {
+      // The name of the function argument that represents the dataset.
+      string arg_name = 1;
+    }
+  }
+
+  // An optional id that can be used to identify identical TensorFlowFunction
+  // messages without having to compare the (potentially large) protocol buffer
+  // messages.
+  //
+  // This field is not intended to be set during computation
+  // construction/tracing. Rather, it is designed as a final compilation pass
+  // that allows execution stacks to "cache" the protocol buffers across invoke
+  // calls, avoiding costly parsing every invocation.
+  //
+  // The id is NOT required to be unique across machines, meaning two machines
+  // producing the same TensorFlowFunction may have the same ids. These machines
+  // should not be talking to the same execution stack.
+  //
+  // NOTE: the default value of 0 has the same meaning as having the field unset
+  // (having no id). Any code setting this value should avoid setting the value
+  // to zero.
+  message CacheKey {
+    uint64 id = 1;
+  }
+  CacheKey cache_key = 4;
 }
 
 // A representation of an intrinsic function. Intrinsics are functions that are
