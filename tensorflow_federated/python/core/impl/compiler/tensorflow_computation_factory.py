@@ -18,9 +18,10 @@
 # information.
 """A library of contruction functions for tensorflow computation structures."""
 
+from collections.abc import Callable
 import functools
 import types
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 import tensorflow as tf
 

@@ -20,10 +20,10 @@
 
 import abc
 import collections
+from collections.abc import Callable
 import itertools
 import operator
 import typing
-from typing import Callable
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure

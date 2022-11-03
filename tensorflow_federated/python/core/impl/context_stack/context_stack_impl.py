@@ -13,10 +13,11 @@
 # limitations under the License.
 """Defines classes/functions to manipulate the API context stack."""
 
+from collections.abc import Generator
 import contextlib
 import threading
 import typing
-from typing import Generator, Union
+from typing import Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.context_stack import context_base

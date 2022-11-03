@@ -13,10 +13,10 @@
 # limitations under the License.
 """Utilities for testing context stacks."""
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 import contextlib
 import functools
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 from absl.testing import parameterized
 

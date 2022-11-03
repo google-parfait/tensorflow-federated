@@ -18,9 +18,9 @@
 # information.
 """A pipeline that reduces computations into an executable form."""
 
+from collections.abc import Callable
 import functools
-
-from typing import Callable, Any
+from typing import Any
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base

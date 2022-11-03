@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Iterator
 import itertools
-from typing import Iterator
 
 from absl.testing import absltest
 import tensorflow as tf

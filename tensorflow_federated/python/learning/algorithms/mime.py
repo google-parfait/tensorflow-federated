@@ -28,7 +28,8 @@ Breaking the centralized barrier for cross-device federated learning.
 """
 
 import collections
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any, Optional, Union
 
 import tensorflow as tf
 

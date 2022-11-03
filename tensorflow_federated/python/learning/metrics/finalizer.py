@@ -18,9 +18,10 @@
 # information.
 """Helper functions for creating metric finalizers."""
 
+from collections.abc import Callable
 import inspect
+from typing import Any, Union
 
-from typing import Any, Callable, Union
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck

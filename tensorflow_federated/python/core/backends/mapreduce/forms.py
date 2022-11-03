@@ -13,7 +13,8 @@
 # limitations under the License.
 """Standardized representation of logic deployable to MapReduce-like systems."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure

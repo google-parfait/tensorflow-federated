@@ -13,7 +13,7 @@
 # limitations under the License.
 """Preprocessing library for Stack Overflow tag prediction tasks."""
 
-from typing import Callable
+from collections.abc import Callable
 
 import tensorflow as tf
 

@@ -19,8 +19,8 @@
 """Utility methods for working with Keras in TensorFlow Federated."""
 
 import collections
-from collections.abc import Mapping, Sequence
-from typing import Callable, Optional, Union
+from collections.abc import Callable, Mapping, Sequence
+from typing import Optional, Union
 import warnings
 
 from absl import logging

@@ -18,7 +18,8 @@
 """Utilities for type conversion, type checking, type inference, etc."""
 
 import collections
-from typing import Any, Callable, Optional, Type
+from collections.abc import Callable
+from typing import Any, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -357,13 +358,13 @@ def type_from_tensors(tensors):
   return computation_types.to_type(type_spec)
 
 
-def is_container_type_without_names(container_type: Type[Any]) -> bool:
+def is_container_type_without_names(container_type: type[Any]) -> bool:
   """Returns whether `container_type`'s elements are unnamed."""
   return (issubclass(container_type, (list, tuple)) and
           not py_typecheck.is_named_tuple(container_type))
 
 
-def is_container_type_with_names(container_type: Type[Any]) -> bool:
+def is_container_type_with_names(container_type: type[Any]) -> bool:
   """Returns whether `container_type`'s elements are named."""
   return (py_typecheck.is_named_tuple(container_type) or
           py_typecheck.is_attrs(container_type) or

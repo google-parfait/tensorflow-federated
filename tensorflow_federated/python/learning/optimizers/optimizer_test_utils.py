@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utilities for testing optimizers."""
 
-from typing import Callable, Collection
+from collections.abc import Callable, Collection
 
 import tensorflow as tf
 

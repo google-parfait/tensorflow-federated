@@ -18,11 +18,11 @@
 # information.
 """A library of construction functions for building block structures."""
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 import functools
 import random
 import string
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 import tensorflow as tf
 

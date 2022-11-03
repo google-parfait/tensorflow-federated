@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Library of pure-python retrying decorators."""
+
 import asyncio
+from collections.abc import Callable
 import functools
 import inspect
 import time
-from typing import Any, Callable, Union
+from typing import Any, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 

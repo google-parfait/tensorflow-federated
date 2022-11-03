@@ -20,9 +20,9 @@
 
 import abc
 import collections
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 import typing
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import attr
 import numpy as np

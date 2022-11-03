@@ -18,8 +18,9 @@
 # information.
 """A library of static analysis functions for ASTs."""
 
+from collections.abc import Callable
 import functools
-from typing import Callable, Optional, Type, Union
+from typing import Optional, Union
 
 import tensorflow as tf
 
@@ -33,8 +34,8 @@ from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 _TypeOrTupleOfTypes = Union[
-    Type[building_blocks.ComputationBuildingBlock],
-    tuple[Type[building_blocks.ComputationBuildingBlock], ...]]
+    type[building_blocks.ComputationBuildingBlock],
+    tuple[type[building_blocks.ComputationBuildingBlock], ...]]
 
 
 def visit_preorder(

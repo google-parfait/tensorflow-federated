@@ -22,7 +22,7 @@ import collections
 from collections.abc import Iterable, Mapping
 import itertools
 import typing
-from typing import Any, Optional, Type
+from typing import Any, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -206,7 +206,7 @@ def capture_result_from_graph(
   def _get_bindings_for_elements(
       name_value_pairs: Iterable[tuple[str, Any]],
       graph: tf.Graph,
-      container_type: Optional[Type[Any]],
+      container_type: Optional[type[Any]],
   ) -> tuple[computation_types.Type, pb.TensorFlow.Binding]:
     """Build `(type_spec, binding)` tuple for name value pairs."""
     element_name_type_binding_triples = [

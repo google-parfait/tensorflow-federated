@@ -13,7 +13,8 @@
 # limitations under the License.
 """Expands ClientData by performing transformations."""
 
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any, Optional
 
 import tensorflow as tf
 

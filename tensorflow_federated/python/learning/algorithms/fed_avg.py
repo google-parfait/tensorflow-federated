@@ -33,7 +33,8 @@ Adaptive Federated Optimization
     https://arxiv.org/abs/2003.00295
 """
 
-from typing import Callable, Optional, Union
+from collections.abc import Callable
+from typing import Optional, Union
 
 import tensorflow as tf
 

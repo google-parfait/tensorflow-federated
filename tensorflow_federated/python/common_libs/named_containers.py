@@ -11,16 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # limitations under the License.
 """Shared utilities for container manipulation."""
+
 import collections
 import dataclasses
-from typing import Any, OrderedDict
+from typing import Any
 
 import attr
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
 
-def dataclass_to_odict(dataclass_obj: Any) -> OrderedDict[str, Any]:
+def dataclass_to_odict(dataclass_obj: Any) -> collections.OrderedDict[str, Any]:
   """Shallow-copies a dataclass instance to an ordered dict."""
   py_typecheck.check_dataclass(dataclass_obj)
   # dataclasses guarantee field ordering.
@@ -31,7 +32,8 @@ def dataclass_to_odict(dataclass_obj: Any) -> OrderedDict[str, Any]:
   return odict
 
 
-def attrs_class_to_odict(attr_class_obj: Any) -> OrderedDict[Any, Any]:
+def attrs_class_to_odict(
+    attr_class_obj: Any) -> collections.OrderedDict[Any, Any]:
   """Shallow-copies an attr-class object to an ordered dict."""
   py_typecheck.check_attrs(attr_class_obj)
   odict = attr.asdict(

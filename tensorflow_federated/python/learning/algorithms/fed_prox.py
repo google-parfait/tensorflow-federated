@@ -25,7 +25,8 @@ Manzil Zaheer, Maziar Sanjabi, Ameet Talwalkar, and Virginia Smith. MLSys 2020.
 See https://arxiv.org/abs/1812.06127 for the full paper.
 """
 
-from typing import Callable, Optional, Union
+from collections.abc import Callable
+from typing import Optional, Union
 
 import tensorflow as tf
 

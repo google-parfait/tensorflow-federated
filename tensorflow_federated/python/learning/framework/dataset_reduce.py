@@ -18,7 +18,8 @@
 # information.
 """Dataset reduce functions for federated optimization algorithms."""
 
-from typing import Any, Callable, Iterable, Union
+from collections.abc import Callable, Iterable
+from typing import Any, Union
 
 import tensorflow as tf
 

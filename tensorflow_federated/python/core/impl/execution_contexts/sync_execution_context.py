@@ -18,9 +18,9 @@
 # information.
 """A context for execution based on an embedded executor instance."""
 
-from typing import Any
-from typing import Callable
-from typing import Optional
+from collections.abc import Callable
+from typing import Any, Optional
+
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base

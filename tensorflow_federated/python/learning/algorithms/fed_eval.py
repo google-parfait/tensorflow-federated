@@ -19,7 +19,8 @@
 """An implementation of stateful federated evaluation."""
 
 import collections
-from typing import Callable, Optional, Union
+from collections.abc import Callable
+from typing import Optional, Union
 
 import tensorflow as tf
 

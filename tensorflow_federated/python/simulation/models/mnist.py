@@ -15,7 +15,6 @@
 
 import collections
 import random
-from typing import Type
 
 import tensorflow as tf
 
@@ -69,7 +68,7 @@ def keras_dataset_from_emnist(dataset):
 class _DeterministicInitializer():
   """Wrapper to produce different deterministic initialization values."""
 
-  def __init__(self, initializer_type: Type[tf.keras.initializers.Initializer],
+  def __init__(self, initializer_type: type[tf.keras.initializers.Initializer],
                base_seed: int):
     self._initializer_type = initializer_type
     if base_seed is None:

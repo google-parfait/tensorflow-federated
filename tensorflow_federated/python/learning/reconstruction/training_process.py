@@ -46,9 +46,10 @@ Federated Reconstruction: Partially Local Federated Learning
 """
 
 import collections
+from collections.abc import Callable
 import functools
 import typing
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import attr
 import tensorflow as tf

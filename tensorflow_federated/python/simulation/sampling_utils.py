@@ -13,9 +13,9 @@
 # limitations under the License.
 """Utilities for sampling clients, either randomly or pseudo-randomly."""
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 import functools
-from typing import Callable, Optional, TypeVar
+from typing import Optional, TypeVar
 
 import numpy as np
 

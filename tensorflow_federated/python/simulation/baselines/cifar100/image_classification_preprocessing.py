@@ -13,8 +13,8 @@
 # limitations under the License.
 """Preprocessing library for CIFAR-100 classification tasks."""
 
-from collections.abc import Iterable, Sequence
-from typing import Callable, Union
+from collections.abc import Callable, Iterable, Sequence
+from typing import Union
 
 import tensorflow as tf
 

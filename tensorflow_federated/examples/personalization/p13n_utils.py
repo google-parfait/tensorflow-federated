@@ -14,7 +14,8 @@
 """An example of personalization strategy."""
 
 import collections
-from typing import Any, Callable, Optional, OrderedDict
+from collections.abc import Callable
+from typing import Any, Optional
 
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -23,7 +24,7 @@ import tensorflow_federated as tff
 _OPTIMIZER_FN_TYPE = Callable[[], tf.keras.optimizers.Optimizer]
 _PERSONALIZE_FN_TYPE = Callable[
     [tff.learning.Model, tf.data.Dataset, tf.data.Dataset, Any],
-    OrderedDict[str, tf.Tensor]]
+    collections.OrderedDict[str, tf.Tensor]]
 _EVAL_BATCH_SIZE = 1  # Batch size used when evaluating a dataset.
 _SHUFFLE_BUFFER_SIZE = 1000  # Buffer size used when shuffling a dataset.
 # pylint: enable=invalid-name
@@ -69,10 +70,11 @@ def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
   optimizer = optimizer_fn()
 
   @tf.function
-  def personalize_fn(model: tff.learning.Model,
-                     train_data: tf.data.Dataset,
-                     test_data: tf.data.Dataset,
-                     context: Optional[Any] = None) -> OrderedDict[str, Any]:
+  def personalize_fn(
+      model: tff.learning.Model,
+      train_data: tf.data.Dataset,
+      test_data: tf.data.Dataset,
+      context: Optional[Any] = None) -> collections.OrderedDict[str, Any]:
     """A personalization strategy that trains a model and returns the metrics.
 
     Args:
@@ -120,8 +122,9 @@ def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
 
 
 @tf.function
-def evaluate_fn(model: tff.learning.Model,
-                dataset: tf.data.Dataset) -> OrderedDict[str, tf.Tensor]:
+def evaluate_fn(
+    model: tff.learning.Model,
+    dataset: tf.data.Dataset) -> collections.OrderedDict[str, tf.Tensor]:
   """Evaluates a model on the given dataset.
 
   The returned metrics include those given by

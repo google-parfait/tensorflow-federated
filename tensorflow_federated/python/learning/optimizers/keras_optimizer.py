@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Optimizer adapter for Keras optimizer."""
-from typing import Any, Callable, Optional, Union
+
+from collections.abc import Callable
+from typing import Any, Optional, Union
 
 import tensorflow as tf
 

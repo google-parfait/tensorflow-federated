@@ -17,8 +17,9 @@
 # https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
 # information.
 """Utilities for cardinality inference and handling."""
-from collections.abc import Mapping
-from typing import Any, Callable
+
+from collections.abc import Callable, Mapping
+from typing import Any
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure

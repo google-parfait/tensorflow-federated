@@ -13,7 +13,8 @@
 # limitations under the License.
 """Heavy hitters discovery using IBLT."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
+from typing import Optional
 
 import attr
 import numpy as np

@@ -14,8 +14,8 @@
 """Library methods for working with centralized data used in simulation."""
 
 import abc
-from collections.abc import Iterable, Sequence
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any, Optional, Union
 
 from absl import logging
 import numpy as np

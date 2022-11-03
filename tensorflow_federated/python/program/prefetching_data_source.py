@@ -14,9 +14,9 @@
 """Utilities for prefetching federated data."""
 
 import asyncio
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 import threading
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context

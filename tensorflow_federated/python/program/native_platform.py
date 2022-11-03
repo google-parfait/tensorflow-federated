@@ -14,9 +14,10 @@
 """A federated platform implemented using native TFF components."""
 
 import asyncio
+from collections.abc import Awaitable
 import inspect
 import typing
-from typing import Any, Awaitable
+from typing import Any
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck

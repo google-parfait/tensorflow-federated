@@ -28,8 +28,8 @@ model with `tff.learning.models.model_from_functional`.
 """
 
 import collections
-from collections.abc import Mapping, Sequence
-from typing import Any, Callable, Optional, TypeVar, Union
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Optional, TypeVar, Union
 
 import numpy as np
 import tensorflow as tf

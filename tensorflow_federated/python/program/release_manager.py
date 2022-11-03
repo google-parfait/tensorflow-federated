@@ -16,8 +16,8 @@
 import abc
 import asyncio
 import collections
-from collections.abc import Sequence
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable, Sequence
+from typing import Any, Optional, Union
 
 import tree
 
