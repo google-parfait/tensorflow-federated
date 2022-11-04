@@ -128,10 +128,14 @@ def build_weighted_fed_avg(
       invocation, returning the same pre-constructed model each call will result
       in an error.
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      callable that returns a `tf.keras.Optimizer`.
+      callable that returns a `tf.keras.Optimizer`. If `model_fn` is a
+      `tff.learning.models.FunctionalModel`, _must_ be a
+      `tff.learning.optimizers.Optimizer`.
     server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`. By default, this uses
-      `tf.keras.optimizers.SGD` with a learning rate of 1.0.
+      `tf.keras.optimizers.SGD` with a learning rate of 1.0. If `model_fn` is a
+      `tff.learning.models.FunctionalModel`, _must_ be a
+      `tff.learning.optimizers.Optimizer`.
     client_weighting: A member of `tff.learning.ClientWeighting` that specifies
       a built-in weighting method. By default, weighting by number of examples
       is used.
@@ -167,8 +171,20 @@ def build_weighted_fed_avg(
   if not callable(model_fn):
     if not isinstance(model_fn, functional.FunctionalModel):
       raise TypeError(
-          'If `model_fn` is not a callable, it must be an instance '
-          f'tff.learning.models.FunctionalModel. Got {type(model_fn)}')
+          'If `model_fn` is not a callable, it must be an instance of '
+          f'`tff.learning.models.FunctionalModel`. Got {type(model_fn)}')
+    if not isinstance(client_optimizer_fn, optimizer_base.Optimizer):
+      raise TypeError(
+          'If `model_fn` is a `tff.learning.models.FunctionalModel`, '
+          '`client_optimizer_fn` must be an instance of '
+          '`tff.learning.optimizers.Optimizer`. '
+          f'Got {type(client_optimizer_fn)}')
+    if not isinstance(server_optimizer_fn, optimizer_base.Optimizer):
+      raise TypeError(
+          'If `model_fn` is a `tff.learning.models.FunctionalModel`, '
+          '`server_optimizer_fn` must be an instance of '
+          '`tff.learning.optimizers.Optimizer`. '
+          f'Got {type(server_optimizer_fn)}')
 
     @tensorflow_computation.tf_computation()
     def initial_model_weights_fn():
@@ -301,10 +317,14 @@ def build_unweighted_fed_avg(
       invocation, returning the same pre-constructed model each call will result
       in an error.
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
-      callable that returns a `tf.keras.Optimizer`.
+      callable that returns a `tf.keras.Optimizer`. If `model_fn` is a
+      `tff.learning.models.FunctionalModel`, _must_ be a
+      `tff.learning.optimizers.Optimizer`.
     server_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
       callable that returns a `tf.keras.Optimizer`. By default, this uses
-      `tf.keras.optimizers.SGD` with a learning rate of 1.0.
+      `tf.keras.optimizers.SGD` with a learning rate of 1.0. If `model_fn` is a
+      `tff.learning.models.FunctionalModel`, _must_ be a
+      `tff.learning.optimizers.Optimizer`.
     model_distributor: An optional `DistributionProcess` that distributes the
       model weights on the server to the clients. If set to `None`, the
       distributor is constructed via `distributors.build_broadcast_process`.

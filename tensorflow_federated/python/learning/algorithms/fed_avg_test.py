@@ -149,21 +149,46 @@ class FedAvgTest(parameterized.TestCase):
 class FunctionalFedAvgTest(parameterized.TestCase):
   """Tests construction of the FedAvg training process."""
 
-  def test_raises_on_non_callable_or_functional_model(self):
+  @parameterized.named_parameters(
+      ('weighted', fed_avg.build_weighted_fed_avg),
+      ('unweighted', fed_avg.build_unweighted_fed_avg),
+  )
+  def test_raises_on_non_callable_or_functional_model(self, constructor):
     with self.assertRaisesRegex(TypeError, 'is not a callable'):
-      fed_avg.build_weighted_fed_avg(
-          model_fn=0, client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1))
-    with self.assertRaisesRegex(TypeError, 'is not a callable'):
-      fed_avg.build_unweighted_fed_avg(
+      constructor(
           model_fn=0, client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1))
 
-  def test_weighted_fed_avg_with_only_secure_aggregation(self):
+  @parameterized.named_parameters(
+      ('weighted', fed_avg.build_weighted_fed_avg),
+      ('unweighted', fed_avg.build_unweighted_fed_avg),
+  )
+  def test_raises_on_non_tff_optimizer(self, constructor):
     model = test_models.build_functional_linear_regression()
-    learning_process = fed_avg.build_weighted_fed_avg(
+    with self.subTest('client_optimizer'):
+      with self.assertRaisesRegex(TypeError, 'client_optimizer_fn'):
+        constructor(
+            model_fn=model,
+            client_optimizer_fn=tf.keras.optimizers.SGD,
+            server_optimizer_fn=sgdm.build_sgdm())
+    with self.subTest('server_optimizer'):
+      with self.assertRaisesRegex(TypeError, 'server_optimizer_fn'):
+        constructor(
+            model_fn=model,
+            client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1),
+            server_optimizer_fn=tf.keras.optimizers.SGD)
+
+  @parameterized.named_parameters(
+      ('weighted', fed_avg.build_weighted_fed_avg),
+      ('unweighted', fed_avg.build_unweighted_fed_avg),
+  )
+  def test_weighted_fed_avg_with_only_secure_aggregation(self, constructor):
+    model = test_models.build_functional_linear_regression()
+    learning_process = constructor(
         model_fn=model,
         client_optimizer_fn=sgdm.build_sgdm(learning_rate=0.1),
+        server_optimizer_fn=sgdm.build_sgdm(),
         model_aggregator=model_update_aggregator.secure_aggregator(
-            weighted=True),
+            weighted=constructor is fed_avg.build_weighted_fed_avg),
         metrics_aggregator=aggregator.secure_sum_then_finalize)
     static_assert.assert_not_contains_unsecure_aggregation(
         learning_process.next)
