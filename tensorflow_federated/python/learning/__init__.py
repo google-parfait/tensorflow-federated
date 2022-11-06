@@ -42,7 +42,6 @@ from tensorflow_federated.python.learning import metrics
 from tensorflow_federated.python.learning import models
 from tensorflow_federated.python.learning import optimizers
 from tensorflow_federated.python.learning import programs
-from tensorflow_federated.python.learning import reconstruction
 from tensorflow_federated.python.learning import templates
 from tensorflow_federated.python.learning.client_weight_lib import ClientWeighting
 from tensorflow_federated.python.learning.debug_measurements import add_debug_measurements

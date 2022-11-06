@@ -19,6 +19,8 @@ from tensorflow_federated.python.learning.algorithms.fed_avg_with_optimizer_sche
 from tensorflow_federated.python.learning.algorithms.fed_eval import build_fed_eval
 from tensorflow_federated.python.learning.algorithms.fed_prox import build_unweighted_fed_prox
 from tensorflow_federated.python.learning.algorithms.fed_prox import build_weighted_fed_prox
+from tensorflow_federated.python.learning.algorithms.fed_recon import build_fed_recon
+from tensorflow_federated.python.learning.algorithms.fed_recon_eval import build_fed_recon_eval
 from tensorflow_federated.python.learning.algorithms.fed_sgd import build_fed_sgd
 from tensorflow_federated.python.learning.algorithms.kmeans_clustering import build_fed_kmeans
 from tensorflow_federated.python.learning.algorithms.mime import build_mime_lite_with_optimizer_schedule

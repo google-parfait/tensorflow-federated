@@ -6,7 +6,6 @@ package(
         ":optimizers_packages",
         "//tensorflow_federated/python/learning:learning_users",
         "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
-        "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
         "//tensorflow_federated/python/learning/templates:templates_packages",
     ],
 )

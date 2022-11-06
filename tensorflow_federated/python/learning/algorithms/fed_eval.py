@@ -185,34 +185,6 @@ def _build_functional_fed_eval_client_work(
   return client_works.ClientWorkProcess(init_fn, next_fn)
 
 
-def _build_identity_finalizer(
-    model_weights_type: computation_types.StructType,
-    update_type: computation_types.StructType,
-) -> finalizers.FinalizerProcess:
-  """Builds a `FinalizerProcess` that performs no update on model weights."""
-
-  @federated_computation.federated_computation()
-  def init_fn():
-    return intrinsics.federated_value((), placements.SERVER)
-
-  # The type signature of `next` function is defined so that the created
-  # `tff.learning.templates.FinalizerProcess` can be used in
-  # `tff.learning.templates.compose_learning_process`.
-  @federated_computation.federated_computation(
-      init_fn.type_signature.result,
-      computation_types.at_server(model_weights_type),
-      computation_types.at_server(update_type),
-  )
-  def next_fn(state, weights, update):
-    del update
-    empty_measurements = intrinsics.federated_value((), placements.SERVER)
-    return measured_process.MeasuredProcessOutput(
-        state, weights, empty_measurements
-    )
-
-  return finalizers.FinalizerProcess(init_fn, next_fn)
-
-
 def build_fed_eval(
     model_fn: Union[
         Callable[[], variable.VariableModel], functional.FunctionalModel
@@ -343,7 +315,7 @@ def build_fed_eval(
   )
 
   # The finalizer performs no update on model weights.
-  finalizer = _build_identity_finalizer(
+  finalizer = finalizers.build_identity_finalizer(
       model_weights_type,
       model_aggregator.next.type_signature.result.result.member,
   )

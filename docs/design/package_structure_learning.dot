@@ -5,7 +5,6 @@ digraph {
 
   subgraph cluster_learning {
     graph [label="Learning", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
-    reconstruction [label="reconstruction", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/reconstruction" target="_parent"]
     algorithms [label="algorithms", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/algorithms" target="_parent"]
     programs [label="programs", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/programs" target="_parent"]
     templates [label="templates", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/templates" target="_parent"]
@@ -27,11 +26,6 @@ digraph {
   templates -> metrics
   templates -> models
   templates -> learning
-  reconstruction -> optimizers
-  reconstruction -> metrics
-  reconstruction -> models
-  reconstruction -> framework
-  reconstruction -> learning
   models -> metrics
   models -> learning
   framework -> learning

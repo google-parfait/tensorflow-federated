@@ -7,7 +7,6 @@ package(
         "//tensorflow_federated/python/learning:learning_users",
         "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
         "//tensorflow_federated/python/learning/programs:programs_packages",
-        "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
         "//tensorflow_federated/python/learning/templates:templates_packages",
         "//tensorflow_federated/python/learning/framework:framework_packages",
 
@@ -43,6 +42,7 @@ py_library(
         ":functional",
         ":keras_utils",
         ":model_weights",
+        ":reconstruction_model",
         ":serialization",
         ":variable",
     ],
@@ -151,6 +151,15 @@ py_test(
         ":model_weights",
         ":variable",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
+    name = "reconstruction_model",
+    srcs = ["reconstruction_model.py"],
+    deps = [
+        ":model_weights",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )
