@@ -1,22 +1,3 @@
-# Release 0.39.0
-
-## Major Features and Improvements
-
-*   Added `tff.learning.models.FunctionModel` support to all methods in
-    `tff.learning.algorithms`.
-*   Added support for `tf.data.DataSpec` to `tff.types.infer_unplaced_type`.
-*   Use a `tensorflow::ThreadPool` for parallelism inside the C++
-    `TensorFlowExecutor`.
-*   Introduced a new `tff.experimental_tf_fn_computation` tracing decorator that
-    uses `FunctionDef` instead of `GraphDef` tracing, providing `tf.function`
-    auto-control-dependencies.
-*   Renamed `number_of_clients` to `num_clients` in the federated program API.
-
-## Bug Fixes
-
-*   Fixed a bug in the “Client-efficient large-model federated learning”
-    tutorial to use the correct dense shape.
-
 # Release 0.38.0
 
 ## Major Features and Improvements
