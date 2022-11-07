@@ -20,7 +20,7 @@
 
 from collections.abc import Callable
 import math
-from typing import Optional
+from typing import Optional, Union
 
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import distributed_dp
@@ -173,13 +173,17 @@ def dp_aggregator(noise_multiplier: float,
   return aggregation_factory
 
 
+_A = Union[factory.UnweightedAggregationFactory,
+           factory.WeightedAggregationFactory]
+_B = Callable[[_A], _A]
+
+
 def compression_aggregator(
     *,
     zeroing: bool = True,
     clipping: bool = True,
     weighted: bool = True,
-    debug_measurements_fn: Optional[Callable[
-        [factory.AggregationFactory], factory.AggregationFactory]] = None,
+    debug_measurements_fn: Optional[_B] = None,
     **kwargs,
 ) -> factory.AggregationFactory:
   """Creates aggregator with compression and adaptive zeroing and clipping.
