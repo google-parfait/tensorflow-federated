@@ -179,7 +179,7 @@ def compression_aggregator(
     clipping: bool = True,
     weighted: bool = True,
     debug_measurements_fn: Optional[Callable[
-        factory.AggregationFactory, factory.AggregationFactory]] = None,
+        [factory.AggregationFactory], factory.AggregationFactory]] = None,
     **kwargs,
 ) -> factory.AggregationFactory:
   """Creates aggregator with compression and adaptive zeroing and clipping.
