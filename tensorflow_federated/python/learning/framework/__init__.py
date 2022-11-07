@@ -14,9 +14,7 @@
 """Libraries for developing federated learning algorithms."""
 
 from tensorflow_federated.python.common_libs import deprecation
-from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_process
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_stateless_broadcaster
-from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
 from tensorflow_federated.python.learning.framework.optimizer_utils import ServerState
 from tensorflow_federated.python.learning.models.model_weights import ModelWeights
