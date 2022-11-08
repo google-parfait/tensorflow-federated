@@ -355,7 +355,7 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
             learning_rate=0.02))
     self.assertIsInstance(it_process, tff.templates.IterativeProcess)
     global_model_type, client_datasets_type = it_process.next.type_signature.parameter
-    model_type = tff.learning.framework.weights_type_from_model(_rnn_model_fn)
+    model_type = tff.learning.models.weights_type_from_model(_rnn_model_fn)
     tff.test.assert_types_identical(
         global_model_type,
         tff.types.at_server(

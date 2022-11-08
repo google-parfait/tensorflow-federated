@@ -25,11 +25,7 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/learning:__pkg__"],
-    deps = [
-        ":optimizer_utils",
-        "//tensorflow_federated/python/common_libs:deprecation",
-        "//tensorflow_federated/python/learning/models:model_weights",
-    ],
+    deps = [":optimizer_utils"],
 )
 
 py_library(
