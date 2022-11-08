@@ -95,7 +95,10 @@ def _log_and_warn_on_sequential_execution(max_concurrent_computation_calls: int,
 
 def local_cpp_executor_factory(
     default_num_clients: int = 0,
-    max_concurrent_computation_calls: int = -1
+    max_concurrent_computation_calls: int = -1,
+    leaf_executor_fn: Callable[[],
+                               executor_bindings.Executor] = executor_bindings
+    .create_tensorflow_executor
 ) -> executor_factory.ExecutorFactory:
   """Local ExecutorFactory backed by C++ Executor bindings."""
   py_typecheck.check_type(default_num_clients, int)
@@ -112,10 +115,10 @@ def local_cpp_executor_factory(
       _log_and_warn_on_sequential_execution(max_concurrent_computation_calls,
                                             num_clients,
                                             expected_concurrency_factor)
-    tf_executor = executor_bindings.create_tensorflow_executor(
-        max_concurrent_computation_calls)
+
+    leaf_executor = leaf_executor_fn(max_concurrent_computation_calls)
     sub_federating_reference_resolving_executor = executor_bindings.create_reference_resolving_executor(
-        tf_executor)
+        leaf_executor)
     federating_ex = executor_bindings.create_federating_executor(
         sub_federating_reference_resolving_executor, cardinalities)
     top_level_reference_resolving_ex = executor_bindings.create_reference_resolving_executor(

@@ -51,9 +51,11 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executors/federating_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/reference_resolving_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/remote_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/sequence_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensor_serialization.h"
 #include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
+#include "tensorflow_federated/cc/core/impl/executors/xla_executor.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
 
@@ -169,6 +171,10 @@ PYBIND11_MODULE(executor_bindings, m) {
                           const CardinalityMap&>(&CreateRemoteExecutor),
         py::arg("channel"), py::arg("cardinalities"),
         "Creates a RemoteExecutor.");
+  m.def("create_xla_executor", &CreateXLAExecutor,
+        py::arg("platform_name") = "Host", "Creates an XlaExecutor.");
+  m.def("create_sequence_executor", &CreateSequenceExecutor,
+        py::arg("target_executor"), "Creates a SequenceExecutor.");
 
   py::class_<grpc::ChannelInterface, std::shared_ptr<grpc::ChannelInterface>>(
       m, "GRPCChannelInterface");

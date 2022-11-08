@@ -39,6 +39,8 @@ Executor = executor_bindings.Executor
 create_tensorflow_executor = executor_bindings.create_tensorflow_executor
 create_reference_resolving_executor = executor_bindings.create_reference_resolving_executor
 create_composing_executor = executor_bindings.create_composing_executor
+create_xla_executor = executor_bindings.create_xla_executor
+create_sequence_executor = executor_bindings.create_sequence_executor
 
 # Import executor constructor helpers.
 create_insecure_grpc_channel = executor_bindings.create_insecure_grpc_channel

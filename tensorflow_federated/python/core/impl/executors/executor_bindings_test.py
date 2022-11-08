@@ -521,5 +521,35 @@ class SerializeTensorTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(roundtrip_value, input_value)
 
 
+class XlaExecutorBindingsTest(parameterized.TestCase):
+
+  def test_create(self):
+    try:
+      executor_bindings.create_xla_executor()
+    except Exception as e:  # pylint: disable=broad-except
+      self.fail(f'Exception: {e}')
+
+  def test_materialize_on_unkown_fails(self):
+    executor = executor_bindings.create_xla_executor()
+    with self.assertRaisesRegex(Exception, 'NOT_FOUND'):
+      executor.materialize(0)
+
+
+class SequenceExecutorBindingsTest(parameterized.TestCase):
+
+  def test_create(self):
+    try:
+      executor_bindings.create_sequence_executor(
+          executor_bindings.create_xla_executor())
+    except Exception as e:  # pylint: disable=broad-except
+      self.fail(f'Exception: {e}')
+
+  def test_materialize_on_unkown_fails(self):
+    executor = executor_bindings.create_sequence_executor(
+        executor_bindings.create_xla_executor())
+    with self.assertRaisesRegex(Exception, 'NOT_FOUND'):
+      executor.materialize(0)
+
+
 if __name__ == '__main__':
   tf.test.main()

@@ -328,7 +328,7 @@ def create_localhost_cpp_execution_context(
 ) -> sync_execution_context.ExecutionContext:
   """Creates an execution context backed by TFF-C++ runtime.
 
-  This exexucion context starts a TFF-C++ worker assumed to be at path
+  This execution context starts a TFF-C++ worker assumed to be at path
   `binary_path`, serving on `port`, and constructs a simple (Python) remote
   execution context to talk to this worker.
 

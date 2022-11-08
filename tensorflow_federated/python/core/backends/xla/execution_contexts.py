@@ -41,7 +41,7 @@ def create_local_python_execution_context():
 def set_local_python_execution_context(*args, **kwargs):
   """Sets an XLA-based local execution context.
 
-  Invokes `create_local_execution_context` to contruct an execution context,
+  Invokes `create_local_execution_context` to construct an execution context,
   and sets it as the default. Accepts the same parameters as
   `create_local_execution_context`.
 
