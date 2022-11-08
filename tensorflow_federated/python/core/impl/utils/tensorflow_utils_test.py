@@ -615,6 +615,18 @@ class GraphUtilsTest(tf.test.TestCase):
     ds = tensorflow_utils.make_data_set_from_elements(None, [10, 20], tf.int32)
     self.assertCountEqual([x.numpy() for x in iter(ds)], [10, 20])
 
+  def test_make_data_set_from_sparse_tensor_elements(self):
+    self.skipTest('b/258037897')
+    sparse_tensor = tf.SparseTensor([[0, i] for i in range(5)], list(range(5)),
+                                    [1, 10])
+    ds = tf.data.Dataset.from_tensor_slices(sparse_tensor)
+    constructed_ds = tensorflow_utils.make_data_set_from_elements(
+        None, list(ds), computation_types.to_type(ds.element_spec))
+    self.assertEqual(ds.element_spec, constructed_ds.element_spec)
+    self.assertEqual(
+        tf.sparse.to_dense(next(iter(ds))),
+        tf.sparse.to_dense(next(iter(constructed_ds))))
+
   @tensorflow_test_utils.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list(self):
     ds = tensorflow_utils.make_data_set_from_elements(
