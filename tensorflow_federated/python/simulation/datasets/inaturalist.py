@@ -242,14 +242,14 @@ def load_data(
   Seven splits of iNaturalist datasets are available. The details of each
   different dataset split can be found in https://arxiv.org/abs/2003.08082.
   For the USER_120K dataset, the images are split by the user id.
-  The number of clients for USER_120K is 9275. The training set contains 120.300
-  images of 1203 species, and test set contains 35641 images.
+  The number of clients for USER_120K is 9,275. The training set contains
+  120,300 images of 1,203 species, and test set contains 35,641 images.
   For the GEO_* datasets, the images are splitted by the geo location.
   The number of clients for the GEO_* datasets:
     1. GEO_100: 3607.
     2. GEO_300: 1209.
     3. GEO_1K: 369.
-    4: GEO_3K: 136.
+    4. GEO_3K: 136.
     5. GEO_10K: 39.
     6. GEO_30K: 12.
 
