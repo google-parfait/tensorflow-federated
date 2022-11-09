@@ -627,6 +627,17 @@ class GraphUtilsTest(tf.test.TestCase):
         tf.sparse.to_dense(next(iter(ds))),
         tf.sparse.to_dense(next(iter(constructed_ds))))
 
+  def test_make_data_set_from_ragged_tensor_elements(self):
+    self.skipTest('b/258038191')
+    ragged_tensor = tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
+    constructed_ds = tensorflow_utils.make_data_set_from_elements(
+        None, [ragged_tensor],
+        computation_types.to_type(
+            tf.RaggedTensorSpec.from_value(ragged_tensor)))
+    self.assertIsInstance(constructed_ds.element_spec, tf.RaggedTensorSpec)
+    self.assertEqual(
+        next(iter(constructed_ds)).to_tensor(), ragged_tensor.to_tensor())
+
   @tensorflow_test_utils.graph_mode_test
   def test_make_data_set_from_elements_with_empty_list(self):
     ds = tensorflow_utils.make_data_set_from_elements(
