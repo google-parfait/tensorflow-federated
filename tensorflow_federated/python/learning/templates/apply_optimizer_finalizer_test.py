@@ -64,7 +64,8 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
     expected_param_update_type = computation_types.at_server(mw_type.trainable)
     expected_result_type = computation_types.at_server(mw_type)
     expected_state_type = computation_types.at_server([tf.int64])
-    expected_measurements_type = computation_types.at_server(())
+    expected_measurements_type = computation_types.at_server(
+        collections.OrderedDict(update_non_finite=tf.int32))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
@@ -142,7 +143,8 @@ class ApplyOptimizerFinalizerComputationTest(tf.test.TestCase,
         computation_types.to_type(
             collections.OrderedDict([(optimizer_base.LEARNING_RATE_KEY,
                                       tf.float32)])))
-    expected_measurements_type = computation_types.at_server(())
+    expected_measurements_type = computation_types.at_server(
+        collections.OrderedDict(update_non_finite=tf.int32))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
@@ -229,7 +231,8 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       weights = output.result
       self.assertEqual(1.0, optimizer_state[optimizer_base.LEARNING_RATE_KEY])
       self.assertAllClose(1.0 - 0.1 * (i + 1), weights.trainable)
-      self.assertEqual((), output.measurements)
+      self.assertEqual(
+          collections.OrderedDict(update_non_finite=0), output.measurements)
 
   def test_execution_with_keras_sgd_optimizer(self):
     server_optimizer_fn = lambda: tf.keras.optimizers.legacy.SGD(1.0)
@@ -248,7 +251,62 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       # We check that the optimizer state is the number of calls.
       self.assertEqual([i + 1], optimizer_state)
       self.assertAllClose(1.0 - 0.1 * (i + 1), weights.trainable)
-      self.assertEqual((), output.measurements)
+      self.assertEqual(
+          collections.OrderedDict(update_non_finite=0), output.measurements)
+
+  def test_keras_finalizer_execution_with_non_finite_update(self):
+    init_fn, next_fn = apply_optimizer_finalizer._build_keras_optimizer_initialize_and_next(
+        computation_types.to_type(
+            model_weights.ModelWeights(
+                trainable=[tf.float32], non_trainable=[])),
+        optimizer_fn=tf.keras.optimizers.SGD)
+
+    initial_state = init_fn()
+    test_trainable_weights = [0.0]
+
+    with self.subTest('inf'):
+      state, weights, measurements = next_fn(initial_state,
+                                             test_trainable_weights,
+                                             [float('inf')])
+      self.assertAllClose(state, initial_state)
+      self.assertAllClose(weights, test_trainable_weights)
+      self.assertAllEqual(measurements,
+                          collections.OrderedDict(update_non_finite=1))
+    with self.subTest('nan'):
+      state, weights, measurements = next_fn(initial_state,
+                                             test_trainable_weights,
+                                             [float('nan')])
+      self.assertAllClose(state, initial_state)
+      self.assertAllClose(weights, test_trainable_weights)
+      self.assertAllEqual(measurements,
+                          collections.OrderedDict(update_non_finite=1))
+
+  def test_tff_finalizer_execution_with_non_finite_update(self):
+    init_fn, next_fn = apply_optimizer_finalizer._build_tff_optimizer_initialize_and_next(
+        computation_types.to_type(
+            model_weights.ModelWeights(
+                trainable=[tf.float32], non_trainable=[])),
+        optimizer=sgdm.build_sgdm(1.0))
+
+    initial_state = init_fn()
+    test_trainable_weights = [0.0]
+
+    with self.subTest('inf'):
+      state, weights, measurements = next_fn(initial_state,
+                                             test_trainable_weights,
+                                             [float('inf')])
+      self.assertAllClose(state, initial_state)
+      self.assertAllClose(weights, test_trainable_weights)
+      self.assertAllEqual(measurements,
+                          collections.OrderedDict(update_non_finite=1))
+    with self.subTest('nan'):
+      state, weights, measurements = next_fn(initial_state,
+                                             test_trainable_weights,
+                                             [float('nan')])
+      self.assertAllClose(state, initial_state)
+      self.assertAllClose(weights, test_trainable_weights)
+      self.assertAllEqual(measurements,
+                          collections.OrderedDict(update_non_finite=1))
 
   def test_execution_with_stateful_tff_optimizer(self):
     momentum = 0.5
@@ -266,7 +324,8 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       self.assertNear(expected_velocity, optimizer_state['accumulator'], 1e-6)
       self.assertAllClose(weights.trainable - expected_velocity,
                           output.result.trainable)
-      self.assertEqual((), output.measurements)
+      self.assertEqual(
+          collections.OrderedDict(update_non_finite=0), output.measurements)
     weights = output.result
 
   def test_execution_with_stateful_keras_optimizer(self):
@@ -291,7 +350,8 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
       self.assertAllClose([i + 1, -expected_velocity], optimizer_state)
       self.assertAllClose(weights.trainable - expected_velocity,
                           output.result.trainable)
-      self.assertEqual((), output.measurements)
+      self.assertEqual(
+          collections.OrderedDict(update_non_finite=0), output.measurements)
       weights = output.result
 
   def test_get_hparams_with_keras_optimizer(self):

@@ -46,6 +46,7 @@ py_library(
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
         "//tensorflow_federated/python/learning/optimizers:optimizer",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 
