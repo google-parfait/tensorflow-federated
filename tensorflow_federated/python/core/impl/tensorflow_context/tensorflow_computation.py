@@ -19,7 +19,6 @@
 """Definition of a tensorflow computation."""
 
 from collections.abc import Generator, Mapping, Sequence
-import functools
 from typing import Any, Callable, Optional, Union
 
 import tensorflow as tf
@@ -324,7 +323,6 @@ class _TensorFlowFunctionTracingStrategy:
     # TODO(b/210930091): remove explicit jit_compile=False after local
     # (non-lifted) variables are supported in TF2XLA Bridge.
     @tf.function(jit_compile=False)
-    @functools.wraps(fn_to_wrap)
     def fn_without_variable_lifting(packed_args=None):
       # TFF's `Struct` type is not compatible with `tf.nest`, which is needed
       # by the `tf.function` APIs. However, `unpack_arguments_fn` expects the
