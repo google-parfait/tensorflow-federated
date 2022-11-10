@@ -313,7 +313,7 @@ _intern_pool: dict[typing.Type[Any], dict[Any, Any]] = (
     collections.defaultdict(lambda: {}))
 
 
-def clear_intern_pool():
+def _clear_intern_pool():
   # We must clear our `WeakKeyValueDictionary`s at the end of the program to
   # prevent Python from deleting the standard library out from under us before
   # removing the  entries from the dictionary. Yes, this is cursed.
@@ -325,7 +325,7 @@ def clear_intern_pool():
   _intern_pool = None
 
 
-atexit.register(clear_intern_pool)
+atexit.register(_clear_intern_pool)
 
 
 class _Intern(abc.ABCMeta):
@@ -1173,7 +1173,7 @@ class _PossiblyDisallowedChildren:
 _possibly_disallowed_children_cache = weakref.WeakKeyDictionary({})
 
 
-def clear_disallowed_cache():
+def _clear_disallowed_cache():
   # We must clear our `WeakKeyValueDictionary`s at the end of the program to
   # prevent Python from deleting the standard library out from under us before
   # removing the  entries from the dictionary. Yes, this is cursed.
@@ -1185,7 +1185,7 @@ def clear_disallowed_cache():
   _possibly_disallowed_children_cache = None
 
 
-atexit.register(clear_disallowed_cache)
+atexit.register(_clear_disallowed_cache)
 
 
 def _possibly_disallowed_children(
