@@ -20,10 +20,10 @@ limitations under the License
 #include <string>
 #include <utility>
 
-#include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/flags/flag.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/session_provider.h"
