@@ -13,7 +13,24 @@
 # limitations under the License.
 """Libraries for interacting with the type of a computation."""
 
-from tensorflow_federated.python.core.impl.types.computation_types import *
+from tensorflow_federated.python.core.impl.types.computation_types import AbstractType
+from tensorflow_federated.python.core.impl.types.computation_types import at_clients
+from tensorflow_federated.python.core.impl.types.computation_types import at_server
+from tensorflow_federated.python.core.impl.types.computation_types import FederatedType
+from tensorflow_federated.python.core.impl.types.computation_types import FunctionType
+from tensorflow_federated.python.core.impl.types.computation_types import PlacementType
+from tensorflow_federated.python.core.impl.types.computation_types import SequenceType
+from tensorflow_federated.python.core.impl.types.computation_types import StructType
+from tensorflow_federated.python.core.impl.types.computation_types import StructWithPythonType
+from tensorflow_federated.python.core.impl.types.computation_types import TensorType
+from tensorflow_federated.python.core.impl.types.computation_types import to_type
+from tensorflow_federated.python.core.impl.types.computation_types import Type
+from tensorflow_federated.python.core.impl.types.computation_types import type_mismatch_error_message
+from tensorflow_federated.python.core.impl.types.computation_types import TypeNotAssignableError
+from tensorflow_federated.python.core.impl.types.computation_types import TypeRelation
+from tensorflow_federated.python.core.impl.types.computation_types import TypesNotEquivalentError
+from tensorflow_federated.python.core.impl.types.computation_types import TypesNotIdenticalError
+from tensorflow_federated.python.core.impl.types.computation_types import UnexpectedTypeError
 from tensorflow_federated.python.core.impl.types.type_analysis import contains
 from tensorflow_federated.python.core.impl.types.type_analysis import contains_only
 from tensorflow_federated.python.core.impl.types.type_analysis import count
