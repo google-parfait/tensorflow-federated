@@ -1,3 +1,22 @@
+# Release 0.40.0
+
+## Major Features and Improvements
+
+*   Skip model updates that are non-finite in
+    `tff.learning.templates.build_apply_optimizer_finalizer`.
+
+## Breaking Changes
+
+*   Removed deprecated APIs in `tff.learning.framework`
+*   Update the Python package scripts to use Python 3.10 by default.
+*   Remove module wildcard imports from **init**.py files in TFF.
+*   Update the Python package scripts to use Python 3.10 by default.
+
+## Bug Fixes
+
+*   Remove `functools.wraps` within `tff.tf_computation`.
+*   Fix typo in iNaturalist dataset docstring.
+
 # Release 0.39.0
 
 ## Major Features and Improvements
