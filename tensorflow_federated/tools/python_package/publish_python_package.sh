@@ -19,19 +19,19 @@ set -e
 usage() {
   local script_name=$(basename "${0}")
   local options=(
-      "--python=python3.9"
+      "--python=python3.10"
       "--package=<path>"
   )
   echo "usage: ${script_name} ${options[@]}"
-  echo "  --python=python3.9  The Python version used by the environment to"
-  echo "                      build the Python package."
-  echo "  --package=<path>    A path to a local pip package."
+  echo "  --python=python3.10  The Python version used by the environment to"
+  echo "                       build the Python package."
+  echo "  --package=<path>     A path to a local pip package."
   exit 1
 }
 
 main() {
   # Parse the arguments.
-  local python="python3.9"
+  local python="python3.10"
   local package=""
 
   while [[ "$#" -gt 0 ]]; do
