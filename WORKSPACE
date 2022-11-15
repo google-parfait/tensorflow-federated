@@ -78,6 +78,12 @@ git_repository(
     tag = "0.5.0",
 )
 
+git_repository(
+    name = "tensorflow_compression",
+    commit = "892e137e30fb7aa01c6424c0f9680795f550cbdb",
+    remote = "https://github.com/tensorflow/compression.git",
+)
+
 #
 # Inlined transitive dependencies, grouped by direct dependency.
 #

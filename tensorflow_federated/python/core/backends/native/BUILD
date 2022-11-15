@@ -138,6 +138,7 @@ py_test(
 py_library(
     name = "execution_contexts",
     srcs = ["execution_contexts.py"],
+    data = ["//tensorflow_federated/data:worker_binary"],
     srcs_version = "PY3",
     deps = [
         ":compiler",
@@ -162,6 +163,7 @@ py_test(
     deps = [
         ":execution_contexts",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/executors:remote_executor_grpc_stub",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/tensorflow_libs:tensorflow_test_utils",

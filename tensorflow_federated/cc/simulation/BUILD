@@ -11,8 +11,10 @@ package_group(
 package_group(
     name = "simulation_users",
     includes = [
+        "//tensorflow_federated/data:data_packages",
         "//tensorflow_federated/python/simulation:simulation_packages",
         "//tensorflow_federated/python/tests:tests_packages",
+        "//tensorflow_federated/tools:tools_packages",
     ],
 )
 
@@ -53,5 +55,6 @@ cc_binary(
     linkopts = ["-lrt"],
     deps = [
         ":worker_main",
+        "@tensorflow_compression//tensorflow_compression/cc:run_length_gamma_kernels",  # buildcleaner: keep, RunLengthGammaEncode
     ],
 )
