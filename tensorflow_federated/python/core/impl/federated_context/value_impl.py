@@ -220,8 +220,10 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def __add__(self, other):
     other = to_value(other, None)
     if not self.type_signature.is_equivalent_to(other.type_signature):
-      raise TypeError('Cannot add {} and {}.'.format(self.type_signature,
-                                                     other.type_signature))
+      raise TypeError('Cannot add non-equivalent types. ' +
+                      computation_types.type_mismatch_error_message(
+                          self.type_signature, other.type_signature,
+                          computation_types.TypeRelation.EQUIVALENT))
     call = building_blocks.Call(
         building_blocks.Intrinsic(
             intrinsic_defs.GENERIC_PLUS.uri,
@@ -415,9 +417,8 @@ def to_value(
         'code. Please wrap any TensorFlow constructs with '
         '`tff.tf_computation`.'.format(arg))
   else:
-    raise TypeError(
-        'Unable to interpret an argument of type {} as a `tff.Value`.'.format(
-            py_typecheck.type_string(type(arg))))
+    raise TypeError('Unable to interpret an argument of Python type '
+                    f'{py_typecheck.type_string(type(arg))} as a `tff.Value`.')
   py_typecheck.check_type(result, Value)
   if (type_spec is not None and
       not type_spec.is_assignable_from(result.type_signature)):
@@ -427,7 +428,6 @@ def to_value(
           comp_to_zip=result.comp, target_type=type_spec)
       if zipped_comp is not None:
         return Value(zipped_comp)
-    raise TypeError(
-        'The supplied argument maps to TFF type {}, which is incompatible with '
-        'the requested type {}.'.format(result.type_signature, type_spec))
+    raise computation_types.TypeNotAssignableError(type_spec,
+                                                   result.type_signature)
   return result
