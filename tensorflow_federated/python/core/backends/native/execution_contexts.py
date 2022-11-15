@@ -186,7 +186,32 @@ def create_remote_python_execution_context(
     max_fanout: int = 100,
     default_num_clients: int = 0,
 ) -> sync_execution_context.ExecutionContext:
-  """Creates context to execute computations with workers on `channels`."""
+  """Creates context to execute computations with workers on `channels`.
+
+  Args:
+    channels: A list of `grpc.Channels` hosting services which can execute TFF
+      work. Assumes each channel connects to a valid endpoint.
+    thread_pool_executor: Optional concurrent.futures.Executor used to wait for
+      the reply to a streaming RPC message. Uses the default Executor if not
+      specified.
+    dispose_batch_size: The batch size for requests to dispose of remote worker
+      values. Lower values will result in more requests to the remote worker,
+      but will result in values being cleaned up sooner and therefore may result
+      in lower memory usage on the remote worker.
+    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
+      `num_clients > max_fanout`, the constructed executor stack will consist of
+      multiple levels of aggregators. The height of the stack will be on the
+      order of `log(default_num_clients) / log(max_fanout)`.
+    default_num_clients: The number of clients to use for simulations where the
+      number of clients cannot be inferred. Usually the number of clients will
+      be inferred from the number of values passed to computations which accept
+      client-placed values. However, when this inference isn't possible (such as
+      in the case of a no-argument or non-federated computation) this default
+      will be used instead.
+
+  Returns:
+    An instance of `sync_execution_context.ExecutionContext`.
+  """
   factory = python_executor_stacks.remote_executor_factory(
       channels=channels,
       thread_pool_executor=thread_pool_executor,
@@ -208,7 +233,29 @@ def set_remote_python_execution_context(
     max_fanout: int = 100,
     default_num_clients: int = 0,
 ):
-  """Installs context to execute computations with workers on `channels`."""
+  """Installs context to execute computations with workers on `channels`.
+
+  Args:
+    channels: A list of `grpc.Channels` hosting services which can execute TFF
+      work. Assumes each channel connects to a valid endpoint.
+    thread_pool_executor: Optional concurrent.futures.Executor used to wait for
+      the reply to a streaming RPC message. Uses the default Executor if not
+      specified.
+    dispose_batch_size: The batch size for requests to dispose of remote worker
+      values. Lower values will result in more requests to the remote worker,
+      but will result in values being cleaned up sooner and therefore may result
+      in lower memory usage on the remote worker.
+    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
+      `num_clients > max_fanout`, the constructed executor stack will consist of
+      multiple levels of aggregators. The height of the stack will be on the
+      order of `log(default_num_clients) / log(max_fanout)`.
+    default_num_clients: The number of clients to use for simulations where the
+      number of clients cannot be inferred. Usually the number of clients will
+      be inferred from the number of values passed to computations which accept
+      client-placed values. However, when this inference isn't possible (such as
+      in the case of a no-argument or non-federated computation) this default
+      will be used instead.
+  """
   context = create_remote_python_execution_context(
       channels=channels,
       thread_pool_executor=thread_pool_executor,
@@ -226,7 +273,32 @@ def create_remote_async_python_execution_context(
     max_fanout: int = 100,
     default_num_clients: int = 0
 ) -> async_execution_context.AsyncExecutionContext:
-  """Creates context executing computations async via workers on `channels`."""
+  """Creates context executing computations async via workers on `channels`.
+
+  Args:
+    channels: A list of `grpc.Channels` hosting services which can execute TFF
+      work. Assumes each channel connects to a valid endpoint.
+    thread_pool_executor: Optional concurrent.futures.Executor used to wait for
+      the reply to a streaming RPC message. Uses the default Executor if not
+      specified.
+    dispose_batch_size: The batch size for requests to dispose of remote worker
+      values. Lower values will result in more requests to the remote worker,
+      but will result in values being cleaned up sooner and therefore may result
+      in lower memory usage on the remote worker.
+    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
+      `num_clients > max_fanout`, the constructed executor stack will consist of
+      multiple levels of aggregators. The height of the stack will be on the
+      order of `log(default_num_clients) / log(max_fanout)`.
+    default_num_clients: The number of clients to use for simulations where the
+      number of clients cannot be inferred. Usually the number of clients will
+      be inferred from the number of values passed to computations which accept
+      client-placed values. However, when this inference isn't possible (such as
+      in the case of a no-argument or non-federated computation) this default
+      will be used instead.
+
+  Returns:
+    An instance of `async_execution_context.AsyncExecutionContext`.
+  """
   factory = python_executor_stacks.remote_executor_factory(
       channels=channels,
       thread_pool_executor=thread_pool_executor,
@@ -246,7 +318,29 @@ def set_remote_async_python_execution_context(channels,
                                               dispose_batch_size=20,
                                               max_fanout: int = 100,
                                               default_num_clients: int = 0):
-  """Installs context executing computations async via workers on `channels`."""
+  """Installs context executing computations async via workers on `channels`.
+
+  Args:
+    channels: A list of `grpc.Channels` hosting services which can execute TFF
+      work. Assumes each channel connects to a valid endpoint.
+    thread_pool_executor: Optional concurrent.futures.Executor used to wait for
+      the reply to a streaming RPC message. Uses the default Executor if not
+      specified.
+    dispose_batch_size: The batch size for requests to dispose of remote worker
+      values. Lower values will result in more requests to the remote worker,
+      but will result in values being cleaned up sooner and therefore may result
+      in lower memory usage on the remote worker.
+    max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
+      `num_clients > max_fanout`, the constructed executor stack will consist of
+      multiple levels of aggregators. The height of the stack will be on the
+      order of `log(default_num_clients) / log(max_fanout)`.
+    default_num_clients: The number of clients to use for simulations where the
+      number of clients cannot be inferred. Usually the number of clients will
+      be inferred from the number of values passed to computations which accept
+      client-placed values. However, when this inference isn't possible (such as
+      in the case of a no-argument or non-federated computation) this default
+      will be used instead.
+  """
   context = create_remote_async_python_execution_context(
       channels=channels,
       thread_pool_executor=thread_pool_executor,
