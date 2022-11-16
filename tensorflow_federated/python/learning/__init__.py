@@ -35,7 +35,6 @@ model training. See `tff.learning.Model` for the overall base class, and
 `tff.learning.models` for related model classes.
 """
 
-from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.learning import algorithms
 from tensorflow_federated.python.learning import framework
 from tensorflow_federated.python.learning import metrics

@@ -33,7 +33,6 @@ py_library(
         ":model",
         ":model_update_aggregator",
         ":personalization_eval",
-        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/learning/algorithms",
         "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
