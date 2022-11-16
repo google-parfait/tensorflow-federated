@@ -512,7 +512,7 @@ def create_localhost_cpp_execution_context(
     def __del__(self):
       if isinstance(self._process, subprocess.Popen):
         os.kill(self._process.pid, signal.SIGINT)
-      self._process.wait()
+        self._process.wait()
 
     def get_stub(self) -> remote_executor_grpc_stub.RemoteExecutorGrpcStub:
       """Ensures a TFF service is running.
