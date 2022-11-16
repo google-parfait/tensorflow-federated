@@ -2,9 +2,14 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":models_packages",
-    "//tensorflow_federated/python/learning:learning_users",
     "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
+    "//tensorflow_federated/python/learning/metrics:metrics_packages",
+    "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
     "//tensorflow_federated/python/learning/templates:templates_packages",
+
+    # TODO(b/151441025): remove these edges after moving the symbols into more appropriate locations.
+    "//tensorflow_federated/python/learning:learning_packages",
+    "//tensorflow_federated/python/learning/framework:framework_packages",
 ])
 
 package_group(
@@ -18,17 +23,6 @@ py_library(
     name = "model_weights",
     srcs = ["model_weights.py"],
     srcs_version = "PY3",
-    visibility = [
-        ":models_packages",
-        "//tensorflow_federated/python/learning:__pkg__",
-        "//tensorflow_federated/python/learning:learning_users",
-        "//tensorflow_federated/python/learning/algorithms:__pkg__",
-        "//tensorflow_federated/python/learning/algorithms:algorithms_packages",
-        "//tensorflow_federated/python/learning/framework:__pkg__",
-        "//tensorflow_federated/python/learning/reconstruction:__pkg__",
-        "//tensorflow_federated/python/learning/templates:__pkg__",
-        "//tensorflow_federated/python/learning/templates:templates_packages",
-    ],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -42,7 +36,7 @@ py_library(
     name = "models",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/python/learning:learning_packages"],
+    visibility = ["//tensorflow_federated/python/learning:__pkg__"],
     deps = [
         ":functional",
         ":model_weights",
@@ -54,7 +48,6 @@ py_library(
     name = "functional",
     srcs = ["functional.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/python/learning:learning_packages"],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/learning:model",
@@ -135,7 +128,6 @@ py_library(
     name = "test_models",
     testonly = True,
     srcs = ["test_models.py"],
-    visibility = ["//tensorflow_federated/python/learning:learning_packages"],
     deps = [
         ":functional",
         "//tensorflow_federated/python/learning:model",

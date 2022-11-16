@@ -28,6 +28,7 @@ digraph {
   templates -> learning
   reconstruction -> optimizers
   reconstruction -> metrics
+  reconstruction -> models
   reconstruction -> framework
   reconstruction -> learning
   models -> metrics
@@ -35,6 +36,7 @@ digraph {
   framework -> optimizers
   framework -> learning
   framework -> metrics
+  framework -> models
   optimizers -> learning
   metrics -> learning
 
@@ -43,4 +45,6 @@ digraph {
   framework -> learning [dir=back, color="#ff0000"]
   optimizers -> learning [dir=back, color="#ff0000"]
   metrics -> learning [dir=back, color="#ff0000"]
+  models -> learning [dir=back, color="#ff0000"]
+  metrics -> models [dir=back, color="#ff0000"]
 }
