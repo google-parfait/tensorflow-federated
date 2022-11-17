@@ -107,7 +107,7 @@ class FilteringReleaseManager(ReleaseManager):
   async def release(self,
                     value: Any,
                     type_signature: computation_types.Type,
-                    key: Any = None) -> None:  # pytype: disable=signature-mismatch
+                    key: Any = None) -> None:
     """Releases `value` from a federated program.
 
     Args:
