@@ -7,6 +7,7 @@ digraph {
     graph [label="Learning", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
     reconstruction [label="reconstruction", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/reconstruction" target="_parent"]
     algorithms [label="algorithms", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/algorithms" target="_parent"]
+    programs [label="programs", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/programs" target="_parent"]
     templates [label="templates", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/templates" target="_parent"]
     optimizers [label="optimizers", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/optimizers" target="_parent"]
     models [label="models", href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/models" target="_parent"]
@@ -15,6 +16,8 @@ digraph {
     learning [href="https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning" target="_parent"]
   }
 
+  programs -> templates
+  programs -> models
   algorithms -> templates
   algorithms -> metrics
   algorithms -> models

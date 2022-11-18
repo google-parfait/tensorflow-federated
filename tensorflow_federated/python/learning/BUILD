@@ -40,6 +40,7 @@ py_library(
         "//tensorflow_federated/python/learning/models",
         "//tensorflow_federated/python/learning/models:model_weights",
         "//tensorflow_federated/python/learning/optimizers",
+        "//tensorflow_federated/python/learning/programs",
         "//tensorflow_federated/python/learning/reconstruction",
         "//tensorflow_federated/python/learning/templates",
     ],
