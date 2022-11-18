@@ -124,7 +124,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
         dataset = create_dataset()
         self.assertEqual(dataset.element_spec,
                          tf.TensorSpec(shape=[], dtype=tf.int64))
-        self.assertEqual(tf.data.experimental.cardinality(dataset), 5)
+        self.assertEqual(dataset.cardinality(), 5)
       with self.subTest('federated'):
 
         @federated_computation.federated_computation
@@ -134,7 +134,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
         dataset = create_federated_dataset()
         self.assertEqual(dataset.element_spec,
                          tf.TensorSpec(shape=[], dtype=tf.int64))
-        self.assertEqual(tf.data.experimental.cardinality(dataset), 5)
+        self.assertEqual(dataset.cardinality(), 5)
       with self.subTest('struct'):
 
         @tensorflow_computation.tf_computation()
@@ -147,8 +147,7 @@ class CPPExecutionContextTest(tf.test.TestCase):
             tf.TensorSpec(shape=[], dtype=tf.int64),
             tf.TensorSpec(shape=[], dtype=tf.int64),
         ])
-        self.assertEqual(
-            [tf.data.experimental.cardinality(d) for d in datasets], [5, 5])
+        self.assertEqual([d.cardinality() for d in datasets], [5, 5])
 
 
 class AsyncCppContextInstallationTest(tf.test.TestCase):
