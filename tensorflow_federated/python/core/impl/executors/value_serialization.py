@@ -20,12 +20,7 @@
 
 import collections
 from collections.abc import Collection, Mapping, Sequence
-import os
-import os.path
-import tempfile
 from typing import Any, Optional, Union
-import warnings
-import zipfile
 
 import numpy as np
 import tensorflow as tf
@@ -221,8 +216,8 @@ def _check_container_compat_with_tf_nest(type_spec: computation_types.Type):
 @tracing.trace
 def _serialize_sequence_value(
     value: Union[Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES],
-                 list[Any]], type_spec: computation_types.SequenceType
-) -> computation_types.SequenceType:
+                 list[Any]],
+    type_spec: computation_types.SequenceType) -> _SerializeReturnType:
   """Serializes a `tf.data.Dataset` value into `executor_pb2.Value`.
 
   Args:
@@ -400,49 +395,6 @@ def _deserialize_tensor_value(
   return value, value_type
 
 
-def _deserialize_dataset_from_zipped_saved_model(serialized_bytes):
-  """Deserializes a zipped SavedModel `bytes` object to a `tf.data.Dataset`.
-
-  DEPRECATED: this method is deprecated and replaced by
-  `_deserialize_dataset_from_graph_def`.
-
-  Args:
-    serialized_bytes: `bytes` object produced by older versions of
-      `tensorflow_serialization.serialize_dataset` that produced zipped
-      SavedModel `bytes` strings.
-
-  Returns:
-    A `tf.data.Dataset` instance.
-
-  Raises:
-    SerializationError: if there was an error in TensorFlow during
-      serialization.
-  """
-  py_typecheck.check_type(serialized_bytes, bytes)
-  temp_dir = tempfile.mkdtemp('dataset')
-  fd, temp_zip = tempfile.mkstemp('zip')
-  os.close(fd)
-  try:
-    with open(temp_zip, 'wb') as f:
-      f.write(serialized_bytes)
-    with zipfile.ZipFile(temp_zip, 'r') as z:
-      z.extractall(path=temp_dir)
-    loaded = tf.saved_model.load(temp_dir)
-    # TODO(b/156302055): Follow up here when bug is resolved, either remove
-    # if this function call stops failing by default, or leave if this is
-    # working as intended.
-    with tf.device('cpu'):
-      ds = loaded.dataset_fn()
-  except Exception as e:  # pylint: disable=broad-except
-    raise DatasetSerializationError(
-        'Error deserializing tff.Sequence value. Inner error: {!s}'.format(
-            e)) from e
-  finally:
-    tf.io.gfile.rmtree(temp_dir)
-    tf.io.gfile.remove(temp_zip)
-  return ds
-
-
 def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
                                         element_type: computation_types.Type):
   """Deserializes a serialized `tf.compat.v1.GraphDef` to a `tf.data.Dataset`.
@@ -537,14 +489,8 @@ def _deserialize_sequence_value(
         '`element_type` proto field or `element_type_hint`')
   which_value = sequence_value_proto.WhichOneof('value')
   if which_value == 'zipped_saved_model':
-    warnings.warn(
-        'Deserializng a sequence value that was encoded as a zipped SavedModel.'
-        ' This is a deprecated path, please update the binary that is '
-        'serializing the sequences.', DeprecationWarning)
-    ds = _deserialize_dataset_from_zipped_saved_model(
-        sequence_value_proto.zipped_saved_model)
-    ds = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
-        ds, element_type)
+    raise ValueError('Deserializing dataset from zipped save model no longer '
+                     'supported.')
   elif which_value == 'serialized_graph_def':
     ds = _deserialize_dataset_from_graph_def(
         sequence_value_proto.serialized_graph_def, element_type)
