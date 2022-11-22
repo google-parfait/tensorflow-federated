@@ -16,14 +16,18 @@
 from tensorflow_federated.python.core.backends.native.compiler import transform_to_native_form
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_local_async_python_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_local_python_execution_context
+pylint: disable=line-too-long
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_localhost_cpp_execution_context
+pylint: enable=line-too-long
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_mergeable_comp_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_remote_python_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_sizing_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_thread_debugging_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import set_local_async_python_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import set_local_python_execution_context
+pylint: disable=line-too-long
 from tensorflow_federated.python.core.backends.native.execution_contexts import set_localhost_cpp_execution_context
+pylint: enable=line-too-long
 from tensorflow_federated.python.core.backends.native.execution_contexts import set_mergeable_comp_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import set_remote_python_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import set_thread_debugging_execution_context

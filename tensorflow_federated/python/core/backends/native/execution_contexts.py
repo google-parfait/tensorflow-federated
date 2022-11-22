@@ -455,6 +455,8 @@ def create_localhost_cpp_execution_context(
   `binary_path`, serving on `port`, and constructs a simple (Python) remote
   execution context to talk to this worker.
 
+  Note: this function will *only* work in open source.
+
   Args:
     default_num_clients: The number of clients to use as the default
       cardinality, if thus number cannot be inferred by the arguments of a
