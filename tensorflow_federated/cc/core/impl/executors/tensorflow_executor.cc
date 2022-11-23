@@ -930,11 +930,11 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
-    return ThreadRun(
-        [value_pb, this]() -> absl::StatusOr<ExecutorValue> {
-          return TFF_TRY(CreateValueAny(value_pb));
-        },
-        &thread_pool_);
+    return ThreadRun([value_pb, this]() -> absl::StatusOr<ExecutorValue> {
+      return TFF_TRY(CreateValueAny(value_pb));
+    });
+    // TODO(b/260119235): Investigate re-enabling thread pool usage.
+    // &thread_pool_);
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
@@ -958,8 +958,9 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
                 "to be a computation or intrinsic, but found type ",
                 fn.type()));
           }
-        },
-        &thread_pool_);
+        });
+    // TODO(b/260119235): Investigate re-enabling thread pool usage.
+    // &thread_pool_);
   }
   absl::StatusOr<ValueFuture> CreateStruct(
       std::vector<ValueFuture> elements) final {
@@ -969,30 +970,31 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
             -> absl::StatusOr<ExecutorValue> {
           return ExecutorValue(std::make_shared<std::vector<ExecutorValue>>(
               std::move(elements)));
-        },
-        &thread_pool_);
+        });
+    // TODO(b/260119235): Investigate re-enabling thread pool usage.
+    // &thread_pool_);
   }
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
                                               const uint32_t index) final {
-    return Map(
-        std::vector<ValueFuture>({value}),
-        [index](std::vector<ExecutorValue>&& values)
-            -> absl::StatusOr<ExecutorValue> {
-          ExecutorValue& value = values[0];
-          if (value.type() != ExecutorValue::ValueType::STRUCT) {
-            return absl::InvalidArgumentError(
-                ERR_LOG("Cannot create selection on non-struct value."));
-          }
-          if (value.elements().size() <= index) {
-            return absl::InvalidArgumentError(ERR_LOG(
-                absl::StrCat("Attempted to access index ", index, " of a ",
-                             value.elements().size(), "-length struct.")));
-          }
-          return ExecutorValue(value.elements()[index]);
-        },
-        &thread_pool_);
+    return Map(std::vector<ValueFuture>({value}),
+               [index](std::vector<ExecutorValue>&& values)
+                   -> absl::StatusOr<ExecutorValue> {
+                 ExecutorValue& value = values[0];
+                 if (value.type() != ExecutorValue::ValueType::STRUCT) {
+                   return absl::InvalidArgumentError(
+                       ERR_LOG("Cannot create selection on non-struct value."));
+                 }
+                 if (value.elements().size() <= index) {
+                   return absl::InvalidArgumentError(ERR_LOG(absl::StrCat(
+                       "Attempted to access index ", index, " of a ",
+                       value.elements().size(), "-length struct.")));
+                 }
+                 return ExecutorValue(value.elements()[index]);
+               });
+    // TODO(b/260119235): Investigate re-enabling thread pool usage.
+    // &thread_pool_);
   }
-  absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) {
+  absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) final {
     ExecutorValue value = TFF_TRY(Wait(std::move(value_fut)));
     ParallelTasks tasks(&thread_pool_);
     TFF_TRY(MaterializeValue(value, value_pb, tasks));
