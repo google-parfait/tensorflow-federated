@@ -19,6 +19,7 @@ limitations under the License
 #include <string>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -36,14 +37,7 @@ namespace tensorflow_federated {
 // This class acts as a function from graph -> session, caching previously-
 // created sessions for later use.
 //
-// It is intended to limit the number of threads simultaneously calling
-// `NewSession` and `Session->create` to the number of hardware CPUs. This
-// allows other incoming threads the opportunity to wait for an already-created
-// session to finish rather than adding extra total work. It also serves as a
-// location to inject a maximum on the amount of concurrency applied at a
-// per-computation level.
-//
-// Additionally, it rewrites the graphs of each of the session created so that
+// SessionProvider rewrites the graphs of each of the session created so that
 // ops that create resources create them in isolated containers. When a session
 // is returned to the SessionProvider, the container for that session is
 // cleared, freeing resources. This is necessary in TFF, which expects stateless
@@ -54,7 +48,7 @@ namespace tensorflow_federated {
 // TensorFlowExecutor.
 class SessionProvider {
  public:
-  SessionProvider(tensorflow::GraphDef&& graph, int32_t max_active_sessions);
+  SessionProvider(tensorflow::GraphDef&& graph);
 
   class SessionWithResourceContainer {
    public:
@@ -118,12 +112,6 @@ class SessionProvider {
     return SessionRental(TFF_TRY(TakeSession()), *this);
   }
 
-  bool SessionOrCpuAvailable() {
-    bool under_active_session_limit = active_sessions_ < max_active_sessions_;
-    return under_active_session_limit &&
-           (!sessions_.empty() || maybe_open_cpus_ > 0);
-  }
-
   absl::StatusOr<SessionWithResourceContainer> TakeSession();
   void ReturnSession(SessionWithResourceContainer&& session);
 
@@ -137,11 +125,8 @@ class SessionProvider {
   SessionProvider(const SessionProvider&) = delete;
   SessionProvider& operator=(const SessionProvider&) = delete;
 
-  absl::Mutex lock_;
-  std::vector<SessionWithResourceContainer> sessions_;
-  int16_t maybe_open_cpus_;
-  int32_t max_active_sessions_;
-  int32_t active_sessions_;
+  absl::Mutex mutex_;
+  std::vector<SessionWithResourceContainer> sessions_ ABSL_GUARDED_BY(mutex_);
   const tensorflow::GraphDef graph_;
   // A prefix for all containers used by sessions created by this provider.
   const uint32_t function_id_;
@@ -152,7 +137,7 @@ class SessionProvider {
   // - The accelerator device to pin this computation on. If a machine has
   //   multiple accelerators, sessions will be pinned to the
   //   `session_creation_counter_ % num_accelerators` device.
-  int16_t session_creation_counter_ ABSL_GUARDED_BY(lock_) = 0;
+  int16_t session_creation_counter_ ABSL_GUARDED_BY(mutex_) = 0;
 };
 
 }  // namespace tensorflow_federated

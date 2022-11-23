@@ -569,7 +569,7 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
       case XLAExecutorValue::ValueType::TENSOR: {
         // We add tensor materialization and serialization to the ParallelTasks
         // instance we are passed down, and avoid blocking here.
-        tasks.add_task([&executor_value, value_pb, this]() {
+        return tasks.add_task([&executor_value, value_pb, this]() {
           std::shared_ptr<ServiceTensor> tensor_in_service =
               executor_value.tensor();
           tensorflow::StatusOr<xla::Literal> result_literal =
@@ -591,7 +591,6 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
           TFF_TRY(SerializeTensorValue(tensor_out, value_pb));
           return absl::OkStatus();
         });
-        return absl::OkStatus();
       }
       case XLAExecutorValue::ValueType::STRUCT: {
         v0::Value::Struct* mutable_struct = value_pb->mutable_struct_();

@@ -119,9 +119,12 @@ inline v0::Value ComputationV(
 
 class TensorFlowExecutorTest : public ::testing::Test {
  public:
-  TensorFlowExecutorTest() { test_executor_ = CreateTensorFlowExecutor(); }
+  TensorFlowExecutorTest() {
+    test_executor_ =
+        CreateTensorFlowExecutor(/*max_concurrent_computation_calls=*/10);
+  }
   std::shared_ptr<Executor> test_executor_;
-  void CheckRoundTrip(v0::Value& input_pb) {
+  void CheckRoundTrip(const v0::Value& input_pb) {
     TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId id,
                              test_executor_->CreateValue(input_pb));
     v0::Value output_pb;
@@ -132,7 +135,7 @@ class TensorFlowExecutorTest : public ::testing::Test {
 
   template <typename... Ts>
   void CheckTensorRoundTrip(Ts... tensor_constructor_args) {
-    v0::Value input_pb = TensorV(tensor_constructor_args...);
+    const v0::Value input_pb = TensorV(tensor_constructor_args...);
     CheckRoundTrip(input_pb);
   }
 

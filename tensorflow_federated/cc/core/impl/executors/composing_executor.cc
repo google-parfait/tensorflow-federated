@@ -645,10 +645,12 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
     ParallelTasks materialize_tasks;
 
     for (uint32_t i = 0; i < children_.size(); i++) {
-      materialize_tasks.add_task([this, &child = children_[i].executor(),
-                                  &child_result_id = child_result_ids[i],
-                                  &merge_id, &current,
-                                  &mutex]() -> absl::Status {
+      TFF_TRY(materialize_tasks.add_task([this,
+                                          &child = children_[i].executor(),
+                                          &child_result_id =
+                                              child_result_ids[i],
+                                          &merge_id, &current,
+                                          &mutex]() -> absl::Status {
         v0::Value child_result = TFF_TRY(child->Materialize(child_result_id));
         if (!child_result.has_federated() ||
             child_result.federated().type().placement().value().uri() !=
@@ -668,7 +670,7 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
           current = std::move(child_result_server_id);
         }
         return absl::OkStatus();
-      });
+      }));
     }
 
     TFF_TRY(materialize_tasks.WaitAll());
@@ -901,12 +903,13 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
 
   // Creates tasks to materialize values into the addresses pointed to by
   // `protos_out`.
-  void MaterializeChildClientValues(uint32_t child_index, ValueId child_id,
-                                    absl::Span<v0::Value*> protos_out,
-                                    ParallelTasks& tasks) const {
+  absl::Status MaterializeChildClientValues(uint32_t child_index,
+                                            ValueId child_id,
+                                            absl::Span<v0::Value*> protos_out,
+                                            ParallelTasks& tasks) const {
     CHECK(protos_out.size() == children_[child_index].num_clients());
-    tasks.add_task([child = children_[child_index], child_id,
-                    protos_out]() -> absl::Status {
+    return tasks.add_task([child = children_[child_index], child_id,
+                           protos_out]() -> absl::Status {
       v0::Value child_value = TFF_TRY(child.executor()->Materialize(child_id));
       if (!child_value.has_federated()) {
         return absl::InternalError(
@@ -970,19 +973,18 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
           absl::Span<v0::Value*> client_value_pointers(
               client_start, children_[i].num_clients());
           ValueId child_value_id = value.clients()->at(i)->ref();
-          MaterializeChildClientValues(i, child_value_id, client_value_pointers,
-                                       tasks);
+          TFF_TRY(MaterializeChildClientValues(i, child_value_id,
+                                               client_value_pointers, tasks));
           client_start += children_[i].num_clients();
         }
         return absl::OkStatus();
       }
       case ExecutorValue::ValueType::UNPLACED: {
-        tasks.add_task(
+        return tasks.add_task(
             [value = std::move(value), value_pb, server = server_]() {
               *value_pb = *TFF_TRY(value.unplaced()->Proto(*server));
               return absl::OkStatus();
             });
-        return absl::OkStatus();
       }
       case ExecutorValue::ValueType::INTRINSIC: {
         return absl::UnimplementedError(
@@ -996,11 +998,11 @@ class ComposingExecutor : public ExecutorBase<ValueFuture> {
         type_pb->set_all_equal(true);
         type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
             kServerUri.data(), kServerUri.size());
-        tasks.add_task([value = std::move(value),
-                        ptr = federated_pb->add_value(), server = server_]() {
+        return tasks.add_task([value = std::move(value),
+                               ptr = federated_pb->add_value(),
+                               server = server_]() {
           return server->Materialize(value.server()->ref(), ptr);
         });
-        return absl::OkStatus();
       }
       case ExecutorValue::ValueType::STRUCTURE: {
         v0::Value_Struct* struct_pb = value_pb->mutable_struct_();

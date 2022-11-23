@@ -200,19 +200,8 @@ tensorflow::GraphDef ReplaceContainers(
   return graph;
 }
 
-SessionProvider::SessionProvider(tensorflow::GraphDef&& graph,
-                                 int32_t max_active_sessions)
-    : active_sessions_(0), graph_(graph), function_id_(GetNextFunctionId()) {
-  if (max_active_sessions > 0) {
-    max_active_sessions_ = max_active_sessions;
-  } else {
-    // Treat 0 and lower as unlimited, otherwise any lower number would result
-    // in permanent runtime hangs.
-    max_active_sessions_ = std::numeric_limits<int32_t>::max();
-  }
-
-  maybe_open_cpus_ = std::thread::hardware_concurrency();
-}
+SessionProvider::SessionProvider(tensorflow::GraphDef&& graph)
+    : graph_(graph), function_id_(GetNextFunctionId()) {}
 
 absl::StatusOr<std::unique_ptr<tensorflow::Session>>
 SessionProvider::CreateSession(const int16_t session_id) {
@@ -272,40 +261,30 @@ SessionProvider::CreateSession(const int16_t session_id) {
 
 absl::StatusOr<SessionProvider::SessionWithResourceContainer>
 SessionProvider::TakeSession() {
-  lock_.LockWhen(
-      absl::Condition(this, &SessionProvider::SessionOrCpuAvailable));
-  active_sessions_++;
-  if (!sessions_.empty()) {
-    SessionProvider::SessionWithResourceContainer session(
-        std::move(sessions_.back()));
-    sessions_.pop_back();
-    lock_.Unlock();
-    return std::move(session);
+  int16_t session_id = 0;
+  {
+    absl::MutexLock lock(&mutex_);
+    if (!sessions_.empty()) {
+      SessionProvider::SessionWithResourceContainer session(
+          std::move(sessions_.back()));
+      sessions_.pop_back();
+      return std::move(session);
+    }
+    // Build a container name based on the number of sessions created so that
+    // each session gets its own container.
+    session_id = session_creation_counter_++;
   }
-  maybe_open_cpus_--;
-  // Build a container name based on the number of sessions created so that
-  // each session gets its own container.
-  const int16_t session_id = session_creation_counter_++;
-  lock_.Unlock();
-  auto session = CreateSession(session_id);
-  lock_.Lock();
-  maybe_open_cpus_++;
-  lock_.Unlock();
-  if (session.ok()) {
-    return SessionProvider::SessionWithResourceContainer{
-        TFF_TRY(std::move(session)), function_id_, session_id};
-  } else {
-    return session.status();
-  }
+  std::unique_ptr<tensorflow::Session> session =
+      TFF_TRY(CreateSession(session_id));
+  return SessionProvider::SessionWithResourceContainer{
+      std::move(session), function_id_, session_id};
 }
 
 void SessionProvider::ReturnSession(
     SessionProvider::SessionWithResourceContainer&& session) {
   session.ClearResourceContainers();
-  lock_.Lock();
-  active_sessions_--;
+  absl::MutexLock lock(&mutex_);
   sessions_.emplace_back(std::move(session));
-  lock_.Unlock();
 }
 
 }  // namespace tensorflow_federated

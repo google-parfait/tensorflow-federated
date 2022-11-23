@@ -598,9 +598,9 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
     }
   }
 
-  void CreateChildMaterializeTask(ValueId id, v0::Value* value_pb,
-                                  ParallelTasks& tasks) {
-    tasks.add_task([child = child_, id, value_pb]() {
+  absl::Status CreateChildMaterializeTask(ValueId id, v0::Value* value_pb,
+                                          ParallelTasks& tasks) {
+    return tasks.add_task([child = child_, id, value_pb]() {
       return child->Materialize(id, value_pb);
     });
   }
@@ -619,14 +619,14 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
             kClientsUri.data(), kClientsUri.size());
         for (const auto& client_value : *value.clients()) {
-          CreateChildMaterializeTask(client_value->ref(),
-                                     federated_pb->add_value(), tasks);
+          TFF_TRY(CreateChildMaterializeTask(client_value->ref(),
+                                             federated_pb->add_value(), tasks));
         }
         return absl::OkStatus();
       }
       case ExecutorValue::ValueType::UNPLACED: {
-        CreateChildMaterializeTask(value.unplaced()->ref(), value_pb, tasks);
-        return absl::OkStatus();
+        return CreateChildMaterializeTask(value.unplaced()->ref(), value_pb,
+                                          tasks);
       }
       case ExecutorValue::ValueType::INTRINSIC: {
         return absl::UnimplementedError(
@@ -640,9 +640,8 @@ class FederatingExecutor : public ExecutorBase<ExecutorValue> {
         type_pb->set_all_equal(true);
         type_pb->mutable_placement()->mutable_value()->mutable_uri()->assign(
             kServerUri.data(), kServerUri.size());
-        CreateChildMaterializeTask(value.server()->ref(),
-                                   federated_pb->add_value(), tasks);
-        return absl::OkStatus();
+        return CreateChildMaterializeTask(value.server()->ref(),
+                                          federated_pb->add_value(), tasks);
       }
       case ExecutorValue::ValueType::STRUCTURE: {
         v0::Value_Struct* struct_pb = value_pb->mutable_struct_();
