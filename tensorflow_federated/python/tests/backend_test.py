@@ -149,7 +149,7 @@ class TemperatureSensorExampleTest(parameterized.TestCase):
     self.assertEqual(result, 12.5)
 
 
-class FederatedComputationTest(parameterized.TestCase):
+class FederatedComputationTest(parameterized.TestCase, tf.test.TestCase):
 
   @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_constant(self):
@@ -353,25 +353,7 @@ class FederatedComputationTest(parameterized.TestCase):
     ])
 
 
-class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
-
-  @tff.test.with_contexts(*test_contexts._get_all_contexts())
-  def test_create_call_take_two_from_stateful_dataset(self):
-
-    vocab = ['a', 'b', 'c', 'd', 'e', 'f']
-
-    @tff.tf_computation(tff.SequenceType(tf.string))
-    def take_two(ds):
-      table = tf.lookup.StaticVocabularyTable(
-          tf.lookup.KeyValueTensorInitializer(
-              vocab, tf.range(len(vocab), dtype=tf.int64)),
-          num_oov_buckets=1)
-      ds = ds.map(table.lookup)
-      return ds.take(2)
-
-    ds = tf.data.Dataset.from_tensor_slices(vocab)
-    result = take_two(ds)
-    self.assertCountEqual([x.numpy() for x in result], [0, 1])
+class SparseTensorIntegrationTest(tf.test.TestCase, parameterized.TestCase):
 
   @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_create_call_sparse_tensor_dataset_reduction(self):
@@ -394,6 +376,54 @@ class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
     # equal the sum.
     ds_elem = ds.get_single_element()
     self.assertAllEqual(tf.sparse.to_dense(result), tf.sparse.to_dense(ds_elem))
+
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
+  def test_sum_sparsetensor_dataset_across_clients(self):
+    num_clients = 2
+
+    sparse_tensor = tf.SparseTensor([[0, i] for i in range(5)], list(range(5)),
+                                    [1, 10])
+    ds = tf.data.Dataset.from_tensor_slices(sparse_tensor)
+
+    @tff.tf_computation(tff.SequenceType(ds.element_spec))
+    @tf.function
+    def return_sum(ds):
+      sparse_zero = tf.sparse.from_dense(tf.zeros(dtype=tf.int32, shape=[10]))
+      accum = sparse_zero
+      for element in ds:
+        accum = tf.sparse.add(accum, element)
+      return tf.sparse.to_dense(accum)
+
+    @tff.federated_computation(
+        tff.type_at_clients(return_sum.type_signature.parameter))
+    def reduce_across_clients(arg):
+      reduced_datasets = tff.federated_map(return_sum, arg)
+      return tff.federated_sum(reduced_datasets)
+
+    result = reduce_across_clients([ds] * num_clients)
+    ds_elem = ds.get_single_element()
+    self.assertAllEqual(result, num_clients * tf.sparse.to_dense(ds_elem))
+
+
+class TensorFlowComputationTest(tf.test.TestCase, parameterized.TestCase):
+
+  @tff.test.with_contexts(*test_contexts._get_all_contexts())
+  def test_create_call_take_two_from_stateful_dataset(self):
+
+    vocab = ['a', 'b', 'c', 'd', 'e', 'f']
+
+    @tff.tf_computation(tff.SequenceType(tf.string))
+    def take_two(ds):
+      table = tf.lookup.StaticVocabularyTable(
+          tf.lookup.KeyValueTensorInitializer(
+              vocab, tf.range(len(vocab), dtype=tf.int64)),
+          num_oov_buckets=1)
+      ds = ds.map(table.lookup)
+      return ds.take(2)
+
+    ds = tf.data.Dataset.from_tensor_slices(vocab)
+    result = take_two(ds)
+    self.assertCountEqual([x.numpy() for x in result], [0, 1])
 
   @tff.test.with_contexts(*test_contexts._get_all_contexts())
   def test_twice_used_variable_keeps_separate_state(self):

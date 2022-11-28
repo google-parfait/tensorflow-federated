@@ -461,10 +461,13 @@ def _to_sequence_internal_rep(
     value = tensorflow_utils.make_data_set_from_elements(
         None, value, type_spec.element)
   if isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
-    element_type = computation_types.to_type(value.element_spec)
-    value_type = computation_types.SequenceType(element_type)
-    type_spec.check_assignable_from(value_type)
-    return value
+    coerced_val = tensorflow_utils.coerce_dataset_to_yield_structures(value)
+    # We may have performed a type coercion, e.g. in the case of a
+    # SparseTensor-yielding dataset; pass the coerced type down, but only after
+    # checking assignability with the original one.
+    element_type = computation_types.to_type(coerced_val.element_spec)
+    type_spec.element.check_assignable_from(element_type)
+    return coerced_val
   py_typecheck.check_type(type_spec, computation_types.SequenceType)
   output_sig = type_conversions.type_to_tf_tensor_specs(type_spec.element)
   return tf.data.Dataset.from_generator(value, output_signature=output_sig)
