@@ -1,8 +1,8 @@
 diff --git tensorflow/compiler/tf2xla/BUILD tensorflow/compiler/tf2xla/BUILD
-index d82a2c17bc1..9f299e3ac69 100644
+index 436ea8653ed..0a73258d391 100644
 --- tensorflow/compiler/tf2xla/BUILD
 +++ tensorflow/compiler/tf2xla/BUILD
-@@ -47,14 +47,7 @@ package_group(
+@@ -42,15 +42,7 @@ package_group(
      name = "friends",
      includes = [":internal"],
      packages = [
@@ -13,6 +13,7 @@ index d82a2c17bc1..9f299e3ac69 100644
 -        "//third_party/mlir_edge/model_curriculum/iree/...",
 -        "//third_party/mlperf/submissions/training/v0_7/models/...",
 -        "//third_party/py/keras/...",
+-        "//third_party/py/keras_cv/...",
 -        "//waymo/ml/deploy/benchmark/...",
 +        "//...",
      ],

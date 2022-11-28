@@ -69,10 +69,10 @@ REQUIRED_PACKAGES = [
     'numpy~=1.21',
     'portpicker~=1.5',
     'semantic-version~=2.6',
-    'tensorflow-compression~=2.10.0',  # Requires TF x.y.* for ABI compatibility
+    'tensorflow-compression~=2.11.0',  # Requires TF x.y.* for ABI compatibility
     'tensorflow-model-optimization==0.7.3',
     'tensorflow-privacy==0.8.6',
-    'tensorflow~=2.10.0',
+    'tensorflow~=2.11.0',
     'tqdm~=4.64',
 ]
 
