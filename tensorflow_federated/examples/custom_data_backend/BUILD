@@ -57,6 +57,7 @@ py_library(
 py_test(
     name = "data_backend_example_test",
     srcs = ["data_backend_example_test.py"],
+    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
@@ -66,6 +67,5 @@ py_test(
         ":data_backend_example_py",
         "//tensorflow_federated",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//third_party/pybind11_abseil:status",
     ],
 )

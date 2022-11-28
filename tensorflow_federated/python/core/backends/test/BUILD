@@ -2,7 +2,6 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = [
     ":test_packages",
-    "//third_party/py/tensorflow_federated:__subpackages__",
     "//tensorflow_federated/python/core:core_users",
 
     # TODO(b/193543632): Remove this visibility once C++ execution is fully

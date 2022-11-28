@@ -86,6 +86,7 @@ py_test(
 py_library(
     name = "cpp_async_execution_context",
     srcs = ["cpp_async_execution_context.py"],
+    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     srcs_version = "PY3",
     tags = [
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
@@ -97,7 +98,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
         "//tensorflow_federated/python/core/impl/executors:value_serialization",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//third_party/pybind11_abseil:status",
     ],
 )
 
