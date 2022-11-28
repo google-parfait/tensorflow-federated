@@ -1,10 +1,10 @@
 # Minimal Stand-Alone Implementation of Federated Averaging
 
 This is intended to be a flexible and minimal implementation of Federated
-Averaging, and the code is designed to be modular and re-usable. This
-implmentation of the federated averaging algorithm only uses key TFF functions
+Averaging, and the code is designed to be modular and reusable. This
+implementation of the federated averaging algorithm only uses key TFF functions
 and does not depend on advanced features in `tff.learning`. See
-[federated_averaging.py](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/algorithms/fed_avg.py)
+[fed_avg_.py](https://github.com/tensorflow/federated/blob/main/tensorflow_federated/python/learning/algorithms/fed_avg.py)
 for a more full-featured implementation.
 
 ## Instructions
