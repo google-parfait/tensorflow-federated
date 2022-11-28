@@ -10,7 +10,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_r
 git_repository(
     name = "bazel_skylib",
     remote = "https://github.com/bazelbuild/bazel-skylib.git",
-    tag = "1.0.3",
+    tag = "1.3.0",
 )
 
 # TODO(b/218935430): Temporarily disable the direct dependency on Abseil C++
@@ -51,7 +51,7 @@ git_repository(
     remote = "https://github.com/tensorflow/tensorflow.git",
     # The version of this dependency should match the version in
     # https://github.com/tensorflow/federated/blob/main/requirements.txt.
-    tag = "v2.10.0",
+    tag = "v2.11.0",
 )
 
 git_repository(
@@ -80,8 +80,10 @@ git_repository(
 
 git_repository(
     name = "tensorflow_compression",
-    commit = "892e137e30fb7aa01c6424c0f9680795f550cbdb",
     remote = "https://github.com/tensorflow/compression.git",
+    # The version of this dependency should match the version in
+    # https://github.com/tensorflow/federated/blob/main/requirements.txt.
+    tag = "v2.11.0",
 )
 
 #
@@ -116,22 +118,6 @@ http_archive(
 # Transitive dependencies, grouped by direct dependency.
 #
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-
-go_rules_dependencies()
-
-go_register_toolchains(version = "1.17.1")
-
-git_repository(
-    name = "bazel_gazelle",
-    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
-    tag = "v0.24.0",
-)
-
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-
-gazelle_dependencies()
-
 load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
 
 tf_workspace3()
@@ -148,6 +134,25 @@ load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
 
 tf_workspace0()
 
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies")
+
+go_rules_dependencies()
+
+# TODO(b/260612484): Temporarily disable the direct dependency on
+# `go_register_toolchains`, for now we pick this dependency up via TensorFlows
+# workspace.
+# go_register_toolchains(version = "1.17.1")
+
+git_repository(
+    name = "bazel_gazelle",
+    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
+    tag = "v0.24.0",
+)
+
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+
+gazelle_dependencies()
+
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
@@ -162,6 +167,9 @@ load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 grpc_deps()
 
-load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
-
-grpc_extra_deps()
+# TODO(b/260598663): Temporarily disable the direct dependency on
+# `grpc_extra_deps`, for now we pick this dependency up via TensorFlows
+# workspace.
+# load("@com_github_grpc_grpc//bazel:grpc_extra_deps.bzl", "grpc_extra_deps")
+#
+# grpc_extra_deps()
