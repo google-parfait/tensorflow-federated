@@ -74,7 +74,7 @@ class PrefetchingDataSourceIteratorTest(parameterized.TestCase,
   # pyformat: disable
   @parameterized.named_parameters(
       ('sync_cpp',
-       execution_contexts.create_local_python_execution_context()),
+       execution_contexts.create_localhost_cpp_execution_context()),
       ('sync_python',
        execution_contexts.create_local_python_execution_context()),
   )
@@ -396,7 +396,7 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('sync_cpp',
-       execution_contexts.create_local_python_execution_context()),
+       execution_contexts.create_localhost_cpp_execution_context()),
       ('sync_python',
        execution_contexts.create_local_python_execution_context()),
   )
