@@ -1,3 +1,15 @@
+# Release 0.41.0
+
+## Major Features and Improvements
+
+*   TFF-C++ runtime now installed by default. Note that this release will have a
+    significantly larger PIP package size.
+*   Introduce `tff.learning.programs` for federated program-logic using the
+    `tff.program` APIs.
+*   Updated `tensorflow` to version `2.11.0`.
+*   Updated `tensorflow_compression` to version `2.11.0`.
+*   Updated `bazel_skylib` to version `1.3.0`.
+
 # Release 0.40.0
 
 ## Major Features and Improvements
