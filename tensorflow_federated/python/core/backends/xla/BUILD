@@ -91,7 +91,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:cpp_sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
     ],
 )
 

@@ -31,7 +31,6 @@ py_library(
     deps = [
         ":executor_stack_bindings",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
@@ -47,7 +46,6 @@ py_test(
     ],
     deps = [
         ":cpp_executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
@@ -61,9 +59,7 @@ py_library(
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
     deps = [
-        "//tensorflow_federated/cc/core/impl/executor_stacks:executor_stack_bindings",
         "//tensorflow_federated/python/core/impl/executors:data_conversions",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
         "@com_google_protobuf//:protobuf_python",
     ],
@@ -79,7 +75,6 @@ py_test(
     ],
     deps = [
         ":executor_stack_bindings",
-        "//tensorflow_federated/python/core/impl/executors:executor_bindings",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
