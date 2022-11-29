@@ -160,6 +160,7 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     for fieldname in fieldnames:
       py_typecheck.check_type(fieldname, str)
     py_typecheck.check_type(values, Iterable)
+    values = tuple(values)
     for value in values:
       py_typecheck.check_type(value, Mapping)
       for key in value.keys():
