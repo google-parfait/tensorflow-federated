@@ -46,7 +46,7 @@ def _initialize_optimizer_vars(model: tff.learning.Model,
   model_weights = tff.learning.models.ModelWeights.from_model(model)
   zero_gradient = [tf.zeros_like(t) for t in model_weights.trainable]
   optimizer.apply_gradients(zip(zero_gradient, model_weights.trainable))
-  assert optimizer.variables()
+  assert optimizer.variables
 
 
 def build_federated_averaging_process(
@@ -80,7 +80,7 @@ def build_federated_averaging_process(
     _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(
         model=model_weights,
-        optimizer_state=server_optimizer.variables(),
+        optimizer_state=server_optimizer.variables,
         round_num=0)
 
   server_state_type = server_init_tf.type_signature.result

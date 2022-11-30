@@ -140,7 +140,7 @@ class KerasOptimizerTest(tf.test.TestCase, parameterized.TestCase):
         gradients = tf.constant(1.0)
         state, variables = optimizer.next(state, variables, gradients)
       # Return also the private variables of the optimizer.
-      return state, variables, optimizer._optimizer.variables()
+      return state, variables, optimizer._optimizer.variables
 
     @tensorflow_computation.tf_computation()
     def test_computation(initial_weights):

@@ -46,7 +46,7 @@ def _initialize_optimizer_vars(model, optimizer):
   model_weights = get_model_weights(model)
   zero_gradient = [tf.zeros_like(t) for t in model_weights.trainable]
   optimizer.apply_gradients(zip(zero_gradient, model_weights.trainable))
-  assert optimizer.variables()
+  assert optimizer.variables
 
 
 def build_federated_averaging_process(
@@ -78,7 +78,7 @@ def build_federated_averaging_process(
     _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(
         model_weights=get_model_weights(model),
-        optimizer_state=server_optimizer.variables(),
+        optimizer_state=server_optimizer.variables,
         round_num=0,
         total_iters_count=0)
 

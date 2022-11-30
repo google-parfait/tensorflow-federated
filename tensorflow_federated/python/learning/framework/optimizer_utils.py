@@ -61,7 +61,7 @@ class ServerState:
   Attributes:
     model: A `ModelWeights` structure, containing Tensors or Variables.
     optimizer_state: A list of Tensors or Variables, in the order returned by
-      `optimizer.variables()`
+      `optimizer.variables`
     delta_aggregate_state: State (possibly empty) of the delta_aggregate_fn.
     model_broadcast_state: State (possibly empty) of the model_broadcast_fn.
   """

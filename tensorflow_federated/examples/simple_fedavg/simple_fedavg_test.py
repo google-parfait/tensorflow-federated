@@ -263,7 +263,7 @@ def _server_init(model, optimizer):
   """
   simple_fedavg_tff._initialize_optimizer_vars(model, optimizer)
   return simple_fedavg_tf.ServerState(
-      model=model.weights, optimizer_state=optimizer.variables(), round_num=0)
+      model=model.weights, optimizer_state=optimizer.variables, round_num=0)
 
 
 class ServerTest(tf.test.TestCase):
