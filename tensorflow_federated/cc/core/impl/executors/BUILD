@@ -199,6 +199,49 @@ cc_test(
 )
 
 cc_library(
+    name = "eager_computation",
+    srcs = ["eager_computation.cc"],
+    hdrs = ["eager_computation.h"],
+    deps = [
+        ":status_macros",
+        "//tensorflow_federated/proto/v0:computation_cc_proto",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+        "@org_tensorflow//tensorflow/c:tf_datatype",
+        "@org_tensorflow//tensorflow/c:tf_status_headers",
+        "@org_tensorflow//tensorflow/c/eager:c_api",
+        "@org_tensorflow//tensorflow/c/eager:tfe_tensorhandle_internal",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
+        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/common_runtime:core",
+    ],
+)
+
+tff_cc_cpu_gpu_test(
+    name = "eager_computation_test",
+    srcs = ["eager_computation_test.cc"],
+    deps = [
+        ":eager_computation",
+        ":status_matchers",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "@com_google_absl//absl/status",
+        "@org_tensorflow//tensorflow/c:tf_datatype",
+        "@org_tensorflow//tensorflow/c:tf_status_headers",
+        "@org_tensorflow//tensorflow/c:tf_tensor",
+        "@org_tensorflow//tensorflow/c/eager:c_api",
+        "@org_tensorflow//tensorflow/cc:cc_ops",
+        "@org_tensorflow//tensorflow/cc:functional_ops",
+        "@org_tensorflow//tensorflow/cc:scope",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core:tensorflow",
+    ],
+)
+
+cc_library(
     name = "executor",
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
