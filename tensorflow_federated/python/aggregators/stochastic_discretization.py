@@ -187,9 +187,9 @@ def _discretize_struct(struct, step_size):
     seed = tf.cast(
         tf.stack([tf.timestamp() * 1e6,
                   tf.timestamp() * 1e6]), dtype=tf.int64)
-    scaled_x = tf.divide(x, tf.cast(step_size, x.dtype))
-    prob_x = scaled_x - tf.floor(scaled_x)
-    random_x = tf.random.stateless_uniform(x.shape, seed=seed, dtype=x.dtype)
+    scaled_x = tf.divide(tf.cast(x, tf.float32), step_size)
+    prob_x = scaled_x - tf.cast(tf.floor(scaled_x), tf.float32)
+    random_x = tf.random.stateless_uniform(x.shape, seed=seed, dtype=tf.float32)
     discretized_x = tf.where(
         tf.less_equal(random_x, prob_x), tf.math.ceil(scaled_x),
         tf.math.floor(scaled_x))
@@ -202,7 +202,7 @@ def _undiscretize_struct(struct, step_size, tf_dtype_struct):
   """Unscales the discretized structure and casts back to original dtypes."""
 
   def undiscretize_tensor(x, original_dtype):
-    unscaled_x = tf.cast(x, original_dtype) * tf.cast(step_size, original_dtype)
-    return unscaled_x
+    unscaled_x = tf.cast(x, tf.float32) * step_size
+    return tf.cast(unscaled_x, original_dtype)
 
   return tf.nest.map_structure(undiscretize_tensor, struct, tf_dtype_struct)

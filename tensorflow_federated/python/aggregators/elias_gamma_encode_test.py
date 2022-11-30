@@ -63,15 +63,9 @@ _test_expected_result_struct_int32_tensors = collections.OrderedDict({
     'layer2': [-6, 2, 0, 0],
 })
 
-
-# Avg num bits accross clients to represent each element
-_test_avg_bitrate_int32_tensor_rank_1 = 16.0 / 4.0
-_test_avg_bitrate_int32_tensor_rank_2 = 32.0 / 8.0
-_test_avg_bitrate_struct_int32_tensors = 32.0 / 8.0
-
-# Avg num bits across clients to represent each tensor
-_test_avg_bitstring_length_int32_tensor_rank_1 = 16.0
-_test_avg_bitstring_length_int32_tensor_rank_2 = 32.0
+_test_avg_bitrate_int32_tensor_rank_1 = 16. / 4.
+_test_avg_bitrate_int32_tensor_rank_2 = 32. / 8.
+_test_avg_bitrate_struct_int32_tensors = 32. / 8.
 
 
 class EncodeUtilTest(tf.test.TestCase, parameterized.TestCase):
@@ -174,13 +168,16 @@ class EncodeExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('int32_tensor_rank_1', _test_client_values_int32_tensor_rank_1,
-       _test_avg_bitstring_length_int32_tensor_rank_1),
+       _test_avg_bitrate_int32_tensor_rank_1),
       ('int32_tensor_rank_2', _test_client_values_int32_tensor_rank_2,
-       _test_avg_bitstring_length_int32_tensor_rank_2))
-  def test_bitstring_impl(self, client_values, avg_total_bits):
+       _test_avg_bitrate_int32_tensor_rank_2))
+  def test_bitstring_impl(self, client_values, avg_bitrate):
+    num_elements = tf.size(client_values[0], out_type=tf.float64)
     bitstrings = [tfc.run_length_gamma_encode(x) for x in client_values]
-    total_bits = [elias_gamma_encode._get_bits(x) for x in bitstrings]
-    self.assertEqual(np.mean(total_bits), avg_total_bits)
+    bitrates = [
+        elias_gamma_encode._get_bitrate(x, num_elements) for x in bitstrings
+    ]
+    self.assertEqual(np.mean(bitrates), avg_bitrate)
 
 
 if __name__ == '__main__':

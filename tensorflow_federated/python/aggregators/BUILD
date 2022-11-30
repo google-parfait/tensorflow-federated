@@ -275,7 +275,8 @@ py_library(
     srcs = ["elias_gamma_encode.py"],
     srcs_version = "PY3",
     deps = [
-        ":factory",
+        "//tensorflow_federated/python/aggregators:concat",
+        "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
@@ -283,7 +284,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
     ],
@@ -297,7 +297,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":elias_gamma_encode",
-        ":mean",
+        "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_test_utils",
