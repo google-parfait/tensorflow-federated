@@ -19,7 +19,6 @@ from typing import Optional
 import tensorflow as tf
 import tensorflow_compression as tfc
 
-from tensorflow_federated.python.aggregators import concat
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -28,16 +27,15 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 
 @tensorflow_computation.tf_computation
-def _get_bitrate(value, num_elements):
-  """Return size (in bits) of an encoded value."""
-  bitstring_length = 8. * tf.cast(
-      tf.strings.length(value, unit="BYTE"), dtype=tf.float64)
-  return tf.math.divide_no_nan(bitstring_length, num_elements)
+def _get_bits(value):
+  """Return size (in bits) of an encoded tensor."""
+  return 8 * tf.strings.length(value, unit="BYTE")
 
 
 def _is_int32_or_structure_of_int32s(type_spec: computation_types.Type) -> bool:
@@ -116,28 +114,36 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
       raise ValueError("Expect value_type to be an int32 tensor or a structure "
                        "containing only other structures of int32 tensors, "
                        f"found {value_type}.")
-    concat_fn, unconcat_fn = concat.create_concat_fns(value_type)
-    concat_value_type = concat_fn.type_signature.result
 
     if self._bitrate_mean_factory is not None:
       bitrate_mean_process = self._bitrate_mean_factory.create(
           computation_types.to_type(tf.float64))
 
+    @tensorflow_computation.tf_computation(value_type)
+    def encode(value):
+      return tf.nest.map_structure(
+          lambda x: tfc.run_length_gamma_encode(data=x), value)
+
     def sum_encoded_value(value):
 
       @tensorflow_computation.tf_computation
       def get_accumulator():
-        return tf.zeros(shape=concat_value_type.shape, dtype=tf.int32)
+        return type_conversions.structure_from_tensor_type_tree(
+            lambda x: tf.zeros(shape=x.shape, dtype=tf.int32), value_type)
 
       @tensorflow_computation.tf_computation
       def decode_accumulate_values(accumulator, encoded_value):
-        decoded_value = tfc.run_length_gamma_decode(
-            code=encoded_value, shape=concat_value_type.shape)
-        return accumulator + decoded_value
+        shapes = type_conversions.structure_from_tensor_type_tree(
+            lambda x: x.shape, value_type)
+        return tf.nest.map_structure(
+            lambda a, x, y: a + tfc.run_length_gamma_decode(code=x, shape=y),
+            accumulator, encoded_value, shapes)
 
       @tensorflow_computation.tf_computation
       def merge_decoded_values(decoded_value_1, decoded_value_2):
-        return decoded_value_1 + decoded_value_2
+        return tf.nest.map_structure(
+            tensorflow_computation.tf_computation(lambda x, y: x + y),
+            decoded_value_1, decoded_value_2)
 
       @tensorflow_computation.tf_computation
       def report_decoded_summation(summed_decoded_values):
@@ -158,27 +164,35 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
         init_fn.type_signature.result, computation_types.at_clients(value_type))
     def next_fn(state, value):
       measurements = ()
-      concat_value = intrinsics.federated_map(concat_fn, value)
-      encoded_value = intrinsics.federated_map(
-          tensorflow_computation.tf_computation(
-              lambda x: tfc.run_length_gamma_encode(data=x)), concat_value)
+      encoded_value = intrinsics.federated_map(encode, value)
       if self._bitrate_mean_factory is not None:
 
         @tensorflow_computation.tf_computation
         def get_num_elements():
-          return tf.constant(concat_value_type.shape.num_elements(), tf.float64)
+          num_elements = type_conversions.structure_from_tensor_type_tree(
+              lambda x: x.shape.num_elements(), value_type)
+          return tf.cast(sum(tf.nest.flatten(num_elements)), tf.float64)
 
         num_elements = intrinsics.federated_eval(get_num_elements,
                                                  placements.CLIENTS)
-        bitrates = intrinsics.federated_map(_get_bitrate,
-                                            (encoded_value, num_elements))
+
+        @tensorflow_computation.tf_computation
+        def struct_get_bits(x):
+          return tf.cast(
+              sum([_get_bits(t) for t in tf.nest.flatten(x)]), tf.float64)
+
+        total_bits = intrinsics.federated_map(struct_get_bits, encoded_value)
+
+        bitrates = intrinsics.federated_map(
+            tensorflow_computation.tf_computation(
+                lambda x, y: tf.math.divide_no_nan(x=x, y=y, name="divide")),
+            (total_bits, num_elements))
         avg_bitrate = bitrate_mean_process.next(
             bitrate_mean_process.initialize(), bitrates).result
         measurements = intrinsics.federated_zip(
             collections.OrderedDict(elias_gamma_code_avg_bitrate=avg_bitrate))
       decoded_value = sum_encoded_value(encoded_value)
-      unconcat_value = intrinsics.federated_map(unconcat_fn, decoded_value)
       return measured_process.MeasuredProcessOutput(
-          state=state, result=unconcat_value, measurements=measurements)
+          state=state, result=decoded_value, measurements=measurements)
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
