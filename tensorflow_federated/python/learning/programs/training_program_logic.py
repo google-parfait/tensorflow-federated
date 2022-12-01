@@ -25,7 +25,7 @@ import asyncio
 import datetime
 from typing import Optional, Union
 
-from absl import logging as _logging
+from absl import logging
 
 from tensorflow_federated.python.learning.programs import evaluation_program_logic
 from tensorflow_federated.python.learning.templates import learning_process
@@ -138,7 +138,7 @@ async def train_model(
 
   # If this job is restarting, resume any previous evaluations.
   if evaluation_manager is not None:
-    _logging.info('Looking for previous evaluation states...')
+    logging.info('Looking for previous evaluation states...')
     await evaluation_manager.resume_from_previous_state()
 
   # Try to load the latest program state; if the program logic failed on a
@@ -150,22 +150,22 @@ async def train_model(
       (train_state, 0))
   if program_state is not None:
     train_state, start_round = program_state
-    _logging.info('Found previous program state version %d', version)
+    logging.info('Found previous program state version %d', version)
     if start_round < train_total_rounds:
-      _logging.info('Resuming from training round %d,running until round %d',
-                    start_round, train_total_rounds)
+      logging.info('Resuming from training round %d,running until round %d',
+                   start_round, train_total_rounds)
     else:
-      _logging.info(
+      logging.info(
           'Loaded previously completed round %d, but only '
           'requested training until round %d, will not run training.',
           start_round, train_total_rounds)
       if evaluation_manager is not None:
-        _logging.info('Checking for remaining evaluations need to finish.')
+        logging.info('Checking for remaining evaluations need to finish.')
         await evaluation_manager.wait_for_evaluations_to_finish()
       return
   else:
     start_round = 0
-    _logging.info(
+    logging.info(
         'Starting program without previous state, saving initial state.')
     # Ensure the initial state (round 0) is saved before any training occurs.
     # The program manager `keep_first=True` parameterization will enable users
@@ -204,11 +204,11 @@ async def train_model(
   # for evaluation is created for a giving training checkpoint, that will run
   # evaluation computations in parallel.
   for round_num in range(start_round + 1, train_total_rounds + 1):
-    _logging.info('Running train round %d', round_num)
+    logging.info('Running train round %d', round_num)
     round_participants_data = train_data_iterator.select(
         train_per_round_clients)
     train_result = train_process.next(train_state, round_participants_data)
-    _logging.info('Finished train round %d', round_num)
+    logging.info('Finished train round %d', round_num)
     if not isinstance(train_result, learning_process.LearningProcessOutput):
       raise TypeError('FederatedContext returned unexpected result type after '
                       'training computation invocation. Expected a '
@@ -245,8 +245,8 @@ async def train_model(
       model_weights = train_process.get_model_weights(train_state)
       await evaluation_manager.start_evaluation(
           round_num, int(train_round_finished_time.timestamp()), model_weights)
-      _logging.info('Added evaluation for training round %d. Pending tasks: %s',
-                    round_num, pending_tasks)
+      logging.info('Added evaluation for training round %d. Pending tasks: %s',
+                   round_num, pending_tasks)
     # Clean-up any tasks that have finished in the meantime.
     pending_tasks = await _clear_finished_tasks(pending_tasks)
 
