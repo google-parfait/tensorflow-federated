@@ -76,6 +76,7 @@ async def materialize_value(value: Any) -> Any:
     else:
       return value
 
-  flattened = tree.flatten(value)
-  flattened = await asyncio.gather(*[_materialize(v) for v in flattened])
-  return tree.unflatten_as(value, flattened)
+  flattened_value = tree.flatten(value)
+  materialized_value = await asyncio.gather(
+      *[_materialize(v) for v in flattened_value])
+  return tree.unflatten_as(value, materialized_value)
