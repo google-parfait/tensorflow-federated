@@ -258,18 +258,20 @@ async def train_federated_model(
                                   evaluation, evaluation_data_source)
   logging.info('Running program logic')
 
+  initial_state = initialize()
+
   # Try to load the latest program state; if the program logic failed on a
   # previous run, this program state can be used to restore the execution of
   # this program logic and skip unnecessary steps.
   if program_state_manager is not None:
-    state = initialize()
-    state = await tff.program.materialize_value(state)
-    structure = state, 0
+    initial_state = await tff.program.materialize_value(initial_state)
+    structure = initial_state, 0
     program_state, version = await program_state_manager.load_latest(structure)
   else:
     program_state = None
 
-  # Initialize or load `state` and the inputs to the program logic.
+  # Assign the inputs to the program logic using the loaded program state if
+  # avilable or the initialized state.
   if program_state is not None:
     logging.info('Loaded program state at version %d', version)
     # Unpack the program state; the program logic is responsible for determining
@@ -280,8 +282,8 @@ async def train_federated_model(
     state, round_number = program_state
     start_round = round_number + 1
   else:
-    logging.info('Initializing state')
-    state = initialize()
+    logging.info('Initialized state')
+    state = initial_state
     start_round = 1
 
   # Construct a context manager to group and run tasks sequentially; often
@@ -337,7 +339,7 @@ async def train_federated_model(
       tasks.add(
           evaluation_metrics_manager.release(evaluation_metrics,
                                              evaluation_metrics_type,
-                                             round_number))
+                                             total_rounds + 1))
 
     # Release the model output.
     if model_output_manager is not None:

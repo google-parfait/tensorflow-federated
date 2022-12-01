@@ -40,7 +40,7 @@ Usage:
 
 ```
 bazel run //tensorflow_federated/examples/program:program -- \
-    --output_dir="/tmp/federated_program" \
+    --output_dir="/tmp/example_program" \
     --alsologtostderr
 ```
 """
