@@ -345,4 +345,4 @@ async def train_federated_model(
     if model_output_manager is not None:
       _, state_type = train.type_signature.result
       state_type = state_type.member
-      tasks.add(model_output_manager.release(state, state_type))
+      tasks.add(model_output_manager.release(state, state_type, 0))
