@@ -71,6 +71,26 @@ class CPPExecutorFactoryTest(absltest.TestCase):
     with self.assertRaises(Exception):
       remote_cpp_factory.create_executor({placements.CLIENTS: 1})
 
+  def test_create_cpp_factory_raises_with_invalid_default_num_clients(self):
+
+    with self.subTest('local_nonnegative'):
+      with self.assertRaisesRegex(ValueError, 'nonnegative'):
+        cpp_executor_factory.local_cpp_executor_factory(default_num_clients=-1)
+
+    with self.subTest('remote_nonnegative'):
+      with self.assertRaisesRegex(ValueError, 'nonnegative'):
+        cpp_executor_factory.remote_cpp_executor_factory(
+            channels=[], default_num_clients=-1)
+
+    with self.subTest('local_non_integer'):
+      with self.assertRaisesRegex(TypeError, 'int'):
+        cpp_executor_factory.local_cpp_executor_factory(default_num_clients=1.0)
+
+    with self.subTest('remote_non_integer'):
+      with self.assertRaisesRegex(TypeError, 'int'):
+        cpp_executor_factory.remote_cpp_executor_factory(
+            channels=[], default_num_clients=1.0)
+
 
 if __name__ == '__main__':
   absltest.main()
