@@ -143,7 +143,7 @@ class FilteringReleaseManager(parameterized.TestCase,
     release_mngr = release_manager.FilteringReleaseManager(
         mock_release_mngr, filter_fn)
 
-    await release_mngr.release(value, type_signature, 1)
+    await release_mngr.release(value, type_signature, key=1)
 
     mock_release_mngr.release.assert_called_once_with(value, type_signature, 1)
 
@@ -169,7 +169,7 @@ class FilteringReleaseManager(parameterized.TestCase,
         ], collections.OrderedDict),
     ], list)
 
-    await release_mngr.release(value, type_signature, 1)
+    await release_mngr.release(value, type_signature, key=1)
 
     expected_value = [True, [True], {'a': True}]
     expected_type_signature = computation_types.StructWithPythonType([
@@ -199,7 +199,7 @@ class FilteringReleaseManager(parameterized.TestCase,
         ('c', tf.string),
     ], list)
 
-    await release_mngr.release(value, type_signature, 1)
+    await release_mngr.release(value, type_signature, key=1)
 
     expected_type_signature = computation_types.StructWithPythonType([
         ('a', tf.bool),
@@ -233,7 +233,7 @@ class FilteringReleaseManager(parameterized.TestCase,
         mock_release_mngr, filter_fn)
 
     with self.assertRaises(NotImplementedError):
-      await release_mngr.release(value, type_signature, 1)
+      await release_mngr.release(value, type_signature, key=1)
 
 
 class GroupingReleaseManager(parameterized.TestCase,

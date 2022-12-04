@@ -177,13 +177,14 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
     release_mngr = logging_release_manager.LoggingReleaseManager()
 
     with mock.patch('absl.logging.info') as mock_info:
-      await release_mngr.release(value, type_signature)
+      await release_mngr.release(value, type_signature, key=1)
 
-      self.assertLen(mock_info.mock_calls, 3)
+      self.assertLen(mock_info.mock_calls, 4)
       mock_info.assert_has_calls([
           mock.call(mock.ANY),
           mock.call(mock.ANY, mock.ANY),
           mock.call(mock.ANY, type_signature),
+          mock.call(mock.ANY, 1),
       ])
       call = mock_info.mock_calls[1]
       _, args, kwargs = call
@@ -230,7 +231,7 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
     release_mngr = logging_release_manager.LoggingReleaseManager()
 
     with self.assertRaises(TypeError):
-      await release_mngr.release(1, type_signature, 1)
+      await release_mngr.release(1, type_signature, key=1)
 
 
 if __name__ == '__main__':

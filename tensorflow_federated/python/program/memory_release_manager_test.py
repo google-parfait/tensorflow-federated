@@ -175,7 +175,7 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
                                                         expected_value):
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
-    await release_mngr.release(value, type_signature, 1)
+    await release_mngr.release(value, type_signature, key=1)
 
     self.assertLen(release_mngr._values, 1)
     actual_value, actual_type_signature = release_mngr._values[1]
@@ -199,7 +199,7 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
     release_mngr = memory_release_manager.MemoryReleaseManager()
 
     with self.assertRaises(TypeError):
-      await release_mngr.release(1, type_signature, 1)
+      await release_mngr.release(1, type_signature, key=1)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -217,8 +217,11 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
+  # pyformat: disable
   @parameterized.named_parameters(
-      ('list', []),)
+      ('list', []),
+  )
+  # pyformat: enable
   async def test_release_raises_type_error_with_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
     value = 1

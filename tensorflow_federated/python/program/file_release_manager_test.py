@@ -623,7 +623,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     with mock.patch.object(
         release_mngr,
         '_remove_values_greater_than') as mock_remove_values_greater_than:
-      await release_mngr.release(value, type_signature, 1)
+      await release_mngr.release(value, type_signature, key=1)
 
       mock_remove_values_greater_than.assert_called_once_with(0)
 
@@ -650,7 +650,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     with mock.patch.object(
         release_mngr,
         '_remove_values_greater_than') as mock_remove_values_greater_than:
-      await release_mngr.release(value, type_signature, 1)
+      await release_mngr.release(value, type_signature, key=1)
 
       mock_remove_values_greater_than.assert_called_once_with(0)
 
@@ -668,7 +668,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     ], collections.OrderedDict)
 
     with mock.patch.object(release_mngr, '_append_value') as mock_append_value:
-      await release_mngr.release(value, type_signature, 1)
+      await release_mngr.release(value, type_signature, key=1)
 
       mock_append_value.assert_called_once_with({'key': 1, 'a': 11, 'b': 12})
 
@@ -686,7 +686,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     ], collections.OrderedDict)
 
     with mock.patch.object(release_mngr, '_write_value') as mock_write_value:
-      await release_mngr.release(value, type_signature, 1)
+      await release_mngr.release(value, type_signature, key=1)
 
       mock_write_value.assert_called_once_with({'key': 1, 'a': 11, 'b': 12})
 
@@ -850,7 +850,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     release_mngr = file_release_manager.CSVFileReleaseManager(
         file_path=file_path)
 
-    await release_mngr.release(value, type_signature, 1)
+    await release_mngr.release(value, type_signature, key=1)
 
     _, actual_value = _read_values_from_csv(file_path)
     program_test_utils.assert_types_equal(actual_value, expected_value)
@@ -1135,7 +1135,7 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
 
     with mock.patch.object(file_utils,
                            'write_saved_model') as mock_write_saved_model:
-      await release_mngr.release(value, type_signature, 1)
+      await release_mngr.release(value, type_signature, key=1)
 
       mock_write_saved_model.assert_called_once()
       call = mock_write_saved_model.mock_calls[0]

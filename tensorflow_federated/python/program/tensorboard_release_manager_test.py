@@ -198,7 +198,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
         summary_dir=summary_dir)
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
-      await release_mngr.release(value, type_signature, 1)
+      await release_mngr.release(value, type_signature, key=1)
 
       self.assertLen(mock_scalar.mock_calls, len(expected_calls))
       for call, expected_args in zip(mock_scalar.mock_calls, expected_calls):
@@ -236,7 +236,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
         summary_dir=summary_dir)
 
     with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
-      await release_mngr.release(value, type_signature, 1)
+      await release_mngr.release(value, type_signature, key=1)
 
       self.assertLen(mock_histogram.mock_calls, len(expected_calls))
       for call, expected_args in zip(mock_histogram.mock_calls, expected_calls):
@@ -258,7 +258,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     patched_scalar = mock.patch.object(tf.summary, 'scalar')
     patched_histogram = mock.patch.object(tf.summary, 'histogram')
     with patched_scalar as mock_scalar, patched_histogram as mock_histogram:
-      await release_mngr.release(value, type_signature, 1)
+      await release_mngr.release(value, type_signature, key=1)
 
       mock_scalar.assert_called_once_with('0', 1, step=1)
       self.assertLen(mock_histogram.mock_calls, 1)
@@ -292,7 +292,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     patch_scalar = mock.patch.object(tf.summary, 'scalar')
     patch_histogram = mock.patch.object(tf.summary, 'histogram')
     with patch_scalar as mock_scalar, patch_histogram as mock_histogram:
-      await release_mngr.release(value, type_signature, 1)
+      await release_mngr.release(value, type_signature, key=1)
 
       mock_scalar.assert_not_called()
       mock_histogram.assert_not_called()

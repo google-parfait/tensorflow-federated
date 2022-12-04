@@ -34,10 +34,8 @@ class ReleaseManager(metaclass=abc.ABCMeta):
   """
 
   @abc.abstractmethod
-  async def release(self,
-                    value: Any,
-                    type_signature: computation_types.Type,
-                    key: Any = None) -> None:
+  async def release(self, value: Any, type_signature: computation_types.Type,
+                    key: Any) -> None:
     """Releases `value` from a federated program.
 
     An implementation of this interface should be specific about the types of
@@ -104,10 +102,8 @@ class FilteringReleaseManager(ReleaseManager):
     self._release_manager = release_manager
     self._filter_fn = filter_fn
 
-  async def release(self,
-                    value: Any,
-                    type_signature: computation_types.Type,
-                    key: Any = None) -> None:
+  async def release(self, value: Any, type_signature: computation_types.Type,
+                    key: Any) -> None:
     """Releases `value` from a federated program.
 
     Args:
@@ -178,10 +174,8 @@ class GroupingReleaseManager(ReleaseManager):
 
     self._release_managers = release_managers
 
-  async def release(self,
-                    value: Any,
-                    type_signature: computation_types.Type,
-                    key: Any = None) -> None:
+  async def release(self, value: Any, type_signature: computation_types.Type,
+                    key: Any) -> None:
     """Releases `value` from a federated program.
 
     Args:

@@ -35,10 +35,8 @@ class LoggingReleaseManager(release_manager.ReleaseManager):
   containing value references, each value reference is materialized.
   """
 
-  async def release(self,
-                    value: Any,
-                    type_signature: computation_types.Type,
-                    key: Any = None) -> None:
+  async def release(self, value: Any, type_signature: computation_types.Type,
+                    key: Any) -> None:
     """Releases `value` from a federated program.
 
     Args:
