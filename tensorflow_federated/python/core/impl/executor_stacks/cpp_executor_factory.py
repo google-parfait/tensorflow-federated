@@ -93,6 +93,12 @@ def _log_and_warn_on_sequential_execution(max_concurrent_computation_calls: int,
         expected_concurrency_factor)
 
 
+def _check_num_clients_is_valid(default_num_clients: int):
+  py_typecheck.check_type(default_num_clients, int)
+  if default_num_clients < 0:
+    raise ValueError('Default number of clients must be nonnegative.')
+
+
 def local_cpp_executor_factory(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
@@ -101,7 +107,7 @@ def local_cpp_executor_factory(
     .create_tensorflow_executor
 ) -> executor_factory.ExecutorFactory:
   """Local ExecutorFactory backed by C++ Executor bindings."""
-  py_typecheck.check_type(default_num_clients, int)
+  _check_num_clients_is_valid(default_num_clients)
 
   def _executor_fn(
       cardinalities: executor_factory.CardinalitiesType
@@ -132,7 +138,7 @@ def remote_cpp_executor_factory(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0) -> executor_factory.ExecutorFactory:
   """ExecutorFactory backed by C++ Executor bindings."""
-  py_typecheck.check_type(default_num_clients, int)
+  _check_num_clients_is_valid(default_num_clients)
 
   def _executor_fn(
       cardinalities: executor_factory.CardinalitiesType
