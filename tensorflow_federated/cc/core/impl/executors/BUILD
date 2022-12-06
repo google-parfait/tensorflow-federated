@@ -938,10 +938,10 @@ cc_library(
         "@org_tensorflow//tensorflow/compiler/xla/client:client_library",
         "@org_tensorflow//tensorflow/compiler/xla/client:global_data",
         "@org_tensorflow//tensorflow/compiler/xla/service:hlo_proto_cc",
+        "@org_tensorflow//tensorflow/compiler/xla/stream_executor:stream_executor_headers",
+        "@org_tensorflow//tensorflow/compiler/xla/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/stream_executor:stream_executor_headers",
-        "@org_tensorflow//tensorflow/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
     ],
 )
 
@@ -964,7 +964,7 @@ cc_test(
         "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_builder",
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
+        "@org_tensorflow//tensorflow/compiler/xla/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
         "@org_tensorflow//tensorflow/core:protos_all_cc",
-        "@org_tensorflow//tensorflow/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
     ],
 )
