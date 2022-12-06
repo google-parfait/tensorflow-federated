@@ -86,22 +86,6 @@ class SamplingTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertNotEqual(sample_1, sample_2)
 
-  @parameterized.named_parameters(('string_arg', 'round_num'),
-                                  ('none_arg', None), ('float_arg', 1.0))
-  def test_sampling_fn_raises_on_non_integer_round_num(self, round_num):
-    x = list(range(10))
-    sampling_fn = sampling_utils.build_uniform_sampling_fn(x)
-    with self.assertRaises(ValueError):
-      sampling_fn(round_num=round_num, size=2)
-
-  @parameterized.named_parameters(('string_arg', 'size'), ('none_arg', None),
-                                  ('float_arg', 1.0))
-  def test_sampling_fn_raises_on_non_integer_size(self, size):
-    x = list(range(10))
-    sampling_fn = sampling_utils.build_uniform_sampling_fn(x)
-    with self.assertRaises(ValueError):
-      sampling_fn(round_num=0, size=size)
-
 
 if __name__ == '__main__':
   tf.test.main()

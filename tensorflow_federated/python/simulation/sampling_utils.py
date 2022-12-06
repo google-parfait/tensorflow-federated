@@ -14,6 +14,7 @@
 """Utilities for sampling clients, either randomly or pseudo-randomly."""
 
 from collections.abc import Callable, Sequence
+import functools
 from typing import Optional, TypeVar
 
 import numpy as np
@@ -61,11 +62,7 @@ def build_uniform_sampling_fn(
       return pow(MLCG_MULTIPLIER, round_num,
                  MLCG_MODULUS) * mlcg_start % MLCG_MODULUS
 
-  def sample_fn(round_num: int, size: int):
-    if not isinstance(round_num, int) or not isinstance(size, int):
-      raise ValueError(f'The round_num and size for sampling must both be '
-                       f'integers. Found {round_num} and {size}.')
-
+  def sample(round_num, size, random_seed):
     if isinstance(random_seed, int):
       random_state = np.random.RandomState(get_pseudo_random_int(round_num))
     else:
@@ -77,4 +74,4 @@ def build_uniform_sampling_fn(
       raise ValueError(f'Failed to sample {size} clients from population of '
                        f'size {len(sample_range)}.') from e
 
-  return sample_fn
+  return functools.partial(sample, random_seed=random_seed)
