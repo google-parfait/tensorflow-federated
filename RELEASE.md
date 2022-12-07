@@ -1,3 +1,24 @@
+# Release 0.42.0
+
+## Major Features and Improvements
+
+*   Reduced memory usage for entropy compression.
+*   Updated `com_google_protobuf` version to `v3.19.0`.
+*   Removed dependency on `six`.
+
+## Breaking Changes
+
+*   Removed default value for the key parameter from the abstract base class
+    `tff.program.ReleaseManager`.
+
+## Bug Fixes
+
+*   Fixed a whitespace syntax issue with shutting down a process when using the
+    localhost C++ execution context.
+*   Modified `tff.simulation.build_uniform_sampling_fn` so that the output
+    raises on non-integer inputs.
+*   Only wait a subprocess instance if it is not None.
+
 # Release 0.41.0
 
 ## Major Features and Improvements
