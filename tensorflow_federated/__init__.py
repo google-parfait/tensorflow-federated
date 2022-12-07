@@ -173,8 +173,8 @@ def _update_dir_method(module: _ModuleType,
       a for a in public_attributes
       if _is_tff_submodule(a) and a not in seen_modules)
   for submodule in tff_submodules:
-    _update_dir_method(submodule, seen_modules)
     seen_modules.add(submodule)
+    _update_dir_method(submodule, seen_modules)
   imported_symbols = _get_imported_symbols(module)
   # Filter out imported modules from modules that are not themselves packages.
   is_package = hasattr(module, '__path__')
@@ -191,4 +191,4 @@ def _update_dir_method(module: _ModuleType,
   module.__dir__ = lambda: imported_symbols
 
 
-_update_dir_method(_self, seen_modules=set([]))
+_update_dir_method(_self, seen_modules=set([_self]))
