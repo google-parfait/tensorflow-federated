@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from google.protobuf import message
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -472,6 +473,44 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
     path = self.get_temp_dir()
     serialization.save_functional_model(functional_model, path)
 
+  # TODO(b/261852229): move this test model to `test_save_functional_model`
+  # above once FunctionalModel serialization is fixed to not back constant
+  # tensors into the initialization graph.
+  def test_save_too_large_functional_model_fails(self):
+
+    @tf.function
+    def predict_on_batch(model_weights, x, training=True):
+      del model_weights  # Unused.
+      del x  # Unused.
+      del training  # Unused.
+      return tf.ones([1])
+
+    @tf.function
+    def forward_pass(model_weights, batch_input, training=True):
+      del model_weights  # Unused.
+      del batch_input  # Unused.
+      del training  # Unused.
+      return model_lib.BatchOutput(
+          loss=tf.zeros([]),
+          predictions=tf.ones([1]),
+          num_examples=tf.constant(10))
+
+    # Test functional model whose weights are too big to seralize as a single
+    # proto.
+    functional_model = functional.FunctionalModel(
+        initial_weights=((
+            np.zeros(shape=[20_000, 10_000], dtype=np.float32),
+            np.zeros(shape=[20_000, 10_000], dtype=np.float32),
+            np.zeros(shape=[20_000, 10_000], dtype=np.float32),
+        ), ()),
+        forward_pass_fn=forward_pass,
+        predict_on_batch_fn=predict_on_batch,
+        input_spec=(tf.TensorSpec(shape=[]), tf.TensorSpec(shape=[])))
+    path = self.get_temp_dir()
+    with self.assertRaisesRegex(message.DecodeError,
+                                '\'tensorflow.FunctionDef\''):
+      serialization.save_functional_model(functional_model, path)
+
   @parameterized.named_parameters(
       ('tf_function', create_test_functional_model),
       ('keras_model', create_test_keras_functional_model))
@@ -544,13 +583,5 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  # TODO(b/198454066): the EagerTFExecutor in the local executions stack shares
-  # a global function library with this test. `tf.function` tracing happens in
-  # this test, and we end up with two conflicting FunctionDefs in the global
-  # eager context, one after the TFF disable grappler transformation which is
-  # later added during the `tf.compat.v1.wrap_function` call during execution.
-  # This conflict does not occur in the C++ executor that does not use the eager
-  # context.
-  tf.config.optimizer.set_experimental_options({'disable_meta_optimizer': True})
   execution_contexts.set_localhost_cpp_execution_context()
   tf.test.main()
