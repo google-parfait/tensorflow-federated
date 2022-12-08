@@ -193,6 +193,7 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
         evaluation_manager=mock_evaluation_manager,
         train_metrics_manager=mock_train_metrics_manager,
         evaluation_periodicity=2)
+    await asyncio.gather(*mock_evaluation_coros)
 
     # Assert that the program attempted to load a previous checkpoint and then
     # released the model state every round.

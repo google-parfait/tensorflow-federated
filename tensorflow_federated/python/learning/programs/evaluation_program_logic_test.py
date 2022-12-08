@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_test_utils
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.models import model_weights
@@ -121,6 +122,27 @@ class ExtractAndRewrapMetricsTest(tf.test.TestCase):
       evaluation_program_logic.extract_and_rewrap_metrics(
           collections.OrderedDict(foo=lambda x: x), path=('foo',))
 
+  def test_federated_value_structure(self):
+
+    def awaitable_value(value):
+
+      async def _value():
+        return value
+
+      return native_platform.AwaitableValueReference(
+          _value(), type_conversions.infer_type(value))
+
+    test_value = collections.OrderedDict(
+        a=awaitable_value('foo'),
+        b=collections.OrderedDict(
+            x=awaitable_value('bar'), z=awaitable_value(1.0)))
+
+    try:
+      evaluation_program_logic.extract_and_rewrap_metrics(
+          metrics_structure=test_value, path=['b'])
+    except Exception as e:  # pylint: disable=broad-except
+      self.fail(f'Unexpected error raised: {e}')
+
 
 def _create_test_context() -> federated_context.FederatedContext:
   return native_platform.NativeFederatedContext(
@@ -151,49 +173,6 @@ def _create_per_round_eval_metrics_release_call(*, key: int):
           (evaluation_program_logic.MODEL_METRICS_PREFIX, mock.ANY),
       ]),
       mock.ANY,
-      key=key)
-
-
-def _create_aggregated_eval_metrics_release_call(*, key: int):
-  return mock.call(
-      collections.OrderedDict([
-          ('distributor', ()),
-          ('client_work', mock.ANY),
-          ('aggregator', mock.ANY),
-          ('finalizer', ()),
-          (
-              evaluation_program_logic.MODEL_METRICS_PREFIX,
-              collections.OrderedDict(
-                  sparse_categorical_accuracy=mock.ANY,
-                  loss=mock.ANY,
-                  # Evaluation is time based, which is non-determistic during
-                  # tests.
-                  num_examples=mock.ANY,
-                  num_batches=mock.ANY,
-              )),
-      ]),
-      computation_types.to_type(
-          collections.OrderedDict([
-              ('distributor', ()),
-              ('client_work',
-               collections.OrderedDict(
-                   eval=collections.OrderedDict(
-                       current_round_metrics=collections.OrderedDict(
-                           sparse_categorical_accuracy=TensorType(tf.float32),
-                           loss=TensorType(tf.float32),
-                           num_examples=TensorType(tf.int64),
-                           num_batches=TensorType(tf.int64))))),
-              ('aggregator',
-               collections.OrderedDict(mean_value=(), mean_weight=())),
-              ('finalizer', ()),
-              (evaluation_program_logic.MODEL_METRICS_PREFIX,
-               collections.OrderedDict(
-                   sparse_categorical_accuracy=TensorType(dtype=tf.float32),
-                   loss=TensorType(dtype=tf.float32),
-                   num_examples=TensorType(dtype=tf.int64),
-                   num_batches=TensorType(dtype=tf.int64),
-               )),
-          ])),
       key=key)
 
 

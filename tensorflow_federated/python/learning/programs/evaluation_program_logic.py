@@ -62,7 +62,6 @@ the training round that provides the checkpoint that is being evaluated.
 
 import asyncio
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
-import copy
 import datetime
 import time
 import typing
@@ -79,7 +78,6 @@ from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import file_program_state_manager
 from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
-
 
 # The prefix path for metrics exported to TensorBoard. This will group all the
 # metrics under tab with the same name.
@@ -382,19 +380,23 @@ def extract_and_rewrap_metrics(
   if not path:
     raise ValueError(
         '`path` is empty, must be a sequence of at least one element')
-  metrics_structure = typing.cast(MutableMapping[str, Any],
-                                  copy.deepcopy(metrics_structure))
-  structure_copy = metrics_structure
-  *parts, last_part = path
-  for part in parts:
-    if (metrics_structure := metrics_structure.get(part)) is None:
-      raise KeyError(f'[{part}] of path {path} did not exist in structure: '
-                     f'{structure_copy}')
-  substructure = metrics_structure.get(last_part)
-  if substructure is None:
+  current_structure = typing.cast(MutableMapping[str, Any],
+                                  metrics_structure.copy())
+  structure_copy = current_structure
+  *path_parts, last_part = path
+  for path_part in path_parts:
+    part = current_structure.get(path_part)
+    if part is None:
+      raise KeyError(
+          f'[{path_part}] of path {path} did not exist in structure: '
+          f'{structure_copy}')
+    part = part.copy()
+    current_structure[path_part] = part
+    current_structure = part
+  if (substructure := current_structure.get(last_part)) is None:
     raise KeyError(f'[{last_part}] of path {path} did not exist in structure: '
                    f'{structure_copy}')
-  del metrics_structure[last_part]
+  del current_structure[last_part]
   structure_copy[MODEL_METRICS_PREFIX] = substructure
   # Note: we create an non-federated type for `structure_copy` which is expected
   # because the `metrics_structure` input to this function also is not a
@@ -419,9 +421,9 @@ async def run_evaluation(
   Args:
     train_round_num: The round number of the training checkpoint that will be
       evaluated.
-    state_manager: A `tff.program.FileProgramStateManager` that will manage
-      the state of this evaluation. This will be used to resume evaluation if
-      the evaluation loop is interrupted for any reason.
+    state_manager: A `tff.program.FileProgramStateManager` that will manage the
+      state of this evaluation. This will be used to resume evaluation if the
+      evaluation loop is interrupted for any reason.
     evaluation_process: A `tff.learning.templates.LearningProcess` to invoke to
       evaluate the model produced after training. This process must have been
       created using `tff.learning.algorithms.build_fed_eval`.
