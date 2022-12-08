@@ -26,6 +26,7 @@ import numpy as np
 import tensorflow as tf
 import tree
 
+from google.protobuf import message
 from tensorflow_federated.python.program import file_program_state_manager
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_state_manager
@@ -709,6 +710,20 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
 
     with self.assertRaises(TypeError):
       await program_state_mngr.save('state', version)
+
+  async def test_save_fails_on_too_large_program_state(self):
+    root_dir = self.create_tempdir()
+    program_state_mngr = file_program_state_manager.FileProgramStateManager(
+        root_dir=root_dir, prefix='a_')
+    # Test saving program state that is too large to serialize as a single proto
+    program_state = [
+        np.zeros(shape=[20_000, 10_000], dtype=np.float32),
+        np.zeros(shape=[20_000, 10_000], dtype=np.float32),
+        np.zeros(shape=[20_000, 10_000], dtype=np.float32)
+    ]
+    with self.assertRaisesRegex(message.DecodeError,
+                                '\'tensorflow.FunctionDef\''):
+      await program_state_mngr.save(program_state, version=1)
 
 
 if __name__ == '__main__':
