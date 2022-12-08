@@ -29,20 +29,6 @@ py_library(
 )
 
 py_library(
-    name = "dataset_reduce",
-    srcs = ["dataset_reduce.py"],
-    srcs_version = "PY3",
-)
-
-py_cpu_gpu_test(
-    name = "dataset_reduce_test",
-    srcs = ["dataset_reduce_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":dataset_reduce"],
-)
-
-py_library(
     name = "optimizer_utils",
     srcs = ["optimizer_utils.py"],
     srcs_version = "PY3",

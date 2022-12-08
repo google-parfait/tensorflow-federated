@@ -20,10 +20,10 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.test import static_assert
+from tensorflow_federated.python.learning import dataset_reduce
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning.algorithms import fed_avg_with_optimizer_schedule
-from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.metrics import aggregator
 from tensorflow_federated.python.learning.optimizers import sgdm
 

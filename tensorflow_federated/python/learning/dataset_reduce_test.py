@@ -19,7 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning import dataset_reduce
 
 DATASET_REDUCE_OP = 'ReduceDataset'
 
