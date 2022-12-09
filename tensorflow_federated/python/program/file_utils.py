@@ -21,6 +21,7 @@ import random
 from typing import Any, Union
 
 import tensorflow as tf
+import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
@@ -46,16 +47,34 @@ makedirs = _create_async_def(tf.io.gfile.makedirs)
 rmtree = _create_async_def(tf.io.gfile.rmtree)
 
 
+def _wrap_as_variable(value):
+  """Wraps a value as a `tf.Variable`, if possible."""
+  try:
+    variable = tf.Variable(initial_value=value)
+    return variable
+  except ValueError:  # Raised if x is not compatible with `tf.Variable`
+    return value
+
+
+def _read_value(value):
+  if isinstance(value, tf.Variable):
+    return value.read_value()
+  else:
+    return value
+
+
 class _ValueModule(tf.Module):
-  """A `tf.Module` wrapping a single value."""
+  """A `tf.Module` wrapping a structure."""
 
   def __init__(self, value: Any):
     super().__init__()
-    self._value = value
+    # We push leaf values to `tf.Variable` if possible so that they are
+    # serialized separately, instead of as a single large proto.
+    self._values = tree.map_structure(_wrap_as_variable, value)
 
   @tf.function(input_signature=())
   def __call__(self) -> Any:
-    return self._value
+    return tree.map_structure(_read_value, self._values)
 
 
 async def read_saved_model(path: Union[str, os.PathLike[str]]) -> Any:
