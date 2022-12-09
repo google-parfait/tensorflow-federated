@@ -33,24 +33,29 @@ from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning.templates import hparams_base
 
 
-class LearningProcessPlacementError(TypeError):
+class Error(Exception):
+  """Generic module-level error, allows caller to handle all exceptions raised.
+  """
+
+
+class LearningProcessPlacementError(Error):
   """Raises when a learning process does not have expected placements."""
   pass
 
 
-class LearningProcessSequenceTypeError(TypeError):
+class LearningProcessSequenceTypeError(Error):
   """Raises when a learning process does not have the expected sequence type."""
 
 
-class LearningProcessOutputError(TypeError):
+class LearningProcessOutputError(Error):
   """Raises when a learning process does not have the expected output type."""
 
 
-class GetModelWeightsTypeSignatureError(TypeError):
+class GetModelWeightsTypeSignatureError(Error):
   """Raises when the type signature of `get_model_weights` is not correct."""
 
 
-class SetModelWeightsTypeSignatureError(TypeError):
+class SetModelWeightsTypeSignatureError(Error):
   """Raises when the type signature of `set_model_weights` is not correct."""
 
 
@@ -179,6 +184,11 @@ class LearningProcess(iterative_process.IterativeProcess):
         `LearningProcessOutput`.
       LearningProcessSequenceTypeError: If the second argument to `next_fn` is
         not a sequence type.
+      GetModelWeightsTypeSignatureError: If the input type of get_model_weights
+        does not match the process state type.
+      SetModelWeightsTypeSignatureError: If the type of the first input or the
+        type of the output of set_model_weights does not match the process state
+        type.
     """
     super().__init__(initialize_fn, next_fn)
 
