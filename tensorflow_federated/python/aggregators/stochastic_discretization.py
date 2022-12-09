@@ -122,17 +122,21 @@ class StochasticDiscretizationFactory(factory.UnweightedAggregationFactory):
 
     @tensorflow_computation.tf_computation(value_type, tf.float32)
     def distortion_measurement_fn(value, step_size):
+      counts = tf.nest.map_structure(
+          lambda t: tf.cast(tf.math.reduce_prod(tf.shape(t)), tf.float32),
+          value)
+      total_count = tf.math.reduce_sum(tf.stack(tf.nest.flatten(counts)))
+      weights = tf.nest.map_structure(lambda x: x / total_count, counts)
+
       reconstructed_value = undiscretize_fn(
           discretize_fn(value, step_size), step_size)
       err = tf.nest.map_structure(tf.subtract, reconstructed_value, value)
-      squared_err = tf.nest.map_structure(tf.square, err)
-      flat_squared_errs = [
-          tf.cast(tf.reshape(t, [-1]), tf.float32)
-          for t in tf.nest.flatten(squared_err)
-      ]
-      all_squared_errs = tf.concat(flat_squared_errs, axis=0)
-      mean_squared_err = tf.reduce_mean(all_squared_errs)
-      return mean_squared_err
+      float_err = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), err)
+      squared_err = tf.nest.map_structure(tf.square, float_err)
+      mean_squared_err = tf.nest.map_structure(tf.reduce_mean, squared_err)
+      weighted_squared_err = tf.nest.map_structure(tf.math.multiply,
+                                                   mean_squared_err, weights)
+      return tf.math.reduce_sum(tf.stack(tf.nest.flatten(weighted_squared_err)))
 
     inner_agg_process = self._inner_agg_factory.create(
         discretize_fn.type_signature.result)

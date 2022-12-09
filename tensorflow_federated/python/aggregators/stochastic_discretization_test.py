@@ -137,7 +137,9 @@ class StochasticDiscretizationExecutionTest(tf.test.TestCase,
        ((3, 3),)), ('nested', _test_nested_struct_type_float, [
            _make_test_nested_struct_value(123),
            _make_test_nested_struct_value(456)
-       ], _make_test_nested_struct_value(579)))
+       ], _make_test_nested_struct_value(579)), ('zero_size_tensor', [
+           (tf.float32, (0,)), (tf.float32, (2,))
+       ], [[[], [1, 2]], [[], [3, 4]]], [[], [4, 6]]))
   def test_discretize_impl(self, value_type, client_values, expected_sum):
     factory = stochastic_discretization.StochasticDiscretizationFactory(
         inner_agg_factory=_measurement_aggregator,
