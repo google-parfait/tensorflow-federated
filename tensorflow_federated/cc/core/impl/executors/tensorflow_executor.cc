@@ -323,7 +323,7 @@ absl::Status AddDatasetSerializationToSequenceBindings(
 class Computation {
  public:
   static absl::StatusOr<std::shared_ptr<Computation>> FromProto(
-      const v0::TensorFlow& comp_pb, int32_t max_active_sessions) {
+      const v0::TensorFlow& comp_pb) {
     tensorflow::GraphDef graphdef_pb;
     if (!comp_pb.graph_def().UnpackTo(&graphdef_pb)) {
       return absl::InternalError(ERR_LOG("Could not unpack graphdef proto"));
@@ -340,7 +340,7 @@ class Computation {
     return std::make_shared<Computation>(
         std::move(graphdef_pb), comp_pb.initialize_op(),
         std::move(parameter_shape), comp_pb.result(),
-        std::move(output_tensor_names), max_active_sessions);
+        std::move(output_tensor_names));
   }
 
   absl::StatusOr<ExecutorValue> Call(absl::optional<ExecutorValue> arg);
@@ -348,9 +348,8 @@ class Computation {
   Computation(tensorflow::GraphDef graph, std::string init_op,
               absl::optional<v0::TensorFlow::Binding> parameter_shape,
               v0::TensorFlow::Binding output_shape,
-              std::vector<std::string> output_tensor_names,
-              int32_t max_active_sessions = -1)
-      : session_provider_(std::move(graph), max_active_sessions),
+              std::vector<std::string> output_tensor_names)
+      : session_provider_(std::move(graph)),
         init_op_(std::move(init_op)),
         parameter_shape_(std::move(parameter_shape)),
         output_shape_(std::move(output_shape)),
@@ -777,12 +776,20 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   // provides effectively unlimited concurrency.
   explicit TensorFlowExecutor(int32_t max_concurrent_computation_calls)
       : max_concurrent_computation_calls_(max_concurrent_computation_calls),
-        thread_pool_(tensorflow::Env::Default(), "TFF_TensorFlowExecutor",
-                     // Use a threadpool with CPU * 4 or the user specified
-                     // maximum.
-                     ((max_concurrent_computation_calls > 0)
-                          ? max_concurrent_computation_calls
-                          : std::thread::hardware_concurrency() * 4)) {}
+        thread_pool_(
+            // Use a threadpool with CPU * 4 or the user specified
+            // maximum.
+            ((max_concurrent_computation_calls > 0)
+                 ? max_concurrent_computation_calls
+                 : std::thread::hardware_concurrency() * 4),
+            ExecutorName()) {
+    VLOG(2) << "max_concurrent_computation_calls: "
+            << max_concurrent_computation_calls_;
+    VLOG(2) << "thread pool size: "
+            << ((max_concurrent_computation_calls > 0)
+                    ? max_concurrent_computation_calls
+                    : std::thread::hardware_concurrency() * 4);
+  }
 
  private:
   // A hash map of compiler generated TensorFlow function ids to already
@@ -794,10 +801,9 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
   // the usage of `max_concurrent_computaiton_calls` to move all parallellism
   // limits ot the thread pool.
   int32_t max_concurrent_computation_calls_;
-  tensorflow::thread::ThreadPool thread_pool_;
+  ThreadPool thread_pool_;
 
   absl::StatusOr<ExecutorValue> CreateValueAny(const v0::Value& value_pb) {
-    VLOG(2) << "Creating value: " << value_pb.Utf8DebugString();
     switch (value_pb.value_case()) {
       case v0::Value::kComputation: {
         return CreateValueComputation(value_pb.computation());
@@ -836,8 +842,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
       // logic.
       LOG_FIRST_N(WARNING, 10) << "Skipped caching computation, no cache_key:\n"
                                << comp_pb.type().Utf8DebugString();
-      return ExecutorValue(TFF_TRY(Computation::FromProto(
-          comp_pb.tensorflow(), max_concurrent_computation_calls_)));
+      return ExecutorValue(
+          TFF_TRY(Computation::FromProto(comp_pb.tensorflow())));
     }
     const uint64_t function_id = comp_pb.tensorflow().cache_key().id();
     // Try the fast path first, reader locks are much cheaper.
@@ -851,8 +857,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
     }
     // Otherwise build the cached value and insert it into the cache.
     VLOG(2) << "Cache MISS for function id: " << function_id;
-    std::shared_ptr<Computation> computation = TFF_TRY(Computation::FromProto(
-        comp_pb.tensorflow(), max_concurrent_computation_calls_));
+    std::shared_ptr<Computation> computation =
+        TFF_TRY(Computation::FromProto(comp_pb.tensorflow()));
     {
       absl::WriterMutexLock writer_lock(&function_cache_mutex_);
       auto result = function_cache_.try_emplace(function_id, computation);
@@ -890,17 +896,15 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
                                 ParallelTasks& tasks) {
     switch (value.type()) {
       case ExecutorValue::ValueType::TENSOR: {
-        tasks.add_task([&value, value_pb]() {
+        return tasks.add_task([&value, value_pb]() {
           return SerializeTensorValue(value.tensor(), value_pb);
         });
-        return absl::OkStatus();
       }
       case ExecutorValue::ValueType::SEQUENCE: {
-        tasks.add_task([&value, value_pb]() {
+        return tasks.add_task([&value, value_pb]() {
           return MaterializeSequence(value.sequence(),
                                      value_pb->mutable_sequence());
         });
-        return absl::OkStatus();
       }
       case ExecutorValue::ValueType::STRUCT: {
         v0::Value::Struct* struct_pb = value_pb->mutable_struct_();
@@ -930,11 +934,11 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
 
   absl::StatusOr<ValueFuture> CreateExecutorValue(
       const v0::Value& value_pb) final {
-    return ThreadRun([value_pb, this]() -> absl::StatusOr<ExecutorValue> {
-      return TFF_TRY(CreateValueAny(value_pb));
-    });
-    // TODO(b/260119235): Investigate re-enabling thread pool usage.
-    // &thread_pool_);
+    return ThreadRun(
+        [value_pb, this]() -> absl::StatusOr<ExecutorValue> {
+          return TFF_TRY(CreateValueAny(value_pb));
+        },
+        &thread_pool_);
   }
 
   absl::StatusOr<ValueFuture> CreateCall(
@@ -958,9 +962,8 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
                 "to be a computation or intrinsic, but found type ",
                 fn.type()));
           }
-        });
-    // TODO(b/260119235): Investigate re-enabling thread pool usage.
-    // &thread_pool_);
+        },
+        &thread_pool_);
   }
   absl::StatusOr<ValueFuture> CreateStruct(
       std::vector<ValueFuture> elements) final {
@@ -970,29 +973,28 @@ class TensorFlowExecutor : public ExecutorBase<ValueFuture> {
             -> absl::StatusOr<ExecutorValue> {
           return ExecutorValue(std::make_shared<std::vector<ExecutorValue>>(
               std::move(elements)));
-        });
-    // TODO(b/260119235): Investigate re-enabling thread pool usage.
-    // &thread_pool_);
+        },
+        &thread_pool_);
   }
   absl::StatusOr<ValueFuture> CreateSelection(ValueFuture value,
                                               const uint32_t index) final {
-    return Map(std::vector<ValueFuture>({value}),
-               [index](std::vector<ExecutorValue>&& values)
-                   -> absl::StatusOr<ExecutorValue> {
-                 ExecutorValue& value = values[0];
-                 if (value.type() != ExecutorValue::ValueType::STRUCT) {
-                   return absl::InvalidArgumentError(
-                       ERR_LOG("Cannot create selection on non-struct value."));
-                 }
-                 if (value.elements().size() <= index) {
-                   return absl::InvalidArgumentError(ERR_LOG(absl::StrCat(
-                       "Attempted to access index ", index, " of a ",
-                       value.elements().size(), "-length struct.")));
-                 }
-                 return ExecutorValue(value.elements()[index]);
-               });
-    // TODO(b/260119235): Investigate re-enabling thread pool usage.
-    // &thread_pool_);
+    return Map(
+        std::vector<ValueFuture>({value}),
+        [index](std::vector<ExecutorValue>&& values)
+            -> absl::StatusOr<ExecutorValue> {
+          ExecutorValue& value = values[0];
+          if (value.type() != ExecutorValue::ValueType::STRUCT) {
+            return absl::InvalidArgumentError(
+                ERR_LOG("Cannot create selection on non-struct value."));
+          }
+          if (value.elements().size() <= index) {
+            return absl::InvalidArgumentError(ERR_LOG(
+                absl::StrCat("Attempted to access index ", index, " of a ",
+                             value.elements().size(), "-length struct.")));
+          }
+          return ExecutorValue(value.elements()[index]);
+        },
+        &thread_pool_);
   }
   absl::Status Materialize(ValueFuture value_fut, v0::Value* value_pb) final {
     ExecutorValue value = TFF_TRY(Wait(std::move(value_fut)));

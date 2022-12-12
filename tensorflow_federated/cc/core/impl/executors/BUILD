@@ -168,8 +168,6 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "@org_tensorflow//tensorflow/cc:array_ops",
         "@org_tensorflow//tensorflow/cc:cc_ops",
-        "@org_tensorflow//tensorflow/cc:const_op",
-        "@org_tensorflow//tensorflow/cc:ops",
         "@org_tensorflow//tensorflow/cc:scope",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:graph",
@@ -660,6 +658,7 @@ cc_library(
     hdrs = ["session_provider.h"],
     deps = [
         ":status_macros",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -832,11 +831,11 @@ cc_library(
     deps = [
         ":status_macros",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
-        "@org_tensorflow//tensorflow/core:lib",
     ],
 )
 
@@ -851,7 +850,6 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
-        "@org_tensorflow//tensorflow/core:lib",
     ],
 )
 

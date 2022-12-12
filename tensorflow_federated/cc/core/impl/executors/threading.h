@@ -18,6 +18,7 @@ limitations under the License
 
 #include <chrono>  // NOLINT
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
@@ -31,11 +32,48 @@ limitations under the License
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
-#include "tensorflow/core/platform/env.h"
-#include "tensorflow/core/platform/threadpool.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 
 namespace tensorflow_federated {
+
+// A simple thread pool with a single FIFO work-queue.
+//
+// This thread pool is safe for tasks that for DAGs of dependencies, as it
+// guarantees that work added to the pool will be run threads in the order added
+// to the pool. The pool is _NOT_ safe from other forms of synchronization and
+// communication, and callers are responsbile ensuring threads do not deadlock
+// in such cases.
+class ThreadPool {
+ public:
+  ThreadPool(int32_t num_threads, absl::string_view name);
+  ~ThreadPool();
+
+  // Restrict copying and moving.
+  ThreadPool(const ThreadPool&) = delete;
+  ThreadPool(ThreadPool&&) = delete;
+  ThreadPool& operator=(const ThreadPool&) = delete;
+  ThreadPool& operator=(ThreadPool&&) = delete;
+
+  // Adds a task to the work queue to be picked up for a thread in pool when it
+  // is free. Will return FailedPrecondition error if the pool is closed (e.g.
+  // being destructed).
+  absl::Status Schedule(std::function<void()> task);
+
+  // Returns true iff the work_queue_ has items to process, or the ThreadPool
+  // is closed. Intended to be used in a `absl::Condition`.
+  bool has_work_or_closed() ABSL_SHARED_LOCKS_REQUIRED(pool_mutex_);
+
+  // Closes the ThreadPool to future work. After this call, all
+  // `Schedule` invocations will return FailedPrecondition errors.
+  void Close();
+
+ private:
+  const std::string pool_name_;
+  absl::Mutex pool_mutex_;
+  bool closed_ ABSL_GUARDED_BY(pool_mutex_) = false;
+  std::vector<std::thread> threads_ ABSL_GUARDED_BY(pool_mutex_);
+  std::deque<std::function<void()>> work_queue_ ABSL_GUARDED_BY(pool_mutex_);
+};
 
 // Runs the provided provided no-arg function on another thread, returning a
 // future to the result.
@@ -52,10 +90,10 @@ namespace tensorflow_federated {
 // between the work scheduled here needs to be _very_ careful.
 template <typename Func,
           typename ReturnValue = typename std::result_of_t<Func()>>
-std::shared_future<ReturnValue> ThreadRun(
-    Func lambda, tensorflow::thread::ThreadPool* thread_pool = nullptr) {
+std::shared_future<ReturnValue> ThreadRun(Func lambda,
+                                          ThreadPool* thread_pool = nullptr) {
   using TaskT = std::packaged_task<ReturnValue()>;
-  TaskT task(lambda);
+  TaskT task(std::move(lambda));
   auto future_ptr = std::shared_future<ReturnValue>(task.get_future());
   if (thread_pool != nullptr) {
     // Attempting to directly move the task results in a compiler error,
@@ -174,9 +212,8 @@ auto AllReady(const std::vector<ValueFuture>& futures) {
 // that will await results. If `thread_pool` is not `nullptr`, the newly created
 // waiting lambda will be scheduled on the thread pool.
 template <typename Func, typename ValueFuture>
-absl::StatusOr<ValueFuture> Map(
-    std::vector<ValueFuture>&& futures, Func lambda,
-    tensorflow::thread::ThreadPool* thread_pool = nullptr) {
+absl::StatusOr<ValueFuture> Map(std::vector<ValueFuture>&& futures, Func lambda,
+                                ThreadPool* thread_pool = nullptr) {
   bool all_ready = TFF_TRY(AllReady(futures));
   if (all_ready) {
     return ReadyFuture(TFF_TRY(lambda(GetAll(futures))));
@@ -214,7 +251,7 @@ class ParallelTasks {
   // threads won't arrive in deadlock because they form a DAG of dependencies
   // and are scheduled first-to-last. Introducing additional synchronization
   // mechanism between the work scheduled here needs to be _very_ careful.
-  explicit ParallelTasks(tensorflow::thread::ThreadPool* thread_pool = nullptr)
+  explicit ParallelTasks(ThreadPool* thread_pool = nullptr)
       : shared_inner_(std::make_shared<ParallelTasksInner_>()),
         thread_pool_(thread_pool) {}
 
@@ -237,7 +274,7 @@ class ParallelTasks {
   }
 
   // Spawns a thread to run a function and adds it to the parallel task group.
-  void add_task(std::function<absl::Status()> task);
+  absl::Status add_task(std::function<absl::Status()> task);
 
   // Waits until all tasks passed to `add_task` have successfully completed.
   //
@@ -251,7 +288,7 @@ class ParallelTasks {
 
  private:
   std::shared_ptr<ParallelTasksInner_> shared_inner_;
-  tensorflow::thread::ThreadPool* thread_pool_ = nullptr;
+  ThreadPool* thread_pool_ = nullptr;
 };
 
 }  // namespace tensorflow_federated

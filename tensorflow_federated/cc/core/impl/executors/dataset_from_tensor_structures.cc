@@ -214,7 +214,7 @@ absl::StatusOr<tf::Tensor> DatasetFromTensorStructures(
                                       structure[element_index]));
     }
   }
-  SessionProvider session_provider(std::move(graph_def), kUnlimitedParallelism);
+  SessionProvider session_provider(std::move(graph_def));
   auto session = TFF_TRY(session_provider.BorrowSession());
   std::vector<tf::Tensor> outputs;
   tensorflow::Status status =

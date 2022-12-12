@@ -12,14 +12,11 @@ git_repository(
     tag = "1.3.0",
 )
 
-# TODO(b/218935430): Temporarily disable the direct dependency on Abseil C++
-# Common Libraries, for now we pick this dependency up via TensorFlows
-# workspace.
-# git_repository(
-#     name = "com_google_absl",
-#     remote = "https://github.com/abseil/abseil-cpp.git",
-#     tag = "20211102.0",
-# )
+git_repository(
+    name = "com_google_absl",
+    commit = "66665d8d2e3fedff340b83f9841ca427145a7b26",
+    remote = "https://github.com/abseil/abseil-cpp.git",
+)
 
 git_repository(
     name = "com_google_googletest",

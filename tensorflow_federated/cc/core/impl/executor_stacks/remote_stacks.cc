@@ -16,6 +16,7 @@ limitations under the License
 #include "tensorflow_federated/cc/core/impl/executor_stacks/remote_stacks.h"
 
 #include <chrono>  // NOLINT
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -57,10 +58,13 @@ std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels_(
 
   ParallelTasks wait_connected_tasks;
   for (const std::shared_ptr<grpc::ChannelInterface>& channel : channels) {
-    wait_connected_tasks.add_task(std::bind(wait_connected, channel));
+    wait_connected_tasks.add_task(std::bind(wait_connected, channel))
+        .IgnoreError();
   }
-  // Block up to WaitConnectedDuration for all tasks to complete.
-  absl::Status all_channels_ready = wait_connected_tasks.WaitAll();
+  // Block up to WaitConnectedDuration for all tasks to complete. Don't worry
+  // about the overall status, the next for loop will examine each channel
+  // individually.
+  wait_connected_tasks.WaitAll().IgnoreError();
 
   for (const std::shared_ptr<grpc::ChannelInterface>& channel : channels) {
     // We can wait 0 duration here since we have already blocked for all

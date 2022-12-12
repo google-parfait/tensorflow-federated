@@ -27,34 +27,8 @@ namespace {
 
 TEST(SessionProviderTest, TestStandaloneTakeSession) {
   tensorflow::GraphDef graphdef_pb;
-  SessionProvider session_provider(std::move(graphdef_pb), 1);
+  SessionProvider session_provider(std::move(graphdef_pb));
   TFF_ASSERT_OK(session_provider.TakeSession());
-}
-
-TEST(SessionProviderTest, TestSessionNotAvailableConcurrencyLimited) {
-  tensorflow::GraphDef graphdef_pb;
-  SessionProvider session_provider(std::move(graphdef_pb),
-                                   /*max_active_sessions=*/1);
-  TFF_ASSERT_OK(session_provider.TakeSession());
-  EXPECT_EQ(session_provider.SessionOrCpuAvailable(), false);
-}
-
-TEST(SessionProviderTest, TestSessionAvailableConcurrencyUnlimited) {
-  tensorflow::GraphDef graphdef_pb;
-  SessionProvider session_provider(std::move(graphdef_pb), -1);
-  TFF_ASSERT_OK(session_provider.TakeSession());
-  EXPECT_EQ(session_provider.SessionOrCpuAvailable(), true);
-}
-
-TEST(SessionProviderTest, TestReturningSessionFreesUpAvailability) {
-  tensorflow::GraphDef graphdef_pb;
-  SessionProvider session_provider(std::move(graphdef_pb), 1);
-  absl::StatusOr<SessionProvider::SessionWithResourceContainer> taken_session =
-      session_provider.TakeSession();
-  TFF_ASSERT_OK(taken_session.status());
-  EXPECT_EQ(session_provider.SessionOrCpuAvailable(), false);
-  session_provider.ReturnSession(std::move(taken_session.value()));
-  EXPECT_EQ(session_provider.SessionOrCpuAvailable(), true);
 }
 
 }  // namespace
