@@ -270,6 +270,7 @@ py_library(
     deps = [
         ":dataset_reduce",
         ":model",
+        "//tensorflow_federated/python/common_libs:deprecation",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",

@@ -24,6 +24,7 @@ from typing import Optional, Union
 
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import deprecation
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
@@ -164,6 +165,9 @@ def build_functional_local_evaluation(
   return local_eval
 
 
+@deprecation.deprecated(
+    '`tff.learning.build_federated_evaluation` is deprecated, use '
+    '`tff.learning.algorithms.build_fed_eval` insteand.')
 def build_federated_evaluation(
     model_fn: Union[Callable[[], model_lib.Model], functional.FunctionalModel],
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,

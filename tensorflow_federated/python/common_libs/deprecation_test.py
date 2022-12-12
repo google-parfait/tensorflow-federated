@@ -14,7 +14,6 @@
 """Tests for deprecation."""
 
 from unittest import mock
-import warnings
 
 from absl.testing import absltest
 
@@ -27,14 +26,21 @@ class DeprecationTest(absltest.TestCase):
     mock_method = mock.Mock()
     test_message = 'test warning'
     wrapped_mock_method = deprecation.deprecated(mock_method, test_message)
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
+    with self.assertWarnsRegex(DeprecationWarning, test_message):
       wrapped_mock_method(1, 2, c=3)
-      self.assertLen(w, 1)
-      [caught_warning] = w
-      self.assertIs(caught_warning.category, DeprecationWarning)
-      self.assertIn(test_message, str(caught_warning.message))
     self.assertSequenceEqual(mock_method.call_args_list, [mock.call(1, 2, c=3)])
+
+  def test_decorates_method(self):
+    test_message = 'test warning'
+    mock_method = mock.Mock()
+
+    @deprecation.deprecated(test_message)
+    def foo():
+      mock_method()
+
+    with self.assertWarnsRegex(DeprecationWarning, test_message):
+      foo()
+    mock_method.assert_called_once()
 
 
 if __name__ == '__main__':

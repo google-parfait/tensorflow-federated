@@ -278,6 +278,10 @@ class FederatedEvaluationTest(parameterized.TestCase):
             local_outputs=collections.OrderedDict(num_over=4.0),
             num_examples=6))
 
+  def test_federated_evaluation_deprecation_warning(self):
+    with self.assertWarnsRegex(DeprecationWarning, 'build_fed_eval'):
+      federated_evaluation.build_federated_evaluation(TestModel)
+
   @tensorflow_test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation(self):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
