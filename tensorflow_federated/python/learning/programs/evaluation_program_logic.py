@@ -267,7 +267,6 @@ class EvaluationManager:
           per_round_metrics_manager=per_round_metrics_manager,
           aggregated_metrics_manager=self._aggregated_metrics_manager)
       await self.record_evaluations_finished(train_round_num)
-      await state_manager.remove_all()
 
     self._pending_tasks.add(asyncio.create_task(run_and_record_completion()))
 
@@ -413,8 +412,8 @@ async def run_evaluation(
     evaluation_data_source: data_source_lib.FederatedDataSource,
     evaluation_per_round_clients_number: int,
     evaluation_period: datetime.timedelta,
-    per_round_metrics_manager: Optional[release_manager.ReleaseManager] = None,
-    aggregated_metrics_manager: Optional[release_manager.ReleaseManager] = None,
+    per_round_metrics_manager: Optional[release_manager.ReleaseManager],
+    aggregated_metrics_manager: Optional[release_manager.ReleaseManager],
 ) -> None:
   """Runs evaluation for one training state.
 
@@ -459,6 +458,10 @@ async def run_evaluation(
                      f'{evaluation_period}.')
 
   evaluation_data_iterator = evaluation_data_source.iterator()
+  # TODO(b/262257624): in the case of preemption, its possbile this should
+  # resume from when the evaluation started, rather than "now". Alternatively,
+  # something like implement a "minimum participation amount" per hour-of-day
+  # or other more sophisticated stopping critiera.
   deadline = datetime.datetime.now() + evaluation_period
 
   async def invoke_evaluation(evaluation_state, eval_round_num):
@@ -502,8 +505,13 @@ async def run_evaluation(
     raise ValueError('No previous state found for evaluation. Evaluations '
                      'must previously have at least version 0 saved.')
 
+  # Set the eval_round_num to start from the train_round_num, so that in the
+  # `step` view of TensorBoard the evaluation begins at the same point as the
+  # training run. Then additionally at the `version`, which is `0` if evaluation
+  # just started, or potentially higher if the statemanager previously loaded
+  # a past state.
+  eval_round_num = train_round_num + version
   # Run at least one evaluation round.
-  eval_round_num = train_round_num
   evaluation_state, evaluation_metrics, eval_round_num = await invoke_evaluation(
       evaluation_state, eval_round_num)
   version += 1
@@ -514,6 +522,8 @@ async def run_evaluation(
         evaluation_state, eval_round_num)
     version += 1
     await state_manager.save(evaluation_state, version=version)
+  _logging.info('Finished evaluation of %s over duration %s', evaluation_name,
+                evaluation_period)
   if aggregated_metrics_manager is not None:
     total_rounds_eval_metrics, total_rounds_eval_metrics_type = extract_and_rewrap_metrics(
         evaluation_metrics,
