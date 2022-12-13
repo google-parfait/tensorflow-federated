@@ -14,7 +14,11 @@
 """Utilities for testing the program library."""
 
 import collections
+from collections.abc import Iterable, Iterator
+import contextlib
+import sys
 from typing import Any
+import warnings
 
 import attr
 import tensorflow as tf
@@ -87,3 +91,25 @@ def assert_types_equal(a, b):
   except (TypeError, ValueError) as e:
     raise AssertionError(
         'The two structures don\'t have the same nested structure.') from e
+
+
+@contextlib.contextmanager
+def assert_not_warns(
+    category: type[Warning]) -> Iterator[Iterable[warnings.WarningMessage]]:
+  """Yields a context manager used to test if a warning is not triggered."""
+
+  # The `__warningregistry__`'s need to be in a pristine state for tests to
+  # work properly. This code replicates the standard library implementation of
+  # `TestCase.assertWarns`. See
+  # https://github.com/python/cpython/blob/main/Lib/unittest/case.py for more
+  # information.
+  for v in list(sys.modules.values()):
+    if getattr(v, '__warningregistry__', None):
+      v.__warningregistry__ = {}
+
+  with warnings.catch_warnings(record=True) as w:
+    warnings.simplefilter('always', category=category)
+    yield w
+    for warning in w:
+      if issubclass(warning.category, category):
+        raise AssertionError(f'Warned `{category.__name__}` unexpectedly.')

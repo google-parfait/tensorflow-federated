@@ -16,7 +16,6 @@ import asyncio
 import collections
 from typing import Any
 import unittest
-from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -25,16 +24,35 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.federated_context import federated_computation
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import native_platform
+from tensorflow_federated.python.program import program_test_utils
+from tensorflow_federated.python.program import value_reference
 
 
 async def _coro(value: Any) -> Any:
   return value
+
+
+@tensorflow_computation.tf_computation(tf.int32, tf.int32)
+def _add(x, y):
+  return x + y
+
+
+def _identity_factory(
+    type_signature: computation_types.Type) -> computation_base.Computation:
+
+  @tensorflow_computation.tf_computation(type_signature)
+  def _identity(value):
+    return value
+
+  return _identity
 
 
 class AwaitableValueReferenceTest(parameterized.TestCase,
@@ -86,10 +104,10 @@ class AwaitableValueReferenceTest(parameterized.TestCase,
   )
   async def test_get_value_returns_value(self, awaitable, type_signature,
                                          expected_value):
-    value_reference = native_platform.AwaitableValueReference(
+    reference = native_platform.AwaitableValueReference(
         awaitable=awaitable, type_signature=type_signature)
 
-    actual_value = await value_reference.get_value()
+    actual_value = await reference.get_value()
 
     self.assertEqual(actual_value, expected_value)
 
@@ -521,17 +539,67 @@ class NativeFederatedContextTest(parameterized.TestCase,
     with self.assertRaises(TypeError):
       native_platform.NativeFederatedContext(context)
 
-  async def test_invoke_returns_result(self):
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('add', _add, (1, 2), 3),
+  )
+  # pyformat: enable
+  async def test_invoke_returns_result(self, comp, arg, expected_value):
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
-    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
-    def add(x, y):
-      return x + y
+    with program_test_utils.assert_not_warns(RuntimeWarning):
+      result = context.invoke(comp, arg)
+      actual_value = await value_reference.materialize_value(result)
 
-    result = context.invoke(add, structure.Struct.unnamed(1, 2))
-    actual_value = await result.get_value()
-    self.assertEqual(actual_value, 3)
+    self.assertEqual(actual_value, expected_value)
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('struct_unnamed_empty',
+       _identity_factory(computation_types.StructWithPythonType([], list)),
+       [],
+       []),
+      ('struct_named_empty',
+       _identity_factory(
+           computation_types.StructWithPythonType([], collections.OrderedDict)),
+       {},
+       {}),
+      ('struct_nested_empty',
+       _identity_factory(computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType(
+               [], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType(
+               [], collections.OrderedDict)),
+       ], collections.OrderedDict)),
+       {'x': {}, 'y': {}},
+       {'x': {}, 'y': {}}),
+      ('struct_partially_empty',
+       _identity_factory(computation_types.StructWithPythonType([
+           ('x', computation_types.StructWithPythonType([
+               ('a', tf.bool),
+               ('b', tf.int32),
+           ], collections.OrderedDict)),
+           ('y', computation_types.StructWithPythonType(
+               [], collections.OrderedDict)),
+       ], collections.OrderedDict)),
+       {'x': {'a': True, 'b': 1}, 'y': {}},
+       {'x': {'a': True, 'b': 1}, 'y': {}}),
+  )
+  # pyformat: enable
+  async def test_invoke_returns_result_containing_empty_structures(
+      self, comp, arg, expected_value):
+    context = execution_contexts.create_local_async_python_execution_context()
+    context = native_platform.NativeFederatedContext(context)
+
+    # TODO(b/262271837): Invoking a computation with a
+    # `tff.program.NativeFederatedContext` should not trigger a
+    # `RuntimeWarning`.
+    with self.assertWarns(RuntimeWarning):
+      result = context.invoke(comp, arg)
+      actual_value = await value_reference.materialize_value(result)
+
+    self.assertEqual(actual_value, expected_value)
 
   @parameterized.named_parameters(
       ('none', None),
@@ -551,27 +619,19 @@ class NativeFederatedContextTest(parameterized.TestCase,
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
-    @tensorflow_computation.tf_computation()
-    def return_one():
-      return 1
+    @federated_computation.federated_computation()
+    def _return_one():
+      return intrinsics.federated_value(0, placements.CLIENTS)
 
     with self.assertRaises(ValueError):
-      with mock.patch.object(
-          federated_context,
-          'contains_only_server_placed_data',
-          return_value=False):
-        context.invoke(return_one, None)
+      context.invoke(_return_one, None)
 
   async def test_call_computation_returns_result(self):
     context = execution_contexts.create_local_async_python_execution_context()
     context = native_platform.NativeFederatedContext(context)
 
-    @tensorflow_computation.tf_computation(tf.int32, tf.int32)
-    def add(x, y):
-      return x + y
-
     with context_stack_impl.context_stack.install(context):
-      result = add(1, 2)
+      result = _add(1, 2)
 
     actual_value = await result.get_value()
     self.assertEqual(actual_value, 3)

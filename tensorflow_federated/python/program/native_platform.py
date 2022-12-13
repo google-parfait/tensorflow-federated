@@ -88,7 +88,7 @@ def _create_structure_of_awaitable_references(
     awaitable = _to_structure(awaitable)
     # A `async_utils.SharedAwaitable` is required to materialize structures of
     # values sequentially or concurrently. This happens when `get_item` is
-    # invoked for eaceh element.
+    # invoked for each element.
     shared_awaitable = async_utils.SharedAwaitable(awaitable)
 
     async def _get_item(awaitable: Awaitable[structure.Struct],
@@ -183,7 +183,6 @@ class NativeFederatedContext(federated_context.FederatedContext):
       only structures, server-placed values, or tensors.
     """
     py_typecheck.check_type(comp, computation_base.Computation)
-
     result_type = comp.type_signature.result
     if not federated_context.contains_only_server_placed_data(result_type):
       raise ValueError(
