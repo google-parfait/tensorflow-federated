@@ -343,6 +343,33 @@ def load(path: str) -> model_lib.Model:
   return _LoadedSavedModel(tf.saved_model.load(path))
 
 
+def _wrap_as_variable(value):
+  """Wraps a value as a `tf.Variable`, if possible."""
+  try:
+    variable = tf.Variable(initial_value=value)
+    return variable
+  except ValueError:  # Raised if x is not compatible with `tf.Variable`
+    return value
+
+
+def _read_value(value):
+  if isinstance(value, tf.Variable):
+    return value.read_value()
+  else:
+    return value
+
+
+class _WeightsModule(tf.Module):
+
+  def __init__(self, weights):
+    super().__init__()
+    self._weights = tf.nest.map_structure(_wrap_as_variable, weights)
+
+  @tf.function(input_signature=())
+  def __call__(self):
+    return tf.nest.map_structure(_read_value, self._weights)
+
+
 def save_functional_model(functional_model: functional.FunctionalModel,
                           path: str):
   """Serializes a `FunctionalModel` as a `tf.SavedModel` to `path`.
@@ -351,27 +378,10 @@ def save_functional_model(functional_model: functional.FunctionalModel,
     functional_model: A `tff.learning.models.FunctionalModel`.
     path: A `str` directory path to serialize the model to.
   """
-  m = tf.Module()
-  # Serialize the initial_weights values as a tf.function that creates a
-  # structure of tensors with the initial weights. This way we can add it to the
-  # tf.SavedModel and call it to create initial weights after deserialization.
-  create_initial_weights = lambda: functional_model.initial_weights
-  with tf.Graph().as_default():
-    concrete_structured_fn = tf.function(
-        create_initial_weights).get_concrete_function()
+  m = _WeightsModule(functional_model.initial_weights)
+  concrete_structured_fn = m.__call__.get_concrete_function()
   model_weights_tensor_specs = tf.nest.map_structure(
       tf.TensorSpec.from_tensor, concrete_structured_fn.structured_outputs)
-  initial_weights_result_type_spec = type_serialization.serialize_type(
-      computation_types.to_type(model_weights_tensor_specs))
-  m.create_initial_weights_type_spec = tf.Variable(
-      initial_weights_result_type_spec.SerializeToString(deterministic=True))
-
-  def flat_initial_weights():
-    return tf.nest.flatten(create_initial_weights())
-
-  with tf.Graph().as_default():
-    m.create_initial_weights = tf.function(
-        flat_initial_weights).get_concrete_function()
 
   # Serialize forward pass concretely, once for training and once for
   # non-training.
@@ -516,15 +526,8 @@ class _LoadedFunctionalModel(functional.FunctionalModel):
         lambda t: tf.TensorSpec(dtype=t.dtype, shape=t.shape),
         _deserialize_type_spec(loaded_module.serialized_input_spec))
 
-    weights_nested_tensor_specs = _deserialize_type_spec(
-        loaded_module.create_initial_weights_type_spec, tuple)
-    self._initial_weights = tf.nest.pack_sequence_as(
-        weights_nested_tensor_specs,
-        # Convert EagerTensors to numpy arrays, necessary to avoid trying
-        # to capture EagerTensors in different graphs when doing:
-        # build_fedarated_averaging_process(
-        #   ModelFromFunctional(_LoadedFunctionalModel)
-        [w.numpy() for w in loaded_module.create_initial_weights()])
+    self._initial_weights = tf.nest.map_structure(lambda x: x.numpy(),
+                                                  loaded_module())
 
     def unflatten_forward_pass_fn(flat_forward_pass,
                                   serialized_result_type_variable):

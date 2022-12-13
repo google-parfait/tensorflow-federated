@@ -189,6 +189,7 @@ cc_test(
         ":status_matchers",
         ":value_test_utils",
         "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//third_party/protobuf/io",
         "@com_google_absl//absl/flags:flag",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
@@ -497,6 +498,7 @@ cc_library(
     testonly = True,
     hdrs = ["protobuf_matchers.h"],
     deps = [
+        "//third_party/protobuf/io:tokenizer",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",

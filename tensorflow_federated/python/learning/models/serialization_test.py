@@ -19,7 +19,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from google.protobuf import message
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -507,9 +506,7 @@ class FunctionalModelTest(tf.test.TestCase, parameterized.TestCase):
         predict_on_batch_fn=predict_on_batch,
         input_spec=(tf.TensorSpec(shape=[]), tf.TensorSpec(shape=[])))
     path = self.get_temp_dir()
-    with self.assertRaisesRegex(message.DecodeError,
-                                '\'tensorflow.FunctionDef\''):
-      serialization.save_functional_model(functional_model, path)
+    serialization.save_functional_model(functional_model, path)
 
   @parameterized.named_parameters(
       ('tf_function', create_test_functional_model),
