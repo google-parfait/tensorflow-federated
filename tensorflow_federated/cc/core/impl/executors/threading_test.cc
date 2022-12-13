@@ -87,16 +87,21 @@ TEST_F(ThreadPoolTest, DependentWorkScheduledInSeparateThread) {
 TEST_F(ThreadPoolTest, MultipleThreads) {
   constexpr int32_t NUM_WORK = 100;
   ThreadPool pool(/*num_threads=*/10, /*name=*/"test");
-  std::vector<int32_t> results, expected_results;
+  absl::Mutex results_mutex;
+  std::vector<int32_t> results ABSL_GUARDED_BY(results_mutex), expected_results;
   results.reserve(NUM_WORK);
   expected_results.reserve(NUM_WORK);
   absl::BlockingCounter blocking_counter(NUM_WORK);
   for (int i = 0; i < NUM_WORK; ++i) {
     expected_results.push_back(i);
-    TFF_ASSERT_OK(pool.Schedule([&results, &blocking_counter, i]() {
-      results.push_back(i);
-      blocking_counter.DecrementCount();
-    }));
+    TFF_ASSERT_OK(
+        pool.Schedule([&results, &results_mutex, &blocking_counter, i]() {
+          {
+            absl::MutexLock lock(&results_mutex);
+            results.push_back(i);
+          }
+          blocking_counter.DecrementCount();
+        }));
   }
   blocking_counter.Wait();
   ASSERT_THAT(results, testing::UnorderedElementsAreArray(expected_results));
