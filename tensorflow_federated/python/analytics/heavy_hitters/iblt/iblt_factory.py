@@ -93,9 +93,11 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       encoding: _CharacterEncoding = _CharacterEncoding.UTF8,
       repetitions: int,
       seed: int = 0,
-      sketch_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      value_tensor_agg_factory: Optional[
-          factory.UnweightedAggregationFactory] = None,
+      num_values: int = 1,
+      sketch_agg_factories: Optional[list[
+          factory.UnweightedAggregationFactory]] = None,
+      value_tensor_agg_factories: Optional[list[
+          factory.UnweightedAggregationFactory]] = None,
   ) -> None:
     """Initializes IbltFactory.
 
@@ -109,16 +111,19 @@ class IbltFactory(factory.UnweightedAggregationFactory):
       repetitions: The number of repetitions in IBLT data structure (must be >=
         3). Must be at least `3`.
       seed: An integer seed for hash functions. Defaults to 0.
-      sketch_agg_factory: (Optional) A `UnweightedAggregationFactory` specifying
-        the value aggregation to sum IBLT sketches. Defaults to
-        `tff.aggregators.SumFactory`. If `sketch_agg_factory` is set to a
-        `tff.aggregators.SecureSumFactory`, then the `upper_bound_threshold`
-        should be at least 2 ** 32 - 1.
-      value_tensor_agg_factory: (Optional) A `UnweightedAggregationFactory`
-        specifying the value aggregation to sum value tensors. Defaults to
-        `tff.aggregators.SumFactory`. Note that when using `sketch_agg_factory`
-        is set to a `tff.aggregators.SecureSumFactory`, the value to be summed
-        might be clipped depends on the choices of  `upper_bound_threshold` and
+      num_values: The number of IBLT factories needed (the number of values).
+        Defaults to 1.
+      sketch_agg_factories: (Optional) A list of `UnweightedAggregationFactory`s
+        specifying the value aggregations to sum IBLT sketches. Defaults to a
+        list of `tff.aggregators.SumFactory`. If any element in
+        `sketch_agg_factories` is set to a `tff.aggregators.SecureSumFactory`,
+        then the `upper_bound_threshold` should be at least 2 ** 32 - 1.
+      value_tensor_agg_factories: (Optional) A list of
+        `UnweightedAggregationFactory`s specifying the value aggregation to sum
+        value tensors. Defaults to a list of `tff.aggregators.SumFactory`. Note
+        that when an element of `sketch_agg_factories` is set to a
+        `tff.aggregators.SecureSumFactory`, the value to be summed might be
+        clipped depends on the choices of  `upper_bound_threshold` and
         `lower_bound_threshold` parameters in `SecureSumFactory`.
 
     Raises:
@@ -131,16 +136,37 @@ class IbltFactory(factory.UnweightedAggregationFactory):
                        f'{string_max_bytes}')
     if repetitions < 3:
       raise ValueError(f'repetitions should be at least 3, got {repetitions}')
+    if sketch_agg_factories and len(sketch_agg_factories) != num_values:
+      raise ValueError(f'Mismatching num_values ({num_values}) to length of '
+                       f'sketch_agg_factories ({len(sketch_agg_factories)})')
+    if value_tensor_agg_factories and len(
+        value_tensor_agg_factories) != num_values:
+      raise ValueError(
+          f'Mismatching number of values ({num_values}) to set of '
+          f'value_tensor_agg_factories ({len(value_tensor_agg_factories)})')
 
-    self._sketch_agg_factory = sum_factory.SumFactory(
-    ) if sketch_agg_factory is None else sketch_agg_factory
-    self._value_tensor_agg_factory = sum_factory.SumFactory(
-    ) if value_tensor_agg_factory is None else value_tensor_agg_factory
+    self._sketch_agg_factories = [
+        sum_factory.SumFactory() for _ in range(num_values)
+    ]
+    if sketch_agg_factories:
+      for i in range(num_values):
+        if sketch_agg_factories[i]:
+          self._sketch_agg_factories[i] = sketch_agg_factories[i]
+
+    self._value_tensor_agg_factories = [
+        sum_factory.SumFactory() for _ in range(num_values)
+    ]
+    if value_tensor_agg_factories:
+      for i in range(num_values):
+        if value_tensor_agg_factories[i]:
+          self._value_tensor_agg_factories[i] = value_tensor_agg_factories[i]
+
     self._capacity = capacity
     self._string_max_bytes = string_max_bytes
     self._encoding = encoding
     self._repetitions = repetitions
     self._seed = seed
+    self._num_values = num_values
 
   def create(
       self, value_type: computation_types.SequenceType
@@ -203,9 +229,9 @@ class IbltFactory(factory.UnweightedAggregationFactory):
 
       return (output_strings, string_values, num_not_decoded)
 
-    inner_aggregator_sketch = self._sketch_agg_factory.create(
+    inner_aggregator_sketch = self._sketch_agg_factories[0].create(
         encode_iblt.type_signature.result[0])
-    inner_aggregator_value_tensor = self._value_tensor_agg_factory.create(
+    inner_aggregator_value_tensor = self._value_tensor_agg_factories[0].create(
         encode_iblt.type_signature.result[1])
 
     @federated_computation.federated_computation
