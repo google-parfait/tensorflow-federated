@@ -59,8 +59,10 @@ def create_inprocess_worker_contexts(
   server_contexts = []
   for port in ports:
     executor_factory = tff.framework.local_executor_factory()
-    server_context = tff.simulation.server_context(
-        executor_factory, num_threads=1, port=port)
+    server_context = tff.simulation.server_context(  # pytype: disable=wrong-arg-types
+        executor_factory,
+        num_threads=1,
+        port=port)
     server_contexts.append(server_context)
   return server_contexts
 
@@ -91,8 +93,10 @@ def create_inprocess_aggregator_contexts(
   for target_port, server_port in zip(worker_ports, aggregator_ports):
     channel = grpc.insecure_channel('localhost:{}'.format(target_port))
     executor_factory = tff.framework.remote_executor_factory([channel])
-    server_context = tff.simulation.server_context(
-        executor_factory, num_threads=1, port=server_port)
+    server_context = tff.simulation.server_context(  # pytype: disable=wrong-arg-types
+        executor_factory,
+        num_threads=1,
+        port=server_port)
     aggregator_contexts.append(server_context)
   return worker_contexts + aggregator_contexts
 
