@@ -201,22 +201,6 @@ class MemoryReleaseManagerTest(parameterized.TestCase,
     with self.assertRaises(TypeError):
       await release_mngr.release(1, type_signature, key=1)
 
-  @parameterized.named_parameters(
-      ('none', None),
-      ('bool', True),
-      ('int', 1),
-      ('str', 'a'),
-  )
-  async def test_release_does_not_raise_type_error_with_key(self, key):
-    release_mngr = memory_release_manager.MemoryReleaseManager()
-    value = 1
-    type_signature = computation_types.TensorType(tf.int32)
-
-    try:
-      await release_mngr.release(value, type_signature, key)
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
-
   # pyformat: disable
   @parameterized.named_parameters(
       ('list', []),

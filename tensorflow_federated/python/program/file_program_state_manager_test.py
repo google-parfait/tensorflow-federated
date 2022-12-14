@@ -249,7 +249,7 @@ class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
       ('0', 0),
       ('1', 1),
       ('negative', -1),
-      ('np', np.int32(1)),
+      ('numpy', np.int32(1)),
   )
   async def test_does_not_raise_type_error_with_version(self, version):
     root_dir = self.create_tempdir()
@@ -259,7 +259,7 @@ class FileProgramStateManagerGetPathForVersionTest(parameterized.TestCase):
     try:
       program_state_mngr._get_path_for_version(version)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -407,7 +407,7 @@ class FileProgramStateManagerLoadTest(parameterized.TestCase,
         program_state_manager.ProgramStateManagerStateNotFoundError):
       await program_state_mngr.load(10, structure)
 
-  async def test_raises_structure_error(self):
+  async def test_raises_structure_error_with_incorrect_structure(self):
     root_dir = self.create_tempdir()
     program_state_mngr = file_program_state_manager.FileProgramStateManager(
         root_dir=root_dir, prefix='a_')
@@ -477,7 +477,7 @@ class FileProgramStateManagerRemoveTest(parameterized.TestCase,
       ('0', 0),
       ('1', 1),
       ('negative', -1),
-      ('np', np.int32(1)),
+      ('numpy', np.int32(1)),
   )
   async def test_does_not_raise_type_error_with_version(self, version):
     root_dir = self.create_tempdir()
@@ -487,7 +487,7 @@ class FileProgramStateManagerRemoveTest(parameterized.TestCase,
     try:
       await program_state_mngr._remove(version)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -685,7 +685,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
       ('0', 0),
       ('1', 1),
       ('negative', -1),
-      ('np', np.int32(1)),
+      ('numpy', np.int32(1)),
   )
   async def test_does_not_raise_type_error_with_version(self, version):
     root_dir = self.create_tempdir()
@@ -695,7 +695,7 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
     try:
       await program_state_mngr.save('state', version)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -709,18 +709,6 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
 
     with self.assertRaises(TypeError):
       await program_state_mngr.save('state', version)
-
-  async def test_save_succeeds_on_large_program_state(self):
-    root_dir = self.create_tempdir()
-    program_state_mngr = file_program_state_manager.FileProgramStateManager(
-        root_dir=root_dir, prefix='a_')
-    # Test saving program state that is too large to serialize as a single proto
-    program_state = [
-        np.zeros(shape=[20_000, 10_000], dtype=np.float32),
-        np.zeros(shape=[20_000, 10_000], dtype=np.float32),
-        np.zeros(shape=[20_000, 10_000], dtype=np.float32)
-    ]
-    await program_state_mngr.save(program_state, version=1)
 
 
 if __name__ == '__main__':

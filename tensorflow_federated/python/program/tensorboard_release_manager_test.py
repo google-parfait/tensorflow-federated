@@ -301,7 +301,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
       ('0', 0),
       ('1', 1),
       ('negative', -1),
-      ('np', np.int32(1)),
+      ('numpy', np.int32(1)),
   )
   async def test_does_not_raise_type_error_with_key(self, key):
     summary_dir = self.create_tempdir()
@@ -313,7 +313,7 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
     try:
       await release_mngr.release(value, type_signature, key)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),

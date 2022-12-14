@@ -31,10 +31,15 @@ from tensorflow_federated.python.program import prefetching_data_source
 class PrefetchingDataSourceIteratorTest(parameterized.TestCase,
                                         unittest.IsolatedAsyncioTestCase):
 
-  def test_init_does_not_raise_type_error(self):
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('async_python',
+       execution_contexts.create_local_async_python_execution_context()),
+  )
+  # pyformat: enable
+  def test_init_does_not_raise_type_error_with_context(self, context):
     mock_iterator = mock.create_autospec(
         data_source_lib.FederatedDataSourceIterator)
-    context = execution_contexts.create_local_async_python_execution_context()
 
     try:
       prefetching_data_source.PrefetchingDataSourceIterator(
@@ -65,27 +70,6 @@ class PrefetchingDataSourceIteratorTest(parameterized.TestCase,
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=3,
           prefetch_threshold=1)
-
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('async_python',
-       execution_contexts.create_local_async_python_execution_context()),
-  )
-  # pyformat: enable
-  def test_init_does_not_raise_type_error_with_context(self, context):
-    mock_iterator = mock.create_autospec(
-        data_source_lib.FederatedDataSourceIterator)
-
-    try:
-      prefetching_data_source.PrefetchingDataSourceIterator(
-          iterator=mock_iterator,
-          context=context,
-          total_rounds=5,
-          num_rounds_to_prefetch=3,
-          num_clients_to_prefetch=3,
-          prefetch_threshold=1)
-    except TypeError:
-      self.fail('Raised `TypeError` unexpectedly.')
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -370,9 +354,14 @@ class PrefetchingDataSourceIteratorTest(parameterized.TestCase,
 
 class PrefetchingDataSourceTest(parameterized.TestCase):
 
-  def test_init_does_not_raise_type_error(self):
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('async_python',
+       execution_contexts.create_local_async_python_execution_context()),
+  )
+  # pyformat: enable
+  def test_init_does_not_raise_type_error_with_context(self, context):
     mock_data_source = mock.create_autospec(data_source_lib.FederatedDataSource)
-    context = execution_contexts.create_local_async_python_execution_context()
 
     try:
       prefetching_data_source.PrefetchingDataSource(
@@ -403,26 +392,6 @@ class PrefetchingDataSourceTest(parameterized.TestCase):
           num_rounds_to_prefetch=3,
           num_clients_to_prefetch=3,
           prefetch_threshold=1)
-
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('async_python',
-       execution_contexts.create_local_async_python_execution_context()),
-  )
-  # pyformat: enable
-  def test_init_does_not_raise_type_error_with_context(self, context):
-    mock_data_source = mock.create_autospec(data_source_lib.FederatedDataSource)
-
-    try:
-      prefetching_data_source.PrefetchingDataSource(
-          data_source=mock_data_source,
-          context=context,
-          total_rounds=5,
-          num_rounds_to_prefetch=3,
-          num_clients_to_prefetch=3,
-          prefetch_threshold=1)
-    except TypeError:
-      self.fail('Raised `TypeError` unexpectedly.')
 
   # pyformat: disable
   @parameterized.named_parameters(

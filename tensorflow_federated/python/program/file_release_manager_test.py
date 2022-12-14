@@ -137,17 +137,6 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       file_release_manager.CSVFileReleaseManager(file_path='')
 
-  def test_does_not_raise_type_error_with_save_mode(self):
-    file_path = self.create_tempfile()
-    os.remove(file_path)
-
-    try:
-      file_release_manager.CSVFileReleaseManager(
-          file_path=file_path,
-          save_mode=file_release_manager.CSVSaveMode.APPEND)
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
-
   @parameterized.named_parameters(
       ('none', None),
       ('bool', True),
@@ -162,16 +151,6 @@ class CSVFileReleaseManagerInitTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       file_release_manager.CSVFileReleaseManager(
           file_path=file_path, save_mode=save_mode)
-
-  def test_does_not_raise_type_error_with_key_fieldname(self):
-    file_path = self.create_tempfile()
-    os.remove(file_path)
-
-    try:
-      file_release_manager.CSVFileReleaseManager(
-          file_path=file_path, key_fieldname='z')
-    except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -591,7 +570,7 @@ class CSVFileReleaseManagerRemoveValuesGreaterThanTest(
     try:
       await release_mngr._remove_values_greater_than(key)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -860,7 +839,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
       ('0', 0),
       ('1', 1),
       ('negative', -1),
-      ('np', np.int32(1)),
+      ('numpy', np.int32(1)),
   )
   async def test_does_not_raise_type_error_with_key(self, key):
     file_path = self.create_tempfile()
@@ -873,7 +852,7 @@ class CSVFileReleaseManagerReleaseTest(parameterized.TestCase,
     try:
       await release_mngr.release(value, type_signature, key)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -961,7 +940,7 @@ class SavedModelFileReleaseManagerGetPathForKeyTest(parameterized.TestCase):
       ('0', 0),
       ('1', 1),
       ('negative', -1),
-      ('np', np.int32(1)),
+      ('numpy', np.int32(1)),
   )
   async def test_does_not_raise_type_error_with_key(self, key):
     root_dir = self.create_tempdir()
@@ -971,7 +950,7 @@ class SavedModelFileReleaseManagerGetPathForKeyTest(parameterized.TestCase):
     try:
       release_mngr._get_path_for_key(key)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -1171,7 +1150,7 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
     try:
       await release_mngr.release(value, type_signature, key)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),

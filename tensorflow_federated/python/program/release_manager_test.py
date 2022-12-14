@@ -31,13 +31,13 @@ class FilteringReleaseManager(parameterized.TestCase,
                               unittest.IsolatedAsyncioTestCase):
 
   def test_init_does_not_raise_type_error(self):
-    filter_fn = lambda _: True
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
+    filter_fn = lambda _: True
 
     try:
       release_manager.FilteringReleaseManager(mock_release_mngr, filter_fn)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),
@@ -239,7 +239,7 @@ class FilteringReleaseManager(parameterized.TestCase,
 class GroupingReleaseManager(parameterized.TestCase,
                              unittest.IsolatedAsyncioTestCase):
 
-  def test_init_does_not_raise_type_error_with_release_managers(self):
+  def test_init_does_not_raise_type_error(self):
     release_mngrs = [
         mock.AsyncMock(spec=release_manager.ReleaseManager),
         mock.AsyncMock(spec=release_manager.ReleaseManager),
@@ -249,7 +249,7 @@ class GroupingReleaseManager(parameterized.TestCase,
     try:
       release_manager.GroupingReleaseManager(release_mngrs)
     except TypeError:
-      self.fail('Raised TypeError unexpectedly.')
+      self.fail('Raised `TypeError` unexpectedly.')
 
   @parameterized.named_parameters(
       ('none', None),

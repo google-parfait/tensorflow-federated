@@ -19,8 +19,10 @@ import unittest
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
+from google.protobuf import message
 from tensorflow_federated.python.program import file_utils
 
 
@@ -122,6 +124,18 @@ class WriteSavedModelTest(parameterized.TestCase,
 
     with self.assertRaises(TypeError):
       await file_utils.write_saved_model(1, path, overwrite)
+
+  async def test_does_not_raise_decode_error_with_large_value(self):
+    path = self.create_tempdir()
+    path = path.full_path
+    shutil.rmtree(path)
+    # This value is too large to serialize as a single proto.
+    value = [np.zeros(shape=[20_000, 10_000], dtype=np.float32)] * 3
+
+    try:
+      await file_utils.write_saved_model(value, path)
+    except message.DecodeError:
+      self.fail('Raised `DecodeError` unexpectedly.')
 
 
 if __name__ == '__main__':

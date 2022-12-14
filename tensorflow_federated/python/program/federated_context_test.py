@@ -69,7 +69,7 @@ class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('federated', computation_types.FederatedType(
+      ('federated_tensor', computation_types.FederatedType(
           tf.int32, placements.CLIENTS)),
       ('function', computation_types.FunctionType(tf.int32, tf.int32)),
       ('placement', computation_types.PlacementType()),
@@ -94,7 +94,7 @@ class ContainsOnlyServerPlacedDataTest(parameterized.TestCase):
 
 class CheckInFederatedContextTest(parameterized.TestCase):
 
-  def test_does_not_raise_value_error(self):
+  def test_does_not_raise_value_error_with_context(self):
     context = mock.MagicMock(spec=federated_context.FederatedContext)
 
     with self.assertRaises(ValueError):
@@ -104,7 +104,7 @@ class CheckInFederatedContextTest(parameterized.TestCase):
       try:
         federated_context.check_in_federated_context()
       except TypeError:
-        self.fail('Raised TypeError unexpectedly.')
+        self.fail('Raised `ValueError` unexpectedly.')
 
     with self.assertRaises(ValueError):
       federated_context.check_in_federated_context()
@@ -137,7 +137,7 @@ class CheckInFederatedContextTest(parameterized.TestCase):
       try:
         federated_context.check_in_federated_context()
       except TypeError:
-        self.fail('Raised TypeError unexpectedly.')
+        self.fail('Raised `ValueError` unexpectedly.')
 
       context = execution_contexts.create_local_python_execution_context()
       with context_stack_impl.context_stack.install(context):

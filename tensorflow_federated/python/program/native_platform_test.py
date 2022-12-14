@@ -62,8 +62,7 @@ class AwaitableValueReferenceTest(parameterized.TestCase,
       ('tensor', _coro(1), computation_types.TensorType(tf.int32)),
       ('sequence', _coro([1, 2, 3]), computation_types.SequenceType(tf.int32)),
   )
-  def test_init_does_not_raise_type_error_with_type_signature(
-      self, awaitable, type_signature):
+  def test_init_does_not_raise_type_error(self, awaitable, type_signature):
 
     try:
       native_platform.AwaitableValueReference(
