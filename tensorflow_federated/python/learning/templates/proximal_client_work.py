@@ -272,7 +272,7 @@ def _build_functional_model_delta_update(
       else:
         _, labels = batch
       metrics_state = model.update_metrics_state(
-          metrics_state, y_pred=output.predictions, y_true=labels)
+          metrics_state, batch_output=output, labels=labels)
       if output.num_examples is None:
         num_examples_sum += tf.shape(output.predictions, out_type=tf.int64)[0]
       else:
