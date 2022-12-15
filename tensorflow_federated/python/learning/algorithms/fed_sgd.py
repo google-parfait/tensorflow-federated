@@ -229,7 +229,7 @@ def _build_functional_client_update(
       else:
         _, labels = batch
       metrics_state = model.update_metrics_state(
-          metrics_state, y_pred=output.predictions, y_true=labels)
+          metrics_state, batch_output=output, labels=labels)
       return (accumulated_gradients, metrics_state,
               num_examples_sum + num_examples)
 

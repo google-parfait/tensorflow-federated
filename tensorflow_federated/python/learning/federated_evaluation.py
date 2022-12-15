@@ -158,7 +158,7 @@ def build_functional_local_evaluation(
       else:
         _, labels = batch
       metrics_state = model.update_metrics_state(
-          metrics_state, y_pred=output.predictions, y_true=labels)
+          metrics_state, batch_output=output, labels=labels)
     unfinalized_metrics = metrics_state
     return unfinalized_metrics
 

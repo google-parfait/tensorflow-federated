@@ -424,7 +424,7 @@ def build_functional_model_delta_update(
       else:
         _, labels = batch
       metrics_state = model.update_metrics_state(
-          metrics_state, y_pred=output.predictions, y_true=labels)
+          metrics_state, batch_output=output, labels=labels)
     # After all local batches, compute the delta between the trained model
     # and the initial incoming model weights.
     client_model_update = tf.nest.map_structure(tf.subtract,

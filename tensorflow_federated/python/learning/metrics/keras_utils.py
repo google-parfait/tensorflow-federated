@@ -25,6 +25,7 @@ from typing import Any, OrderedDict, TypeVar, Union
 
 import tensorflow as tf
 
+from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 StateVar = TypeVar('StateVar')
@@ -37,8 +38,9 @@ MetricsConstructor = Callable[[], MetricStructure]
 def create_functional_metric_fns(
     metrics_constructor: Union[MetricConstructor, MetricsConstructor,
                                MetricConstructors]
-) -> tuple[Callable[[], StateVar], Callable[[StateVar, ...], StateVar],
-           Callable[[StateVar], Any]]:
+) -> tuple[Callable[[], StateVar], Callable[
+    [StateVar, Any, model_lib.BatchOutput, Any], StateVar], Callable[[StateVar],
+                                                                     Any]]:
   """Turn a Keras metric construction method into a tuple of pure functions.
 
   This can be used to convert Keras metrics for use in
@@ -75,10 +77,10 @@ def create_functional_metric_fns(
     A 3-tuple of `tf.function`s namely `(initialize, update, finalize)`.
     `initialize` is a no-arg function used to create the algrebraic "zero"
     before reducing the metric over batches of examples. `update` is a function
-    with the same signature as the `metric_constructor().update_state` method
-    with a preprended `state` argumetn first, and is used to add an observation
-    to the metric. `finalize` only takes a `state` argument and returns the
-    final metric value based on observations previously added.
+    that takes three arguments, the state, labels, and the BatchOutput structure
+    from the model's forward pass, and is used to add an observation to the
+    metric. `finalize` only takes a `state` argument and returns the final
+    metric value based on observations previously added.
 
   Raises:
     TypeError: If `metrics_constructor` is not a callable or `OrderedDict`, or
@@ -200,8 +202,15 @@ def create_functional_metric_fns(
     return fn
 
   @tf.function
-  def update(state, y_true, y_pred, sample_weight=None):
+  def update(state,
+             labels,
+             batch_output: model_lib.BatchOutput,
+             sample_weight=None):
     del sample_weight  # Unused.
+    # Keras metrics operate on the model predictions, but TFF algorithms
+    # pass the entire `BatchOutput` structure in case some custom metrics
+    # want to operate on other values, such as the logits/loss.
+    predictions = batch_output.predictions
 
     def inner_update(metric: tf.keras.metrics.Metric) -> list[tf.Tensor]:
       # We must unwrap `update_state` here because the `TensorVariable` is
@@ -211,7 +220,7 @@ def create_functional_metric_fns(
       # for us, so we simply unwrap the function and call the Python method
       # directly.
       update_state_fn = _get_unwrapped_py_func(metric.update_state)
-      update_state_fn(y_true=y_true, y_pred=y_pred)
+      update_state_fn(y_true=labels, y_pred=predictions)
       return tuple(metric.variables)
 
     with tf.variable_creator_scope(

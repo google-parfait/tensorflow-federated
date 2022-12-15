@@ -86,12 +86,13 @@ def build_functional_linear_regression(
   @tf.function
   def update_metrics_state(
       state: functional.MetricsState,
-      y_true: Any,
-      y_pred: Any,
+      labels: Any,
+      batch_output: model_lib.BatchOutput,
       sample_weight: Optional[Any] = None) -> functional.MetricsState:
     del sample_weight  # Unused.
-    batch_size = tf.shape(y_true)[0]
-    loss = tf.math.reduce_sum(tf.math.pow(y_pred - y_true, 2.0))
+    batch_size = tf.shape(labels)[0]
+    predictions = batch_output.predictions
+    loss = tf.math.reduce_sum(tf.math.pow(predictions - labels, 2.0))
     return collections.OrderedDict(
         loss=state["loss"] + loss,
         num_examples=state["num_examples"] + batch_size)

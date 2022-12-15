@@ -66,12 +66,12 @@ def empty_metrics_state() -> MetricsState:
 
 @tf.function
 def noop_update_metrics(state: MetricsState,
-                        y_true: Any,
-                        y_pred: Any,
+                        labels: Any,
+                        batch_output: model_lib.BatchOutput,
                         sample_weight: Optional[Any] = None) -> MetricsState:
   del state  # Unused.
-  del y_true  # Unused.
-  del y_pred  # Unused.
+  del labels  # Unused.
+  del batch_output  # Unused.
   del sample_weight  # Unused.
   return collections.OrderedDict()
 
@@ -212,11 +212,14 @@ class FunctionalModel():
   @tf.function
   def update_metrics_state(self,
                            state: MetricsState,
-                           y_true: Any,
-                           y_pred: Any,
+                           labels: Any,
+                           batch_output: model_lib.BatchOutput,
                            sample_weight: Optional[Any] = None) -> MetricsState:
     return self._update_metrics_state(
-        state, y_true=y_true, y_pred=y_pred, sample_weight=sample_weight)
+        state,
+        labels=labels,
+        batch_output=batch_output,
+        sample_weight=sample_weight)
 
   @tf.function
   def finalize_metrics(
@@ -356,7 +359,8 @@ def model_from_functional(
 
 
 class KerasFunctionalModelError(Exception):
-  """An error raised when a FunctionalModel backed by Keras is used outside TFF."""
+  """An error raised when a FunctionalModel backed by Keras is used outside TFF.
+  """
 
 
 def functional_model_from_keras(
