@@ -1,3 +1,20 @@
+# Release 0.43.0
+
+## Major Features and Improvements
+
+*   Improve serialization method to allow structures larger than 2 GiB (~500
+    million model parameters):
+    *   `tff.learning.models.FunctionalModel`
+    *   `tff.programs.FileProgramStateManager`
+
+## Bug Fixes
+
+*   Fix a bug using `copy.deepcopy` for structures of awaitables (non-pickable)
+    in `tff.learning.programs`.
+*   Fix a bug when resuming an evaluation in
+    `tff.learning.programs.EvaluationManager` where the restarted evaluation
+    would overwrite released metrics.
+
 # Release 0.42.0
 
 ## Major Features and Improvements
