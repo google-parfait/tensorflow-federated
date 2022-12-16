@@ -31,6 +31,7 @@ py_library(
         ":aggregator",
         ":counters",
         ":finalizer",
+        ":keras_utils",
     ],
 )
 
@@ -105,7 +106,10 @@ py_library(
     name = "keras_utils",
     srcs = ["keras_utils.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/tensorflow_libs:variable_utils"],
+    deps = [
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/tensorflow_libs:variable_utils",
+    ],
 )
 
 py_test(
@@ -116,6 +120,7 @@ py_test(
     deps = [
         ":counters",
         ":keras_utils",
+        "//tensorflow_federated/python/learning:model",
     ],
 )
 

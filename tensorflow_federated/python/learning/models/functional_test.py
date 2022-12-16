@@ -69,22 +69,24 @@ def initialize_metrics() -> functional.MetricsState:
 @tf.function
 def update_metrics_state(
     state: functional.MetricsState,
-    y_true: Any,
-    y_pred: Any,
+    labels: Any,
+    batch_output: model_lib.BatchOutput,
     sample_weight: Optional[Any] = None) -> functional.MetricsState:
   del sample_weight  # Unused.
-  batch_size = tf.cast(tf.shape(y_true)[0], tf.float32)
+  batch_size = tf.cast(tf.shape(labels)[0], tf.float32)
 
-  def update_accuracy(variables, y_true, y_pred):
+  def update_accuracy(variables, labels, predictions):
     accuracy, num_examples = variables
-    num_matches = tf.reduce_sum(tf.cast(tf.equal(y_true, y_pred), tf.float32))
+    num_matches = tf.reduce_sum(
+        tf.cast(tf.equal(labels, predictions), tf.float32))
     accuracy += num_matches
     num_examples += batch_size
     return accuracy, num_examples
 
   new_dict = collections.OrderedDict(
       num_examples=(state['num_examples'][0] + batch_size,),
-      accuracy=update_accuracy(state['accuracy'], y_true, y_pred))
+      accuracy=update_accuracy(state['accuracy'], labels,
+                               batch_output.predictions))
   return new_dict
 
 
@@ -207,10 +209,10 @@ class FunctionalModelTest(tf.test.TestCase):
           state,
           collections.OrderedDict(num_examples=(0.0,), accuracy=(0.0, 0.0)))
     with self.subTest('update'):
-      predictions = np.asarray([0, 1, 1])
+      batch_output = model_lib.BatchOutput(predictions=np.asarray([0, 1, 1]))
       labels = np.asarray([0, 0, 1])
       updated_state = functional_model.update_metrics_state(
-          state, y_true=labels, y_pred=predictions)
+          state, labels=labels, batch_output=batch_output)
       self.assertAllClose(
           updated_state,
           collections.OrderedDict(num_examples=(3.0,), accuracy=(2.0, 3.0)))
@@ -245,7 +247,9 @@ class FunctionalModelTest(tf.test.TestCase):
           labels = tf.compat.v1.placeholder(tf.int32)
           updated_state = sess.run(
               fetches=functional_model.update_metrics_state(
-                  state_placeholder, y_true=labels, y_pred=predictions),
+                  state_placeholder,
+                  labels=labels,
+                  batch_output=model_lib.BatchOutput(predictions=predictions)),
               feed_dict={
                   predictions: np.asarray([0, 1, 1]),
                   labels: np.asarray([0, 0, 1]),
@@ -562,8 +566,9 @@ class FunctionalModelFromKerasTest(tf.test.TestCase):
       self.assert_variableless_function(
           functional_model.update_metrics_state,
           state=metrics_state_tensor_spec,
-          y_true=tf.TensorSpec([1], tf.float32),
-          y_pred=tf.TensorSpec([1], tf.float32))
+          labels=tf.TensorSpec([1], tf.float32),
+          batch_output=model_lib.BatchOutput(
+              predictions=tf.TensorSpec([1], tf.float32)))
       self.assert_variableless_function(
           functional_model.finalize_metrics, state=metrics_state_tensor_spec)
     # Assert all ones, instead of zeros from a newly initial model.

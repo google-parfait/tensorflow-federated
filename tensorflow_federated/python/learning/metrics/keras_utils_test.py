@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning.metrics import counters
 from tensorflow_federated.python.learning.metrics import keras_utils
 
@@ -61,8 +62,9 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     self.assert_no_variable_ops(
         update_fn.get_concrete_function(
             state=state_spec,
-            y_true=tf.TensorSpec(shape=[None], dtype=tf.float32),
-            y_pred=tf.TensorSpec(shape=[None], dtype=tf.float32),
+            labels=tf.TensorSpec(shape=[None], dtype=tf.float32),
+            batch_output=model_lib.BatchOutput(
+                predictions=tf.TensorSpec(shape=[None], dtype=tf.float32)),
         ).graph.as_graph_def())
     self.assert_no_variable_ops(
         finalize_fn.get_concrete_function(
@@ -83,13 +85,15 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     predictions = np.asarray([0.0, 1.0])
     labels = np.asarray([1.0, 1.0])
     metric.update_state(y_pred=predictions, y_true=labels)
-    state = update(state, y_pred=predictions, y_true=labels)
+    batch_output = model_lib.BatchOutput(predictions=predictions)
+    state = update(state, batch_output=batch_output, labels=labels)
     self.assertAllEqual(metric.variables, state)
     self.assertAllEqual(metric.result(), finalize(state))
     predictions = np.asarray([0.0, 1.0, 0.0])
     labels = np.asarray([1.0, 1.0, 0.0])
     metric.update_state(y_pred=predictions, y_true=labels)
-    state = update(state, y_pred=predictions, y_true=labels)
+    batch_output = model_lib.BatchOutput(predictions=predictions)
+    state = update(state, batch_output=batch_output, labels=labels)
     self.assertAllEqual(metric.variables, state)
     self.assertAllEqual(metric.result(), finalize(state))
 
@@ -109,7 +113,8 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
         predictions = [0.0, 1.0]
         labels = [1.0, 1.0]
         self.evaluate(metric.update_state(y_pred=predictions, y_true=labels))
-        state = update(state, y_pred=predictions, y_true=labels)
+        batch_output = model_lib.BatchOutput(predictions=predictions)
+        state = update(state, batch_output=batch_output, labels=labels)
         self.assertAllEqual(
             self.evaluate(metric.variables), self.evaluate(state))
         self.assertAllEqual(
@@ -117,7 +122,8 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
         predictions = [0.0, 1.0, 0.0]
         labels = [1.0, 1.0, 0.0]
         self.evaluate(metric.update_state(y_pred=predictions, y_true=labels))
-        state = update(state, y_pred=predictions, y_true=labels)
+        batch_output = model_lib.BatchOutput(predictions=predictions)
+        state = update(state, batch_output=batch_output, labels=labels)
         self.assertAllEqual(
             self.evaluate(metric.variables), self.evaluate(state))
         self.assertAllEqual(
@@ -136,13 +142,15 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     predictions = [0.0, 1.0]
     labels = [1.0, 1.0]
     metric.update_state(y_pred=predictions, y_true=labels)
-    state = update(state, y_pred=predictions, y_true=labels)
+    batch_output = model_lib.BatchOutput(predictions=predictions)
+    state = update(state, batch_output=batch_output, labels=labels)
     self.assertAllEqual(metric.variables, state)
     self.assertAllEqual(metric.result(), finalize(state))
     predictions = [0.0, 1.0, 0.0]
     labels = [1.0, 1.0, 0.0]
     metric.update_state(y_pred=predictions, y_true=labels)
-    state = update(state, y_pred=predictions, y_true=labels)
+    batch_output = model_lib.BatchOutput(predictions=predictions)
+    state = update(state, batch_output=batch_output, labels=labels)
     self.assertAllEqual(metric.variables, state)
     self.assertAllEqual(metric.result(), finalize(state))
 
@@ -159,13 +167,15 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     predictions = [0.0, 1.0]
     labels = [1.0, 1.0]
     metric.update_state(y_pred=predictions, y_true=labels)
-    state = update(state, y_pred=predictions, y_true=labels)
+    batch_output = model_lib.BatchOutput(predictions=predictions)
+    state = update(state, batch_output=batch_output, labels=labels)
     self.assertAllEqual(metric.variables, state)
     self.assertAllEqual(metric.result(), finalize(state))
     predictions = [0.0, 1.0, 0.0]
     labels = [1.0, 1.0, 0.0]
     metric.update_state(y_pred=predictions, y_true=labels)
-    state = update(state, y_pred=predictions, y_true=labels)
+    batch_output = model_lib.BatchOutput(predictions=predictions)
+    state = update(state, batch_output=batch_output, labels=labels)
     self.assertAllEqual(metric.variables, state)
     self.assertAllEqual(metric.result(), finalize(state))
 
@@ -186,7 +196,8 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     labels = [1.0, 1.0]
     tf.nest.map_structure(
         lambda m: m.update_state(y_pred=predictions, y_true=labels), metrics)
-    state = update(state, y_pred=predictions, y_true=labels)
+    batch_output = model_lib.BatchOutput(predictions=predictions)
+    state = update(state, batch_output=batch_output, labels=labels)
     self.assertAllEqual(
         tf.nest.map_structure(lambda m: m.variables, metrics), state)
     self.assertAllEqual(
@@ -195,7 +206,8 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     labels = [1.0, 1.0, 0.0]
     tf.nest.map_structure(
         lambda m: m.update_state(y_pred=predictions, y_true=labels), metrics)
-    state = update(state, y_pred=predictions, y_true=labels)
+    batch_output = model_lib.BatchOutput(predictions=predictions)
+    state = update(state, batch_output=batch_output, labels=labels)
     self.assertAllEqual(
         tf.nest.map_structure(lambda m: m.variables, metrics), state)
     self.assertAllEqual(
@@ -213,11 +225,11 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
     initialize, update, _ = keras_utils.create_functional_metric_fns(
         metric_constructor)
     state = initialize()
-    predictions = [0.0, 1.0]
+    batch_output = model_lib.BatchOutput(predictions=[0.0, 1.0])
     labels = [1.0, 1.0]
     with self.assertRaisesRegex(TypeError,
                                 'got an unexpected keyword argument'):
-      update(state, y_pred=predictions, y_true=labels)
+      update(state, batch_output=batch_output, labels=labels)
 
   def test_composite_metrics_fn(self):
     # We purposely use a constructor to an OrderedDict of metrics in
@@ -239,7 +251,8 @@ class CreateFunctionalMetricTest(tf.test.TestCase, parameterized.TestCase):
         state, tf.nest.map_structure(lambda m: m.variables, metrics_by_name))
     predictions = np.asarray([0.25, 0.5, 1.0])
     labels = np.asarray([0.0, 0.0, 1.0])
-    state = update(state, y_true=labels, y_pred=predictions)
+    batch_output = model_lib.BatchOutput(predictions=predictions)
+    state = update(state, labels=labels, batch_output=batch_output)
     tf.nest.map_structure(
         lambda m: m.update_state(y_true=labels, y_pred=predictions),
         metrics_by_name)

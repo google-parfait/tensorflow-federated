@@ -355,7 +355,7 @@ def _build_functional_client_update_fn_for_mime_lite(
               '`collections.abc.Mapping` or a `collections.abc.Sequence`. Got '
               f'{type(batch)}')
         metrics_state = model.update_metrics_state(
-            metrics_state, y_true=labels, y_pred=output.predictions)
+            metrics_state, labels=labels, batch_output=output)
         # Mime Lite keeps optimizer state unchanged during local training.
         _, updated_weights = optimizer.next(global_optimizer_state,
                                             trainable_weights, gradients)
