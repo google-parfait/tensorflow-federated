@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
+from typing import Optional
 import unittest
 from unittest import mock
 
@@ -21,7 +21,8 @@ from absl.testing import absltest
 from tensorflow_federated.python.program import program_state_manager
 
 
-class _TestProgramStateManager(program_state_manager.ProgramStateManager):
+class _TestProgramStateManager(program_state_manager.ProgramStateManager[
+    program_state_manager.ProgramStateStructure]):
   """A test implementation of `tff.program.ProgramStateManager`.
 
   A `tff.program.ProgramStateManager` can not be constructed directly because it
@@ -33,11 +34,15 @@ class _TestProgramStateManager(program_state_manager.ProgramStateManager):
   async def get_versions(self) -> Optional[list[int]]:
     raise NotImplementedError
 
-  async def load(self, version: int, structure: Any) -> Any:
+  async def load(
+      self, version: int, structure: program_state_manager.ProgramStateStructure
+  ) -> program_state_manager.ProgramStateStructure:
     del version, structure  # Unused.
     raise NotImplementedError
 
-  async def save(self, program_state: Any, version: int) -> None:
+  async def save(self,
+                 program_state: program_state_manager.ProgramStateStructure,
+                 version: int) -> None:
     del program_state, version  # Unused.
     raise NotImplementedError
 

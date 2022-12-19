@@ -18,7 +18,7 @@ import csv
 import os
 import os.path
 import shutil
-from typing import Any, Union
+from typing import Union
 import unittest
 from unittest import mock
 
@@ -32,11 +32,12 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import file_release_manager
 from tensorflow_federated.python.program import file_utils
 from tensorflow_federated.python.program import program_test_utils
+from tensorflow_federated.python.program import release_manager
 
 
 def _read_values_from_csv(
     file_path: Union[str, os.PathLike[str]]
-) -> tuple[list[str], list[dict[str, Any]]]:
+) -> tuple[list[str], list[dict[str, release_manager.ReleasableStructure]]]:
   with tf.io.gfile.GFile(file_path, 'r') as file:
     reader = csv.DictReader(file)
     fieldnames = list(reader.fieldnames)
@@ -44,9 +45,10 @@ def _read_values_from_csv(
   return fieldnames, values
 
 
-def _write_values_to_csv(file_path: Union[str, os.PathLike[str]],
-                         fieldnames: Sequence[str],
-                         values: Iterable[Mapping[str, Any]]) -> None:
+def _write_values_to_csv(
+    file_path: Union[str, os.PathLike[str]], fieldnames: Sequence[str],
+    values: Iterable[Mapping[str,
+                             release_manager.ReleasableStructure]]) -> None:
   with tf.io.gfile.GFile(file_path, 'w') as file:
     writer = csv.DictWriter(file, fieldnames)
     writer.writeheader()
@@ -1122,7 +1124,9 @@ class SavedModelFileReleaseManagerReleaseTest(parameterized.TestCase,
       actual_value, actual_path = args
       program_test_utils.assert_types_equal(actual_value, expected_value)
 
-      def _normalize(value: Any) -> Any:
+      def _normalize(
+          value: release_manager.ReleasableStructure
+      ) -> release_manager.ReleasableStructure:
         if isinstance(value, tf.data.Dataset):
           return list(value)
         return value

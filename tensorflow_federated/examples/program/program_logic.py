@@ -21,7 +21,7 @@ therefore this program logic is portable across platforms.
 """
 
 import functools
-from typing import Optional
+from typing import Any, Optional
 
 from absl import logging
 import tensorflow_federated as tff
@@ -188,10 +188,14 @@ async def train_federated_model(
     evaluation_data_source: tff.program.FederatedDataSource,
     total_rounds: int,
     num_clients: int,
-    train_metrics_manager: Optional[tff.program.ReleaseManager] = None,
-    evaluation_metrics_manager: Optional[tff.program.ReleaseManager] = None,
-    model_output_manager: Optional[tff.program.ReleaseManager] = None,
-    program_state_manager: Optional[tff.program.ProgramStateManager] = None
+    train_metrics_manager: Optional[tff.program.ReleaseManager[
+        tff.program.ReleasableStructure, int]] = None,
+    evaluation_metrics_manager: Optional[tff.program.ReleaseManager[
+        tff.program.ReleasableStructure, int]] = None,
+    model_output_manager: Optional[tff.program.ReleaseManager[
+        tff.program.ReleasableStructure, Any]] = None,
+    program_state_manager: Optional[tff.program.ProgramStateManager[
+        tff.program.ProgramStateStructure]] = None
 ) -> None:
   """Trains a federated model for some number of rounds.
 
@@ -345,4 +349,4 @@ async def train_federated_model(
     if model_output_manager is not None:
       _, state_type = train.type_signature.result
       state_type = state_type.member
-      tasks.add(model_output_manager.release(state, state_type, 0))
+      tasks.add(model_output_manager.release(state, state_type, None))

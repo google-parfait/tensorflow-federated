@@ -17,16 +17,31 @@ import abc
 import asyncio
 import collections
 from collections.abc import Callable, Sequence
-from typing import Any, Optional, Union
+from typing import Any, Generic, Optional, TypeVar, Union
 
 import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.program import structure_utils
+from tensorflow_federated.python.program import value_reference
+
+# pyformat: disable
+# ReleaseManager's may release any value (including materialized values) in
+# addition to materializable values.
+ReleasableValue = Union[
+    Any,
+    value_reference.MaterializableValueReference,
+]
+ReleasableStructure = TypeVar(
+    'ReleasableStructure',
+    bound=structure_utils.Structure[ReleasableValue])
+Key = TypeVar('Key')
+# pyformat: enable
 
 
-class ReleaseManager(metaclass=abc.ABCMeta):
+class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
   """An interface for releasing values from a federated program.
 
   A `tff.program.ReleaseManager` is used to release values from platform storage
@@ -34,8 +49,8 @@ class ReleaseManager(metaclass=abc.ABCMeta):
   """
 
   @abc.abstractmethod
-  async def release(self, value: Any, type_signature: computation_types.Type,
-                    key: Any) -> None:
+  async def release(self, value: ReleasableStructure,
+                    type_signature: computation_types.Type, key: Key) -> None:
     """Releases `value` from a federated program.
 
     An implementation of this interface should be specific about the types of
@@ -43,18 +58,13 @@ class ReleaseManager(metaclass=abc.ABCMeta):
     used. This allows a federated program to understand how to create a `key`
     for the `value` before it is released. For example, a
     `tff.program.ReleaseManager` that releases metrics keyed by a strictly
-    increasing integer might specify a `value` type of `Mapping[str, Any]` and
-    a `key` type of `int`.
+    increasing integer might specify a `value` type of
+    `Mapping[str, ReleasableValue]` and a `key` type of `int`.
 
     Args:
-      value: A materialized value, a value reference, or a structure of
-        materialized values and value references representing the value to
-        release. The exact structure of `value` is left up to the implementation
-        of `tff.program.ReleaseManager`.
+      value: A `tff.program.MaterializableStructure` to release.
       type_signature: The `tff.Type` of `value`.
-      key: An optional value used to reference the released `value`, the exact
-        type and structure of `key` and how `key` is used is left up to the
-        implementation of `tff.program.ReleaseManager`.
+      key: A value used to reference the released `value`.
     """
     raise NotImplementedError
 
@@ -62,7 +72,7 @@ class ReleaseManager(metaclass=abc.ABCMeta):
 _FILTERED_SUBTREE = object()
 
 
-class FilteringReleaseManager(ReleaseManager):
+class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
   """A `tff.program.ReleaseManager` that filters values before releasing them.
 
   A `tff.program.FilteringReleaseManager` is a utility for filtering values
@@ -72,7 +82,7 @@ class FilteringReleaseManager(ReleaseManager):
   Values are filtered and released using the given `release_manager`.
   """
 
-  def __init__(self, release_manager: ReleaseManager,
+  def __init__(self, release_manager: ReleaseManager[ReleasableStructure, Key],
                filter_fn: Callable[[tuple[Union[str, int], ...]], bool]):
     """Returns an initialized `tff.program.FilteringReleaseManager`.
 
@@ -102,14 +112,14 @@ class FilteringReleaseManager(ReleaseManager):
     self._release_manager = release_manager
     self._filter_fn = filter_fn
 
-  async def release(self, value: Any, type_signature: computation_types.Type,
-                    key: Any) -> None:
+  async def release(self, value: ReleasableStructure,
+                    type_signature: computation_types.Type, key: Key) -> None:
     """Releases `value` from a federated program.
 
     Args:
-      value: A materialized value, a value reference, or a structure of release.
+      value: A `tff.program.MaterializableStructure` to release.
       type_signature: The `tff.Type` of `value`.
-      key: An optional value used to reference the released `value`.
+      key: A value used to reference the released `value`.
     """
 
     def _fn(path: tuple[Union[str, int], ...],
@@ -144,7 +154,7 @@ class FilteringReleaseManager(ReleaseManager):
     await self._release_manager.release(filtered_value, filtered_type, key)
 
 
-class GroupingReleaseManager(ReleaseManager):
+class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
   """A `tff.program.ReleaseManager` that releases values to other release managers.
 
   A `tff.program.GroupingReleaseManager` is a utility for release values from a
@@ -156,7 +166,9 @@ class GroupingReleaseManager(ReleaseManager):
   given `release_managers`.
   """
 
-  def __init__(self, release_managers: Sequence[ReleaseManager]):
+  def __init__(self,
+               release_managers: Sequence[ReleaseManager[ReleasableStructure,
+                                                         Key]]):
     """Returns an initialized `tff.program.GroupingReleaseManager`.
 
     Args:
@@ -174,16 +186,14 @@ class GroupingReleaseManager(ReleaseManager):
 
     self._release_managers = release_managers
 
-  async def release(self, value: Any, type_signature: computation_types.Type,
-                    key: Any) -> None:
+  async def release(self, value: ReleasableStructure,
+                    type_signature: computation_types.Type, key: Key) -> None:
     """Releases `value` from a federated program.
 
     Args:
-      value: A materialized value, a value reference, or a structure of
-        materialized values and value references representing the value to
-        release.
+      value: A `tff.program.MaterializableStructure` to release.
       type_signature: The `tff.Type` of `value`.
-      key: An optional value used to reference the released `value`.
+      key: A value used to reference the released `value`.
     """
     await asyncio.gather(
         *

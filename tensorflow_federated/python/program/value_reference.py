@@ -23,33 +23,45 @@ unplaced.
 import abc
 import asyncio
 from collections.abc import Iterable
-from typing import Any, Union
+from typing import Union
 
 import numpy as np
 import tree
 
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
+from tensorflow_federated.python.program import structure_utils
 
-MaterializableTffType = Union[computation_types.TensorType,
-                              computation_types.SequenceType,]
+# pyformat: disable
+MaterializableTypeSignature = Union[
+    computation_types.TensorType,
+    computation_types.SequenceType,
+]
+MaterializedValue = Union[
+    np.generic,
+    np.ndarray,
+    Iterable[Union[np.generic, np.ndarray]],
+]
+MaterializedStructure = structure_utils.Structure[MaterializedValue]
+MaterializableValue = Union[
+    MaterializedValue,
+    'MaterializableValueReference',
+]
+MaterializableStructure = structure_utils.Structure[MaterializableValue]
+# pyformat: enable
 
-MaterializablePythonType = Union[np.generic, np.ndarray,
-                                 Iterable[Union[np.generic, np.ndarray]],]
 
-
-class MaterializableValueReference(
-    typed_object.TypedObject, metaclass=abc.ABCMeta):
+class MaterializableValueReference(abc.ABC, typed_object.TypedObject):
   """An abstract interface representing references to server-placed values."""
 
   @property
   @abc.abstractmethod
-  def type_signature(self) -> MaterializableTffType:
+  def type_signature(self) -> MaterializableTypeSignature:
     """The `tff.Type` of this object."""
     raise NotImplementedError
 
   @abc.abstractmethod
-  async def get_value(self) -> MaterializablePythonType:
+  async def get_value(self) -> MaterializedValue:
     """Returns the referenced value.
 
     The Python type of the referenced value depends on the `type_signature`:
@@ -62,15 +74,15 @@ class MaterializableValueReference(
     raise NotImplementedError
 
 
-async def materialize_value(value: Any) -> Any:
-  """Returns a structure of materialized values.
+async def materialize_value(
+    value: MaterializableStructure) -> MaterializedStructure:
+  """Returns a `tff.program.MaterializedStructure`.
 
   Args:
-    value: A materialized value, a value reference, or structure materialized
-      values and value references to materialize.
+    value: A `tff.program.MaterializableStructure` to materialize.
   """
 
-  async def _materialize(value: Any) -> Any:
+  async def _materialize(value: MaterializableValue) -> MaterializedValue:
     if isinstance(value, MaterializableValueReference):
       return await value.get_value()
     else:

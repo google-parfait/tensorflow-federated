@@ -47,7 +47,7 @@ class TestMaterializableValueReference(
     value_reference.MaterializableValueReference):
   """A test implementation of `tff.program.MaterializableValueReference`."""
 
-  def __init__(self, value: value_reference.MaterializablePythonType):
+  def __init__(self, value: value_reference.MaterializedValue):
     if isinstance(value, int):
       self._type_signature = computation_types.TensorType(tf.int32)
     elif isinstance(value, bool):
@@ -61,10 +61,10 @@ class TestMaterializableValueReference(
     self._value = value
 
   @property
-  def type_signature(self) -> value_reference.MaterializableTffType:
+  def type_signature(self) -> value_reference.MaterializableTypeSignature:
     return self._type_signature
 
-  async def get_value(self) -> value_reference.MaterializablePythonType:
+  async def get_value(self) -> value_reference.MaterializedValue:
     return self._value
 
   def __eq__(self, other: Any) -> bool:

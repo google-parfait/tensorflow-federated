@@ -16,7 +16,6 @@ import os
 import os.path
 import shutil
 import tempfile
-from typing import Any
 import unittest
 from unittest import mock
 
@@ -645,7 +644,9 @@ class FileProgramStateManagerSaveTest(parameterized.TestCase,
       actual_value, actual_path = args
       program_test_utils.assert_types_equal(actual_value, expected_value)
 
-      def _normalize(value: Any) -> Any:
+      def _normalize(
+          value: program_state_manager.ProgramStateStructure
+      ) -> program_state_manager.ProgramStateStructure:
         if isinstance(value, tf.data.Dataset):
           return list(value)
         return value

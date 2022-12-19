@@ -13,10 +13,25 @@
 # limitations under the License.
 """Utilities for working with structured data."""
 
-from collections.abc import Iterable
-from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Any, TypeVar, Union
 
+import pytype_extensions
 import tree
+
+
+# pyformat: disable
+_T = TypeVar('_T')
+# This type describes the structures supported by the `tff.program` API, meaning
+# values of type `_T` nested in structures defined by this type. For an example
+# of how to use this type see `tff.program.MaterializedStructure`.
+Structure = Union[
+    _T,
+    Sequence['Structure[_T]'],
+    Mapping[str, 'Structure[_T]'],
+    pytype_extensions.Attrs['Structure[_T]'],
+]
+# pyformat: enable
 
 
 def flatten_with_name(structure: Any) -> list[tuple[str, Any]]:
@@ -32,7 +47,7 @@ def flatten_with_name(structure: Any) -> list[tuple[str, Any]]:
   """
   flattened = tree.flatten_with_path(structure)
 
-  def _name(path: Iterable[Any]) -> str:
+  def _name(path: Iterable[Union[int, str]]) -> str:
     return '/'.join(map(str, path))
 
   return [(_name(path), value) for path, value in flattened]

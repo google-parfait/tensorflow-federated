@@ -14,7 +14,22 @@
 """Utilities for saving and loading program state in a federated program."""
 
 import abc
-from typing import Any, Optional
+from typing import Any, Generic, Optional, Union, TypeVar
+
+from tensorflow_federated.python.program import structure_utils
+from tensorflow_federated.python.program import value_reference
+
+# pyformat: disable
+# ProgramStateManager's may save any value (including materialized values) in
+# addition to materializable values.
+ProgramStateValue = Union[
+    Any,
+    value_reference.MaterializableValueReference,
+]
+ProgramStateStructure = TypeVar(
+    'ProgramStateStructure',
+    bound=structure_utils.Structure[ProgramStateValue])
+# pyformat: enable
 
 
 class ProgramStateManagerStateAlreadyExistsError(Exception):
@@ -29,7 +44,7 @@ class ProgramStateManagerStructureError(Exception):
   pass
 
 
-class ProgramStateManager(metaclass=abc.ABCMeta):
+class ProgramStateManager(abc.ABC, Generic[ProgramStateStructure]):
   """An interface for saving and loading program state in a federated program.
 
   A `tff.program.ProgramStateManager` is used to implement fault tolerance in a
@@ -47,12 +62,13 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  async def load(self, version: int, structure: Any) -> Any:
+  async def load(self, version: int,
+                 structure: ProgramStateStructure) -> ProgramStateStructure:
     """Returns the saved program state for the given `version`.
 
     Args:
       version: A integer representing the version of a saved program state.
-      structure: The nested structure of the saved program state for the given
+      structure: The structure of the saved program state for the given
         `version` used to support serialization and deserailization of
         user-defined classes in the structure.
 
@@ -64,11 +80,13 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
     """
     raise NotImplementedError
 
-  async def load_latest(self, structure: Any) -> tuple[Any, int]:
+  async def load_latest(
+      self,
+      structure: ProgramStateStructure) -> tuple[ProgramStateStructure, int]:
     """Returns the latest saved program state and version or (`None`, 0).
 
     Args:
-      structure: The nested structure of the saved program state for the given
+      structure: The structure of the saved program state for the given
         `version` used to support serialization and deserailization of
         user-defined classes in the structure.
 
@@ -86,13 +104,12 @@ class ProgramStateManager(metaclass=abc.ABCMeta):
       return None, 0
 
   @abc.abstractmethod
-  async def save(self, program_state: Any, version: int) -> None:
+  async def save(self, program_state: ProgramStateStructure,
+                 version: int) -> None:
     """Saves `program_state` for the given `version`.
 
     Args:
-      program_state: A materialized value, a value reference, or a structure of
-        materialized values and value references representing the program state
-        to save.
+      program_state: A `tff.program.ProgramStateStructure` to save.
       version: A strictly increasing integer representing the version of a saved
         `program_state`.
 

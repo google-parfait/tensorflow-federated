@@ -23,7 +23,7 @@ means that this library:
 import asyncio
 import os
 import os.path
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 from absl import logging
 import numpy as np
@@ -36,7 +36,8 @@ from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import value_reference
 
 
-class FileProgramStateManager(program_state_manager.ProgramStateManager):
+class FileProgramStateManager(program_state_manager.ProgramStateManager[
+    program_state_manager.ProgramStateStructure]):
   """A `tff.program.ProgramStateManager` that is backed by a file system.
 
   A `tff.program.FileProgramStateManager` is a utility for saving and loading
@@ -154,12 +155,14 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     basename = f'{self._prefix}{version}'
     return os.path.join(self._root_dir, basename)
 
-  async def load(self, version: int, structure: Any) -> Any:
+  async def load(
+      self, version: int, structure: program_state_manager.ProgramStateStructure
+  ) -> program_state_manager.ProgramStateStructure:
     """Returns the program state for the given `version`.
 
     Args:
       version: A integer representing the version of a saved program state.
-      structure: The nested structure of the saved program state for the given
+      structure: The structure of the saved program state for the given
         `version` used to support serialization and deserailization of
         user-defined classes in the structure.
 
@@ -185,7 +188,9 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
           f'does not match the value of type {type(flattened_state)}:\n'
           f'{flattened_state}\n') from e
 
-    def _normalize(value: Any) -> Any:
+    def _normalize(
+        value: program_state_manager.ProgramStateStructure
+    ) -> program_state_manager.ProgramStateStructure:
       """Returns a normalize the value.
 
       Because this implementation saves program state to the file system using
@@ -230,13 +235,13 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager):
     if versions is not None:
       await asyncio.gather(*[self._remove(v) for v in versions])
 
-  async def save(self, program_state: Any, version: int) -> None:
+  async def save(self,
+                 program_state: program_state_manager.ProgramStateStructure,
+                 version: int) -> None:
     """Saves `program_state` for the given `version`.
 
     Args:
-      program_state: A materialized value, a value reference, or a structure of
-        materialized values and value references representing the program state
-        to save.
+      program_state: A `tff.program.ProgramStateStructure` to save.
       version: A strictly increasing integer representing the version of a saved
         `program_state`.
 

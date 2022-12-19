@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utilities for releasing values from a federated program to logs."""
 
-from typing import Any
+from typing import Any, Optional
 
 from absl import logging
 
@@ -23,7 +23,9 @@ from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
 
 
-class LoggingReleaseManager(release_manager.ReleaseManager):
+class LoggingReleaseManager(
+    release_manager.ReleaseManager[release_manager.ReleasableStructure,
+                                   Optional[Any]]):
   """A `tff.program.ReleaseManager` that releases values to logs.
 
   A `tff.program.LoggingReleaseManager` is a utility for releasing values from a
@@ -35,14 +37,13 @@ class LoggingReleaseManager(release_manager.ReleaseManager):
   containing value references, each value reference is materialized.
   """
 
-  async def release(self, value: Any, type_signature: computation_types.Type,
-                    key: Any) -> None:
+  async def release(self, value: release_manager.ReleasableStructure,
+                    type_signature: computation_types.Type,
+                    key: Optional[Any]) -> None:
     """Releases `value` from a federated program.
 
     Args:
-      value: A materialized value, a value reference, or a structure of
-        materialized values and value references representing the value to
-        release.
+      value: A `tff.program.MaterializableStructure` to release.
       type_signature: The `tff.Type` of `value`.
       key: An optional value used to reference the released `value`.
     """

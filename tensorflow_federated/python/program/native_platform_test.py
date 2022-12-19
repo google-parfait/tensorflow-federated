@@ -14,7 +14,6 @@
 
 import asyncio
 import collections
-from typing import Any
 import unittest
 
 from absl.testing import absltest
@@ -36,7 +35,9 @@ from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import value_reference
 
 
-async def _coro(value: Any) -> Any:
+async def _coro(
+    value: value_reference.MaterializedValue
+) -> value_reference.MaterializedValue:
   return value
 
 

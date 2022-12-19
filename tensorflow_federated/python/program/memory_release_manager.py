@@ -15,7 +15,6 @@
 
 import collections
 from collections.abc import Hashable
-from typing import Any
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.types import computation_types
@@ -23,7 +22,9 @@ from tensorflow_federated.python.program import release_manager
 from tensorflow_federated.python.program import value_reference
 
 
-class MemoryReleaseManager(release_manager.ReleaseManager):
+class MemoryReleaseManager(
+    release_manager.ReleaseManager[release_manager.ReleasableStructure,
+                                   Hashable]):
   """A `tff.program.ReleaseManager` that releases values to memory.
 
   A `tff.program.MemoryReleaseManager` is a utility for releasing values from a
@@ -39,14 +40,13 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
     """Returns an initialized `tff.program.MemoryReleaseManager`."""
     self._values = collections.OrderedDict()
 
-  async def release(self, value: Any, type_signature: computation_types.Type,
+  async def release(self, value: release_manager.ReleasableStructure,
+                    type_signature: computation_types.Type,
                     key: Hashable) -> None:
     """Releases `value` from a federated program.
 
     Args:
-      value: A materialized value, a value reference, or a structure of
-        materialized values and value references representing the value to
-        release.
+      value: A `tff.program.MaterializableStructure` to release.
       type_signature: The `tff.Type` of `value`.
       key: A hashable value used to reference the released `value`.
     """
@@ -58,7 +58,8 @@ class MemoryReleaseManager(release_manager.ReleaseManager):
 
   def values(
       self
-  ) -> collections.OrderedDict[Hashable, tuple[Any, computation_types.Type]]:
+  ) -> collections.OrderedDict[Hashable, tuple[
+      release_manager.ReleasableStructure, computation_types.Type]]:
     """Returns an `collections.OrderedDict` of all keys and released values and types.
     """
     return self._values.copy()

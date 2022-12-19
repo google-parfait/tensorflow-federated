@@ -17,7 +17,7 @@ import asyncio
 from collections.abc import Awaitable
 import inspect
 import typing
-from typing import Any
+from typing import Any, Optional, Union
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -28,15 +28,15 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.program import federated_context
+from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
 class AwaitableValueReference(value_reference.MaterializableValueReference):
   """A `tff.program.MaterializableValueReference` backed by an `Awaitable`."""
 
-  def __init__(self,
-               awaitable: Awaitable[value_reference.MaterializablePythonType],
-               type_signature: value_reference.MaterializableTffType):
+  def __init__(self, awaitable: Awaitable[value_reference.MaterializedValue],
+               type_signature: value_reference.MaterializableTypeSignature):
     """Returns an initialized `tff.program.AwaitableValueReference`.
 
     Args:
@@ -46,18 +46,19 @@ class AwaitableValueReference(value_reference.MaterializableValueReference):
     if not inspect.isawaitable(awaitable):
       raise TypeError(f'Expected a `Awaitable`, found {type(awaitable)}')
     py_typecheck.check_type(
-        type_signature, typing.get_args(value_reference.MaterializableTffType))
+        type_signature,
+        typing.get_args(value_reference.MaterializableTypeSignature))
 
     self._awaitable = awaitable
     self._type_signature = type_signature
     self._value = None
 
   @property
-  def type_signature(self) -> value_reference.MaterializableTffType:
+  def type_signature(self) -> value_reference.MaterializableTypeSignature:
     """The `tff.TensorType` of this object."""
     return self._type_signature
 
-  async def get_value(self) -> value_reference.MaterializablePythonType:
+  async def get_value(self) -> value_reference.MaterializedValue:
     """Returns the referenced value as a numpy scalar or array."""
     if self._value is None:
       self._value = await self._awaitable
@@ -73,7 +74,9 @@ class AwaitableValueReference(value_reference.MaterializableValueReference):
 
 
 def _create_structure_of_awaitable_references(
-    awaitable: Awaitable[Any], type_signature: computation_types.Type) -> Any:
+    awaitable: Awaitable[value_reference.MaterializedStructure],
+    type_signature: computation_types.Type
+) -> Union[AwaitableValueReference, structure.Struct]:
   """Returns a structure of `tff.program.AwaitableValueReference`s."""
   if not inspect.isawaitable(awaitable):
     raise TypeError(f'Expected an `Awaitable`, found {type(awaitable)}')
@@ -92,7 +95,7 @@ def _create_structure_of_awaitable_references(
     shared_awaitable = async_utils.SharedAwaitable(awaitable)
 
     async def _get_item(awaitable: Awaitable[structure.Struct],
-                        index: int) -> Any:
+                        index: int) -> value_reference.MaterializedValue:
       value = await awaitable
       return value[index]
 
@@ -121,11 +124,15 @@ def _create_structure_of_awaitable_references(
 
 
 async def _materialize_structure_of_value_references(
-    value: Any, type_signature: computation_types.Type) -> Any:
+    value: value_reference.MaterializableStructure,
+    type_signature: computation_types.Type
+) -> Union[value_reference.MaterializedValue, structure.Struct]:
   """Returns a structure of materialized values."""
   py_typecheck.check_type(type_signature, computation_types.Type)
 
-  async def _materialize(value: Any) -> Any:
+  async def _materialize(
+      value: value_reference.MaterializableValue
+  ) -> value_reference.MaterializedValue:
     if isinstance(value, value_reference.MaterializableValueReference):
       return await value.get_value()
     else:
@@ -167,20 +174,27 @@ class NativeFederatedContext(federated_context.FederatedContext):
 
     self._context = context
 
-  def invoke(self, comp: computation_base.Computation, arg: Any) -> Any:
+  def invoke(
+      self, comp: computation_base.Computation,
+      arg: Optional[Union[value_reference.MaterializableStructure, Any,
+                          computation_base.Computation]]
+  ) -> structure_utils.Structure[AwaitableValueReference]:
     """Invokes the `comp` with the argument `arg`.
 
     Args:
       comp: The `tff.Computation` being invoked.
-      arg: The optional argument of `comp`.
+      arg: The optional argument of `comp`; server-placed values must be
+        represented by `tff.program.MaterializableStructure`, and client-placed
+        values must be represented by structures of values returned by a
+        `tff.program.FederatedDataSourceIterator`.
 
     Returns:
-      The result of invocation, must contain only structures, server-placed
-      values, or tensors.
+      The result of invocation; a structure of
+      `tff.program.MaterializableValueReference`.
 
     Raises:
-      ValueError: If the result type of the invoked comptuation does not contain
-      only structures, server-placed values, or tensors.
+      ValueError: If the result type of `comp` does not contain only structures,
+      server-placed values, or tensors.
     """
     py_typecheck.check_type(comp, computation_base.Computation)
     result_type = comp.type_signature.result
@@ -190,8 +204,10 @@ class NativeFederatedContext(federated_context.FederatedContext):
           'structures, server-placed values, or tensors, found '
           f'\'{result_type}\'.')
 
-    async def _invoke(context: context_base.AsyncContext,
-                      comp: computation_base.Computation, arg: Any) -> Any:
+    async def _invoke(
+        context: context_base.AsyncContext, comp: computation_base.Computation,
+        arg: value_reference.MaterializableStructure
+    ) -> value_reference.MaterializedStructure:
       if comp.type_signature.parameter is not None:
         arg = await _materialize_structure_of_value_references(
             arg, comp.type_signature.parameter)

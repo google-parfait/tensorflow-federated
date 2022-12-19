@@ -14,7 +14,7 @@
 """Defines an abstract interface for representing a federated context."""
 
 import abc
-from typing import Any
+from typing import Any, Optional, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.computation import computation_base
@@ -23,6 +23,8 @@ from tensorflow_federated.python.core.impl.context_stack import get_context_stac
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.program import structure_utils
+from tensorflow_federated.python.program import value_reference
 
 
 def contains_only_server_placed_data(
@@ -65,8 +67,8 @@ class FederatedContext(context_base.SyncContext):
   Arguments can be nested structures of values corresponding to the TensorFlow
   Federated type signature of the `tff.Computation`:
 
-  *   Server-placed values must be represented by `numpy` arrays, `tf.Tensors`,
-      or `tff.program.MaterializableValueReference`
+  *   Server-placed values must be represented by
+      `tff.program.MaterializableStucture`.
   *   Client-placed values must be represented by structures of values returned
       by a `tff.program.FederatedDataSourceIterator`.
 
@@ -121,26 +123,27 @@ class FederatedContext(context_base.SyncContext):
   """
 
   @abc.abstractmethod
-  def invoke(self, comp: computation_base.Computation, arg: Any) -> Any:
+  def invoke(
+      self, comp: computation_base.Computation,
+      arg: Optional[Union[value_reference.MaterializableStructure, Any,
+                          computation_base.Computation]]
+  ) -> structure_utils.Structure[value_reference.MaterializableValueReference]:
     """Invokes the `comp` with the argument `arg`.
 
     Args:
       comp: The `tff.Computation` being invoked.
-      arg: The optional argument of `comp` corresponding to the TensorFlow
-        Federated type signature of the `tff.Computation`; server-placed values
-        must be represented by `numpy` arrays, `tf.Tensors`, or
-        `tff.program.MaterializableValueReference`, and client-placed values
-        must be represented by structures of values returned by a
+      arg: The optional argument of `comp`; server-placed values must be
+        represented by `tff.program.MaterializableStructure`, and client-placed
+        values must be represented by structures of values returned by a
         `tff.program.FederatedDataSourceIterator`.
 
     Returns:
-      The result of invocation; will only contain structures of
-      `tff.program.MaterializableValueReference`s or a single
+      The result of invocation; a structure of
       `tff.program.MaterializableValueReference`.
 
     Raises:
-      ValueError: If the result type of the invoked comptuation does not contain
-      only structures, server-placed values, or tensors.
+      ValueError: If the result type of `comp` does not contain only structures,
+      server-placed values, or tensors.
     """
     raise NotImplementedError
 

@@ -28,7 +28,7 @@ import enum
 import os
 import os.path
 import random
-from typing import Any, Union
+from typing import Union
 
 import numpy as np
 import tensorflow as tf
@@ -56,7 +56,8 @@ class CSVSaveMode(enum.Enum):
   WRITE = 'write'
 
 
-class CSVFileReleaseManager(release_manager.ReleaseManager):
+class CSVFileReleaseManager(
+    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]):
   """A `tff.program.ReleaseManager` that releases values to a CSV file.
 
   A `tff.program.CSVFileReleaseManager` is a utility for releasing values
@@ -140,7 +141,9 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
       self._write_values([self._key_fieldname], [])
       self._latest_key = None
 
-  def _read_values(self) -> tuple[list[str], list[dict[str, Any]]]:
+  def _read_values(
+      self
+  ) -> tuple[list[str], list[dict[str, release_manager.ReleasableStructure]]]:
     """Returns a tuple of fieldnames and values from the managed CSV."""
     with tf.io.gfile.GFile(self._file_path, 'r') as file:
       reader = csv.DictReader(file)
@@ -151,8 +154,10 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
       values = list(reader)
     return fieldnames, values
 
-  def _write_values(self, fieldnames: Sequence[str],
-                    values: Iterable[Mapping[str, Any]]) -> None:
+  def _write_values(
+      self, fieldnames: Sequence[str],
+      values: Iterable[Mapping[str,
+                               release_manager.ReleasableStructure]]) -> None:
     """Writes `fieldnames` and `values` to the managed CSV."""
     py_typecheck.check_type(fieldnames, Sequence)
     if isinstance(fieldnames, str):
@@ -181,7 +186,8 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     # Rename the temporary file to the final location atomically.
     tf.io.gfile.rename(temp_path, self._file_path, overwrite=True)
 
-  async def _write_value(self, value: Mapping[str, Any]) -> None:
+  async def _write_value(
+      self, value: Mapping[str, release_manager.ReleasableStructure]) -> None:
     """Writes `value` to the managed CSV."""
     py_typecheck.check_type(value, Mapping)
     for key in value.keys():
@@ -193,13 +199,14 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     values.append(value)
     await loop.run_in_executor(None, self._write_values, fieldnames, values)
 
-  async def _append_value(self, value: Mapping[str, Any]) -> None:
+  async def _append_value(
+      self, value: Mapping[str, release_manager.ReleasableStructure]) -> None:
     """Appends `value` to the managed CSV."""
     py_typecheck.check_type(value, Mapping)
     for key in value.keys():
       py_typecheck.check_type(key, str)
 
-    def _read_fieldnames_only() -> list[Any]:
+    def _read_fieldnames_only() -> list[str]:
       with tf.io.gfile.GFile(self._file_path, 'r') as file:
         reader = csv.DictReader(file)
         if reader.fieldnames is not None:
@@ -208,8 +215,9 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
           fieldnames = []
       return fieldnames
 
-    def _append_value(fieldnames: Sequence[str], value: Mapping[str,
-                                                                Any]) -> None:
+    def _append_value(
+        fieldnames: Sequence[str],
+        value: Mapping[str, release_manager.ReleasableStructure]) -> None:
       try:
         with tf.io.gfile.GFile(self._file_path, 'a') as file:
           writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -255,8 +263,8 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
                                  filtered_values)
       self._latest_key = key
 
-  async def release(self, value: Any, type_signature: computation_types.Type,
-                    key: int) -> None:
+  async def release(self, value: release_manager.ReleasableStructure,
+                    type_signature: computation_types.Type, key: int) -> None:
     """Releases `value` from a federated program.
 
     This method will atomically update the managed CSV file by removing all
@@ -264,11 +272,9 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     writing `value`.
 
     Args:
-      value: A materialized value, a value reference, or a structure of
-        materialized values and value references representing the value to
-        release.
+      value: A `tff.program.MaterializableStructure` to release.
       type_signature: The `tff.Type` of `value`.
-      key: An integer used to reference the released `value`, `key` represents a
+      key: An integer used to reference the released `value`; `key` represents a
         step in a federated program.
     """
     del type_signature  # Unused.
@@ -280,7 +286,9 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
 
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
-    def _normalize(value: Any) -> Any:
+    def _normalize(
+        value: value_reference.MaterializedValue
+    ) -> value_reference.MaterializedValue:
       if isinstance(value, tf.data.Dataset):
         value = list(value)
       return np.array(value).tolist()
@@ -295,7 +303,8 @@ class CSVFileReleaseManager(release_manager.ReleaseManager):
     self._latest_key = key
 
 
-class SavedModelFileReleaseManager(release_manager.ReleaseManager):
+class SavedModelFileReleaseManager(
+    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]):
   """A `tff.program.ReleaseManager` that releases values to a file system.
 
   A `tff.program.SavedModelFileReleaseManager` is a utility for releasing values
@@ -353,16 +362,15 @@ class SavedModelFileReleaseManager(release_manager.ReleaseManager):
     basename = f'{self._prefix}{key}'
     return os.path.join(self._root_dir, basename)
 
-  async def release(self, value: Any, type_signature: computation_types.Type,
-                    key: int) -> None:
+  async def release(self, value: release_manager.ReleasableStructure,
+                    type_signature: computation_types.Type, key: int) -> None:
     """Releases `value` from a federated program.
 
     Args:
-      value: A materialized value, a value reference, or a structure of
-        materialized values and value references representing the value to
-        release.
+      value: A `tff.program.MaterializableStructure` to release.
       type_signature: The `tff.Type` of `value`.
-      key: An integer used to reference the released `value`.
+      key: An integer used to reference the released `value`; `key` represents a
+        step in a federated program.
     """
     del type_signature  # Unused.
     py_typecheck.check_type(key, (int, np.integer))

@@ -54,7 +54,7 @@ class Capability(enum.Enum):
   SUPPORTS_REUSE = 4
 
 
-class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
+class FederatedDataSourceIterator(abc.ABC):
   """An abstract interface for representing federated data source iterators.
 
   This interface abstracts away the specifics of iterating over data in a data
@@ -102,7 +102,7 @@ class FederatedDataSourceIterator(metaclass=abc.ABCMeta):
     raise NotImplementedError
 
 
-class FederatedDataSource(metaclass=abc.ABCMeta):
+class FederatedDataSource(abc.ABC):
   """An abstract interface for representing federated data sources.
 
   This interface abstracts away the specifics of working with various types of
