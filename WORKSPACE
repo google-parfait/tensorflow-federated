@@ -39,13 +39,21 @@ git_repository(
 git_repository(
     name = "org_tensorflow",
     patches = [
+        # Depending on restricted visibility BUILD target om external git
+        # repository does not seem to be supported.
+        # E.g. issue: https://github.com/bazelbuild/bazel/issues/3744
+        # TODO(b/263201501): Make DTensor C++ API public and remove this patch.
+        "//third_party/tensorflow:dtensor_internal_visibility.patch",
         "//third_party/tensorflow:internal_visibility.patch",
         "//third_party/tensorflow:tf2xla_visibility.patch",
     ],
     remote = "https://github.com/tensorflow/tensorflow.git",
+    # TODO(b/256948367): Temporarily updating the version of TF past the version
+    # in https://github.com/tensorflow/federated/blob/main/requirements.txt.
+    #
     # The version of this dependency should match the version in
     # https://github.com/tensorflow/federated/blob/main/requirements.txt.
-    tag = "v2.11.0",
+   commit = "b517bde1f9e9231e4816b98522f2d2851840b743"
 )
 
 git_repository(

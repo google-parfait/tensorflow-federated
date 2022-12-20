@@ -1,0 +1,12 @@
+diff --git tensorflow/dtensor/BUILD tensorflow/dtensor/BUILD
+index f1a9c5a37af..3b1f3ad4b7f 100644
+--- tensorflow/dtensor/BUILD
++++ tensorflow/dtensor/BUILD
+@@ -24,6 +24,6 @@ package_group(
+         "//tensorflow/core/...",
+         "//tensorflow/dtensor/...",
+         "//tensorflow/python/...",
+-        "//tensorflow_federated/cc/core/...",  #  Needs access to C++ API for dtensor device
++        "//...",  #  Needs access to C++ API for dtensor device
+     ],
+ )
