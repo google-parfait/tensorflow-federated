@@ -367,8 +367,8 @@ class CreateStructureOfAwaitableReferencesTest(parameterized.TestCase,
     expected_flattened = structure.flatten(expected_value)
     expected_materialized = await asyncio.gather(
         *[v.get_value() for v in expected_flattened],
-        *[v.get_value() for v in actual_flattened],
-        *[v.get_value() for v in actual_flattened])
+        *[v.get_value() for v in expected_flattened],
+        *[v.get_value() for v in expected_flattened])
     self.assertEqual(actual_materialized, expected_materialized)
 
   @parameterized.named_parameters(
