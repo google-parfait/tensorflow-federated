@@ -197,6 +197,31 @@ cc_test(
 )
 
 cc_library(
+    name = "dtensor_executor",
+    srcs = ["dtensor_executor.cc"],
+    hdrs = ["dtensor_executor.h"],
+    deps = [
+        ":executor",
+        ":tensor_serialization",
+        ":threading",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@org_tensorflow//tensorflow/c:c_api_experimental",
+        "@org_tensorflow//tensorflow/c:tf_datatype",
+        "@org_tensorflow//tensorflow/c:tf_status_headers",
+        "@org_tensorflow//tensorflow/c:tf_tensor_internal",
+        "@org_tensorflow//tensorflow/c/eager:c_api",
+        "@org_tensorflow//tensorflow/c/eager:tfe_tensorhandle_internal",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
+        "@org_tensorflow//tensorflow/core/common_runtime:core",
+        "@org_tensorflow//tensorflow/core/platform:status",
+        "@org_tensorflow//tensorflow/core/platform:statusor",
+    ],
+)
+
+cc_library(
     name = "eager_computation",
     srcs = ["eager_computation.cc"],
     hdrs = ["eager_computation.h"],
@@ -789,8 +814,8 @@ cc_library(
 )
 
 tff_cc_cpu_gpu_test(
-    name = "tensorflow_executor_test",
-    srcs = ["tensorflow_executor_test.cc"],
+    name = "tensorflow_executor_parameterized_test",
+    srcs = ["tensorflow_executor_parameterized_test.cc"],
     args = [
         "--reduce_graph_path",
         "$(location reduce_lambda_test.pbtxt)",
@@ -798,6 +823,7 @@ tff_cc_cpu_gpu_test(
     data = ["reduce_lambda_test.pbtxt"],
     env = {"TF_XLA_FLAGS": "--tf_mlir_enable_mlir_bridge=true"},
     deps = [
+        ":dtensor_executor",
         ":executor",
         ":protobuf_matchers",
         ":status_macros",

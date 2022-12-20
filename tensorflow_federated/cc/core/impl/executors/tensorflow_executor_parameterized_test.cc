@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License
 ==============================================================================*/
 
-#include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
-
 #include <fcntl.h>
 
 #include <cstdint>
 #include <future>  // NOLINT
 #include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -43,10 +43,12 @@ limitations under the License
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/platform/tstring.h"
+#include "tensorflow_federated/cc/core/impl/executors/dtensor_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/protobuf_matchers.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
+#include "tensorflow_federated/cc/core/impl/executors/tensorflow_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/value_test_utils.h"
 #include "tensorflow_federated/proto/v0/computation.pb.h"
 #include "tensorflow_federated/proto/v0/executor.pb.h"
@@ -66,6 +68,7 @@ using ::tensorflow_federated::testing::TensorV;
 using ::tensorflow_federated::testing::TensorVFromIntList;
 using ::tensorflow_federated::testing::intrinsic::ArgsIntoSequenceV;
 using ::testing::HasSubstr;
+using ::testing::Types;
 
 template <class TfOp>
 inline v0::TensorFlow::Binding TensorB(const TfOp& op) {
@@ -93,11 +96,49 @@ inline v0::TensorFlow::Binding StructB(
   return binding;
 }
 
+// Placeholder Classes for parameterized testing
+class TensorflowExecutor {};
+class DTensorExecutor {};
+
+template <class T>
+std::shared_ptr<Executor> CreateExecutor();
+
+template <>
+std::shared_ptr<Executor> CreateExecutor<TensorflowExecutor>() {
+  return CreateTensorFlowExecutor(/*max_concurrent_computation_calls=*/10);
+}
+
+template <>
+std::shared_ptr<Executor> CreateExecutor<DTensorExecutor>() {
+  TF_Status* status = TF_NewStatus();
+  std::unique_ptr<TFE_ContextOptions, decltype(&TFE_DeleteContextOptions)> opts(
+      TFE_NewContextOptions(), TFE_DeleteContextOptions);
+  std::unique_ptr<TFE_Context, decltype(&TFE_DeleteContext)> context(
+      TFE_NewContext(opts.get(), status), TFE_DeleteContext);
+  TF_DeleteStatus(status);
+  return CreateDTensorExecutor(std::nullopt, std::move(context),
+                               /*max_concurrent_computation_calls=*/10);
+}
+
+// Enum for Parameterized typed tests.
+enum ExecutorId { kDTensorExecutor, kTensorFlowExecutor };
+
+template <class T>
+ExecutorId ExecutorType() {}
+
+template <>
+ExecutorId ExecutorType<DTensorExecutor>() {
+  return kDTensorExecutor;
+}
+
+template <>
+ExecutorId ExecutorType<TensorflowExecutor>() {
+  return kTensorFlowExecutor;
+}
 inline v0::Value ComputationV(
-    absl::optional<v0::TensorFlow::Binding> in_binding,
+    std::optional<v0::TensorFlow::Binding> in_binding,
     v0::TensorFlow::Binding out_binding, const tensorflow::Scope& scope,
-    const absl::optional<const tensorflow::Operation>& init_op =
-        absl::nullopt) {
+    const absl::optional<const tensorflow::Operation>& init_op = std::nullopt) {
   v0::Value value_pb;
   v0::Computation* comp_pb = value_pb.mutable_computation();
   // NOTE: we do not fill in the `type` field of `comp` because it is not needed
@@ -117,12 +158,10 @@ inline v0::Value ComputationV(
   return value_pb;
 }
 
-class TensorFlowExecutorTest : public ::testing::Test {
+template <class T>
+class TensorFlowBasedExecutorsTest : public ::testing::Test {
  public:
-  TensorFlowExecutorTest() {
-    test_executor_ =
-        CreateTensorFlowExecutor(/*max_concurrent_computation_calls=*/10);
-  }
+  TensorFlowBasedExecutorsTest() { test_executor_ = CreateExecutor<T>(); }
   std::shared_ptr<Executor> test_executor_;
   void CheckRoundTrip(const v0::Value& input_pb) {
     TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId id,
@@ -132,6 +171,8 @@ class TensorFlowExecutorTest : public ::testing::Test {
     EXPECT_THAT(output_pb, testing::proto::IgnoringRepeatedFieldOrdering(
                                EqualsProto(input_pb)));
   }
+
+  ExecutorId Type() { return ExecutorType<T>(); }
 
   template <typename... Ts>
   void CheckTensorRoundTrip(Ts... tensor_constructor_args) {
@@ -143,7 +184,7 @@ class TensorFlowExecutorTest : public ::testing::Test {
                             const absl::optional<v0::Value>& arg,
                             const v0::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-    absl::optional<OwnedValueId> arg_id;
+    std::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
       TFF_ASSERT_OK_AND_ASSIGN(arg_id,
                                test_executor_->CreateValue(arg.value()));
@@ -159,7 +200,7 @@ class TensorFlowExecutorTest : public ::testing::Test {
                                       const absl::optional<v0::Value>& arg,
                                       const v0::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-    absl::optional<OwnedValueId> arg_id;
+    std::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
       TFF_ASSERT_OK_AND_ASSIGN(arg_id,
                                test_executor_->CreateValue(arg.value()));
@@ -177,7 +218,7 @@ class TensorFlowExecutorTest : public ::testing::Test {
                                     const absl::optional<v0::Value>& arg,
                                     const v0::Value& expected) {
     TFF_ASSERT_OK_AND_ASSIGN(auto fn_id, test_executor_->CreateValue(fn));
-    absl::optional<OwnedValueId> arg_id;
+    std::optional<OwnedValueId> arg_id;
     if (arg.has_value()) {
       TFF_ASSERT_OK_AND_ASSIGN(arg_id,
                                test_executor_->CreateValue(arg.value()));
@@ -202,16 +243,20 @@ class TensorFlowExecutorTest : public ::testing::Test {
   }
 };
 
-TEST_F(TensorFlowExecutorTest, CreateValueEmptyStruct) {
+typedef Types<TensorflowExecutor, DTensorExecutor> Implementations;
+
+TYPED_TEST_SUITE(TensorFlowBasedExecutorsTest, Implementations);
+
+TYPED_TEST(TensorFlowBasedExecutorsTest, CreateValueEmptyStruct) {
   v0::Value input_pb;
   input_pb.mutable_struct_();
-  EXPECT_THAT(test_executor_->CreateValue(input_pb), IsOk());
+  EXPECT_THAT(this->test_executor_->CreateValue(input_pb), IsOk());
 }
 
-TEST_F(TensorFlowExecutorTest, CreateValueSimpleTensor) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CreateValueSimpleTensor) {
   int8_t input_int = 9;
   v0::Value input_pb = TensorV(input_int);
-  EXPECT_THAT(test_executor_->CreateValue(input_pb), IsOk());
+  EXPECT_THAT(this->test_executor_->CreateValue(input_pb), IsOk());
 }
 
 // Returns a `GraphDef` whose serialized form is stored in a file at `path`.
@@ -252,55 +297,61 @@ v0::Value CreateDatasetReduceComputationV() {
   return value_pb;
 }
 
-TEST_F(TensorFlowExecutorTest, CallReduceOnSequence) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CallReduceOnSequence) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Sequences not supported in DTensor Executor yet";
+  }
   int64_t start = 0;
   int64_t stop = 10;
   int64_t step = 2;
   int64_t expected_sum = 0 + 2 + 4 + 6 + 8;
   auto sequence = SequenceV(start, stop, step);
   auto sequence2 = SequenceV(4, 5, 1);
-  CheckCallEqualsProto(CreateDatasetReduceComputationV(), sequence,
-                       TensorV(expected_sum));
+  this->CheckCallEqualsProto(CreateDatasetReduceComputationV(), sequence,
+                             TensorV(expected_sum));
 }
 
-TEST_F(TensorFlowExecutorTest, RoundTripEmptyStruct) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripEmptyStruct) {
   v0::Value input_pb;
   input_pb.mutable_struct_();
-  CheckRoundTrip(input_pb);
+  this->CheckRoundTrip(input_pb);
 }
 
-TEST_F(TensorFlowExecutorTest, RoundTripSimpleTensor) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripSimpleTensor) {
   int8_t an_int = 9;
-  CheckTensorRoundTrip(an_int);
+  this->CheckTensorRoundTrip(an_int);
   float a_float = 1.0;
-  CheckTensorRoundTrip(a_float);
+  this->CheckTensorRoundTrip(a_float);
   const char* a_string = "fooey";
-  CheckTensorRoundTrip(a_string);
+  this->CheckTensorRoundTrip(a_string);
 }
 
-TEST_F(TensorFlowExecutorTest, RoundTripStructWithTensor) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripStructWithTensor) {
   v0::Value input_pb = StructV({TensorV(9)});
-  CheckRoundTrip(input_pb);
+  this->CheckRoundTrip(input_pb);
 }
 
-TEST_F(TensorFlowExecutorTest, RoundTripStructOfNestedTensors) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripStructOfNestedTensors) {
   v0::Value input_pb = StructV({StructV({TensorV(24)}), TensorV(88)});
-  CheckRoundTrip(input_pb);
+  this->CheckRoundTrip(input_pb);
 }
 
-TEST_F(TensorFlowExecutorTest, RoundTripSequence) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, RoundTripSequence) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Sequences not supported in DTensor Executor yet";
+  }
   tensorflow::tstring graph_def = CreateSerializedRangeDatasetGraphDef(
       /*start=*/0, /*stop=*/10, /*step=*/1);
   v0::Value value_pb;
   v0::Value::Sequence* sequence_pb = value_pb.mutable_sequence();
   *sequence_pb->mutable_serialized_graph_def() =
       std::string(graph_def.data(), graph_def.size());
-  // We can't simply `CheckRoundTrip` because the serialized graph defs
+  // We can't simply `this->CheckRoundTrip` because the serialized graph defs
   // don't have deterministic node orders.
   TFF_ASSERT_OK_AND_ASSIGN(OwnedValueId id,
-                           test_executor_->CreateValue(value_pb));
+                           this->test_executor_->CreateValue(value_pb));
   v0::Value output_pb;
-  EXPECT_THAT(test_executor_->Materialize(id, &output_pb), IsOk());
+  EXPECT_THAT(this->test_executor_->Materialize(id, &output_pb), IsOk());
   // Compare GraphDef protos without ordering.
   tensorflow::GraphDef input_graph_def;
   ASSERT_TRUE(input_graph_def.ParseFromString(graph_def));
@@ -312,65 +363,77 @@ TEST_F(TensorFlowExecutorTest, RoundTripSequence) {
                   EqualsProto(input_graph_def)));
 }
 
-TEST_F(TensorFlowExecutorTest, CreateStructOneElement) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CreateStructOneElement) {
   v0::Value input = TensorV(5);
-  TFF_ASSERT_OK_AND_ASSIGN(auto value, test_executor_->CreateValue(input));
-  TFF_ASSERT_OK_AND_ASSIGN(auto struct_, test_executor_->CreateStruct({value}));
-  TFF_ASSERT_OK_AND_ASSIGN(auto output, test_executor_->Materialize(struct_));
+  TFF_ASSERT_OK_AND_ASSIGN(auto value,
+                           this->test_executor_->CreateValue(input));
+  TFF_ASSERT_OK_AND_ASSIGN(auto struct_,
+                           this->test_executor_->CreateStruct({value}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto output,
+                           this->test_executor_->Materialize(struct_));
   EXPECT_THAT(output, EqualsProto(StructV({input})));
 }
 
-TEST_F(TensorFlowExecutorTest, CreateStructSeveralElements) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CreateStructSeveralElements) {
   v0::Value t1 = TensorV(5);
   v0::Value t2 = TensorV(6);
   v0::Value t3 = TensorV(7);
   v0::Value struct_ = StructV({TensorV(5), TensorV(6), TensorV(7)});
-  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(t1));
-  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(t2));
-  TFF_ASSERT_OK_AND_ASSIGN(auto t3id, test_executor_->CreateValue(t3));
-  TFF_ASSERT_OK_AND_ASSIGN(auto structid,
-                           test_executor_->CreateStruct({t1id, t2id, t3id}));
-  TFF_ASSERT_OK_AND_ASSIGN(auto output, test_executor_->Materialize(structid));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, this->test_executor_->CreateValue(t1));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, this->test_executor_->CreateValue(t2));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t3id, this->test_executor_->CreateValue(t3));
+  TFF_ASSERT_OK_AND_ASSIGN(
+      auto structid, this->test_executor_->CreateStruct({t1id, t2id, t3id}));
+  TFF_ASSERT_OK_AND_ASSIGN(auto output,
+                           this->test_executor_->Materialize(structid));
   EXPECT_THAT(output, EqualsProto(struct_));
 }
 
-TEST_F(TensorFlowExecutorTest, CreateSelectionFromCreateValue) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CreateSelectionFromCreateValue) {
   v0::Value input = StructV({TensorV(1), TensorV(2)});
-  TFF_ASSERT_OK_AND_ASSIGN(auto vid, test_executor_->CreateValue(input));
-  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateSelection(vid, 0));
-  TFF_ASSERT_OK_AND_ASSIGN(auto t1, test_executor_->Materialize(t1id));
+  TFF_ASSERT_OK_AND_ASSIGN(auto vid, this->test_executor_->CreateValue(input));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id,
+                           this->test_executor_->CreateSelection(vid, 0));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1, this->test_executor_->Materialize(t1id));
   EXPECT_THAT(t1, EqualsProto(TensorV(1)));
 }
 
-TEST_F(TensorFlowExecutorTest, CreateSelectionFromCreateStruct) {
-  TFF_ASSERT_OK_AND_ASSIGN(auto t1id, test_executor_->CreateValue(TensorV(1)));
-  TFF_ASSERT_OK_AND_ASSIGN(auto t2id, test_executor_->CreateValue(TensorV(2)));
+TYPED_TEST(TensorFlowBasedExecutorsTest, CreateSelectionFromCreateStruct) {
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1id,
+                           this->test_executor_->CreateValue(TensorV(1)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t2id,
+                           this->test_executor_->CreateValue(TensorV(2)));
   TFF_ASSERT_OK_AND_ASSIGN(auto structid,
-                           test_executor_->CreateStruct({t1id, t2id}));
+                           this->test_executor_->CreateStruct({t1id, t2id}));
   TFF_ASSERT_OK_AND_ASSIGN(auto selectedid,
-                           test_executor_->CreateSelection(structid, 1));
+                           this->test_executor_->CreateSelection(structid, 1));
   TFF_ASSERT_OK_AND_ASSIGN(auto selected,
-                           test_executor_->Materialize(selectedid));
+                           this->test_executor_->Materialize(selectedid));
   EXPECT_THAT(selected, EqualsProto(TensorV(2)));
 }
 
-TEST_F(TensorFlowExecutorTest, CreateSelectionNonStructImmediate) {
-  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(TensorV(1)));
-  TFF_ASSERT_OK_AND_ASSIGN(auto t1, test_executor_->Materialize(id));
-  EXPECT_THAT(test_executor_->CreateSelection(id, 0),
+TYPED_TEST(TensorFlowBasedExecutorsTest, CreateSelectionNonStructImmediate) {
+  TFF_ASSERT_OK_AND_ASSIGN(auto id,
+                           this->test_executor_->CreateValue(TensorV(1)));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1, this->test_executor_->Materialize(id));
+  EXPECT_THAT(this->test_executor_->CreateSelection(id, 0),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "Cannot create selection on non-struct value."));
 }
 
-TEST_F(TensorFlowExecutorTest, CreateSelectionOOBImmediate) {
-  TFF_ASSERT_OK_AND_ASSIGN(auto id, test_executor_->CreateValue(StructV({})));
-  TFF_ASSERT_OK_AND_ASSIGN(auto t1, test_executor_->Materialize(id));
-  EXPECT_THAT(test_executor_->CreateSelection(id, 0),
+TYPED_TEST(TensorFlowBasedExecutorsTest, CreateSelectionOOBImmediate) {
+  TFF_ASSERT_OK_AND_ASSIGN(auto id,
+                           this->test_executor_->CreateValue(StructV({})));
+  TFF_ASSERT_OK_AND_ASSIGN(auto t1, this->test_executor_->Materialize(id));
+  EXPECT_THAT(this->test_executor_->CreateSelection(id, 0),
               StatusIs(absl::StatusCode::kInvalidArgument,
                        "Attempted to access index 0 of a 0-length struct."));
 }
 
-TEST_F(TensorFlowExecutorTest, CallNoOutputTensors) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CallNoOutputTensors) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
+  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder x(root, tensorflow::DT_FLOAT);
   tensorflow::ops::Placeholder y(root, tensorflow::DT_FLOAT);
@@ -379,18 +442,22 @@ TEST_F(TensorFlowExecutorTest, CallNoOutputTensors) {
 
   auto in_binding = StructB({TensorB(x), TensorB(y)});
 
-  // Check that we can make the output binding any old weird shape
+  // this->Check that we can make the output binding any old weird shape
   // so long as it has no tensors.
   auto out_binding = StructB({StructB({}), StructB({StructB({})})});
 
   v0::Value fn = ComputationV(in_binding, out_binding, root);
-  v0::Value arg = StructV({TensorV(1.0), TensorV(2.0)});
+  v0::Value arg = StructV(
+      {TensorV(static_cast<float>(1.0)), TensorV(static_cast<float>(2.0))});
   v0::Value expected = StructV({StructV({}), StructV({StructV({})})});
-  CheckCallEqualsProto(fn, arg, expected);
-  CheckCallRepeatedlyEqualsProto(fn, arg, expected);
+  this->CheckCallEqualsProto(fn, arg, expected);
+  this->CheckCallRepeatedlyEqualsProto(fn, arg, expected);
 }
 
-TEST_F(TensorFlowExecutorTest, CallNoArgOneOutWithInitialize) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CallNoArgOneOutWithInitialize) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
+  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::TensorShape shape({3});
   tensorflow::ops::VarHandleOp var(root, tensorflow::DT_INT32, shape);
@@ -398,27 +465,33 @@ TEST_F(TensorFlowExecutorTest, CallNoArgOneOutWithInitialize) {
       root, var, tensorflow::ops::Const(root, {1, 2, 3}, shape));
   tensorflow::ops::ReadVariableOp read_var(root, var, tensorflow::DT_INT32);
   v0::Value fn = ComputationV(
-      /*in_binding=*/absl::nullopt,
+      /*in_binding=*/std::nullopt,
       /*out_binding=*/TensorB(read_var), root,
       /*init_op=*/var_init);
   v0::Value expected = TensorVFromIntList({1, 2, 3});
-  CheckCallEqualsProto(fn, absl::nullopt, expected);
+  this->CheckCallEqualsProto(fn, std::nullopt, expected);
   // Ensure that repeatedly using the same session from the session provider
   // works correctly.
-  CheckCallRepeatedlyEqualsProto(fn, absl::nullopt, expected);
+  this->CheckCallRepeatedlyEqualsProto(fn, std::nullopt, expected);
 }
 
-TEST_F(TensorFlowExecutorTest, CallOneInOut) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CallOneInOut) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
+  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder in(root, tensorflow::DT_DOUBLE);
   tensorflow::ops::Identity out(root, in);
   v0::Value fn = ComputationV(TensorB(in), TensorB(out), root);
   v0::Value arg = TensorV(5.0);
   v0::Value expected = TensorV(5.0);
-  CheckCallEqualsProto(fn, arg, expected);
+  this->CheckCallEqualsProto(fn, arg, expected);
 }
 
-TEST_F(TensorFlowExecutorTest, CallStructSwapInOut) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CallStructSwapInOut) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
+  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder xin(root, tensorflow::DT_DOUBLE);
   tensorflow::ops::Placeholder yin(root, tensorflow::DT_INT32);
@@ -428,10 +501,13 @@ TEST_F(TensorFlowExecutorTest, CallStructSwapInOut) {
                               StructB({TensorB(yout), TensorB(xout)}), root);
   v0::Value arg = StructV({TensorV(5.0), TensorV(1)});
   v0::Value expected = StructV({TensorV(1), TensorV(5.0)});
-  CheckCallEqualsProto(fn, arg, expected);
+  this->CheckCallEqualsProto(fn, arg, expected);
 }
 
-TEST_F(TensorFlowExecutorTest, CallNestedStructSwapInOut) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CallNestedStructSwapInOut) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
+  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder xin(root, tensorflow::DT_DOUBLE);
   tensorflow::ops::Placeholder yin(root, tensorflow::DT_INT32);
@@ -442,10 +518,13 @@ TEST_F(TensorFlowExecutorTest, CallNestedStructSwapInOut) {
                    StructB({TensorB(yout), StructB({TensorB(xout)})}), root);
   v0::Value arg = StructV({StructV({TensorV(2.0)}), TensorV(4)});
   v0::Value expected = StructV({TensorV(4), StructV({TensorV(2.0)})});
-  CheckCallEqualsProto(fn, arg, expected);
+  this->CheckCallEqualsProto(fn, arg, expected);
 }
 
-TEST_F(TensorFlowExecutorTest, CallAdd) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CallAdd) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
+  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder x(root, tensorflow::DT_INT32);
   tensorflow::ops::Placeholder y(root, tensorflow::DT_INT32);
@@ -454,10 +533,13 @@ TEST_F(TensorFlowExecutorTest, CallAdd) {
       ComputationV(StructB({TensorB(x), TensorB(y)}), TensorB(out), root);
   v0::Value arg = StructV({TensorV(1), TensorV(2)});
   v0::Value expected = TensorV(3);
-  CheckCallEqualsProto(fn, arg, expected);
+  this->CheckCallEqualsProto(fn, arg, expected);
 }
 
-TEST_F(TensorFlowExecutorTest, StatefulCallGetsReinitialized) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, StatefulCallGetsReinitialized) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
+  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::TensorShape shape({});
   tensorflow::ops::VarHandleOp var(root, tensorflow::DT_INT32, shape);
@@ -468,14 +550,17 @@ TEST_F(TensorFlowExecutorTest, StatefulCallGetsReinitialized) {
   tensorflow::ops::ReadVariableOp read_var(
       root.WithControlDependencies({var_add_assign}), var,
       tensorflow::DT_INT32);
-  v0::Value fn = ComputationV(absl::nullopt, TensorB(read_var), root, var_init);
+  v0::Value fn = ComputationV(std::nullopt, TensorB(read_var), root, var_init);
   v0::Value expected = TensorV(1);
-  CheckCallEqualsProto(fn, absl::nullopt, expected);
-  CheckCallRepeatedlyEqualsProto(fn, absl::nullopt, expected);
-  CheckCallParallelEqualsProto(fn, absl::nullopt, expected);
+  this->CheckCallEqualsProto(fn, std::nullopt, expected);
+  this->CheckCallRepeatedlyEqualsProto(fn, std::nullopt, expected);
+  this->CheckCallParallelEqualsProto(fn, std::nullopt, expected);
 }
 
-TEST_F(TensorFlowExecutorTest, CallWithComputationId) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, CallWithComputationId) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Computation Call not implemented in DTensor Executor yet";
+  }
   tensorflow::Scope root = tensorflow::Scope::NewRootScope();
   tensorflow::ops::Placeholder x(root, tensorflow::DT_INT32);
   tensorflow::ops::Placeholder y(root, tensorflow::DT_INT32);
@@ -488,51 +573,65 @@ TEST_F(TensorFlowExecutorTest, CallWithComputationId) {
   v0::Value arg = StructV({TensorV(1), TensorV(2)});
   v0::Value expected = TensorV(3);
   // First call will populate the cache.
-  CheckCallEqualsProto(fn, arg, expected);
+  this->CheckCallEqualsProto(fn, arg, expected);
   // Call a second time to exercise the cache.
-  CheckCallEqualsProto(fn, arg, expected);
+  this->CheckCallEqualsProto(fn, arg, expected);
 }
 
-TEST_F(TensorFlowExecutorTest, CallArgsIntoSequenceRequiresAtLeastOneArgument) {
+TYPED_TEST(TensorFlowBasedExecutorsTest,
+           CallArgsIntoSequenceRequiresAtLeastOneArgument) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Sequences not supported in DTensor Executor yet";
+  }
   OwnedValueId args_into_sequence =
-      TFF_ASSERT_OK(test_executor_->CreateValue(ArgsIntoSequenceV()));
+      TFF_ASSERT_OK(this->test_executor_->CreateValue(ArgsIntoSequenceV()));
   OwnedValueId structures =
-      TFF_ASSERT_OK(test_executor_->CreateValue(StructV({})));
-  OwnedValueId result_id =
-      TFF_ASSERT_OK(test_executor_->CreateCall(args_into_sequence, structures));
-  EXPECT_THAT(test_executor_->Materialize(result_id),
+      TFF_ASSERT_OK(this->test_executor_->CreateValue(StructV({})));
+  OwnedValueId result_id = TFF_ASSERT_OK(
+      this->test_executor_->CreateCall(args_into_sequence, structures));
+  EXPECT_THAT(this->test_executor_->Materialize(result_id),
               StatusIs(StatusCode::kInvalidArgument, HasSubstr("zero-length")));
 }
 
-TEST_F(TensorFlowExecutorTest, CallArgsIntoSequenceStructureReturnsSequence) {
+TYPED_TEST(TensorFlowBasedExecutorsTest,
+           CallArgsIntoSequenceStructureReturnsSequence) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Sequences not supported in DTensor Executor yet";
+  }
   OwnedValueId args_into_sequence =
-      TFF_ASSERT_OK(test_executor_->CreateValue(ArgsIntoSequenceV()));
-  OwnedValueId structures = TFF_ASSERT_OK(test_executor_->CreateValue(StructV({
-      StructV({TensorV(1.0), TensorV("foo")}),
-      StructV({TensorV(2.0), TensorV("bar")}),
-  })));
-  OwnedValueId result_id =
-      TFF_ASSERT_OK(test_executor_->CreateCall(args_into_sequence, structures));
-  v0::Value result = TFF_ASSERT_OK(test_executor_->Materialize(result_id));
+      TFF_ASSERT_OK(this->test_executor_->CreateValue(ArgsIntoSequenceV()));
+  OwnedValueId structures =
+      TFF_ASSERT_OK(this->test_executor_->CreateValue(StructV({
+          StructV({TensorV(1.0), TensorV("foo")}),
+          StructV({TensorV(2.0), TensorV("bar")}),
+      })));
+  OwnedValueId result_id = TFF_ASSERT_OK(
+      this->test_executor_->CreateCall(args_into_sequence, structures));
+  v0::Value result =
+      TFF_ASSERT_OK(this->test_executor_->Materialize(result_id));
   EXPECT_TRUE(result.has_sequence()) << result.ShortDebugString();
 }
 
-TEST_F(TensorFlowExecutorTest, ArgsIntoSequenceReturnsReducible) {
+TYPED_TEST(TensorFlowBasedExecutorsTest, ArgsIntoSequenceReturnsReducible) {
+  if (this->Type() == kDTensorExecutor) {
+    GTEST_SKIP() << "Sequences not supported in DTensor Executor yet";
+  }
   v0::Value elements_pb =
       StructV({TensorV(int64_t{1}), TensorV(int64_t{10}), TensorV(int64_t{100}),
                TensorV(int64_t{1000})});
   const int64_t expected_sum = 1111;
   OwnedValueId args_into_sequence =
-      TFF_ASSERT_OK(test_executor_->CreateValue(ArgsIntoSequenceV()));
+      TFF_ASSERT_OK(this->test_executor_->CreateValue(ArgsIntoSequenceV()));
   OwnedValueId elements =
-      TFF_ASSERT_OK(test_executor_->CreateValue(elements_pb));
-  OwnedValueId sequence =
-      TFF_ASSERT_OK(test_executor_->CreateCall(args_into_sequence, elements));
+      TFF_ASSERT_OK(this->test_executor_->CreateValue(elements_pb));
+  OwnedValueId sequence = TFF_ASSERT_OK(
+      this->test_executor_->CreateCall(args_into_sequence, elements));
   OwnedValueId reduce = TFF_ASSERT_OK(
-      test_executor_->CreateValue(CreateDatasetReduceComputationV()));
+      this->test_executor_->CreateValue(CreateDatasetReduceComputationV()));
   OwnedValueId result_id =
-      TFF_ASSERT_OK(test_executor_->CreateCall(reduce, sequence));
-  v0::Value result = TFF_ASSERT_OK(test_executor_->Materialize(result_id));
+      TFF_ASSERT_OK(this->test_executor_->CreateCall(reduce, sequence));
+  v0::Value result =
+      TFF_ASSERT_OK(this->test_executor_->Materialize(result_id));
   EXPECT_THAT(result, EqualsProto(TensorV(expected_sum)));
 }
 
