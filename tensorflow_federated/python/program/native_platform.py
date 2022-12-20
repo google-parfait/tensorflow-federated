@@ -17,7 +17,7 @@ import asyncio
 from collections.abc import Awaitable
 import inspect
 import typing
-from typing import Any, Optional, Union
+from typing import Any, Optional, TypeVar, Union
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -30,6 +30,19 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.program import federated_context
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
+
+
+# pyformat: disable
+_T = TypeVar('_T')
+# This type defines values of type `_T` nested in a structure of
+# `tff.structure.Struct`'s.
+# TODO(b/232433269) Update `tff.structure.Struct` to be able to define nested
+# homogeneous structures of `tff.structure.Struct`s.
+_StructStructure = Union[
+    _T,
+    structure.Struct,
+]
+# pyformat: enable
 
 
 class AwaitableValueReference(value_reference.MaterializableValueReference):
@@ -76,7 +89,7 @@ class AwaitableValueReference(value_reference.MaterializableValueReference):
 def _create_structure_of_awaitable_references(
     awaitable: Awaitable[value_reference.MaterializedStructure],
     type_signature: computation_types.Type
-) -> Union[AwaitableValueReference, structure.Struct]:
+) -> _StructStructure[AwaitableValueReference]:
   """Returns a structure of `tff.program.AwaitableValueReference`s."""
   if not inspect.isawaitable(awaitable):
     raise TypeError(f'Expected an `Awaitable`, found {type(awaitable)}')
@@ -126,7 +139,7 @@ def _create_structure_of_awaitable_references(
 async def _materialize_structure_of_value_references(
     value: value_reference.MaterializableStructure,
     type_signature: computation_types.Type
-) -> Union[value_reference.MaterializedValue, structure.Struct]:
+) -> _StructStructure[value_reference.MaterializedValue]:
   """Returns a structure of materialized values."""
   py_typecheck.check_type(type_signature, computation_types.Type)
 

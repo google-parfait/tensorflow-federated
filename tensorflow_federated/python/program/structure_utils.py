@@ -22,7 +22,7 @@ import tree
 
 # pyformat: disable
 _T = TypeVar('_T')
-# This type describes the structures supported by the `tff.program` API, meaning
+# This type defines the structures supported by the `tff.program` API, meaning
 # values of type `_T` nested in structures defined by this type. For an example
 # of how to use this type see `tff.program.MaterializedStructure`.
 Structure = Union[
