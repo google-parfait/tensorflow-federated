@@ -197,6 +197,51 @@ cc_test(
 )
 
 cc_library(
+    name = "dtensor_api",
+    srcs = ["dtensor_api.cc"],
+    hdrs = ["dtensor_api.h"],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@org_tensorflow//tensorflow/c:c_api_experimental",
+        "@org_tensorflow//tensorflow/c:tf_datatype",
+        "@org_tensorflow//tensorflow/c:tf_status_headers",
+        "@org_tensorflow//tensorflow/c/eager:c_api",
+        "@org_tensorflow//tensorflow/c/eager:tfe_op_internal",
+        "@org_tensorflow//tensorflow/core:core_cpu_base",
+        "@org_tensorflow//tensorflow/core/common_runtime:core",
+        "@org_tensorflow//tensorflow/dtensor/cc:dtensor_device_cc",
+        "@org_tensorflow//tensorflow/dtensor/cc:dtensor_device_util",
+        "@org_tensorflow//tensorflow/dtensor/cc:mesh_type",
+        "@org_tensorflow//tensorflow/dtensor/cc:tensor_layout",
+    ],
+)
+
+cc_test(
+    name = "dtensor_api_test",
+    srcs = ["dtensor_api_test.cc"],
+    deps = [
+        ":dtensor_api",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "@com_google_absl//absl/log:check",
+        "@org_tensorflow//tensorflow/c:tf_status_headers",
+        "@org_tensorflow//tensorflow/c:tf_tensor_internal",
+        "@org_tensorflow//tensorflow/c/eager:c_api",
+        "@org_tensorflow//tensorflow/c/eager:c_api_internal",
+        "@org_tensorflow//tensorflow/c/eager:immediate_execution_tensor_handle",
+        "@org_tensorflow//tensorflow/c/eager:tfe_context_internal",
+        "@org_tensorflow//tensorflow/c/eager:tfe_tensorhandle_internal",
+        "@org_tensorflow//tensorflow/core:protos_all_cc",
+        "@org_tensorflow//tensorflow/core/platform:status",
+        "@org_tensorflow//tensorflow/dtensor/cc:dstatus",
+        "@org_tensorflow//tensorflow/dtensor/cc:mesh_type",
+        "@org_tensorflow//tensorflow/dtensor/cc:tensor_layout",
+        "@org_tensorflow//tensorflow/dtensor/proto:layout_proto_cc",
+        "@org_tensorflow//tensorflow/tsl/platform:status",
+        "@org_tensorflow//tensorflow/tsl/platform:statusor",
+    ],
+)
+
+cc_library(
     name = "dtensor_executor",
     srcs = ["dtensor_executor.cc"],
     hdrs = ["dtensor_executor.h"],
