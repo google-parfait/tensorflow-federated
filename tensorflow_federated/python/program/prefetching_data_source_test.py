@@ -212,8 +212,8 @@ class PrefetchingDataSourceIteratorTest(parameterized.TestCase,
     data = iterator.select(num_clients)
 
     @federated_computation.federated_computation(iterator.federated_type)
-    def _identity(x):
-      return x
+    def _identity(value):
+      return value
 
     actual_value = await context.invoke(_identity, data)
     expected_value = list(range(num_clients))
@@ -242,8 +242,8 @@ class PrefetchingDataSourceIteratorTest(parameterized.TestCase,
     data = iterator.select(num_clients=3)
 
     @federated_computation.federated_computation(iterator.federated_type)
-    def _identity(x):
-      return x
+    def _identity(value):
+      return value
 
     actual_value = await context.invoke(_identity, data)
     self.assertEqual(actual_value, [1, 2, 3])

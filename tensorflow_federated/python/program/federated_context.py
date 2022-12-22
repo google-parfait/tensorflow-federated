@@ -68,7 +68,7 @@ class FederatedContext(context_base.SyncContext):
   Federated type signature of the `tff.Computation`:
 
   *   Server-placed values must be represented by
-      `tff.program.MaterializableStucture`.
+      `tff.program.MaterializableStructure`.
   *   Client-placed values must be represented by structures of values returned
       by a `tff.program.FederatedDataSourceIterator`.
 
@@ -86,7 +86,7 @@ class FederatedContext(context_base.SyncContext):
   we specify the Python representation of values in a manner that can be stated
   entirely in the TensorFlow Federated typesystem.
 
-  We have choosen to limit the TensorFlow Federated type signatures of invoked
+  We have chosen to limit the TensorFlow Federated type signatures of invoked
   `tff.Computation`s to disallow the returning of client-placed values,
   `tff.SequenceTypes`, and `tff.FunctionTypes`, in order to reduced the area
   which needs to be supported by federated programs. Below we describe the
@@ -154,4 +154,4 @@ def check_in_federated_context() -> None:
   if not isinstance(context_stack.current, FederatedContext):
     raise ValueError(
         'Expected the current context to be a `tff.program.FederatedContext`, '
-        f'found \'{type(context_stack.current)}\'.')
+        f'found {type(context_stack.current)}.')

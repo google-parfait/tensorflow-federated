@@ -130,7 +130,7 @@ class ExtractAndRewrapMetricsTest(tf.test.TestCase):
         return value
 
       return native_platform.AwaitableValueReference(
-          _value(), type_conversions.infer_type(value))
+          _value, type_conversions.infer_type(value))
 
     test_value = collections.OrderedDict(
         a=awaitable_value('foo'),

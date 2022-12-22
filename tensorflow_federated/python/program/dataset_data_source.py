@@ -55,9 +55,10 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
       py_typecheck.check_type(dataset, tf.data.Dataset)
       element_spec = datasets[0].element_spec
       if dataset.element_spec != element_spec:
-        raise ValueError('Expected each `tf.data.Dataset` in `datasets` to '
-                         'have the same type specification, found '
-                         f'\'{element_spec}\' and \'{dataset.element_spec}\'.')
+        raise ValueError(
+            'Expected each `tf.data.Dataset` in `datasets` to have the same '
+            f'type specification, found \'{element_spec}\' and '
+            f'\'{dataset.element_spec}\'.')
     py_typecheck.check_type(federated_type, computation_types.FederatedType)
 
     self._datasets = datasets
@@ -118,9 +119,10 @@ class DatasetDataSource(data_source.FederatedDataSource):
       py_typecheck.check_type(dataset, tf.data.Dataset)
       element_spec = datasets[0].element_spec
       if dataset.element_spec != element_spec:
-        raise ValueError('Expected each `tf.data.Dataset` in `datasets` to '
-                         'have the same type specification, found '
-                         f'\'{element_spec}\' and \'{dataset.element_spec}\'.')
+        raise ValueError(
+            'Expected each `tf.data.Dataset` in `datasets` to have the same '
+            f'type specification, found \'{element_spec}\' and '
+            f'\'{dataset.element_spec}\'.')
 
     self._datasets = datasets
     self._federated_type = computation_types.FederatedType(
