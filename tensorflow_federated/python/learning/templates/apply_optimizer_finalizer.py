@@ -111,11 +111,8 @@ def _build_keras_optimizer_initialize_and_next(
     optimizer_state, updated_weights = optimizer.next(optimizer_state,
                                                       trainable_variables,
                                                       update)
-    # Keras optimizers mutate model variables in with the `next` step above, so
-    # we skip calling the assignment for those optimizers.
-    if not isinstance(optimizer, keras_optimizer.KerasOptimizer):
-      tf.nest.map_structure(lambda a, b: a.assign(b), trainable_variables,
-                            updated_weights)
+    tf.nest.map_structure(lambda a, b: a.assign(b), trainable_variables,
+                          updated_weights)
     return optimizer_state, trainable_variables, measurements
 
   return init_fn, next_fn
