@@ -414,12 +414,12 @@ def set_mergeable_comp_execution_context(
 def set_localhost_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = 1,
-):
+    stream_structs: bool = False):
   """Sets default context to a localhost TFF executor."""
   context = create_localhost_cpp_execution_context(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
-  )
+      stream_structs=stream_structs)
   context_stack_impl.context_stack.set_default_context(context)
 
 
@@ -448,7 +448,7 @@ def _decompress_file(compressed_path, output_path):
 def create_localhost_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = 0,
-) -> sync_execution_context.ExecutionContext:
+    stream_structs: bool = False) -> sync_execution_context.ExecutionContext:
   """Creates an execution context backed by TFF-C++ runtime.
 
   This execution context starts a TFF-C++ worker assumed to be at path
@@ -461,6 +461,7 @@ def create_localhost_cpp_execution_context(
       computation.
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the CPP runtime. If `None`, there is no limit.
+    stream_structs: The flag to enable decomposing and streaming struct values.
 
   Returns:
     An instance of `tff.framework.SyncContext` representing the TFF-C++ runtime.
@@ -552,7 +553,7 @@ def create_localhost_cpp_execution_context(
     if cardinalities.get(placements.CLIENTS) is None:
       cardinalities[placements.CLIENTS] = default_num_clients
     stub = service_manager.get_stub()
-    ex = remote_executor.RemoteExecutor(stub)
+    ex = remote_executor.RemoteExecutor(stub, stream_structs=stream_structs)
     ex.set_cardinalities(cardinalities)
     return ex
 

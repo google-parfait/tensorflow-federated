@@ -655,6 +655,7 @@ py_test(
         ":remote_executor_stub",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",

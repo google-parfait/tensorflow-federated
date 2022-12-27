@@ -27,6 +27,7 @@ import tensorflow as tf
 from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
@@ -41,7 +42,7 @@ from tensorflow_federated.python.core.impl.types import placements
 
 
 @contextlib.contextmanager
-def test_context():
+def test_context(stream_structs: bool = False):
   port = portpicker.pick_unused_port()
   server_pool = logging_pool.pool(max_workers=1)
   server = grpc.server(server_pool)
@@ -64,7 +65,8 @@ def test_context():
   channel = grpc.insecure_channel('localhost:{}'.format(port))
 
   stub = remote_executor_grpc_stub.RemoteExecutorGrpcStub(channel)
-  remote_exec = remote_executor.RemoteExecutor(stub)
+  remote_exec = remote_executor.RemoteExecutor(
+      stub, stream_structs=stream_structs)
   remote_exec.set_cardinalities({placements.CLIENTS: 3})
   executor = reference_resolving_executor.ReferenceResolvingExecutor(
       remote_exec)
@@ -114,16 +116,22 @@ def _set_cardinalities_with_mock(executor: remote_executor.RemoteExecutor,
   executor.set_cardinalities({placements.CLIENTS: 3})
 
 
-@mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
-class RemoteValueTest(absltest.TestCase):
+class RemoteValueTest(parameterized.TestCase):
 
-  def test_compute_returns_result(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_compute_returns_result_with_stream_structs(self, stream_structs,
+                                                      mock_stub):
     tensor_proto = tf.make_tensor_proto(1)
     any_pb = any_pb2.Any()
     any_pb.Pack(tensor_proto)
     value = executor_pb2.Value(tensor=any_pb)
     mock_stub.compute.return_value = executor_pb2.ComputeResponse(value=value)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     executor.set_cardinalities({placements.CLIENTS: 3})
     type_signature = computation_types.FunctionType(None, tf.int32)
@@ -135,9 +143,16 @@ class RemoteValueTest(absltest.TestCase):
     mock_stub.compute.assert_called_once()
     self.assertEqual(result, 1)
 
-  def test_compute_reraises_grpc_error(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_compute_reraises_grpc_error_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.compute = mock.Mock(side_effect=_raise_non_retryable_grpc_error)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
@@ -148,9 +163,16 @@ class RemoteValueTest(absltest.TestCase):
 
     self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
-  def test_compute_reraises_type_error(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_compute_reraises_type_error_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.compute = mock.Mock(side_effect=TypeError)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
@@ -160,20 +182,33 @@ class RemoteValueTest(absltest.TestCase):
       asyncio.run(comp.compute())
 
 
-@mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
-class RemoteExecutorTest(absltest.TestCase):
+class RemoteExecutorTest(parameterized.TestCase):
 
-  def test_set_cardinalities_returns_none(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_set_cardinalities_returns_none_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.get_executor.return_value = executor_pb2.GetExecutorResponse(
         executor=executor_pb2.ExecutorId(id='test_id'))
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     result = executor.set_cardinalities({placements.CLIENTS: 3})
     self.assertIsNone(result)
 
-  def test_create_value_returns_remote_value(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_value_returns_remote_value_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_value.return_value = executor_pb2.CreateValueResponse()
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
 
     result = asyncio.run(executor.create_value(1, tf.int32))
@@ -181,10 +216,17 @@ class RemoteExecutorTest(absltest.TestCase):
     mock_stub.create_value.assert_called_once()
     self.assertIsInstance(result, remote_executor.RemoteValue)
 
-  def test_create_value_reraises_grpc_error(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_value_reraises_grpc_error_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_value = mock.Mock(
         side_effect=_raise_non_retryable_grpc_error)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
 
     with self.assertRaises(grpc.RpcError) as context:
@@ -192,17 +234,79 @@ class RemoteExecutorTest(absltest.TestCase):
 
     self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
-  def test_create_value_reraises_type_error(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_value_reraises_type_error_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_value = mock.Mock(side_effect=TypeError)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
 
     with self.assertRaises(TypeError):
       asyncio.run(executor.create_value(1, tf.int32))
 
-  def test_create_call_returns_remote_value(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_value_for_nested_struct_with_stream_structs(
+      self, stream_structs, mock_stub):
+    if stream_structs:
+      self.skipTest(
+          'b/263261613 - Missing support for multiple return_value types in mock_stub'
+      )
+      mock_stub.create_value.return_value = executor_pb2.CreateStructResponse()
+    else:
+      mock_stub.create_value.return_value = executor_pb2.CreateValueResponse()
+
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
+    _set_cardinalities_with_mock(executor, mock_stub)
+    tensor_shape = (2, 10)
+    struct_value = structure.Struct([
+        ('a', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
+        ('b',
+         structure.Struct([('b0', tf.zeros(shape=tensor_shape, dtype=tf.int32)),
+                           ('b1', tf.zeros(shape=tensor_shape,
+                                           dtype=tf.int32))])),
+        ('c', tf.zeros(shape=tensor_shape, dtype=tf.int32))
+    ])
+
+    type_signature = computation_types.StructType([
+        ('a', computation_types.TensorType(shape=tensor_shape, dtype=tf.int32)),
+        ('b',
+         computation_types.StructType([
+             ('b0',
+              computation_types.TensorType(shape=tensor_shape, dtype=tf.int32)),
+             ('b1',
+              computation_types.TensorType(shape=tensor_shape, dtype=tf.int32))
+         ])),
+        ('c', computation_types.TensorType(shape=tensor_shape, dtype=tf.int32))
+    ])
+
+    result = asyncio.run(executor.create_value(struct_value, type_signature))
+
+    self.assertIsInstance(result, remote_executor.RemoteValue)
+    if stream_structs:
+      self.assertEqual(mock_stub.create_value.call_count, 5)
+    else:
+      self.assertEqual(mock_stub.create_value.call_count, 1)
+
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_call_returns_remote_value_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_call.return_value = executor_pb2.CreateCallResponse()
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
     fn = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
@@ -213,10 +317,17 @@ class RemoteExecutorTest(absltest.TestCase):
     mock_stub.create_call.assert_called_once()
     self.assertIsInstance(result, remote_executor.RemoteValue)
 
-  def test_create_call_reraises_grpc_error(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_call_reraises_grpc_error_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_call = mock.Mock(
         side_effect=_raise_non_retryable_grpc_error)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
@@ -227,9 +338,16 @@ class RemoteExecutorTest(absltest.TestCase):
 
     self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
-  def test_create_call_reraises_type_error(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_call_reraises_type_error_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_call = mock.Mock(side_effect=TypeError)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.FunctionType(None, tf.int32)
     comp = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
@@ -238,9 +356,16 @@ class RemoteExecutorTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       asyncio.run(executor.create_call(comp))
 
-  def test_create_struct_returns_remote_value(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_struct_returns_remote_value_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_struct.return_value = executor_pb2.CreateStructResponse()
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.TensorType(tf.int32)
     value_1 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
@@ -253,10 +378,17 @@ class RemoteExecutorTest(absltest.TestCase):
     mock_stub.create_struct.assert_called_once()
     self.assertIsInstance(result, remote_executor.RemoteValue)
 
-  def test_create_struct_reraises_grpc_error(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_struct_reraises_grpc_error_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_struct = mock.Mock(
         side_effect=_raise_non_retryable_grpc_error)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.TensorType(tf.int32)
     value_1 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
@@ -269,9 +401,16 @@ class RemoteExecutorTest(absltest.TestCase):
 
     self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
-  def test_create_struct_reraises_type_error(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_struct_reraises_type_error_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_struct = mock.Mock(side_effect=TypeError)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.TensorType(tf.int32)
     value_1 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
@@ -282,10 +421,17 @@ class RemoteExecutorTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       asyncio.run(executor.create_struct([value_1, value_2]))
 
-  def test_create_selection_returns_remote_value(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_selection_returns_remote_value_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_selection.return_value = executor_pb2.CreateSelectionResponse(
     )
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.StructType([tf.int32, tf.int32])
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
@@ -296,10 +442,17 @@ class RemoteExecutorTest(absltest.TestCase):
     mock_stub.create_selection.assert_called_once()
     self.assertIsInstance(result, remote_executor.RemoteValue)
 
-  def test_create_selection_reraises_non_retryable_grpc_error(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_selection_reraises_non_retryable_grpc_error_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_selection = mock.Mock(
         side_effect=_raise_non_retryable_grpc_error)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.StructType([tf.int32, tf.int32])
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
@@ -310,9 +463,16 @@ class RemoteExecutorTest(absltest.TestCase):
 
     self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
-  def test_create_selection_reraises_type_error(self, mock_stub):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  @mock.patch.object(remote_executor_stub, 'RemoteExecutorStub')
+  def test_create_selection_reraises_type_error_with_stream_structs(
+      self, stream_structs, mock_stub):
     mock_stub.create_selection = mock.Mock(side_effect=TypeError)
-    executor = remote_executor.RemoteExecutor(mock_stub)
+    executor = remote_executor.RemoteExecutor(
+        mock_stub, stream_structs=stream_structs)
     _set_cardinalities_with_mock(executor, mock_stub)
     type_signature = computation_types.StructType([tf.int32, tf.int32])
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
@@ -324,8 +484,12 @@ class RemoteExecutorTest(absltest.TestCase):
 
 class RemoteExecutorIntegrationTest(parameterized.TestCase):
 
-  def test_no_arg_tf_computation(self):
-    with test_context() as context:
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  def test_no_arg_tf_computation_with_stream_structs(self, stream_structs):
+    with test_context(stream_structs) as context:
 
       @tensorflow_computation.tf_computation
       def comp():
@@ -334,8 +498,12 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       result = _invoke(context.executor, comp)
       self.assertEqual(result, 10)
 
-  def test_one_arg_tf_computation(self):
-    with test_context() as context:
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  def test_one_arg_tf_computation_with_stream_structs(self, stream_structs):
+    with test_context(stream_structs) as context:
 
       @tensorflow_computation.tf_computation(tf.int32)
       def comp(x):
@@ -344,8 +512,12 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       result = _invoke(context.executor, comp, 10)
       self.assertEqual(result, 11)
 
-  def test_two_arg_tf_computation(self):
-    with test_context() as context:
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  def test_two_arg_tf_computation_with_stream_structs(self, stream_structs):
+    with test_context(stream_structs) as context:
 
       @tensorflow_computation.tf_computation(tf.int32, tf.int32)
       def comp(x, y):
@@ -354,8 +526,12 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       result = _invoke(context.executor, comp, (10, 20))
       self.assertEqual(result, 30)
 
-  def test_with_selection(self):
-    with test_context() as context:
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  def test_with_selection_with_stream_structs(self, stream_structs):
+    with test_context(stream_structs) as context:
       self._test_with_selection(context)
 
   def _test_with_selection(self, context):
@@ -381,19 +557,28 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
     ]
     self.assertLen(seletions, 2)
 
-  def test_execution_of_tensorflow(self):
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  def test_execution_of_tensorflow_with_stream_structs(self, stream_structs):
 
     @tensorflow_computation.tf_computation
     def comp():
       return tf.math.add(5, 5)
 
-    with test_context() as context:
+    with test_context(stream_structs) as context:
       result = _invoke(context.executor, comp)
 
     self.assertEqual(result, 10)
 
-  def test_with_federated_computations(self):
-    with test_context() as context:
+  @parameterized.named_parameters(
+      ('false', False),
+      ('true', True),
+  )
+  def test_with_federated_computations_with_stream_structs(
+      self, stream_structs):
+    with test_context(stream_structs) as context:
 
       @federated_computation.federated_computation(
           computation_types.FederatedType(tf.int32, placements.CLIENTS))

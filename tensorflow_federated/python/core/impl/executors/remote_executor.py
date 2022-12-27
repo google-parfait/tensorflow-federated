@@ -18,6 +18,8 @@
 # information.
 """A local proxy for a remote executor service hosted on a separate machine."""
 
+import asyncio
+
 from collections.abc import Mapping
 import weakref
 
@@ -42,7 +44,11 @@ _STREAM_CLOSE_WAIT_SECONDS = 10
 class RemoteValue(executor_value_base.ExecutorValue):
   """A reference to a value embedded in a remotely deployed executor service."""
 
-  def __init__(self, value_ref: executor_pb2.ValueRef, type_spec, executor):
+  def __init__(self,
+               value_ref: executor_pb2.ValueRef,
+               type_spec,
+               executor,
+               dispose_at_exit: bool = True):
     """Creates the value.
 
     Args:
@@ -50,6 +56,8 @@ class RemoteValue(executor_value_base.ExecutorValue):
         executor service.
       type_spec: An instance of `computation_types.Type`.
       executor: The executor that created this value.
+      dispose_at_exit: The flag to disable calling dispose on the object at
+        deletion.
     """
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
     py_typecheck.check_type(type_spec, computation_types.Type)
@@ -63,8 +71,9 @@ class RemoteValue(executor_value_base.ExecutorValue):
     def finalizer(value_ref, executor, executor_id):
       executor._dispose(value_ref, executor_id)  # pylint: disable=protected-access
 
-    weakref.finalize(self, finalizer, value_ref, executor,
-                     executor._executor_id)
+    f = weakref.finalize(self, finalizer, value_ref, executor,
+                         executor._executor_id)
+    f.atexit = dispose_at_exit
 
   @property
   def type_signature(self):
@@ -88,7 +97,8 @@ class RemoteExecutor(executor_base.Executor):
   def __init__(self,
                stub: remote_executor_stub.RemoteExecutorStub,
                thread_pool_executor=None,
-               dispose_batch_size=20):
+               dispose_batch_size=20,
+               stream_structs: bool = False):
     """Creates a remote executor.
 
     Args:
@@ -101,6 +111,8 @@ class RemoteExecutor(executor_base.Executor):
         worker values. Lower values will result in more requests to the remote
         worker, but will result in values being cleaned up sooner and therefore
         may result in lower memory usage on the remote worker.
+      stream_structs: The flag to enable decomposing and streaming struct
+        values.
     """
 
     py_typecheck.check_type(dispose_batch_size, int)
@@ -113,6 +125,7 @@ class RemoteExecutor(executor_base.Executor):
     self._executor_id = None
     self._dispose_request = None
     self._dispose_batch_size = dispose_batch_size
+    self._stream_structs = stream_structs
 
   def close(self):
     logging.debug('Clearing executor state on server.')
@@ -169,12 +182,37 @@ class RemoteExecutor(executor_base.Executor):
     return
 
   @tracing.trace(span=True)
+  async def create_value_stream_structs(
+      self, value, type_spec: computation_types.StructType):
+    value = structure.from_container(value)
+    if len(value) != len(type_spec):
+      raise TypeError(
+          'Value {} does not match type {}: mismatching tuple length.'.format(
+              value, type_spec))
+
+    value_refs = []
+    for (value_elem_name, value_elem), (type_elem_name, type_elem) in zip(
+        structure.iter_elements(value), structure.iter_elements(type_spec)):
+      if value_elem_name not in [type_elem_name, None]:
+        raise TypeError(
+            'Value {} does not match type {}: mismatching tuple element '
+            'names {} vs. {}.'.format(value, type_spec, value_elem_name,
+                                      type_elem_name))
+      value_refs.append(self.create_value(value_elem, type_elem))
+    value_refs = await asyncio.gather(*value_refs)
+    return await self.create_struct(value_refs)
+
+  @tracing.trace(span=True)
   async def create_value(self, value, type_spec=None):
     self._check_has_executor_id()
+    type_spec = computation_types.to_type(type_spec)
 
     @tracing.trace
     def serialize_value():
       return value_serialization.serialize_value(value, type_spec)
+
+    if self._stream_structs and type_spec is not None and type_spec.is_struct():
+      return await self.create_value_stream_structs(value, type_spec)
 
     value_proto, type_spec = serialize_value()
     create_value_request = executor_pb2.CreateValueRequest(
@@ -231,9 +269,34 @@ class RemoteExecutor(executor_base.Executor):
     return RemoteValue(response.value_ref, result_type, self)
 
   @tracing.trace(span=True)
+  async def _compute_stream_structs(self, value_ref,
+                                    type_spec: computation_types.StructType):
+    py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
+    values = []
+    source = RemoteValue(value_ref, type_spec, self, False)
+
+    async def per_element(source, index, element_spec):
+      select_response = await self.create_selection(source, index)
+      value = await self._compute(select_response.value_ref, element_spec)
+      return value
+
+    for index, (_,
+                element_spec) in enumerate(structure.iter_elements(type_spec)):
+      values.append(per_element(source, index, element_spec))
+
+    values = await asyncio.gather(*values)
+    structure.name_list_with_nones(type_spec)
+    return structure.Struct(
+        zip(structure.name_list_with_nones(type_spec), values))
+
+  @tracing.trace(span=True)
   async def _compute(self, value_ref, type_spec):
     self._check_has_executor_id()
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
+
+    if self._stream_structs and type_spec is not None and type_spec.is_struct():
+      return await self._compute_stream_structs(value_ref, type_spec)
+
     request = executor_pb2.ComputeRequest(
         executor=self._executor_id, value_ref=value_ref)
     response = self._stub.compute(request)
