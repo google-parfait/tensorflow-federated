@@ -1,3 +1,17 @@
+# Release 0.44.0
+
+## Major Features and Improvements
+
+*   Improved the Python type annotations for `tff.program` API.
+*   Extended the metrics interface on FunctionalModel to accept the entire
+    `BatchOutput` structure from the model `forward_pass` (not just the
+    predictions).
+*   Introduced a DTensor Executor.
+
+## Bug Fixes
+
+*   Fixed async RuntimeWarning in the `tff.program.NativeFederatedContext`.
+
 # Release 0.43.0
 
 ## Major Features and Improvements
