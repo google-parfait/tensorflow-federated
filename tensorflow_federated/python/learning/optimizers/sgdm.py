@@ -14,7 +14,7 @@
 """Gradient descent optimizer."""
 
 import collections
-from typing import Any, Generic, TypeVar, Optional, OrderedDict
+from typing import Any, Optional, TypeVar
 
 import tensorflow as tf
 
@@ -25,12 +25,11 @@ from tensorflow_federated.python.learning.optimizers import optimizer
 _MOMENTUM_KEY = 'momentum'
 _ACCUMULATOR_KEY = 'accumulator'
 
-Hparams = OrderedDict[str, float]
-State = TypeVar('State', bound=OrderedDict[str, Any])
-Weights = optimizer.Weights
+State = TypeVar('State', bound=collections.OrderedDict[str, Any])
+Hparams = TypeVar('Hparams', bound=collections.OrderedDict[str, float])
 
 
-class _SGD(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
+class _SGD(optimizer.Optimizer[State, optimizer.Weights, Hparams]):
   """Gradient descent optimizer, see `build_sgdm` for details."""
 
   def __init__(self, learning_rate: float, momentum: Optional[float] = None):
@@ -46,7 +45,7 @@ class _SGD(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
     self._lr = learning_rate
     self._momentum = momentum
 
-  def initialize(self, specs):
+  def initialize(self, specs: Any) -> State:
     state = collections.OrderedDict([(optimizer.LEARNING_RATE_KEY, self._lr)])
     if self._momentum is not None and self._momentum > 0:
       state[_MOMENTUM_KEY] = self._momentum
@@ -54,7 +53,8 @@ class _SGD(optimizer.Optimizer[State, Weights], Generic[State, Weights]):
           lambda s: tf.zeros(s.shape, s.dtype), specs)
     return state
 
-  def next(self, state, weights, gradients):
+  def next(self, state: State, weights: optimizer.Weights,
+           gradients: Any) -> tuple[State, optimizer.Weights]:
     gradients = optimizer.handle_indexed_slices_gradients(gradients)
     optimizer.check_weights_gradients_match(weights, gradients)
     lr = state[optimizer.LEARNING_RATE_KEY]
