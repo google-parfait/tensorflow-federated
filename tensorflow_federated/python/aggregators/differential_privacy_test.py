@@ -360,5 +360,5 @@ class DPFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_localhost_cpp_execution_context()
+  execution_contexts.set_sync_local_cpp_execution_context()
   tf.test.main()

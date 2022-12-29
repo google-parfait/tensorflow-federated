@@ -304,5 +304,5 @@ class BroadcastProcessExecutionTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_localhost_cpp_execution_context(default_num_clients=1)
+  execution_contexts.set_sync_local_cpp_execution_context(default_num_clients=1)
   tf.test.main()

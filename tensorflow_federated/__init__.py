@@ -75,7 +75,7 @@ if sys.version_info[0] < 3 or sys.version_info[1] < 9:
 
 # Initialize a default execution context. This is implicitly executed the
 # first time a module in the `core` package is imported.
-backends.native.set_localhost_cpp_execution_context()
+backends.native.set_sync_local_cpp_execution_context()
 
 # Remove packages that are not part of the public API but are picked up due to
 # the directory structure. The python import statements above implicitly add

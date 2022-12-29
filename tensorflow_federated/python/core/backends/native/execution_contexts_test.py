@@ -201,16 +201,16 @@ def _create_mock_remote_executor_grpc_stub(
   return mock_ex
 
 
-class LocalhostServerCPPExecutionContextTest(absltest.TestCase):
+class SyncLocalCPPExecutionContextTest(absltest.TestCase):
 
   def test_raises_runtime_error_if_no_worker_binarys(self):
     with self.assertRaises(RuntimeError):
       with mock.patch.object(os.path, 'isfile', return_value=False):
-        execution_contexts.create_localhost_cpp_execution_context()
+        execution_contexts.create_sync_local_cpp_execution_context()
 
   @mock.patch.object(subprocess, 'Popen')
   def test_process_starts(self, mock_popen):
-    context = execution_contexts.create_localhost_cpp_execution_context()
+    context = execution_contexts.create_sync_local_cpp_execution_context()
 
     mock_remote_ex = _create_mock_remote_executor_grpc_stub(return_one)
 
@@ -230,7 +230,7 @@ class LocalhostServerCPPExecutionContextTest(absltest.TestCase):
 
   @mock.patch.object(subprocess, 'Popen')
   def test_stub_going_down_restarts_process(self, mock_popen):
-    context = execution_contexts.create_localhost_cpp_execution_context()
+    context = execution_contexts.create_sync_local_cpp_execution_context()
     mock_remote_ex = _create_mock_remote_executor_grpc_stub(return_one)
     mock_remote_ex.is_ready = False
 

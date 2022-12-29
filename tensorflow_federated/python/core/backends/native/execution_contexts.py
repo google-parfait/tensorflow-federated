@@ -22,7 +22,7 @@ import stat
 import subprocess
 import sys
 import time
-from typing import Optional
+from typing import Optional, Union
 
 from absl import logging
 import grpc
@@ -51,8 +51,9 @@ _GRPC_CHANNEL_OPTIONS = [
 ]
 
 
-def _make_basic_python_execution_context(*, executor_fn, compiler_fn,
-                                         asynchronous):
+def _create_local_python_execution_context(
+    *, executor_fn, compiler_fn, asynchronous
+):
   """Wires executor function and compiler into sync or async context."""
 
   if not asynchronous:
@@ -87,8 +88,9 @@ def create_local_python_execution_context(
         comp, transform_math_to_tf=not reference_resolving_clients)
     return native_form
 
-  return _make_basic_python_execution_context(
-      executor_fn=factory, compiler_fn=_compiler, asynchronous=False)
+  return _create_local_python_execution_context(
+      executor_fn=factory, compiler_fn=_compiler, asynchronous=False
+  )
 
 
 def set_local_python_execution_context(default_num_clients: int = 0,
@@ -131,8 +133,9 @@ def create_local_async_python_execution_context(
         comp, transform_math_to_tf=not reference_resolving_clients)
     return native_form
 
-  return _make_basic_python_execution_context(
-      executor_fn=factory, compiler_fn=_compiler, asynchronous=True)
+  return _create_local_python_execution_context(
+      executor_fn=factory, compiler_fn=_compiler, asynchronous=True
+  )
 
 
 def set_local_async_python_execution_context(
@@ -230,10 +233,11 @@ def create_remote_python_execution_context(
       default_num_clients=default_num_clients,
   )
 
-  return _make_basic_python_execution_context(
+  return _create_local_python_execution_context(
       executor_fn=factory,
       compiler_fn=compiler.transform_to_native_form,
-      asynchronous=False)
+      asynchronous=False,
+  )
 
 
 def set_remote_python_execution_context(
@@ -317,10 +321,11 @@ def create_remote_async_python_execution_context(
       default_num_clients=default_num_clients,
   )
 
-  return _make_basic_python_execution_context(
+  return _create_local_python_execution_context(
       executor_fn=factory,
       compiler_fn=compiler.transform_to_native_form,
-      asynchronous=True)
+      asynchronous=True,
+  )
 
 
 def set_remote_async_python_execution_context(channels,
@@ -411,18 +416,6 @@ def set_mergeable_comp_execution_context(
   context_stack_impl.context_stack.set_default_context(context)
 
 
-def set_localhost_cpp_execution_context(
-    default_num_clients: int = 0,
-    max_concurrent_computation_calls: int = 1,
-    stream_structs: bool = False):
-  """Sets default context to a localhost TFF executor."""
-  context = create_localhost_cpp_execution_context(
-      default_num_clients=default_num_clients,
-      max_concurrent_computation_calls=max_concurrent_computation_calls,
-      stream_structs=stream_structs)
-  context_stack_impl.context_stack.set_default_context(context)
-
-
 def _decompress_file(compressed_path, output_path):
   """Decompresses a compressed file to the given `output_path`."""
   if not os.path.isfile(compressed_path):
@@ -445,26 +438,27 @@ def _decompress_file(compressed_path, output_path):
       stat.S_IXOTH)  # pyformat: disable
 
 
-def create_localhost_cpp_execution_context(
-    default_num_clients: int = 0,
-    max_concurrent_computation_calls: int = 0,
-    stream_structs: bool = False) -> sync_execution_context.ExecutionContext:
-  """Creates an execution context backed by TFF-C++ runtime.
-
-  This execution context starts a TFF-C++ worker assumed to be at path
-  `binary_path`, serving on `port`, and constructs a simple (Python) remote
-  execution context to talk to this worker.
+def _create_local_cpp_execution_context(
+    *,
+    default_num_clients: int,
+    max_concurrent_computation_calls: int,
+    stream_structs: bool,
+    asynchronous: bool,
+) -> Union[
+    sync_execution_context.ExecutionContext,
+    async_execution_context.AsyncExecutionContext,
+]:
+  """Returns an execution context backed by C++ runtime.
 
   Args:
     default_num_clients: The number of clients to use as the default
       cardinality, if thus number cannot be inferred by the arguments of a
       computation.
     max_concurrent_computation_calls: The maximum number of concurrent calls to
-      a single computation in the CPP runtime. If `None`, there is no limit.
+      a single computation in the C++ runtime. If `None`, there is no limit.
     stream_structs: The flag to enable decomposing and streaming struct values.
-
-  Returns:
-    An instance of `tff.framework.SyncContext` representing the TFF-C++ runtime.
+    asynchronous: A boolean indicating if the returned runtime is backed by a
+      synchronous or asynchronous execution stack.
 
   Raises:
     RuntimeError: If an internal C++ worker binary can not be found.
@@ -559,7 +553,96 @@ def create_localhost_cpp_execution_context(
 
   factory = python_executor_stacks.ResourceManagingExecutorFactory(
       executor_stack_fn=stack_fn)
-  return _make_basic_python_execution_context(
+  return _create_local_python_execution_context(
       executor_fn=factory,
       compiler_fn=compiler.desugar_and_transform_to_native,
-      asynchronous=False)
+      asynchronous=asynchronous,
+  )
+
+
+def create_async_local_cpp_execution_context(
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = 0,
+    stream_structs: bool = False,
+) -> async_execution_context.AsyncExecutionContext:
+  """Returns an execution context backed by C++ runtime.
+
+  This execution context starts a C++ worker assumed to be at path
+  `binary_path`, serving on `port`, and constructs a Python remote execution
+  context to talk to this worker.
+
+  Args:
+    default_num_clients: The number of clients to use as the default
+      cardinality, if thus number cannot be inferred by the arguments of a
+      computation.
+    max_concurrent_computation_calls: The maximum number of concurrent calls to
+      a single computation in the C++ runtime. If `None`, there is no limit.
+    stream_structs: The flag to enable decomposing and streaming struct values.
+
+  Raises:
+    RuntimeError: If an internal C++ worker binary can not be found.
+  """
+  return _create_local_cpp_execution_context(
+      default_num_clients=default_num_clients,
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+      stream_structs=stream_structs,
+      asynchronous=True,
+  )
+
+
+def set_async_local_cpp_execution_context(
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = 1,
+    stream_structs: bool = False,
+) -> None:
+  """Sets default context to a C++ runtime."""
+  context = create_async_local_cpp_execution_context(
+      default_num_clients=default_num_clients,
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+      stream_structs=stream_structs,
+  )
+  context_stack_impl.context_stack.set_default_context(context)
+
+
+def create_sync_local_cpp_execution_context(
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = 0,
+    stream_structs: bool = False,
+) -> sync_execution_context.ExecutionContext:
+  """Returns an execution context backed by C++ runtime.
+
+  This execution context starts a C++ worker assumed to be at path
+  `binary_path`, serving on `port`, and constructs a Python remote execution
+  context to talk to this worker.
+
+  Args:
+    default_num_clients: The number of clients to use as the default
+      cardinality, if thus number cannot be inferred by the arguments of a
+      computation.
+    max_concurrent_computation_calls: The maximum number of concurrent calls to
+      a single computation in the C++ runtime. If `None`, there is no limit.
+    stream_structs: The flag to enable decomposing and streaming struct values.
+
+  Raises:
+    RuntimeError: If an internal C++ worker binary can not be found.
+  """
+  return _create_local_cpp_execution_context(
+      default_num_clients=default_num_clients,
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+      stream_structs=stream_structs,
+      asynchronous=False,
+  )
+
+
+def set_sync_local_cpp_execution_context(
+    default_num_clients: int = 0,
+    max_concurrent_computation_calls: int = 1,
+    stream_structs: bool = False,
+) -> None:
+  """Sets default context to a C++ runtime."""
+  context = create_sync_local_cpp_execution_context(
+      default_num_clients=default_num_clients,
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+      stream_structs=stream_structs,
+  )
+  context_stack_impl.context_stack.set_default_context(context)
