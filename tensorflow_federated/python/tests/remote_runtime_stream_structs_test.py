@@ -19,8 +19,18 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
+# b/263157965 : Extend this test to cover the C++ remote executor as well.
+_CONTEXTS = [
+    (
+        'native_sync_local_cpp',
+        tff.backends.native.create_sync_local_cpp_execution_context,
+    ),
+]
+
+
 class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
+  @tff.test.with_contexts(*_CONTEXTS)
   def test_large_struct_identity0(self):
 
     small_tensor_shape = (100_000_000, 1)
@@ -38,6 +48,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
     identity(large_struct)
 
+  @tff.test.with_contexts(*_CONTEXTS)
   def test_large_struct_identity1(self):
     small_tensor_shape = (100_000, 1000)
     large_struct = tff.structure.Struct([
@@ -65,6 +76,7 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
     identity(large_struct)
 
+  @tff.test.with_contexts(*_CONTEXTS)
   def test_large_struct_identity2(self):
     small_tensor_shape = (100, 10)
     small_struct = tff.structure.Struct([
@@ -101,6 +113,4 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  # b/263157965 : Extend this test to cover the C++ remote executor as well.
-  tff.backends.native.set_localhost_cpp_execution_context(stream_structs=True)
   absltest.main()
