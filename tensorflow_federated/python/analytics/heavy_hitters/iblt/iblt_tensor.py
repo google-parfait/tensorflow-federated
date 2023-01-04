@@ -184,7 +184,7 @@ class IbltTensorDecoder(iblt_lib.IbltDecoder):
     return out_strings.stack(), out_counts.stack(), out_tensor_values.stack(
     ), num_not_decoded
 
-  def get_freq_estimates(
+  def get_freq_estimates(  # pytype: disable=signature-mismatch  # overriding-return-type-checks
       self) -> tuple[dict[Optional[str], int], dict[Optional[str], np.ndarray]]:
     """Decodes key-value pairs from an IBLT.
 
