@@ -114,7 +114,7 @@ class CheckInFederatedContextTest(parameterized.TestCase):
       ('async_cpp',
        execution_contexts.create_local_async_python_execution_context()),
       ('sync_cpp',
-       execution_contexts.create_localhost_cpp_execution_context()),
+       execution_contexts.create_sync_local_cpp_execution_context()),
   )
   # pyformat: enable
   def test_raises_value_error_with_context(self, context):
@@ -139,7 +139,7 @@ class CheckInFederatedContextTest(parameterized.TestCase):
       except TypeError:
         self.fail('Raised `ValueError` unexpectedly.')
 
-      context = execution_contexts.create_localhost_cpp_execution_context()
+      context = execution_contexts.create_sync_local_cpp_execution_context()
       with context_stack_impl.context_stack.install(context):
         with self.assertRaises(ValueError):
           federated_context.check_in_federated_context()

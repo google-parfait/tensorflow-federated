@@ -102,5 +102,5 @@ class RemoteRuntimeStreamStructsTest(parameterized.TestCase):
 
 if __name__ == '__main__':
   # b/263157965 : Extend this test to cover the C++ remote executor as well.
-  tff.backends.native.set_localhost_cpp_execution_context(stream_structs=True)
+  tff.backends.native.set_sync_local_cpp_execution_context(stream_structs=True)
   absltest.main()
