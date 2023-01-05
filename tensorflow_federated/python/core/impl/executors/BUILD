@@ -437,6 +437,7 @@ py_library(
 py_library(
     name = "executors_errors",
     srcs = ["executors_errors.py"],
+    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
     srcs_version = "PY3",
 )
 

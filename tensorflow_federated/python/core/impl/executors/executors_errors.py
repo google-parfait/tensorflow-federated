@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Custom exceptions and symbols for TFF executors."""
+
 from typing import Any
 
 import grpc
+
+from pybind11_abseil import status
 
 
 class RetryableError(Exception):
@@ -41,13 +44,21 @@ class RetryableGRPCError(RetryableError, grpc.RpcError, grpc.Call):
     return self._grpc_error.trailing_metadata()
 
 
-class CardinalityError(Exception):
-  """Raised when a value in a stack does not match the stack's cardinality."""
-
-
 def get_grpc_retryable_error_codes() -> set[grpc.StatusCode]:
   """Returns gRPC retryable error codes."""
   return set([
       grpc.StatusCode.UNAVAILABLE,
       grpc.StatusCode.FAILED_PRECONDITION,
   ])
+
+
+def get_absl_status_retryable_error_codes() -> set[status.StatusCode]:
+  """Returns Absl retryable error codes."""
+  return set([
+      status.StatusCode.UNAVAILABLE,
+      status.StatusCode.FAILED_PRECONDITION,
+  ])
+
+
+class CardinalityError(Exception):
+  """Raised when a value in a stack does not match the stack's cardinality."""

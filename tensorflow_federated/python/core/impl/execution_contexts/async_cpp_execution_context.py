@@ -18,33 +18,28 @@ import concurrent
 import contextlib
 import pprint
 import textwrap
+import typing
 
 from absl import logging
 
-from pybind11_abseil import status as absl_status
+from pybind11_abseil import status
 from tensorflow_federated.python.common_libs import retrying
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.execution_contexts import compiler_pipeline
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
-def get_absl_retryable_error_codes() -> set[absl_status.StatusCode]:
-  """Returns Absl retryable error codes."""
-  # TODO(b/237122326): Move this function into executors_errors when
-  # absl_status works in OSS.
-  return set([
-      absl_status.StatusCode.UNAVAILABLE,
-      absl_status.StatusCode.FAILED_PRECONDITION
-  ])
-
-
 # TODO(b/193900393): Define a custom error in CPP and expose to python to
 # more easily localize and control retries.
-def _is_retryable_absl_status(exception):
-  return (isinstance(exception, absl_status.StatusNotOk) and
-          exception.status.code() in get_absl_retryable_error_codes())
+def _is_absl_status_retryable_error(exception: Exception) -> bool:
+  if not isinstance(exception, status.StatusNotOk):
+    return False
+  exception = typing.cast(status.StatusNotOk, exception)
+  codes = executors_errors.get_absl_status_retryable_error_codes()
+  return exception.status.code() in codes
 
 
 class AsyncSerializeAndExecuteCPPContext(context_base.AsyncContext):
@@ -75,7 +70,7 @@ class AsyncSerializeAndExecuteCPPContext(context_base.AsyncContext):
       raise
 
   @retrying.retry(
-      retry_on_exception_filter=_is_retryable_absl_status,
+      retry_on_exception_filter=_is_absl_status_retryable_error,
       wait_max_ms=300_000,  # 5 minutes.
       wait_multiplier=2,
   )
@@ -107,7 +102,7 @@ class AsyncSerializeAndExecuteCPPContext(context_base.AsyncContext):
         running_loop = asyncio.get_running_loop()
         result_pb = await running_loop.run_in_executor(
             self._futures_executor_pool, lambda: executor.materialize(call.ref))
-    except absl_status.StatusNotOk as e:
+    except status.StatusNotOk as e:
       indent = lambda s: textwrap.indent(s, prefix='\t')
       if arg is None:
         arg_str = 'without any arguments'

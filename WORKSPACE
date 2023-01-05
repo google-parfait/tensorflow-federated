@@ -86,6 +86,13 @@ git_repository(
 # Inlined transitive dependencies, grouped by direct dependency.
 #
 
+# Required by pybind11_abseil
+git_repository(
+    name = "pybind11_bazel",
+    commit = "72cbbf1fbc830e487e3012862b7b720001b70672",
+    remote = "https://github.com/pybind/pybind11_bazel.git",
+)
+
 # Required by pybind11_abseil and pybind11_protobuf
 new_git_repository(
     name = "pybind11",
@@ -93,6 +100,10 @@ new_git_repository(
     remote = "https://github.com/pybind/pybind11.git",
     tag = "v2.9.2",
 )
+
+# Required by pybind11_abseil
+load("@pybind11_bazel//:python_configure.bzl", "python_configure")
+python_configure(name = "local_config_python")
 
 #
 # Transitive dependencies, grouped by direct dependency.

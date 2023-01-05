@@ -178,18 +178,18 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
   def _try_handle_request_context(self, request, context, blank_response_fn):
     try:
       yield
-    except grpc.RpcError as grpc_err:
-      if grpc_err.code() in executors_errors.get_grpc_retryable_error_codes():
+    except grpc.RpcError as e:
+      if e.code() in executors_errors.get_grpc_retryable_error_codes():
         # If an RPC error is raised to us directly, ensure we propagate the
         # proper code to the other side of the service.
-        _propagate_grpc_code_err(context, grpc_err)
+        _propagate_grpc_code_err(context, e)
         logging.info('Raised an RPC error')
-        if grpc_err.code() == grpc.StatusCode.FAILED_PRECONDITION:
+        if e.code() == grpc.StatusCode.FAILED_PRECONDITION:
           # Raised if a worker needs to be reconfigured.
           logging.info('Executor underneath service raised FailedPrecondition; '
                        'invalidating references to this executor.')
           self.DestroyExecutor(request)
-        elif grpc_err.code() == grpc.StatusCode.UNAVAILABLE:
+        elif e.code() == grpc.StatusCode.UNAVAILABLE:
           # Raised if a worker goes down during invocation.
           logging.info('Executor underneath service unavailable; preemptively '
                        'invalidating references to this executor.')
@@ -197,7 +197,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorGroupServicer):
         return blank_response_fn()
       else:
         # Unknown; just reraise, see if anyone else can handle.
-        raise grpc_err
+        raise e
     except (executors_errors.RetryableError) as err:
       # Raised if no workers are available during executor construction.
       _set_unavailable_error(context, err)

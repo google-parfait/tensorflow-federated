@@ -32,6 +32,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:retrying",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
+        "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "//tensorflow_federated/python/core/impl/executors:value_serialization",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],

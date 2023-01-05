@@ -30,7 +30,7 @@ build --define=allow_oversize_protos=true
 # bazel produces an empty __init__.py and hides the symbols from the `.so`
 # python extension. We must ask bazel not to generate these and rely on
 # explicit __init__.py files.
-# build --incompatible_default_to_explicit_init_py
+build --incompatible_default_to_explicit_init_py
 
 # Processor native optimizations (depends on build host capabilities).
 build --copt=-march=native
