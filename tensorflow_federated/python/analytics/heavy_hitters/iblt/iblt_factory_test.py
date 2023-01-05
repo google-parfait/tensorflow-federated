@@ -64,7 +64,8 @@ def _generate_client_data(
   for input_strings, string_values in input_structure:
     client = collections.OrderedDict([
         (iblt_factory.DATASET_KEY, tf.constant(input_strings, dtype=tf.string)),
-        (iblt_factory.DATASET_VALUE, tf.constant(string_values, dtype=tf.int64))
+        list[(iblt_factory.DATASET_VALUE,
+              tf.constant(string_values, dtype=tf.int64))]
     ])
     client_data.append(tf.data.Dataset.from_tensor_slices(client))
   return client_data
