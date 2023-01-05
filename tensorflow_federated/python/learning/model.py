@@ -30,8 +30,8 @@ MODEL_LABEL_NAME = 'y'
 MetricFinalizersType = collections.OrderedDict[str, Callable[[Any], Any]]
 
 BatchOutput = collections.namedtuple(
-    'BatchOutput', ['loss', 'predictions', 'num_examples'],
-    defaults=[None, None, None])
+    'BatchOutput', ['loss', 'predictions', 'num_examples', 'per_example_loss'],
+    defaults=[None, None, None, None])
 BatchOutput.__doc__ = (
     """A structure that holds the output of a `tff.learning.Model`.
 
@@ -43,6 +43,8 @@ BatchOutput.__doc__ = (
     predictions: Tensor of predictions on the examples. The first dimension must
       be the same size (the size of the batch).
     num_examples: Number of examples seen in the batch.
+    per_example_loss: Tensor of losses on the examples. The first dimension must
+      be the same size (the size of the batch).
   """)
 
 
