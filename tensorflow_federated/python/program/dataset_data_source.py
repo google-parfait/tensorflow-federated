@@ -13,9 +13,9 @@
 # limitations under the License.
 """Utilities for representing data sources backed by `tf.data.Dataset`s."""
 
-from collections.abc import Sequence
 import random
 from typing import Any, Optional
+from typing import Sequence
 
 import tensorflow as tf
 
