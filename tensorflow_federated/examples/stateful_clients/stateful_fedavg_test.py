@@ -319,7 +319,7 @@ def _server_init(model, optimizer):
   stateful_fedavg_tff._initialize_optimizer_vars(model, optimizer)
   return stateful_fedavg_tf.ServerState(
       model_weights=model.weights,
-      optimizer_state=optimizer.variables(),
+      optimizer_state=optimizer.variables,
       round_num=0,
       total_iters_count=0)
 

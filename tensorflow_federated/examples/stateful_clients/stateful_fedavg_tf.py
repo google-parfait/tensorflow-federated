@@ -179,7 +179,7 @@ def server_update(model, server_optimizer, server_state, weights_delta,
   model_weights = get_model_weights(model)
   tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
                         server_state.model_weights)
-  tf.nest.map_structure(lambda v, t: v.assign(t), server_optimizer.variables(),
+  tf.nest.map_structure(lambda v, t: v.assign(t), server_optimizer.variables,
                         server_state.optimizer_state)
 
   # Apply the update to the model.
@@ -191,7 +191,7 @@ def server_update(model, server_optimizer, server_state, weights_delta,
   return tff.structure.update_struct(
       server_state,
       model_weights=model_weights,
-      optimizer_state=server_optimizer.variables(),
+      optimizer_state=server_optimizer.variables,
       round_num=server_state.round_num + 1,
       total_iters_count=total_iters_count)
 
