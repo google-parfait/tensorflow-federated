@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
 
-class ExecutionContext(context_base.SyncContext):
+class SyncExecutionContext(context_base.SyncContext):
   """A synchronous execution context backed by an `executor_base.Executor`."""
 
   def __init__(

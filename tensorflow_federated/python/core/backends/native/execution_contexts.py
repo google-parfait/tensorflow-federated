@@ -57,8 +57,9 @@ def _create_local_python_execution_context(
   """Wires executor function and compiler into sync or async context."""
 
   if not asynchronous:
-    context = sync_execution_context.ExecutionContext(
-        executor_fn=executor_fn, compiler_fn=compiler_fn)
+    context = sync_execution_context.SyncExecutionContext(
+        executor_fn=executor_fn, compiler_fn=compiler_fn
+    )
   else:
     context = async_execution_context.AsyncExecutionContext(
         executor_fn=executor_fn, compiler_fn=compiler_fn)
@@ -72,8 +73,8 @@ def create_local_python_execution_context(
     clients_per_thread: int = 1,
     server_tf_device=None,
     client_tf_devices=tuple(),
-    reference_resolving_clients=False
-) -> sync_execution_context.ExecutionContext:
+    reference_resolving_clients=False,
+) -> sync_execution_context.SyncExecutionContext:
   """Creates an execution context that executes computations locally."""
   factory = python_executor_stacks.local_executor_factory(
       default_num_clients=default_num_clients,
@@ -164,8 +165,9 @@ def create_sizing_execution_context(default_num_clients: int = 0,
       default_num_clients=default_num_clients,
       max_fanout=max_fanout,
       clients_per_thread=clients_per_thread)
-  return sync_execution_context.ExecutionContext(
-      executor_fn=factory, compiler_fn=compiler.transform_to_native_form)
+  return sync_execution_context.SyncExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.transform_to_native_form
+  )
 
 
 def create_thread_debugging_execution_context(default_num_clients: int = 0,
@@ -179,8 +181,9 @@ def create_thread_debugging_execution_context(default_num_clients: int = 0,
   def _debug_compiler(comp):
     return compiler.transform_to_native_form(comp, transform_math_to_tf=True)
 
-  return sync_execution_context.ExecutionContext(
-      executor_fn=factory, compiler_fn=_debug_compiler)
+  return sync_execution_context.SyncExecutionContext(
+      executor_fn=factory, compiler_fn=_debug_compiler
+  )
 
 
 def set_thread_debugging_execution_context(default_num_clients: int = 0,
@@ -198,7 +201,7 @@ def create_remote_python_execution_context(
     dispose_batch_size=20,
     max_fanout: int = 100,
     default_num_clients: int = 0,
-) -> sync_execution_context.ExecutionContext:
+) -> sync_execution_context.SyncExecutionContext:
   """Creates context to execute computations with workers on `channels`.
 
   Args:
@@ -223,7 +226,7 @@ def create_remote_python_execution_context(
       will be used instead.
 
   Returns:
-    An instance of `sync_execution_context.ExecutionContext`.
+    An instance of `sync_execution_context.SyncExecutionContext`.
   """
   factory = python_executor_stacks.remote_executor_factory(
       channels=channels,
@@ -445,7 +448,7 @@ def _create_local_cpp_execution_context(
     stream_structs: bool,
     asynchronous: bool,
 ) -> Union[
-    sync_execution_context.ExecutionContext,
+    sync_execution_context.SyncExecutionContext,
     async_execution_context.AsyncExecutionContext,
 ]:
   """Returns an execution context backed by C++ runtime.
@@ -608,7 +611,7 @@ def create_sync_local_cpp_execution_context(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = 0,
     stream_structs: bool = False,
-) -> sync_execution_context.ExecutionContext:
+) -> sync_execution_context.SyncExecutionContext:
   """Returns an execution context backed by C++ runtime.
 
   This execution context starts a C++ worker assumed to be at path

@@ -33,7 +33,9 @@ from tensorflow_federated.python.core.impl.types import placements
 
 
 def _install_executor_in_synchronous_context(executor_factory_instance):
-  context = sync_execution_context.ExecutionContext(executor_factory_instance)
+  context = sync_execution_context.SyncExecutionContext(
+      executor_factory_instance
+  )
   return context_stack_impl.context_stack.install(context)
 
 
@@ -206,8 +208,9 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     def identity(x):
       return x
 
-    context = sync_execution_context.ExecutionContext(
-        factory, cardinality_inference_fn=lambda x, y: {placements.CLIENTS: 1})
+    context = sync_execution_context.SyncExecutionContext(
+        factory, cardinality_inference_fn=lambda x, y: {placements.CLIENTS: 1}
+    )
     with context_stack_impl.context_stack.install(context):
       # This argument conflicts with the value returned by the
       # cardinality-inference function; we should get an error surfaced.
@@ -226,8 +229,9 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       return add_one(x)
 
     factory = python_executor_stacks.local_executor_factory()
-    context = sync_execution_context.ExecutionContext(
-        factory, cardinality_inference_fn=lambda x, y: {placements.CLIENTS: 1})
+    context = sync_execution_context.SyncExecutionContext(
+        factory, cardinality_inference_fn=lambda x, y: {placements.CLIENTS: 1}
+    )
     with context_stack_impl.context_stack.install(context):
       one = asyncio.run(sleep_and_add_one(0))
       self.assertEqual(one, 1)

@@ -34,9 +34,10 @@ def _create_local_python_mergeable_comp_context():
 def create_sequence_op_supporting_context():
   executor_factory = tff.framework.local_executor_factory(
       support_sequence_ops=True)
-  return tff.framework.ExecutionContext(
+  return tff.framework.SyncExecutionContext(
       executor_fn=executor_factory,
-      compiler_fn=tff.backends.native.compiler.transform_to_native_form)  # pytype: disable=wrong-arg-types
+      compiler_fn=tff.backends.native.compiler.transform_to_native_form,
+  )  # pytype: disable=wrong-arg-types
 
 
 def get_all_contexts():
@@ -69,5 +70,4 @@ def get_all_contexts():
        tff.backends.native.create_thread_debugging_execution_context),
       ('test_python',
        tff.backends.test.create_test_python_execution_context),
-  ]
-  # pyformat: enable
+  ]  # pyformat: enable

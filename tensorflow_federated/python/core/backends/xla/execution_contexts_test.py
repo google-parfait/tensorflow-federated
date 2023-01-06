@@ -34,7 +34,7 @@ class ExecutionContextsTest(absltest.TestCase):
 
   def test_create_local_execution_context(self):
     context = execution_contexts.create_local_python_execution_context()
-    self.assertIsInstance(context, sync_execution_context.ExecutionContext)
+    self.assertIsInstance(context, sync_execution_context.SyncExecutionContext)
 
   def test_set_local_python_execution_context_and_run_simple_xla_computation(
       self):

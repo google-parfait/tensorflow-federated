@@ -26,9 +26,10 @@ def create_test_python_execution_context(default_num_clients=0,
       default_num_clients=default_num_clients,
       clients_per_thread=clients_per_thread)
 
-  return sync_execution_context.ExecutionContext(
+  return sync_execution_context.SyncExecutionContext(
       executor_fn=factory,
-      compiler_fn=compiler.replace_secure_intrinsics_with_bodies)
+      compiler_fn=compiler.replace_secure_intrinsics_with_bodies,
+  )
 
 
 def set_test_python_execution_context(default_num_clients=0,

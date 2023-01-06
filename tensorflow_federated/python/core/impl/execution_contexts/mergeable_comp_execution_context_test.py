@@ -392,10 +392,10 @@ class MergeableCompExecutionContextTest(parameterized.TestCase):
 
   def test_construction_raises_with_sync_context(self):
 
-    contexts = [
-        sync_execution_context.ExecutionContext(
-            python_executor_stacks.local_executor_factory()) for _ in range(1)
-    ]
+    context = sync_execution_context.SyncExecutionContext(
+        python_executor_stacks.local_executor_factory()
+    )
+    contexts = [context]
     with self.assertRaises(TypeError):
       mergeable_comp_execution_context.MergeableCompExecutionContext(contexts)
 

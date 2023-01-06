@@ -589,6 +589,6 @@ class NormalizedBitTest(absltest.TestCase):
 
 if __name__ == '__main__':
   factory = python_executor_stacks.local_executor_factory()
-  context = sync_execution_context.ExecutionContext(executor_fn=factory)
+  context = sync_execution_context.SyncExecutionContext(executor_fn=factory)
   set_default_context.set_default_context(context)
   absltest.main()

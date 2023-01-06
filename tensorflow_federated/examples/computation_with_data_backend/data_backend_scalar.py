@@ -46,7 +46,7 @@ def main(_: Sequence[str]) -> None:
   factory = tff.framework.local_executor_factory(leaf_executor_fn=ex_fn)
 
   # Context in which to execute the following computation.
-  ctx = tff.framework.ExecutionContext(executor_fn=factory)
+  ctx = tff.framework.SyncExecutionContext(executor_fn=factory)
   tff.framework.set_default_context(ctx)
 
   # Type of the data returned by the DataBackend.

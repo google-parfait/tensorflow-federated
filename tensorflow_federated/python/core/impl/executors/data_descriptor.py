@@ -37,7 +37,7 @@ def CreateDataDescriptor(arg_uris: list[str], arg_type: computation_types.Type):
 
   Args:
     arg_uris: List of URIs compatible with the data backend embedded in the
-      given `tff.framework.ExecutionContext`.
+      given `tff.framework.SyncExecutionContext`.
     arg_type: The type of data referenced by the URIs. An instance of
       `tff.Type`.
 

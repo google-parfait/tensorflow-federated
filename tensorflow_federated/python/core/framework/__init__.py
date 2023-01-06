@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.impl.context_stack.context_base import Syn
 from tensorflow_federated.python.core.impl.context_stack.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context
-from tensorflow_federated.python.core.impl.execution_contexts.sync_execution_context import ExecutionContext
+from tensorflow_federated.python.core.impl.execution_contexts.sync_execution_context import SyncExecutionContext
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import ComposingExecutorFactory
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executor_stacks.python_executor_stacks import ReconstructOnChangeExecutorFactory

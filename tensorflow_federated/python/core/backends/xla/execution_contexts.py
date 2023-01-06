@@ -35,7 +35,7 @@ def create_local_python_execution_context():
       support_sequence_ops=True,
       leaf_executor_fn=executor.XlaExecutor,
       local_computation_factory=compiler.XlaComputationFactory())
-  return sync_execution_context.ExecutionContext(executor_fn=factory)
+  return sync_execution_context.SyncExecutionContext(executor_fn=factory)
 
 
 def set_local_python_execution_context(*args, **kwargs):
