@@ -43,7 +43,8 @@ def create_local_cpp_execution_context(
     An instance of `tff.framework.SyncContext` representing the TFF-C++ runtime.
   """
 
-  def leaf_executor_fn():
+  def leaf_executor_fn(max_concurrent_computation_calls):
+    del max_concurrent_computation_calls  # Unused.
     xla_executor_fn = executor_bindings.create_xla_executor()
     executor_bindings.create_sequence_executor(xla_executor_fn)
 
