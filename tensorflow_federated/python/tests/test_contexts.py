@@ -13,6 +13,8 @@
 # limitations under the License.
 """Contexts and constructors for integration testing."""
 
+import functools
+
 import portpicker
 import tensorflow_federated as tff
 
@@ -37,21 +39,28 @@ def create_sequence_op_supporting_context():
       compiler_fn=tff.backends.native.compiler.transform_to_native_form)  # pytype: disable=wrong-arg-types
 
 
-def _get_all_contexts():
+def get_all_contexts():
   """Returns a list containing a (name, context_fn) tuple for each context."""
-  # pylint: disable=unnecessary-lambda
   # pyformat: disable
   return [
-      ('native_mergeable_python',
-       lambda: _create_local_python_mergeable_comp_context()),
       ('native_local_python',
        tff.backends.native.create_local_python_execution_context),
+      ('native_mergeable_python',
+       _create_local_python_mergeable_comp_context),
       ('native_remote',
-       lambda: remote_runtime_test_utils.create_localhost_remote_context(WORKER_PORTS),
-       lambda: remote_runtime_test_utils.create_inprocess_worker_contexts(WORKER_PORTS)),
+       functools.partial(
+           remote_runtime_test_utils.create_localhost_remote_context,
+           WORKER_PORTS),
+       functools.partial(
+           remote_runtime_test_utils.create_inprocess_worker_contexts,
+           WORKER_PORTS)),
       ('native_remote_intermediate_aggregator',
-       lambda: remote_runtime_test_utils.create_localhost_remote_context(AGGREGATOR_PORTS),
-       lambda: remote_runtime_test_utils.create_inprocess_aggregator_contexts(WORKER_PORTS, AGGREGATOR_PORTS)),
+       functools.partial(
+           remote_runtime_test_utils.create_localhost_remote_context,
+           AGGREGATOR_PORTS),
+       functools.partial(
+           remote_runtime_test_utils.create_inprocess_aggregator_contexts,
+           WORKER_PORTS, AGGREGATOR_PORTS)),
       ('native_sizing',
        tff.backends.native.create_sizing_execution_context),
       ('native_sync_local_cpp',
@@ -62,4 +71,3 @@ def _get_all_contexts():
        tff.backends.test.create_test_python_execution_context),
   ]
   # pyformat: enable
-  # pylint: enable=unnecessary-lambda
