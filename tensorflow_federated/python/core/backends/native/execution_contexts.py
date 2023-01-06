@@ -22,7 +22,7 @@ import stat
 import subprocess
 import sys
 import time
-from typing import Optional, Union
+from typing import Optional
 
 from absl import logging
 import grpc
@@ -37,6 +37,7 @@ from tensorflow_federated.python.core.impl.execution_contexts import async_execu
 from tensorflow_federated.python.core.impl.execution_contexts import mergeable_comp_execution_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import python_executor_stacks
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor_grpc_stub
 from tensorflow_federated.python.core.impl.types import placements
@@ -49,22 +50,6 @@ _GRPC_CHANNEL_OPTIONS = [
     ('grpc.max_receive_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
     ('grpc.max_send_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES)
 ]
-
-
-def _create_local_python_execution_context(
-    *, executor_fn, compiler_fn, asynchronous
-):
-  """Wires executor function and compiler into sync or async context."""
-
-  if not asynchronous:
-    context = sync_execution_context.SyncExecutionContext(
-        executor_fn=executor_fn, compiler_fn=compiler_fn
-    )
-  else:
-    context = async_execution_context.AsyncExecutionContext(
-        executor_fn=executor_fn, compiler_fn=compiler_fn)
-
-  return context
 
 
 def create_local_python_execution_context(
@@ -89,8 +74,8 @@ def create_local_python_execution_context(
         comp, transform_math_to_tf=not reference_resolving_clients)
     return native_form
 
-  return _create_local_python_execution_context(
-      executor_fn=factory, compiler_fn=_compiler, asynchronous=False
+  return sync_execution_context.SyncExecutionContext(
+      executor_fn=factory, compiler_fn=_compiler
   )
 
 
@@ -134,8 +119,8 @@ def create_local_async_python_execution_context(
         comp, transform_math_to_tf=not reference_resolving_clients)
     return native_form
 
-  return _create_local_python_execution_context(
-      executor_fn=factory, compiler_fn=_compiler, asynchronous=True
+  return async_execution_context.AsyncExecutionContext(
+      executor_fn=factory, compiler_fn=_compiler
   )
 
 
@@ -236,10 +221,8 @@ def create_remote_python_execution_context(
       default_num_clients=default_num_clients,
   )
 
-  return _create_local_python_execution_context(
-      executor_fn=factory,
-      compiler_fn=compiler.transform_to_native_form,
-      asynchronous=False,
+  return sync_execution_context.SyncExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.transform_to_native_form
   )
 
 
@@ -324,10 +307,8 @@ def create_remote_async_python_execution_context(
       default_num_clients=default_num_clients,
   )
 
-  return _create_local_python_execution_context(
-      executor_fn=factory,
-      compiler_fn=compiler.transform_to_native_form,
-      asynchronous=True,
+  return async_execution_context.AsyncExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.transform_to_native_form
   )
 
 
@@ -441,16 +422,12 @@ def _decompress_file(compressed_path, output_path):
       stat.S_IXOTH)  # pyformat: disable
 
 
-def _create_local_cpp_execution_context(
+def _create_local_cpp_executor_factory(
     *,
     default_num_clients: int,
     max_concurrent_computation_calls: int,
     stream_structs: bool,
-    asynchronous: bool,
-) -> Union[
-    sync_execution_context.SyncExecutionContext,
-    async_execution_context.AsyncExecutionContext,
-]:
+) -> executor_factory.ExecutorFactory:
   """Returns an execution context backed by C++ runtime.
 
   Args:
@@ -460,8 +437,6 @@ def _create_local_cpp_execution_context(
     max_concurrent_computation_calls: The maximum number of concurrent calls to
       a single computation in the C++ runtime. If `None`, there is no limit.
     stream_structs: The flag to enable decomposing and streaming struct values.
-    asynchronous: A boolean indicating if the returned runtime is backed by a
-      synchronous or asynchronous execution stack.
 
   Raises:
     RuntimeError: If an internal C++ worker binary can not be found.
@@ -554,12 +529,8 @@ def _create_local_cpp_execution_context(
     ex.set_cardinalities(cardinalities)
     return ex
 
-  factory = python_executor_stacks.ResourceManagingExecutorFactory(
-      executor_stack_fn=stack_fn)
-  return _create_local_python_execution_context(
-      executor_fn=factory,
-      compiler_fn=compiler.desugar_and_transform_to_native,
-      asynchronous=asynchronous,
+  return python_executor_stacks.ResourceManagingExecutorFactory(
+      executor_stack_fn=stack_fn
   )
 
 
@@ -585,11 +556,13 @@ def create_async_local_cpp_execution_context(
   Raises:
     RuntimeError: If an internal C++ worker binary can not be found.
   """
-  return _create_local_cpp_execution_context(
+  factory = _create_local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       stream_structs=stream_structs,
-      asynchronous=True,
+  )
+  return async_execution_context.AsyncExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
   )
 
 
@@ -629,11 +602,13 @@ def create_sync_local_cpp_execution_context(
   Raises:
     RuntimeError: If an internal C++ worker binary can not be found.
   """
-  return _create_local_cpp_execution_context(
+  factory = _create_local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       stream_structs=stream_structs,
-      asynchronous=False,
+  )
+  return sync_execution_context.SyncExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
   )
 
 

@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Execution context for single-aggregation computations."""
 
 import asyncio
@@ -362,8 +357,12 @@ def _repackage_partitioned_values(
 class MergeableCompExecutionContextValue(typed_object.TypedObject):
   """Represents a value embedded in the `MergeableCompExecutionContext`."""
 
-  def __init__(self, value: Value, type_spec: computation_types.Type,
-               num_desired_subrounds: int):
+  def __init__(
+      self,
+      value: Any,
+      type_spec: computation_types.Type,
+      num_desired_subrounds: int,
+  ):
     py_typecheck.check_type(type_spec, computation_types.Type)
     self._type_signature = type_spec
     self._partitioned_value = _split_value_into_subrounds(
@@ -477,8 +476,11 @@ async def _invoke_merge_in_async_pool(
 
 
 async def _invoke_after_merge_in_async_pool(
-    comp: MergeableCompForm, merge_result: Any, arg_list: Sequence[Any],
-    execution_contexts: Sequence[context_base.AsyncContext]) -> Sequence[Any]:
+    comp: MergeableCompForm,
+    merge_result: Any,
+    arg_list: Sequence[Any],
+    execution_contexts: Sequence[context_base.AsyncContext],
+) -> list[Any]:
   """Invokes after_merge in a pool of async contexts, returning result."""
 
   def task_fn(x, context):
