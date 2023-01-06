@@ -15,7 +15,7 @@
 
 from tensorflow_federated.python.common_libs import async_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.execution_contexts import cpp_async_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import async_cpp_execution_context
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 
 
@@ -29,8 +29,13 @@ class SyncSerializeAndExecuteCPPContext(context_base.SyncContext):
       *,
       cardinality_inference_fn: cardinalities_utils
       .CardinalityInferenceFnType = cardinalities_utils.infer_cardinalities):
-    self._async_execution_context = cpp_async_execution_context.AsyncSerializeAndExecuteCPPContext(
-        factory, compiler_fn, cardinality_inference_fn=cardinality_inference_fn)
+    self._async_execution_context = (
+        async_cpp_execution_context.AsyncSerializeAndExecuteCPPContext(
+            factory,
+            compiler_fn,
+            cardinality_inference_fn=cardinality_inference_fn,
+        )
+    )
     self._async_runner = async_utils.AsyncThreadRunner()
 
   def invoke(self, comp, arg):

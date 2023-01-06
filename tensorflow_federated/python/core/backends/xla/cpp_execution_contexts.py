@@ -14,7 +14,7 @@
 """Execution contexts for the XLA backend."""
 
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
-from tensorflow_federated.python.core.impl.execution_contexts import cpp_sync_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_cpp_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
@@ -57,6 +57,7 @@ def create_local_cpp_execution_context(
     # with intrinsic reductions
     return None
 
-  context = cpp_sync_execution_context.SyncSerializeAndExecuteCPPContext(
-      factory=factory, compiler_fn=compiler_fn)
+  context = sync_cpp_execution_context.SyncSerializeAndExecuteCPPContext(
+      factory=factory, compiler_fn=compiler_fn
+  )
   return context

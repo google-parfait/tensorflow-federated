@@ -17,7 +17,7 @@ from tensorflow_federated.python.core.backends.native import compiler as native_
 from tensorflow_federated.python.core.backends.test import compiler as test_compiler
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.execution_contexts import cpp_sync_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_cpp_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 
 
@@ -56,8 +56,9 @@ def create_test_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls)
-  context = cpp_sync_execution_context.SyncSerializeAndExecuteCPPContext(
-      factory=factory, compiler_fn=_compile)
+  context = sync_cpp_execution_context.SyncSerializeAndExecuteCPPContext(
+      factory=factory, compiler_fn=_compile
+  )
   return context
 
 

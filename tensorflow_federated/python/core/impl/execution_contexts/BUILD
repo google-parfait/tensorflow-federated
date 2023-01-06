@@ -20,6 +20,24 @@ py_library(
 )
 
 py_library(
+    name = "async_cpp_execution_context",
+    srcs = ["async_cpp_execution_context.py"],
+    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
+    srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
+    deps = [
+        ":compiler_pipeline",
+        "//tensorflow_federated/python/common_libs:retrying",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
+        "//tensorflow_federated/python/core/impl/executors:value_serialization",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
+py_library(
     name = "async_execution_context",
     srcs = ["async_execution_context.py"],
     srcs_version = "PY3",
@@ -84,74 +102,6 @@ py_test(
 )
 
 py_library(
-    name = "cpp_async_execution_context",
-    srcs = ["cpp_async_execution_context.py"],
-    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
-    srcs_version = "PY3",
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
-    deps = [
-        ":compiler_pipeline",
-        "//tensorflow_federated/python/common_libs:retrying",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
-        "//tensorflow_federated/python/core/impl/executors:value_serialization",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-    ],
-)
-
-py_library(
-    name = "cpp_sync_execution_context",
-    srcs = ["cpp_sync_execution_context.py"],
-    srcs_version = "PY3",
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
-    deps = [
-        ":cpp_async_execution_context",
-        "//tensorflow_federated/python/common_libs:async_utils",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
-    ],
-)
-
-py_library(
-    name = "sync_execution_context",
-    srcs = ["sync_execution_context.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":async_execution_context",
-        "//tensorflow_federated/python/common_libs:async_utils",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/computation:computation_base",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
-    ],
-)
-
-py_test(
-    name = "sync_execution_context_test",
-    size = "small",
-    srcs = ["sync_execution_context_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":sync_execution_context",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
-        "//tensorflow_federated/python/core/impl/executors:executors_errors",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
-        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
-        "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_library(
     name = "mergeable_comp_execution_context",
     srcs = ["mergeable_comp_execution_context.py"],
     srcs_version = "PY3",
@@ -193,5 +143,55 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
+py_library(
+    name = "sync_cpp_execution_context",
+    srcs = ["sync_cpp_execution_context.py"],
+    srcs_version = "PY3",
+    tags = [
+        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
+    ],
+    deps = [
+        ":async_cpp_execution_context",
+        "//tensorflow_federated/python/common_libs:async_utils",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
+    ],
+)
+
+py_library(
+    name = "sync_execution_context",
+    srcs = ["sync_execution_context.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":async_execution_context",
+        "//tensorflow_federated/python/common_libs:async_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
+        "//tensorflow_federated/python/core/impl/executors:executor_factory",
+    ],
+)
+
+py_test(
+    name = "sync_execution_context_test",
+    size = "small",
+    srcs = ["sync_execution_context_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":sync_execution_context",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/executor_stacks:python_executor_stacks",
+        "//tensorflow_federated/python/core/impl/executors:executors_errors",
+        "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
