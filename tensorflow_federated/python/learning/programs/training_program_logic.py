@@ -189,9 +189,13 @@ async def train_model(
       return round_num % evaluation_periodicity == 0
     elif isinstance(evaluation_periodicity, datetime.timedelta):
       nonlocal next_evaluation_time
-      if (next_evaluation_time is None or
-          next_evaluation_time < train_round_finished_time):
-        next_evaluation_time = train_round_finished_time + evaluation_periodicity
+      if (
+          next_evaluation_time is None
+          or next_evaluation_time < train_round_finished_time
+      ):
+        next_evaluation_time = (
+            train_round_finished_time + evaluation_periodicity
+        )
         return True
       return False
     else:
@@ -224,8 +228,11 @@ async def train_model(
                                      version=round_num)
     if train_metrics_manager is not None:
       try:
-        released_train_metrics, released_train_metrics_type = evaluation_program_logic.extract_and_rewrap_metrics(
-            train_metrics, path=('client_work', 'train'))
+        released_train_metrics, released_train_metrics_type = (
+            evaluation_program_logic.extract_and_rewrap_metrics(
+                train_metrics, path=('client_work', 'train')
+            )
+        )
       except KeyError as e:
         raise KeyError(
             '`train_model` requires the `train_process` argument to be a '
@@ -255,7 +262,9 @@ async def train_model(
           model_output_manager.release(
               train_state,
               train_state_type,
-              key=f'final_training_checkpoint_round_{train_total_rounds}.ckpt'))
+              key=f'final_training_checkpoint_round_{train_total_rounds}',
+          )
+      )
   )
   # Wait for all pending tasks to complete before exiting the program.
   await _wait_for_tasks_to_finish(pending_tasks)
