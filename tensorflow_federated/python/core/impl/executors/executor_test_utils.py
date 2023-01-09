@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Utilities for testing executors."""
 
 import asyncio
@@ -457,7 +452,8 @@ def create_whimsy_computation_call():
 
 def create_whimsy_computation_intrinsic():
   """Returns a intrinsic computation and type."""
-  intrinsic_def, type_signature = create_whimsy_intrinsic_def_federated_eval_at_server(
+  intrinsic_def, type_signature = (
+      create_whimsy_intrinsic_def_federated_eval_at_server()
   )
   value = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
@@ -516,10 +512,12 @@ def create_whimsy_computation_tensorflow_add():
   type_spec = tf.float32
 
   with tf.Graph().as_default() as graph:
-    parameter_1_value, parameter_1_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', type_spec, graph)
-    parameter_2_value, parameter_2_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'y', type_spec, graph)
+    parameter_1_value, parameter_1_binding = (
+        tensorflow_utils.stamp_parameter_in_graph('x', type_spec, graph)
+    )
+    parameter_2_value, parameter_2_binding = (
+        tensorflow_utils.stamp_parameter_in_graph('y', type_spec, graph)
+    )
     result_value = tf.add(parameter_1_value, parameter_2_value)
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result_value, graph)

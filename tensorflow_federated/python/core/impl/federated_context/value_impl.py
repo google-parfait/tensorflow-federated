@@ -138,9 +138,11 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
           building_block_factory.create_federated_getattr_call(
               self._comp, name))
     if name not in dir(self.type_signature):
+      attributes = ', '.join(dir(self.type_signature))
       raise AttributeError(
-          'There is no such attribute \'{}\' in this tuple. Valid attributes: ({})'
-          .format(name, ', '.join(dir(self.type_signature))))
+          f"There is no such attribute '{name}' in this tuple. Valid "
+          f'attributes: ({attributes})'
+      )
     if self._comp.is_struct():
       return Value(getattr(self._comp, name))
     return Value(building_blocks.Selection(self._comp, name=name))
@@ -193,9 +195,10 @@ class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
     type_signature = _unfederated(self.type_signature)
     if not type_signature.is_struct():
       raise TypeError(
-          'Operator iter() is only supported for (possibly federated) structure '
-          'types, but the object on which it has been invoked is of type {}.'
-          .format(self.type_signature))
+          'Operator iter() is only supported for (possibly federated) '
+          'structure types, but the object on which it has been invoked is of '
+          f'type {self.type_signature}.'
+      )
     for index in range(len(type_signature)):
       yield self[index]
 
@@ -378,8 +381,10 @@ def to_value(
             'argument types of a computation before passing it to a '
             'function that requires a `tff.Value` (such as a TFF intrinsic '
             'like `federated_map`). If you are a TFF developer and think '
-            'this should be supported, consider providing `parameter_type_hint` '
-            'as an argument to the encompassing `to_value` conversion.')
+            'this should be supported, consider providing '
+            '`parameter_type_hint` as an argument to the encompassing '
+            '`to_value` conversion.'
+        )
       parameter_type_hint = computation_types.to_type(parameter_type_hint)
       arg = arg.fn_for_argument_type(parameter_type_hint)
     py_typecheck.check_type(arg, computation_impl.ConcreteComputation)

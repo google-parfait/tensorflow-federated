@@ -808,10 +808,12 @@ def federated_secure_sum_bitwidth(value, bitwidth):
   if not type_analysis.is_single_integer_or_matches_structure(
       bitwidth_type, value_member_type):
     raise TypeError(
-        'Expected `federated_secure_sum_bitwidth` parameter `bitwidth` to match '
-        'the structure of `value`, with one integer bitwidth per tensor in '
-        '`value`. Found `value` of `{}` and `bitwidth` of `{}`.'.format(
-            value_member_type, bitwidth_type))
+        'Expected `federated_secure_sum_bitwidth` parameter `bitwidth` to '
+        'match the structure of `value`, with one integer bitwidth per tensor '
+        'in `value`. Found `value` of `{}` and `bitwidth` of `{}`.'.format(
+            value_member_type, bitwidth_type
+        )
+    )
   if bitwidth_type.is_tensor() and value_member_type.is_struct():
     bitwidth_value = value_impl.to_value(
         structure.map_structure(lambda _: bitwidth, value_member_type), None)
