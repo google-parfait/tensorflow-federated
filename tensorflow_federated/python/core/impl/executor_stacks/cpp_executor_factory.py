@@ -115,7 +115,10 @@ def local_cpp_executor_factory(
     if cardinalities.get(placements.CLIENTS) is None:
       cardinalities[placements.CLIENTS] = default_num_clients
     num_clients = cardinalities[placements.CLIENTS]
-    if max_concurrent_computation_calls > 0 and num_clients > max_concurrent_computation_calls:
+    if (
+        max_concurrent_computation_calls > 0
+        and num_clients > max_concurrent_computation_calls
+    ):
       expected_concurrency_factor = math.ceil(num_clients /
                                               max_concurrent_computation_calls)
       _log_and_warn_on_sequential_execution(max_concurrent_computation_calls,
@@ -123,12 +126,15 @@ def local_cpp_executor_factory(
                                             expected_concurrency_factor)
 
     leaf_executor = leaf_executor_fn(max_concurrent_computation_calls)
-    sub_federating_reference_resolving_executor = executor_bindings.create_reference_resolving_executor(
-        leaf_executor)
+    sub_federating_reference_resolving_executor = (
+        executor_bindings.create_reference_resolving_executor(leaf_executor)
+    )
     federating_ex = executor_bindings.create_federating_executor(
-        sub_federating_reference_resolving_executor, cardinalities)
-    top_level_reference_resolving_ex = executor_bindings.create_reference_resolving_executor(
-        federating_ex)
+        sub_federating_reference_resolving_executor, cardinalities
+    )
+    top_level_reference_resolving_ex = (
+        executor_bindings.create_reference_resolving_executor(federating_ex)
+    )
     return top_level_reference_resolving_ex
 
   return CPPExecutorFactory(_executor_fn)
