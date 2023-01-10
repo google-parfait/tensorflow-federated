@@ -45,7 +45,6 @@ TENSOR_REPRESENTATION_TYPES = (
     float,
     bool,
     bytes,
-
     # Numpy data types
     np.generic,
     np.ndarray,
@@ -92,9 +91,11 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
       placeholder = tf.compat.v1.placeholder(
           dtype=parameter_type.dtype,
           shape=parameter_type.shape,
-          name=parameter_name)
+          name=parameter_name,
+      )
       binding = pb.TensorFlow.Binding(
-          tensor=pb.TensorFlow.TensorBinding(tensor_name=placeholder.name))
+          tensor=pb.TensorFlow.TensorBinding(tensor_name=placeholder.name)
+      )
       return (placeholder, binding)
   elif parameter_type.is_struct():
     # The parameter_type could be a StructTypeWithPyContainer, however, we
@@ -109,26 +110,36 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
     element_bindings = []
     for e in structure.iter_elements(parameter_type):
       e_val, e_binding = stamp_parameter_in_graph(
-          '{}_{}'.format(parameter_name, e[0]), e[1], graph)
+          '{}_{}'.format(parameter_name, e[0]), e[1], graph
+      )
       element_name_value_pairs.append((e[0], e_val))
       element_bindings.append(e_binding)
-    return (structure.Struct(element_name_value_pairs),
-            pb.TensorFlow.Binding(
-                struct=pb.TensorFlow.StructBinding(element=element_bindings)))
+    return (
+        structure.Struct(element_name_value_pairs),
+        pb.TensorFlow.Binding(
+            struct=pb.TensorFlow.StructBinding(element=element_bindings)
+        ),
+    )
   elif parameter_type.is_sequence():
     with graph.as_default():
       with tf.device('/device:cpu:0'):
         variant_tensor = tf.compat.v1.placeholder(tf.variant, shape=[])
-        ds = make_dataset_from_variant_tensor(variant_tensor,
-                                              parameter_type.element)
-    return (ds,
-            pb.TensorFlow.Binding(
-                sequence=pb.TensorFlow.SequenceBinding(
-                    variant_tensor_name=variant_tensor.name)))
+        ds = make_dataset_from_variant_tensor(
+            variant_tensor, parameter_type.element
+        )
+    return (
+        ds,
+        pb.TensorFlow.Binding(
+            sequence=pb.TensorFlow.SequenceBinding(
+                variant_tensor_name=variant_tensor.name
+            )
+        ),
+    )
   else:
     raise ValueError(
         'Parameter type component {!r} cannot be stamped into a TensorFlow '
-        'graph.'.format(parameter_type))
+        'graph.'.format(parameter_type)
+    )
 
 
 def make_dataset_from_variant_tensor(variant_tensor, type_spec):
@@ -148,16 +159,24 @@ def make_dataset_from_variant_tensor(variant_tensor, type_spec):
   if not tf.is_tensor(variant_tensor):
     raise TypeError(
         'Expected `variant_tensor` to be a tensor, found {}.'.format(
-            py_typecheck.type_string(type(variant_tensor))))
+            py_typecheck.type_string(type(variant_tensor))
+        )
+    )
   if variant_tensor.dtype != tf.variant:
     raise TypeError(
         'Expected `variant_tensor` to be of a variant type, found {}.'.format(
-            variant_tensor.dtype))
+            variant_tensor.dtype
+        )
+    )
   with tf.device('/device:cpu:0'):
     return tf.data.experimental.from_variant(
         variant_tensor,
-        structure=(type_conversions.type_to_tf_structure(
-            computation_types.to_type(type_spec))))
+        structure=(
+            type_conversions.type_to_tf_structure(
+                computation_types.to_type(type_spec)
+            )
+        ),
+    )
 
 
 class InvalidGraphResultError(TypeError):
@@ -219,12 +238,15 @@ def capture_result_from_graph(
       type_members.append(type_member)
     if container_type:
       type_spec = computation_types.StructWithPythonType(
-          type_members, container_type=container_type)
+          type_members, container_type=container_type
+      )
     else:
       type_spec = computation_types.StructType(type_members)
     binding = pb.TensorFlow.Binding(
         struct=pb.TensorFlow.StructBinding(
-            element=[e[2] for e in element_name_type_binding_triples]))
+            element=[e[2] for e in element_name_type_binding_triples]
+        )
+    )
     return type_spec, binding
 
   # TODO(b/113112885): The emerging extensions for serializing SavedModels may
@@ -247,21 +269,29 @@ def capture_result_from_graph(
     # `tf.is_tensor` returns true for some things that are not actually single
     # `tf.Tensor`s, including `tf.sparse.SparseTensor`s and `tf.RaggedTensor`s.
     if isinstance(result, tf.RaggedTensor):
-      name_value_pairs = (('flat_values', result.flat_values),
-                          ('nested_row_splits', result.nested_row_splits))
-      return _get_bindings_for_elements(name_value_pairs, graph,
-                                        tf.RaggedTensor)
+      name_value_pairs = (
+          ('flat_values', result.flat_values),
+          ('nested_row_splits', result.nested_row_splits),
+      )
+      return _get_bindings_for_elements(
+          name_value_pairs, graph, tf.RaggedTensor
+      )
     elif isinstance(result, tf.sparse.SparseTensor):
-      name_value_pairs = (('indices', result.indices),
-                          ('values', result.values), ('dense_shape',
-                                                      result.dense_shape))
-      return _get_bindings_for_elements(name_value_pairs, graph,
-                                        tf.sparse.SparseTensor)
+      name_value_pairs = (
+          ('indices', result.indices),
+          ('values', result.values),
+          ('dense_shape', result.dense_shape),
+      )
+      return _get_bindings_for_elements(
+          name_value_pairs, graph, tf.sparse.SparseTensor
+      )
     else:
-      return (computation_types.TensorType(result.dtype.base_dtype,
-                                           result.shape),
-              pb.TensorFlow.Binding(
-                  tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)))
+      return (
+          computation_types.TensorType(result.dtype.base_dtype, result.shape),
+          pb.TensorFlow.Binding(
+              tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)
+          ),
+      )
   elif py_typecheck.is_named_tuple(result):
     # Special handling needed for collections.namedtuples since they do not have
     # anything in the way of a shared base class. Note we don't want to rely on
@@ -279,14 +309,16 @@ def capture_result_from_graph(
     return _get_bindings_for_elements(name_value_pairs, graph, type(result))
   elif isinstance(result, structure.Struct):
     return _get_bindings_for_elements(
-        structure.to_elements(result), graph, None)
+        structure.to_elements(result), graph, None
+    )
   elif isinstance(result, Mapping):
     for key in result:
       if not isinstance(key, str):
         key_type_str = py_typecheck.type_string(type(key))
         raise DictionaryKeyMustBeStringError(
             'Dictionaries returned from TensorFlow graphs must be of type '
-            f'`str`, but found key `{key}` of type `{key_type_str}`.')
+            f'`str`, but found key `{key}` of type `{key_type_str}`.'
+        )
     if isinstance(result, collections.OrderedDict):
       name_value_pairs = result.items()
     else:
@@ -296,11 +328,16 @@ def capture_result_from_graph(
     element_type_binding_pairs = [
         capture_result_from_graph(e, graph) for e in result
     ]
-    return (computation_types.StructWithPythonType(
-        [e[0] for e in element_type_binding_pairs], type(result)),
-            pb.TensorFlow.Binding(
-                struct=pb.TensorFlow.StructBinding(
-                    element=[e[1] for e in element_type_binding_pairs])))
+    return (
+        computation_types.StructWithPythonType(
+            [e[0] for e in element_type_binding_pairs], type(result)
+        ),
+        pb.TensorFlow.Binding(
+            struct=pb.TensorFlow.StructBinding(
+                element=[e[1] for e in element_type_binding_pairs]
+            )
+        ),
+    )
   elif isinstance(result, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
     element_structure = result.element_spec
     try:
@@ -309,7 +346,8 @@ def capture_result_from_graph(
       raise InvalidDatasetElementSpecError(
           'Dataset has `element_spec` which is not a valid TFF type.\n'
           f'Found `element_spec`: {element_structure}\n'
-          f'which is not a valid TFF type: {str(e)}') from None
+          f'which is not a valid TFF type: {str(e)}'
+      ) from None
 
     # This variant tensor needs an identity added to ensure that parameter and
     # result bindings in our graphdefs are distinct. A similar operation is
@@ -320,14 +358,19 @@ def capture_result_from_graph(
     with graph.as_default():
       with tf.device('/device:cpu:0'):
         variant_tensor = tf.identity(tf.data.experimental.to_variant(result))
-    return (computation_types.SequenceType(element_type),
-            pb.TensorFlow.Binding(
-                sequence=pb.TensorFlow.SequenceBinding(
-                    variant_tensor_name=variant_tensor.name)))
+    return (
+        computation_types.SequenceType(element_type),
+        pb.TensorFlow.Binding(
+            sequence=pb.TensorFlow.SequenceBinding(
+                variant_tensor_name=variant_tensor.name
+            )
+        ),
+    )
   else:
     result_type_str = py_typecheck.type_string(type(result))
     raise UnsupportedGraphResultError(
-        f'Cannot capture a result of an unsupported type {result_type_str}.')
+        f'Cannot capture a result of an unsupported type {result_type_str}.'
+    )
 
 
 def compute_map_from_bindings(source, target):
@@ -355,36 +398,48 @@ def compute_map_from_bindings(source, target):
   if source_oneof != target_oneof:
     raise ValueError(
         'Source and target binding variants mismatch: {} vs. {}'.format(
-            source_oneof, target_oneof))
+            source_oneof, target_oneof
+        )
+    )
   if source_oneof == 'tensor':
-    return collections.OrderedDict([(str(source.tensor.tensor_name),
-                                     str(target.tensor.tensor_name))])
+    return collections.OrderedDict(
+        [(str(source.tensor.tensor_name), str(target.tensor.tensor_name))]
+    )
   elif source_oneof == 'sequence':
     sequence_oneof = source.sequence.WhichOneof('binding')
     if target.sequence.WhichOneof('binding') != sequence_oneof:
       raise ValueError(
           'Source and target sequence bindings mismatch: {} vs. {}'.format(
-              sequence_oneof, target.sequence.WhichOneof('binding')))
+              sequence_oneof, target.sequence.WhichOneof('binding')
+          )
+      )
     if sequence_oneof == 'variant_tensor_name':
-      return collections.OrderedDict([
-          (str(source.sequence.variant_tensor_name),
-           str(target.sequence.variant_tensor_name)),
-      ])
+      return collections.OrderedDict(
+          [
+              (
+                  str(source.sequence.variant_tensor_name),
+                  str(target.sequence.variant_tensor_name),
+              ),
+          ]
+      )
     else:
       raise ValueError('Unsupported sequence binding {}'.format(sequence_oneof))
   elif source_oneof == 'struct':
     if len(source.struct.element) != len(target.struct.element):
       raise ValueError(
           'Source and target binding tuple lengths mismatch: {} vs. {}.'.format(
-              len(source.struct.element), len(target.struct.element)))
+              len(source.struct.element), len(target.struct.element)
+          )
+      )
     else:
       result = collections.OrderedDict()
-      for source_element, target_element in zip(source.struct.element,
-                                                target.struct.element):
+      for source_element, target_element in zip(
+          source.struct.element, target.struct.element
+      ):
         result.update(compute_map_from_bindings(source_element, target_element))
       return result
   else:
-    raise ValueError('Unsupported type of binding \'{}\'.'.format(source_oneof))
+    raise ValueError("Unsupported type of binding '{}'.".format(source_oneof))
 
 
 def extract_tensor_names_from_binding(binding):
@@ -408,12 +463,15 @@ def extract_tensor_names_from_binding(binding):
       raise ValueError('Unsupported sequence binding {}'.format(sequence_oneof))
   elif binding_oneof == 'struct':
     return list(
-        itertools.chain.from_iterable([
-            extract_tensor_names_from_binding(e) for e in binding.struct.element
-        ]))
+        itertools.chain.from_iterable(
+            [
+                extract_tensor_names_from_binding(e)
+                for e in binding.struct.element
+            ]
+        )
+    )
   else:
-    raise ValueError(
-        'Unsupported type of binding \'{}\'.'.format(binding_oneof))
+    raise ValueError("Unsupported type of binding '{}'.".format(binding_oneof))
 
 
 def assemble_result_from_graph(type_spec, binding, output_map):
@@ -450,16 +508,22 @@ def assemble_result_from_graph(type_spec, binding, output_map):
     if not tf.is_tensor(v):
       raise TypeError(
           'Element with key {} in the output map is {}, not a tensor.'.format(
-              k, py_typecheck.type_string(type(v))))
+              k, py_typecheck.type_string(type(v))
+          )
+      )
 
   binding_oneof = binding.WhichOneof('binding')
   if type_spec.is_tensor():
     if binding_oneof != 'tensor':
       raise ValueError(
-          'Expected a tensor binding, found {}.'.format(binding_oneof))
+          'Expected a tensor binding, found {}.'.format(binding_oneof)
+      )
     elif binding.tensor.tensor_name not in output_map:
-      raise ValueError('Tensor named {} not found in the output map.'.format(
-          binding.tensor.tensor_name))
+      raise ValueError(
+          'Tensor named {} not found in the output map.'.format(
+              binding.tensor.tensor_name
+          )
+      )
     else:
       tensor_name = binding.tensor.tensor_name
       tensor = output_map[tensor_name]
@@ -470,47 +534,56 @@ def assemble_result_from_graph(type_spec, binding, output_map):
             f'Type mismatch loading graph result tensor {tensor} '
             f'(named "{tensor_name}").\n'
             'This may have been caused by a use of `tf.set_shape`.\n'
-            'Prefer usage of `tf.ensure_shape` to `tf.set_shape`.') from te
+            'Prefer usage of `tf.ensure_shape` to `tf.set_shape`.'
+        ) from te
       return tensor
   elif type_spec.is_struct():
     if binding_oneof != 'struct':
       raise ValueError(
-          'Expected a struct binding, found {}.'.format(binding_oneof))
+          'Expected a struct binding, found {}.'.format(binding_oneof)
+      )
     else:
       type_elements = structure.to_elements(type_spec)
       if len(binding.struct.element) != len(type_elements):
         raise ValueError(
             'Mismatching tuple sizes in type ({}) and binding ({}).'.format(
-                len(type_elements), len(binding.struct.element)))
+                len(type_elements), len(binding.struct.element)
+            )
+        )
       result_elements = []
-      for (element_name,
-           element_type), element_binding in zip(type_elements,
-                                                 binding.struct.element):
-        element_object = assemble_result_from_graph(element_type,
-                                                    element_binding, output_map)
+      for (element_name, element_type), element_binding in zip(
+          type_elements, binding.struct.element
+      ):
+        element_object = assemble_result_from_graph(
+            element_type, element_binding, output_map
+        )
         result_elements.append((element_name, element_object))
       if type_spec.python_container is None:
         return structure.Struct(result_elements)
       container_type = type_spec.python_container
-      if (py_typecheck.is_named_tuple(container_type) or
-          py_typecheck.is_attrs(container_type)):
+      if py_typecheck.is_named_tuple(container_type) or py_typecheck.is_attrs(
+          container_type
+      ):
         return container_type(**dict(result_elements))
       return container_type(result_elements)
   elif type_spec.is_sequence():
     if binding_oneof != 'sequence':
       raise ValueError(
-          'Expected a sequence binding, found {}.'.format(binding_oneof))
+          'Expected a sequence binding, found {}.'.format(binding_oneof)
+      )
     else:
       sequence_oneof = binding.sequence.WhichOneof('binding')
       if sequence_oneof == 'variant_tensor_name':
         variant_tensor = output_map[binding.sequence.variant_tensor_name]
-        return make_dataset_from_variant_tensor(variant_tensor,
-                                                type_spec.element)
+        return make_dataset_from_variant_tensor(
+            variant_tensor, type_spec.element
+        )
       else:
         raise ValueError(
-            'Unsupported sequence binding \'{}\'.'.format(sequence_oneof))
+            "Unsupported sequence binding '{}'.".format(sequence_oneof)
+        )
   else:
-    raise ValueError('Unsupported type \'{}\'.'.format(type_spec))
+    raise ValueError("Unsupported type '{}'.".format(type_spec))
 
 
 def nested_structures_equal(x, y):
@@ -557,22 +630,28 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
   elif type_spec.is_struct():
     elements = structure.to_elements(type_spec)
     if all(k is not None for k, _ in elements):
-      return collections.OrderedDict([
-          (k, make_empty_list_structure_for_element_type_spec(v))
-          for k, v in elements
-      ])
+      return collections.OrderedDict(
+          [
+              (k, make_empty_list_structure_for_element_type_spec(v))
+              for k, v in elements
+          ]
+      )
     elif all(k is None for k, _ in elements):
-      return tuple([
-          make_empty_list_structure_for_element_type_spec(v)
-          for _, v in elements
-      ])
+      return tuple(
+          [
+              make_empty_list_structure_for_element_type_spec(v)
+              for _, v in elements
+          ]
+      )
     else:
       raise TypeError(
           'Expected a named tuple type with either all elements named or all '
-          'unnamed, got {}.'.format(type_spec))
+          'unnamed, got {}.'.format(type_spec)
+      )
   else:
     raise TypeError(
-        'Expected a tensor or named tuple type, found {}.'.format(type_spec))
+        'Expected a tensor or named tuple type, found {}.'.format(type_spec)
+    )
 
 
 def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
@@ -603,16 +682,20 @@ def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
     compatible with `type_spec`.
   """
   type_spec = computation_types.to_type(type_spec)
-  if not type_analysis.contains_only(type_spec,
-                                     lambda t: t.is_struct() or t.is_tensor()):
-    raise ValueError('Cannot construct array for TFF type containing anything '
-                     'other than `computation_types.TensorType` or '
-                     '`computation_types.StructType`; you have passed the '
-                     'type {}'.format(type_spec))
+  if not type_analysis.contains_only(
+      type_spec, lambda t: t.is_struct() or t.is_tensor()
+  ):
+    raise ValueError(
+        'Cannot construct array for TFF type containing anything '
+        'other than `computation_types.TensorType` or '
+        '`computation_types.StructType`; you have passed the '
+        'type {}'.format(type_spec)
+    )
   py_typecheck.check_type(none_dim_replacement, int)
   if none_dim_replacement < 0:
-    raise ValueError('Please pass nonnegative integer argument as '
-                     '`none_dim_replacement`.')
+    raise ValueError(
+        'Please pass nonnegative integer argument as `none_dim_replacement`.'
+    )
 
   def _handle_none_dimension(x):
     if x is None or (isinstance(x, tf.compat.v1.Dimension) and x.value is None):
@@ -666,7 +749,8 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
     else:
       raise TypeError(
           'Expected an anonymous tuple to either have all elements named or '
-          'all unnamed, got {}.'.format(value))
+          'all unnamed, got {}.'.format(value)
+      )
   if type_spec.is_tensor():
     py_typecheck.check_type(nested, list)
     # Convert the members to tensors to ensure that they are properly
@@ -682,36 +766,48 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
         value = collections.OrderedDict(value._asdict())
       if isinstance(value, dict):
         if set(value.keys()) != set(k for k, _ in elements):
-          raise TypeError('Value {} does not match type {}.'.format(
-              value, type_spec))
+          raise TypeError(
+              'Value {} does not match type {}.'.format(value, type_spec)
+          )
         for elem_name, elem_type in elements:
           append_to_list_structure_for_element_type_spec(
-              nested[elem_name], value[elem_name], elem_type)
+              nested[elem_name], value[elem_name], elem_type
+          )
       elif isinstance(value, (list, tuple)):
         if len(value) != len(elements):
-          raise TypeError('Value {} does not match type {}.'.format(
-              value, type_spec))
+          raise TypeError(
+              'Value {} does not match type {}.'.format(value, type_spec)
+          )
         for idx, (elem_name, elem_type) in enumerate(elements):
           append_to_list_structure_for_element_type_spec(
-              nested[elem_name], value[idx], elem_type)
+              nested[elem_name], value[idx], elem_type
+          )
       else:
-        raise TypeError('Unexpected type of value {} for TFF type {}.'.format(
-            py_typecheck.type_string(type(value)), type_spec))
+        raise TypeError(
+            'Unexpected type of value {} for TFF type {}.'.format(
+                py_typecheck.type_string(type(value)), type_spec
+            )
+        )
     elif isinstance(nested, tuple):
       py_typecheck.check_type(value, (list, tuple))
       if len(value) != len(elements):
-        raise TypeError('Value {} does not match type {}.'.format(
-            value, type_spec))
+        raise TypeError(
+            'Value {} does not match type {}.'.format(value, type_spec)
+        )
       for idx, (_, elem_type) in enumerate(elements):
-        append_to_list_structure_for_element_type_spec(nested[idx], value[idx],
-                                                       elem_type)
+        append_to_list_structure_for_element_type_spec(
+            nested[idx], value[idx], elem_type
+        )
     else:
       raise TypeError(
           'Invalid nested structure, unexpected container type {}.'.format(
-              py_typecheck.type_string(type(nested))))
+              py_typecheck.type_string(type(nested))
+          )
+      )
   else:
     raise TypeError(
-        'Expected a tensor or named tuple type, found {}.'.format(type_spec))
+        'Expected a tensor or named tuple type, found {}.'.format(type_spec)
+    )
 
 
 def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
@@ -746,23 +842,28 @@ def replace_empty_leaf_lists_with_numpy_arrays(lists, type_spec):
       to_return = []
       for elem_name, elem_type in elements:
         elem_val = replace_empty_leaf_lists_with_numpy_arrays(
-            lists[elem_name], elem_type)
+            lists[elem_name], elem_type
+        )
         to_return.append((elem_name, elem_val))
       return collections.OrderedDict(to_return)
     elif isinstance(lists, tuple):
       to_return = []
       for idx, (_, elem_type) in enumerate(elements):
         elem_val = replace_empty_leaf_lists_with_numpy_arrays(
-            lists[idx], elem_type)
+            lists[idx], elem_type
+        )
         to_return.append(elem_val)
       return tuple(to_return)
     else:
       raise TypeError(
           'Invalid nested structure, unexpected container type {}.'.format(
-              py_typecheck.type_string(type(lists))))
+              py_typecheck.type_string(type(lists))
+          )
+      )
   else:
     raise TypeError(
-        'Expected a tensor or struct type, found {}.'.format(type_spec))
+        'Expected a tensor or struct type, found {}.'.format(type_spec)
+    )
 
 
 def make_data_set_from_elements(graph, elements, element_type):
@@ -808,7 +909,8 @@ def make_data_set_from_elements(graph, elements, element_type):
     for el in element_subset:
       append_to_list_structure_for_element_type_spec(lists, el, element_type)
     tensor_slices = replace_empty_leaf_lists_with_numpy_arrays(
-        lists, element_type)
+        lists, element_type
+    )
     return tf.data.Dataset.from_tensor_slices(tensor_slices)
 
   def _work():  # pylint: disable=missing-docstring
@@ -835,14 +937,16 @@ def make_data_set_from_elements(graph, elements, element_type):
         ds = None
         ds = typing.cast(tf.data.Dataset, ds)
         for i in range(len(elements)):
-          singleton_ds = _make(elements[i:i + 1])
+          singleton_ds = _make(elements[i : i + 1])
           ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
     ds_element_type = computation_types.to_type(ds.element_spec)
     if not element_type.is_assignable_from(ds_element_type):
       raise TypeError(
           'Failure during data set construction, expected elements of type {}, '
           'but the constructed data set has elements of type {}.'.format(
-              element_type, ds_element_type))
+              element_type, ds_element_type
+          )
+      )
     return ds
 
   if graph is not None:
@@ -909,7 +1013,8 @@ def fetch_value_in_session(sess, value):
     else:
       flat_computed_tensors = flat_tensors
     flattened_results = _interleave_dataset_results_and_tensors(
-        dataset_results, flat_computed_tensors)
+        dataset_results, flat_computed_tensors
+    )
 
     def _to_unicode(v):
       if isinstance(v, bytes):
@@ -953,8 +1058,8 @@ def get_deps_for_graph_node(graph_def, node_name):
   while nodes_to_process:
     dependencies.update(nodes_to_process)
     nodes_to_process = set.union(
-        *[input_map[name]
-          for name in nodes_to_process]).difference(dependencies)
+        *[input_map[name] for name in nodes_to_process]
+    ).difference(dependencies)
   return dependencies.difference(initial_singleton)
 
 
@@ -972,8 +1077,9 @@ def add_control_deps_for_init_op(graph_def, init_op):
   py_typecheck.check_type(init_op, str)
   init_op_str = graph_utils.get_node_name(init_op)
   init_op_control_dep = '^{}'.format(init_op_str)
-  deps = get_deps_for_graph_node(graph_def,
-                                 init_op_str).union(set([init_op_str]))
+  deps = get_deps_for_graph_node(graph_def, init_op_str).union(
+      set([init_op_str])
+  )
   new_graph_def = tf.compat.v1.GraphDef()
   new_graph_def.CopyFrom(graph_def)
   for new_node in new_graph_def.node:
@@ -985,8 +1091,8 @@ def add_control_deps_for_init_op(graph_def, init_op):
 
 
 def coerce_dataset_elements_to_tff_type_spec(
-    dataset: tf.data.Dataset,
-    element_type: computation_types.Type) -> tf.data.Dataset:
+    dataset: tf.data.Dataset, element_type: computation_types.Type
+) -> tf.data.Dataset:
   """Map the elements of a dataset to a specified type.
 
   This is used to coerce a `tf.data.Dataset` that may have lost the ordering
@@ -1005,16 +1111,19 @@ def coerce_dataset_elements_to_tff_type_spec(
     ValueError: if the elements of `dataset` cannot be coerced into
       `element_type`.
   """
-  py_typecheck.check_type(dataset,
-                          type_conversions.TF_DATASET_REPRESENTATION_TYPES)
+  py_typecheck.check_type(
+      dataset, type_conversions.TF_DATASET_REPRESENTATION_TYPES
+  )
   py_typecheck.check_type(element_type, computation_types.Type)
   if element_type.is_tensor():
     return dataset
   elif element_type.is_struct_with_python():
     py_type = computation_types.StructWithPythonType.get_container_type(
-        element_type)
+        element_type
+    )
     if py_type is tf.RaggedTensor or py_type is tf.sparse.SparseTensor:
       return dataset
+
   # This is a similar to `reference_context.to_representation_for_type`,
   # look for opportunities to consolidate?
   def _to_representative_value(type_spec, elements):
@@ -1027,15 +1136,17 @@ def coerce_dataset_elements_to_tff_type_spec(
         # unwrapped by tf.data.
         elements = [elements]
       py_type = computation_types.StructWithPythonType.get_container_type(
-          type_spec)
+          type_spec
+      )
       if py_type is tf.RaggedTensor or py_type is tf.sparse.SparseTensor:
         return elements
 
       field_types = structure.iter_elements(type_spec)
-      if (issubclass(py_type, Mapping) or py_typecheck.is_attrs(py_type)):
+      if issubclass(py_type, Mapping) or py_typecheck.is_attrs(py_type):
         values = collections.OrderedDict(
             (name, _to_representative_value(field_type, elements[name]))
-            for name, field_type in field_types)
+            for name, field_type in field_types
+        )
         return py_type(**values)
       else:
         values = [
@@ -1052,20 +1163,25 @@ def coerce_dataset_elements_to_tff_type_spec(
         if py_typecheck.is_named_tuple(elements):
           values = collections.OrderedDict(
               (name, _to_representative_value(field_type, e))
-              for (name, field_type), e in zip(field_types, elements))
+              for (name, field_type), e in zip(field_types, elements)
+          )
           return type(elements)(**values)
         else:
-          values = [(name, _to_representative_value(field_type, elements[name]))
-                    for name, field_type in field_types]
+          values = [
+              (name, _to_representative_value(field_type, elements[name]))
+              for name, field_type in field_types
+          ]
           return collections.OrderedDict(values)
       else:
         return tuple(
-            _to_representative_value(t, e) for t, e in zip(type_spec, elements))
+            _to_representative_value(t, e) for t, e in zip(type_spec, elements)
+        )
     else:
       raise ValueError(
           'Coercing a dataset with elements of expected type {!s}, '
           'produced a value with incompatible type `{!s}. Value: '
-          '{!s}'.format(type_spec, type(elements), elements))
+          '{!s}'.format(type_spec, type(elements), elements)
+      )
 
   # tf.data.Dataset of tuples will unwrap the tuple in the `map()` call, so we
   # must pass a function taking *args. However, if the call was originally only
@@ -1080,8 +1196,9 @@ def coerce_dataset_elements_to_tff_type_spec(
   return dataset.map(_unwrap_args)
 
 
-def uniquify_shared_names_with_suffix(graph_def: tf.compat.v1.GraphDef,
-                                      suffix: str) -> tf.compat.v1.GraphDef:
+def uniquify_shared_names_with_suffix(
+    graph_def: tf.compat.v1.GraphDef, suffix: str
+) -> tf.compat.v1.GraphDef:
   """Appends unique identifier to any shared names present in `graph`."""
   # TODO(b/117428091): Upgrade our TF serialization mechanisms in order to
   # unblock using more modern TF compositional constructs, and avoid direct
@@ -1100,9 +1217,12 @@ def uniquify_shared_names_with_suffix(graph_def: tf.compat.v1.GraphDef,
 
 
 def deserialize_and_call_tf_computation(
-    computation_proto: pb.Computation, arg: Any, graph: tf.Graph,
+    computation_proto: pb.Computation,
+    arg: Any,
+    graph: tf.Graph,
     shared_names_suffix: str,
-    session_token_tensor: tf.Tensor) -> tuple[str, Any]:
+    session_token_tensor: tf.Tensor,
+) -> tuple[str, Any]:
   """Deserializes a TF computation and inserts it into `graph`.
 
   This method performs an action that can be considered roughly the opposite of
@@ -1143,7 +1263,8 @@ def deserialize_and_call_tf_computation(
   computation_oneof = computation_proto.WhichOneof('computation')
   if computation_oneof != 'tensorflow':
     raise ValueError(
-        'Expected a TensorFlow computation, got {}.'.format(computation_oneof))
+        'Expected a TensorFlow computation, got {}.'.format(computation_oneof)
+    )
   py_typecheck.check_type(graph, tf.Graph)
   with graph.as_default():
     type_spec = type_serialization.deserialize_type(computation_proto.type)
@@ -1153,40 +1274,48 @@ def deserialize_and_call_tf_computation(
       else:
         raise TypeError(
             'The computation declared no parameters; encountered an unexpected '
-            'argument {}.'.format(arg))
+            'argument {}.'.format(arg)
+        )
     elif arg is None:
       raise TypeError(
           'The computation declared a parameter of type {}, but the argument '
-          'was not supplied.'.format(type_spec.parameter))
+          'was not supplied.'.format(type_spec.parameter)
+      )
     else:
       arg_type, arg_binding = capture_result_from_graph(arg, graph)
       if not type_spec.parameter.is_assignable_from(arg_type):
         raise TypeError(
             'The computation declared a parameter of type {}, but the argument '
-            'is of a mismatching type {}.'.format(type_spec.parameter,
-                                                  arg_type))
+            'is of a mismatching type {}.'.format(type_spec.parameter, arg_type)
+        )
       else:
         input_map = {
             k: graph.get_tensor_by_name(v)
             for k, v in compute_map_from_bindings(
-                computation_proto.tensorflow.parameter, arg_binding).items()
+                computation_proto.tensorflow.parameter, arg_binding
+            ).items()
         }
     # Add potential control dep remappings.
     if input_map:
       input_map = graph_utils.add_control_dep_mappings(input_map)
-    session_token_tensor_name = computation_proto.tensorflow.session_token_tensor_name
+    session_token_tensor_name = (
+        computation_proto.tensorflow.session_token_tensor_name
+    )
     if session_token_tensor_name:
       input_map[session_token_tensor_name] = session_token_tensor
     return_elements = extract_tensor_names_from_binding(
-        computation_proto.tensorflow.result)
+        computation_proto.tensorflow.result
+    )
     orig_init_op_name = computation_proto.tensorflow.initialize_op
     if orig_init_op_name:
       return_elements.append(orig_init_op_name)
 
     graph_def = serialization_utils.unpack_graph_def(
-        computation_proto.tensorflow.graph_def)
-    graph_def = uniquify_shared_names_with_suffix(graph_def,
-                                                  shared_names_suffix)
+        computation_proto.tensorflow.graph_def
+    )
+    graph_def = uniquify_shared_names_with_suffix(
+        graph_def, shared_names_suffix
+    )
     # Note: Unlike MetaGraphDef, the GraphDef alone contains no information
     # about collections, and hence, when we import a graph with Variables,
     # those Variables are not added to global collections, and hence
@@ -1201,13 +1330,14 @@ def deserialize_and_call_tf_computation(
         # be valid in the current graph. Using a different scope makes the graph
         # somewhat more readable, since _N style de-duplication of graph
         # node names is less likely to be needed.
-        name='subcomputation')
+        name='subcomputation',
+    )
 
     output_map = {k: v for k, v in zip(return_elements, output_tensors)}
     new_init_op_name = output_map.pop(orig_init_op_name, None)
     return (
         new_init_op_name,
-        assemble_result_from_graph(type_spec.result,
-                                   computation_proto.tensorflow.result,
-                                   output_map),
+        assemble_result_from_graph(
+            type_spec.result, computation_proto.tensorflow.result, output_map
+        ),
     )
