@@ -25,7 +25,8 @@ AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 
 
 def _create_local_python_mergeable_comp_context():
-  async_context = tff.backends.native.create_local_async_python_execution_context(
+  async_context = (
+      tff.backends.native.create_local_async_python_execution_context()
   )
   return tff.backends.native.create_mergeable_comp_execution_context(
       [async_context])
@@ -42,7 +43,6 @@ def create_sequence_op_supporting_context():
 
 def get_all_contexts():
   """Returns a list containing a (name, context_fn) tuple for each context."""
-  # pyformat: disable
   return [
       ('native_local_python',
        tff.backends.native.create_local_python_execution_context),
@@ -70,4 +70,4 @@ def get_all_contexts():
        tff.backends.native.create_thread_debugging_execution_context),
       ('test_python',
        tff.backends.test.create_test_python_execution_context),
-  ]  # pyformat: enable
+  ]  # pyformat: disable
