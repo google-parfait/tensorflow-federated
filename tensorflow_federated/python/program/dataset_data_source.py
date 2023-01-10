@@ -34,8 +34,11 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
   without replacement within a single call of `select()`.
   """
 
-  def __init__(self, datasets: Sequence[tf.data.Dataset],
-               federated_type: computation_types.FederatedType):
+  def __init__(
+      self,
+      datasets: Sequence[tf.data.Dataset],
+      federated_type: computation_types.FederatedType,
+  ):
     """Returns an initialized `tff.program.DatasetDataSourceIterator`.
 
     Args:
@@ -57,8 +60,9 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
       if dataset.element_spec != element_spec:
         raise ValueError(
             'Expected each `tf.data.Dataset` in `datasets` to have the same '
-            f'type specification, found \'{element_spec}\' and '
-            f'\'{dataset.element_spec}\'.')
+            f"type specification, found '{element_spec}' and "
+            f"'{dataset.element_spec}'."
+        )
     py_typecheck.check_type(federated_type, computation_types.FederatedType)
 
     self._datasets = datasets
@@ -82,12 +86,16 @@ class DatasetDataSourceIterator(data_source.FederatedDataSourceIterator):
     """
     if num_clients is not None:
       py_typecheck.check_type(num_clients, int)
-    if (num_clients is None or num_clients < 0 or
-        num_clients > len(self._datasets)):
+    if (
+        num_clients is None
+        or num_clients < 0
+        or num_clients > len(self._datasets)
+    ):
       raise ValueError(
           'Expected `num_clients` to be a positive integer and less than the '
           f'number of `datasets`, found `num_clients`: {num_clients}, '
-          f'number of `datasets`: {len(self._datasets)}')
+          f'number of `datasets`: {len(self._datasets)}'
+      )
 
     return random.sample(self._datasets, num_clients)
 
@@ -121,12 +129,14 @@ class DatasetDataSource(data_source.FederatedDataSource):
       if dataset.element_spec != element_spec:
         raise ValueError(
             'Expected each `tf.data.Dataset` in `datasets` to have the same '
-            f'type specification, found \'{element_spec}\' and '
-            f'\'{dataset.element_spec}\'.')
+            f"type specification, found '{element_spec}' and "
+            f"'{dataset.element_spec}'."
+        )
 
     self._datasets = datasets
     self._federated_type = computation_types.FederatedType(
-        computation_types.SequenceType(element_spec), placements.CLIENTS)
+        computation_types.SequenceType(element_spec), placements.CLIENTS
+    )
     self._capabilities = [data_source.Capability.RANDOM_UNIFORM]
 
   @property

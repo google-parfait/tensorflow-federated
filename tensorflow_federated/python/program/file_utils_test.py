@@ -26,8 +26,9 @@ from google.protobuf import message
 from tensorflow_federated.python.program import file_utils
 
 
-class ReadSavedModelTest(parameterized.TestCase,
-                         unittest.IsolatedAsyncioTestCase):
+class ReadSavedModelTest(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   async def test_returns_value_with_path_str(self):
     module = file_utils._ValueModule(1)
@@ -59,8 +60,9 @@ class ReadSavedModelTest(parameterized.TestCase,
       await file_utils.read_saved_model(path)
 
 
-class WriteSavedModelTest(parameterized.TestCase,
-                          unittest.IsolatedAsyncioTestCase):
+class WriteSavedModelTest(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   async def test_writes_to_new_file_with_path_str(self):
     path = self.create_tempdir()

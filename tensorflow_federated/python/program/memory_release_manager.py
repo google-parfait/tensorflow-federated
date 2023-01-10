@@ -23,8 +23,10 @@ from tensorflow_federated.python.program import value_reference
 
 
 class MemoryReleaseManager(
-    release_manager.ReleaseManager[release_manager.ReleasableStructure,
-                                   Hashable]):
+    release_manager.ReleaseManager[
+        release_manager.ReleasableStructure, Hashable
+    ]
+):
   """A `tff.program.ReleaseManager` that releases values to memory.
 
   A `tff.program.MemoryReleaseManager` is a utility for releasing values from a
@@ -40,9 +42,12 @@ class MemoryReleaseManager(
     """Returns an initialized `tff.program.MemoryReleaseManager`."""
     self._values = collections.OrderedDict()
 
-  async def release(self, value: release_manager.ReleasableStructure,
-                    type_signature: computation_types.Type,
-                    key: Hashable) -> None:
+  async def release(
+      self,
+      value: release_manager.ReleasableStructure,
+      type_signature: computation_types.Type,
+      key: Hashable,
+  ) -> None:
     """Releases `value` from a federated program.
 
     Args:
@@ -57,9 +62,10 @@ class MemoryReleaseManager(
     self._values[key] = (materialized_value, type_signature)
 
   def values(
-      self
-  ) -> collections.OrderedDict[Hashable, tuple[
-      release_manager.ReleasableStructure, computation_types.Type]]:
-    """Returns an `collections.OrderedDict` of all keys and released values and types.
-    """
+      self,
+  ) -> collections.OrderedDict[
+      Hashable,
+      tuple[release_manager.ReleasableStructure, computation_types.Type],
+  ]:
+    """Returns an `collections.OrderedDict` of all keys and released values and types."""
     return self._values.copy()

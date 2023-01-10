@@ -52,7 +52,8 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
 
     self._client_ids = client_ids
     self._federated_type = computation_types.FederatedType(
-        tf.string, placements.CLIENTS)
+        tf.string, placements.CLIENTS
+    )
 
   @property
   def federated_type(self) -> computation_types.FederatedType:
@@ -72,12 +73,16 @@ class ClientIdDataSourceIterator(data_source.FederatedDataSourceIterator):
     """
     if num_clients is not None:
       py_typecheck.check_type(num_clients, int)
-    if (num_clients is None or num_clients < 0 or
-        num_clients > len(self._client_ids)):
+    if (
+        num_clients is None
+        or num_clients < 0
+        or num_clients > len(self._client_ids)
+    ):
       raise ValueError(
           'Expected `num_clients` to be a positive integer and less than the '
           f'number of `client_ids`, found `num_clients`: {num_clients}, '
-          f'number of `client_ids`: {len(self._client_ids)}')
+          f'number of `client_ids`: {len(self._client_ids)}'
+      )
 
     return random.sample(self._client_ids, num_clients)
 
@@ -103,7 +108,8 @@ class ClientIdDataSource(data_source.FederatedDataSource):
 
     self._client_ids = client_ids
     self._federated_type = computation_types.FederatedType(
-        tf.string, placements.CLIENTS)
+        tf.string, placements.CLIENTS
+    )
     self._capabilities = [data_source.Capability.RANDOM_UNIFORM]
 
   @property

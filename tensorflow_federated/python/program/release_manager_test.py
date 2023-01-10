@@ -27,8 +27,9 @@ from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import release_manager
 
 
-class FilteringReleaseManager(parameterized.TestCase,
-                              unittest.IsolatedAsyncioTestCase):
+class FilteringReleaseManager(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   def test_init_does_not_raise_type_error(self):
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
@@ -137,78 +138,100 @@ class FilteringReleaseManager(parameterized.TestCase,
   )
   # pyformat: enable
   async def test_release_delegates_value_and_type_signature(
-      self, value, type_signature):
+      self, value, type_signature
+  ):
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
     filter_fn = lambda _: True
     release_mngr = release_manager.FilteringReleaseManager(
-        mock_release_mngr, filter_fn)
+        mock_release_mngr, filter_fn
+    )
 
     await release_mngr.release(value, type_signature, key=1)
 
     mock_release_mngr.release.assert_called_once_with(value, type_signature, 1)
 
   async def test_release_filters_value_and_type_signature(self):
-
     def _filter_fn(path: tuple[Union[str, int], ...]) -> bool:
       return path == (0,) or path == (3, 0) or path == (4, 'a')
 
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
     release_mngr = release_manager.FilteringReleaseManager(
-        mock_release_mngr, _filter_fn)
+        mock_release_mngr, _filter_fn
+    )
     value = [True, 1, 'a', [True, 1, 'a'], {'a': True, 'b': 1, 'c': 'a'}]
-    type_signature = computation_types.StructWithPythonType([
-        tf.bool,
-        tf.int32,
-        tf.string,
-        computation_types.StructWithPythonType([tf.bool, tf.int32, tf.string],
-                                               list),
-        computation_types.StructWithPythonType([
-            ('a', tf.bool),
-            ('b', tf.int32),
-            ('c', tf.string),
-        ], collections.OrderedDict),
-    ], list)
+    type_signature = computation_types.StructWithPythonType(
+        [
+            tf.bool,
+            tf.int32,
+            tf.string,
+            computation_types.StructWithPythonType(
+                [tf.bool, tf.int32, tf.string], list
+            ),
+            computation_types.StructWithPythonType(
+                [
+                    ('a', tf.bool),
+                    ('b', tf.int32),
+                    ('c', tf.string),
+                ],
+                collections.OrderedDict,
+            ),
+        ],
+        list,
+    )
 
     await release_mngr.release(value, type_signature, key=1)
 
     expected_value = [True, [True], {'a': True}]
-    expected_type_signature = computation_types.StructWithPythonType([
-        tf.bool,
-        computation_types.StructWithPythonType([tf.bool], list),
-        computation_types.StructWithPythonType([
-            ('a', tf.bool),
-        ], collections.OrderedDict),
-    ], list)
-    mock_release_mngr.release.assert_called_once_with(expected_value,
-                                                      expected_type_signature,
-                                                      1)
+    expected_type_signature = computation_types.StructWithPythonType(
+        [
+            tf.bool,
+            computation_types.StructWithPythonType([tf.bool], list),
+            computation_types.StructWithPythonType(
+                [
+                    ('a', tf.bool),
+                ],
+                collections.OrderedDict,
+            ),
+        ],
+        list,
+    )
+    mock_release_mngr.release.assert_called_once_with(
+        expected_value, expected_type_signature, 1
+    )
 
   async def test_release_converts_named_struct_types_to_ordered_dict(self):
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
     filter_fn = lambda _: True
     release_mngr = release_manager.FilteringReleaseManager(
-        mock_release_mngr, filter_fn)
+        mock_release_mngr, filter_fn
+    )
     value = {
         'a': True,
         'b': program_test_utils.TestMaterializableValueReference(1),
         'c': 'a',
     }
-    type_signature = computation_types.StructWithPythonType([
-        ('a', tf.bool),
-        ('b', tf.int32),
-        ('c', tf.string),
-    ], list)
+    type_signature = computation_types.StructWithPythonType(
+        [
+            ('a', tf.bool),
+            ('b', tf.int32),
+            ('c', tf.string),
+        ],
+        list,
+    )
 
     await release_mngr.release(value, type_signature, key=1)
 
-    expected_type_signature = computation_types.StructWithPythonType([
-        ('a', tf.bool),
-        ('b', tf.int32),
-        ('c', tf.string),
-    ], collections.OrderedDict)
-    mock_release_mngr.release.assert_called_once_with(value,
-                                                      expected_type_signature,
-                                                      1)
+    expected_type_signature = computation_types.StructWithPythonType(
+        [
+            ('a', tf.bool),
+            ('b', tf.int32),
+            ('c', tf.string),
+        ],
+        collections.OrderedDict,
+    )
+    mock_release_mngr.release.assert_called_once_with(
+        value, expected_type_signature, 1
+    )
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -226,18 +249,21 @@ class FilteringReleaseManager(parameterized.TestCase,
   )
   # pyformat: enable
   async def test_release_raises_not_implemented_error_with_value_and_type_signature(
-      self, value, type_signature):
+      self, value, type_signature
+  ):
     mock_release_mngr = mock.AsyncMock(spec=release_manager.ReleaseManager)
     filter_fn = lambda _: True
     release_mngr = release_manager.FilteringReleaseManager(
-        mock_release_mngr, filter_fn)
+        mock_release_mngr, filter_fn
+    )
 
     with self.assertRaises(NotImplementedError):
       await release_mngr.release(value, type_signature, key=1)
 
 
-class GroupingReleaseManager(parameterized.TestCase,
-                             unittest.IsolatedAsyncioTestCase):
+class GroupingReleaseManager(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   def test_init_does_not_raise_type_error(self):
     release_mngrs = [
@@ -282,8 +308,9 @@ class GroupingReleaseManager(parameterized.TestCase,
     await release_mngr.release(value, type_signature, key)
 
     for mock_release_mngr in release_mngrs:
-      mock_release_mngr.release.assert_called_once_with(value, type_signature,
-                                                        key)
+      mock_release_mngr.release.assert_called_once_with(
+          value, type_signature, key
+      )
 
 
 if __name__ == '__main__':

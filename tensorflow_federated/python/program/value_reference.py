@@ -75,7 +75,8 @@ class MaterializableValueReference(abc.ABC, typed_object.TypedObject):
 
 
 async def materialize_value(
-    value: MaterializableStructure) -> MaterializedStructure:
+    value: MaterializableStructure,
+) -> MaterializedStructure:
   """Returns a `tff.program.MaterializedStructure`.
 
   Args:
@@ -90,5 +91,6 @@ async def materialize_value(
 
   flattened_value = tree.flatten(value)
   materialized_value = await asyncio.gather(
-      *[_materialize(v) for v in flattened_value])
+      *[_materialize(v) for v in flattened_value]
+  )
   return tree.unflatten_as(value, materialized_value)

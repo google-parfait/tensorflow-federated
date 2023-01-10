@@ -62,8 +62,9 @@ class ProgramStateManager(abc.ABC, Generic[ProgramStateStructure]):
     raise NotImplementedError
 
   @abc.abstractmethod
-  async def load(self, version: int,
-                 structure: ProgramStateStructure) -> ProgramStateStructure:
+  async def load(
+      self, version: int, structure: ProgramStateStructure
+  ) -> ProgramStateStructure:
     """Returns the saved program state for the given `version`.
 
     Args:
@@ -81,8 +82,8 @@ class ProgramStateManager(abc.ABC, Generic[ProgramStateStructure]):
     raise NotImplementedError
 
   async def load_latest(
-      self,
-      structure: ProgramStateStructure) -> tuple[ProgramStateStructure, int]:
+      self, structure: ProgramStateStructure
+  ) -> tuple[ProgramStateStructure, int]:
     """Returns the latest saved program state and version or (`None`, 0).
 
     Args:
@@ -104,8 +105,9 @@ class ProgramStateManager(abc.ABC, Generic[ProgramStateStructure]):
       return None, 0
 
   @abc.abstractmethod
-  async def save(self, program_state: ProgramStateStructure,
-                 version: int) -> None:
+  async def save(
+      self, program_state: ProgramStateStructure, version: int
+  ) -> None:
     """Saves `program_state` for the given `version`.
 
     Args:

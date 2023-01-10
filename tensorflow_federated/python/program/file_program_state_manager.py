@@ -36,8 +36,11 @@ from tensorflow_federated.python.program import program_state_manager
 from tensorflow_federated.python.program import value_reference
 
 
-class FileProgramStateManager(program_state_manager.ProgramStateManager[
-    program_state_manager.ProgramStateStructure]):
+class FileProgramStateManager(
+    program_state_manager.ProgramStateManager[
+        program_state_manager.ProgramStateStructure
+    ]
+):
   """A `tff.program.ProgramStateManager` that is backed by a file system.
 
   A `tff.program.FileProgramStateManager` is a utility for saving and loading
@@ -60,11 +63,13 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager[
   the SavedModel format.
   """
 
-  def __init__(self,
-               root_dir: Union[str, os.PathLike[str]],
-               prefix: str = 'program_state_',
-               keep_total: int = 5,
-               keep_first: bool = True):
+  def __init__(
+      self,
+      root_dir: Union[str, os.PathLike[str]],
+      prefix: str = 'program_state_',
+      keep_total: int = 5,
+      keep_first: bool = True,
+  ):
     """Returns an initialized `tff.program.ProgramStateManager`.
 
     Args:
@@ -120,7 +125,8 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager[
     return sorted(versions)
 
   def _get_version_for_path(
-      self, path: Union[str, os.PathLike[str]]) -> Optional[int]:
+      self, path: Union[str, os.PathLike[str]]
+  ) -> Optional[int]:
     """Returns the version for the given `path` or `None`.
 
     This method does not assert that the given `path` or the returned version
@@ -133,7 +139,7 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager[
 
     basename = os.path.basename(path)
     if basename.startswith(self._prefix):
-      version = basename[len(self._prefix):]
+      version = basename[len(self._prefix) :]
     else:
       version = None
     try:
@@ -177,7 +183,8 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager[
     path = self._get_path_for_version(version)
     if not await file_utils.exists(path):
       raise program_state_manager.ProgramStateManagerStateNotFoundError(
-          f'No program state found for version: {version}')
+          f'No program state found for version: {version}'
+      )
     flattened_state = await file_utils.read_saved_model(path)
     try:
       program_state = tree.unflatten_as(structure, flattened_state)
@@ -186,10 +193,11 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager[
           f'The structure of type {type(structure)}:\n'
           f'{structure}\n'
           f'does not match the value of type {type(flattened_state)}:\n'
-          f'{flattened_state}\n') from e
+          f'{flattened_state}\n'
+      ) from e
 
     def _normalize(
-        value: program_state_manager.ProgramStateStructure
+        value: program_state_manager.ProgramStateStructure,
     ) -> program_state_manager.ProgramStateStructure:
       """Returns a normalize the value.
 
@@ -235,9 +243,11 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager[
     if versions is not None:
       await asyncio.gather(*[self._remove(v) for v in versions])
 
-  async def save(self,
-                 program_state: program_state_manager.ProgramStateStructure,
-                 version: int) -> None:
+  async def save(
+      self,
+      program_state: program_state_manager.ProgramStateStructure,
+      version: int,
+  ) -> None:
     """Saves `program_state` for the given `version`.
 
     Args:
@@ -254,7 +264,8 @@ class FileProgramStateManager(program_state_manager.ProgramStateManager[
     path = self._get_path_for_version(version)
     if await file_utils.exists(path):
       raise program_state_manager.ProgramStateManagerStateAlreadyExistsError(
-          f'Program state already exists for version: {version}')
+          f'Program state already exists for version: {version}'
+      )
     materialized_state = await value_reference.materialize_value(program_state)
     flattened_state = tree.flatten(materialized_state)
     await file_utils.write_saved_model(flattened_state, path)

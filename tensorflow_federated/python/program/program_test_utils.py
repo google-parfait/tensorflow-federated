@@ -29,12 +29,12 @@ from tensorflow_federated.python.program import value_reference
 
 
 @attr.s
-class TestAttrObj1():
+class TestAttrObj1:
   a = attr.ib()
 
 
 @attr.s
-class TestAttrObj2():
+class TestAttrObj2:
   a = attr.ib()
   b = attr.ib()
 
@@ -44,7 +44,8 @@ TestNamedtupleObj2 = collections.namedtuple('TestNamedtupleObj1', ['a', 'b'])
 
 
 class TestMaterializableValueReference(
-    value_reference.MaterializableValueReference):
+    value_reference.MaterializableValueReference
+):
   """A test implementation of `tff.program.MaterializableValueReference`."""
 
   def __init__(self, value: value_reference.MaterializedValue):
@@ -81,7 +82,6 @@ class TestMaterializableValueReference(
 
 
 def assert_types_equal(a, b):
-
   def _assert_type_equal(a, b):
     if not isinstance(a, type(b)):
       raise AssertionError(f'{type(a)} != {type(b)}')
@@ -90,12 +90,14 @@ def assert_types_equal(a, b):
     tree.map_structure(_assert_type_equal, a, b)
   except (TypeError, ValueError) as e:
     raise AssertionError(
-        'The two structures don\'t have the same nested structure.') from e
+        "The two structures don't have the same nested structure."
+    ) from e
 
 
 @contextlib.contextmanager
 def assert_not_warns(
-    category: type[Warning]) -> Iterator[Iterable[warnings.WarningMessage]]:
+    category: type[Warning],
+) -> Iterator[Iterable[warnings.WarningMessage]]:
   """Yields a context manager used to test if a warning is not triggered."""
 
   # The `__warningregistry__`'s need to be in a pristine state for tests to

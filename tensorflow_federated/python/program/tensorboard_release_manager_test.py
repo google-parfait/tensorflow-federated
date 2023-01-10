@@ -38,7 +38,8 @@ class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
     self.assertFalse(os.path.exists(summary_dir))
 
     tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir)
+        summary_dir=summary_dir
+    )
 
     self.assertTrue(os.path.exists(summary_dir))
 
@@ -48,7 +49,8 @@ class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
     self.assertFalse(os.path.exists(summary_dir))
 
     tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir)
+        summary_dir=summary_dir
+    )
 
     self.assertTrue(os.path.exists(summary_dir))
 
@@ -61,16 +63,17 @@ class TensorBoardReleaseManagerInitTest(parameterized.TestCase):
   def test_raises_type_error_with_summary_dir(self, summary_dir):
     with self.assertRaises(TypeError):
       tensorboard_release_manager.TensorBoardReleaseManager(
-          summary_dir=summary_dir)
+          summary_dir=summary_dir
+      )
 
   def test_raises_value_error_with_summary_dir_empty(self):
     with self.assertRaises(ValueError):
       tensorboard_release_manager.TensorBoardReleaseManager(summary_dir='')
 
 
-class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
-                                           unittest.IsolatedAsyncioTestCase,
-                                           tf.test.TestCase):
+class TensorBoardReleaseManagerReleaseTest(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -191,11 +194,13 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
        [('a/a', True), ('a/b', 1)]),
   )
   # pyformat: enable
-  async def test_writes_value_scalar(self, value, type_signature,
-                                     expected_calls):
+  async def test_writes_value_scalar(
+      self, value, type_signature, expected_calls
+  ):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir)
+        summary_dir=summary_dir
+    )
 
     with mock.patch.object(tf.summary, 'scalar') as mock_scalar:
       await release_mngr.release(value, type_signature, key=1)
@@ -229,11 +234,13 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
        [('', [1, 2, 3])]),
   )
   # pyformat: enable
-  async def test_writes_value_histogram(self, value, type_signature,
-                                        expected_calls):
+  async def test_writes_value_histogram(
+      self, value, type_signature, expected_calls
+  ):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir)
+        summary_dir=summary_dir
+    )
 
     with mock.patch.object(tf.summary, 'histogram') as mock_histogram:
       await release_mngr.release(value, type_signature, key=1)
@@ -250,10 +257,12 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
   async def test_writes_value_scalar_and_histogram(self):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir)
+        summary_dir=summary_dir
+    )
     value = [1, tf.ones([3], tf.int32)]
     type_signature = computation_types.StructWithPythonType(
-        [tf.int32, computation_types.TensorType(tf.float32, [3])], list)
+        [tf.int32, computation_types.TensorType(tf.float32, [3])], list
+    )
 
     patched_scalar = mock.patch.object(tf.summary, 'scalar')
     patched_histogram = mock.patch.object(tf.summary, 'histogram')
@@ -287,7 +296,8 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
   async def test_does_not_write_value(self, value, type_signature):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir)
+        summary_dir=summary_dir
+    )
 
     patch_scalar = mock.patch.object(tf.summary, 'scalar')
     patch_histogram = mock.patch.object(tf.summary, 'histogram')
@@ -306,7 +316,8 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
   async def test_does_not_raise_type_error_with_key(self, key):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir)
+        summary_dir=summary_dir
+    )
     value = 1
     type_signature = computation_types.TensorType(tf.int32)
 
@@ -323,7 +334,8 @@ class TensorBoardReleaseManagerReleaseTest(parameterized.TestCase,
   async def test_raises_type_error_with_key(self, key):
     summary_dir = self.create_tempdir()
     release_mngr = tensorboard_release_manager.TensorBoardReleaseManager(
-        summary_dir=summary_dir)
+        summary_dir=summary_dir
+    )
     value = 1
     type_signature = computation_types.TensorType(tf.int32)
 

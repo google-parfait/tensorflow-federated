@@ -26,9 +26,9 @@ from tensorflow_federated.python.program import logging_release_manager
 from tensorflow_federated.python.program import program_test_utils
 
 
-class LoggingReleaseManagerTest(parameterized.TestCase,
-                                unittest.IsolatedAsyncioTestCase,
-                                tf.test.TestCase):
+class LoggingReleaseManagerTest(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -171,9 +171,9 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
            program_test_utils.TestNamedtupleObj1('a'))),
   )
   # pyformat: enable
-  async def test_release_logs_value_and_type_signature(self, value,
-                                                       type_signature,
-                                                       expected_value):
+  async def test_release_logs_value_and_type_signature(
+      self, value, type_signature, expected_value
+  ):
     release_mngr = logging_release_manager.LoggingReleaseManager()
 
     with mock.patch('absl.logging.info') as mock_info:
@@ -190,8 +190,9 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
       _, args, kwargs = call
       _, actual_value = args
       program_test_utils.assert_types_equal(actual_value, expected_value)
-      if (isinstance(actual_value, tf.data.Dataset) and
-          isinstance(expected_value, tf.data.Dataset)):
+      if isinstance(actual_value, tf.data.Dataset) and isinstance(
+          expected_value, tf.data.Dataset
+      ):
         actual_value = list(actual_value)
         expected_value = list(expected_value)
       self.assertAllEqual(actual_value, expected_value)
@@ -216,7 +217,7 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
           mock.call(mock.ANY),
           mock.call(mock.ANY, value),
           mock.call(mock.ANY, type_signature),
-          mock.call(mock.ANY, key)
+          mock.call(mock.ANY, key),
       ])
 
   @parameterized.named_parameters(
@@ -227,7 +228,8 @@ class LoggingReleaseManagerTest(parameterized.TestCase,
       ('list', []),
   )
   async def test_release_raises_type_error_with_type_signature(
-      self, type_signature):
+      self, type_signature
+  ):
     release_mngr = logging_release_manager.LoggingReleaseManager()
 
     with self.assertRaises(TypeError):

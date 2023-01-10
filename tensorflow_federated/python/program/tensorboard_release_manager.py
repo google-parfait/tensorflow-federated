@@ -27,7 +27,8 @@ from tensorflow_federated.python.program import value_reference
 
 
 class TensorBoardReleaseManager(
-    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]):
+    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+):
   """A `tff.program.ReleaseManager` that releases values to TensorBoard.
 
   A `tff.program.TensorBoardReleaseManager` is a utility for releasing values
@@ -68,8 +69,12 @@ class TensorBoardReleaseManager(
       summary_dir = os.fspath(summary_dir)
     self._summary_writer = tf.summary.create_file_writer(summary_dir)
 
-  async def release(self, value: value_reference.MaterializableStructure,
-                    type_signature: computation_types.Type, key: int) -> None:
+  async def release(
+      self,
+      value: value_reference.MaterializableStructure,
+      type_signature: computation_types.Type,
+      key: int,
+  ) -> None:
     """Releases `value` from a federated program.
 
     Args:
@@ -85,7 +90,7 @@ class TensorBoardReleaseManager(
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
     def _normalize(
-        value: value_reference.MaterializedValue
+        value: value_reference.MaterializedValue,
     ) -> value_reference.MaterializedValue:
       if isinstance(value, tf.data.Dataset):
         value = list(value)

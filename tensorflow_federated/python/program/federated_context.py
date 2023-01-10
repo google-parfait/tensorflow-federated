@@ -28,7 +28,8 @@ from tensorflow_federated.python.program import value_reference
 
 
 def contains_only_server_placed_data(
-    type_signature: computation_types.Type) -> bool:
+    type_signature: computation_types.Type,
+) -> bool:
   """Determines if `type_signature` contains only server-placed data.
 
   Determines if `type_signature` contains only:
@@ -47,10 +48,15 @@ def contains_only_server_placed_data(
   py_typecheck.check_type(type_signature, computation_types.Type)
 
   def predicate(type_spec: computation_types.Type) -> bool:
-    return (type_spec.is_struct() or
-            (type_spec.is_federated() and
-             type_spec.placement is placements.SERVER) or
-            type_spec.is_sequence() or type_spec.is_tensor())
+    return (
+        type_spec.is_struct()
+        or (
+            type_spec.is_federated()
+            and type_spec.placement is placements.SERVER
+        )
+        or type_spec.is_sequence()
+        or type_spec.is_tensor()
+    )
 
   return type_analysis.contains_only(type_signature, predicate)
 
@@ -124,9 +130,15 @@ class FederatedContext(context_base.SyncContext):
 
   @abc.abstractmethod
   def invoke(
-      self, comp: computation_base.Computation,
-      arg: Optional[Union[value_reference.MaterializableStructure, Any,
-                          computation_base.Computation]]
+      self,
+      comp: computation_base.Computation,
+      arg: Optional[
+          Union[
+              value_reference.MaterializableStructure,
+              Any,
+              computation_base.Computation,
+          ]
+      ],
   ) -> structure_utils.Structure[value_reference.MaterializableValueReference]:
     """Invokes the `comp` with the argument `arg`.
 
@@ -154,4 +166,5 @@ def check_in_federated_context() -> None:
   if not isinstance(context_stack.current, FederatedContext):
     raise ValueError(
         'Expected the current context to be a `tff.program.FederatedContext`, '
-        f'found {type(context_stack.current)}.')
+        f'found {type(context_stack.current)}.'
+    )

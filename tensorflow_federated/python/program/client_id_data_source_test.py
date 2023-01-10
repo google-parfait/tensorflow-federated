@@ -27,10 +27,12 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
     client_ids = ['a', 'b', 'c']
 
     iterator = client_id_data_source.ClientIdDataSourceIterator(
-        client_ids=client_ids)
+        client_ids=client_ids
+    )
 
-    federated_type = computation_types.FederatedType(tf.string,
-                                                     placements.CLIENTS)
+    federated_type = computation_types.FederatedType(
+        tf.string, placements.CLIENTS
+    )
     self.assertEqual(iterator.federated_type, federated_type)
 
   @parameterized.named_parameters(
@@ -56,7 +58,8 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
   def test_select_returns_client_ids_with_num_clients(self, num_clients):
     client_ids = ['a', 'b', 'c']
     iterator = client_id_data_source.ClientIdDataSourceIterator(
-        client_ids=client_ids)
+        client_ids=client_ids
+    )
 
     actual_client_ids = iterator.select(num_clients)
 
@@ -72,7 +75,8 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
   def test_select_raises_type_error_with_num_clients(self, num_clients):
     client_ids = ['a', 'b', 'c']
     iterator = client_id_data_source.ClientIdDataSourceIterator(
-        client_ids=client_ids)
+        client_ids=client_ids
+    )
 
     with self.assertRaises(TypeError):
       iterator.select(num_clients)
@@ -85,7 +89,8 @@ class ClientIdDataSourceIteratorTest(parameterized.TestCase):
   def test_select_raises_value_error_with_num_clients(self, num_clients):
     client_ids = ['a', 'b', 'c']
     iterator = client_id_data_source.ClientIdDataSourceIterator(
-        client_ids=client_ids)
+        client_ids=client_ids
+    )
 
     with self.assertRaises(ValueError):
       iterator.select(num_clients)
@@ -98,8 +103,9 @@ class ClientIdDataSourceTest(parameterized.TestCase):
 
     data_source = client_id_data_source.ClientIdDataSource(client_ids)
 
-    federated_type = computation_types.FederatedType(tf.string,
-                                                     placements.CLIENTS)
+    federated_type = computation_types.FederatedType(
+        tf.string, placements.CLIENTS
+    )
     self.assertEqual(data_source.federated_type, federated_type)
 
   @parameterized.named_parameters(

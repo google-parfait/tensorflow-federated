@@ -23,8 +23,9 @@ from tensorflow_federated.python.program import program_test_utils
 from tensorflow_federated.python.program import value_reference
 
 
-class MaterializeValueTest(parameterized.TestCase,
-                           unittest.IsolatedAsyncioTestCase, tf.test.TestCase):
+class MaterializeValueTest(
+    parameterized.TestCase, unittest.IsolatedAsyncioTestCase, tf.test.TestCase
+):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -104,8 +105,9 @@ class MaterializeValueTest(parameterized.TestCase,
     actual_value = await value_reference.materialize_value(value)
 
     program_test_utils.assert_types_equal(actual_value, expected_value)
-    if (isinstance(actual_value, tf.data.Dataset) and
-        isinstance(expected_value, tf.data.Dataset)):
+    if isinstance(actual_value, tf.data.Dataset) and isinstance(
+        expected_value, tf.data.Dataset
+    ):
       actual_value = list(actual_value)
       expected_value = list(expected_value)
     self.assertAllEqual(actual_value, expected_value)

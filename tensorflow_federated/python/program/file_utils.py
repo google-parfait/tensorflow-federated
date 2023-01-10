@@ -91,16 +91,16 @@ async def read_saved_model(path: Union[str, os.PathLike[str]]) -> Any:
   return await loop.run_in_executor(None, _read_saved_model, path)
 
 
-async def write_saved_model(value: Any,
-                            path: Union[str, os.PathLike[str]],
-                            overwrite: bool = False) -> None:
+async def write_saved_model(
+    value: Any, path: Union[str, os.PathLike[str]], overwrite: bool = False
+) -> None:
   """Writes `value` to `path` using the SavedModel format."""
   py_typecheck.check_type(path, (str, os.PathLike))
   py_typecheck.check_type(overwrite, bool)
 
-  def _write_saved_model(value: Any,
-                         path: Union[str, os.PathLike[str]],
-                         overwrite: bool = False) -> None:
+  def _write_saved_model(
+      value: Any, path: Union[str, os.PathLike[str]], overwrite: bool = False
+  ) -> None:
     if isinstance(path, os.PathLike):
       path = os.fspath(path)
 

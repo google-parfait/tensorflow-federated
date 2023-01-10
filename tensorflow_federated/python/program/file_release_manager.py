@@ -57,7 +57,8 @@ class CSVSaveMode(enum.Enum):
 
 
 class CSVFileReleaseManager(
-    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]):
+    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+):
   """A `tff.program.ReleaseManager` that releases values to a CSV file.
 
   A `tff.program.CSVFileReleaseManager` is a utility for releasing values
@@ -90,10 +91,12 @@ class CSVFileReleaseManager(
     encoded directories.
   """
 
-  def __init__(self,
-               file_path: Union[bytes, str, os.PathLike[Union[bytes, str]]],
-               save_mode: CSVSaveMode = CSVSaveMode.APPEND,
-               key_fieldname: str = 'key'):
+  def __init__(
+      self,
+      file_path: Union[bytes, str, os.PathLike[Union[bytes, str]]],
+      save_mode: CSVSaveMode = CSVSaveMode.APPEND,
+      key_fieldname: str = 'key',
+  ):
     """Returns an initialized `tff.program.CSVFileReleaseManager`.
 
     Args:
@@ -128,11 +131,12 @@ class CSVFileReleaseManager(
       fieldnames, values = self._read_values()
       if self._key_fieldname not in fieldnames:
         raise FileReleaseManagerIncompatibleFileError(
-            f'The file \'{self._file_path}\' exists but does not contain a '
-            f'fieldname of \'{self._key_fieldname}\'. It is possible that this '
+            f"The file '{self._file_path}' exists but does not contain a "
+            f"fieldname of '{self._key_fieldname}'. It is possible that this "
             'file was not created by a `tff.program.CSVFileReleaseManager` or '
             'the `tff.program.CSVFileReleaseManager` was constructed with a '
-            'different `key_fieldname`.')
+            'different `key_fieldname`.'
+        )
       if values:
         self._latest_key = int(values[-1][self._key_fieldname])
       else:
@@ -142,7 +146,7 @@ class CSVFileReleaseManager(
       self._latest_key = None
 
   def _read_values(
-      self
+      self,
   ) -> tuple[list[str], list[dict[str, release_manager.ReleasableStructure]]]:
     """Returns a tuple of fieldnames and values from the managed CSV."""
     with tf.io.gfile.GFile(self._file_path, 'r') as file:
@@ -155,9 +159,10 @@ class CSVFileReleaseManager(
     return fieldnames, values
 
   def _write_values(
-      self, fieldnames: Sequence[str],
-      values: Iterable[Mapping[str,
-                               release_manager.ReleasableStructure]]) -> None:
+      self,
+      fieldnames: Sequence[str],
+      values: Iterable[Mapping[str, release_manager.ReleasableStructure]],
+  ) -> None:
     """Writes `fieldnames` and `values` to the managed CSV."""
     py_typecheck.check_type(fieldnames, Sequence)
     if isinstance(fieldnames, str):
@@ -187,7 +192,8 @@ class CSVFileReleaseManager(
     tf.io.gfile.rename(temp_path, self._file_path, overwrite=True)
 
   async def _write_value(
-      self, value: Mapping[str, release_manager.ReleasableStructure]) -> None:
+      self, value: Mapping[str, release_manager.ReleasableStructure]
+  ) -> None:
     """Writes `value` to the managed CSV."""
     py_typecheck.check_type(value, Mapping)
     for key in value.keys():
@@ -200,7 +206,8 @@ class CSVFileReleaseManager(
     await loop.run_in_executor(None, self._write_values, fieldnames, values)
 
   async def _append_value(
-      self, value: Mapping[str, release_manager.ReleasableStructure]) -> None:
+      self, value: Mapping[str, release_manager.ReleasableStructure]
+  ) -> None:
     """Appends `value` to the managed CSV."""
     py_typecheck.check_type(value, Mapping)
     for key in value.keys():
@@ -217,17 +224,19 @@ class CSVFileReleaseManager(
 
     def _append_value(
         fieldnames: Sequence[str],
-        value: Mapping[str, release_manager.ReleasableStructure]) -> None:
+        value: Mapping[str, release_manager.ReleasableStructure],
+    ) -> None:
       try:
         with tf.io.gfile.GFile(self._file_path, 'a') as file:
           writer = csv.DictWriter(file, fieldnames=fieldnames)
           writer.writerow(value)
       except (tf.errors.PermissionDeniedError, csv.Error) as e:
         raise FileReleaseManagerPermissionDeniedError(
-            f'Could not append a value to the file \'{self._file_path}\'. It '
+            f"Could not append a value to the file '{self._file_path}'. It "
             'is possible that this file is compressed or encoded. Please use '
             'write mode instead of append mode to release values to this '
-            'file using a `tff.program.CSVFileReleaseManager`.') from e
+            'file using a `tff.program.CSVFileReleaseManager`.'
+        ) from e
 
     loop = asyncio.get_running_loop()
     fieldnames = await loop.run_in_executor(None, _read_fieldnames_only)
@@ -245,8 +254,9 @@ class CSVFileReleaseManager(
 
     loop = asyncio.get_running_loop()
     if key < 0:
-      await loop.run_in_executor(None, self._write_values,
-                                 [self._key_fieldname], [])
+      await loop.run_in_executor(
+          None, self._write_values, [self._key_fieldname], []
+      )
       self._latest_key = None
     else:
       loop = asyncio.get_running_loop()
@@ -259,12 +269,17 @@ class CSVFileReleaseManager(
           fieldnames = [x for x in value.keys() if x not in filtered_fieldnames]
           filtered_fieldnames.extend(fieldnames)
           filtered_values.append(value)
-      await loop.run_in_executor(None, self._write_values, filtered_fieldnames,
-                                 filtered_values)
+      await loop.run_in_executor(
+          None, self._write_values, filtered_fieldnames, filtered_values
+      )
       self._latest_key = key
 
-  async def release(self, value: release_manager.ReleasableStructure,
-                    type_signature: computation_types.Type, key: int) -> None:
+  async def release(
+      self,
+      value: release_manager.ReleasableStructure,
+      type_signature: computation_types.Type,
+      key: int,
+  ) -> None:
     """Releases `value` from a federated program.
 
     This method will atomically update the managed CSV file by removing all
@@ -282,12 +297,13 @@ class CSVFileReleaseManager(
 
     _, materialized_value = await asyncio.gather(
         self._remove_values_greater_than(key - 1),
-        value_reference.materialize_value(value))
+        value_reference.materialize_value(value),
+    )
 
     flattened_value = structure_utils.flatten_with_name(materialized_value)
 
     def _normalize(
-        value: value_reference.MaterializedValue
+        value: value_reference.MaterializedValue,
     ) -> value_reference.MaterializedValue:
       if isinstance(value, tf.data.Dataset):
         value = list(value)
@@ -304,7 +320,8 @@ class CSVFileReleaseManager(
 
 
 class SavedModelFileReleaseManager(
-    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]):
+    release_manager.ReleaseManager[release_manager.ReleasableStructure, int]
+):
   """A `tff.program.ReleaseManager` that releases values to a file system.
 
   A `tff.program.SavedModelFileReleaseManager` is a utility for releasing values
@@ -325,9 +342,9 @@ class SavedModelFileReleaseManager(
   the SavedModel format.
   """
 
-  def __init__(self,
-               root_dir: Union[str, os.PathLike[str]],
-               prefix: str = 'release_'):
+  def __init__(
+      self, root_dir: Union[str, os.PathLike[str]], prefix: str = 'release_'
+  ):
     """Returns an initialized `tff.program.SavedModelFileReleaseManager`.
 
     Args:
@@ -362,8 +379,12 @@ class SavedModelFileReleaseManager(
     basename = f'{self._prefix}{key}'
     return os.path.join(self._root_dir, basename)
 
-  async def release(self, value: release_manager.ReleasableStructure,
-                    type_signature: computation_types.Type, key: int) -> None:
+  async def release(
+      self,
+      value: release_manager.ReleasableStructure,
+      type_signature: computation_types.Type,
+      key: int,
+  ) -> None:
     """Releases `value` from a federated program.
 
     Args:

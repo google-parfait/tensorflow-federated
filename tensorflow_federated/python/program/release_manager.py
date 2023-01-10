@@ -49,8 +49,12 @@ class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):
   """
 
   @abc.abstractmethod
-  async def release(self, value: ReleasableStructure,
-                    type_signature: computation_types.Type, key: Key) -> None:
+  async def release(
+      self,
+      value: ReleasableStructure,
+      type_signature: computation_types.Type,
+      key: Key,
+  ) -> None:
     """Releases `value` from a federated program.
 
     An implementation of this interface should be specific about the types of
@@ -82,8 +86,11 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
   Values are filtered and released using the given `release_manager`.
   """
 
-  def __init__(self, release_manager: ReleaseManager[ReleasableStructure, Key],
-               filter_fn: Callable[[tuple[Union[str, int], ...]], bool]):
+  def __init__(
+      self,
+      release_manager: ReleaseManager[ReleasableStructure, Key],
+      filter_fn: Callable[[tuple[Union[str, int], ...]], bool],
+  ):
     """Returns an initialized `tff.program.FilteringReleaseManager`.
 
     The `filter_fn` is a `Callable` that has a single parameter `path` and
@@ -112,8 +119,12 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
     self._release_manager = release_manager
     self._filter_fn = filter_fn
 
-  async def release(self, value: ReleasableStructure,
-                    type_signature: computation_types.Type, key: Key) -> None:
+  async def release(
+      self,
+      value: ReleasableStructure,
+      type_signature: computation_types.Type,
+      key: Key,
+  ) -> None:
     """Releases `value` from a federated program.
 
     Args:
@@ -122,8 +133,9 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       key: A value used to reference the released `value`.
     """
 
-    def _fn(path: tuple[Union[str, int], ...],
-            subtree: tree.Structure) -> Optional[tree.Structure]:
+    def _fn(
+        path: tuple[Union[str, int], ...], subtree: tree.Structure
+    ) -> Optional[tree.Structure]:
       if not tree.is_nested(subtree):
         if self._filter_fn(path):
           return None
@@ -131,14 +143,15 @@ class FilteringReleaseManager(ReleaseManager[ReleasableStructure, Key]):
           return _FILTERED_SUBTREE
       else:
         if isinstance(subtree, collections.OrderedDict):
-          return collections.OrderedDict([
-              (k, v) for k, v in subtree.items() if v is not _FILTERED_SUBTREE
-          ])
+          return collections.OrderedDict(
+              [(k, v) for k, v in subtree.items() if v is not _FILTERED_SUBTREE]
+          )
         elif isinstance(subtree, dict):
           items = sorted(subtree.items())
           return {k: v for k, v in items if v is not _FILTERED_SUBTREE}
-        elif (isinstance(subtree, (list, tuple)) and
-              not py_typecheck.is_named_tuple(subtree)):
+        elif isinstance(
+            subtree, (list, tuple)
+        ) and not py_typecheck.is_named_tuple(subtree):
           return [x for x in subtree if x is not _FILTERED_SUBTREE]
         else:
           raise NotImplementedError(f'Unexpected type found: {type(subtree)}.')
@@ -166,9 +179,9 @@ class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
   given `release_managers`.
   """
 
-  def __init__(self,
-               release_managers: Sequence[ReleaseManager[ReleasableStructure,
-                                                         Key]]):
+  def __init__(
+      self, release_managers: Sequence[ReleaseManager[ReleasableStructure, Key]]
+  ):
     """Returns an initialized `tff.program.GroupingReleaseManager`.
 
     Args:
@@ -186,8 +199,12 @@ class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
 
     self._release_managers = release_managers
 
-  async def release(self, value: ReleasableStructure,
-                    type_signature: computation_types.Type, key: Key) -> None:
+  async def release(
+      self,
+      value: ReleasableStructure,
+      type_signature: computation_types.Type,
+      key: Key,
+  ) -> None:
     """Releases `value` from a federated program.
 
     Args:
@@ -196,5 +213,5 @@ class GroupingReleaseManager(ReleaseManager[ReleasableStructure, Key]):
       key: A value used to reference the released `value`.
     """
     await asyncio.gather(
-        *
-        [m.release(value, type_signature, key) for m in self._release_managers])
+        *[m.release(value, type_signature, key) for m in self._release_managers]
+    )

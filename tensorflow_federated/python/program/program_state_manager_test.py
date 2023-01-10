@@ -21,8 +21,11 @@ from absl.testing import absltest
 from tensorflow_federated.python.program import program_state_manager
 
 
-class _TestProgramStateManager(program_state_manager.ProgramStateManager[
-    program_state_manager.ProgramStateStructure]):
+class _TestProgramStateManager(
+    program_state_manager.ProgramStateManager[
+        program_state_manager.ProgramStateStructure
+    ]
+):
   """A test implementation of `tff.program.ProgramStateManager`.
 
   A `tff.program.ProgramStateManager` can not be constructed directly because it
@@ -40,15 +43,18 @@ class _TestProgramStateManager(program_state_manager.ProgramStateManager[
     del version, structure  # Unused.
     raise NotImplementedError
 
-  async def save(self,
-                 program_state: program_state_manager.ProgramStateStructure,
-                 version: int) -> None:
+  async def save(
+      self,
+      program_state: program_state_manager.ProgramStateStructure,
+      version: int,
+  ) -> None:
     del program_state, version  # Unused.
     raise NotImplementedError
 
 
-class ProgramStateManagerTest(absltest.TestCase,
-                              unittest.IsolatedAsyncioTestCase):
+class ProgramStateManagerTest(
+    absltest.TestCase, unittest.IsolatedAsyncioTestCase
+):
 
   async def test_load_latest_with_saved_program_state(self):
     program_state_mngr = _TestProgramStateManager()
@@ -80,7 +86,8 @@ class ProgramStateManagerTest(absltest.TestCase,
     program_state_mngr = _TestProgramStateManager()
     program_state_mngr.get_versions = mock.AsyncMock(return_value=[1, 2, 3])
     program_state_mngr.load = mock.AsyncMock(
-        side_effect=program_state_manager.ProgramStateManagerStateNotFoundError)
+        side_effect=program_state_manager.ProgramStateManagerStateNotFoundError
+    )
     structure = 'test'
 
     (program_state, version) = await program_state_mngr.load_latest(structure)
