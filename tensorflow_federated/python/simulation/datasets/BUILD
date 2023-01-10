@@ -26,6 +26,7 @@ py_library(
         ":dataset_utils",
         ":emnist",
         ":file_per_user_client_data",
+        ":flair",
         ":from_tensor_slices_client_data",
         ":gldv2",
         ":shakespeare",
@@ -126,6 +127,21 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":emnist"],
+)
+
+py_library(
+    name = "flair",
+    srcs = ["flair.py"],
+    deps = [
+        ":client_data",
+        ":file_per_user_client_data",
+    ],
+)
+
+py_test(
+    name = "flair_test",
+    srcs = ["flair_test.py"],
+    deps = [":flair"],
 )
 
 py_library(
