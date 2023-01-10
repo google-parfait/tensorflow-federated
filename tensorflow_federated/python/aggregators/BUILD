@@ -370,10 +370,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":factory",
         ":factory_utils",
-        "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/aggregators:mean",
-        "//tensorflow_federated/python/aggregators:sum_factory",
+        ":mean",
+        ":sum_factory",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
