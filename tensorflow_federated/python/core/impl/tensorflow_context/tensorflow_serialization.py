@@ -72,8 +72,11 @@ def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
     session_token_tensor = tf.compat.v1.placeholder(
         tf.string, shape=(), name='session_token_tensor')
     if parameter_type is not None:
-      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-          'arg', parameter_type, graph)
+      parameter_value, parameter_binding = (
+          tensorflow_utils.stamp_parameter_in_graph(
+              'arg', parameter_type, graph
+          )
+      )
     else:
       parameter_value = None
       parameter_binding = None

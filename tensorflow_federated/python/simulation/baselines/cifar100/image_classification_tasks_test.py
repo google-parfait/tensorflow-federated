@@ -79,18 +79,24 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
-    baseline_task_spec = image_classification_tasks.create_image_classification_task(
-        train_client_spec,
-        eval_client_spec=eval_client_spec,
-        model_id='resnet18',
-        use_synthetic_data=True)
+    baseline_task_spec = (
+        image_classification_tasks.create_image_classification_task(
+            train_client_spec,
+            eval_client_spec=eval_client_spec,
+            model_id='resnet18',
+            use_synthetic_data=True,
+        )
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   def test_constructs_with_no_eval_client_spec(self):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = image_classification_tasks.create_image_classification_task(
-        train_client_spec, model_id='resnet18', use_synthetic_data=True)
+    baseline_task_spec = (
+        image_classification_tasks.create_image_classification_task(
+            train_client_spec, model_id='resnet18', use_synthetic_data=True
+        )
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   @parameterized.named_parameters(
@@ -102,12 +108,15 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
   def test_constructs_with_different_crop_sizes(self, crop_height, crop_width):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = image_classification_tasks.create_image_classification_task(
-        train_client_spec,
-        model_id='resnet18',
-        crop_height=crop_height,
-        crop_width=crop_width,
-        use_synthetic_data=True)
+    baseline_task_spec = (
+        image_classification_tasks.create_image_classification_task(
+            train_client_spec,
+            model_id='resnet18',
+            crop_height=crop_height,
+            crop_width=crop_width,
+            use_synthetic_data=True,
+        )
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   @parameterized.named_parameters(
@@ -172,12 +181,15 @@ class ImageClassificationTaskTest(tf.test.TestCase, parameterized.TestCase):
   def test_constructs_with_different_models(self, model_id):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = image_classification_tasks.create_image_classification_task(
-        train_client_spec,
-        model_id=model_id,
-        crop_height=3,
-        crop_width=3,
-        use_synthetic_data=True)
+    baseline_task_spec = (
+        image_classification_tasks.create_image_classification_task(
+            train_client_spec,
+            model_id=model_id,
+            crop_height=3,
+            crop_width=3,
+            use_synthetic_data=True,
+        )
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
 

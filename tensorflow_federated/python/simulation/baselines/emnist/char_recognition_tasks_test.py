@@ -110,12 +110,15 @@ class CreateCharacterRecognitionTaskTest(tf.test.TestCase,
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
-    baseline_task_spec = char_recognition_tasks.create_character_recognition_task(
-        train_client_spec,
-        eval_client_spec=eval_client_spec,
-        model_id=model_id,
-        only_digits=only_digits,
-        use_synthetic_data=True)
+    baseline_task_spec = (
+        char_recognition_tasks.create_character_recognition_task(
+            train_client_spec,
+            eval_client_spec=eval_client_spec,
+            model_id=model_id,
+            only_digits=only_digits,
+            use_synthetic_data=True,
+        )
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
   @parameterized.named_parameters(
@@ -129,11 +132,14 @@ class CreateCharacterRecognitionTaskTest(tf.test.TestCase,
   def test_constructs_with_no_eval_client_spec(self, only_digits, model_id):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = char_recognition_tasks.create_character_recognition_task(
-        train_client_spec,
-        model_id=model_id,
-        only_digits=only_digits,
-        use_synthetic_data=True)
+    baseline_task_spec = (
+        char_recognition_tasks.create_character_recognition_task(
+            train_client_spec,
+            model_id=model_id,
+            only_digits=only_digits,
+            use_synthetic_data=True,
+        )
+    )
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
 

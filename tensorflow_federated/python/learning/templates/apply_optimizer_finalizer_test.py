@@ -255,11 +255,16 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
           collections.OrderedDict(update_non_finite=0), output.measurements)
 
   def test_keras_finalizer_execution_with_non_finite_update(self):
-    init_fn, next_fn = apply_optimizer_finalizer._build_keras_optimizer_initialize_and_next(
-        computation_types.to_type(
-            model_weights.ModelWeights(
-                trainable=[tf.float32], non_trainable=[])),
-        optimizer_fn=tf.keras.optimizers.SGD)
+    init_fn, next_fn = (
+        apply_optimizer_finalizer._build_keras_optimizer_initialize_and_next(
+            computation_types.to_type(
+                model_weights.ModelWeights(
+                    trainable=[tf.float32], non_trainable=[]
+                )
+            ),
+            optimizer_fn=tf.keras.optimizers.SGD,
+        )
+    )
 
     initial_state = init_fn()
     test_trainable_weights = [0.0]
@@ -282,11 +287,16 @@ class ApplyOptimizerFinalizerExecutionTest(tf.test.TestCase):
                           collections.OrderedDict(update_non_finite=1))
 
   def test_tff_finalizer_execution_with_non_finite_update(self):
-    init_fn, next_fn = apply_optimizer_finalizer._build_tff_optimizer_initialize_and_next(
-        computation_types.to_type(
-            model_weights.ModelWeights(
-                trainable=[tf.float32], non_trainable=[])),
-        optimizer=sgdm.build_sgdm(1.0))
+    init_fn, next_fn = (
+        apply_optimizer_finalizer._build_tff_optimizer_initialize_and_next(
+            computation_types.to_type(
+                model_weights.ModelWeights(
+                    trainable=[tf.float32], non_trainable=[]
+                )
+            ),
+            optimizer=sgdm.build_sgdm(1.0),
+        )
+    )
 
     initial_state = init_fn()
     test_trainable_weights = [0.0]

@@ -281,10 +281,16 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
       ('num_examples', client_weight_lib.ClientWeighting.NUM_EXAMPLES))
   def test_keras_tff_client_work_equal(self, weighting):
     dataset = create_test_dataset()
-    client_update_keras = model_delta_client_work.build_model_delta_update_with_keras_optimizer(
-        model_fn=create_model, weighting=weighting)
-    client_update_tff = model_delta_client_work.build_model_delta_update_with_tff_optimizer(
-        model_fn=create_model, weighting=weighting)
+    client_update_keras = (
+        model_delta_client_work.build_model_delta_update_with_keras_optimizer(
+            model_fn=create_model, weighting=weighting
+        )
+    )
+    client_update_tff = (
+        model_delta_client_work.build_model_delta_update_with_tff_optimizer(
+            model_fn=create_model, weighting=weighting
+        )
+    )
     keras_result = client_update_keras(
         tf.keras.optimizers.SGD(learning_rate=0.1),
         create_test_initial_weights(), dataset)
@@ -313,10 +319,13 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
   )
   def test_client_tf(self, simulation, optimizer_kwargs, expected_norm,
                      weighting):
-    client_tf = model_delta_client_work.build_model_delta_update_with_keras_optimizer(
-        model_fn=create_model,
-        weighting=weighting,
-        use_experimental_simulation_loop=simulation)
+    client_tf = (
+        model_delta_client_work.build_model_delta_update_with_keras_optimizer(
+            model_fn=create_model,
+            weighting=weighting,
+            use_experimental_simulation_loop=simulation,
+        )
+    )
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs)
     dataset = create_test_dataset()
     client_result, model_output = self.evaluate(
@@ -336,9 +345,12 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
-    client_tf = model_delta_client_work.build_model_delta_update_with_keras_optimizer(
-        model_fn=create_model,
-        weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
+    client_tf = (
+        model_delta_client_work.build_model_delta_update_with_keras_optimizer(
+            model_fn=create_model,
+            weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+        )
+    )
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
     dataset = create_test_dataset()
     init_weights = create_test_initial_weights()
@@ -391,10 +403,13 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
       '_dataset_reduce_fn',
       wraps=dataset_reduce._dataset_reduce_fn)
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
-    client_tf = model_delta_client_work.build_model_delta_update_with_keras_optimizer(
-        model_fn=create_model,
-        weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-        use_experimental_simulation_loop=simulation)
+    client_tf = (
+        model_delta_client_work.build_model_delta_update_with_keras_optimizer(
+            model_fn=create_model,
+            weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
+            use_experimental_simulation_loop=simulation,
+        )
+    )
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
     dataset = create_test_dataset()
     client_tf(optimizer, create_test_initial_weights(), dataset)
@@ -483,12 +498,18 @@ class ModelDeltaClientWorkExecutionTest(tf.test.TestCase,
     optimizer2 = sgdm.build_sgdm(learning_rate=0.1)
     optimizer_hparams = collections.OrderedDict(learning_rate=1.0)
 
-    client_update_tff = model_delta_client_work.build_model_delta_update_with_tff_optimizer(
-        model_fn=create_model, weighting=weighting)
+    client_update_tff = (
+        model_delta_client_work.build_model_delta_update_with_tff_optimizer(
+            model_fn=create_model, weighting=weighting
+        )
+    )
     result1 = client_update_tff(optimizer1, create_test_initial_weights(),
                                 dataset, optimizer_hparams)
-    client_update_tff = model_delta_client_work.build_model_delta_update_with_tff_optimizer(
-        model_fn=create_model, weighting=weighting)
+    client_update_tff = (
+        model_delta_client_work.build_model_delta_update_with_tff_optimizer(
+            model_fn=create_model, weighting=weighting
+        )
+    )
     result2 = client_update_tff(optimizer2, create_test_initial_weights(),
                                 dataset, optimizer_hparams)
 
@@ -519,8 +540,11 @@ class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
     # processing of Keras models wrapped as FunctionalModel.
     @tensorflow_computation.tf_computation
     def client_update_functional_model(model_weights, dataset):
-      model_delta_fn = model_delta_client_work.build_functional_model_delta_update(
-          model=functional_model, weighting=weighting)
+      model_delta_fn = (
+          model_delta_client_work.build_functional_model_delta_update(
+              model=functional_model, weighting=weighting
+          )
+      )
       return model_delta_fn(
           sgdm.build_sgdm(learning_rate=0.1), model_weights, dataset)
 
@@ -528,15 +552,21 @@ class FunctionalModelDeltaClientWorkExecutionTest(tf.test.TestCase,
     # comapred to the FunctionalModel variant built above to ensure they
     # procduce the same results.
     def model_fn():
-      keras_model = model_examples.build_linear_regression_keras_functional_model(
-          feature_dims=2)
+      keras_model = (
+          model_examples.build_linear_regression_keras_functional_model(
+              feature_dims=2
+          )
+      )
       loss_fn = tf.keras.losses.MeanSquaredError()
       input_spec = dataset.element_spec
       return keras_utils.from_keras_model(
           keras_model, loss=loss_fn, input_spec=input_spec)
 
-    client_update_model_fn = model_delta_client_work.build_model_delta_update_with_tff_optimizer(
-        model_fn=model_fn, weighting=weighting)
+    client_update_model_fn = (
+        model_delta_client_work.build_model_delta_update_with_tff_optimizer(
+            model_fn=model_fn, weighting=weighting
+        )
+    )
     model_fn_optimizer = sgdm.build_sgdm(learning_rate=0.1)
     model_fn_weights = model_weights_lib.ModelWeights.from_model(model_fn())
 

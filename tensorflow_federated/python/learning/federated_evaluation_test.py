@@ -467,8 +467,11 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
 
     # Defining artifacts using `tff.learning.Model`
     def tff_model_fn():
-      keras_model = model_examples.build_linear_regression_keras_functional_model(
-          feature_dims=2)
+      keras_model = (
+          model_examples.build_linear_regression_keras_functional_model(
+              feature_dims=2
+          )
+      )
       return keras_utils.from_keras_model(
           keras_model, loss=loss_fn(), input_spec=batch_type)
 
@@ -518,8 +521,11 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
 
     # Defining artifacts using `tff.learning.Model`
     def tff_model_fn():
-      keras_model = model_examples.build_linear_regression_keras_functional_model(
-          feature_dims=2)
+      keras_model = (
+          model_examples.build_linear_regression_keras_functional_model(
+              feature_dims=2
+          )
+      )
       return keras_utils.from_keras_model(
           keras_model, loss=loss_fn(), input_spec=batch_type)
 
@@ -544,10 +550,13 @@ class FunctionalFederatedEvaluationTest(tf.test.TestCase):
         loss_fn=loss_fn(),
         input_spec=batch_type,
         metrics_constructor=build_metrics_fn)
-    functional_eval = federated_evaluation._build_functional_federated_evaluation(
-        model=functional_model,
-        broadcast_process=None,
-        metrics_aggregator=metrics_aggregator)
+    functional_eval = (
+        federated_evaluation._build_functional_federated_evaluation(
+            model=functional_model,
+            broadcast_process=None,
+            metrics_aggregator=metrics_aggregator,
+        )
+    )
     functional_metrics = functional_eval(functional_model.initial_weights,
                                          datasets)
     self.assertDictEqual(eval_metrics, functional_metrics)

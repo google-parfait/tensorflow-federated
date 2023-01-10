@@ -79,8 +79,11 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_unweighted_client_measurement_fn_traceable_by_federated_computation(
       self, value_type):
-    client_measurement_fn, _ = debug_measurements._build_aggregator_measurement_fns(
-        weighted_aggregator=False)
+    client_measurement_fn, _ = (
+        debug_measurements._build_aggregator_measurement_fns(
+            weighted_aggregator=False
+        )
+    )
     input_type = computation_types.at_clients(value_type)
 
     @federated_computation.federated_computation(input_type)
@@ -102,8 +105,11 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_weighted_client_measurement_fn_traceable_by_federated_computation(
       self, value_type):
-    client_measurement_fn, _ = debug_measurements._build_aggregator_measurement_fns(
-        weighted_aggregator=True)
+    client_measurement_fn, _ = (
+        debug_measurements._build_aggregator_measurement_fns(
+            weighted_aggregator=True
+        )
+    )
     input_type = computation_types.at_clients(value_type)
     weights_type = computation_types.at_clients(tf.float32)
 
@@ -127,8 +133,9 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   def test_correctness_of_server_update_statistics(self, server_update,
                                                    expected_max, expected_norm,
                                                    expected_min):
-    actual_server_statistics = debug_measurements._calculate_server_update_statistics(
-        server_update)
+    actual_server_statistics = (
+        debug_measurements._calculate_server_update_statistics(server_update)
+    )
     expected_server_statistics = collections.OrderedDict(
         server_update_max=expected_max,
         server_update_norm=expected_norm,
@@ -147,8 +154,11 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_correctness_of_server_update_statistics_mixed_dtypes(
       self, server_update, expected_max, expected_norm, expected_min):
-    actual_server_statistics = debug_measurements._calculate_server_update_statistics_mixed_dtype(
-        server_update)
+    actual_server_statistics = (
+        debug_measurements._calculate_server_update_statistics_mixed_dtype(
+            server_update
+        )
+    )
     expected_server_statistics = collections.OrderedDict(
         server_update_max=expected_max,
         server_update_norm=expected_norm,
@@ -314,8 +324,11 @@ class DebugMeasurementsTest(tf.test.TestCase, parameterized.TestCase):
           computation_types.at_clients(client_type_spec),
           computation_types.at_clients(tf.float32))
       def compute_client_statistics(client_updates, client_weights):
-        return debug_measurements._calculate_client_update_statistics_mixed_dtype(
-            client_updates, client_weights)
+        return (
+            debug_measurements._calculate_client_update_statistics_mixed_dtype(
+                client_updates, client_weights
+            )
+        )
 
       compute_client_statistics(client_updates, client_weights)
 

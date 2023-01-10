@@ -557,8 +557,11 @@ class KerasUtilsTest(tf.test.TestCase, parameterized.TestCase):
     num_train_steps = 3
 
     def _make_keras_model():
-      keras_model = model_examples.build_linear_regression_keras_functional_model(
-          feature_dims)
+      keras_model = (
+          model_examples.build_linear_regression_keras_functional_model(
+              feature_dims
+          )
+      )
       return keras_model
 
     def _model_fn():

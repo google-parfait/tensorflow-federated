@@ -276,7 +276,8 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
   def test_get_set_model_weights_keras_model(self):
 
     def model_fn():
-      keras_model = model_examples.build_linear_regression_keras_functional_model(
+      keras_model = (
+          model_examples.build_linear_regression_keras_functional_model()
       )
       return keras_utils.from_keras_model(
           keras_model,
@@ -335,8 +336,11 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
         client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES)
     client_work_hparams = client_work_process.get_hparams(state.client_work)
     model_weights_type = fedavg.get_model_weights.type_signature.result
-    finalizer_process = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        sgdm.build_sgdm(server_learning_rate), model_weights_type)
+    finalizer_process = (
+        apply_optimizer_finalizer.build_apply_optimizer_finalizer(
+            sgdm.build_sgdm(server_learning_rate), model_weights_type
+        )
+    )
     finalizer_hparams = finalizer_process.get_hparams(state.finalizer)
     expected_hparams = collections.OrderedDict(
         client_work=client_work_hparams, finalizer=finalizer_hparams)
@@ -357,8 +361,11 @@ class VanillaFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     client_work_hparams = client_work_process.get_hparams(
         client_work_process.initialize())
     model_weights_type = fedavg.get_model_weights.type_signature.result
-    finalizer_process = apply_optimizer_finalizer.build_apply_optimizer_finalizer(
-        sgdm.build_sgdm(server_learning_rate), model_weights_type)
+    finalizer_process = (
+        apply_optimizer_finalizer.build_apply_optimizer_finalizer(
+            sgdm.build_sgdm(server_learning_rate), model_weights_type
+        )
+    )
     finalizer_hparams = finalizer_process.get_hparams(
         finalizer_process.initialize())
     hparams = collections.OrderedDict(
