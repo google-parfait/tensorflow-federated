@@ -34,7 +34,8 @@ def create_remote_executor_stack(
     cardinalities: Mapping[placements.PlacementLiteral, int]
 ) -> executor_bindings.Executor:
   """Constructs a RemoteExecutor proxying services on `targets`."""
-  uri_cardinalities = data_conversions.convert_cardinalities_dict_to_string_keyed(
-      cardinalities)
+  uri_cardinalities = (
+      data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
+  )
   return executor_stack_bindings.create_remote_executor_stack(
       channels, uri_cardinalities)

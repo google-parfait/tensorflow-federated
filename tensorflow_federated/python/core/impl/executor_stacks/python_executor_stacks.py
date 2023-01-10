@@ -547,10 +547,13 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
   ) -> executor_base.Executor:
     server_executor = self._unplaced_ex_factory.create_executor(
         placement=placements.SERVER)
-    composing_strategy_factory = federated_composing_strategy.FederatedComposingStrategy.factory(
-        server_executor,
-        target_executors,
-        local_computation_factory=self._local_computation_factory)
+    composing_strategy_factory = (
+        federated_composing_strategy.FederatedComposingStrategy.factory(
+            server_executor,
+            target_executors,
+            local_computation_factory=self._local_computation_factory,
+        )
+    )
     unplaced_executor = self._unplaced_ex_factory.create_executor()
     composing_executor = federating_executor.FederatingExecutor(
         composing_strategy_factory, unplaced_executor)
