@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-def _tf_wrapper_fn(parameter_type, name):
+def _tf_wrapper_fn(parameter_type, name, layout_map=None):
   """Wrapper function to plug Tensorflow logic into the TFF framework."""
   del name  # Unused.
   if not type_analysis.is_tensorflow_compatible_type(parameter_type):
@@ -42,7 +42,8 @@ def _tf_wrapper_fn(parameter_type, name):
                     'with the type {}.'.format(parameter_type))
   ctx_stack = context_stack_impl.context_stack
   tf_serializer = tensorflow_serialization.tf_computation_serializer(
-      parameter_type, ctx_stack)
+      parameter_type, ctx_stack, layout_map
+  )
   arg = next(tf_serializer)
   try:
     result = yield arg
@@ -303,6 +304,7 @@ class _TensorFlowFunctionTracingStrategy:
       fn_name: Optional[str],
       parameter_type: Optional[computation_types.Type],
       unpack: Optional[bool],
+      layout_map: Optional[Mapping[str, str]],
   ) -> computation_impl.ConcreteComputation:
     if not type_analysis.is_tensorflow_compatible_type(parameter_type):
       raise TypeError('`tf_computation`s can accept only parameter types with '
@@ -414,9 +416,13 @@ class _TensorFlowFunctionTracingStrategy:
         type=type_serialization.serialize_type(type_signature),
         tensorflow_function=pb.TensorFlowFunction(
             function_def=serialization_utils.pack_function_def(
-                concrete_fn.function_def),
+                concrete_fn.function_def
+            ),
             parameter=parameter_binding,
-            result=result_binding))
+            result=result_binding,
+            layout_map=layout_map,
+        ),
+    )
     return computation_impl.ConcreteComputation(
         comp_pb, ctx_stack, annotated_type=type_signature)
 

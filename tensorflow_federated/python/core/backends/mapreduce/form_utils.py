@@ -46,11 +46,21 @@ from tensorflow_federated.python.core.impl.types import placements
 
 _GRAPPLER_DEFAULT_CONFIG = tf.compat.v1.ConfigProto()
 _AGGRESSIVE = _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.AGGRESSIVE
-_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.memory_optimization = _AGGRESSIVE
-_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.constant_folding = _AGGRESSIVE
-_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.arithmetic_optimization = _AGGRESSIVE
-_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.loop_optimization = _AGGRESSIVE
-_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.function_optimization = _AGGRESSIVE
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.memory_optimization = (
+    _AGGRESSIVE
+)
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.constant_folding = (
+    _AGGRESSIVE
+)
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.arithmetic_optimization = (
+    _AGGRESSIVE
+)
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.loop_optimization = (
+    _AGGRESSIVE
+)
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.function_optimization = (
+    _AGGRESSIVE
+)
 
 BuildingBlockFn = Callable[[building_blocks.ComputationBuildingBlock],
                            building_blocks.ComputationBuildingBlock]
@@ -164,51 +174,6 @@ def get_computation_for_map_reduce_form(
     return updated_server_state, server_output
 
   return computation
-
-
-def _check_len(
-    target,
-    length,
-    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
-):
-  py_typecheck.check_type(length, int)
-  if len(target) != length:
-    raise err_fn('Expected length of {}, found {}.'.format(length, len(target)))
-
-
-def _check_placement(
-    target,
-    placement: placements.PlacementLiteral,
-    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
-):
-  py_typecheck.check_type(target, computation_types.FederatedType)
-  py_typecheck.check_type(placement, placements.PlacementLiteral)
-  if target.placement != placement:
-    raise err_fn(
-        'Expected value with placement {}, found value of type {}.'.format(
-            placement, target))
-
-
-def _check_type_equal(
-    actual,
-    expected,
-    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
-):
-  py_typecheck.check_type(actual, computation_types.Type)
-  py_typecheck.check_type(expected, computation_types.Type)
-  if not actual.is_equivalent_to(expected):
-    raise err_fn('Expected type of {}, found {}.'.format(expected, actual))
-
-
-def _check_type(
-    target,
-    type_spec,
-    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
-):
-  py_typecheck.check_type(type_spec, type)
-  if not isinstance(target, type_spec):
-    raise err_fn('Expected type of {}, found {}.'.format(
-        type_spec, type(target)))
 
 
 def _check_type_is_fn(

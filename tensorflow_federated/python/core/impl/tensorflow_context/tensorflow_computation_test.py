@@ -21,6 +21,7 @@ import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.computation import computation_wrapper
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
@@ -219,8 +220,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     self.assertEqual(
         foo.type_signature.compact_representation(),
         '( -> <int32,<int32,float32>,<int32,float32>,<foo=int32,bar=float32>,<x=bool,y=bool>>)'
-    )
-    # pyformat: enable
+    )  # pyformat: enable
 
   def test_takes_namedtuple_typed(self):
     MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
@@ -731,6 +731,21 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
     self.assertEqual(foo.type_signature.compact_representation(),
                      '(int32 -> int32)')
 
+  def test_experimental_tf_computation_with_variable_and_layout(self):
+    def foo(x):
+      v = tf.Variable(0, name='x')
+      v.assign(1)
+      return v + x
+
+    foo = tensorflow_computation.experimental_tf_fn_computation(
+        foo, tf.int32, layout_map={'x': 'unsharded'}
+    )
+    concrete_foo = computation_impl.ConcreteComputation.get_proto(foo)
+    self.assertLen(concrete_foo.tensorflow_function.layout_map, 1)
+    self.assertEqual(
+        concrete_foo.tensorflow_function.layout_map['x'], 'unsharded'
+    )
+
   def test_with_local_variable_user_specified_lifting(self):
 
     def foo(x):
@@ -773,6 +788,19 @@ class TensorFlowFunctionComputationTest(parameterized.TestCase):
 
     with self.assertRaises(tensorflow_computation.CapturedVariableError):
       tensorflow_computation.experimental_tf_fn_computation(foo, tf.int32)
+
+  def test_tf_computation_with_variable_and_layout(self):
+    def foo(x):
+      v = tf.Variable(0, name='x')
+      v.assign(1)
+      return v + x
+
+    foo = tensorflow_computation.tf_computation(
+        foo, tf.int32, layout_map={'x': 'unsharded'}
+    )
+    concrete_foo = computation_impl.ConcreteComputation.get_proto(foo)
+    self.assertLen(concrete_foo.tensorflow.layout_map, 1)
+    self.assertEqual(concrete_foo.tensorflow.layout_map['x'], 'unsharded')
 
   def test_does_not_raise_type_error_with_sequence_inputs_and_outputs(self):
     try:
