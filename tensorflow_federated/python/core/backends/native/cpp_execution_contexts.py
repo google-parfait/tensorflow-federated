@@ -17,8 +17,8 @@ from collections.abc import Sequence
 
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
-from tensorflow_federated.python.core.impl.execution_contexts import async_cpp_execution_context
-from tensorflow_federated.python.core.impl.execution_contexts import sync_cpp_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import async_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
@@ -49,8 +49,8 @@ def create_local_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls)
-  context = sync_cpp_execution_context.SyncSerializeAndExecuteCPPContext(
-      factory=factory, compiler_fn=compiler.desugar_and_transform_to_native
+  context = sync_execution_context.SyncExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
   )
   return context
 
@@ -73,8 +73,8 @@ def create_local_async_cpp_execution_context(
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls)
-  context = async_cpp_execution_context.AsyncSerializeAndExecuteCPPContext(
-      factory=factory, compiler_fn=compiler.desugar_and_transform_to_native
+  context = async_execution_context.AsyncExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
   )
   return context
 
@@ -108,12 +108,12 @@ def set_remote_cpp_execution_context(
 def create_remote_cpp_execution_context(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0,
-) -> sync_cpp_execution_context.SyncSerializeAndExecuteCPPContext:
+) -> sync_execution_context.SyncExecutionContext:
   """Creates a remote execution context backed by TFF-C++ runtime."""
   factory = cpp_executor_factory.remote_cpp_executor_factory(
       channels=channels, default_num_clients=default_num_clients)
-  context = sync_cpp_execution_context.SyncSerializeAndExecuteCPPContext(
-      factory=factory, compiler_fn=compiler.desugar_and_transform_to_native
+  context = sync_execution_context.SyncExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
   )
   return context
 
@@ -121,11 +121,11 @@ def create_remote_cpp_execution_context(
 def create_remote_async_cpp_execution_context(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0,
-) -> async_cpp_execution_context.AsyncSerializeAndExecuteCPPContext:
+) -> async_execution_context.AsyncExecutionContext:
   """Creates a remote execution context backed by TFF-C++ runtime."""
   factory = cpp_executor_factory.remote_cpp_executor_factory(
       channels=channels, default_num_clients=default_num_clients)
-  context = async_cpp_execution_context.AsyncSerializeAndExecuteCPPContext(
-      factory=factory, compiler_fn=compiler.desugar_and_transform_to_native
+  context = async_execution_context.AsyncExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.desugar_and_transform_to_native
   )
   return context

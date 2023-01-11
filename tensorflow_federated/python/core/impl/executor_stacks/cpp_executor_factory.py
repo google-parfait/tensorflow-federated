@@ -19,6 +19,7 @@
 """A collection of constructors for basic types of executor stacks."""
 
 from collections.abc import Callable, Sequence
+import concurrent
 import math
 
 from absl import logging
@@ -26,8 +27,11 @@ import cachetools
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.executor_stacks import executor_stack_bindings
+from tensorflow_federated.python.core.impl.executors import cpp_to_python_executor
+from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.types import placements
 
 # Users likely do not intend to run 4 or more TensorFlow functions sequentially;
@@ -53,13 +57,16 @@ class CPPExecutorFactory(executor_factory.ExecutorFactory):
 
   def create_executor(
       self, cardinalities: executor_factory.CardinalitiesType
-  ) -> executor_bindings.Executor:
+  ) -> executor_base.Executor:
     cardinalities_key = _get_hashable_key(cardinalities)
-    if self._executors.get(cardinalities_key):
-      return self._executors[cardinalities_key]
-    executor = self._executor_fn(cardinalities)
-    self._executors[cardinalities_key] = executor
-    return executor
+    if cardinalities_key not in self._executors:
+      cpp_executor = self._executor_fn(cardinalities)
+      futures_executor = concurrent.futures.ThreadPoolExecutor(max_workers=None)
+      executor = cpp_to_python_executor.CppToPythonExecutorBridge(
+          cpp_executor, futures_executor
+      )
+      self._executors[cardinalities_key] = executor
+    return self._executors[cardinalities_key]
 
   def clean_up_executor(self,
                         cardinalities: executor_factory.CardinalitiesType):
@@ -140,6 +147,13 @@ def local_cpp_executor_factory(
   return CPPExecutorFactory(_executor_fn)
 
 
+def _handle_error(exception: Exception):
+  if executors_errors.is_absl_status_retryable_error(exception):
+    raise executors_errors.RetryableAbslStatusError() from exception
+  else:
+    raise exception
+
+
 def remote_cpp_executor_factory(
     channels: Sequence[executor_bindings.GRPCChannel],
     default_num_clients: int = 0) -> executor_factory.ExecutorFactory:
@@ -151,7 +165,11 @@ def remote_cpp_executor_factory(
   ) -> executor_bindings.Executor:
     if cardinalities.get(placements.CLIENTS) is None:
       cardinalities[placements.CLIENTS] = default_num_clients
-    return executor_stack_bindings.create_remote_executor_stack(
-        channels, cardinalities)
+    try:
+      return executor_stack_bindings.create_remote_executor_stack(
+          channels, cardinalities
+      )
+    except Exception as e:  # pylint: disable=broad-except
+      _handle_error(e)
 
   return CPPExecutorFactory(_executor_fn, executor_cache_size=1)

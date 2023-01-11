@@ -131,7 +131,7 @@ async def _invoke(executor, comp, arg, result_type: computation_types.Type):
   """
   if arg is not None:
     py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
-  comp = await executor.create_value(comp)
+  comp = await executor.create_value(comp, comp.type_signature)
   result = await executor.create_call(comp, arg)
   py_typecheck.check_type(result, executor_value_base.ExecutorValue)
   result_val = _unwrap(await result.compute())

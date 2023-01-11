@@ -31,7 +31,10 @@ py_library(
     deps = [
         ":executor_stack_bindings",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/executors:cpp_to_python_executor",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executors_errors",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
@@ -46,6 +49,7 @@ py_test(
     ],
     deps = [
         ":cpp_executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
