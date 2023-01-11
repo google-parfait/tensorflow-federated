@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Utils for converting to/from the MapReduce form.
 
 Note: Refer to `get_computation_for_map_reduce_form()` for the meaning of
@@ -96,13 +91,13 @@ def get_computation_for_broadcast_form(
 
 
 def get_state_initialization_computation_for_map_reduce_form(
-    initialize_computation: computation_base.Computation,
+    initialize_computation: computation_impl.ConcreteComputation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
 ) -> computation_base.Computation:
   """Validates and transforms a computation to generate state for MapReduceForm.
 
   Args:
-    initialize_computation: A `computation_base.Computation` that should
+    initialize_computation: A `computation_impl.ConcreteComputation` that should
       generate initial state for a computation that is compatible with
       MapReduceForm.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
@@ -267,7 +262,7 @@ def _check_function_signature_compatible_with_broadcast_form(
 
 
 def check_computation_compatible_with_map_reduce_form(
-    comp: computation_base.Computation,
+    comp: computation_impl.ConcreteComputation,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
 ) -> tuple[
@@ -281,7 +276,7 @@ def check_computation_compatible_with_map_reduce_form(
     be propagated to that documentation.
 
   Args:
-    comp: An instance of `computation_base.Computation` to check for
+    comp: An instance of `computation_impl.ConcreteComputation` to check for
       compatibility with `tff.backends.mapreduce.MapReduceForm`.
     tff_internal_preprocessing: An optional function to transform the AST of the
       computation.
@@ -293,7 +288,7 @@ def check_computation_compatible_with_map_reduce_form(
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  py_typecheck.check_type(comp, computation_base.Computation)
+  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
   comp_tree = comp.to_building_block()
   if tff_internal_preprocessing is not None:
     comp_tree = tff_internal_preprocessing(comp_tree)
@@ -940,7 +935,7 @@ def _merge_grappler_config_with_default(
 
 
 def get_broadcast_form_for_computation(
-    comp: computation_base.Computation,
+    comp: computation_impl.ConcreteComputation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
@@ -948,10 +943,10 @@ def get_broadcast_form_for_computation(
   """Constructs `tff.backends.mapreduce.BroadcastForm` given a computation.
 
   Args:
-    comp: An instance of `tff.Computation` that is compatible with broadcast
-      form. Computations are only compatible if they take in a single value
-      placed at server, return a single value placed at clients, and do not
-      contain any aggregations.
+    comp: An instance of `computation_impl.ConcreteComputation` that is
+      compatible with broadcast form. Computations are only compatible if they
+      take in a single value placed at server, return a single value placed at
+      clients, and do not contain any aggregations.
     grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
       Grappler graph optimization of the Tensorflow graphs backing the resulting
       `tff.backends.mapreduce.BroadcastForm`. These options are combined with a
@@ -966,7 +961,7 @@ def get_broadcast_form_for_computation(
     An instance of `tff.backends.mapreduce.BroadcastForm` equivalent to the
     provided `tff.Computation`.
   """
-  py_typecheck.check_type(comp, computation_base.Computation)
+  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
   _check_function_signature_compatible_with_broadcast_form(comp.type_signature)
   py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
   grappler_config = _merge_grappler_config_with_default(grappler_config)
