@@ -22,21 +22,6 @@ py_library(
 )
 
 py_library(
-    name = "group_norm",
-    srcs = ["group_norm.py"],
-    srcs_version = "PY3",
-)
-
-py_test(
-    name = "group_norm_test",
-    timeout = "moderate",
-    srcs = ["group_norm_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":group_norm"],
-)
-
-py_library(
     name = "mnist",
     srcs = ["mnist.py"],
     srcs_version = "PY3",
@@ -47,7 +32,6 @@ py_library(
     name = "mobilenet_v2",
     srcs = ["mobilenet_v2.py"],
     srcs_version = "PY3",
-    deps = [":group_norm"],
 )
 
 py_test(
@@ -62,7 +46,6 @@ py_library(
     name = "resnet_models",
     srcs = ["resnet_models.py"],
     srcs_version = "PY3",
-    deps = [":group_norm"],
 )
 
 py_test(

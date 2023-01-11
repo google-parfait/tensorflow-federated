@@ -25,7 +25,6 @@ from typing import Optional
 
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation.models import group_norm
 
 BATCH_NORM_DECAY = 0.997
 BATCH_NORM_EPSILON = 1e-5
@@ -58,19 +57,14 @@ def _norm_relu(input_tensor, norm):
   Returns:
     A `tf.Tensor`.
   """
-  if tf.keras.backend.image_data_format() == 'channels_last':
-    channel_axis = 3
-  else:
-    channel_axis = 1
+  channel_axis = -1  # last non-batch dimension in keras GroupNormalization
 
   if norm is NormLayer.GROUP_NORM:
-    x = group_norm.GroupNormalization(axis=channel_axis)(input_tensor)
+    x = tf.keras.layers.GroupNormalization(axis=channel_axis)(input_tensor)
   elif norm is NormLayer.BATCH_NORM:
     x = tf.keras.layers.BatchNormalization(
-        axis=channel_axis,
-        momentum=BATCH_NORM_DECAY,
-        epsilon=BATCH_NORM_EPSILON)(
-            input_tensor)
+        axis=channel_axis, momentum=BATCH_NORM_DECAY, epsilon=BATCH_NORM_EPSILON
+    )(input_tensor)
   else:
     raise ValueError('The norm argument must be of type `NormLayer`.')
   return tf.keras.layers.Activation('relu')(x)
@@ -101,8 +95,8 @@ def _conv_norm_relu(input_tensor, filters, kernel_size, norm, strides=(1, 1)):
       padding='same',
       use_bias=False,
       kernel_initializer='he_normal',
-      kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(
-          input_tensor)
+      kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+  )(input_tensor)
   return _norm_relu(x, norm=norm)
 
 
@@ -132,8 +126,8 @@ def _norm_relu_conv(input_tensor, filters, kernel_size, norm, strides=(1, 1)):
       padding='same',
       use_bias=False,
       kernel_initializer='he_normal',
-      kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(
-          x)
+      kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+  )(x)
   return x
 
 
@@ -157,14 +151,9 @@ def _shortcut(input_tensor, residual, norm):
   input_shape = tf.keras.backend.int_shape(input_tensor)
   residual_shape = tf.keras.backend.int_shape(residual)
 
-  if tf.keras.backend.image_data_format() == 'channels_last':
-    row_axis = 1
-    col_axis = 2
-    channel_axis = 3
-  else:
-    channel_axis = 1
-    row_axis = 2
-    col_axis = 3
+  row_axis = 1
+  col_axis = 2
+  channel_axis = -1  # last non-batch dimension in keras GroupNormalization
 
   stride_width = int(round(input_shape[row_axis] / residual_shape[row_axis]))
   stride_height = int(round(input_shape[col_axis] / residual_shape[col_axis]))
@@ -181,28 +170,26 @@ def _shortcut(input_tensor, residual, norm):
         padding='valid',
         use_bias=False,
         kernel_initializer='he_normal',
-        kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(
-            shortcut)
+        kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+    )(shortcut)
 
     if norm is NormLayer.GROUP_NORM:
-      shortcut = group_norm.GroupNormalization(axis=channel_axis)(shortcut)
+      shortcut = tf.keras.layers.GroupNormalization(axis=channel_axis)(shortcut)
     elif norm is NormLayer.BATCH_NORM:
       shortcut = tf.keras.layers.BatchNormalization(
           axis=channel_axis,
           momentum=BATCH_NORM_DECAY,
-          epsilon=BATCH_NORM_EPSILON)(
-              shortcut)
+          epsilon=BATCH_NORM_EPSILON,
+      )(shortcut)
     else:
       raise ValueError('The norm argument must be of type `NormLayer`.')
 
   return tf.keras.layers.add([shortcut, residual])
 
 
-def _basic_block(input_tensor,
-                 filters,
-                 norm,
-                 strides=(1, 1),
-                 normalize_first=True):
+def _basic_block(
+    input_tensor, filters, norm, strides=(1, 1), normalize_first=True
+):
   """Computes the forward pass of an input tensor through a basic block.
 
   Specifically, the basic block consists of two convolutional layers with
@@ -230,7 +217,8 @@ def _basic_block(input_tensor,
         filters=filters,
         kernel_size=(3, 3),
         strides=strides,
-        norm=norm)
+        norm=norm,
+    )
   else:
     x = tf.keras.layers.Conv2D(
         filters=filters,
@@ -239,19 +227,18 @@ def _basic_block(input_tensor,
         padding='same',
         use_bias=False,
         kernel_initializer='he_normal',
-        kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(
-            input_tensor)
+        kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+    )(input_tensor)
 
   x = _norm_relu_conv(
-      x, filters=filters, kernel_size=(3, 3), strides=strides, norm=norm)
+      x, filters=filters, kernel_size=(3, 3), strides=strides, norm=norm
+  )
   return _shortcut(input_tensor, x, norm=norm)
 
 
-def _bottleneck_block(input_tensor,
-                      filters,
-                      norm,
-                      strides=(1, 1),
-                      normalize_first=True):
+def _bottleneck_block(
+    input_tensor, filters, norm, strides=(1, 1), normalize_first=True
+):
   """Applies a bottleneck convolutional block to a given input tensor.
 
   Specifically, this applies a sequence of 3 normalization, ReLU, and
@@ -278,7 +265,8 @@ def _bottleneck_block(input_tensor,
         filters=filters,
         kernel_size=(1, 1),
         strides=strides,
-        norm=norm)
+        norm=norm,
+    )
   else:
     x = tf.keras.layers.Conv2D(
         filters=filters,
@@ -287,24 +275,28 @@ def _bottleneck_block(input_tensor,
         padding='same',
         use_bias=False,
         kernel_initializer='he_normal',
-        kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(
-            input_tensor)
+        kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+    )(input_tensor)
 
   x = _norm_relu_conv(
-      x, filters=filters, kernel_size=(3, 3), strides=strides, norm=norm)
+      x, filters=filters, kernel_size=(3, 3), strides=strides, norm=norm
+  )
 
   x = _norm_relu_conv(
-      x, filters=filters * 4, kernel_size=(1, 1), strides=strides, norm=norm)
+      x, filters=filters * 4, kernel_size=(1, 1), strides=strides, norm=norm
+  )
   return _shortcut(input_tensor, x, norm=norm)
 
 
-def _residual_block(input_tensor,
-                    block_function,
-                    filters,
-                    num_blocks,
-                    norm,
-                    strides=(1, 1),
-                    is_first_layer=False):
+def _residual_block(
+    input_tensor,
+    block_function,
+    filters,
+    num_blocks,
+    norm,
+    strides=(1, 1),
+    is_first_layer=False,
+):
   """Builds a residual block with repeating bottleneck or basic blocks."""
   x = input_tensor
   for i in range(num_blocks):
@@ -318,7 +310,8 @@ def _residual_block(input_tensor,
         filters=filters,
         strides=strides,
         normalize_first=normalize_first,
-        norm=norm)
+        norm=norm,
+    )
   return x
 
 
@@ -331,7 +324,8 @@ def create_resnet(
     initial_strides: tuple[int, int] = (2, 2),
     initial_kernel_size: tuple[int, int] = (7, 7),
     initial_max_pooling: bool = True,
-    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM,
+) -> tf.keras.Model:
   """Creates a ResNet v2 model with batch or group normalization.
 
   Instantiates the architecture from http://arxiv.org/pdf/1603.05027v2.pdf.
@@ -341,8 +335,8 @@ def create_resnet(
 
   Args:
     input_shape: A length 3 tuple of positive integeres dictating the number of
-      rows, columns, and channels of an input. Can be in channel-first or
-      channel-last format.
+      rows, columns, and channels of an input. Restricted to the `channels_last`
+      format.
     num_classes: A positive integer describing the number of output classes.
     residual_block: A `ResidualBlock` describing what type of residual block is
       used throughout the ResNet.
@@ -365,7 +359,8 @@ def create_resnet(
 
   Raises:
     ValueError: If `input_shape` is not a length three iterable with positive
-      integer values, if `num_classes` is not a positive integer, if
+      integer values, if image data format is not `channels_last` (the format is
+      `channels_first`), if `num_classes` is not a positive integer, if
       `residual_block` is not of type `ResidualBlock`, if `repetitions` is not
       `None` and is not an iterable with positive integer elements, if
       `initial_filters` is not positive, if `initial_strides` and
@@ -373,10 +368,23 @@ def create_resnet(
       elements, if `norm_layer` is not of type `NormLayer`.
   """
 
-  if not _check_iterable_with_positive_ints(
-      input_shape) or len(input_shape) != 3:
-    raise ValueError('input_shape must be an iterable of length 3 containing '
-                     'only positive integers.')
+  if (
+      not _check_iterable_with_positive_ints(input_shape)
+      or len(input_shape) != 3
+  ):
+    raise ValueError(
+        'input_shape must be an iterable of length 3 containing '
+        'only positive integers.'
+    )
+
+  # TODO(b/265363369): Support `channels_first` image format once the
+  # GroupNormalizaiton index issue is fixed.
+  if tf.keras.backend.image_data_format() != 'channels_last':
+    raise ValueError(
+        'Image data needs to be represented in the `channels_last` format with'
+        ' a three-dimensional array where the last channel represents the color'
+        ' channel. '
+    )
 
   if num_classes < 1:
     raise ValueError('num_classes must be a positive integer.')
@@ -392,20 +400,29 @@ def create_resnet(
     repetitions = [3, 4, 6, 3]
   elif not _check_iterable_with_positive_ints(repetitions):
     raise ValueError(
-        'repetitions must be None or an iterable containing positive integers')
+        'repetitions must be None or an iterable containing positive integers'
+    )
 
   if initial_filters < 1:
     raise ValueError('initial_filters must be a positive integer.')
 
-  if not _check_iterable_with_positive_ints(
-      initial_strides) or len(initial_strides) != 2:
-    raise ValueError('initial_strides must be an iterable of length 2 '
-                     'containing only positive integers.')
+  if (
+      not _check_iterable_with_positive_ints(initial_strides)
+      or len(initial_strides) != 2
+  ):
+    raise ValueError(
+        'initial_strides must be an iterable of length 2 '
+        'containing only positive integers.'
+    )
 
-  if not _check_iterable_with_positive_ints(
-      initial_kernel_size) or len(initial_kernel_size) != 2:
-    raise ValueError('initial_kernel_size must be an iterable of length 2 '
-                     'containing only positive integers.')
+  if (
+      not _check_iterable_with_positive_ints(initial_kernel_size)
+      or len(initial_kernel_size) != 2
+  ):
+    raise ValueError(
+        'initial_kernel_size must be an iterable of length 2 '
+        'containing only positive integers.'
+    )
 
   if not isinstance(norm_layer, NormLayer):
     raise ValueError('norm_layer must be of type `NormLayer`.')
@@ -416,12 +433,13 @@ def create_resnet(
       filters=initial_filters,
       kernel_size=initial_kernel_size,
       strides=initial_strides,
-      norm=norm_layer)
+      norm=norm_layer,
+  )
 
   if initial_max_pooling:
     x = tf.keras.layers.MaxPooling2D(
-        pool_size=(3, 3), strides=initial_strides, padding='same')(
-            x)
+        pool_size=(3, 3), strides=initial_strides, padding='same'
+    )(x)
 
   filters = initial_filters
 
@@ -432,7 +450,8 @@ def create_resnet(
         filters=filters,
         num_blocks=r,
         is_first_layer=(i == 0),
-        norm=norm_layer)
+        norm=norm_layer,
+    )
     filters *= 2
 
   # Final activation in the residual blocks
@@ -446,8 +465,8 @@ def create_resnet(
       activation='softmax',
       kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
       kernel_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
-      bias_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY))(
-          x)
+      bias_regularizer=tf.keras.regularizers.l2(L2_WEIGHT_DECAY),
+  )(x)
 
   model = tf.keras.models.Model(img_input, x)
   return model
@@ -456,7 +475,8 @@ def create_resnet(
 def create_resnet18(
     input_shape: tuple[int, int, int],
     num_classes: int,
-    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM,
+) -> tf.keras.Model:
   """Creates a ResNet-18 with basic residual blocks.
 
   Args:
@@ -475,13 +495,15 @@ def create_resnet18(
       num_classes,
       residual_block=ResidualBlock.BASIC,
       repetitions=[2, 2, 2, 2],
-      norm_layer=norm_layer)
+      norm_layer=norm_layer,
+  )
 
 
 def create_resnet34(
     input_shape: tuple[int, int, int],
     num_classes: int,
-    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM,
+) -> tf.keras.Model:
   """Creates a ResNet-34 with basic residual blocks.
 
   Args:
@@ -500,13 +522,15 @@ def create_resnet34(
       num_classes,
       residual_block=ResidualBlock.BASIC,
       repetitions=[3, 4, 6, 3],
-      norm_layer=norm_layer)
+      norm_layer=norm_layer,
+  )
 
 
 def create_resnet50(
     input_shape: tuple[int, int, int],
     num_classes: int,
-    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM,
+) -> tf.keras.Model:
   """Creates a ResNet-50 model with bottleneck residual blocks.
 
   Args:
@@ -525,13 +549,15 @@ def create_resnet50(
       num_classes,
       residual_block=ResidualBlock.BOTTLENECK,
       repetitions=[3, 4, 6, 3],
-      norm_layer=norm_layer)
+      norm_layer=norm_layer,
+  )
 
 
 def create_resnet101(
     input_shape: tuple[int, int, int],
     num_classes: int,
-    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM,
+) -> tf.keras.Model:
   """Creates a ResNet-101 model with bottleneck residual blocks.
 
   Args:
@@ -550,13 +576,15 @@ def create_resnet101(
       num_classes,
       residual_block=ResidualBlock.BOTTLENECK,
       repetitions=[3, 4, 23, 3],
-      norm_layer=norm_layer)
+      norm_layer=norm_layer,
+  )
 
 
 def create_resnet152(
     input_shape: tuple[int, int, int],
     num_classes: int,
-    norm_layer: NormLayer = NormLayer.GROUP_NORM) -> tf.keras.Model:
+    norm_layer: NormLayer = NormLayer.GROUP_NORM,
+) -> tf.keras.Model:
   """Creates a ResNet-152 model with bottleneck residual blocks.
 
   Args:
@@ -575,4 +603,5 @@ def create_resnet152(
       num_classes,
       residual_block=ResidualBlock.BOTTLENECK,
       repetitions=[3, 8, 36, 3],
-      norm_layer=norm_layer)
+      norm_layer=norm_layer,
+  )
