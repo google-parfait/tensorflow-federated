@@ -20,7 +20,7 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.jax_context import jax_serialization
 
 
-def _jax_strategy_fn(fn_to_wrap, fn_name, parameter_type, unpack):
+def _jax_strategy_fn(fn_to_wrap, fn_name, parameter_type, unpack, layout_map):
   """Serializes a Python function containing JAX code as a TFF computation.
 
   Args:
@@ -30,12 +30,14 @@ def _jax_strategy_fn(fn_to_wrap, fn_name, parameter_type, unpack):
     parameter_type: An instance of `computation_types.Type` that represents the
       TFF type of the computation parameter, or `None` if there's none.
     unpack: See `unpack` in `function_utils.create_argument_unpacking_fn`.
+    layout_map: Unused. Layout map information for TF DTensor based execution.
 
   Returns:
     An instance of `computation_impl.ConcreteComputation` with the constructed
     computation.
   """
   del fn_name  # Unused.
+  del layout_map  # Unused.
   unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
       fn_to_wrap, parameter_type, unpack=unpack)
   ctx_stack = context_stack_impl.context_stack

@@ -65,13 +65,19 @@ def _check_parameters(parameters):
       raise AssertionError(f'Unexpected parameter kind: {parameter.kind}')
 
 
-def _wrap_concrete(fn_name: Optional[str],
-                   wrapper_fn,
-                   parameter_type,
-                   unpack=None) -> computation_impl.ConcreteComputation:
+def _wrap_concrete(
+    fn_name: Optional[str],
+    wrapper_fn,
+    parameter_type,
+    unpack=None,
+    layout_map=None,
+) -> computation_impl.ConcreteComputation:
   """Wraps with `wrapper_fn` given the provided `parameter_type`."""
   del unpack  # Unused.
-  generator = wrapper_fn(parameter_type, fn_name)
+  if layout_map is not None:
+    generator = wrapper_fn(parameter_type, fn_name, layout_map)
+  else:
+    generator = wrapper_fn(parameter_type, fn_name)
   arg = next(generator)
   try:
     result = yield arg
@@ -207,11 +213,12 @@ class PythonTracingStrategy:
     """
     self._wrapper_fn = wrapper_fn
 
-  def __call__(self, fn_to_wrap, fn_name, parameter_type, unpack):
+  def __call__(self, fn_to_wrap, fn_name, parameter_type, unpack, layout_map):
     unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
         fn_to_wrap, parameter_type, unpack=unpack)
-    wrapped_fn_generator = _wrap_concrete(fn_name, self._wrapper_fn,
-                                          parameter_type)
+    wrapped_fn_generator = _wrap_concrete(
+        fn_name, self._wrapper_fn, parameter_type, layout_map=layout_map
+    )
     packed_args = next(wrapped_fn_generator)
     try:
       args, kwargs = unpack_arguments_fn(packed_args)
@@ -406,7 +413,7 @@ class ComputationWrapper:
     py_typecheck.check_callable(strategy)
     self._strategy = strategy
 
-  def __call__(self, *args, tff_internal_types=None):
+  def __call__(self, *args, tff_internal_types=None, layout_map=None):
     """Handles the different modes of usage of the decorator/wrapper.
 
     Args:
@@ -414,6 +421,8 @@ class ComputationWrapper:
         keyword arguments, although that might change in the future).
       tff_internal_types: TFF internal usage only. This argument should be
         considered private.
+      layout_map: Mapping for layouts for variable and inputs. This is used only
+        with DTensor based executor.
 
     Returns:
       Either a result of wrapping, or a callable that expects a function,
@@ -482,14 +491,24 @@ class ComputationWrapper:
       def _polymorphic_wrapper(parameter_type: computation_types.Type,
                                unpack: Optional[bool]):
         return self._strategy(
-            fn_to_wrap, fn_name, parameter_type, unpack=unpack)
+            fn_to_wrap,
+            fn_name,
+            parameter_type,
+            unpack=unpack,
+            layout_map=layout_map,
+        )
 
       wrapped_func = function_utils.PolymorphicComputation(_polymorphic_wrapper)
     else:
       # Either we have a concrete parameter type, or this is no-arg function.
       parameter_type = _parameter_type(parameters, parameter_types)
       wrapped_func = self._strategy(
-          fn_to_wrap, fn_name, parameter_type, unpack=None)
+          fn_to_wrap,
+          fn_name,
+          parameter_type,
+          unpack=None,
+          layout_map=layout_map,
+      )
 
     # Copy the __doc__ attribute with the documentation in triple-quotes from
     # the decorated function.

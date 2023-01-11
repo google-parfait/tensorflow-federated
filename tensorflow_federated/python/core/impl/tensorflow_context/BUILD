@@ -70,6 +70,7 @@ py_test(
     deps = [
         ":tensorflow_computation",
         "//tensorflow_federated/python/common_libs:golden",
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/computation:computation_wrapper",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/context_stack:runtime_error_context",
