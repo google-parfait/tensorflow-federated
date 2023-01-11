@@ -57,27 +57,36 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     result_value_type = computation_types.at_server(value_type)
 
     expected_state_type = computation_types.at_server(
-        collections.OrderedDict(value_sum_process=(), weight_sum_process=()))
+        collections.OrderedDict(value_sum_process=(), weight_sum_process=())
+    )
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=(), mean_weight=()))
+        collections.OrderedDict(mean_value=(), mean_weight=())
+    )
 
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
+        parameter=None, result=expected_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_parameter = collections.OrderedDict(
         state=expected_state_type,
         value=param_value_type,
-        weight=computation_types.at_clients(weight_type))
+        weight=computation_types.at_clients(weight_type),
+    )
 
     expected_next_type = computation_types.FunctionType(
         parameter=expected_parameter,
         result=measured_process.MeasuredProcessOutput(
-            expected_state_type, result_value_type, expected_measurements_type))
+            expected_state_type, result_value_type, expected_measurements_type
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('float_value', tf.float32),
@@ -97,21 +106,29 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     expected_state_type = computation_types.at_server(((), ()))
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=(), mean_count=()))
+        collections.OrderedDict(mean_value=(), mean_count=())
+    )
 
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
+        parameter=None, result=expected_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
-            state=expected_state_type, value=param_value_type),
+            state=expected_state_type, value=param_value_type
+        ),
         result=measured_process.MeasuredProcessOutput(
-            expected_state_type, result_value_type, expected_measurements_type))
+            expected_state_type, result_value_type, expected_measurements_type
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('float_value_float32_weight', tf.float32, tf.float32),
@@ -129,7 +146,8 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     sum_factory = aggregator_test_utils.SumPlusOneFactory()
 
     factory_ = mean.MeanFactory(
-        value_sum_factory=sum_factory, weight_sum_factory=sum_factory)
+        value_sum_factory=sum_factory, weight_sum_factory=sum_factory
+    )
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
     process = factory_.create(value_type, weight_type)
 
@@ -140,27 +158,37 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     expected_state_type = computation_types.at_server(
         collections.OrderedDict(
-            value_sum_process=tf.int32, weight_sum_process=tf.int32))
+            value_sum_process=tf.int32, weight_sum_process=tf.int32
+        )
+    )
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=tf.int32, mean_weight=tf.int32))
+        collections.OrderedDict(mean_value=tf.int32, mean_weight=tf.int32)
+    )
 
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
+        parameter=None, result=expected_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_parameter = collections.OrderedDict(
         state=expected_state_type,
         value=param_value_type,
-        weight=computation_types.at_clients(weight_type))
+        weight=computation_types.at_clients(weight_type),
+    )
 
     expected_next_type = computation_types.FunctionType(
         parameter=expected_parameter,
         result=measured_process.MeasuredProcessOutput(
-            expected_state_type, result_value_type, expected_measurements_type))
+            expected_state_type, result_value_type, expected_measurements_type
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('float_value', tf.float32),
@@ -171,7 +199,8 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     sum_factory = aggregator_test_utils.SumPlusOneFactory()
 
     factory_ = mean.UnweightedMeanFactory(
-        value_sum_factory=sum_factory, count_sum_factory=sum_factory)
+        value_sum_factory=sum_factory, count_sum_factory=sum_factory
+    )
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create(value_type)
 
@@ -182,26 +211,35 @@ class MeanFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     expected_state_type = computation_types.at_server(((tf.int32, tf.int32)))
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(mean_value=tf.int32, mean_count=tf.int32))
+        collections.OrderedDict(mean_value=tf.int32, mean_count=tf.int32)
+    )
 
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
+        parameter=None, result=expected_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
-            state=expected_state_type, value=param_value_type),
+            state=expected_state_type, value=param_value_type
+        ),
         result=measured_process.MeasuredProcessOutput(
-            expected_state_type, result_value_type, expected_measurements_type))
+            expected_state_type, result_value_type, expected_measurements_type
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('federated_type', computation_types.at_server(tf.float32)),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)))
+      ('sequence_type', computation_types.SequenceType(tf.float32)),
+  )
   def test_incorrect_create_type_raises(self, wrong_type):
     factory_ = mean.MeanFactory()
     correct_type = computation_types.to_type(tf.float32)
@@ -224,9 +262,11 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
 
     process = factory_.create(value_type, weight_type)
     expected_state = collections.OrderedDict(
-        value_sum_process=(), weight_sum_process=())
+        value_sum_process=(), weight_sum_process=()
+    )
     expected_measurements = collections.OrderedDict(
-        mean_value=(), mean_weight=())
+        mean_value=(), mean_weight=()
+    )
 
     state = process.initialize()
     self.assertAllEqual(expected_state, state)
@@ -234,7 +274,7 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     client_data = [1.0, 2.0, 3.0]
     weights = [3.0, 2.0, 1.0]
     output = process.next(state, client_data, weights)
-    self.assertAllClose(10. / 6., output.result)
+    self.assertAllClose(10.0 / 6.0, output.result)
 
     self.assertAllEqual(expected_state, output.state)
     self.assertEqual(expected_measurements, output.measurements)
@@ -246,7 +286,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     process = factory_.create(value_type)
     expected_state = ((), ())
     expected_measurements = collections.OrderedDict(
-        mean_value=(), mean_count=())
+        mean_value=(), mean_count=()
+    )
 
     state = process.initialize()
     self.assertAllEqual(expected_state, state)
@@ -264,9 +305,11 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     weight_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type, weight_type)
     expected_state = collections.OrderedDict(
-        value_sum_process=(), weight_sum_process=())
+        value_sum_process=(), weight_sum_process=()
+    )
     expected_measurements = collections.OrderedDict(
-        mean_value=(), mean_weight=())
+        mean_value=(), mean_weight=()
+    )
 
     state = process.initialize()
     self.assertAllEqual(expected_state, state)
@@ -275,7 +318,7 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     weights = [3.0, 2.0, 1.0]
     output = process.next(state, client_data, weights)
     self.assertAllEqual(expected_state, output.state)
-    self.assertAllClose(((10. / 6., 16. / 6.), 22. / 6.), output.result)
+    self.assertAllClose(((10.0 / 6.0, 16.0 / 6.0), 22.0 / 6.0), output.result)
     self.assertEqual(expected_measurements, output.measurements)
 
   def test_structure_value_unweighted(self):
@@ -284,7 +327,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     process = factory_.create(value_type)
     expected_state = ((), ())
     expected_measurements = collections.OrderedDict(
-        mean_value=(), mean_count=())
+        mean_value=(), mean_count=()
+    )
 
     state = process.initialize()
     self.assertAllEqual(expected_state, state)
@@ -323,7 +367,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
 
     # Division by zero resulting in NaN/Inf *should* occur.
     self.assertFalse(
-        math.isfinite(process.next(state, client_data, weights).result))
+        math.isfinite(process.next(state, client_data, weights).result)
+    )
 
   def test_weight_arg_all_zeros_no_nan_division(self):
     factory_ = mean.MeanFactory(no_nan_division=True)
@@ -348,7 +393,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     state = process.initialize()
     self.assertAllEqual(
         collections.OrderedDict(value_sum_process=0, weight_sum_process=()),
-        state)
+        state,
+    )
 
     # Weighted values will be summed to 11.0.
     client_data = [1.0, 2.0, 3.0]
@@ -357,16 +403,19 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     output = process.next(state, client_data, weights)
     self.assertAllEqual(
         collections.OrderedDict(value_sum_process=1, weight_sum_process=()),
-        output.state)
+        output.state,
+    )
     self.assertAllClose(11 / 6, output.result)
     self.assertEqual(
         collections.OrderedDict(mean_value=M_CONST, mean_weight=()),
-        output.measurements)
+        output.measurements,
+    )
 
   def test_inner_value_sum_factory_unweighted(self):
     sum_factory = aggregator_test_utils.SumPlusOneFactory()
     factory_ = mean.UnweightedMeanFactory(
-        value_sum_factory=sum_factory, count_sum_factory=sum_factory)
+        value_sum_factory=sum_factory, count_sum_factory=sum_factory
+    )
     value_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type)
 
@@ -381,7 +430,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     self.assertAllClose(7 / 4, output.result)
     self.assertEqual(
         collections.OrderedDict(mean_value=M_CONST, mean_count=M_CONST),
-        output.measurements)
+        output.measurements,
+    )
 
   def test_inner_weight_sum_factory(self):
     sum_factory = aggregator_test_utils.SumPlusOneFactory()
@@ -393,7 +443,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     state = process.initialize()
     self.assertAllEqual(
         collections.OrderedDict(value_sum_process=(), weight_sum_process=0),
-        state)
+        state,
+    )
 
     # Weights will be summed to 7.0.
     client_data = [1.0, 2.0, 3.0]
@@ -402,16 +453,19 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     output = process.next(state, client_data, weights)
     self.assertAllEqual(
         collections.OrderedDict(value_sum_process=(), weight_sum_process=1),
-        output.state)
+        output.state,
+    )
     self.assertAllClose(10 / 7, output.result)
     self.assertEqual(
         collections.OrderedDict(mean_value=(), mean_weight=M_CONST),
-        output.measurements)
+        output.measurements,
+    )
 
   def test_inner_value_and_weight_sum_factory(self):
     sum_factory = aggregator_test_utils.SumPlusOneFactory()
     factory_ = mean.MeanFactory(
-        value_sum_factory=sum_factory, weight_sum_factory=sum_factory)
+        value_sum_factory=sum_factory, weight_sum_factory=sum_factory
+    )
     value_type = computation_types.to_type(tf.float32)
     weight_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type, weight_type)
@@ -419,7 +473,8 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     state = process.initialize()
     self.assertAllEqual(
         collections.OrderedDict(value_sum_process=0, weight_sum_process=0),
-        state)
+        state,
+    )
 
     # Weighted values will be summed to 11.0 and weights will be summed to 7.0.
     client_data = [1.0, 2.0, 3.0]
@@ -428,11 +483,13 @@ class MeanFactoryExecutionTest(tf.test.TestCase):
     output = process.next(state, client_data, weights)
     self.assertAllEqual(
         collections.OrderedDict(value_sum_process=1, weight_sum_process=1),
-        output.state)
+        output.state,
+    )
     self.assertAllClose(11 / 7, output.result)
     self.assertEqual(
         collections.OrderedDict(mean_value=M_CONST, mean_weight=M_CONST),
-        output.measurements)
+        output.measurements,
+    )
 
 
 if __name__ == '__main__':

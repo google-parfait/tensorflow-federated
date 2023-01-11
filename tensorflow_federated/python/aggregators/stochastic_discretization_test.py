@@ -35,16 +35,18 @@ _test_struct_type_int = [tf.int32, (tf.int32, (2,)), (tf.int32, (3, 3))]
 _test_struct_type_float = [tf.float32, (tf.float32, (2,)), (tf.float32, (3, 3))]
 
 _test_nested_struct_type_float = collections.OrderedDict(
-    a=[tf.float16, [(tf.float32, (2, 2, 1))]], b=(tf.float16, (3, 3)))
+    a=[tf.float16, [(tf.float32, (2, 2, 1))]], b=(tf.float16, (3, 3))
+)
 
 
 def _make_test_nested_struct_value(value):
   return collections.OrderedDict(
       a=[
           tf.constant(value, dtype=tf.float16),
-          [tf.constant(value, dtype=tf.float32, shape=[2, 2, 1])]
+          [tf.constant(value, dtype=tf.float32, shape=[2, 2, 1])],
       ],
-      b=tf.constant(value, dtype=tf.float16, shape=(3, 3)))
+      b=tf.constant(value, dtype=tf.float16, shape=(3, 3)),
+  )
 
 
 def _named_test_cases_product(*args):
@@ -58,59 +60,77 @@ def _named_test_cases_product(*args):
 
 
 _measurement_aggregator = measurements.add_measurements(
-    sum_factory.SumFactory(), client_measurement_fn=intrinsics.federated_sum)
+    sum_factory.SumFactory(), client_measurement_fn=intrinsics.federated_sum
+)
 
 
-class StochasticDiscretizationComputationTest(tf.test.TestCase,
-                                              parameterized.TestCase):
+class StochasticDiscretizationComputationTest(
+    tf.test.TestCase, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
       ('float', tf.float32),
       ('struct_list_float_scalars', [tf.float16, tf.float32, tf.float64]),
       ('struct_list_float_mixed', _test_struct_type_float),
-      ('struct_nested', _test_nested_struct_type_float))
+      ('struct_nested', _test_nested_struct_type_float),
+  )
   def test_type_properties(self, value_type):
     factory = stochastic_discretization.StochasticDiscretizationFactory(
         step_size=0.1,
         inner_agg_factory=_measurement_aggregator,
-        distortion_aggregation_factory=mean.UnweightedMeanFactory())
+        distortion_aggregation_factory=mean.UnweightedMeanFactory(),
+    )
     value_type = computation_types.to_type(value_type)
     quantize_type = type_conversions.structure_from_tensor_type_tree(
-        lambda x: (tf.int32, x.shape), value_type)
+        lambda x: (tf.int32, x.shape), value_type
+    )
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    server_state_type = computation_types.StructType([('step_size', tf.float32),
-                                                      ('inner_agg_process', ())
-                                                     ])
+    server_state_type = computation_types.StructType(
+        [('step_size', tf.float32), ('inner_agg_process', ())]
+    )
     server_state_type = computation_types.at_server(server_state_type)
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
-    type_test_utils.assert_types_equivalent(process.initialize.type_signature,
-                                            expected_initialize_type)
+        parameter=None, result=server_state_type
+    )
+    type_test_utils.assert_types_equivalent(
+        process.initialize.type_signature, expected_initialize_type
+    )
 
     expected_measurements_type = computation_types.StructType([
-        ('stochastic_discretization', quantize_type), ('distortion', tf.float32)
+        ('stochastic_discretization', quantize_type),
+        ('distortion', tf.float32),
     ])
     expected_measurements_type = computation_types.at_server(
-        expected_measurements_type)
+        expected_measurements_type
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type)),
+            value=computation_types.at_clients(value_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
-    type_test_utils.assert_types_equivalent(process.next.type_signature,
-                                            expected_next_type)
+            measurements=expected_measurements_type,
+        ),
+    )
+    type_test_utils.assert_types_equivalent(
+        process.next.type_signature, expected_next_type
+    )
 
-  @parameterized.named_parameters(('bool', tf.bool), ('string', tf.string),
-                                  ('int32', tf.int32), ('int64', tf.int64),
-                                  ('int_nested', [tf.int32, [tf.int32]]))
+  @parameterized.named_parameters(
+      ('bool', tf.bool),
+      ('string', tf.string),
+      ('int32', tf.int32),
+      ('int64', tf.int64),
+      ('int_nested', [tf.int32, [tf.int32]]),
+  )
   def test_raises_on_bad_component_tensor_dtypes(self, value_type):
     factory = stochastic_discretization.StochasticDiscretizationFactory(
-        inner_agg_factory=_measurement_aggregator, step_size=0.1)
+        inner_agg_factory=_measurement_aggregator, step_size=0.1
+    )
     value_type = computation_types.to_type(value_type)
     self.assertRaises(TypeError, factory.create, value_type)
 
@@ -118,42 +138,67 @@ class StochasticDiscretizationComputationTest(tf.test.TestCase,
       ('plain_struct', [('a', tf.int32)]),
       ('sequence', computation_types.SequenceType(tf.int32)),
       ('function', computation_types.FunctionType(tf.int32, tf.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]))
+      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]),
+  )
   def test_raises_on_bad_tff_value_types(self, value_type):
     factory = stochastic_discretization.StochasticDiscretizationFactory(
-        inner_agg_factory=_measurement_aggregator, step_size=0.1)
+        inner_agg_factory=_measurement_aggregator, step_size=0.1
+    )
     value_type = computation_types.to_type(value_type)
     self.assertRaises(TypeError, factory.create, value_type)
 
 
-class StochasticDiscretizationExecutionTest(tf.test.TestCase,
-                                            parameterized.TestCase):
+class StochasticDiscretizationExecutionTest(
+    tf.test.TestCase, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
       ('scalar', tf.float32, [1, 2, 3], 6),
-      ('rank_1_tensor', (tf.float32, [7]),
-       [np.arange(7.), np.arange(7.) * 2], np.arange(7.) * 3),
-      ('rank_2_tensor', (tf.float32, [1, 2]), [((1, 1),), ((2, 2),)],
-       ((3, 3),)), ('nested', _test_nested_struct_type_float, [
-           _make_test_nested_struct_value(123),
-           _make_test_nested_struct_value(456)
-       ], _make_test_nested_struct_value(579)), ('zero_size_tensor', [
-           (tf.float32, (0,)), (tf.float32, (2,))
-       ], [[[], [1, 2]], [[], [3, 4]]], [[], [4, 6]]))
+      (
+          'rank_1_tensor',
+          (tf.float32, [7]),
+          [np.arange(7.0), np.arange(7.0) * 2],
+          np.arange(7.0) * 3,
+      ),
+      (
+          'rank_2_tensor',
+          (tf.float32, [1, 2]),
+          [((1, 1),), ((2, 2),)],
+          ((3, 3),),
+      ),
+      (
+          'nested',
+          _test_nested_struct_type_float,
+          [
+              _make_test_nested_struct_value(123),
+              _make_test_nested_struct_value(456),
+          ],
+          _make_test_nested_struct_value(579),
+      ),
+      (
+          'zero_size_tensor',
+          [(tf.float32, (0,)), (tf.float32, (2,))],
+          [[[], [1, 2]], [[], [3, 4]]],
+          [[], [4, 6]],
+      ),
+  )
   def test_discretize_impl(self, value_type, client_values, expected_sum):
     factory = stochastic_discretization.StochasticDiscretizationFactory(
         inner_agg_factory=_measurement_aggregator,
         step_size=0.125,
-        distortion_aggregation_factory=mean.UnweightedMeanFactory())
+        distortion_aggregation_factory=mean.UnweightedMeanFactory(),
+    )
     value_type = computation_types.to_type(value_type)
     process = factory.create(value_type)
     state = process.initialize()
 
     expected_result = expected_sum
-    expected_quantized_result = tf.nest.map_structure(lambda x: x * 8,
-                                                      expected_sum)
+    expected_quantized_result = tf.nest.map_structure(
+        lambda x: x * 8, expected_sum
+    )
     expected_measurements = collections.OrderedDict(
-        stochastic_discretization=expected_quantized_result, distortion=0.)
+        stochastic_discretization=expected_quantized_result, distortion=0.0
+    )
 
     for _ in range(3):
       output = process.next(state, client_values)
@@ -163,7 +208,8 @@ class StochasticDiscretizationExecutionTest(tf.test.TestCase,
       self.assertAllClose(result, expected_result)
 
   @parameterized.named_parameters(
-      ('float16', tf.float16), ('float32', tf.float32), ('float64', tf.float64))
+      ('float16', tf.float16), ('float32', tf.float32), ('float64', tf.float64)
+  )
   def test_output_dtype(self, dtype):
     """Checks the tensor type gets casted during preprocessing."""
     x = tf.range(8)
@@ -172,14 +218,16 @@ class StochasticDiscretizationExecutionTest(tf.test.TestCase,
     self.assertEqual(encoded_x.dtype, stochastic_discretization.OUTPUT_TF_TYPE)
 
   @parameterized.named_parameters(
-      ('float16', tf.float16), ('float32', tf.float32), ('float64', tf.float64))
+      ('float16', tf.float16), ('float32', tf.float32), ('float64', tf.float64)
+  )
   def test_revert_to_input_dtype(self, dtype):
     """Checks that postprocessing restores the original dtype."""
     x = tf.range(8)
     x = tf.cast(x, dtype=dtype)
     encoded_x = stochastic_discretization._discretize_struct(x, step_size=1)
     decoded_x = stochastic_discretization._undiscretize_struct(
-        encoded_x, step_size=1, tf_dtype_struct=dtype)
+        encoded_x, step_size=1, tf_dtype_struct=dtype
+    )
     self.assertEqual(dtype, decoded_x.dtype)
 
 
@@ -191,18 +239,18 @@ class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
               'step_size_1': 2**-10,
               'step_size_2': 0.1,
               'step_size_3': 1,
-              'step_size_4': 2**5
-          }, {
-              'shape_1': (10,),
-              'shape_2': (10, 10),
-              'shape_3': (10, 5, 2)
-          }))
+              'step_size_4': 2**5,
+          },
+          {'shape_1': (10,), 'shape_2': (10, 10), 'shape_3': (10, 5, 2)},
+      )
+  )
   def test_error_from_rounding(self, step_size, shape):
     dtype = tf.float32
     x = tf.random.uniform(shape=shape, minval=-10, maxval=10, dtype=dtype)
     encoded_x = stochastic_discretization._discretize_struct(x, step_size)
     decoded_x = stochastic_discretization._undiscretize_struct(
-        encoded_x, step_size, tf_dtype_struct=dtype)
+        encoded_x, step_size, tf_dtype_struct=dtype
+    )
     x, decoded_x = self.evaluate([x, decoded_x])
 
     self.assertAllEqual(x.shape, decoded_x.shape)
@@ -211,10 +259,9 @@ class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(x, decoded_x, rtol=0.0, atol=quantization_atol)
 
   def test_diff_random_seeds_diff_result(self):
-    value = tf.random.uniform((1000,),
-                              minval=-5.0,
-                              maxval=5.0,
-                              dtype=tf.float32)
+    value = tf.random.uniform(
+        (1000,), minval=-5.0, maxval=5.0, dtype=tf.float32
+    )
     quantized = stochastic_discretization._discretize_struct(value, 0.4)
     # Seed generated based on timestamp; repeat call should have different seed.
     requantized = stochastic_discretization._discretize_struct(value, 0.4)
@@ -224,7 +271,8 @@ class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
     zeros = tf.zeros((1000,), dtype=tf.float32)
     round_down = stochastic_discretization._discretize_struct(zeros, 0.4)
     self.assertTrue(
-        tf.reduce_all(tf.equal(round_down, tf.cast(zeros, tf.int32))))
+        tf.reduce_all(tf.equal(round_down, tf.cast(zeros, tf.int32)))
+    )
     ones = tf.zeros((1000,), dtype=tf.float32)
     round_up = stochastic_discretization._discretize_struct(ones, 0.9999)
     self.assertTrue(tf.reduce_all(tf.equal(round_up, tf.cast(ones, tf.int32))))
@@ -232,19 +280,23 @@ class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
 
 class ScalingTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(('step_size_1', 1), ('step_size_2', 0.01),
-                                  ('step_size_3', 10**-5))
+  @parameterized.named_parameters(
+      ('step_size_1', 1), ('step_size_2', 0.01), ('step_size_3', 10**-5)
+  )
   def test_scaling(self, step_size):
     # Integers to prevent rounding.
     x = tf.cast(
         tf.random.stateless_uniform([100], (1, 1), -100, 100, dtype=tf.int32),
-        tf.float32)
+        tf.float32,
+    )
     discretized_x = stochastic_discretization._discretize_struct(x, step_size)
     reverted_x = stochastic_discretization._undiscretize_struct(
-        discretized_x, step_size, tf_dtype_struct=tf.float32)
+        discretized_x, step_size, tf_dtype_struct=tf.float32
+    )
     x, discretized_x, reverted_x = self.evaluate([x, discretized_x, reverted_x])
-    self.assertAllEqual(tf.round(tf.divide(x, step_size)),
-                        discretized_x)  # Scaling up.
+    self.assertAllEqual(
+        tf.round(tf.divide(x, step_size)), discretized_x
+    )  # Scaling up.
     self.assertAllEqual(x, reverted_x)  # Scaling down.
 
 

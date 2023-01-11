@@ -49,13 +49,15 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
   """
 
   @classmethod
-  def no_noise(cls,
-               initial_estimate: float,
-               target_quantile: float,
-               learning_rate: float,
-               multiplier: float = 1.0,
-               increment: float = 0.0,
-               secure_estimation: bool = False):
+  def no_noise(
+      cls,
+      initial_estimate: float,
+      target_quantile: float,
+      learning_rate: float,
+      multiplier: float = 1.0,
+      increment: float = 0.0,
+      secure_estimation: bool = False,
+  ):
     """No-noise estimator for affine function of value at quantile.
 
     Estimates value `C` at `q`'th quantile of input distribution and reports
@@ -99,16 +101,22 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
             initial_estimate=initial_estimate,
             target_quantile=target_quantile,
             learning_rate=learning_rate,
-            geometric_update=True), record_aggregation_factory)
+            geometric_update=True,
+        ),
+        record_aggregation_factory,
+    )
     if multiplier == 1.0 and increment == 0.0:
       return quantile
     else:
       return quantile.map(_affine_transform(multiplier, increment))
 
-  def __init__(self,
-               quantile_estimator_query: tfp.QuantileEstimatorQuery,
-               record_aggregation_factory: Optional[
-                   factory.UnweightedAggregationFactory] = None):
+  def __init__(
+      self,
+      quantile_estimator_query: tfp.QuantileEstimatorQuery,
+      record_aggregation_factory: Optional[
+          factory.UnweightedAggregationFactory
+      ] = None,
+  ):
     """Initializes `PrivateQuantileEstimationProcess`.
 
     Args:
@@ -119,69 +127,88 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
         values below the current estimate. If `None`, defaults to
         `tff.aggregators.SumFactory`.
     """
-    py_typecheck.check_type(quantile_estimator_query,
-                            tfp.QuantileEstimatorQuery)
+    py_typecheck.check_type(
+        quantile_estimator_query, tfp.QuantileEstimatorQuery
+    )
     if record_aggregation_factory is None:
       record_aggregation_factory = sum_factory.SumFactory()
     else:
-      py_typecheck.check_type(record_aggregation_factory,
-                              factory.UnweightedAggregationFactory)
+      py_typecheck.check_type(
+          record_aggregation_factory, factory.UnweightedAggregationFactory
+      )
 
     # 1. Define tf_computations.
     initial_state_fn = tensorflow_computation.tf_computation(
-        quantile_estimator_query.initial_global_state)
+        quantile_estimator_query.initial_global_state
+    )
     quantile_state_type = initial_state_fn.type_signature.result
     derive_sample_params = tensorflow_computation.tf_computation(
-        quantile_estimator_query.derive_sample_params, quantile_state_type)
+        quantile_estimator_query.derive_sample_params, quantile_state_type
+    )
     get_quantile_record = tensorflow_computation.tf_computation(
         quantile_estimator_query.preprocess_record,
-        derive_sample_params.type_signature.result, tf.float32)
+        derive_sample_params.type_signature.result,
+        tf.float32,
+    )
     quantile_record_type = get_quantile_record.type_signature.result
     get_noised_result = tensorflow_computation.tf_computation(
-        quantile_estimator_query.get_noised_result, quantile_record_type,
-        quantile_state_type)
+        quantile_estimator_query.get_noised_result,
+        quantile_record_type,
+        quantile_state_type,
+    )
     quantile_agg_process = record_aggregation_factory.create(
-        quantile_record_type)
+        quantile_record_type
+    )
 
     # 2. Define federated_computations.
     @federated_computation.federated_computation()
     def init_fn():
-      return intrinsics.federated_zip(
-          (intrinsics.federated_eval(initial_state_fn, placements.SERVER),
-           quantile_agg_process.initialize()))
+      return intrinsics.federated_zip((
+          intrinsics.federated_eval(initial_state_fn, placements.SERVER),
+          quantile_agg_process.initialize(),
+      ))
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+        computation_types.FederatedType(tf.float32, placements.CLIENTS),
+    )
     def next_fn(state, value):
       quantile_query_state, agg_state = state
 
       params = intrinsics.federated_broadcast(
-          intrinsics.federated_map(derive_sample_params, quantile_query_state))
-      quantile_record = intrinsics.federated_map(get_quantile_record,
-                                                 (params, value))
+          intrinsics.federated_map(derive_sample_params, quantile_query_state)
+      )
+      quantile_record = intrinsics.federated_map(
+          get_quantile_record, (params, value)
+      )
 
-      quantile_agg_output = quantile_agg_process.next(agg_state,
-                                                      quantile_record)
+      quantile_agg_output = quantile_agg_process.next(
+          agg_state, quantile_record
+      )
 
       _, new_quantile_query_state, _ = intrinsics.federated_map(
-          get_noised_result, (quantile_agg_output.result, quantile_query_state))
+          get_noised_result, (quantile_agg_output.result, quantile_query_state)
+      )
 
       return intrinsics.federated_zip(
-          (new_quantile_query_state, quantile_agg_output.state))
+          (new_quantile_query_state, quantile_agg_output.state)
+      )
 
     report_fn = federated_computation.federated_computation(
-        lambda state: state[0].current_estimate, init_fn.type_signature.result)
+        lambda state: state[0].current_estimate, init_fn.type_signature.result
+    )
 
     super().__init__(init_fn, next_fn, report_fn)
 
 
 def _affine_transform(multiplier, increment):
   transform_tf_comp = tensorflow_computation.tf_computation(
-      lambda value: multiplier * value + increment, tf.float32)
+      lambda value: multiplier * value + increment, tf.float32
+  )
   return federated_computation.federated_computation(
       lambda value: intrinsics.federated_map(transform_tf_comp, value),
-      computation_types.at_server(tf.float32))
+      computation_types.at_server(tf.float32),
+  )
 
 
 def _check_float_positive(value, label):
@@ -199,5 +226,6 @@ def _check_float_nonnegative(value, label):
 def _check_float_probability(value, label):
   py_typecheck.check_type(value, float, label)
   if not 0 <= value <= 1:
-    raise ValueError(f'{label} must be between 0 and 1 (inclusive). '
-                     f'Found {value}.')
+    raise ValueError(
+        f'{label} must be between 0 and 1 (inclusive). Found {value}.'
+    )

@@ -55,7 +55,8 @@ def _is_int32_or_structure_of_int32s(type_spec: computation_types.Type) -> bool:
   elif type_spec.is_struct():
     return all(
         _is_int32_or_structure_of_int32s(v)
-        for _, v in structure.iter_elements(type_spec))
+        for _, v in structure.iter_elements(type_spec)
+    )
   else:
     return False
 
@@ -92,9 +93,12 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
   using the `bitrate_mean_factory`, if provided.
   """
 
-  def __init__(self,
-               bitrate_mean_factory: Optional[
-                   factory.UnweightedAggregationFactory] = None):
+  def __init__(
+      self,
+      bitrate_mean_factory: Optional[
+          factory.UnweightedAggregationFactory
+      ] = None,
+  ):
     """Constructor for EliasGammaEncodedSumFactory.
 
     Args:
@@ -105,45 +109,56 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
         this factory returns empty `measurements`.
     """
     if bitrate_mean_factory is not None:
-      py_typecheck.check_type(bitrate_mean_factory,
-                              factory.UnweightedAggregationFactory)
+      py_typecheck.check_type(
+          bitrate_mean_factory, factory.UnweightedAggregationFactory
+      )
     self._bitrate_mean_factory = bitrate_mean_factory
 
   def create(self, value_type):
     if not _is_int32_or_structure_of_int32s(value_type):
-      raise ValueError("Expect value_type to be an int32 tensor or a structure "
-                       "containing only other structures of int32 tensors, "
-                       f"found {value_type}.")
+      raise ValueError(
+          "Expect value_type to be an int32 tensor or a structure "
+          "containing only other structures of int32 tensors, "
+          f"found {value_type}."
+      )
 
     if self._bitrate_mean_factory is not None:
       bitrate_mean_process = self._bitrate_mean_factory.create(
-          computation_types.to_type(tf.float64))
+          computation_types.to_type(tf.float64)
+      )
 
     @tensorflow_computation.tf_computation(value_type)
     def encode(value):
       return tf.nest.map_structure(
-          lambda x: tfc.run_length_gamma_encode(data=x), value)
+          lambda x: tfc.run_length_gamma_encode(data=x), value
+      )
 
     def sum_encoded_value(value):
-
       @tensorflow_computation.tf_computation
       def get_accumulator():
         return type_conversions.structure_from_tensor_type_tree(
-            lambda x: tf.zeros(shape=x.shape, dtype=tf.int32), value_type)
+            lambda x: tf.zeros(shape=x.shape, dtype=tf.int32), value_type
+        )
 
       @tensorflow_computation.tf_computation
       def decode_accumulate_values(accumulator, encoded_value):
         shapes = type_conversions.structure_from_tensor_type_tree(
-            lambda x: x.shape, value_type)
+            lambda x: x.shape, value_type
+        )
         return tf.nest.map_structure(
             lambda a, x, y: a + tfc.run_length_gamma_decode(code=x, shape=y),
-            accumulator, encoded_value, shapes)
+            accumulator,
+            encoded_value,
+            shapes,
+        )
 
       @tensorflow_computation.tf_computation
       def merge_decoded_values(decoded_value_1, decoded_value_2):
         return tf.nest.map_structure(
             tensorflow_computation.tf_computation(lambda x, y: x + y),
-            decoded_value_1, decoded_value_2)
+            decoded_value_1,
+            decoded_value_2,
+        )
 
       @tensorflow_computation.tf_computation
       def report_decoded_summation(summed_decoded_values):
@@ -154,14 +169,16 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
           zero=get_accumulator(),
           accumulate=decode_accumulate_values,
           merge=merge_decoded_values,
-          report=report_decoded_summation)
+          report=report_decoded_summation,
+      )
 
     @federated_computation.federated_computation()
     def init_fn():
       return intrinsics.federated_value((), placements.SERVER)
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type))
+        init_fn.type_signature.result, computation_types.at_clients(value_type)
+    )
     def next_fn(state, value):
       measurements = ()
       encoded_value = intrinsics.federated_map(encode, value)
@@ -170,29 +187,37 @@ class EliasGammaEncodedSumFactory(factory.UnweightedAggregationFactory):
         @tensorflow_computation.tf_computation
         def get_num_elements():
           num_elements = type_conversions.structure_from_tensor_type_tree(
-              lambda x: x.shape.num_elements(), value_type)
+              lambda x: x.shape.num_elements(), value_type
+          )
           return tf.cast(sum(tf.nest.flatten(num_elements)), tf.float64)
 
-        num_elements = intrinsics.federated_eval(get_num_elements,
-                                                 placements.CLIENTS)
+        num_elements = intrinsics.federated_eval(
+            get_num_elements, placements.CLIENTS
+        )
 
         @tensorflow_computation.tf_computation
         def struct_get_bits(x):
           return tf.cast(
-              sum([_get_bits(t) for t in tf.nest.flatten(x)]), tf.float64)
+              sum([_get_bits(t) for t in tf.nest.flatten(x)]), tf.float64
+          )
 
         total_bits = intrinsics.federated_map(struct_get_bits, encoded_value)
 
         bitrates = intrinsics.federated_map(
             tensorflow_computation.tf_computation(
-                lambda x, y: tf.math.divide_no_nan(x=x, y=y, name="divide")),
-            (total_bits, num_elements))
+                lambda x, y: tf.math.divide_no_nan(x=x, y=y, name="divide")
+            ),
+            (total_bits, num_elements),
+        )
         avg_bitrate = bitrate_mean_process.next(
-            bitrate_mean_process.initialize(), bitrates).result
+            bitrate_mean_process.initialize(), bitrates
+        ).result
         measurements = intrinsics.federated_zip(
-            collections.OrderedDict(elias_gamma_code_avg_bitrate=avg_bitrate))
+            collections.OrderedDict(elias_gamma_code_avg_bitrate=avg_bitrate)
+        )
       decoded_value = sum_encoded_value(encoded_value)
       return measured_process.MeasuredProcessOutput(
-          state=state, result=decoded_value, measurements=measurements)
+          state=state, result=decoded_value, measurements=measurements
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)

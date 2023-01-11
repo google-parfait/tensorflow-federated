@@ -71,8 +71,10 @@ def add_measurements(
   py_typecheck.check_type(inner_agg_factory, type_args)
 
   if not (client_measurement_fn or server_measurement_fn):
-    raise ValueError('Must specify one or both of `client_measurement_fn` or '
-                     '`server_measurement_fn`.')
+    raise ValueError(
+        'Must specify one or both of `client_measurement_fn` or '
+        '`server_measurement_fn`.'
+    )
 
   if client_measurement_fn:
     py_typecheck.check_callable(client_measurement_fn)
@@ -80,12 +82,14 @@ def add_measurements(
       if len(inspect.signature(client_measurement_fn).parameters) != 1:
         raise ValueError(
             '`client_measurement_fn` must take a single parameter if '
-            '`inner_agg_factory` is unweighted.')
+            '`inner_agg_factory` is unweighted.'
+        )
     elif isinstance(inner_agg_factory, factory.WeightedAggregationFactory):
       if len(inspect.signature(client_measurement_fn).parameters) != 2:
         raise ValueError(
             '`client_measurement_fn` must take a two parameters if '
-            '`inner_agg_factory` is weighted.')
+            '`inner_agg_factory` is weighted.'
+        )
 
   if server_measurement_fn:
     py_typecheck.check_callable(server_measurement_fn)
@@ -117,22 +121,26 @@ def add_measurements(
         @federated_computation.federated_computation(
             init_fn.type_signature.result,
             computation_types.at_clients(value_type),
-            computation_types.at_clients(weight_type))
+            computation_types.at_clients(weight_type),
+        )
         def next_fn(state, value, weight):
           inner_agg_output = inner_agg_process.next(state, value, weight)
           measurements = inner_agg_output.measurements
           if client_measurement_fn:
             client_measurements = client_measurement_fn(value, weight)
             measurements = intrinsics.federated_map(
-                dict_update, (measurements, client_measurements))
+                dict_update, (measurements, client_measurements)
+            )
           if server_measurement_fn:
             server_measurements = server_measurement_fn(inner_agg_output.result)
             measurements = intrinsics.federated_map(
-                dict_update, (measurements, server_measurements))
+                dict_update, (measurements, server_measurements)
+            )
           return measured_process.MeasuredProcessOutput(
               state=inner_agg_output.state,
               result=inner_agg_output.result,
-              measurements=measurements)
+              measurements=measurements,
+          )
 
         return aggregation_process.AggregationProcess(init_fn, next_fn)
 
@@ -153,22 +161,26 @@ def add_measurements(
 
         @federated_computation.federated_computation(
             init_fn.type_signature.result,
-            computation_types.at_clients(value_type))
+            computation_types.at_clients(value_type),
+        )
         def next_fn(state, value):
           inner_agg_output = inner_agg_process.next(state, value)
           measurements = inner_agg_output.measurements
           if client_measurement_fn:
             client_measurements = client_measurement_fn(value)
             measurements = intrinsics.federated_map(
-                dict_update, (measurements, client_measurements))
+                dict_update, (measurements, client_measurements)
+            )
           if server_measurement_fn:
             server_measurements = server_measurement_fn(inner_agg_output.result)
             measurements = intrinsics.federated_map(
-                dict_update, (measurements, server_measurements))
+                dict_update, (measurements, server_measurements)
+            )
           return measured_process.MeasuredProcessOutput(
               state=inner_agg_output.state,
               result=inner_agg_output.result,
-              measurements=measurements)
+              measurements=measurements,
+          )
 
         return aggregation_process.AggregationProcess(init_fn, next_fn)
 

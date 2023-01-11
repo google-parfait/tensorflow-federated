@@ -46,18 +46,15 @@ def _unconcat_impl(concatenated_tensor, original_structure):
   start_location, split_tensors = 0, []
   for original_tensor in tf.nest.flatten(original_structure):
     length = int(functools.reduce(lambda a, b: a * b, original_tensor.shape, 1))
-    split_vector = concatenated_tensor[start_location:start_location + length]
+    split_vector = concatenated_tensor[start_location : start_location + length]
     split_tensors.append(tf.reshape(split_vector, original_tensor.shape))
     start_location += length
   return tf.nest.pack_sequence_as(original_structure, split_tensors)
 
 
-def _next_fn_impl(state,
-                  value,
-                  concat_fn,
-                  unconcat_fn,
-                  inner_agg_process,
-                  weight=None):
+def _next_fn_impl(
+    state, value, concat_fn, unconcat_fn, inner_agg_process, weight=None
+):
   """Implements the next_fn for concat_factory's resulting AggregationProcess."""
   concat_value = intrinsics.federated_map(concat_fn, value)
   if weight is None:
@@ -65,30 +62,37 @@ def _next_fn_impl(state,
   else:
     inner_agg_output = inner_agg_process.next(state, concat_value, weight)
 
-  unconcat_value = intrinsics.federated_map(unconcat_fn,
-                                            inner_agg_output.result)
+  unconcat_value = intrinsics.federated_map(
+      unconcat_fn, inner_agg_output.result
+  )
   return measured_process.MeasuredProcessOutput(
       state=inner_agg_output.state,
       result=unconcat_value,
-      measurements=inner_agg_output.measurements)
+      measurements=inner_agg_output.measurements,
+  )
 
 
 def create_concat_fns(
-    value_type: factory.ValueType
+    value_type: factory.ValueType,
 ) -> tuple[computation_base.Computation, computation_base.Computation]:
   """Creates the forward and backward flattening/concatenation functions."""
   # As the factory alters the tensor specs, we compute the Python structure
   # of the types for the unconcat procedure.
-  if (value_type.is_struct_with_python() and
-      type_analysis.is_structure_of_tensors(value_type)):
+  if (
+      value_type.is_struct_with_python()
+      and type_analysis.is_structure_of_tensors(value_type)
+  ):
     original_structure = type_conversions.structure_from_tensor_type_tree(
-        lambda x: tf.TensorSpec(x.shape, x.dtype), value_type)
+        lambda x: tf.TensorSpec(x.shape, x.dtype), value_type
+    )
   elif value_type.is_tensor():
     original_structure = tf.TensorSpec(value_type.shape, value_type.dtype)
   else:
-    raise TypeError('Expected `value_type` to be `TensorType` or '
-                    '`StructWithPythonType` containing only `TensorType`. '
-                    f'Found type: {repr(value_type)}')
+    raise TypeError(
+        'Expected `value_type` to be `TensorType` or '
+        '`StructWithPythonType` containing only `TensorType`. '
+        f'Found type: {repr(value_type)}'
+    )
 
   _check_component_dtypes(value_type)
 
@@ -108,14 +112,20 @@ def _check_component_dtypes(value_type):
   component_dtypes = set([v.dtype for v in structure.flatten(value_type)])
   # Check that all component tensors have the same dtype.
   if len(component_dtypes) != 1:
-    raise TypeError('Component tensors of the structure should have the same '
-                    f'dtype. Found dtypes: {component_dtypes}.')
+    raise TypeError(
+        'Component tensors of the structure should have the same '
+        f'dtype. Found dtypes: {component_dtypes}.'
+    )
 
   # Restrict dtypes to integers and floats for now.
-  if not (type_analysis.is_structure_of_floats(value_type) or
-          type_analysis.is_structure_of_integers(value_type)):
-    raise TypeError('Components of `value_type` must all be integers or '
-                    f'floats. Found {value_type}.')
+  if not (
+      type_analysis.is_structure_of_floats(value_type)
+      or type_analysis.is_structure_of_integers(value_type)
+  ):
+    raise TypeError(
+        'Components of `value_type` must all be integers or '
+        f'floats. Found {value_type}.'
+    )
 
 
 def _unweighted_concat_factory(inner_agg_factory):
@@ -127,15 +137,18 @@ def _unweighted_concat_factory(inner_agg_factory):
     def create(self, value_type) -> aggregation_process.AggregationProcess:
       concat_fn, unconcat_fn = create_concat_fns(value_type)
       inner_agg_process = inner_agg_factory.create(
-          concat_fn.type_signature.result)
+          concat_fn.type_signature.result
+      )
       init_fn = inner_agg_process.initialize
       state_type = init_fn.type_signature.result
 
       @federated_computation.federated_computation(
-          state_type, computation_types.at_clients(value_type))
+          state_type, computation_types.at_clients(value_type)
+      )
       def next_fn(state, value):
-        return _next_fn_impl(state, value, concat_fn, unconcat_fn,
-                             inner_agg_process)
+        return _next_fn_impl(
+            state, value, concat_fn, unconcat_fn, inner_agg_process
+        )
 
       return aggregation_process.AggregationProcess(init_fn, next_fn)
 
@@ -148,20 +161,24 @@ def _weighted_concat_factory(inner_agg_factory):
   class WeightedConcatFactory(factory.WeightedAggregationFactory):
     """A concat_factory with type `WeightedAggregationFactory`."""
 
-    def create(self, value_type,
-               weight_type) -> aggregation_process.AggregationProcess:
+    def create(
+        self, value_type, weight_type
+    ) -> aggregation_process.AggregationProcess:
       concat_fn, unconcat_fn = create_concat_fns(value_type)
       inner_agg_process = inner_agg_factory.create(
-          concat_fn.type_signature.result, weight_type)
+          concat_fn.type_signature.result, weight_type
+      )
       init_fn = inner_agg_process.initialize
 
       @federated_computation.federated_computation(
           init_fn.type_signature.result,
           computation_types.at_clients(value_type),
-          computation_types.at_clients(weight_type))
+          computation_types.at_clients(weight_type),
+      )
       def next_fn(state, value, weight):
-        return _next_fn_impl(state, value, concat_fn, unconcat_fn,
-                             inner_agg_process, weight)
+        return _next_fn_impl(
+            state, value, concat_fn, unconcat_fn, inner_agg_process, weight
+        )
 
       return aggregation_process.AggregationProcess(init_fn, next_fn)
 
@@ -169,7 +186,7 @@ def _weighted_concat_factory(inner_agg_factory):
 
 
 def concat_factory(
-    inner_agg_factory: factory.AggregationFactory
+    inner_agg_factory: factory.AggregationFactory,
 ) -> factory.AggregationFactory:
   """Aggregation factory for concatenation of input to a single tensor.
 

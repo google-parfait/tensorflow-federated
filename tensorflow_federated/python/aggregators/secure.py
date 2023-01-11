@@ -44,8 +44,9 @@ from tensorflow_federated.python.core.templates import measured_process
 NORM_TF_TYPE = tf.float32
 COUNT_TF_TYPE = tf.int32
 
-ThresholdEstType = Union[int, float, np.integer, np.floating,
-                         estimation_process.EstimationProcess]
+ThresholdEstType = Union[
+    int, float, np.integer, np.floating, estimation_process.EstimationProcess
+]
 
 
 # Enum for internal tracking of configuration of `SecureSumFactory`.
@@ -94,9 +95,9 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
   recommended way of to achieve it is using the compositon of aggregators.
   """
 
-  def __init__(self,
-               modulus: Union[int, np.ndarray],
-               symmetric_range: bool = False):
+  def __init__(
+      self, modulus: Union[int, np.ndarray], symmetric_range: bool = False
+  ):
     """Initializes `SecureModularSumFactory`.
 
     Args:
@@ -112,7 +113,8 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
     py_typecheck.check_type(modulus, (int, np.integer))
     if modulus <= 0:
       raise ValueError(
-          f'Provided modulus must be positive, but found: {modulus}')
+          f'Provided modulus must be positive, but found: {modulus}'
+      )
     py_typecheck.check_type(symmetric_range, bool)
 
     self._modulus = modulus
@@ -122,15 +124,18 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(value_type, type_args)
     if not type_analysis.is_structure_of_integers(value_type):
-      raise TypeError('Provided value_type must either be an integer type or'
-                      f'a structure of integer types, but found: {value_type}')
+      raise TypeError(
+          'Provided value_type must either be an integer type or'
+          f'a structure of integer types, but found: {value_type}'
+      )
 
     @federated_computation.federated_computation
     def init_fn():
       return intrinsics.federated_value((), placements.SERVER)
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type))
+        init_fn.type_signature.result, computation_types.at_clients(value_type)
+    )
     def next_fn(state, value):
       if self._symmetric_range:
         # Sum in [-M+1, M-1].
@@ -140,16 +145,22 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
         # under the desired modulus, thus compatible with secure aggreagtion.
         # This is reverted after summation by modular clip to the initial range.
         summed_value = intrinsics.federated_secure_modular_sum(
-            value, 2 * self._modulus - 1)
+            value, 2 * self._modulus - 1
+        )
         summed_value = intrinsics.federated_map(
             tensorflow_computation.tf_computation(
-                self._mod_clip_after_symmetric_range_sum), summed_value)
+                self._mod_clip_after_symmetric_range_sum
+            ),
+            summed_value,
+        )
       else:
         summed_value = intrinsics.federated_secure_modular_sum(
-            value, self._modulus)
+            value, self._modulus
+        )
       empty_measurements = intrinsics.federated_value((), placements.SERVER)
-      return measured_process.MeasuredProcessOutput(state, summed_value,
-                                                    empty_measurements)
+      return measured_process.MeasuredProcessOutput(
+          state, summed_value, empty_measurements
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
@@ -174,8 +185,9 @@ class SecureModularSumFactory(factory.UnweightedAggregationFactory):
     return tf.nest.map_structure(shift_negative_values, value)
 
 
-def _check_bound_process(bound_process: estimation_process.EstimationProcess,
-                         name: str):
+def _check_bound_process(
+    bound_process: estimation_process.EstimationProcess, name: str
+):
   """Checks type properties for estimation process for bounds.
 
   The process must be an `EstimationProcess` with `next` function of type
@@ -190,28 +202,35 @@ def _check_bound_process(bound_process: estimation_process.EstimationProcess,
 
   next_parameter_type = bound_process.next.type_signature.parameter
   if not next_parameter_type.is_struct() or len(next_parameter_type) != 2:
-    raise TypeError(f'`{name}.next` must take two arguments but found:\n'
-                    f'{next_parameter_type}')
+    raise TypeError(
+        f'`{name}.next` must take two arguments but found:\n'
+        f'{next_parameter_type}'
+    )
 
   float_type_at_clients = computation_types.at_clients(NORM_TF_TYPE)
   if not next_parameter_type[1].is_assignable_from(float_type_at_clients):
     raise TypeError(
         f'Second argument of `{name}.next` must be assignable from '
-        f'{float_type_at_clients} but found {next_parameter_type[1]}')
+        f'{float_type_at_clients} but found {next_parameter_type[1]}'
+    )
 
   next_result_type = bound_process.next.type_signature.result
   if not bound_process.state_type.is_assignable_from(next_result_type):
-    raise TypeError(f'Result type of `{name}.next` must consist of state only '
-                    f'but found result type:\n{next_result_type}\n'
-                    f'while the state type is:\n{bound_process.state_type}')
+    raise TypeError(
+        f'Result type of `{name}.next` must consist of state only '
+        f'but found result type:\n{next_result_type}\n'
+        f'while the state type is:\n{bound_process.state_type}'
+    )
 
   report_type = bound_process.report.type_signature.result
   estimated_value_type_at_server = computation_types.at_server(
-      next_parameter_type[1].member)
+      next_parameter_type[1].member
+  )
   if not report_type.is_assignable_from(estimated_value_type_at_server):
     raise TypeError(
         f'Report type of `{name}.report` must be assignable from '
-        f'{estimated_value_type_at_server} but found {report_type}.')
+        f'{estimated_value_type_at_server} but found {report_type}.'
+    )
 
 
 class SecureSumFactory(factory.UnweightedAggregationFactory):
@@ -264,9 +283,11 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     `secure_lower_threshold` before aggregation.
   """
 
-  def __init__(self,
-               upper_bound_threshold: ThresholdEstType,
-               lower_bound_threshold: Optional[ThresholdEstType] = None):
+  def __init__(
+      self,
+      upper_bound_threshold: ThresholdEstType,
+      lower_bound_threshold: Optional[ThresholdEstType] = None,
+  ):
     """Initializes `SecureSumFactory`.
 
     Args:
@@ -289,10 +310,11 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     if lower_bound_threshold is not None:
       if not isinstance(lower_bound_threshold, type(upper_bound_threshold)):
         raise TypeError(
-            f'Provided upper_bound_threshold and lower_bound_threshold '
-            f'must have the same types, but found:\n'
+            'Provided upper_bound_threshold and lower_bound_threshold '
+            'must have the same types, but found:\n'
             f'type(upper_bound_threshold): {upper_bound_threshold}\n'
-            f'type(lower_bound_threshold): {lower_bound_threshold}')
+            f'type(lower_bound_threshold): {lower_bound_threshold}'
+        )
     self._upper_bound_threshold = upper_bound_threshold
     self._lower_bound_threshold = lower_bound_threshold
 
@@ -303,14 +325,16 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         _check_positive(upper_bound_threshold)
         lower_bound_threshold = -1 * upper_bound_threshold
       else:
-        _check_upper_larger_than_lower(upper_bound_threshold,
-                                       lower_bound_threshold)
+        _check_upper_larger_than_lower(
+            upper_bound_threshold, lower_bound_threshold
+        )
       self._init_fn = _empty_state
       self._update_state = lambda _, __, ___: _empty_state()
       # We must add one because the size of inclusive range [0, threshold_range]
       # is threshold_range + 1. We ensure that threshold_range > 0 above.
       self._secagg_bitwidth = math.ceil(
-          math.log2(upper_bound_threshold - lower_bound_threshold + 1))
+          math.log2(upper_bound_threshold - lower_bound_threshold + 1)
+      )
 
     # Configuration specific for aggregating floating point types.
     else:
@@ -321,8 +345,9 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
           _check_positive(upper_bound_threshold)
           lower_bound_threshold = -1.0 * upper_bound_threshold
         else:
-          _check_upper_larger_than_lower(upper_bound_threshold,
-                                         lower_bound_threshold)
+          _check_upper_larger_than_lower(
+              upper_bound_threshold, lower_bound_threshold
+          )
         self._init_fn = _empty_state
         self._update_state = lambda _, __, ___: _empty_state()
       else:
@@ -331,28 +356,33 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
         if lower_bound_threshold is None:
           self._init_fn = upper_bound_threshold.initialize
           self._update_state = _create_update_state_single_process(
-              upper_bound_threshold)
+              upper_bound_threshold
+          )
         else:
           _check_bound_process(lower_bound_threshold, 'lower_bound_threshold')
           self._init_fn = _create_initial_state_two_processes(
-              upper_bound_threshold, lower_bound_threshold)
+              upper_bound_threshold, lower_bound_threshold
+          )
           self._update_state = _create_update_state_two_processes(
-              upper_bound_threshold, lower_bound_threshold)
+              upper_bound_threshold, lower_bound_threshold
+          )
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     self._check_value_type_compatible_with_config_mode(value_type)
 
     @federated_computation.federated_computation(
         self._init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS))
+        computation_types.FederatedType(value_type, placements.CLIENTS),
+    )
     def next_fn(state, value):
       # Compute min and max *before* clipping and use it to update the state.
       value_max = intrinsics.federated_map(_reduce_nest_max, value)
       value_min = intrinsics.federated_map(_reduce_nest_min, value)
       upper_bound, lower_bound = self._get_bounds_from_state(
-          state, value_max.type_signature.member.dtype)
+          state, value_max.type_signature.member.dtype
+      )
 
       new_state = self._update_state(state, value_min, value_max)
 
@@ -360,47 +390,65 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       summed_value = self._sum_securely(value, upper_bound, lower_bound)
 
       # TODO(b/163880757): pass upper_bound and lower_bound through clients.
-      measurements = self._compute_measurements(upper_bound, lower_bound,
-                                                value_max, value_min)
-      return measured_process.MeasuredProcessOutput(new_state, summed_value,
-                                                    measurements)
+      measurements = self._compute_measurements(
+          upper_bound, lower_bound, value_max, value_min
+      )
+      return measured_process.MeasuredProcessOutput(
+          new_state, summed_value, measurements
+      )
 
     return aggregation_process.AggregationProcess(self._init_fn, next_fn)
 
-  def _compute_measurements(self, upper_bound, lower_bound, value_max,
-                            value_min):
+  def _compute_measurements(
+      self, upper_bound, lower_bound, value_max, value_min
+  ):
     """Creates measurements to be reported. All values are summed securely."""
     is_max_clipped = intrinsics.federated_map(
         tensorflow_computation.tf_computation(
-            lambda bound, value: tf.cast(bound < value, COUNT_TF_TYPE)),
-        (intrinsics.federated_broadcast(upper_bound), value_max))
+            lambda bound, value: tf.cast(bound < value, COUNT_TF_TYPE)
+        ),
+        (intrinsics.federated_broadcast(upper_bound), value_max),
+    )
     max_clipped_count = intrinsics.federated_secure_sum_bitwidth(
-        is_max_clipped, bitwidth=1)
+        is_max_clipped, bitwidth=1
+    )
     is_min_clipped = intrinsics.federated_map(
         tensorflow_computation.tf_computation(
-            lambda bound, value: tf.cast(bound > value, COUNT_TF_TYPE)),
-        (intrinsics.federated_broadcast(lower_bound), value_min))
+            lambda bound, value: tf.cast(bound > value, COUNT_TF_TYPE)
+        ),
+        (intrinsics.federated_broadcast(lower_bound), value_min),
+    )
     min_clipped_count = intrinsics.federated_secure_sum_bitwidth(
-        is_min_clipped, bitwidth=1)
+        is_min_clipped, bitwidth=1
+    )
     measurements = collections.OrderedDict(
         secure_upper_clipped_count=max_clipped_count,
         secure_lower_clipped_count=min_clipped_count,
         secure_upper_threshold=upper_bound,
-        secure_lower_threshold=lower_bound)
+        secure_lower_threshold=lower_bound,
+    )
     return intrinsics.federated_zip(measurements)
 
   def _sum_securely(self, value, upper_bound, lower_bound):
     """Securely sums `value` placed at CLIENTS."""
     if self._config_mode == _Config.INT:
       value = intrinsics.federated_map(
-          _client_shift, (value, intrinsics.federated_broadcast(upper_bound),
-                          intrinsics.federated_broadcast(lower_bound)))
-      value = intrinsics.federated_secure_sum_bitwidth(value,
-                                                       self._secagg_bitwidth)
+          _client_shift,
+          (
+              value,
+              intrinsics.federated_broadcast(upper_bound),
+              intrinsics.federated_broadcast(lower_bound),
+          ),
+      )
+      value = intrinsics.federated_secure_sum_bitwidth(
+          value, self._secagg_bitwidth
+      )
       num_summands = intrinsics.federated_secure_sum_bitwidth(
-          _client_one(), bitwidth=1)
-      value = intrinsics.federated_map(_server_shift,
-                                       (value, lower_bound, num_summands))
+          _client_one(), bitwidth=1
+      )
+      value = intrinsics.federated_map(
+          _server_shift, (value, lower_bound, num_summands)
+      )
       return value
     elif self._config_mode == _Config.FLOAT:
       return primitives.secure_quantized_sum(value, lower_bound, upper_bound)
@@ -408,24 +456,32 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       raise ValueError(f'Unexpected internal config type: {self._config_mode}')
 
   def _get_bounds_from_state(self, state, bound_dtype):
-    if isinstance(self._upper_bound_threshold,
-                  estimation_process.EstimationProcess):
+    if isinstance(
+        self._upper_bound_threshold, estimation_process.EstimationProcess
+    ):
       if self._lower_bound_threshold is not None:
         bounds_fn = _create_get_bounds_two_processes(
-            self._upper_bound_threshold, self._lower_bound_threshold,
-            bound_dtype)
+            self._upper_bound_threshold,
+            self._lower_bound_threshold,
+            bound_dtype,
+        )
       else:
         bounds_fn = _create_get_bounds_single_process(
-            self._upper_bound_threshold, bound_dtype)
+            self._upper_bound_threshold, bound_dtype
+        )
     else:
       if self._lower_bound_threshold is not None:
-        bounds_fn = _create_get_bounds_const(self._upper_bound_threshold,
-                                             self._lower_bound_threshold,
-                                             bound_dtype)
+        bounds_fn = _create_get_bounds_const(
+            self._upper_bound_threshold,
+            self._lower_bound_threshold,
+            bound_dtype,
+        )
       else:
-        bounds_fn = _create_get_bounds_const(self._upper_bound_threshold,
-                                             -self._upper_bound_threshold,
-                                             bound_dtype)
+        bounds_fn = _create_get_bounds_const(
+            self._upper_bound_threshold,
+            -self._upper_bound_threshold,
+            bound_dtype,
+        )
     return bounds_fn(state)
 
   def _check_value_type_compatible_with_config_mode(self, value_type):
@@ -433,21 +489,24 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     py_typecheck.check_type(value_type, type_args)
     if not _is_structure_of_single_dtype(value_type):
       raise TypeError(
-          f'Expected a type which is a structure containing the same dtypes, '
-          f'found {value_type}.')
+          'Expected a type which is a structure containing the same dtypes, '
+          f'found {value_type}.'
+      )
 
     if self._config_mode == _Config.INT:
       if not type_analysis.is_structure_of_integers(value_type):
         raise TypeError(
-            f'The `SecureSumFactory` was configured to work with integer '
-            f'dtypes. All values in provided `value_type` hence must be of '
-            f'integer dtype. \nProvided value_type: {value_type}')
+            'The `SecureSumFactory` was configured to work with integer '
+            'dtypes. All values in provided `value_type` hence must be of '
+            f'integer dtype. \nProvided value_type: {value_type}'
+        )
     elif self._config_mode == _Config.FLOAT:
       if not type_analysis.is_structure_of_floats(value_type):
         raise TypeError(
-            f'The `SecureSumFactory` was configured to work with floating '
-            f'point dtypes. All values in provided `value_type` hence must be '
-            f'of floating point dtype. \nProvided value_type: {value_type}')
+            'The `SecureSumFactory` was configured to work with floating '
+            'point dtypes. All values in provided `value_type` hence must be '
+            f'of floating point dtype. \nProvided value_type: {value_type}'
+        )
     else:
       raise ValueError(f'Unexpected internal config type: {self._config_mode}')
 
@@ -455,20 +514,23 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
 def _check_positive(value):
   if value <= 0:
     raise ValueError(
-        f'If only `upper_bound_threshold` is specified as a Python constant, '
-        f'it must be positive. Its negative will be used as a lower bound '
-        f'which would be larger than the upper bound. \n'
-        f'Provided `upper_bound_threshold`: {value}')
+        'If only `upper_bound_threshold` is specified as a Python constant, '
+        'it must be positive. Its negative will be used as a lower bound '
+        'which would be larger than the upper bound. \n'
+        f'Provided `upper_bound_threshold`: {value}'
+    )
 
 
-def _check_upper_larger_than_lower(upper_bound_threshold,
-                                   lower_bound_threshold):
+def _check_upper_larger_than_lower(
+    upper_bound_threshold, lower_bound_threshold
+):
   if upper_bound_threshold <= lower_bound_threshold:
     raise ValueError(
-        f'The provided `upper_bound_threshold` must be larger than the '
-        f'provided `lower_bound_threshold`, but received:\n'
+        'The provided `upper_bound_threshold` must be larger than the '
+        'provided `lower_bound_threshold`, but received:\n'
         f'`upper_bound_threshold`: {upper_bound_threshold}\n'
-        f'`lower_bound_threshold`: {lower_bound_threshold}\n')
+        f'`lower_bound_threshold`: {lower_bound_threshold}\n'
+    )
 
 
 def _is_integer(value):
@@ -495,14 +557,16 @@ def _reduce_nest_min(value):
 def _client_shift(value, upper_bound, lower_bound):
   return tf.nest.map_structure(
       lambda v: tf.clip_by_value(v, lower_bound, upper_bound) - lower_bound,
-      value)
+      value,
+  )
 
 
 @tensorflow_computation.tf_computation()
 def _server_shift(value, lower_bound, num_summands):
   return tf.nest.map_structure(
       lambda v: v + (lower_bound * tf.cast(num_summands, lower_bound.dtype)),
-      value)
+      value,
+  )
 
 
 @federated_computation.federated_computation()
@@ -513,7 +577,8 @@ def _empty_state():
 def _client_one():
   return intrinsics.federated_eval(
       tensorflow_computation.tf_computation(lambda: tf.constant(1, tf.int32)),
-      placements.CLIENTS)
+      placements.CLIENTS,
+  )
 
 
 def _cast_bounds(upper_bound, lower_bound, dtype):
@@ -523,13 +588,14 @@ def _cast_bounds(upper_bound, lower_bound, dtype):
   return upper_bound, lower_bound
 
 
-def _create_initial_state_two_processes(upper_bound_process,
-                                        lower_bound_process):
-
+def _create_initial_state_two_processes(
+    upper_bound_process, lower_bound_process
+):
   @federated_computation.federated_computation()
   def initial_state():
     return intrinsics.federated_zip(
-        (upper_bound_process.initialize(), lower_bound_process.initialize()))
+        (upper_bound_process.initialize(), lower_bound_process.initialize())
+    )
 
   return initial_state
 
@@ -555,26 +621,32 @@ def _create_get_bounds_single_process(process, bound_dtype):
 
   def get_bounds(state):
     cast_fn = tensorflow_computation.tf_computation(
-        lambda x: tf.cast(x, bound_dtype))
+        lambda x: tf.cast(x, bound_dtype)
+    )
     upper_bound = intrinsics.federated_map(cast_fn, process.report(state))
     lower_bound = intrinsics.federated_map(
-        tensorflow_computation.tf_computation(lambda x: x * -1.0), upper_bound)
+        tensorflow_computation.tf_computation(lambda x: x * -1.0), upper_bound
+    )
     return upper_bound, lower_bound
 
   return get_bounds
 
 
-def _create_get_bounds_two_processes(upper_bound_process, lower_bound_process,
-                                     bound_dtype):
+def _create_get_bounds_two_processes(
+    upper_bound_process, lower_bound_process, bound_dtype
+):
   """Gets TFF value bounds when specified as two estimation processes."""
 
   def get_bounds(state):
     cast_fn = tensorflow_computation.tf_computation(
-        lambda x: tf.cast(x, bound_dtype))
-    upper_bound = intrinsics.federated_map(cast_fn,
-                                           upper_bound_process.report(state[0]))
-    lower_bound = intrinsics.federated_map(cast_fn,
-                                           lower_bound_process.report(state[1]))
+        lambda x: tf.cast(x, bound_dtype)
+    )
+    upper_bound = intrinsics.federated_map(
+        cast_fn, upper_bound_process.report(state[0])
+    )
+    lower_bound = intrinsics.federated_map(
+        cast_fn, lower_bound_process.report(state[1])
+    )
     return upper_bound, lower_bound
 
   return get_bounds
@@ -587,15 +659,17 @@ def _create_update_state_single_process(process):
 
   def update_state(state, value_min, value_max):
     abs_max_fn = tensorflow_computation.tf_computation(
-        lambda x, y: tf.cast(tf.maximum(tf.abs(x), tf.abs(y)), expected_dtype))
+        lambda x, y: tf.cast(tf.maximum(tf.abs(x), tf.abs(y)), expected_dtype)
+    )
     abs_value_max = intrinsics.federated_map(abs_max_fn, (value_min, value_max))
     return process.next(state, abs_value_max)
 
   return update_state
 
 
-def _create_update_state_two_processes(upper_bound_process,
-                                       lower_bound_process):
+def _create_update_state_two_processes(
+    upper_bound_process, lower_bound_process
+):
   """Updates state when bounds specified as two estimation processes."""
 
   max_dtype = upper_bound_process.next.type_signature.parameter[1].member.dtype
@@ -604,19 +678,23 @@ def _create_update_state_two_processes(upper_bound_process,
   def update_state(state, value_min, value_max):
     value_min = intrinsics.federated_map(
         tensorflow_computation.tf_computation(lambda x: tf.cast(x, min_dtype)),
-        value_min)
+        value_min,
+    )
     value_max = intrinsics.federated_map(
         tensorflow_computation.tf_computation(lambda x: tf.cast(x, max_dtype)),
-        value_max)
-    return intrinsics.federated_zip(
-        (upper_bound_process.next(state[0], value_max),
-         lower_bound_process.next(state[1], value_min)))
+        value_max,
+    )
+    return intrinsics.federated_zip((
+        upper_bound_process.next(state[0], value_max),
+        lower_bound_process.next(state[1], value_min),
+    ))
 
   return update_state
 
 
 def _unique_dtypes_in_structure(
-    type_spec: computation_types.Type) -> set[tf.dtypes.DType]:
+    type_spec: computation_types.Type,
+) -> set[tf.dtypes.DType]:
   """Returns a set of unique dtypes in `type_spec`.
 
   Args:
@@ -633,7 +711,10 @@ def _unique_dtypes_in_structure(
     return set(
         tf.nest.flatten(
             type_conversions.structure_from_tensor_type_tree(
-                lambda t: t.dtype, type_spec)))
+                lambda t: t.dtype, type_spec
+            )
+        )
+    )
   elif type_spec.is_federated():
     return _unique_dtypes_in_structure(type_spec.member)
   else:

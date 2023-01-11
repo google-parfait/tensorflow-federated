@@ -57,7 +57,8 @@ def fast_walsh_hadamard_transform(x):
   x = tf.convert_to_tensor(x)
   if x.shape.ndims != 2:
     raise TensorShapeError(
-        f'Number of dimensions of x must be 2. Shape of x: {x.shape}')
+        f'Number of dimensions of x must be 2. Shape of x: {x.shape}'
+    )
 
   original_x_shape = x.shape.as_list()
   dim = x.shape.as_list()[-1]
@@ -65,25 +66,34 @@ def fast_walsh_hadamard_transform(x):
   if dim is None:  # dim is not statically known.
     dim = tf.shape(x)[-1]
     log2 = tf.cast(
-        tf.math.round(tf.math.log(tf.cast(dim, tf.float32)) / tf.math.log(2.)),
-        tf.int32)
-    with tf.control_dependencies([
-        tf.debugging.assert_equal(
-            dim,
-            tf.math.pow(2, log2),
-            message='The dimension of x must be a power of two.'
-            'Provided dimension is: %s' % dim)
-    ]):
+        tf.math.round(tf.math.log(tf.cast(dim, tf.float32)) / tf.math.log(2.0)),
+        tf.int32,
+    )
+    with tf.control_dependencies(
+        [
+            tf.debugging.assert_equal(
+                dim,
+                tf.math.pow(2, log2),
+                message=(
+                    'The dimension of x must be a power of two.'
+                    'Provided dimension is: %s'
+                )
+                % dim,
+            )
+        ]
+    ):
       x = tf.identity(x)
   else:  # dim is statically known.
     if not (dim and (dim & (dim - 1)) == 0):
-      raise TensorShapeError('The dimension of x must be a power of two. '
-                             f'Provided dimension is: {dim}')
+      raise TensorShapeError(
+          'The dimension of x must be a power of two. '
+          f'Provided dimension is: {dim}'
+      )
     log2 = int(math.ceil(math.log2(dim)))
     if dim == 1:  # Equivalent to identity.
       return tf.identity(x)
 
-  h_2x2 = tf.constant([[1., 1.], [1., -1.]], dtype=x.dtype)
+  h_2x2 = tf.constant([[1.0, 1.0], [1.0, -1.0]], dtype=x.dtype)
   permutation = tf.constant([0, 2, 1])
 
   def _hadamard_step(x, dim):
@@ -105,7 +115,8 @@ def fast_walsh_hadamard_transform(x):
     return x
 
   x = tf.cond(
-      tf.equal(dim, 1), lambda: tf.identity(x), lambda: _fwht(x, dim, log2))
+      tf.equal(dim, 1), lambda: tf.identity(x), lambda: _fwht(x, dim, log2)
+  )
 
   x = tf.reshape(x, [-1, dim])
   x /= tf.sqrt(tf.cast(dim, x.dtype))  # Normalize.

@@ -32,16 +32,20 @@ SEED_PAIR = (42, 42)
 
 _test_struct_type_int_mixed = [tf.int32, (tf.int32, (3,)), (tf.int32, (2, 2))]
 _test_struct_type_float_mixed = [
-    tf.float32, (tf.float32, (3,)), (tf.float32, (2, 2))
+    tf.float32,
+    (tf.float32, (3,)),
+    (tf.float32, (2, 2)),
 ]
 _test_struct_type_nested = collections.OrderedDict(
-    a=[tf.float32, [(tf.float32, (2, 1))]], b=(tf.float32, (1, 1, 2)))
+    a=[tf.float32, [(tf.float32, (2, 1))]], b=(tf.float32, (1, 1, 2))
+)
 
 
 def _make_test_struct_value_nested(value):
   return collections.OrderedDict(
       a=[tf.cast(value, tf.float32), [tf.ones([2, 1]) * value]],
-      b=tf.ones((1, 1, 2)) * value)
+      b=tf.ones((1, 1, 2)) * value,
+  )
 
 
 def _measured_test_sum_factory():
@@ -49,7 +53,8 @@ def _measured_test_sum_factory():
   # monitoring what values are passed through an inner aggregator.
   return measurements.add_measurements(
       sum_factory.SumFactory(),
-      server_measurement_fn=lambda x: collections.OrderedDict(sum=x))
+      server_measurement_fn=lambda x: collections.OrderedDict(sum=x),
+  )
 
 
 def _hadamard_mean():
@@ -88,15 +93,19 @@ def _named_test_cases_product(dict1, dict2):
 class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      _named_test_cases_product({
-          'hd': 'hd',
-          'dft': 'dft',
-      }, {
-          'float': tf.float32,
-          'ints': [tf.int32, tf.int32, tf.int32],
-          'struct': _test_struct_type_float_mixed,
-          'nested_struct': _test_struct_type_nested,
-      }))
+      _named_test_cases_product(
+          {
+              'hd': 'hd',
+              'dft': 'dft',
+          },
+          {
+              'float': tf.float32,
+              'ints': [tf.int32, tf.int32, tf.int32],
+              'struct': _test_struct_type_float_mixed,
+              'nested_struct': _test_struct_type_nested,
+          },
+      )
+  )
   def test_type_properties(self, name, value_type):
     factory = _hadamard_sum() if name == 'hd' else _dft_sum()
     value_type = computation_types.to_type(value_type)
@@ -104,37 +113,50 @@ class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     server_state_type = computation_types.at_server(
-        ((), rotation.SEED_TFF_TYPE))
+        ((), rotation.SEED_TFF_TYPE)
+    )
 
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
-    type_test_utils.assert_types_equivalent(process.initialize.type_signature,
-                                            expected_initialize_type)
+        parameter=None, result=server_state_type
+    )
+    type_test_utils.assert_types_equivalent(
+        process.initialize.type_signature, expected_initialize_type
+    )
 
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict([(name, ())]))
+        collections.OrderedDict([(name, ())])
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type)),
+            value=computation_types.at_clients(value_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
-    type_test_utils.assert_types_equivalent(process.next.type_signature,
-                                            expected_next_type)
+            measurements=expected_measurements_type,
+        ),
+    )
+    type_test_utils.assert_types_equivalent(
+        process.next.type_signature, expected_next_type
+    )
 
   @parameterized.named_parameters(
-      _named_test_cases_product({
-          'hd': _hadamard_sum,
-          'dft': _dft_sum,
-      }, {
-          'bool': tf.bool,
-          'string': tf.string,
-          'nested_string': [tf.string, [tf.string]],
-      }))
+      _named_test_cases_product(
+          {
+              'hd': _hadamard_sum,
+              'dft': _dft_sum,
+          },
+          {
+              'bool': tf.bool,
+              'string': tf.string,
+              'nested_string': [tf.string, [tf.string]],
+          },
+      )
+  )
   def test_raises_on_non_numeric_component_tensor_dtypes(
-      self, factory_fn, value_type):
+      self, factory_fn, value_type
+  ):
     factory = factory_fn()
     value_type = computation_types.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'all integers or all floats'):
@@ -143,15 +165,28 @@ class RotationsComputationTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('plain_struct_hadamard', _hadamard_sum, [('a', tf.int32)]),
       ('plain_struct_dft', _dft_sum, [('a', tf.int32)]),
-      ('sequence_hadamard', _hadamard_sum,
-       computation_types.SequenceType(tf.int32)),
+      (
+          'sequence_hadamard',
+          _hadamard_sum,
+          computation_types.SequenceType(tf.int32),
+      ),
       ('sequence_dft', _dft_sum, computation_types.SequenceType(tf.int32)),
-      ('func_hadamard', _hadamard_sum,
-       computation_types.FunctionType(tf.int32, tf.int32)),
-      ('func_dft', _dft_sum, computation_types.FunctionType(tf.int32,
-                                                            tf.int32)),
-      ('nested_sequence', _dft_sum,
-       [[[computation_types.SequenceType(tf.int32)]]]))
+      (
+          'func_hadamard',
+          _hadamard_sum,
+          computation_types.FunctionType(tf.int32, tf.int32),
+      ),
+      (
+          'func_dft',
+          _dft_sum,
+          computation_types.FunctionType(tf.int32, tf.int32),
+      ),
+      (
+          'nested_sequence',
+          _dft_sum,
+          [[[computation_types.SequenceType(tf.int32)]]],
+      ),
+  )
   def test_raises_on_bad_tff_value_types(self, factory_fn, value_type):
     factory = factory_fn()
     value_type = computation_types.to_type(value_type)
@@ -163,23 +198,55 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_hd', tf.int32, [1, 2, 3], 6, _hadamard_sum),
-      ('rank_1_tensor_hd', (tf.int32, [4]),
-       [np.arange(4), np.arange(4) * 2], np.arange(4) * 3, _hadamard_sum),
-      ('rank_2_tensor_hd', (tf.int32, [1, 2]), [((1, 1),), ((2, 2),)],
-       ((3, 3),), _hadamard_sum),
-      ('nested_hd', _test_struct_type_nested, [
-          _make_test_struct_value_nested(123),
-          _make_test_struct_value_nested(456)
-      ], _make_test_struct_value_nested(579), _hadamard_sum),
+      (
+          'rank_1_tensor_hd',
+          (tf.int32, [4]),
+          [np.arange(4), np.arange(4) * 2],
+          np.arange(4) * 3,
+          _hadamard_sum,
+      ),
+      (
+          'rank_2_tensor_hd',
+          (tf.int32, [1, 2]),
+          [((1, 1),), ((2, 2),)],
+          ((3, 3),),
+          _hadamard_sum,
+      ),
+      (
+          'nested_hd',
+          _test_struct_type_nested,
+          [
+              _make_test_struct_value_nested(123),
+              _make_test_struct_value_nested(456),
+          ],
+          _make_test_struct_value_nested(579),
+          _hadamard_sum,
+      ),
       ('scalar_dft', tf.int32, [1, 2, 3], 6, _dft_sum),
-      ('rank_1_tensor_dft', (tf.int32, [4]),
-       [np.arange(4), np.arange(4) * 2], np.arange(4) * 3, _dft_sum),
-      ('rank_2_tensor_dft', (tf.int32, [1, 2]), [((1, 1),), ((2, 2),)],
-       ((3, 3),), _dft_sum),
-      ('nested_dft', _test_struct_type_nested, [
-          _make_test_struct_value_nested(123),
-          _make_test_struct_value_nested(456)
-      ], _make_test_struct_value_nested(579), _dft_sum),
+      (
+          'rank_1_tensor_dft',
+          (tf.int32, [4]),
+          [np.arange(4), np.arange(4) * 2],
+          np.arange(4) * 3,
+          _dft_sum,
+      ),
+      (
+          'rank_2_tensor_dft',
+          (tf.int32, [1, 2]),
+          [((1, 1),), ((2, 2),)],
+          ((3, 3),),
+          _dft_sum,
+      ),
+      (
+          'nested_dft',
+          _test_struct_type_nested,
+          [
+              _make_test_struct_value_nested(123),
+              _make_test_struct_value_nested(456),
+          ],
+          _make_test_struct_value_nested(579),
+          _dft_sum,
+      ),
   )
   def test_sum(self, value_type, client_data, expected_sum, factory_fn):
     """Integration test with sum for the all implementations."""
@@ -194,23 +261,55 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_hd', tf.float32, [1, 2, 3, 4], 2.5, _hadamard_mean),
-      ('rank_1_tensor_hd', (tf.float32, [2]), [(1, 1), (6, 6)],
-       (3.5, 3.5), _hadamard_mean),
-      ('rank_2_tensor_hd', (tf.float32, [1, 2]), [((-1, -1),), ((5, 5),)],
-       ((2, 2),), _hadamard_mean),
-      ('nested_hd', _test_struct_type_nested, [
-          _make_test_struct_value_nested(123),
-          _make_test_struct_value_nested(-321)
-      ], _make_test_struct_value_nested(-99), _hadamard_mean),
+      (
+          'rank_1_tensor_hd',
+          (tf.float32, [2]),
+          [(1, 1), (6, 6)],
+          (3.5, 3.5),
+          _hadamard_mean,
+      ),
+      (
+          'rank_2_tensor_hd',
+          (tf.float32, [1, 2]),
+          [((-1, -1),), ((5, 5),)],
+          ((2, 2),),
+          _hadamard_mean,
+      ),
+      (
+          'nested_hd',
+          _test_struct_type_nested,
+          [
+              _make_test_struct_value_nested(123),
+              _make_test_struct_value_nested(-321),
+          ],
+          _make_test_struct_value_nested(-99),
+          _hadamard_mean,
+      ),
       ('scalar_dft', tf.float32, [1, 2, 3, 4], 2.5, _dft_mean),
-      ('rank_1_tensor_dft', (tf.float32, [2]), [(1, 1),
-                                                (6, 6)], (3.5, 3.5), _dft_mean),
-      ('rank_2_tensor_dft', (tf.float32, [1, 2]), [((-1, -1),), ((5, 5),)],
-       ((2, 2),), _dft_mean),
-      ('nested_dft', _test_struct_type_nested, [
-          _make_test_struct_value_nested(123),
-          _make_test_struct_value_nested(-321)
-      ], _make_test_struct_value_nested(-99), _dft_mean),
+      (
+          'rank_1_tensor_dft',
+          (tf.float32, [2]),
+          [(1, 1), (6, 6)],
+          (3.5, 3.5),
+          _dft_mean,
+      ),
+      (
+          'rank_2_tensor_dft',
+          (tf.float32, [1, 2]),
+          [((-1, -1),), ((5, 5),)],
+          ((2, 2),),
+          _dft_mean,
+      ),
+      (
+          'nested_dft',
+          _test_struct_type_nested,
+          [
+              _make_test_struct_value_nested(123),
+              _make_test_struct_value_nested(-321),
+          ],
+          _make_test_struct_value_nested(-99),
+          _dft_mean,
+      ),
   )
   def test_mean(self, value_type, client_data, expected_mean, factory_fn):
     """Integration test for the factory with mean."""
@@ -231,11 +330,13 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
       ('dft-8', 'dft', [8], [8]),
       ('dft-3x5x3', 'dft', [3, 5, 3], [46]),
   )
-  def test_inner_aggregation_acts_on_padded_space(self, name, input_shape,
-                                                  expected_inner_shape):
+  def test_inner_aggregation_acts_on_padded_space(
+      self, name, input_shape, expected_inner_shape
+  ):
     factory = _measured_hadamard_sum() if name == 'hd' else _measured_dft_sum()
     process = factory.create(
-        computation_types.to_type((tf.float32, input_shape)))
+        computation_types.to_type((tf.float32, input_shape))
+    )
 
     client_input = tf.ones(input_shape)
     output = process.next(process.initialize(), [client_input])
@@ -256,7 +357,8 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotAllClose(np.zeros([8]), inner_aggregand_1 - client_input)
     # Rotation preserves L2 norm.
     self.assertAllClose(
-        np.linalg.norm(inner_aggregand_1), np.linalg.norm(client_input))
+        np.linalg.norm(inner_aggregand_1), np.linalg.norm(client_input)
+    )
 
     output = process.next(output.state, [client_input])
     inner_aggregand_2 = output.measurements[name]['sum']
@@ -264,7 +366,8 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotAllClose(np.zeros([8]), inner_aggregand_2 - client_input)
     self.assertNotAllClose(np.zeros([8]), inner_aggregand_2 - inner_aggregand_1)
     self.assertAllClose(
-        np.linalg.norm(inner_aggregand_1), np.linalg.norm(inner_aggregand_2))
+        np.linalg.norm(inner_aggregand_1), np.linalg.norm(inner_aggregand_2)
+    )
 
   def test_hd_spreads_information(self):
     factory = _measured_hadamard_sum()
@@ -277,8 +380,10 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
     # For Hadamard we expect values equal to +/- sqrt(256) = 16.
     self.assertAllEqual(
         np.logical_or(
-            np.isclose(inner_aggregand, 16), np.isclose(inner_aggregand, -16)),
-        [True] * 256)
+            np.isclose(inner_aggregand, 16), np.isclose(inner_aggregand, -16)
+        ),
+        [True] * 256,
+    )
     self.assertBetween(np.var(inner_aggregand), 255, 257)
 
   def test_dft_spreads_information(self):
@@ -292,7 +397,8 @@ class RotationsExecutionTest(tf.test.TestCase, parameterized.TestCase):
     # We expect the values to be non-zero. Check that numerically the values are
     # bounded away from zero, with some slack (240 out of 256 scalars).
     self.assertGreaterEqual(
-        np.sum(np.greater(np.abs(inner_aggregand), 1e-6)), 240)
+        np.sum(np.greater(np.abs(inner_aggregand), 1e-6)), 240
+    )
     self.assertBetween(np.var(inner_aggregand), 255, 257)
 
 
@@ -318,16 +424,18 @@ class SeedUtilsTest(tf.test.TestCase, parameterized.TestCase):
     value = (tf.constant(1.0), (tf.constant(2.0), tf.constant([3.0, 4.0])))
     seed = (1, 101)
     unique_seeds = rotation._unique_seeds_for_struct(value, seed, stride=1)
-    tf.nest.map_structure(self.assertAllEqual,
-                          (np.array([1, 101]),
-                           (np.array([1, 102]), np.array([1, 103]))),
-                          unique_seeds)
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        (np.array([1, 101]), (np.array([1, 102]), np.array([1, 103]))),
+        unique_seeds,
+    )
 
     unique_seeds = rotation._unique_seeds_for_struct(value, seed, stride=3)
-    tf.nest.map_structure(self.assertAllEqual,
-                          (np.array([1, 101]),
-                           (np.array([1, 104]), np.array([1, 107]))),
-                          unique_seeds)
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        (np.array([1, 101]), (np.array([1, 104]), np.array([1, 107]))),
+        unique_seeds,
+    )
 
 
 class PaddingUtilsTest(tf.test.TestCase, parameterized.TestCase):
@@ -357,23 +465,34 @@ class PaddingUtilsTest(tf.test.TestCase, parameterized.TestCase):
     flat_padded_struct = rotation._flatten_and_pad_zeros_pow2(struct)
     tf.nest.map_structure(
         self.assertAllEqual,
-        (tf.constant([1, 1, 1, 0]), tf.constant([1, 1, 1, 1, 1, 1, 0, 0]),
-         tf.constant([1, 1, 1, 1])), flat_padded_struct)
+        (
+            tf.constant([1, 1, 1, 0]),
+            tf.constant([1, 1, 1, 1, 1, 1, 0, 0]),
+            tf.constant([1, 1, 1, 1]),
+        ),
+        flat_padded_struct,
+    )
 
   def test_pad_even_struct(self):
     struct = (tf.ones([3]), tf.ones([2, 2]), tf.ones([1, 3, 3]))
     flat_padded_struct = rotation._flatten_and_pad_zeros_even(struct)
-    tf.nest.map_structure(self.assertAllEqual,
-                          (tf.constant([1, 1, 1, 0]), tf.constant([1, 1, 1, 1]),
-                           tf.constant([1, 1, 1, 1, 1, 1, 1, 1, 1, 0])),
-                          flat_padded_struct)
+    tf.nest.map_structure(
+        self.assertAllEqual,
+        (
+            tf.constant([1, 1, 1, 0]),
+            tf.constant([1, 1, 1, 1]),
+            tf.constant([1, 1, 1, 1, 1, 1, 1, 1, 1, 0]),
+        ),
+        flat_padded_struct,
+    )
 
   def test_revert_padding(self):
     value = tf.range(8)
     spec = tf.TensorSpec([1, 2, 3], tf.float32)
-    self.assertAllEqual([[[0.0, 1.0, 2.0], [3.0, 4.0, 5.0]]],
-                        rotation._slice_and_reshape_to_template_spec(
-                            value, spec))
+    self.assertAllEqual(
+        [[[0.0, 1.0, 2.0], [3.0, 4.0, 5.0]]],
+        rotation._slice_and_reshape_to_template_spec(value, spec),
+    )
 
 
 class SampleRademacherTest(tf.test.TestCase, parameterized.TestCase):
@@ -475,10 +594,13 @@ class SampleCisTest(tf.test.TestCase, parameterized.TestCase):
               'shape-10x10': [10, 10],
               'shape-10x10x10': [10, 10, 10],
               'shape-10x1x1x1': [10, 1, 1, 1],
-          }, {
+          },
+          {
               'true': True,
               'false': False,
-          }))
+          },
+      )
+  )
   def test_expected_shape(self, shape, inverse):
     angles = rotation.sample_cis(shape, SEED_PAIR, inverse=inverse)
     self.assertAllEqual(angles.shape, shape)

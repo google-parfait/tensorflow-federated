@@ -62,16 +62,18 @@ _float_at_clients = computation_types.at_clients(tf.float32)
 
 @federated_computation.federated_computation()
 def _test_init_fn():
-  return intrinsics.federated_value(1., placements.SERVER)
+  return intrinsics.federated_value(1.0, placements.SERVER)
 
 
-@federated_computation.federated_computation(_float_at_server,
-                                             _float_at_clients)
+@federated_computation.federated_computation(
+    _float_at_server, _float_at_clients
+)
 def _test_next_fn(state, value):
   del value
   return intrinsics.federated_map(
-      tensorflow_computation.tf_computation(lambda x: x + 1., tf.float32),
-      state)
+      tensorflow_computation.tf_computation(lambda x: x + 1.0, tf.float32),
+      state,
+  )
 
 
 @federated_computation.federated_computation(_float_at_server)
@@ -79,9 +81,9 @@ def _test_report_fn(state):
   return state
 
 
-def _test_norm_process(init_fn=_test_init_fn,
-                       next_fn=_test_next_fn,
-                       report_fn=_test_report_fn):
+def _test_norm_process(
+    init_fn=_test_init_fn, next_fn=_test_next_fn, report_fn=_test_report_fn
+):
   return estimation_process.EstimationProcess(init_fn, next_fn, report_fn)
 
 
@@ -99,28 +101,39 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     server_state_type = computation_types.at_server(
         collections.OrderedDict(
-            clipping_norm=(), inner_agg=(), clipped_count_agg=()))
+            clipping_norm=(), inner_agg=(), clipped_count_agg=()
+        )
+    )
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
+        parameter=None, result=server_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             clipping=(),
             clipping_norm=robust.NORM_TF_TYPE,
-            clipped_count=robust.COUNT_TF_TYPE))
+            clipped_count=robust.COUNT_TF_TYPE,
+        )
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type)),
+            value=computation_types.at_clients(value_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
+            measurements=expected_measurements_type,
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('float_value_float32_weight', tf.float32, tf.float32),
@@ -136,32 +149,44 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     mean_state_type = collections.OrderedDict(
-        value_sum_process=(), weight_sum_process=())
+        value_sum_process=(), weight_sum_process=()
+    )
     server_state_type = computation_types.at_server(
         collections.OrderedDict(
-            clipping_norm=(), inner_agg=mean_state_type, clipped_count_agg=()))
+            clipping_norm=(), inner_agg=mean_state_type, clipped_count_agg=()
+        )
+    )
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
+        parameter=None, result=server_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             clipping=collections.OrderedDict(mean_value=(), mean_weight=()),
             clipping_norm=robust.NORM_TF_TYPE,
-            clipped_count=robust.COUNT_TF_TYPE))
+            clipped_count=robust.COUNT_TF_TYPE,
+        )
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
             value=computation_types.at_clients(value_type),
-            weight=computation_types.at_clients(weight_type)),
+            weight=computation_types.at_clients(weight_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
+            measurements=expected_measurements_type,
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('float', tf.float32),
@@ -175,28 +200,39 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     server_state_type = computation_types.at_server(
         collections.OrderedDict(
-            zeroing_norm=(), inner_agg=(), zeroed_count_agg=()))
+            zeroing_norm=(), inner_agg=(), zeroed_count_agg=()
+        )
+    )
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
+        parameter=None, result=server_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             zeroing=(),
             zeroing_norm=robust.NORM_TF_TYPE,
-            zeroed_count=robust.COUNT_TF_TYPE))
+            zeroed_count=robust.COUNT_TF_TYPE,
+        )
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type)),
+            value=computation_types.at_clients(value_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
+            measurements=expected_measurements_type,
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('float_value_float32_weight', tf.float32, tf.float32),
@@ -212,32 +248,44 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     mean_state_type = collections.OrderedDict(
-        value_sum_process=(), weight_sum_process=())
+        value_sum_process=(), weight_sum_process=()
+    )
     server_state_type = computation_types.at_server(
         collections.OrderedDict(
-            zeroing_norm=(), inner_agg=mean_state_type, zeroed_count_agg=()))
+            zeroing_norm=(), inner_agg=mean_state_type, zeroed_count_agg=()
+        )
+    )
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
+        parameter=None, result=server_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             zeroing=collections.OrderedDict(mean_value=(), mean_weight=()),
             zeroing_norm=robust.NORM_TF_TYPE,
-            zeroed_count=robust.COUNT_TF_TYPE))
+            zeroed_count=robust.COUNT_TF_TYPE,
+        )
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
             value=computation_types.at_clients(value_type),
-            weight=computation_types.at_clients(weight_type)),
+            weight=computation_types.at_clients(weight_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
+            measurements=expected_measurements_type,
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('float', tf.float32),
@@ -248,103 +296,141 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
         zeroing_norm=1.0,
         inner_agg_factory=sum_factory.SumFactory(),
         norm_order=2.0,
-        zeroed_count_sum_factory=aggregator_test_utils.SumPlusOneFactory())
+        zeroed_count_sum_factory=aggregator_test_utils.SumPlusOneFactory(),
+    )
     value_type = computation_types.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     server_state_type = computation_types.at_server(
         collections.OrderedDict(
-            zeroing_norm=(), inner_agg=(), zeroed_count_agg=tf.int32))
+            zeroing_norm=(), inner_agg=(), zeroed_count_agg=tf.int32
+        )
+    )
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
+        parameter=None, result=server_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             zeroing=(),
             zeroing_norm=robust.NORM_TF_TYPE,
-            zeroed_count=robust.COUNT_TF_TYPE))
+            zeroed_count=robust.COUNT_TF_TYPE,
+        )
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type)),
+            value=computation_types.at_clients(value_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
+            measurements=expected_measurements_type,
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('float', tf.float32),
       ('struct', _test_struct_type),
   )
   def test_clip_type_properties_with_clipped_count_agg_factory(
-      self, value_type):
+      self, value_type
+  ):
     factory = robust.clipping_factory(
         clipping_norm=1.0,
         inner_agg_factory=sum_factory.SumFactory(),
-        clipped_count_sum_factory=aggregator_test_utils.SumPlusOneFactory())
+        clipped_count_sum_factory=aggregator_test_utils.SumPlusOneFactory(),
+    )
     value_type = computation_types.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     server_state_type = computation_types.at_server(
         collections.OrderedDict(
-            clipping_norm=(), inner_agg=(), clipped_count_agg=tf.int32))
+            clipping_norm=(), inner_agg=(), clipped_count_agg=tf.int32
+        )
+    )
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
+        parameter=None, result=server_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             clipping=(),
             clipping_norm=robust.NORM_TF_TYPE,
-            clipped_count=robust.COUNT_TF_TYPE))
+            clipped_count=robust.COUNT_TF_TYPE,
+        )
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type)),
+            value=computation_types.at_clients(value_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
+            measurements=expected_measurements_type,
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
       ('struct', (tf.float16, tf.float32)),
-      ('nested', (tf.float16, [tf.float32, (tf.float64, [3])])))
+      ('nested', (tf.float16, [tf.float32, (tf.float64, [3])])),
+  )
   def test_clip_preserves_aggregated_dtype_with_mixed_float(self, type_spec):
     factory = _clipped_sum()
     mixed_float = computation_types.to_type(type_spec)
     process = factory.create(mixed_float)
     type_test_utils.assert_types_identical(
-        mixed_float, process.next.type_signature.result.result.member)
+        mixed_float, process.next.type_signature.result.result.member
+    )
 
   @parameterized.named_parameters(
       ('norm_order_1_struct', 1.0, (tf.float16, tf.float32)),
       ('norm_order_2_struct', 2.0, (tf.float16, tf.float32)),
       ('norm_order_inf_struct', float('inf'), (tf.float16, tf.float32)),
-      ('norm_order_1_nested', 1.0, (tf.float16, [tf.float32,
-                                                 (tf.float64, [3])])),
-      ('norm_order_2_nested', 2.0, (tf.float16, [tf.float32,
-                                                 (tf.float64, [3])])),
-      ('norm_order_inf_nested', float('inf'),
-       (tf.float16, [tf.float32, (tf.float64, [3])])),
+      (
+          'norm_order_1_nested',
+          1.0,
+          (tf.float16, [tf.float32, (tf.float64, [3])]),
+      ),
+      (
+          'norm_order_2_nested',
+          2.0,
+          (tf.float16, [tf.float32, (tf.float64, [3])]),
+      ),
+      (
+          'norm_order_inf_nested',
+          float('inf'),
+          (tf.float16, [tf.float32, (tf.float64, [3])]),
+      ),
   )
   def test_zero_preserves_aggregated_dtype_with_mixed_float(
-      self, norm_order, type_spec):
+      self, norm_order, type_spec
+  ):
     factory = _zeroed_sum(norm_order=norm_order)
     mixed_float = computation_types.to_type(type_spec)
     process = factory.create(mixed_float)
     type_test_utils.assert_types_identical(
-        mixed_float, process.next.type_signature.result.result.member)
+        mixed_float, process.next.type_signature.result.result.member
+    )
 
   @parameterized.named_parameters(
       ('clip_float_on_clients', 1.0, placements.CLIENTS, _clipped_mean),
@@ -352,11 +438,12 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
       ('zero_float_on_clients', 1.0, placements.CLIENTS, _zeroed_mean),
       ('zero_string_on_server', 'bad', placements.SERVER, _zeroed_mean),
   )
-  def test_raises_on_bad_norm_process_result(self, value, placement,
-                                             make_factory):
+  def test_raises_on_bad_norm_process_result(
+      self, value, placement, make_factory
+  ):
     report_fn = federated_computation.federated_computation(
-        lambda s: intrinsics.federated_value(value, placement),
-        _float_at_server)
+        lambda s: intrinsics.federated_value(value, placement), _float_at_server
+    )
     norm = _test_norm_process(report_fn=report_fn)
 
     with self.assertRaisesRegex(TypeError, r'Result type .* assignable to'):
@@ -368,7 +455,8 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_process_next_single_param(self, make_factory):
     next_fn = federated_computation.federated_computation(
-        lambda state: state, _float_at_server)
+        lambda state: state, _float_at_server
+    )
     norm = _test_norm_process(next_fn=next_fn)
 
     with self.assertRaisesRegex(TypeError, '.* must take two arguments.'):
@@ -380,8 +468,11 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_process_next_three_params(self, make_factory):
     next_fn = federated_computation.federated_computation(
-        lambda state, value1, value2: state, _float_at_server,
-        _float_at_clients, _float_at_clients)
+        lambda state, value1, value2: state,
+        _float_at_server,
+        _float_at_clients,
+        _float_at_clients,
+    )
     norm = _test_norm_process(next_fn=next_fn)
 
     with self.assertRaisesRegex(TypeError, '.* must take two arguments.'):
@@ -394,11 +485,13 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   def test_raises_on_bad_process_next_not_float(self, make_factory):
     complex_at_clients = computation_types.at_clients(tf.complex64)
     next_fn = federated_computation.federated_computation(
-        lambda state, value: state, _float_at_server, complex_at_clients)
+        lambda state, value: state, _float_at_server, complex_at_clients
+    )
     norm = _test_norm_process(next_fn=next_fn)
 
-    with self.assertRaisesRegex(TypeError,
-                                'Second argument .* assignable from'):
+    with self.assertRaisesRegex(
+        TypeError, 'Second argument .* assignable from'
+    ):
       make_factory(norm)
 
   @parameterized.named_parameters(
@@ -407,7 +500,8 @@ class ClippingFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_raises_on_bad_process_next_two_outputs(self, make_factory):
     next_fn = federated_computation.federated_computation(
-        lambda state, val: (state, state), _float_at_server, _float_at_clients)
+        lambda state, val: (state, state), _float_at_server, _float_at_clients
+    )
     norm = _test_norm_process(next_fn=next_fn)
 
     with self.assertRaisesRegex(TypeError, 'Result type .* state only.'):
@@ -691,29 +785,36 @@ class ClippingFactoryExecutionTest(tf.test.TestCase, parameterized.TestCase):
     # Tests when zeroing and clipping are performed with non-integer clips.
     # Zeroing norm grows by 0.75 each time, clipping norm grows by 0.25.
 
-    @federated_computation.federated_computation(_float_at_server,
-                                                 _float_at_clients)
+    @federated_computation.federated_computation(
+        _float_at_server, _float_at_clients
+    )
     def zeroing_next_fn(state, value):
       del value
       return intrinsics.federated_map(
           tensorflow_computation.tf_computation(lambda x: x + 0.75, tf.float32),
-          state)
+          state,
+      )
 
-    @federated_computation.federated_computation(_float_at_server,
-                                                 _float_at_clients)
+    @federated_computation.federated_computation(
+        _float_at_server, _float_at_clients
+    )
     def clipping_next_fn(state, value):
       del value
       return intrinsics.federated_map(
           tensorflow_computation.tf_computation(lambda x: x + 0.25, tf.float32),
-          state)
+          state,
+      )
 
     zeroing_norm_process = estimation_process.EstimationProcess(
-        _test_init_fn, zeroing_next_fn, _test_report_fn)
+        _test_init_fn, zeroing_next_fn, _test_report_fn
+    )
     clipping_norm_process = estimation_process.EstimationProcess(
-        _test_init_fn, clipping_next_fn, _test_report_fn)
+        _test_init_fn, clipping_next_fn, _test_report_fn
+    )
 
-    factory = robust.zeroing_factory(zeroing_norm_process,
-                                     _clipped_sum(clipping_norm_process))
+    factory = robust.zeroing_factory(
+        zeroing_norm_process, _clipped_sum(clipping_norm_process)
+    )
 
     value_type = computation_types.to_type(tf.float32)
     process = factory.create(value_type)
@@ -799,7 +900,8 @@ class NormTest(tf.test.TestCase):
     for clip_norm in [0.0, 1.0, 100.0]:
       self.assertAllClose(
           robust._clip_by_global_l2_norm(value, clip_norm),
-          tf.clip_by_global_norm(value, clip_norm))
+          tf.clip_by_global_norm(value, clip_norm),
+      )
 
 
 if __name__ == '__main__':

@@ -71,7 +71,8 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
       clip_range_lower: int,
       clip_range_upper: int,
       inner_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      estimate_stddev: Optional[bool] = False):
+      estimate_stddev: Optional[bool] = False,
+  ):
     """Initializes a `ModularClippingSumFactory` instance.
 
     Args:
@@ -98,34 +99,48 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
     """
     if inner_agg_factory is None:
       inner_agg_factory = sum_factory.SumFactory()
-    elif not isinstance(inner_agg_factory,
-                        factory.UnweightedAggregationFactory):
-      raise TypeError('`inner_agg_factory` must have type '
-                      '`UnweightedAggregationFactory`. '
-                      f'Found {type(inner_agg_factory)}.')
+    elif not isinstance(
+        inner_agg_factory, factory.UnweightedAggregationFactory
+    ):
+      raise TypeError(
+          '`inner_agg_factory` must have type '
+          '`UnweightedAggregationFactory`. '
+          f'Found {type(inner_agg_factory)}.'
+      )
 
-    if not (isinstance(clip_range_lower, int) and
-            isinstance(clip_range_upper, int)):
-      raise TypeError('`clip_range_lower` and `clip_range_upper` must be '
-                      f'Python `int`; got {repr(clip_range_lower)} with type '
-                      f'{type(clip_range_lower)} and {repr(clip_range_upper)} '
-                      f'with type {type(clip_range_upper)}, respectively.')
+    if not (
+        isinstance(clip_range_lower, int) and isinstance(clip_range_upper, int)
+    ):
+      raise TypeError(
+          '`clip_range_lower` and `clip_range_upper` must be '
+          f'Python `int`; got {repr(clip_range_lower)} with type '
+          f'{type(clip_range_lower)} and {repr(clip_range_upper)} '
+          f'with type {type(clip_range_upper)}, respectively.'
+      )
 
     if clip_range_lower > clip_range_upper:
-      raise ValueError('`clip_range_lower` should not be larger than '
-                       f'`clip_range_upper`, got {clip_range_lower} and '
-                       f'{clip_range_upper}')
+      raise ValueError(
+          '`clip_range_lower` should not be larger than '
+          f'`clip_range_upper`, got {clip_range_lower} and '
+          f'{clip_range_upper}'
+      )
 
-    if (clip_range_upper > tf.int32.max or clip_range_lower < tf.int32.min or
-        clip_range_upper - clip_range_lower > tf.int32.max):
-      raise ValueError('`clip_range_lower` and `clip_range_upper` should be '
-                       'set such that the range of the modulus do not overflow '
-                       f'tf.int32. Found clip_range_lower={clip_range_lower} '
-                       f'and clip_range_upper={clip_range_upper} respectively.')
+    if (
+        clip_range_upper > tf.int32.max
+        or clip_range_lower < tf.int32.min
+        or clip_range_upper - clip_range_lower > tf.int32.max
+    ):
+      raise ValueError(
+          '`clip_range_lower` and `clip_range_upper` should be '
+          'set such that the range of the modulus do not overflow '
+          f'tf.int32. Found clip_range_lower={clip_range_lower} '
+          f'and clip_range_upper={clip_range_upper} respectively.'
+      )
 
     if not isinstance(estimate_stddev, bool):
-      raise TypeError(f'{estimate_stddev} must be a bool. '
-                      f'Found {repr(estimate_stddev)}.')
+      raise TypeError(
+          f'{estimate_stddev} must be a bool. Found {repr(estimate_stddev)}.'
+      )
 
     self._clip_range_lower = clip_range_lower
     self._clip_range_upper = clip_range_upper
@@ -133,88 +148,110 @@ class ModularClippingSumFactory(factory.UnweightedAggregationFactory):
     self._estimate_stddev = estimate_stddev
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     # Checks value_type and compute client data dimension.
-    if (value_type.is_struct() and
-        type_analysis.is_structure_of_tensors(value_type)):
+    if value_type.is_struct() and type_analysis.is_structure_of_tensors(
+        value_type
+    ):
       num_elements_struct = type_conversions.structure_from_tensor_type_tree(
-          lambda x: x.shape.num_elements(), value_type)
+          lambda x: x.shape.num_elements(), value_type
+      )
       client_dim = sum(tf.nest.flatten(num_elements_struct))
     elif value_type.is_tensor():
       client_dim = value_type.shape.num_elements()
     else:
-      raise TypeError('Expected `value_type` to be `TensorType` or '
-                      '`StructType` containing only `TensorType`. '
-                      f'Found type: {repr(value_type)}')
+      raise TypeError(
+          'Expected `value_type` to be `TensorType` or '
+          '`StructType` containing only `TensorType`. '
+          f'Found type: {repr(value_type)}'
+      )
     # Checks that all values are integers.
     if not type_analysis.is_structure_of_integers(value_type):
-      raise TypeError('Component dtypes of `value_type` must all be integers. '
-                      f'Found {repr(value_type)}.')
+      raise TypeError(
+          'Component dtypes of `value_type` must all be integers. '
+          f'Found {repr(value_type)}.'
+      )
     # Checks that we have enough elements to estimate standard deviation.
     if self._estimate_stddev:
       if client_dim <= 1:
-        raise ValueError('The stddev estimation procedure expects more than '
-                         '1 element from `value_type`. Found `value_type` of '
-                         f'{value_type} with {client_dim} elements.')
+        raise ValueError(
+            'The stddev estimation procedure expects more than '
+            '1 element from `value_type`. Found `value_type` of '
+            f'{value_type} with {client_dim} elements.'
+        )
       elif client_dim <= 100:
-        warnings.warn(f'`value_type` has only {client_dim} elements. The '
-                      'estimated standard deviation may be noisy. Consider '
-                      'setting `estimate_stddev` to True only if the input '
-                      'tensor/structure have more than 100 elements.')
+        warnings.warn(
+            f'`value_type` has only {client_dim} elements. The '
+            'estimated standard deviation may be noisy. Consider '
+            'setting `estimate_stddev` to True only if the input '
+            'tensor/structure have more than 100 elements.'
+        )
 
     inner_agg_process = self._inner_agg_factory.create(value_type)
     init_fn = inner_agg_process.initialize
-    next_fn = self._create_next_fn(inner_agg_process.next,
-                                   init_fn.type_signature.result, value_type)
+    next_fn = self._create_next_fn(
+        inner_agg_process.next, init_fn.type_signature.result, value_type
+    )
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
   def _create_next_fn(self, inner_agg_next, state_type, value_type):
-
     modular_clip_by_value_fn = tensorflow_computation.tf_computation(
-        modular_clip_by_value)
+        modular_clip_by_value
+    )
     estimator_fn = tensorflow_computation.tf_computation(
-        estimate_wrapped_gaussian_stddev)
+        estimate_wrapped_gaussian_stddev
+    )
 
     @federated_computation.federated_computation(
-        state_type, computation_types.at_clients(value_type))
+        state_type, computation_types.at_clients(value_type)
+    )
     def next_fn(state, value):
-      clip_lower = intrinsics.federated_value(self._clip_range_lower,
-                                              placements.SERVER)
-      clip_upper = intrinsics.federated_value(self._clip_range_upper,
-                                              placements.SERVER)
+      clip_lower = intrinsics.federated_value(
+          self._clip_range_lower, placements.SERVER
+      )
+      clip_upper = intrinsics.federated_value(
+          self._clip_range_upper, placements.SERVER
+      )
 
       # Modular clip values before aggregation.
       clipped_value = intrinsics.federated_map(
           modular_clip_by_value_fn,
-          (value, intrinsics.federated_broadcast(clip_lower),
-           intrinsics.federated_broadcast(clip_upper)))
+          (
+              value,
+              intrinsics.federated_broadcast(clip_lower),
+              intrinsics.federated_broadcast(clip_upper),
+          ),
+      )
 
       inner_agg_output = inner_agg_next(state, clipped_value)
 
       # Clip the aggregate to the same range again (not considering summands).
       clipped_agg_output_result = intrinsics.federated_map(
           modular_clip_by_value_fn,
-          (inner_agg_output.result, clip_lower, clip_upper))
+          (inner_agg_output.result, clip_lower, clip_upper),
+      )
 
       measurements = collections.OrderedDict(
-          modclip=inner_agg_output.measurements)
+          modclip=inner_agg_output.measurements
+      )
 
       if self._estimate_stddev:
         estimate = intrinsics.federated_map(
-            estimator_fn, (clipped_agg_output_result, clip_lower, clip_upper))
+            estimator_fn, (clipped_agg_output_result, clip_lower, clip_upper)
+        )
         measurements['estimated_stddev'] = estimate
 
       return measured_process.MeasuredProcessOutput(
           state=inner_agg_output.state,
           result=clipped_agg_output_result,
-          measurements=intrinsics.federated_zip(measurements))
+          measurements=intrinsics.federated_zip(measurements),
+      )
 
     return next_fn
 
 
 def modular_clip_by_value(value, clip_range_lower, clip_range_upper):
-
   def mod_clip(v):
     width = clip_range_upper - clip_range_lower
     period = tf.cast(tf.floor(v / width - clip_range_lower / width), v.dtype)
