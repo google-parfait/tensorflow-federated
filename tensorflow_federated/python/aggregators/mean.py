@@ -66,7 +66,8 @@ class MeanFactory(factory.WeightedAggregationFactory):
       self,
       value_sum_factory: Optional[factory.UnweightedAggregationFactory] = None,
       weight_sum_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      no_nan_division: bool = False):
+      no_nan_division: bool = False,
+  ):
     """Initializes `MeanFactory`.
 
     Args:
@@ -86,22 +87,24 @@ class MeanFactory(factory.WeightedAggregationFactory):
     """
     if value_sum_factory is None:
       value_sum_factory = sum_factory.SumFactory()
-    py_typecheck.check_type(value_sum_factory,
-                            factory.UnweightedAggregationFactory)
+    py_typecheck.check_type(
+        value_sum_factory, factory.UnweightedAggregationFactory
+    )
     self._value_sum_factory = value_sum_factory
 
     if weight_sum_factory is None:
       weight_sum_factory = sum_factory.SumFactory()
-    py_typecheck.check_type(weight_sum_factory,
-                            factory.UnweightedAggregationFactory)
+    py_typecheck.check_type(
+        weight_sum_factory, factory.UnweightedAggregationFactory
+    )
     self._weight_sum_factory = weight_sum_factory
 
     py_typecheck.check_type(no_nan_division, bool)
     self._no_nan_division = no_nan_division
 
   def create(
-      self, value_type: factory.ValueType,
-      weight_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType, weight_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     _check_value_type(value_type)
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(weight_type, type_args)
@@ -113,38 +116,47 @@ class MeanFactory(factory.WeightedAggregationFactory):
     def init_fn():
       state = collections.OrderedDict(
           value_sum_process=value_sum_process.initialize(),
-          weight_sum_process=weight_sum_process.initialize())
+          weight_sum_process=weight_sum_process.initialize(),
+      )
       return intrinsics.federated_zip(state)
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
         computation_types.FederatedType(value_type, placements.CLIENTS),
-        computation_types.FederatedType(weight_type, placements.CLIENTS))
+        computation_types.FederatedType(weight_type, placements.CLIENTS),
+    )
     def next_fn(state, value, weight):
       # Client computation.
       weighted_value = intrinsics.federated_map(_mul, (value, weight))
 
       # Inner aggregations.
-      value_output = value_sum_process.next(state['value_sum_process'],
-                                            weighted_value)
-      weight_output = weight_sum_process.next(state['weight_sum_process'],
-                                              weight)
+      value_output = value_sum_process.next(
+          state['value_sum_process'], weighted_value
+      )
+      weight_output = weight_sum_process.next(
+          state['weight_sum_process'], weight
+      )
 
       # Server computation.
       weighted_mean_value = intrinsics.federated_map(
           _div_no_nan if self._no_nan_division else _div,
-          (value_output.result, weight_output.result))
+          (value_output.result, weight_output.result),
+      )
 
       # Output preparation.
       state = collections.OrderedDict(
           value_sum_process=value_output.state,
-          weight_sum_process=weight_output.state)
+          weight_sum_process=weight_output.state,
+      )
       measurements = collections.OrderedDict(
           mean_value=value_output.measurements,
-          mean_weight=weight_output.measurements)
+          mean_weight=weight_output.measurements,
+      )
       return measured_process.MeasuredProcessOutput(
-          intrinsics.federated_zip(state), weighted_mean_value,
-          intrinsics.federated_zip(measurements))
+          intrinsics.federated_zip(state),
+          weighted_mean_value,
+          intrinsics.federated_zip(measurements),
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
@@ -167,7 +179,8 @@ class UnweightedMeanFactory(factory.UnweightedAggregationFactory):
   def __init__(
       self,
       value_sum_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      count_sum_factory: Optional[factory.UnweightedAggregationFactory] = None):
+      count_sum_factory: Optional[factory.UnweightedAggregationFactory] = None,
+  ):
     """Initializes `UnweightedMeanFactory`.
 
     Args:
@@ -185,48 +198,59 @@ class UnweightedMeanFactory(factory.UnweightedAggregationFactory):
     """
     if value_sum_factory is None:
       value_sum_factory = sum_factory.SumFactory()
-    py_typecheck.check_type(value_sum_factory,
-                            factory.UnweightedAggregationFactory)
+    py_typecheck.check_type(
+        value_sum_factory, factory.UnweightedAggregationFactory
+    )
     self._value_sum_factory = value_sum_factory
     if count_sum_factory is None:
       count_sum_factory = sum_factory.SumFactory()
-    py_typecheck.check_type(count_sum_factory,
-                            factory.UnweightedAggregationFactory)
+    py_typecheck.check_type(
+        count_sum_factory, factory.UnweightedAggregationFactory
+    )
     self._count_sum_factory = count_sum_factory
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     _check_value_type(value_type)
     value_sum_process = self._value_sum_factory.create(value_type)
     count_sum_process = self._count_sum_factory.create(
-        computation_types.TensorType(tf.int32))
+        computation_types.TensorType(tf.int32)
+    )
 
     @federated_computation.federated_computation()
     def init_fn():
       return intrinsics.federated_zip(
-          (value_sum_process.initialize(), count_sum_process.initialize()))
+          (value_sum_process.initialize(), count_sum_process.initialize())
+      )
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS))
+        computation_types.FederatedType(value_type, placements.CLIENTS),
+    )
     def next_fn(state, value):
       value_sum_state, count_sum_state = state
       value_sum_output = value_sum_process.next(value_sum_state, value)
       count_sum_output = count_sum_process.next(
-          count_sum_state, intrinsics.federated_value(1, placements.CLIENTS))
+          count_sum_state, intrinsics.federated_value(1, placements.CLIENTS)
+      )
 
       mean_value = intrinsics.federated_map(
-          _div, (value_sum_output.result, count_sum_output.result))
+          _div, (value_sum_output.result, count_sum_output.result)
+      )
       state = intrinsics.federated_zip(
-          (value_sum_output.state, count_sum_output.state))
+          (value_sum_output.state, count_sum_output.state)
+      )
       measurements = intrinsics.federated_zip(
           collections.OrderedDict(
               mean_value=value_sum_output.measurements,
-              mean_count=count_sum_output.measurements))
+              mean_count=count_sum_output.measurements,
+          )
+      )
 
-      return measured_process.MeasuredProcessOutput(state, mean_value,
-                                                    measurements)
+      return measured_process.MeasuredProcessOutput(
+          state, mean_value, measurements
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
@@ -235,8 +259,10 @@ def _check_value_type(value_type):
   type_args = typing.get_args(factory.ValueType)
   py_typecheck.check_type(value_type, type_args)
   if not type_analysis.is_structure_of_floats(value_type):
-    raise TypeError(f'All values in provided value_type must be of floating '
-                    f'dtype. Provided value_type: {value_type}')
+    raise TypeError(
+        'All values in provided value_type must be of floating '
+        f'dtype. Provided value_type: {value_type}'
+    )
 
 
 @tensorflow_computation.tf_computation()
@@ -248,11 +274,13 @@ def _mul(value, weight):
 def _div(weighted_value_sum, weight_sum):
   return tf.nest.map_structure(
       lambda x: tf.math.divide(x, tf.cast(weight_sum, x.dtype)),
-      weighted_value_sum)
+      weighted_value_sum,
+  )
 
 
 @tensorflow_computation.tf_computation()
 def _div_no_nan(weighted_value_sum, weight_sum):
   return tf.nest.map_structure(
       lambda x: tf.math.divide_no_nan(x, tf.cast(weight_sum, x.dtype)),
-      weighted_value_sum)
+      weighted_value_sum,
+  )

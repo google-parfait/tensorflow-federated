@@ -29,7 +29,8 @@ class UnweightedAsWeightedAggregationTest(tf.test.TestCase):
 
   def test_returns_weighted_factory(self):
     wrapped_factory = factory_utils.as_weighted_aggregator(
-        sum_factory.SumFactory())
+        sum_factory.SumFactory()
+    )
     self.assertIsInstance(wrapped_factory, factory.WeightedAggregationFactory)
 
   def test_wrapped_aggregator_same_as_unweighted_aggregator(self):
@@ -37,25 +38,30 @@ class UnweightedAsWeightedAggregationTest(tf.test.TestCase):
     wrapped_factory = factory_utils.as_weighted_aggregator(unweighted_factory)
 
     unweighted_aggregator = unweighted_factory.create(_TEST_VALUE_TYPE)
-    weighted_aggregator = wrapped_factory.create(_TEST_VALUE_TYPE,
-                                                 _TEST_WEIGHT_TYPE)
+    weighted_aggregator = wrapped_factory.create(
+        _TEST_VALUE_TYPE, _TEST_WEIGHT_TYPE
+    )
 
     test_data = [(1.0, 2.0), (3.0, 4.0), (0.0, 5.0)]
     test_weights = [1.0, 1.0, 1.0]
 
     unweighted_output = unweighted_aggregator.next(
-        unweighted_aggregator.initialize(), test_data)
-    weighted_output = weighted_aggregator.next(weighted_aggregator.initialize(),
-                                               test_data, test_weights)
+        unweighted_aggregator.initialize(), test_data
+    )
+    weighted_output = weighted_aggregator.next(
+        weighted_aggregator.initialize(), test_data, test_weights
+    )
 
     self.assertAllEqual(unweighted_output.state, weighted_output.state)
     self.assertAllEqual(unweighted_output.result, weighted_output.result)
-    self.assertAllEqual(unweighted_output.measurements,
-                        weighted_output.measurements)
+    self.assertAllEqual(
+        unweighted_output.measurements, weighted_output.measurements
+    )
 
   def test_wrapped_aggregator_independent_of_weights(self):
     aggregator = factory_utils.as_weighted_aggregator(
-        sum_factory.SumFactory()).create(_TEST_VALUE_TYPE, _TEST_WEIGHT_TYPE)
+        sum_factory.SumFactory()
+    ).create(_TEST_VALUE_TYPE, _TEST_WEIGHT_TYPE)
 
     test_data = [(1.0, 2.0), (3.0, 4.0), (0.0, 5.0)]
     uniform_weights = [1.0, 1.0, 1.0]
@@ -70,8 +76,9 @@ class UnweightedAsWeightedAggregationTest(tf.test.TestCase):
       random_output = aggregator.next(state, test_data, random_weights)
       self.assertAllEqual(uniform_output.state, random_output.state)
       self.assertAllEqual(uniform_output.result, random_output.result)
-      self.assertAllEqual(uniform_output.measurements,
-                          random_output.measurements)
+      self.assertAllEqual(
+          uniform_output.measurements, random_output.measurements
+      )
 
   def test_as_weighted_raises(self):
     with self.assertRaises(TypeError):

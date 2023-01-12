@@ -52,8 +52,8 @@ class SumPlusOneFactory(factory.UnweightedAggregationFactory):
   """
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(value_type, type_args)
 
@@ -63,16 +63,21 @@ class SumPlusOneFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS))
+        computation_types.FederatedType(value_type, placements.CLIENTS),
+    )
     def next_fn(state, value):
       state = intrinsics.federated_map(
-          tensorflow_computation.tf_computation(lambda x: x + 1), state)
+          tensorflow_computation.tf_computation(lambda x: x + 1), state
+      )
       result = intrinsics.federated_map(
           tensorflow_computation.tf_computation(
-              lambda x: tf.nest.map_structure(lambda y: y + 1, x)),
-          intrinsics.federated_sum(value))
-      measurements = intrinsics.federated_value(MEASUREMENT_CONSTANT,
-                                                placements.SERVER)
+              lambda x: tf.nest.map_structure(lambda y: y + 1, x)
+          ),
+          intrinsics.federated_sum(value),
+      )
+      measurements = intrinsics.federated_value(
+          MEASUREMENT_CONSTANT, placements.SERVER
+      )
       return measured_process.MeasuredProcessOutput(state, result, measurements)
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)

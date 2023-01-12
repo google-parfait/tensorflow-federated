@@ -48,18 +48,23 @@ COUNT_TF_TYPE = tf.int32
 def _constant_process(value):
   """Creates an `EstimationProcess` that reports a constant value."""
   init_fn = federated_computation.federated_computation(
-      lambda: intrinsics.federated_value((), placements.SERVER))
+      lambda: intrinsics.federated_value((), placements.SERVER)
+  )
   next_fn = federated_computation.federated_computation(
-      lambda state, value: state, init_fn.type_signature.result,
-      computation_types.at_clients(NORM_TF_TYPE))
+      lambda state, value: state,
+      init_fn.type_signature.result,
+      computation_types.at_clients(NORM_TF_TYPE),
+  )
   report_fn = federated_computation.federated_computation(
       lambda state: intrinsics.federated_value(value, placements.SERVER),
-      init_fn.type_signature.result)
+      init_fn.type_signature.result,
+  )
   return estimation_process.EstimationProcess(init_fn, next_fn, report_fn)
 
 
-def _check_norm_process(norm_process: estimation_process.EstimationProcess,
-                        name: str):
+def _check_norm_process(
+    norm_process: estimation_process.EstimationProcess, name: str
+):
   """Checks type properties for norm_process.
 
   The norm_process must be an `EstimationProcess` with `next` function of type
@@ -75,33 +80,41 @@ def _check_norm_process(norm_process: estimation_process.EstimationProcess,
 
   next_parameter_type = norm_process.next.type_signature.parameter
   if not next_parameter_type.is_struct() or len(next_parameter_type) != 2:
-    raise TypeError(f'`{name}.next` must take two arguments but found:\n'
-                    f'{next_parameter_type}')
+    raise TypeError(
+        f'`{name}.next` must take two arguments but found:\n'
+        f'{next_parameter_type}'
+    )
 
   norm_type_at_clients = computation_types.at_clients(NORM_TF_TYPE)
   if not next_parameter_type[1].is_assignable_from(norm_type_at_clients):
     raise TypeError(
         f'Second argument of `{name}.next` must be assignable from '
-        f'{norm_type_at_clients} but found {next_parameter_type[1]}')
+        f'{norm_type_at_clients} but found {next_parameter_type[1]}'
+    )
 
   next_result_type = norm_process.next.type_signature.result
   if not norm_process.state_type.is_assignable_from(next_result_type):
-    raise TypeError(f'Result type of `{name}.next` must consist of state only '
-                    f'but found result type:\n{next_result_type}\n'
-                    f'while the state type is:\n{norm_process.state_type}')
+    raise TypeError(
+        f'Result type of `{name}.next` must consist of state only '
+        f'but found result type:\n{next_result_type}\n'
+        f'while the state type is:\n{norm_process.state_type}'
+    )
 
   result_type = norm_process.report.type_signature.result
   norm_type_at_server = computation_types.at_server(NORM_TF_TYPE)
   if not norm_type_at_server.is_assignable_from(result_type):
-    raise TypeError(f'Result type of `{name}.report` must be assignable to '
-                    f'{norm_type_at_server} but found {result_type}.')
+    raise TypeError(
+        f'Result type of `{name}.report` must be assignable to '
+        f'{norm_type_at_server} but found {result_type}.'
+    )
 
 
 def clipping_factory(
     clipping_norm: Union[float, estimation_process.EstimationProcess],
     inner_agg_factory: factory.AggregationFactory,
     clipped_count_sum_factory: Optional[
-        factory.UnweightedAggregationFactory] = None,
+        factory.UnweightedAggregationFactory
+    ] = None,
 ) -> factory.AggregationFactory:
   """Creates an aggregation factory to perform L2 clipping.
 
@@ -148,11 +161,11 @@ def clipping_factory(
 
   if clipped_count_sum_factory is None:
     clipped_count_sum_factory = sum_factory.SumFactory()
-  py_typecheck.check_type(clipped_count_sum_factory,
-                          factory.UnweightedAggregationFactory)
+  py_typecheck.check_type(
+      clipped_count_sum_factory, factory.UnweightedAggregationFactory
+  )
 
   def make_clip_fn(value_type):
-
     @tensorflow_computation.tf_computation(value_type, NORM_TF_TYPE)
     def clip_fn(value, clipping_norm):
       clipped_value, global_norm = _clip_by_global_l2_norm(value, clipping_norm)
@@ -161,8 +174,13 @@ def clipping_factory(
 
     return clip_fn
 
-  return _make_wrapper(clipping_norm, inner_agg_factory,
-                       clipped_count_sum_factory, make_clip_fn, 'clipp')
+  return _make_wrapper(
+      clipping_norm,
+      inner_agg_factory,
+      clipped_count_sum_factory,
+      make_clip_fn,
+      'clipp',
+  )
 
 
 def zeroing_factory(
@@ -170,7 +188,8 @@ def zeroing_factory(
     inner_agg_factory: factory.AggregationFactory,
     norm_order: float = math.inf,
     zeroed_count_sum_factory: Optional[
-        factory.UnweightedAggregationFactory] = None
+        factory.UnweightedAggregationFactory
+    ] = None,
 ) -> factory.AggregationFactory:
   """Creates an aggregation factory to perform zeroing.
 
@@ -221,8 +240,9 @@ def zeroing_factory(
 
   if zeroed_count_sum_factory is None:
     zeroed_count_sum_factory = sum_factory.SumFactory()
-  py_typecheck.check_type(zeroed_count_sum_factory,
-                          factory.UnweightedAggregationFactory)
+  py_typecheck.check_type(
+      zeroed_count_sum_factory, factory.UnweightedAggregationFactory
+  )
   py_typecheck.check_type(norm_order, float)
   if not (norm_order in [1.0, 2.0] or math.isinf(norm_order)):
     raise ValueError('norm_order must be 1.0, 2.0 or infinity')
@@ -239,17 +259,24 @@ def zeroing_factory(
       else:
         assert math.isinf(norm_order)
         global_norm = _global_inf_norm(value)
-      should_zero = (global_norm > zeroing_norm)
+      should_zero = global_norm > zeroing_norm
       zeroed_value = tf.cond(
-          should_zero, lambda: tf.nest.map_structure(tf.zeros_like, value),
-          lambda: value)
+          should_zero,
+          lambda: tf.nest.map_structure(tf.zeros_like, value),
+          lambda: value,
+      )
       was_zeroed = tf.cast(should_zero, COUNT_TF_TYPE)
       return zeroed_value, global_norm, was_zeroed
 
     return zero_fn
 
-  return _make_wrapper(zeroing_norm, inner_agg_factory,
-                       zeroed_count_sum_factory, make_zero_fn, 'zero')
+  return _make_wrapper(
+      zeroing_norm,
+      inner_agg_factory,
+      zeroed_count_sum_factory,
+      make_zero_fn,
+      'zero',
+  )
 
 
 def _make_wrapper(
@@ -257,7 +284,8 @@ def _make_wrapper(
     inner_agg_factory: factory.AggregationFactory,
     clipped_count_sum_factory: factory.UnweightedAggregationFactory,
     make_clip_fn: Callable[[factory.ValueType], computation_base.Computation],
-    attribute_prefix: str) -> factory.AggregationFactory:
+    attribute_prefix: str,
+) -> factory.AggregationFactory:
   """Constructs an aggregation factory that applies clip_fn before aggregation.
 
   Args:
@@ -275,13 +303,19 @@ def _make_wrapper(
   Returns:
     An aggregation factory that applies clip_fn before aggregation.
   """
-  py_typecheck.check_type(inner_agg_factory,
-                          (factory.UnweightedAggregationFactory,
-                           factory.WeightedAggregationFactory))
-  py_typecheck.check_type(clipped_count_sum_factory,
-                          factory.UnweightedAggregationFactory)
-  py_typecheck.check_type(clipping_norm,
-                          (float, estimation_process.EstimationProcess))
+  py_typecheck.check_type(
+      inner_agg_factory,
+      (
+          factory.UnweightedAggregationFactory,
+          factory.WeightedAggregationFactory,
+      ),
+  )
+  py_typecheck.check_type(
+      clipped_count_sum_factory, factory.UnweightedAggregationFactory
+  )
+  py_typecheck.check_type(
+      clipping_norm, (float, estimation_process.EstimationProcess)
+  )
   if isinstance(clipping_norm, float):
     clipping_norm_process = _constant_process(clipping_norm)
   else:
@@ -289,7 +323,8 @@ def _make_wrapper(
   _check_norm_process(clipping_norm_process, 'clipping_norm_process')
 
   clipped_count_agg_process = clipped_count_sum_factory.create(
-      computation_types.to_type(COUNT_TF_TYPE))
+      computation_types.to_type(COUNT_TF_TYPE)
+  )
 
   prefix = lambda s: attribute_prefix + s
 
@@ -297,7 +332,7 @@ def _make_wrapper(
     state = collections.OrderedDict([
         (prefix('ing_norm'), clipping_norm_process.initialize()),
         ('inner_agg', inner_agg_process.initialize()),
-        (prefix('ed_count_agg'), clipped_count_agg_process.initialize())
+        (prefix('ed_count_agg'), clipped_count_agg_process.initialize()),
     ])
     return intrinsics.federated_zip(state)
 
@@ -309,10 +344,12 @@ def _make_wrapper(
     clients_clipping_norm = intrinsics.federated_broadcast(clipping_norm)
 
     clipped_value, global_norm, was_clipped = intrinsics.federated_map(
-        clip_fn, (value, clients_clipping_norm))
+        clip_fn, (value, clients_clipping_norm)
+    )
 
     new_clipping_norm_state = clipping_norm_process.next(
-        clipping_norm_state, global_norm)
+        clipping_norm_state, global_norm
+    )
 
     if weight is None:
       agg_output = inner_agg_process.next(agg_state, clipped_value)
@@ -320,23 +357,25 @@ def _make_wrapper(
       agg_output = inner_agg_process.next(agg_state, clipped_value, weight)
 
     clipped_count_output = clipped_count_agg_process.next(
-        clipped_count_state, was_clipped)
+        clipped_count_state, was_clipped
+    )
 
     new_state = collections.OrderedDict([
         (prefix('ing_norm'), new_clipping_norm_state),
         ('inner_agg', agg_output.state),
-        (prefix('ed_count_agg'), clipped_count_output.state)
+        (prefix('ed_count_agg'), clipped_count_output.state),
     ])
     measurements = collections.OrderedDict([
         (prefix('ing'), agg_output.measurements),
         (prefix('ing_norm'), clipping_norm),
-        (prefix('ed_count'), clipped_count_output.result)
+        (prefix('ed_count'), clipped_count_output.result),
     ])
 
     return measured_process.MeasuredProcessOutput(
         state=intrinsics.federated_zip(new_state),
         result=agg_output.result,
-        measurements=intrinsics.federated_zip(measurements))
+        measurements=intrinsics.federated_zip(measurements),
+    )
 
   if isinstance(inner_agg_factory, factory.WeightedAggregationFactory):
 
@@ -360,7 +399,8 @@ def _make_wrapper(
         @federated_computation.federated_computation(
             init_fn.type_signature.result,
             computation_types.at_clients(value_type),
-            computation_types.at_clients(weight_type))
+            computation_types.at_clients(weight_type),
+        )
         def next_fn(state, value, weight):
           return next_fn_impl(state, value, clip_fn, inner_agg_process, weight)
 
@@ -386,7 +426,8 @@ def _make_wrapper(
 
         @federated_computation.federated_computation(
             init_fn.type_signature.result,
-            computation_types.at_clients(value_type))
+            computation_types.at_clients(value_type),
+        )
         def next_fn(state, value):
           return next_fn_impl(state, value, clip_fn, inner_agg_process)
 
@@ -399,8 +440,10 @@ def _check_value_type(value_type):
   type_args = typing.get_args(factory.ValueType)
   py_typecheck.check_type(value_type, type_args)
   if not type_analysis.is_structure_of_floats(value_type):
-    raise TypeError(f'All values in provided value_type must be of floating '
-                    f'dtype. Provided value_type: {value_type}')
+    raise TypeError(
+        'All values in provided value_type must be of floating '
+        f'dtype. Provided value_type: {value_type}'
+    )
 
 
 def _global_inf_norm(l):
@@ -412,7 +455,7 @@ def _global_inf_norm(l):
 
 def _global_l2_norm(l):
   norms_squared = [
-      tf.cast(tf.norm(a, ord=2)**2, tf.float32) for a in tf.nest.flatten(l)
+      tf.cast(tf.norm(a, ord=2) ** 2, tf.float32) for a in tf.nest.flatten(l)
   ]
   return tf.math.sqrt(tf.reduce_sum(tf.stack(norms_squared)))
 
@@ -428,7 +471,8 @@ def _clip_by_global_l2_norm(value, clip_norm):
   clipped_value = tf.cond(
       tf.math.greater(global_norm, clip_norm),
       lambda: _do_clip_by_global_l2_norm(value, clip_norm, global_norm),
-      lambda: value)
+      lambda: value,
+  )
   return clipped_value, global_norm
 
 

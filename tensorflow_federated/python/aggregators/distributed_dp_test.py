@@ -38,24 +38,24 @@ from tensorflow_federated.python.core.test import static_assert
 
 _test_struct_type = [(tf.float32, (2, 2)), tf.float32]
 _test_nested_struct_type = collections.OrderedDict(
-    a=[tf.float32, [(tf.float32, (2, 2, 1))]], b=(tf.float32, (3,)))
+    a=[tf.float32, [(tf.float32, (2, 2, 1))]], b=(tf.float32, (3,))
+)
 
 
 def _make_test_nested_struct(value):
   return collections.OrderedDict(
       a=[
           tf.constant(value, dtype=tf.float32),
-          [tf.constant(value, dtype=tf.float32, shape=[2, 2, 1])]
+          [tf.constant(value, dtype=tf.float32, shape=[2, 2, 1])],
       ],
-      b=tf.constant(value, dtype=tf.float32, shape=(3,)))
+      b=tf.constant(value, dtype=tf.float32, shape=(3,)),
+  )
 
 
 def _make_test_factory(**new_kwargs):
   kwargs = dict(
-      noise_multiplier=0.5,
-      expected_clients_per_round=100,
-      bits=16,
-      l2_clip=0.1)
+      noise_multiplier=0.5, expected_clients_per_round=100, bits=16, l2_clip=0.1
+  )
   kwargs.update(new_kwargs)
   return distributed_dp.DistributedDpSumFactory(**kwargs)
 
@@ -87,8 +87,9 @@ def _run_query(query, records, global_state=None, weights=None):
       sample_state = query.accumulate_record(params, sample_state, record)
   else:
     for weight, record in zip(weights, records):
-      sample_state = query.accumulate_record(params, sample_state, record,
-                                             weight)
+      sample_state = query.accumulate_record(
+          params, sample_state, record, weight
+      )
   result, global_state, _ = query.get_noised_result(sample_state, global_state)
   return result, global_state
 
@@ -118,11 +119,14 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
               'value_type_1': tf.int64,
               'value_type_2': tf.float32,
               'value_type_3': _test_struct_type,
-              'value_type_4': _test_nested_struct_type
-          }, {
+              'value_type_4': _test_nested_struct_type,
+          },
+          {
               'mechanism_1': 'distributed_dgauss',
-              'mechanism_2': 'distributed_skellam'
-          }))
+              'mechanism_2': 'distributed_skellam',
+          },
+      )
+  )
   def test_type_properties(self, value_type, mechanism):
     ddp_factory = _make_test_factory(mechanism=mechanism)
     self.assertIsInstance(ddp_factory, factory.UnweightedAggregationFactory)
@@ -136,15 +140,18 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     if mechanism == 'distributed_dgauss':
       dp_query = tfp.DistributedDiscreteGaussianSumQuery(
-          l2_norm_bound=10.0, local_stddev=10.0)
+          l2_norm_bound=10.0, local_stddev=10.0
+      )
     else:
       dp_query = tfp.DistributedSkellamSumQuery(
-          l1_norm_bound=10.0, l2_norm_bound=10.0, local_stddev=10.0)
+          l1_norm_bound=10.0, l2_norm_bound=10.0, local_stddev=10.0
+      )
 
     dp_f = differential_privacy.DifferentiallyPrivateFactory(dp_query, modsum_f)
     discrete_f = discretization.DiscretizationFactory(dp_f)
     l2clip_f = robust.clipping_factory(
-        clipping_norm=10.0, inner_agg_factory=discrete_f)
+        clipping_norm=10.0, inner_agg_factory=discrete_f
+    )
     rot_f = rotation.HadamardTransformFactory(inner_agg_factory=l2clip_f)
     expected_process = concat.concat_factory(rot_f).create(value_type)
 
@@ -156,8 +163,9 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     # Check next_fn/measurements.
     tensor2type = type_conversions.type_from_tensors
-    discrete_state = discrete_f.create(computation_types.to_type(
-        tf.float32)).initialize()
+    discrete_state = discrete_f.create(
+        computation_types.to_type(tf.float32)
+    ).initialize()
     dp_query_state = dp_query.initial_global_state()
     dp_query_metrics_type = tensor2type(dp_query.derive_metrics(dp_query_state))
     expected_measurements_type = collections.OrderedDict(
@@ -167,124 +175,165 @@ class DistributedDpComputationTest(tf.test.TestCase, parameterized.TestCase):
         scaled_local_stddev=tensor2type(dp_query_state.local_stddev),
         actual_num_clients=tf.int32,
         padded_dim=tf.int32,
-        dp_query_metrics=dp_query_metrics_type)
+        dp_query_metrics=dp_query_metrics_type,
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=expected_state_type,
-            value=computation_types.at_clients(value_type)),
+            value=computation_types.at_clients(value_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=expected_state_type,
             result=computation_types.at_server(value_type),
             measurements=computation_types.at_server(
-                expected_measurements_type)))
+                expected_measurements_type
+            ),
+        ),
+    )
     actual_next_type = process.next.type_signature
     self.assertTrue(actual_next_type.is_equivalent_to(expected_next_type))
     try:
       static_assert.assert_not_contains_unsecure_aggregation(process.next)
     except:  # pylint: disable=bare-except
-      self.fail('Factory returned an AggregationProcess containing '
-                'non-secure aggregation.')
+      self.fail(
+          'Factory returned an AggregationProcess containing '
+          'non-secure aggregation.'
+      )
 
-  @parameterized.named_parameters(('negative', -1, ValueError),
-                                  ('string', 'string', TypeError),
-                                  ('array', np.array([1.0]), TypeError))
+  @parameterized.named_parameters(
+      ('negative', -1, ValueError),
+      ('string', 'string', TypeError),
+      ('array', np.array([1.0]), TypeError),
+  )
   def test_noise_mult_raise_on(self, noise_mult, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(noise_multiplier=noise_mult)
 
   @parameterized.named_parameters(
-      ('negative', -1, ValueError), ('zero', 0, ValueError),
-      ('float', 3.14, TypeError), ('string', 'string', TypeError),
-      ('array', np.array([1, 2]), TypeError))
+      ('negative', -1, ValueError),
+      ('zero', 0, ValueError),
+      ('float', 3.14, TypeError),
+      ('string', 'string', TypeError),
+      ('array', np.array([1, 2]), TypeError),
+  )
   def test_num_clients_raise_on(self, num_clients, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(expected_clients_per_round=num_clients)
 
   @parameterized.named_parameters(
-      ('negative', -1, ValueError), ('zero', 0, ValueError),
-      ('float', 3.14, TypeError), ('large', 25, ValueError),
-      ('string', 'string', TypeError), ('array', np.array([1, 2]), TypeError))
+      ('negative', -1, ValueError),
+      ('zero', 0, ValueError),
+      ('float', 3.14, TypeError),
+      ('large', 25, ValueError),
+      ('string', 'string', TypeError),
+      ('array', np.array([1, 2]), TypeError),
+  )
   def test_bits_raise_on(self, bits, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(bits=bits)
 
   @parameterized.named_parameters(
-      ('negative', -1.0, ValueError), ('zero', 0.0, ValueError),
-      ('string', 'string', TypeError), ('array', np.array([1, 2]), TypeError))
+      ('negative', -1.0, ValueError),
+      ('zero', 0.0, ValueError),
+      ('string', 'string', TypeError),
+      ('array', np.array([1, 2]), TypeError),
+  )
   def test_l2_clip_raise_on(self, l2_clip, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(l2_clip=l2_clip)
 
   @parameterized.named_parameters(
-      ('negative', -1, ValueError), ('zero', 0, ValueError),
-      ('one', 1, ValueError), ('string', 'string', TypeError),
-      ('array', np.array([1, 2]), TypeError))
+      ('negative', -1, ValueError),
+      ('zero', 0, ValueError),
+      ('one', 1, ValueError),
+      ('string', 'string', TypeError),
+      ('array', np.array([1, 2]), TypeError),
+  )
   def test_modclip_prob_raise_on(self, modclip_prob, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(modclip_prob=modclip_prob)
 
   @parameterized.named_parameters(
-      ('negative', -1, ValueError), ('one', 1, ValueError),
-      ('string', 'string', TypeError), ('array', np.array([1, 2]), TypeError))
+      ('negative', -1, ValueError),
+      ('one', 1, ValueError),
+      ('string', 'string', TypeError),
+      ('array', np.array([1, 2]), TypeError),
+  )
   def test_beta_raise_on(self, beta, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(beta=beta)
 
-  @parameterized.named_parameters(('int', -1, TypeError),
-                                  ('invalid_option', 'gaussian', ValueError),
-                                  ('struct', ['distributed_dgauss'], TypeError))
+  @parameterized.named_parameters(
+      ('int', -1, TypeError),
+      ('invalid_option', 'gaussian', ValueError),
+      ('struct', ['distributed_dgauss'], TypeError),
+  )
   def test_mechanism_raise_on(self, mechanism, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(mechanism=mechanism)
 
-  @parameterized.named_parameters(('int', -1, TypeError),
-                                  ('invalid_option', 'my_flat', ValueError),
-                                  ('struct', ['hd'], TypeError))
+  @parameterized.named_parameters(
+      ('int', -1, TypeError),
+      ('invalid_option', 'my_flat', ValueError),
+      ('struct', ['hd'], TypeError),
+  )
   def test_rotation_type_raise_on(self, rotation_type, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(rotation_type=rotation_type)
 
-  @parameterized.named_parameters(('int', -1, TypeError),
-                                  ('string', 'string', TypeError),
-                                  ('struct', [True], TypeError))
+  @parameterized.named_parameters(
+      ('int', -1, TypeError),
+      ('string', 'string', TypeError),
+      ('struct', [True], TypeError),
+  )
   def test_auto_l2_clip_raise_on(self, auto_l2_clip, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(auto_l2_clip=auto_l2_clip)
 
-  @parameterized.named_parameters(('string', 'string', TypeError),
-                                  ('too_large', 1.1, ValueError),
-                                  ('too_small', -0.1, ValueError))
+  @parameterized.named_parameters(
+      ('string', 'string', TypeError),
+      ('too_large', 1.1, ValueError),
+      ('too_small', -0.1, ValueError),
+  )
   def test_auto_l2_target_quantile_raise_on(self, quantile, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(
-          auto_l2_clip=True, auto_l2_target_quantile=quantile)
+          auto_l2_clip=True, auto_l2_target_quantile=quantile
+      )
 
-  @parameterized.named_parameters(('string', 'string', TypeError),
-                                  ('zero', 0, ValueError))
+  @parameterized.named_parameters(
+      ('string', 'string', TypeError), ('zero', 0, ValueError)
+  )
   def test_auto_l2_lr_raise_on(self, learning_rate, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(auto_l2_clip=True, auto_l2_lr=learning_rate)
 
-  @parameterized.named_parameters(('string', 'string', TypeError),
-                                  ('negative', -1, ValueError))
+  @parameterized.named_parameters(
+      ('string', 'string', TypeError), ('negative', -1, ValueError)
+  )
   def test_auto_l2_clip_count_stddev_raise_on(self, stddev, error_type):
     with self.assertRaises(error_type):
       _ = _make_test_factory(
-          auto_l2_clip=True, auto_l2_clip_count_stddev=stddev)
+          auto_l2_clip=True, auto_l2_clip_count_stddev=stddev
+      )
 
   @parameterized.named_parameters(
       ('plain_struct', [('a', tf.int32)]),
       ('sequence', computation_types.SequenceType(tf.int32)),
       ('function', computation_types.FunctionType(tf.int32, tf.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]))
+      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]),
+  )
   def test_tff_value_types_raise_on(self, value_type):
     ddp_factory = _make_test_factory()
     value_type = computation_types.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'Expected `value_type` to be'):
       ddp_factory.create(value_type)
 
-  @parameterized.named_parameters(('bool', tf.bool), ('string', tf.string),
-                                  ('string_nested', [tf.string, [tf.string]]))
+  @parameterized.named_parameters(
+      ('bool', tf.bool),
+      ('string', tf.string),
+      ('string_nested', [tf.string, [tf.string]]),
+  )
   def test_component_tensor_dtypes_raise_on(self, value_type):
     test_factory = _make_test_factory()
     value_type = computation_types.to_type(value_type)
@@ -301,33 +350,57 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_auto_l2_builds_estimation_process(self):
     test_factory = _make_test_factory(auto_l2_clip=True)
-    self.assertIsInstance(test_factory._l2_clip,
-                          estimation_process.EstimationProcess)
+    self.assertIsInstance(
+        test_factory._l2_clip, estimation_process.EstimationProcess
+    )
 
   @parameterized.named_parameters(
-      ('set_1', 'scalar', tf.float32, [-1., 2., 3.], 4., 'hd'),
-      ('set_2', 'scalar', tf.float32, [-1., 2., 3.], 4., 'dft'),
-      ('set_3', 'rank_2',
-       (tf.float32, [2, 2]), [[[1., 2.], [1., 2.]], [[2., 1.], [2., 1.]]
-                             ], [[3., 3.], [3., 3.]], 'hd'),
-      ('set_4', 'rank_2',
-       (tf.float32, [2, 2]), [[[1., 2.], [1., 2.]], [[2., 1.], [2., 1.]]
-                             ], [[3., 3.], [3., 3.]], 'dft'),
-      ('set_5', 'struct', _test_nested_struct_type,
-       [_make_test_nested_struct(-1),
-        _make_test_nested_struct(-2)], _make_test_nested_struct(-3), 'hd'),
-      ('set_6', 'struct', _test_nested_struct_type,
-       [_make_test_nested_struct(-1),
-        _make_test_nested_struct(-2)], _make_test_nested_struct(-3), 'dft'))
-  def test_sum(self, name, value_type, client_values, expected_sum,
-               rotation_type):
+      ('set_1', 'scalar', tf.float32, [-1.0, 2.0, 3.0], 4.0, 'hd'),
+      ('set_2', 'scalar', tf.float32, [-1.0, 2.0, 3.0], 4.0, 'dft'),
+      (
+          'set_3',
+          'rank_2',
+          (tf.float32, [2, 2]),
+          [[[1.0, 2.0], [1.0, 2.0]], [[2.0, 1.0], [2.0, 1.0]]],
+          [[3.0, 3.0], [3.0, 3.0]],
+          'hd',
+      ),
+      (
+          'set_4',
+          'rank_2',
+          (tf.float32, [2, 2]),
+          [[[1.0, 2.0], [1.0, 2.0]], [[2.0, 1.0], [2.0, 1.0]]],
+          [[3.0, 3.0], [3.0, 3.0]],
+          'dft',
+      ),
+      (
+          'set_5',
+          'struct',
+          _test_nested_struct_type,
+          [_make_test_nested_struct(-1), _make_test_nested_struct(-2)],
+          _make_test_nested_struct(-3),
+          'hd',
+      ),
+      (
+          'set_6',
+          'struct',
+          _test_nested_struct_type,
+          [_make_test_nested_struct(-1), _make_test_nested_struct(-2)],
+          _make_test_nested_struct(-3),
+          'dft',
+      ),
+  )
+  def test_sum(
+      self, name, value_type, client_values, expected_sum, rotation_type
+  ):
     del name  # Unused.
     ddp_factory = _make_test_factory(
         noise_multiplier=0,
         expected_clients_per_round=len(client_values),
         rotation_type=rotation_type,
         bits=20,
-        l2_clip=10.0)
+        l2_clip=10.0,
+    )
     process = ddp_factory.create(computation_types.to_type(value_type))
     state = process.initialize()
     for _ in range(2):
@@ -340,11 +413,11 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
       _named_test_cases_product(
           {
               'mechanism_1': 'distributed_dgauss',
-              'mechanism_2': 'distributed_skellam'
-          }, {
-              'rotation_type_1': 'hd',
-              'rotation_type_2': 'dft'
-          }))
+              'mechanism_2': 'distributed_skellam',
+          },
+          {'rotation_type_1': 'hd', 'rotation_type_2': 'dft'},
+      )
+  )
   def test_auto_tuning(self, mechanism, rotation_type):
     initial_clip = 1.0
     ddp_factory = _make_test_factory(
@@ -358,7 +431,8 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
         auto_l2_clip=True,
         auto_l2_target_quantile=1.0,
         auto_l2_lr=1.0,
-        auto_l2_clip_count_stddev=0.0)
+        auto_l2_clip_count_stddev=0.0,
+    )
 
     dim = 99
     padded_dim = 100.0 if rotation_type == 'dft' else 128.0
@@ -394,8 +468,9 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
     if mechanism == 'distributed_skellam':
       new_scaled_inflated_l1 = dp_state.query_state.l1_norm_bound
       expected_l1 = tf.math.ceil(
-          new_scaled_inflated_l2 *
-          tf.minimum(new_scaled_inflated_l2, tf.sqrt(padded_dim)))
+          new_scaled_inflated_l2
+          * tf.minimum(new_scaled_inflated_l2, tf.sqrt(padded_dim))
+      )
       self.assertAllClose(expected_l1, new_scaled_inflated_l1, atol=0)
 
     # Check sum with new clipping.
@@ -422,7 +497,8 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
         learning_rate=1.0,
         below_estimate_stddev=0.0,
         expected_num_records=2,
-        geometric_update=True)
+        geometric_update=True,
+    )
 
     expected_qe_query = tfp.QuantileEstimatorQuery(**qe_query_args)
     mocked_qe_query = tfp.QuantileEstimatorQuery(**qe_query_args)
@@ -432,14 +508,17 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
       output = expected_qe_query.preprocess_record(params, record)
       # Assertion would fail if the value range shift is changed.
       is_shifted_by_half = tf.logical_or(
-          tf.equal(output, 0.5), tf.equal(output, -0.5))
+          tf.equal(output, 0.5), tf.equal(output, -0.5)
+      )
       with tf.control_dependencies(
-          [tf.debugging.assert_equal(is_shifted_by_half, True)]):
+          [tf.debugging.assert_equal(is_shifted_by_half, True)]
+      ):
         return tf.identity(output)
 
     # Replace the instance method with one that wrapped with assertions.
     mocked_qe_query.preprocess_record = types.MethodType(
-        mocked_prep_record, expected_qe_query)
+        mocked_prep_record, expected_qe_query
+    )
 
     global_state = mocked_qe_query.initial_global_state()
 
@@ -450,11 +529,13 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
     try:
       _run_query(mocked_qe_query, [record1, record2], global_state)
     except tf.errors.InvalidArgumentError:
-      self.fail('Output record of `tfp.QuantileEstimatorQuery` is not '
-                '+0.5/-0.5.')
+      self.fail(
+          'Output record of `tfp.QuantileEstimatorQuery` is not +0.5/-0.5.'
+      )
 
-  @parameterized.named_parameters(('ddgauss', 'distributed_dgauss'),
-                                  ('dskellam', 'distributed_skellam'))
+  @parameterized.named_parameters(
+      ('ddgauss', 'distributed_dgauss'), ('dskellam', 'distributed_skellam')
+  )
   def test_noisy_sum(self, mechanism):
     # We only do a rough test to show that noise is indeed added as repeated
     # runs of the nested aggregator is expensive.
@@ -468,7 +549,8 @@ class DistributedDpExecutionTest(tf.test.TestCase, parameterized.TestCase):
         noise_multiplier=noise_mult,
         expected_clients_per_round=len(client_values),
         bits=20,
-        mechanism=mechanism)
+        mechanism=mechanism,
+    )
     process = ddp_factory.create(computation_types.to_type(tf.float32))
     state = process.initialize()
     outputs = []

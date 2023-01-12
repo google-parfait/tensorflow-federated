@@ -69,22 +69,26 @@ class AddMeasurementsTest(tf.test.TestCase):
     unweighted_factory = sum_factory.SumFactory()
     with self.assertRaisesRegex(ValueError, 'single parameter'):
       measurements.add_measurements(
-          unweighted_factory, client_measurement_fn=_get_min_weighted_norm)
+          unweighted_factory, client_measurement_fn=_get_min_weighted_norm
+      )
 
     with self.assertRaisesRegex(ValueError, 'single parameter'):
       measurements.add_measurements(
-          unweighted_factory, server_measurement_fn=_get_min_weighted_norm)
+          unweighted_factory, server_measurement_fn=_get_min_weighted_norm
+      )
 
     weighted_factory = mean.MeanFactory()
     with self.assertRaisesRegex(ValueError, 'two parameters'):
       measurements.add_measurements(
-          weighted_factory, client_measurement_fn=_get_min_norm)
+          weighted_factory, client_measurement_fn=_get_min_norm
+      )
 
   def test_unweighted_client(self):
     factory = sum_factory.SumFactory()
 
     factory = measurements.add_measurements(
-        factory, client_measurement_fn=_get_min_norm)
+        factory, client_measurement_fn=_get_min_norm
+    )
     process = factory.create(_struct_type)
 
     state = process.initialize()
@@ -92,13 +96,15 @@ class AddMeasurementsTest(tf.test.TestCase):
     output = process.next(state, client_data)
     self.assertAllClose(_make_struct(6.0), output.result)
     self.assertDictEqual(
-        collections.OrderedDict(min_norm=2.0), output.measurements)
+        collections.OrderedDict(min_norm=2.0), output.measurements
+    )
 
   def test_weighted_client(self):
     factory = mean.MeanFactory()
 
     factory = measurements.add_measurements(
-        factory, client_measurement_fn=_get_min_weighted_norm)
+        factory, client_measurement_fn=_get_min_weighted_norm
+    )
     process = factory.create(_struct_type, _float_type)
 
     state = process.initialize()
@@ -108,14 +114,17 @@ class AddMeasurementsTest(tf.test.TestCase):
     self.assertAllClose(_make_struct(11 / 6), output.result)
     self.assertDictEqual(
         collections.OrderedDict(
-            mean_value=(), mean_weight=(), min_weighted_norm=4.0),
-        output.measurements)
+            mean_value=(), mean_weight=(), min_weighted_norm=4.0
+        ),
+        output.measurements,
+    )
 
   def test_server(self):
     factory = sum_factory.SumFactory()
 
     factory = measurements.add_measurements(
-        factory, server_measurement_fn=_get_server_norm)
+        factory, server_measurement_fn=_get_server_norm
+    )
     process = factory.create(_struct_type)
 
     state = process.initialize()
@@ -123,7 +132,8 @@ class AddMeasurementsTest(tf.test.TestCase):
     output = process.next(state, client_data)
     self.assertAllClose(_make_struct(6.0), output.result)
     self.assertDictEqual(
-        collections.OrderedDict(server_norm=12.0), output.measurements)
+        collections.OrderedDict(server_norm=12.0), output.measurements
+    )
 
   def test_unweighted_client_and_server(self):
     factory = sum_factory.SumFactory()
@@ -131,7 +141,8 @@ class AddMeasurementsTest(tf.test.TestCase):
     factory = measurements.add_measurements(
         factory,
         client_measurement_fn=_get_min_norm,
-        server_measurement_fn=_get_server_norm)
+        server_measurement_fn=_get_server_norm,
+    )
     process = factory.create(_struct_type)
 
     state = process.initialize()
@@ -140,7 +151,8 @@ class AddMeasurementsTest(tf.test.TestCase):
     self.assertAllClose(_make_struct(6.0), output.result)
     self.assertDictEqual(
         collections.OrderedDict(min_norm=2.0, server_norm=12.0),
-        output.measurements)
+        output.measurements,
+    )
 
   def test_weighted_client_and_server(self):
     factory = mean.MeanFactory()
@@ -148,7 +160,8 @@ class AddMeasurementsTest(tf.test.TestCase):
     factory = measurements.add_measurements(
         factory,
         client_measurement_fn=_get_min_weighted_norm,
-        server_measurement_fn=_get_server_norm)
+        server_measurement_fn=_get_server_norm,
+    )
     process = factory.create(_struct_type, _float_type)
 
     state = process.initialize()
@@ -161,7 +174,10 @@ class AddMeasurementsTest(tf.test.TestCase):
             mean_value=(),
             mean_weight=(),
             min_weighted_norm=4.0,
-            server_norm=11 / 3), output.measurements)
+            server_norm=11 / 3,
+        ),
+        output.measurements,
+    )
 
 
 if __name__ == '__main__':

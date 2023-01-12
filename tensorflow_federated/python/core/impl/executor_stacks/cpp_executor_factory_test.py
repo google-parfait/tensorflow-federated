@@ -15,19 +15,13 @@
 from absl.testing import absltest
 
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.types import placements
 
 
 class CPPExecutorFactoryTest(absltest.TestCase):
-
-  def _assert_cpp_executor_interface(self, executor):
-    self.assertTrue(hasattr(executor, 'create_value'))
-    self.assertTrue(hasattr(executor, 'create_struct'))
-    self.assertTrue(hasattr(executor, 'create_selection'))
-    self.assertTrue(hasattr(executor, 'create_call'))
-    self.assertTrue(hasattr(executor, 'materialize'))
 
   def test_create_local_cpp_factory_constructs(self):
     local_cpp_factory = cpp_executor_factory.local_cpp_executor_factory(
@@ -40,7 +34,7 @@ class CPPExecutorFactoryTest(absltest.TestCase):
     cardinalities = {placements.CLIENTS: 1}
     local_cpp_factory.create_executor(cardinalities)
     for executor in local_cpp_factory._executors.values():
-      self._assert_cpp_executor_interface(executor)
+      self.assertIsInstance(executor, executor_base.Executor)
     local_cpp_factory.clean_up_executor(cardinalities)
     self.assertEmpty(local_cpp_factory._executors)
 
@@ -49,7 +43,7 @@ class CPPExecutorFactoryTest(absltest.TestCase):
         default_num_clients=0)
     self.assertIsInstance(local_cpp_factory, executor_factory.ExecutorFactory)
     executor = local_cpp_factory.create_executor({placements.CLIENTS: 1})
-    self._assert_cpp_executor_interface(executor)
+    self.assertIsInstance(executor, executor_base.Executor)
 
   def test_create_remote_cpp_factory_constructs(self):
     targets = ['localhost:8000', 'localhost:8001']

@@ -36,9 +36,9 @@ def _make_test_struct_value(x):
 
 
 def _test_factory(clip_lower=-2, clip_upper=2, estimate_stddev=False):
-  return modular_clipping.ModularClippingSumFactory(clip_lower, clip_upper,
-                                                    sum_factory.SumFactory(),
-                                                    estimate_stddev)
+  return modular_clipping.ModularClippingSumFactory(
+      clip_lower, clip_upper, sum_factory.SumFactory(), estimate_stddev
+  )
 
 
 def _named_test_cases_product(*args):
@@ -52,22 +52,22 @@ def _named_test_cases_product(*args):
   return named_cases
 
 
-class ModularClippingSumFactoryComputationTest(tf.test.TestCase,
-                                               parameterized.TestCase):
+class ModularClippingSumFactoryComputationTest(
+    tf.test.TestCase, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
       _named_test_cases_product(
           {
               'value_type_1': (tf.int32, [10]),
-              'value_type_2':
-                  _test_struct_type,
-              'value_type_3':
-                  computation_types.StructType([('a', tf.int32),
-                                                ('b', tf.int32)])
-          }, {
-              'true_stddev': True,
-              'false_stddev': False
-          }))
+              'value_type_2': _test_struct_type,
+              'value_type_3': computation_types.StructType(
+                  [('a', tf.int32), ('b', tf.int32)]
+              ),
+          },
+          {'true_stddev': True, 'false_stddev': False},
+      )
+  )
   def test_type_properties_simple(self, value_type, estimate_stddev):
     factory = _test_factory(estimate_stddev=estimate_stddev)
     process = factory.create(computation_types.to_type(value_type))
@@ -77,9 +77,11 @@ class ModularClippingSumFactoryComputationTest(tf.test.TestCase,
     server_state_type = computation_types.at_server(())
 
     expected_init_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
+        parameter=None, result=server_state_type
+    )
     self.assertTrue(
-        process.initialize.type_signature.is_equivalent_to(expected_init_type))
+        process.initialize.type_signature.is_equivalent_to(expected_init_type)
+    )
 
     expected_measurements_type = collections.OrderedDict(modclip=())
     if estimate_stddev:
@@ -88,39 +90,54 @@ class ModularClippingSumFactoryComputationTest(tf.test.TestCase,
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type)),
+            value=computation_types.at_clients(value_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
             measurements=computation_types.at_server(
-                expected_measurements_type)))
+                expected_measurements_type
+            ),
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
-      ('lower_is_larger', 1, -5), ('lower_is_larger_negative', -1, -2),
-      ('lower_is_larger_positive', 3, 2), ('overflow', -2**30, 2**30 + 5),
-      ('overflow_positive', 0, 2**31), ('overflow_negative', -2**31 - 1, 0))
+      ('lower_is_larger', 1, -5),
+      ('lower_is_larger_negative', -1, -2),
+      ('lower_is_larger_positive', 3, 2),
+      ('overflow', -(2**30), 2**30 + 5),
+      ('overflow_positive', 0, 2**31),
+      ('overflow_negative', -(2**31) - 1, 0),
+  )
   def test_raise_on_clip_range(self, lower, upper):
     with self.assertRaises(ValueError):
       _ = _test_factory(lower, upper)
 
-  @parameterized.named_parameters(('string', 'lol'), ('float', 10.0),
-                                  ('tensor', tf.constant(10)))
+  @parameterized.named_parameters(
+      ('string', 'lol'), ('float', 10.0), ('tensor', tf.constant(10))
+  )
   def test_raise_on_invalid_clip_type(self, value):
     with self.assertRaises(TypeError):
       _ = _test_factory(clip_lower=value)
     with self.assertRaises(TypeError):
       _ = _test_factory(clip_upper=value)
 
-  @parameterized.named_parameters(('string', 'lol'), ('float', 10.0),
-                                  ('int', 10), ('tensor', tf.constant(True)))
+  @parameterized.named_parameters(
+      ('string', 'lol'),
+      ('float', 10.0),
+      ('int', 10),
+      ('tensor', tf.constant(True)),
+  )
   def test_raise_on_invalid_estimate_stddev_type(self, value):
     with self.assertRaises(TypeError):
       _ = _test_factory(estimate_stddev=value)
 
-  @parameterized.named_parameters(('scalar', tf.int32),
-                                  ('rank-2', (tf.int32, [1, 1])))
+  @parameterized.named_parameters(
+      ('scalar', tf.int32), ('rank-2', (tf.int32, [1, 1]))
+  )
   def test_raise_on_estimate_stddev_for_single_element(self, value_type):
     factory = _test_factory(estimate_stddev=True)
     value_type = computation_types.to_type(value_type)
@@ -130,15 +147,19 @@ class ModularClippingSumFactoryComputationTest(tf.test.TestCase,
   @parameterized.named_parameters(
       ('sequence', computation_types.SequenceType(tf.int32)),
       ('function', computation_types.FunctionType(tf.int32, tf.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]))
+      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]),
+  )
   def test_tff_value_types_raise_on(self, value_type):
     factory = _test_factory()
     value_type = computation_types.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'Expected `value_type` to be'):
       factory.create(value_type)
 
-  @parameterized.named_parameters(('bool', tf.bool), ('string', tf.string),
-                                  ('string_nested', [tf.string, [tf.string]]))
+  @parameterized.named_parameters(
+      ('bool', tf.bool),
+      ('string', tf.string),
+      ('string_nested', [tf.string, [tf.string]]),
+  )
   def test_component_tensor_dtypes_raise_on(self, value_type):
     factory = _test_factory()
     value_type = computation_types.to_type(value_type)
@@ -146,15 +167,17 @@ class ModularClippingSumFactoryComputationTest(tf.test.TestCase,
       factory.create(value_type)
 
 
-class ModularClippingSumFactoryExecutionTest(tf.test.TestCase,
-                                             parameterized.TestCase):
+class ModularClippingSumFactoryExecutionTest(
+    tf.test.TestCase, parameterized.TestCase
+):
 
   def _check_result(self, expected, result):
     for exp, res in zip(_make_test_struct_value(expected), result):
       self.assertAllClose(exp, res, atol=0)
 
   @parameterized.named_parameters([
-      ('in_range', -5, 10, [5], [5]), ('out_range_left', -5, 10, [-15], [0]),
+      ('in_range', -5, 10, [5], [5]),
+      ('out_range_left', -5, 10, [-15], [0]),
       ('out_range_right', -5, 10, [20], [5]),
       ('boundary_left', -5, 10, [-5], [-5]),
       ('boundary_right', -5, 10, [10], [-5]),
@@ -164,12 +187,19 @@ class ModularClippingSumFactoryExecutionTest(tf.test.TestCase,
       ('positive_in_range', 20, 40, [30], [30]),
       ('positive_out_range_left', 20, 40, [10], [30]),
       ('positive_out_range_right', 20, 40, [50], [30]),
-      ('large_range_symmetric', -2**30, 2**30 - 1, [2**30 + 5], [-2**30 + 6]),
-      ('large_range_left', -2**31 + 1, 0, [5], [-2**31 + 6]),
-      ('large_range_right', 0, 2**31 - 1, [-5], [2**31 - 6])
+      (
+          'large_range_symmetric',
+          -(2**30),
+          2**30 - 1,
+          [2**30 + 5],
+          [-(2**30) + 6],
+      ),
+      ('large_range_left', -(2**31) + 1, 0, [5], [-(2**31) + 6]),
+      ('large_range_right', 0, 2**31 - 1, [-5], [2**31 - 6]),
   ])
-  def test_clip_individual_values(self, clip_range_lower, clip_range_upper,
-                                  client_data, expected_sum):
+  def test_clip_individual_values(
+      self, clip_range_lower, clip_range_upper, client_data, expected_sum
+  ):
     factory = _test_factory(clip_range_lower, clip_range_upper)
     value_type = computation_types.to_type(tf.int32)
     process = factory.create(value_type)
@@ -177,12 +207,15 @@ class ModularClippingSumFactoryExecutionTest(tf.test.TestCase,
     output = process.next(state, client_data)
     self.assertEqual(output.result, expected_sum)
 
-  @parameterized.named_parameters([('in_range_clip', -3, 3, [1, -2, 1, -2], -2),
-                                   ('boundary_clip', -3, 3, [-3, 3, 3, 3], 0),
-                                   ('out_range_clip', -2, 2, [-3, 3, 5], 1),
-                                   ('mixed_clip', -2, 2, [-4, -2, 1, 2, 7], 0)])
-  def test_clip_sum(self, clip_range_lower, clip_range_upper, client_data,
-                    expected_sum):
+  @parameterized.named_parameters([
+      ('in_range_clip', -3, 3, [1, -2, 1, -2], -2),
+      ('boundary_clip', -3, 3, [-3, 3, 3, 3], 0),
+      ('out_range_clip', -2, 2, [-3, 3, 5], 1),
+      ('mixed_clip', -2, 2, [-4, -2, 1, 2, 7], 0),
+  ])
+  def test_clip_sum(
+      self, clip_range_lower, clip_range_upper, client_data, expected_sum
+  ):
     factory = _test_factory(clip_range_lower, clip_range_upper)
     value_type = computation_types.to_type(tf.int32)
     process = factory.create(value_type)
@@ -190,12 +223,15 @@ class ModularClippingSumFactoryExecutionTest(tf.test.TestCase,
     output = process.next(state, client_data)
     self.assertEqual(output.result, expected_sum)
 
-  @parameterized.named_parameters([('in_range_clip', -3, 3, [1, -2, 1, -2], -2),
-                                   ('boundary_clip', -3, 3, [-3, 3, 3, 3], 0),
-                                   ('out_range_clip', -2, 2, [-3, 3, 5], 1),
-                                   ('mixed_clip', -2, 2, [-4, -2, 1, 2, 7], 0)])
-  def test_clip_sum_struct(self, clip_range_lower, clip_range_upper,
-                           client_data, expected_sum):
+  @parameterized.named_parameters([
+      ('in_range_clip', -3, 3, [1, -2, 1, -2], -2),
+      ('boundary_clip', -3, 3, [-3, 3, 3, 3], 0),
+      ('out_range_clip', -2, 2, [-3, 3, 5], 1),
+      ('mixed_clip', -2, 2, [-4, -2, 1, 2, 7], 0),
+  ])
+  def test_clip_sum_struct(
+      self, clip_range_lower, clip_range_upper, client_data, expected_sum
+  ):
     factory = _test_factory(clip_range_lower, clip_range_upper)
     value_type = computation_types.to_type(_test_struct_type)
     process = factory.create(value_type)
@@ -216,9 +252,12 @@ class StddevEstimationTest(tf.test.TestCase, parameterized.TestCase):
     gaussian = np.random.normal(loc=mean, scale=stddev, size=size)
     return self._modclip_by_value(gaussian, clip_lo, clip_hi)
 
-  @parameterized.named_parameters(('range_1', (-15, 15)),
-                                  ('range_2', (-20, 20)), ('range_3', (0, 60)),
-                                  ('range_4', (-100, -20)))
+  @parameterized.named_parameters(
+      ('range_1', (-15, 15)),
+      ('range_2', (-20, 20)),
+      ('range_3', (0, 60)),
+      ('range_4', (-100, -20)),
+  )
   def test_estimation(self, clip_range):
     stddev = 10
     size = 1000
@@ -227,7 +266,8 @@ class StddevEstimationTest(tf.test.TestCase, parameterized.TestCase):
     values = self._sample_wrapped_gaussian(mean, stddev, size, clip_lo, clip_hi)
     values = tf.convert_to_tensor(values)
     est_stddev = modular_clipping.estimate_wrapped_gaussian_stddev(
-        values, clip_lo, clip_hi)
+        values, clip_lo, clip_hi
+    )
     est_stddev = self.evaluate(est_stddev)
     # The standard error of the standard deviation should be roughly
     # `sigma / sqrt(2N - 2)` if the data are normally distributed

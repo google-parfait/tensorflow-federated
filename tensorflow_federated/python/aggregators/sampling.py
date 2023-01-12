@@ -44,7 +44,8 @@ SEED_SENTINEL = -1
 
 
 def _is_tensor_or_structure_of_tensors(
-    value_type: computation_types.Type) -> bool:
+    value_type: computation_types.Type,
+) -> bool:
   """Return True if `value_type` is a TensorType or structure of TensorTypes."""
 
   # TODO(b/181365504): relax this to allow `StructType` once a `Struct` can be
@@ -52,12 +53,14 @@ def _is_tensor_or_structure_of_tensors(
   def is_tensor_or_struct_with_py_type(t: computation_types.Type) -> bool:
     return t.is_tensor() or t.is_struct_with_python()
 
-  return type_analysis.contains_only(value_type,
-                                     is_tensor_or_struct_with_py_type)
+  return type_analysis.contains_only(
+      value_type, is_tensor_or_struct_with_py_type
+  )
 
 
 def _build_reservoir_type(
-    sample_value_type: computation_types.Type) -> computation_types.Type:
+    sample_value_type: computation_types.Type,
+) -> computation_types.Type:
   """Create the TFF type for the reservoir's state.
 
   `UnweightedReservoirSamplingFactory` will use this type as the "state" type in
@@ -87,14 +90,18 @@ def _build_reservoir_type(
         store them in the reservoir.
   """
   if not _is_tensor_or_structure_of_tensors(sample_value_type):
-    raise TypeError('Cannot create a reservoir for type structure. Sample type '
-                    'must only contain `TensorType` or `StructWithPythonType`, '
-                    f'got a {sample_value_type!r}.')
+    raise TypeError(
+        'Cannot create a reservoir for type structure. Sample type '
+        'must only contain `TensorType` or `StructWithPythonType`, '
+        f'got a {sample_value_type!r}.'
+    )
 
   def add_unknown_dimension(t):
     if t.is_tensor():
-      return (computation_types.TensorType(
-          dtype=t.dtype, shape=[None] + t.shape), True)
+      return (
+          computation_types.TensorType(dtype=t.dtype, shape=[None] + t.shape),
+          True,
+      )
     return t, False
 
   # TODO(b/181155367): creating a value from a type for the `zero` is a common
@@ -105,11 +112,15 @@ def _build_reservoir_type(
           random_seed=computation_types.TensorType(tf.int64, shape=[2]),
           random_values=computation_types.TensorType(tf.int32, shape=[None]),
           samples=type_transformations.transform_type_postorder(
-              sample_value_type, add_unknown_dimension)[0]))
+              sample_value_type, add_unknown_dimension
+          )[0],
+      )
+  )
 
 
-def _build_initial_sample_reservoir(sample_value_type: computation_types.Type,
-                                    seed: Optional[int] = None):
+def _build_initial_sample_reservoir(
+    sample_value_type: computation_types.Type, seed: Optional[int] = None
+):
   """Build up the initial state of the reservoir for sampling.
 
   Args:
@@ -157,22 +168,26 @@ def _build_initial_sample_reservoir(sample_value_type: computation_types.Type,
 
     try:
       initial_samples = type_conversions.structure_from_tensor_type_tree(
-          zero_for_tensor_type, sample_value_type)
+          zero_for_tensor_type, sample_value_type
+      )
     except ValueError as e:
-      raise TypeError('Cannot build initial reservoir for structure that has '
-                      'types other than StructWithPythonType or TensorType, '
-                      f'got {sample_value_type!r}.') from e
+      raise TypeError(
+          'Cannot build initial reservoir for structure that has '
+          'types other than StructWithPythonType or TensorType, '
+          f'got {sample_value_type!r}.'
+      ) from e
     return collections.OrderedDict(
         random_seed=tf.fill(dims=(2,), value=real_seed),
         random_values=tf.zeros([0], tf.int32),
-        samples=initial_samples)
+        samples=initial_samples,
+    )
 
   return initialize()
 
 
 def _build_sample_value_computation(
-    value_type: computation_types.Type,
-    sample_size: int) -> computation_base.Computation:
+    value_type: computation_types.Type, sample_size: int
+) -> computation_base.Computation:
   """Builds the `accumulate` computation for sampling."""
   reservoir_type = _build_reservoir_type(value_type)
 
@@ -193,33 +208,41 @@ def _build_sample_value_computation(
       sample.
     """
     new_random_values = tf.concat(
-        [reservoir['random_values'], sample_random_value], axis=0)
+        [reservoir['random_values'], sample_random_value], axis=0
+    )
     new_samples = tf.nest.map_structure(
         lambda a, b: tf.concat([a, tf.expand_dims(b, axis=0)], axis=0),
-        reservoir['samples'], sample)
+        reservoir['samples'],
+        sample,
+    )
     return collections.OrderedDict(
         random_seed=new_seed,
         random_values=new_random_values,
-        samples=new_samples)
+        samples=new_samples,
+    )
 
   def pop_one_minimum_value(reservoir):
     """Remove one element from the reservoir based on the minimum value."""
     size_after_pop = tf.size(reservoir['random_values']) - 1
     _, indices = tf.nn.top_k(
-        reservoir['random_values'], k=size_after_pop, sorted=False)
+        reservoir['random_values'], k=size_after_pop, sorted=False
+    )
     return collections.OrderedDict(
         random_seed=reservoir['random_seed'],
         random_values=tf.gather(reservoir['random_values'], indices),
-        samples=tf.nest.map_structure(lambda t: tf.gather(t, indices),
-                                      reservoir['samples']))
+        samples=tf.nest.map_structure(
+            lambda t: tf.gather(t, indices), reservoir['samples']
+        ),
+    )
 
   def initialize_seed():
     """Generate a seed based on the current millisecond timestamp."""
     # tf.timestamp() returns fractional second, which will be quantized
     # into a tf.int64 value for the random state seed.
     scale_factor = 1_000_000.0
-    quantized_fractional_seconds = tf.cast(tf.timestamp() * scale_factor,
-                                           tf.int64)
+    quantized_fractional_seconds = tf.cast(
+        tf.timestamp() * scale_factor, tf.int64
+    )
     return tf.fill(dims=(2,), value=quantized_fractional_seconds)
 
   @tensorflow_computation.tf_computation(reservoir_type, value_type)
@@ -232,9 +255,11 @@ def _build_sample_value_computation(
     # Pick a new random number for the incoming sample, and advance the seed
     # for the next sample.
     sample_random_value = tf.random.stateless_uniform(
-        shape=(1,), minval=None, seed=seed, dtype=tf.int32)
+        shape=(1,), minval=None, seed=seed, dtype=tf.int32
+    )
     new_seed = tf.stack(
-        [seed[0], tf.squeeze(tf.cast(sample_random_value, tf.int64))])
+        [seed[0], tf.squeeze(tf.cast(sample_random_value, tf.int64))]
+    )
     # If the reservoir isn't full, add the sample.
     if tf.less(tf.size(reservoir['random_values']), sample_size):
       return add_sample(reservoir, new_seed, sample_random_value, sample)
@@ -253,8 +278,8 @@ def _build_sample_value_computation(
 
 
 def _build_merge_samples_computation(
-    value_type: computation_types.Type,
-    sample_size: int) -> computation_base.Computation:
+    value_type: computation_types.Type, sample_size: int
+) -> computation_base.Computation:
   """Builds the `merge` computation for a sampling."""
   reservoir_type = _build_reservoir_type(value_type)
 
@@ -263,10 +288,12 @@ def _build_merge_samples_computation(
   def merge_samples(a, b):
     # First concatenate all the values together. If the size of the resulting
     # structure is less than the sample size we don't need to do anything else.
-    merged_random_values = tf.concat([a['random_values'], b['random_values']],
-                                     axis=0)
+    merged_random_values = tf.concat(
+        [a['random_values'], b['random_values']], axis=0
+    )
     merged_samples = tf.nest.map_structure(
-        lambda x, y: tf.concat([x, y], axis=0), a['samples'], b['samples'])
+        lambda x, y: tf.concat([x, y], axis=0), a['samples'], b['samples']
+    )
     # `random_seed` is no longer used, but we need to keep the structure
     # for this reduction method. Arbitrarily forward the seed from `a`.
     forwarded_random_seed = a['random_seed']
@@ -276,27 +303,33 @@ def _build_merge_samples_computation(
       return collections.OrderedDict(
           random_seed=forwarded_random_seed,
           random_values=merged_random_values,
-          samples=merged_samples)
+          samples=merged_samples,
+      )
     # Otherwise we need to select just the top values based on sample size.
     _, indices = tf.nn.top_k(merged_random_values, sample_size, sorted=False)
     selection_mask = tf.scatter_nd(
         indices=tf.expand_dims(indices, axis=-1),
         updates=tf.fill(dims=tf.shape(indices), value=True),
-        shape=tf.shape(merged_random_values))
+        shape=tf.shape(merged_random_values),
+    )
     selected_random_values = tf.boolean_mask(
-        merged_random_values, mask=selection_mask)
+        merged_random_values, mask=selection_mask
+    )
     selected_samples = tf.nest.map_structure(
-        lambda t: tf.boolean_mask(t, mask=selection_mask), merged_samples)
+        lambda t: tf.boolean_mask(t, mask=selection_mask), merged_samples
+    )
     return collections.OrderedDict(
         random_seed=forwarded_random_seed,
         random_values=selected_random_values,
-        samples=selected_samples)
+        samples=selected_samples,
+    )
 
   return merge_samples
 
 
 def _build_finalize_sample_computation(
-    value_type: computation_types.Type) -> computation_base.Computation:
+    value_type: computation_types.Type,
+) -> computation_base.Computation:
   """Builds the `report` computation for sampling."""
   reservoir_type = _build_reservoir_type(value_type)
 
@@ -310,7 +343,8 @@ def _build_finalize_sample_computation(
 
 
 def _build_check_non_finite_leaves_computation(
-    value_type: computation_types.Type) -> computation_base.Computation:
+    value_type: computation_types.Type,
+) -> computation_base.Computation:
   """Builds the computation for checking non-finite leaves in the client value.
 
   Args:
@@ -332,12 +366,12 @@ def _build_check_non_finite_leaves_computation(
     raise TypeError(
         'Cannot check non-finite leaves for the client value. Expected the '
         'client value type to only contain `TensorType`s or '
-        f'`StructWithPythonType`s, got a {value_type!r}.')
+        f'`StructWithPythonType`s, got a {value_type!r}.'
+    )
 
   @tensorflow_computation.tf_computation(value_type)
   @tf.function
   def check_non_finite_leaves(client_value):
-
     def is_non_finite(leaf_tensor: tf.Tensor) -> tf.Tensor:
       """Returns True if `leaf_tensor` has at least one non-finite value."""
       # `tf.math.is_finite` only works for tensors of float dtype. This is
@@ -347,7 +381,8 @@ def _build_check_non_finite_leaves_computation(
         # TODO(b/201213657): replaces `tf.math.is_finite` by a memory-efficient
         # way of checking finite tensors.
         return tf.math.logical_not(
-            tf.reduce_all(tf.math.is_finite(leaf_tensor)))
+            tf.reduce_all(tf.math.is_finite(leaf_tensor))
+        )
       return tf.constant(False)
 
     if isinstance(client_value, tf.Tensor):
@@ -358,7 +393,8 @@ def _build_check_non_finite_leaves_computation(
       # tensor has any non-finite value.
       return tf.nest.map_structure(
           lambda leaf_tensor: tf.cast(is_non_finite(leaf_tensor), tf.int64),
-          client_value)
+          client_value,
+      )
 
   return check_non_finite_leaves
 
@@ -398,9 +434,8 @@ class UnweightedReservoirSamplingFactory(factory.UnweightedAggregationFactory):
     self._sample_size = sample_size
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
-
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     @federated_computation.federated_computation()
     def init_fn():
       # Empty/null state, nothing is tracked across invocations.
@@ -408,28 +443,35 @@ class UnweightedReservoirSamplingFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation(
         computation_types.at_server(()),
-        computation_types.at_clients(value_type))
+        computation_types.at_clients(value_type),
+    )
     def next_fn(unused_state, value):
       # Empty tuple is the `None` of TFF.
       empty_tuple = intrinsics.federated_value((), placements.SERVER)
       non_finite_leaves_counts = intrinsics.federated_sum(
           intrinsics.federated_map(
-              _build_check_non_finite_leaves_computation(value_type), value))
+              _build_check_non_finite_leaves_computation(value_type), value
+          )
+      )
       initial_reservoir = _build_initial_sample_reservoir(value_type)
-      sample_value = _build_sample_value_computation(value_type,
-                                                     self._sample_size)
-      merge_samples = _build_merge_samples_computation(value_type,
-                                                       self._sample_size)
+      sample_value = _build_sample_value_computation(
+          value_type, self._sample_size
+      )
+      merge_samples = _build_merge_samples_computation(
+          value_type, self._sample_size
+      )
       finalize_sample = _build_finalize_sample_computation(value_type)
       samples = intrinsics.federated_aggregate(
           value,
           zero=initial_reservoir,
           accumulate=sample_value,
           merge=merge_samples,
-          report=finalize_sample)
+          report=finalize_sample,
+      )
       return measured_process.MeasuredProcessOutput(
           state=empty_tuple,
           result=samples,
-          measurements=non_finite_leaves_counts)
+          measurements=non_finite_leaves_counts,
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)

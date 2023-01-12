@@ -27,7 +27,7 @@ def create_local_python_execution_context():
   support any intrinsics, lambda expressions, etc.
 
   Returns:
-    An instance of `execution_context.ExecutionContext` backed by XLA executor.
+    An instance of `tff.framework.SyncExecutionContext` backed by XLA executor.
   """
   # TODO(b/175888145): Extend this into a complete local executor stack.
 

@@ -101,19 +101,21 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
   tools provided in tensorflow_privacy on the metrics generated in each round.
   """
 
-  def __init__(self,
-               noise_multiplier: float,
-               expected_clients_per_round: int,
-               bits: int,
-               l2_clip: float,
-               modclip_prob: float = 1e-4,
-               beta: float = math.exp(-0.5),
-               mechanism: str = 'distributed_skellam',
-               rotation_type: str = 'dft',
-               auto_l2_clip: bool = False,
-               auto_l2_target_quantile: float = 0.5,
-               auto_l2_lr: float = 0.2,
-               auto_l2_clip_count_stddev: Optional[float] = None):
+  def __init__(
+      self,
+      noise_multiplier: float,
+      expected_clients_per_round: int,
+      bits: int,
+      l2_clip: float,
+      modclip_prob: float = 1e-4,
+      beta: float = math.exp(-0.5),
+      mechanism: str = 'distributed_skellam',
+      rotation_type: str = 'dft',
+      auto_l2_clip: bool = False,
+      auto_l2_target_quantile: float = 0.5,
+      auto_l2_lr: float = 0.2,
+      auto_l2_clip_count_stddev: Optional[float] = None,
+  ):
     """Initializes the `DistributedDpSumFactory`.
 
     Note that the `create` method of this factory needs to be executed in TF
@@ -194,12 +196,14 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     _check_bool(auto_l2_clip, 'auto_l2_clip')
 
     if auto_l2_clip:
-      _check_in_range(auto_l2_target_quantile, 'auto_l2_target_quantile', 0, 1,
-                      True, True)
+      _check_in_range(
+          auto_l2_target_quantile, 'auto_l2_target_quantile', 0, 1, True, True
+      )
       _check_positive(auto_l2_lr, 'auto_l2_lr')
       if auto_l2_clip_count_stddev is not None:
-        _check_nonnegative(auto_l2_clip_count_stddev,
-                           'auto_l2_clip_count_stddev')
+        _check_nonnegative(
+            auto_l2_clip_count_stddev, 'auto_l2_clip_count_stddev'
+        )
 
     self._initial_l2_clip = l2_clip
     self._noise_multiplier = noise_multiplier
@@ -214,25 +218,31 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
 
     # Value range checks based on the client count and the clip probability.
     if bits < math.log2(expected_clients_per_round):
-      raise ValueError('bits should be >= log2(expected_clients_per_round). '
-                       f'Found 2^b = 2^{bits} < {expected_clients_per_round}.')
-    if 2**(2 * bits) < expected_clients_per_round * self._k_stddevs**2:
-      raise ValueError(f'The selected bit-width ({bits}) is too small for the '
-                       f'given parameters (expected_clients_per_round = '
-                       f'{expected_clients_per_round}, modclip_prob = '
-                       f'{modclip_prob}). You must decrease the '
-                       f'`expected_clients_per_round`, increase `bits`, or '
-                       f'increase `modclip_prob`.')
+      raise ValueError(
+          'bits should be >= log2(expected_clients_per_round). '
+          f'Found 2^b = 2^{bits} < {expected_clients_per_round}.'
+      )
+    if 2 ** (2 * bits) < expected_clients_per_round * self._k_stddevs**2:
+      raise ValueError(
+          f'The selected bit-width ({bits}) is too small for the '
+          'given parameters (expected_clients_per_round = '
+          f'{expected_clients_per_round}, modclip_prob = '
+          f'{modclip_prob}). You must decrease the '
+          '`expected_clients_per_round`, increase `bits`, or '
+          'increase `modclip_prob`.'
+      )
 
     if auto_l2_clip:
       self._l2_clip, self._value_noise_mult = self._build_auto_l2_clip_process(
-          auto_l2_target_quantile, auto_l2_lr, auto_l2_clip_count_stddev)
+          auto_l2_target_quantile, auto_l2_lr, auto_l2_clip_count_stddev
+      )
     else:
       self._l2_clip = self._initial_l2_clip
       self._value_noise_mult = self._noise_multiplier
 
-  def _build_auto_l2_clip_process(self, target_quantile, learning_rate,
-                                  clip_count_stddev):
+  def _build_auto_l2_clip_process(
+      self, target_quantile, learning_rate, clip_count_stddev
+  ):
     """Builds a `tff.templates.EstimationProcess` for adaptive L2 clipping.
 
     Specifically, we use the private quantile estimation algorithm described in
@@ -255,9 +265,10 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       multiplier for the record aggregation.
     """
     value_noise_mult, clip_count_stddev = (
-        differential_privacy.adaptive_clip_noise_params(self._noise_multiplier,
-                                                        self._num_clients,
-                                                        clip_count_stddev))
+        differential_privacy.adaptive_clip_noise_params(
+            self._noise_multiplier, self._num_clients, clip_count_stddev
+        )
+    )
 
     estimator_query = tfp.QuantileEstimatorQuery(
         initial_estimate=self._initial_l2_clip,
@@ -265,14 +276,17 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         learning_rate=learning_rate,
         below_estimate_stddev=clip_count_stddev,
         expected_num_records=self._num_clients,
-        geometric_update=True)
+        geometric_update=True,
+    )
     # Note also that according to https://arxiv.org/abs/1905.03871, the binary
     # flags for quantile estimation are shifted from [0, 1] to [-0.5, 0.5], so
     # we set the SecAgg input bounds accordingly.
     estimator_process = quantile_estimation.PrivateQuantileEstimationProcess(
         quantile_estimator_query=estimator_query,
         record_aggregation_factory=secure.SecureSumFactory(
-            upper_bound_threshold=0.5, lower_bound_threshold=-0.5))
+            upper_bound_threshold=0.5, lower_bound_threshold=-0.5
+        ),
+    )
 
     return estimator_process, value_noise_mult
 
@@ -284,27 +298,34 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     self._client_dim = max(1, self._client_dim)
     if self._rotation_type == 'hd':
       # Hadamard transform requires dimension to be powers of 2.
-      self._padded_dim = 2**math.ceil(math.log2(self._client_dim))
+      self._padded_dim = 2 ** math.ceil(math.log2(self._client_dim))
       rotation_factory = rotation.HadamardTransformFactory
     else:
       # DFT pads at most 1 zero.
       self._padded_dim = math.ceil(self._client_dim / 2.0) * 2
       rotation_factory = rotation.DiscreteFourierTransformFactory
 
-    scale = _heuristic_scale_factor(local_stddev, self._initial_l2_clip,
-                                    self._bits, self._num_clients,
-                                    self._padded_dim, self._k_stddevs).numpy()
+    scale = _heuristic_scale_factor(
+        local_stddev,
+        self._initial_l2_clip,
+        self._bits,
+        self._num_clients,
+        self._padded_dim,
+        self._k_stddevs,
+    ).numpy()
 
     # Very large scales could lead to overflows and are not as helpful for
     # utility. See comment above for more details.
     scale = min(scale, MAX_SCALE_FACTOR)
 
     if scale <= 1:
-      warnings.warn(f'The selected scale_factor {scale} <= 1. This may lead to'
-                    f'substantial quantization errors. Consider increasing'
-                    f'the bit-width (currently {self._bits}) or decreasing the'
-                    f'expected number of clients per round (currently '
-                    f'{self._num_clients}).')
+      warnings.warn(
+          f'The selected scale_factor {scale} <= 1. This may lead to'
+          'substantial quantization errors. Consider increasing'
+          f'the bit-width (currently {self._bits}) or decreasing the'
+          'expected number of clients per round (currently '
+          f'{self._num_clients}).'
+      )
 
     # The procedure for obtaining inflated L2 bound assumes eager TF execution
     # and can be rewritten with NumPy if needed.
@@ -312,7 +333,8 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         l2_norm_bound=self._initial_l2_clip,
         gamma=1.0 / scale,
         beta=self._beta,
-        dim=self._padded_dim).numpy()
+        dim=self._padded_dim,
+    ).numpy()
 
     # Add small leeway on norm bounds to gracefully allow numerical errors.
     # Specifically, the norm thresholds are computed directly from the specified
@@ -328,8 +350,10 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     scaled_inflated_l2 = (inflated_l2 + 1e-5) * scale
     # Since values are scaled and rounded to integers, we have L1 <= L2^2
     # on top of the general of L1 <= sqrt(d) * L2.
-    scaled_l1 = math.ceil(scaled_inflated_l2 *
-                          min(math.sqrt(self._padded_dim), scaled_inflated_l2))
+    scaled_l1 = math.ceil(
+        scaled_inflated_l2
+        * min(math.sqrt(self._padded_dim), scaled_inflated_l2)
+    )
 
     # Build nested aggregtion factory.
     # 1. Secure Aggregation. In particular, we have 4 modular clips from
@@ -355,28 +379,34 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     #    Note that the scaling factor and the bit-width are chosen such that
     #    the number of clients to aggregate is taken into account.
     nested_factory = secure.SecureSumFactory(
-        upper_bound_threshold=2**self._bits - 1, lower_bound_threshold=0)
+        upper_bound_threshold=2**self._bits - 1, lower_bound_threshold=0
+    )
     nested_factory = modular_clipping.ModularClippingSumFactory(
         clip_range_lower=0,
         clip_range_upper=2**self._bits,
-        inner_agg_factory=nested_factory)
+        inner_agg_factory=nested_factory,
+    )
     nested_factory = modular_clipping.ModularClippingSumFactory(
-        clip_range_lower=-(2**(self._bits - 1)),
-        clip_range_upper=2**(self._bits - 1),
-        inner_agg_factory=nested_factory)
+        clip_range_lower=-(2 ** (self._bits - 1)),
+        clip_range_upper=2 ** (self._bits - 1),
+        inner_agg_factory=nested_factory,
+    )
 
     # 2. DP operations. DP params are in the scaled domain (post-quantization).
     if self._mechanism == 'distributed_dgauss':
       dp_query = tfp.DistributedDiscreteGaussianSumQuery(
-          l2_norm_bound=scaled_inflated_l2, local_stddev=local_stddev * scale)
+          l2_norm_bound=scaled_inflated_l2, local_stddev=local_stddev * scale
+      )
     else:
       dp_query = tfp.DistributedSkellamSumQuery(
           l1_norm_bound=scaled_l1,
           l2_norm_bound=scaled_inflated_l2,
-          local_stddev=local_stddev * scale)
+          local_stddev=local_stddev * scale,
+      )
 
     nested_factory = differential_privacy.DifferentiallyPrivateFactory(
-        query=dp_query, record_aggregation_factory=nested_factory)
+        query=dp_query, record_aggregation_factory=nested_factory
+    )
 
     # 3. Discretization operations. This appropriately quantizes the inputs.
     nested_factory = discretization.DiscretizationFactory(
@@ -384,14 +414,17 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         scale_factor=scale,
         stochastic=True,
         beta=self._beta,
-        prior_norm_bound=self._initial_l2_clip)
+        prior_norm_bound=self._initial_l2_clip,
+    )
 
     # 4. L2 clip, possibly adaptively with a `tff.templates.EstimationProcess`.
     nested_factory = robust.clipping_factory(
         clipping_norm=self._l2_clip,
         inner_agg_factory=nested_factory,
         clipped_count_sum_factory=secure.SecureSumFactory(
-            upper_bound_threshold=1, lower_bound_threshold=0))
+            upper_bound_threshold=1, lower_bound_threshold=0
+        ),
+    )
 
     # 5. Flattening to improve quantization and reduce modular wrapping.
     nested_factory = rotation_factory(inner_agg_factory=nested_factory)
@@ -442,14 +475,20 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       _, discrete_state, _ = self._unpack_state(agg_state)
       new_central_stddev = new_l2_clip * self._value_noise_mult
       new_local_stddev = new_central_stddev / math.sqrt(self._num_clients)
-      new_scale = _heuristic_scale_factor(new_local_stddev, new_l2_clip,
-                                          self._bits, self._num_clients,
-                                          self._padded_dim, self._k_stddevs)
+      new_scale = _heuristic_scale_factor(
+          new_local_stddev,
+          new_l2_clip,
+          self._bits,
+          self._num_clients,
+          self._padded_dim,
+          self._k_stddevs,
+      )
 
       # Very large scales could lead to overflows and are not as helpful for
       # utility. See comment above for more details.
       new_scale = tf.math.minimum(
-          new_scale, tf.constant(MAX_SCALE_FACTOR, dtype=tf.float64))
+          new_scale, tf.constant(MAX_SCALE_FACTOR, dtype=tf.float64)
+      )
 
       discrete_state['scale_factor'] = tf.cast(new_scale, tf.float32)
       return agg_state
@@ -462,7 +501,8 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
           l2_norm_bound=new_l2_clip,
           gamma=1.0 / new_scale,
           beta=self._beta,
-          dim=self._padded_dim)
+          dim=self._padded_dim,
+      )
       # Similarly include a norm bound leeway. See inline comment in
       # `_build_aggregation_factory()` for more details.
       new_scaled_inflated_l2 = (new_inflated_l2 + 1e-5) * new_scale
@@ -477,15 +517,20 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       if self._mechanism == 'distributed_dgauss':
         new_dp_query_state = dp_query_state._replace(
             l2_norm_bound=new_scaled_inflated_l2,
-            local_stddev=new_local_stddev * new_scale)
+            local_stddev=new_local_stddev * new_scale,
+        )
       else:
         new_dp_query_state = dp_query_state._replace(
             l1_norm_bound=new_scaled_l1,
             l2_norm_bound=new_scaled_inflated_l2,
-            local_stddev=new_local_stddev * new_scale)
+            local_stddev=new_local_stddev * new_scale,
+        )
       new_dp_state = differential_privacy.DPAggregatorState(
-          new_dp_query_state, dp_state.agg_state, dp_state.dp_event,
-          dp_state.is_init_state)
+          new_dp_query_state,
+          dp_state.agg_state,
+          dp_state.dp_event,
+          dp_state.is_init_state,
+      )
       discrete_state['inner_agg_process'] = new_dp_state
       discrete_state['prior_norm_bound'] = new_l2_clip
       return agg_state
@@ -494,10 +539,12 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     # NOTE(b/170893510): Explicitly declaring Union[float, EstimationProcess]
     # for _l2_clip or doing isinstance() check still triggers attribute-error.
     new_l2_clip = self._l2_clip.report(l2_clip_state['clipping_norm'])  # pytype: disable=attribute-error
-    agg_state = intrinsics.federated_map(_update_scale,
-                                         (agg_state, new_l2_clip))
-    agg_state = intrinsics.federated_map(_update_dp_params,
-                                         (agg_state, new_l2_clip))
+    agg_state = intrinsics.federated_map(
+        _update_scale, (agg_state, new_l2_clip)
+    )
+    agg_state = intrinsics.federated_map(
+        _update_dp_params, (agg_state, new_l2_clip)
+    )
     return agg_state
 
   def _derive_measurements(self, agg_state, agg_measurements):
@@ -506,9 +553,11 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
     dp_query_state, _, _, _ = dp_state
 
     actual_num_clients = intrinsics.federated_secure_sum_bitwidth(
-        intrinsics.federated_value(1, placements.CLIENTS), bitwidth=1)
+        intrinsics.federated_value(1, placements.CLIENTS), bitwidth=1
+    )
     padded_dim = intrinsics.federated_value(
-        int(self._padded_dim), placements.SERVER)
+        int(self._padded_dim), placements.SERVER
+    )
 
     measurements = collections.OrderedDict(
         l2_clip=l2_clip_metrics['clipping_norm'],
@@ -517,38 +566,50 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
         scaled_local_stddev=dp_query_state.local_stddev,
         actual_num_clients=actual_num_clients,
         padded_dim=padded_dim,
-        dp_query_metrics=dp_metrics['dp_query_metrics'])
+        dp_query_metrics=dp_metrics['dp_query_metrics'],
+    )
 
     return intrinsics.federated_zip(measurements)
 
   def create(self, value_type):
     # Checks value_type and compute client data dimension.
-    if (value_type.is_struct_with_python() and
-        type_analysis.is_structure_of_tensors(value_type)):
+    if (
+        value_type.is_struct_with_python()
+        and type_analysis.is_structure_of_tensors(value_type)
+    ):
       num_elements_struct = type_conversions.structure_from_tensor_type_tree(
-          lambda x: x.shape.num_elements(), value_type)
+          lambda x: x.shape.num_elements(), value_type
+      )
       self._client_dim = sum(tf.nest.flatten(num_elements_struct))
     elif value_type.is_tensor():
       self._client_dim = value_type.shape.num_elements()
     else:
-      raise TypeError('Expected `value_type` to be `TensorType` or '
-                      '`StructWithPythonType` containing only `TensorType`. '
-                      f'Found type: {repr(value_type)}')
+      raise TypeError(
+          'Expected `value_type` to be `TensorType` or '
+          '`StructWithPythonType` containing only `TensorType`. '
+          f'Found type: {repr(value_type)}'
+      )
     # Checks that all values are integers or floats.
-    if not (type_analysis.is_structure_of_floats(value_type) or
-            type_analysis.is_structure_of_integers(value_type)):
-      raise TypeError('Component dtypes of `value_type` must all be integers '
-                      f'or floats. Found {repr(value_type)}.')
+    if not (
+        type_analysis.is_structure_of_floats(value_type)
+        or type_analysis.is_structure_of_integers(value_type)
+    ):
+      raise TypeError(
+          'Component dtypes of `value_type` must all be integers '
+          f'or floats. Found {repr(value_type)}.'
+      )
 
     ddp_agg_process = self._build_aggregation_factory().create(value_type)
     init_fn = ddp_agg_process.initialize
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type))
+        init_fn.type_signature.result, computation_types.at_clients(value_type)
+    )
     def next_fn(state, value):
       agg_output = ddp_agg_process.next(state, value)
-      new_measurements = self._derive_measurements(agg_output.state,
-                                                   agg_output.measurements)
+      new_measurements = self._derive_measurements(
+          agg_output.state, agg_output.measurements
+      )
       new_state = agg_output.state
       if self._auto_l2_clip:
         new_state = self._autotune_component_states(agg_output.state)
@@ -556,7 +617,8 @@ class DistributedDpSumFactory(factory.UnweightedAggregationFactory):
       return measured_process.MeasuredProcessOutput(
           state=new_state,
           result=agg_output.result,
-          measurements=new_measurements)
+          measurements=new_measurements,
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
@@ -578,13 +640,9 @@ def _clip_prob_to_num_stddevs(clip_prob):
   return math.sqrt(2) * tf.math.erfcinv(clip_prob).numpy()
 
 
-def _heuristic_scale_factor(local_stddev,
-                            l2_clip,
-                            bits,
-                            num_clients,
-                            dim,
-                            k_stddevs,
-                            rho=1.0):
+def _heuristic_scale_factor(
+    local_stddev, l2_clip, bits, num_clients, dim, k_stddevs, rho=1.0
+):
   """Selects a scaling factor by assuming subgaussian aggregates.
 
   Selects scale_factor = 1 / gamma such that k stddevs of the noisy, quantized,
@@ -623,8 +681,10 @@ def _heuristic_scale_factor(local_stddev,
   n = tf.cast(num_clients, tf.float64)
   sigma = tf.cast(local_stddev, tf.float64)
 
-  numer = tf.sqrt(2.0**(2.0 * bits) - n * k_stddevs**2)
-  denom = 2.0 * k_stddevs * tf.sqrt(rho / dim * c**2 * n**2 + n * sigma**2)
+  numer = tf.sqrt(2.0 ** (2.0 * bits) - n * k_stddevs**2)
+  denom = (
+      2.0 * k_stddevs * tf.sqrt(rho / dim * c**2 * n**2 + n * sigma**2)
+  )
   scale_factor = numer / denom
   return scale_factor
 
@@ -684,6 +744,8 @@ def _check_in_range(value, label, left, right, left_inclusive, right_inclusive):
   left_cond = value >= left if left_inclusive else value > left
   right_cond = value <= right if right_inclusive else value < right
   if not left_cond or not right_cond:
-    raise ValueError(f'{label} should be between {left} and {right} (with '
-                     f'left_inclusive={left_inclusive} and right_inclusive='
-                     f'{right_inclusive}). Found {value}.')
+    raise ValueError(
+        f'{label} should be between {left} and {right} (with '
+        f'left_inclusive={left_inclusive} and right_inclusive='
+        f'{right_inclusive}). Found {value}.'
+    )

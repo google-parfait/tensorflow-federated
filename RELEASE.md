@@ -1,3 +1,29 @@
+# Release 0.45.0
+
+## Major Features and Improvements
+
+*   Integrated the `CppToPythonExecutorBridge` into the `CPPExecutorFactory`.
+*   Changed Python Remote Executor to decompose and stream structures in Compute
+    and CreateValue when _stream_structs is true. Added a bool parameter
+    `stream_structs` to
+    `tff.backends.native.set_localhost_cpp_execution_context()` API.
+
+## Breaking Changes
+
+*   Renamed `tff.backends.native.set_localhost_cpp_execution_context()` to
+    `backends.native.set_sync_local_cpp_execution_context()`.
+*   Renamed `tff.framework.ExecutionContext` to
+    `tff.framework.SyncExecutionContext` to be consistent with
+    `tff.framework.AsyncExecutionContext`.
+*   Removed the `SyncSerializeAndExecuteCPPContext` and
+    `AsyncSerializeAndExecuteCPPContext` classes.
+
+## Bug Fixes
+
+*   Fixed usage of `typing.Generic` in the learning package.
+*   Enabled pytype analysis for some modules.
+*   Fixed lint and formatting issues for some modules.
+
 # Release 0.44.0
 
 ## Major Features and Improvements

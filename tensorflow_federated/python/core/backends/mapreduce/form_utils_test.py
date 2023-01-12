@@ -492,7 +492,7 @@ def get_iterative_process_for_minimal_sum_example():
 
 def get_example_cf_compatible_iterative_processes():
   # pyformat: disable
-  return (
+  return [
       ('sum_example',
        get_iterative_process_for_sum_example()),
       ('sum_example_with_no_prepare',
@@ -512,7 +512,8 @@ def get_example_cf_compatible_iterative_processes():
       ('example_with_unused_lambda_arg',
        mapreduce_test_utils.get_iterative_process_for_example_with_unused_lambda_arg()),
       ('example_with_unused_tf_computation_arg',
-       mapreduce_test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()))
+       mapreduce_test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()),
+  ]
   # pyformat: enable
 
 

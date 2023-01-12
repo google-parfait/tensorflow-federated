@@ -76,22 +76,25 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
   def __init__(
       self,
       inner_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      num_repeats: int = 1):
+      num_repeats: int = 1,
+  ):
     if inner_agg_factory is None:
       inner_agg_factory = sum_factory.SumFactory()
     if not isinstance(inner_agg_factory, factory.UnweightedAggregationFactory):
       raise TypeError(
           'Provided `inner_agg_factory` must be an '
-          f'UnweightedAggregationFactory. Found {type(inner_agg_factory)}.')
+          f'UnweightedAggregationFactory. Found {type(inner_agg_factory)}.'
+      )
     if not isinstance(num_repeats, int) or num_repeats < 1:
-      raise ValueError('`num_repeats` should be a positive integer. '
-                       f'Found {num_repeats}.')
+      raise ValueError(
+          f'`num_repeats` should be a positive integer. Found {num_repeats}.'
+      )
     self._inner_agg_factory = inner_agg_factory
     self._num_repeats = num_repeats
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     _check_value_type(value_type)
     value_specs = type_conversions.type_to_tf_tensor_specs(value_type)
     seeds_per_round = self._num_repeats * len(structure.flatten(value_type))
@@ -99,7 +102,6 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
 
     @tensorflow_computation.tf_computation(value_type, SEED_TFF_TYPE)
     def client_transform(value, global_seed):
-
       @tf.function
       def transform(tensor, seed):
         for _ in range(self._num_repeats):
@@ -112,16 +114,18 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
 
       value = _flatten_and_pad_zeros_pow2(value)
       seeds = _unique_seeds_for_struct(
-          value, global_seed, stride=self._num_repeats)
+          value, global_seed, stride=self._num_repeats
+      )
       return tf.nest.map_structure(transform, value, seeds)
 
     inner_agg_process = self._inner_agg_factory.create(
-        client_transform.type_signature.result)
+        client_transform.type_signature.result
+    )
 
     @tensorflow_computation.tf_computation(
-        client_transform.type_signature.result, SEED_TFF_TYPE)
+        client_transform.type_signature.result, SEED_TFF_TYPE
+    )
     def server_transform(value, global_seed):
-
       @tf.function
       def transform(tensor, seed):
         seed += self._num_repeats - 1
@@ -134,24 +138,33 @@ class HadamardTransformFactory(factory.UnweightedAggregationFactory):
         return tensor
 
       seeds = _unique_seeds_for_struct(
-          value, global_seed, stride=self._num_repeats)
+          value, global_seed, stride=self._num_repeats
+      )
       value = tf.nest.map_structure(transform, value, seeds)
-      return tf.nest.map_structure(_slice_and_reshape_to_template_spec, value,
-                                   value_specs)
+      return tf.nest.map_structure(
+          _slice_and_reshape_to_template_spec, value, value_specs
+      )
 
     @federated_computation.federated_computation()
     def init_fn():
       inner_state = inner_agg_process.initialize()
       my_state = intrinsics.federated_eval(
           tensorflow_computation.tf_computation(_init_global_seed),
-          placements.SERVER)
+          placements.SERVER,
+      )
       return intrinsics.federated_zip((inner_state, my_state))
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type))
+        init_fn.type_signature.result, computation_types.at_clients(value_type)
+    )
     def next_fn(state, value):
-      next_fn_impl = _build_next_fn(client_transform, inner_agg_process,
-                                    server_transform, next_global_seed_fn, 'hd')
+      next_fn_impl = _build_next_fn(
+          client_transform,
+          inner_agg_process,
+          server_transform,
+          next_global_seed_fn,
+          'hd',
+      )
       return next_fn_impl(state, value)
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
@@ -194,31 +207,34 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
   def __init__(
       self,
       inner_agg_factory: Optional[factory.UnweightedAggregationFactory] = None,
-      num_repeats: int = 1):
+      num_repeats: int = 1,
+  ):
     if inner_agg_factory is None:
       inner_agg_factory = sum_factory.SumFactory()
     if not isinstance(inner_agg_factory, factory.UnweightedAggregationFactory):
       raise TypeError(
           'Provided `inner_agg_factory` must be an'
-          f'UnweightedAggregationFactory. Found {type(inner_agg_factory)}.')
+          f'UnweightedAggregationFactory. Found {type(inner_agg_factory)}.'
+      )
     if not isinstance(num_repeats, int) or num_repeats < 1:
-      raise ValueError('`num_repeats` should be a positive integer. '
-                       f'Found {num_repeats}.')
+      raise ValueError(
+          f'`num_repeats` should be a positive integer. Found {num_repeats}.'
+      )
     self._inner_agg_factory = inner_agg_factory
     self._num_repeats = num_repeats
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     _check_value_type(value_type)
     value_specs = type_conversions.structure_from_tensor_type_tree(
-        lambda x: tf.TensorSpec(x.shape, x.dtype), value_type)
+        lambda x: tf.TensorSpec(x.shape, x.dtype), value_type
+    )
     seeds_per_round = self._num_repeats * len(structure.flatten(value_type))
     next_global_seed_fn = _build_next_global_seed_fn(stride=seeds_per_round)
 
     @tensorflow_computation.tf_computation(value_type, SEED_TFF_TYPE)
     def client_transform(value, global_seed):
-
       @tf.function
       def transform(tensor, seed):
         for _ in range(self._num_repeats):
@@ -227,23 +243,26 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
           tensor *= sample_cis(tf.shape(tensor), seed, inverse=False)
           tensor = tf.signal.fft(tensor)
           tensor = tf.concat(
-              [tf.math.real(tensor), tf.math.imag(tensor)], axis=0)
+              [tf.math.real(tensor), tf.math.imag(tensor)], axis=0
+          )
           tensor /= tf.cast(tf.sqrt(tf.size(tensor) / 2), OUTPUT_TF_DTYPE)
           seed += 1
         return tensor
 
       value = _flatten_and_pad_zeros_even(value)
       seeds = _unique_seeds_for_struct(
-          value, global_seed, stride=self._num_repeats)
+          value, global_seed, stride=self._num_repeats
+      )
       return tf.nest.map_structure(transform, value, seeds)
 
     inner_agg_process = self._inner_agg_factory.create(
-        client_transform.type_signature.result)
+        client_transform.type_signature.result
+    )
 
     @tensorflow_computation.tf_computation(
-        client_transform.type_signature.result, SEED_TFF_TYPE)
+        client_transform.type_signature.result, SEED_TFF_TYPE
+    )
     def server_transform(value, global_seed):
-
       @tf.function
       def transform(tensor, seed):
         seed += self._num_repeats - 1
@@ -254,59 +273,75 @@ class DiscreteFourierTransformFactory(factory.UnweightedAggregationFactory):
           tensor = tf.signal.ifft(tensor)
           tensor *= sample_cis(tf.shape(tensor), seed, inverse=True)
           tensor = tf.concat(
-              [tf.math.real(tensor), tf.math.imag(tensor)], axis=0)
+              [tf.math.real(tensor), tf.math.imag(tensor)], axis=0
+          )
           seed -= 1
         return tensor
 
       seeds = _unique_seeds_for_struct(
-          value, global_seed, stride=self._num_repeats)
+          value, global_seed, stride=self._num_repeats
+      )
       value = tf.nest.map_structure(transform, value, seeds)
-      return tf.nest.map_structure(_slice_and_reshape_to_template_spec, value,
-                                   value_specs)
+      return tf.nest.map_structure(
+          _slice_and_reshape_to_template_spec, value, value_specs
+      )
 
     @federated_computation.federated_computation()
     def init_fn():
       inner_state = inner_agg_process.initialize()
       my_state = intrinsics.federated_eval(
           tensorflow_computation.tf_computation(_init_global_seed),
-          placements.SERVER)
+          placements.SERVER,
+      )
       return intrinsics.federated_zip((inner_state, my_state))
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type))
+        init_fn.type_signature.result, computation_types.at_clients(value_type)
+    )
     def next_fn(state, value):
-      next_fn_impl = _build_next_fn(client_transform, inner_agg_process,
-                                    server_transform, next_global_seed_fn,
-                                    'dft')
+      next_fn_impl = _build_next_fn(
+          client_transform,
+          inner_agg_process,
+          server_transform,
+          next_global_seed_fn,
+          'dft',
+      )
       return next_fn_impl(state, value)
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
 
-def _build_next_fn(client_transform, inner_agg_process, server_transform,
-                   update_my_state, name):
+def _build_next_fn(
+    client_transform, inner_agg_process, server_transform, update_my_state, name
+):
   """Builds body of next_fn given components."""
 
   def next_fn_impl(state, value):
     inner_state, my_state = state
     client_my_state = intrinsics.federated_broadcast(my_state)
-    projected_value = intrinsics.federated_map(client_transform,
-                                               (value, client_my_state))
+    projected_value = intrinsics.federated_map(
+        client_transform, (value, client_my_state)
+    )
 
     inner_agg_output = inner_agg_process.next(inner_state, projected_value)
 
     aggregate_value = intrinsics.federated_map(
-        server_transform, (inner_agg_output.result, my_state))
+        server_transform, (inner_agg_output.result, my_state)
+    )
 
-    new_state = (inner_agg_output.state,
-                 intrinsics.federated_map(update_my_state, my_state))
-    measurements = collections.OrderedDict([(name,
-                                             inner_agg_output.measurements)])
+    new_state = (
+        inner_agg_output.state,
+        intrinsics.federated_map(update_my_state, my_state),
+    )
+    measurements = collections.OrderedDict(
+        [(name, inner_agg_output.measurements)]
+    )
 
     return measured_process.MeasuredProcessOutput(
         state=intrinsics.federated_zip(new_state),
         result=aggregate_value,
-        measurements=intrinsics.federated_zip(measurements))
+        measurements=intrinsics.federated_zip(measurements),
+    )
 
   return next_fn_impl
 
@@ -323,8 +358,9 @@ def _init_global_seed():
     A `tf.int64` tensor with shape [2].
   """
   microseconds_per_second = 10**6  # Timestamp returns fractional seconds.
-  timestamp_microseconds = tf.cast(tf.timestamp() * microseconds_per_second,
-                                   SEED_TF_DTYPE)
+  timestamp_microseconds = tf.cast(
+      tf.timestamp() * microseconds_per_second, SEED_TF_DTYPE
+  )
   return tf.convert_to_tensor([timestamp_microseconds, 0])
 
 
@@ -347,7 +383,8 @@ def _build_next_global_seed_fn(stride):
   def _next_global_seed(global_seed):
     timestamp_microseconds, sequence_number = global_seed[0], global_seed[1]
     return tf.convert_to_tensor(
-        [timestamp_microseconds, sequence_number + stride])
+        [timestamp_microseconds, sequence_number + stride]
+    )
 
   return _next_global_seed
 
@@ -383,7 +420,8 @@ def _unique_seeds_for_struct(struct, global_seed, stride):
   timestamp_microseconds, sequence_number = global_seed[0], global_seed[1]
   seeds = [
       tf.convert_to_tensor(
-          [timestamp_microseconds, sequence_number + i * stride])
+          [timestamp_microseconds, sequence_number + i * stride]
+      )
       for i in range(num_tensors)
   ]
   return tf.nest.pack_sequence_as(struct, seeds)
@@ -417,13 +455,15 @@ def _slice_and_reshape_to_template_spec(x, original_spec):
 
 def _flatten_and_pad_zeros_pow2(struct):
   struct = tf.nest.map_structure(
-      lambda x: tf.reshape(tf.cast(x, OUTPUT_TF_DTYPE), [-1]), struct)
+      lambda x: tf.reshape(tf.cast(x, OUTPUT_TF_DTYPE), [-1]), struct
+  )
   return tf.nest.map_structure(_pad_zeros_pow2, struct)
 
 
 def _flatten_and_pad_zeros_even(struct):
   struct = tf.nest.map_structure(
-      lambda x: tf.reshape(tf.cast(x, OUTPUT_TF_DTYPE), [-1]), struct)
+      lambda x: tf.reshape(tf.cast(x, OUTPUT_TF_DTYPE), [-1]), struct
+  )
   return tf.nest.map_structure(_pad_zeros_even, struct)
 
 
@@ -433,7 +473,7 @@ def _pad_zeros_pow2(x):
   log2_size = tf.math.log(tf.cast(size, tf.float32)) / math.log(2.0)
   # NOTE: We perform `pow` in float32 to avoid the integer TF `pow` op,
   # improving runtimes that use selective op registration.
-  pad_size = tf.cast(2.0**tf.math.ceil(log2_size), tf.int32)
+  pad_size = tf.cast(2.0 ** tf.math.ceil(log2_size), tf.int32)
   return tf.concat([x, tf.zeros([pad_size - size], x.dtype)], axis=0)
 
 
@@ -445,14 +485,24 @@ def _pad_zeros_even(x):
 
 def _check_value_type(value_type):
   """Check value_type meets documented criteria."""
-  if not (value_type.is_tensor() or
-          (value_type.is_struct_with_python() and
-           type_analysis.is_structure_of_tensors(value_type))):
-    raise TypeError('Expected `value_type` to be `TensorType` or '
-                    '`StructWithPythonType` containing only `TensorType`. '
-                    f'Found type: {repr(value_type)}')
+  if not (
+      value_type.is_tensor()
+      or (
+          value_type.is_struct_with_python()
+          and type_analysis.is_structure_of_tensors(value_type)
+      )
+  ):
+    raise TypeError(
+        'Expected `value_type` to be `TensorType` or '
+        '`StructWithPythonType` containing only `TensorType`. '
+        f'Found type: {repr(value_type)}'
+    )
 
-  if not (type_analysis.is_structure_of_floats(value_type) or
-          type_analysis.is_structure_of_integers(value_type)):
-    raise TypeError('Component dtypes of `value_type` must be all integers or '
-                    f'all floats. Found {value_type}.')
+  if not (
+      type_analysis.is_structure_of_floats(value_type)
+      or type_analysis.is_structure_of_integers(value_type)
+  ):
+    raise TypeError(
+        'Component dtypes of `value_type` must be all integers or '
+        f'all floats. Found {value_type}.'
+    )

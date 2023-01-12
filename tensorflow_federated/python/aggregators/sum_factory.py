@@ -41,8 +41,8 @@ class SumFactory(factory.UnweightedAggregationFactory):
   """
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(value_type, type_args)
 
@@ -52,11 +52,13 @@ class SumFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS))
+        computation_types.FederatedType(value_type, placements.CLIENTS),
+    )
     def next_fn(state, value):
       summed_value = intrinsics.federated_sum(value)
       empty_measurements = intrinsics.federated_value((), placements.SERVER)
-      return measured_process.MeasuredProcessOutput(state, summed_value,
-                                                    empty_measurements)
+      return measured_process.MeasuredProcessOutput(
+          state, summed_value, empty_measurements
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)

@@ -64,6 +64,7 @@ py_library(
         ":executor_base",
         ":executor_bindings",
         ":executor_value_base",
+        ":executors_errors",
         ":value_serialization",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",

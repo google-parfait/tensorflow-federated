@@ -13,8 +13,9 @@
 # limitations under the License.
 """Execution contexts for the XLA backend."""
 
+from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
-from tensorflow_federated.python.core.impl.execution_contexts import sync_cpp_execution_context
+from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
 from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
@@ -52,12 +53,12 @@ def create_local_cpp_execution_context(
       max_concurrent_computation_calls=max_concurrent_computation_calls,
       leaf_executor_fn=leaf_executor_fn)
 
-  def compiler_fn():
+  def compiler_fn(comp: computation_base.Computation):
     # TODO(b/255978089): Define compiler_fn - Integrate LocalComputationFactory
     # with intrinsic reductions
+    del comp  # Unused.
     return None
 
-  context = sync_cpp_execution_context.SyncSerializeAndExecuteCPPContext(
-      factory=factory, compiler_fn=compiler_fn
+  return sync_execution_context.SyncExecutionContext(
+      executor_fn=factory, compiler_fn=compiler_fn
   )
-  return context

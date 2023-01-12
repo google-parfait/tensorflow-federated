@@ -91,10 +91,9 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
     self._encoder_fn = encoder_fn
 
   @classmethod
-  def quantize_above_threshold(cls,
-                               quantization_bits=8,
-                               threshold=20000,
-                               **kwargs):
+  def quantize_above_threshold(
+      cls, quantization_bits=8, threshold=20000, **kwargs
+  ):
     """Quantization of values with at least `threshold` elements.
 
     Given a `value_type` in the `create` method, this classmethod configures the
@@ -124,20 +123,22 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
       if value_spec.shape.num_elements() > threshold:
         return te.encoders.as_gather_encoder(
             te.encoders.uniform_quantization(quantization_bits, **kwargs),
-            value_spec)
+            value_spec,
+        )
       return te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
 
     return cls(encoder_fn)
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(value_type, type_args)
     encoders = self._encoders_for_value_type(value_type)
     init_fn = _encoded_init_fn(encoders)
-    next_fn = _encoded_next_fn(init_fn.type_signature.result, value_type,
-                               encoders)
+    next_fn = _encoded_next_fn(
+        init_fn.type_signature.result, value_type, encoders
+    )
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
   def _encoders_for_value_type(self, value_type):
@@ -159,9 +160,11 @@ def _encoded_init_fn(encoders):
     A no-arg `tff.Computation` returning initial state for `EncodedSumFactory`.
   """
   init_fn_tf = tensorflow_computation.tf_computation(
-      lambda: tf.nest.map_structure(lambda e: e.initial_state(), encoders))
+      lambda: tf.nest.map_structure(lambda e: e.initial_state(), encoders)
+  )
   init_fn = federated_computation.federated_computation(
-      lambda: intrinsics.federated_eval(init_fn_tf, placements.SERVER))
+      lambda: intrinsics.federated_eval(init_fn_tf, placements.SERVER)
+  )
   return init_fn
 
 
@@ -189,8 +192,9 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
 
   @tensorflow_computation.tf_computation(server_state_type.member)
   def get_params_fn(state):
-    params = tree.map_structure_up_to(encoders, lambda e, s: e.get_params(s),
-                                      encoders, state)
+    params = tree.map_structure_up_to(
+        encoders, lambda e, s: e.get_params(s), encoders, state
+    )
     encode_params = _slice(encoders, params, 0)
     decode_before_sum_params = _slice(encoders, params, 1)
     decode_after_sum_params = _slice(encoders, params, 2)
@@ -206,11 +210,13 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
   # of intrinsics.federated_aggregate - in production, this could mean an
   # intermediary aggregator node. So currently, we send the params to clients,
   # and ask them to send them back as part of the encoded structure.
-  @tensorflow_computation.tf_computation(value_type, encode_params_type,
-                                         decode_before_sum_params_type)
+  @tensorflow_computation.tf_computation(
+      value_type, encode_params_type, decode_before_sum_params_type
+  )
   def encode_fn(x, encode_params, decode_before_sum_params):
     encoded_structure = tree.map_structure_up_to(
-        encoders, lambda e, *args: e.encode(*args), encoders, x, encode_params)
+        encoders, lambda e, *args: e.encode(*args), encoders, x, encode_params
+    )
     encoded_x = _slice(encoders, encoded_structure, 0)
     state_update_tensors = _slice(encoders, encoded_structure, 1)
     return encoded_x, decode_before_sum_params, state_update_tensors
@@ -222,8 +228,12 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
   # compose a intrinsics.federated_aggregate...
   def decode_before_sum_tf_function(encoded_x, decode_before_sum_params):
     part_decoded_x = tree.map_structure_up_to(
-        encoders, lambda e, *args: e.decode_before_sum(*args), encoders,
-        encoded_x, decode_before_sum_params)
+        encoders,
+        lambda e, *args: e.decode_before_sum(*args),
+        encoders,
+        encoded_x,
+        decode_before_sum_params,
+    )
     one = tf.constant((1,), tf.int32)
     return part_decoded_x, one
 
@@ -235,59 +245,80 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
   part_decoded_x_type = tmp_decode_before_sum_fn.type_signature.result
   del tmp_decode_before_sum_fn  # Only needed for result type.
 
-  @tensorflow_computation.tf_computation(part_decoded_x_type,
-                                         decode_after_sum_params_type)
+  @tensorflow_computation.tf_computation(
+      part_decoded_x_type, decode_after_sum_params_type
+  )
   def decode_after_sum_fn(summed_values, decode_after_sum_params):
     part_decoded_aggregated_x, num_summands = summed_values
     return tree.map_structure_up_to(
         encoders,
         lambda e, x, params: e.decode_after_sum(x, params, num_summands),
-        encoders, part_decoded_aggregated_x, decode_after_sum_params)
+        encoders,
+        part_decoded_aggregated_x,
+        decode_after_sum_params,
+    )
 
-  @tensorflow_computation.tf_computation(server_state_type.member,
-                                         state_update_tensors_type)
+  @tensorflow_computation.tf_computation(
+      server_state_type.member, state_update_tensors_type
+  )
   def update_state_fn(state, state_update_tensors):
-    return tree.map_structure_up_to(encoders,
-                                    lambda e, *args: e.update_state(*args),
-                                    encoders, state, state_update_tensors)
+    return tree.map_structure_up_to(
+        encoders,
+        lambda e, *args: e.update_state(*args),
+        encoders,
+        state,
+        state_update_tensors,
+    )
 
   # Computations for intrinsics.federated_aggregate.
   def _accumulator_value(values, state_update_tensors):
     return collections.OrderedDict(
-        values=values, state_update_tensors=state_update_tensors)
+        values=values, state_update_tensors=state_update_tensors
+    )
 
   @tensorflow_computation.tf_computation
   def zero_fn():
     values = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype),
-        type_conversions.type_to_tf_tensor_specs(part_decoded_x_type))
+        type_conversions.type_to_tf_tensor_specs(part_decoded_x_type),
+    )
     state_update_tensors = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype),
-        type_conversions.type_to_tf_tensor_specs(state_update_tensors_type))
+        type_conversions.type_to_tf_tensor_specs(state_update_tensors_type),
+    )
     return _accumulator_value(values, state_update_tensors)
 
   accumulator_type = zero_fn.type_signature.result
   state_update_aggregation_modes = tf.nest.map_structure(
-      lambda e: tuple(e.state_update_aggregation_modes), encoders)
+      lambda e: tuple(e.state_update_aggregation_modes), encoders
+  )
 
-  @tensorflow_computation.tf_computation(accumulator_type,
-                                         encode_fn.type_signature.result)
+  @tensorflow_computation.tf_computation(
+      accumulator_type, encode_fn.type_signature.result
+  )
   def accumulate_fn(acc, encoded_x):
     value, params, state_update_tensors = encoded_x
     part_decoded_value = decode_before_sum_tf_function(value, params)
-    new_values = tf.nest.map_structure(tf.add, acc['values'],
-                                       part_decoded_value)
+    new_values = tf.nest.map_structure(
+        tf.add, acc['values'], part_decoded_value
+    )
     new_state_update_tensors = tf.nest.map_structure(
-        _accmulate_state_update_tensor, acc['state_update_tensors'],
-        state_update_tensors, state_update_aggregation_modes)
+        _accmulate_state_update_tensor,
+        acc['state_update_tensors'],
+        state_update_tensors,
+        state_update_aggregation_modes,
+    )
     return _accumulator_value(new_values, new_state_update_tensors)
 
   @tensorflow_computation.tf_computation(accumulator_type, accumulator_type)
   def merge_fn(acc1, acc2):
     new_values = tf.nest.map_structure(tf.add, acc1['values'], acc2['values'])
     new_state_update_tensors = tf.nest.map_structure(
-        _accmulate_state_update_tensor, acc1['state_update_tensors'],
-        acc2['state_update_tensors'], state_update_aggregation_modes)
+        _accmulate_state_update_tensor,
+        acc1['state_update_tensors'],
+        acc2['state_update_tensors'],
+        state_update_aggregation_modes,
+    )
     return _accumulator_value(new_values, new_state_update_tensors)
 
   @tensorflow_computation.tf_computation(accumulator_type)
@@ -295,31 +326,37 @@ def _encoded_next_fn(server_state_type, value_type, encoders):
     return acc
 
   @federated_computation.federated_computation(
-      server_state_type, computation_types.at_clients(value_type))
+      server_state_type, computation_types.at_clients(value_type)
+  )
   def next_fn(state, value):
     encode_params, decode_before_sum_params, decode_after_sum_params = (
-        intrinsics.federated_map(get_params_fn, state))
+        intrinsics.federated_map(get_params_fn, state)
+    )
     encode_params = intrinsics.federated_broadcast(encode_params)
     decode_before_sum_params = intrinsics.federated_broadcast(
-        decode_before_sum_params)
+        decode_before_sum_params
+    )
 
     encoded_values = intrinsics.federated_map(
-        encode_fn, [value, encode_params, decode_before_sum_params])
+        encode_fn, [value, encode_params, decode_before_sum_params]
+    )
 
-    aggregated_values = intrinsics.federated_aggregate(encoded_values,
-                                                       zero_fn(), accumulate_fn,
-                                                       merge_fn, report_fn)
+    aggregated_values = intrinsics.federated_aggregate(
+        encoded_values, zero_fn(), accumulate_fn, merge_fn, report_fn
+    )
 
     decoded_values = intrinsics.federated_map(
-        decode_after_sum_fn,
-        [aggregated_values.values, decode_after_sum_params])
+        decode_after_sum_fn, [aggregated_values.values, decode_after_sum_params]
+    )
 
     updated_state = intrinsics.federated_map(
-        update_state_fn, [state, aggregated_values.state_update_tensors])
+        update_state_fn, [state, aggregated_values.state_update_tensors]
+    )
 
     empty_metrics = intrinsics.federated_value((), placements.SERVER)
     return measured_process.MeasuredProcessOutput(
-        state=updated_state, result=decoded_values, measurements=empty_metrics)
+        state=updated_state, result=decoded_values, measurements=empty_metrics
+    )
 
   return next_fn
 
@@ -355,7 +392,8 @@ def _accmulate_state_update_tensor(a, b, mode):
     return tf.maximum(a, b)
   elif mode == te.core.StateAggregationMode.STACK:
     raise NotImplementedError(
-        'StateAggregationMode.STACK is not supported yet.')
+        'StateAggregationMode.STACK is not supported yet.'
+    )
   else:
     raise ValueError('Not supported state aggregation mode: %s' % mode)
 
@@ -363,12 +401,15 @@ def _accmulate_state_update_tensor(a, b, mode):
 def _check_threshold(threshold):
   py_typecheck.check_type(threshold, int)
   if threshold < 0:
-    raise ValueError(f'The threshold must be nonnegative. '
-                     f'Provided threshold: {threshold}')
+    raise ValueError(
+        f'The threshold must be nonnegative. Provided threshold: {threshold}'
+    )
 
 
 def _check_quantization_bits(quantization_bits):
   py_typecheck.check_type(quantization_bits, int)
   if not 1 <= quantization_bits <= 16:
-    raise ValueError(f'The quantization_bits must be in range [1, 16]. '
-                     f'Provided quantization_bits: {quantization_bits}')
+    raise ValueError(
+        'The quantization_bits must be in range [1, 16]. '
+        f'Provided quantization_bits: {quantization_bits}'
+    )

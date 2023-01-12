@@ -63,12 +63,14 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
   all real floats, and it will otherwise raise an error.
   """
 
-  def __init__(self,
-               inner_agg_factory,
-               scale_factor=1.0,
-               stochastic=False,
-               beta=0.0,
-               prior_norm_bound=None):
+  def __init__(
+      self,
+      inner_agg_factory,
+      scale_factor=1.0,
+      stochastic=False,
+      beta=0.0,
+      prior_norm_bound=None,
+  ):
     """Initializes the DiscretizationFactory.
 
     Args:
@@ -103,21 +105,28 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
       ValueError: If `prior_norm_bound` is given but is not a positive number.
     """
     if not isinstance(inner_agg_factory, factory.UnweightedAggregationFactory):
-      raise TypeError('`inner_agg_factory` must have type '
-                      'UnweightedAggregationFactory. '
-                      f'Found {type(inner_agg_factory)}.')
+      raise TypeError(
+          '`inner_agg_factory` must have type '
+          'UnweightedAggregationFactory. '
+          f'Found {type(inner_agg_factory)}.'
+      )
 
     if not isinstance(scale_factor, numbers.Number) or scale_factor <= 0:
-      raise ValueError('`scale_factor` should be a positive number. '
-                       f'Found {scale_factor}.')
+      raise ValueError(
+          f'`scale_factor` should be a positive number. Found {scale_factor}.'
+      )
     if not isinstance(stochastic, bool):
       raise ValueError(f'`stochastic` should be a boolean. Found {stochastic}.')
     if not isinstance(beta, numbers.Number) or not 0 <= beta < 1:
       raise ValueError(f'`beta` should be a number in [0, 1). Found {beta}.')
-    if prior_norm_bound is not None and (not isinstance(
-        prior_norm_bound, numbers.Number) or prior_norm_bound <= 0):
-      raise ValueError('If specified, `prior_norm_bound` should be a positive '
-                       f'number. Found {prior_norm_bound}.')
+    if prior_norm_bound is not None and (
+        not isinstance(prior_norm_bound, numbers.Number)
+        or prior_norm_bound <= 0
+    ):
+      raise ValueError(
+          'If specified, `prior_norm_bound` should be a positive '
+          f'number. Found {prior_norm_bound}.'
+      )
 
     self._scale_factor = float(scale_factor)
     self._stochastic = stochastic
@@ -130,28 +139,39 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
     # Validate input args and value_type and parse out the TF dtypes.
     if value_type.is_tensor():
       tf_dtype = value_type.dtype
-    elif (value_type.is_struct_with_python() and
-          type_analysis.is_structure_of_tensors(value_type)):
+    elif (
+        value_type.is_struct_with_python()
+        and type_analysis.is_structure_of_tensors(value_type)
+    ):
       if self._prior_norm_bound:
-        raise TypeError('If `prior_norm_bound` is specified, `value_type` must '
-                        f'be `TensorType`. Found type: {repr(value_type)}.')
+        raise TypeError(
+            'If `prior_norm_bound` is specified, `value_type` must '
+            f'be `TensorType`. Found type: {repr(value_type)}.'
+        )
       tf_dtype = type_conversions.structure_from_tensor_type_tree(
-          lambda x: x.dtype, value_type)
+          lambda x: x.dtype, value_type
+      )
     else:
-      raise TypeError('Expected `value_type` to be `TensorType` or '
-                      '`StructWithPythonType` containing only `TensorType`. '
-                      f'Found type: {repr(value_type)}')
+      raise TypeError(
+          'Expected `value_type` to be `TensorType` or '
+          '`StructWithPythonType` containing only `TensorType`. '
+          f'Found type: {repr(value_type)}'
+      )
 
     # Check that all values are floats.
     if not type_analysis.is_structure_of_floats(value_type):
-      raise TypeError('Component dtypes of `value_type` must all be floats. '
-                      f'Found {repr(value_type)}.')
+      raise TypeError(
+          'Component dtypes of `value_type` must all be floats. '
+          f'Found {repr(value_type)}.'
+      )
 
-    discretize_fn = _build_discretize_fn(value_type, self._stochastic,
-                                         self._beta)
+    discretize_fn = _build_discretize_fn(
+        value_type, self._stochastic, self._beta
+    )
 
-    @tensorflow_computation.tf_computation(discretize_fn.type_signature.result,
-                                           tf.float32)
+    @tensorflow_computation.tf_computation(
+        discretize_fn.type_signature.result, tf.float32
+    )
     def undiscretize_fn(value, scale_factor):
       return _undiscretize_struct(value, scale_factor, tf_dtype)
 
@@ -161,15 +181,19 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
     @federated_computation.federated_computation()
     def init_fn():
       state = collections.OrderedDict(
-          scale_factor=intrinsics.federated_value(self._scale_factor,
-                                                  placements.SERVER),
-          prior_norm_bound=intrinsics.federated_value(self._prior_norm_bound,
-                                                      placements.SERVER),
-          inner_agg_process=inner_agg_process.initialize())
+          scale_factor=intrinsics.federated_value(
+              self._scale_factor, placements.SERVER
+          ),
+          prior_norm_bound=intrinsics.federated_value(
+              self._prior_norm_bound, placements.SERVER
+          ),
+          inner_agg_process=inner_agg_process.initialize(),
+      )
       return intrinsics.federated_zip(state)
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type))
+        init_fn.type_signature.result, computation_types.at_clients(value_type)
+    )
     def next_fn(state, value):
       server_scale_factor = state['scale_factor']
       client_scale_factor = intrinsics.federated_broadcast(server_scale_factor)
@@ -177,25 +201,30 @@ class DiscretizationFactory(factory.UnweightedAggregationFactory):
       prior_norm_bound = intrinsics.federated_broadcast(server_prior_norm_bound)
 
       discretized_value = intrinsics.federated_map(
-          discretize_fn, (value, client_scale_factor, prior_norm_bound))
+          discretize_fn, (value, client_scale_factor, prior_norm_bound)
+      )
 
       inner_state = state['inner_agg_process']
       inner_agg_output = inner_agg_process.next(inner_state, discretized_value)
 
       undiscretized_agg_value = intrinsics.federated_map(
-          undiscretize_fn, (inner_agg_output.result, server_scale_factor))
+          undiscretize_fn, (inner_agg_output.result, server_scale_factor)
+      )
 
       new_state = collections.OrderedDict(
           scale_factor=server_scale_factor,
           prior_norm_bound=server_prior_norm_bound,
-          inner_agg_process=inner_agg_output.state)
+          inner_agg_process=inner_agg_output.state,
+      )
       measurements = collections.OrderedDict(
-          discretize=inner_agg_output.measurements)
+          discretize=inner_agg_output.measurements
+      )
 
       return measured_process.MeasuredProcessOutput(
           state=intrinsics.federated_zip(new_state),
           result=undiscretized_agg_value,
-          measurements=intrinsics.federated_zip(measurements))
+          measurements=intrinsics.federated_zip(measurements),
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
@@ -205,14 +234,16 @@ def _build_discretize_fn(value_type, stochastic, beta):
 
   @tensorflow_computation.tf_computation(value_type, tf.float32, tf.float32)
   def discretize_fn(value, scale_factor, prior_norm_bound):
-    return _discretize_struct(value, scale_factor, stochastic, beta,
-                              prior_norm_bound)
+    return _discretize_struct(
+        value, scale_factor, stochastic, beta, prior_norm_bound
+    )
 
   return discretize_fn
 
 
-def _discretize_struct(struct, scale_factor, stochastic, beta,
-                       prior_norm_bound):
+def _discretize_struct(
+    struct, scale_factor, stochastic, beta, prior_norm_bound
+):
   """Scales and rounds each tensor of the structure to the integer grid."""
 
   def discretize_tensor(x):
@@ -222,8 +253,9 @@ def _discretize_struct(struct, scale_factor, stochastic, beta,
     scaled_bound = prior_norm_bound * scale_factor  # 0 if no prior bound.
     # Round to integer grid.
     if stochastic:
-      discretized_x = _stochastic_rounding(scaled_x, scaled_bound, scale_factor,
-                                           beta)
+      discretized_x = _stochastic_rounding(
+          scaled_x, scaled_bound, scale_factor, beta
+      )
     else:
       discretized_x = tf.round(scaled_x)
 
@@ -274,7 +306,7 @@ def inflated_l2_norm_bound(l2_norm_bound, gamma, beta, dim):
   beta = tf.cast(beta, tf.float32)
 
   gamma_sqrt_dim = tf.cast(tf.sqrt(dim) * gamma_f64, tf.float32)
-  beta_term = tf.sqrt(2. * tf.math.log(1. / beta))
+  beta_term = tf.sqrt(2.0 * tf.math.log(1.0 / beta))
 
   bound_1 = norm + gamma_sqrt_dim
   squared_bound_2 = tf.square(norm) + 0.25 * tf.square(gamma_sqrt_dim)
