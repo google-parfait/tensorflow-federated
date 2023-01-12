@@ -333,27 +333,30 @@ def _untuple_broadcast_only_before_after(before, after):
   after_param_ref = building_blocks.Reference(
       after_param_name, after_param_type
   )
+
+  after_result_arg = building_blocks.Struct([
+      (
+          'original_arg',
+          building_blocks.Selection(after_param_ref, 'original_arg'),
+      ),
+      (
+          'intrinsic_results',
+          building_blocks.Struct([(
+              'federated_broadcast_result',
+              building_blocks.Selection(
+                  after_param_ref, 'federated_broadcast_result'
+              ),
+          )]),
+      ),
+  ])
+  after_result = building_blocks.Call(
+      after,
+      after_result_arg,
+  )
   untupled_after = building_blocks.Lambda(
       after_param_name,
       after_param_type,
-      building_blocks.Call(
-          after,
-          building_blocks.Struct([
-              (
-                  'original_arg',
-                  building_blocks.Selection(after_param_ref, 'original_arg'),
-              ),
-              (
-                  'intrinsic_results',
-                  building_blocks.Struct([(
-                      'federated_broadcast_result',
-                      building_blocks.Selection(
-                          after_param_ref, 'federated_broadcast_result'
-                      ),
-                  )]),
-              ),
-          ]),
-      ),
+      after_result,
   )
   return untupled_before, untupled_after
 
