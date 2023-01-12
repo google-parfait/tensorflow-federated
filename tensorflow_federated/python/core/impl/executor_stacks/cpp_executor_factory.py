@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A collection of constructors for basic types of executor stacks."""
 
 from collections.abc import Callable, Sequence
@@ -45,7 +40,7 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
 
 
 class CPPExecutorFactory(executor_factory.ExecutorFactory):
-  """An ExcutorFactory which wraps a simple executor_fn."""
+  """An ExecutorFactory which wraps a simple executor_fn."""
 
   def __init__(self,
                executor_fn: Callable[[executor_factory.CardinalitiesType],
@@ -109,9 +104,9 @@ def _check_num_clients_is_valid(default_num_clients: int):
 def local_cpp_executor_factory(
     default_num_clients: int = 0,
     max_concurrent_computation_calls: int = -1,
-    leaf_executor_fn: Callable[[],
-                               executor_bindings.Executor] = executor_bindings
-    .create_tensorflow_executor
+    leaf_executor_fn: Callable[
+        [int], executor_bindings.Executor
+    ] = executor_bindings.create_tensorflow_executor,
 ) -> executor_factory.ExecutorFactory:
   """Local ExecutorFactory backed by C++ Executor bindings."""
   _check_num_clients_is_valid(default_num_clients)
