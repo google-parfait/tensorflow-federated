@@ -20,24 +20,6 @@ py_library(
 )
 
 py_library(
-    name = "async_cpp_execution_context",
-    srcs = ["async_cpp_execution_context.py"],
-    data = ["@pybind11_abseil//pybind11_abseil:status.so"],
-    srcs_version = "PY3",
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
-    deps = [
-        ":compiler_pipeline",
-        "//tensorflow_federated/python/common_libs:retrying",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
-        "//tensorflow_federated/python/core/impl/executors:value_serialization",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-    ],
-)
-
-py_library(
     name = "async_execution_context",
     srcs = ["async_execution_context.py"],
     srcs_version = "PY3",
@@ -143,21 +125,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-    ],
-)
-
-py_library(
-    name = "sync_cpp_execution_context",
-    srcs = ["sync_cpp_execution_context.py"],
-    srcs_version = "PY3",
-    tags = [
-        "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
-    ],
-    deps = [
-        ":async_cpp_execution_context",
-        "//tensorflow_federated/python/common_libs:async_utils",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
     ],
 )
 

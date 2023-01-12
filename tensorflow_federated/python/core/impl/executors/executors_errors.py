@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Custom exceptions and symbols for TFF executors."""
+
+import typing
 from typing import Any
 
 import grpc
@@ -41,13 +43,34 @@ class RetryableGRPCError(RetryableError, grpc.RpcError, grpc.Call):
     return self._grpc_error.trailing_metadata()
 
 
-class CardinalityError(Exception):
-  """Raised when a value in a stack does not match the stack's cardinality."""
-
-
 def get_grpc_retryable_error_codes() -> set[grpc.StatusCode]:
   """Returns gRPC retryable error codes."""
   return set([
       grpc.StatusCode.UNAVAILABLE,
       grpc.StatusCode.FAILED_PRECONDITION,
   ])
+
+
+class RetryableAbslStatusError(RetryableError):
+  """Raised when execution fails with an absl status error and can be retried."""
+
+
+def get_absl_status_retryable_error_codes() -> set[int]:
+  """Returns Absl retryable error codes."""
+  return set([
+      14,
+      9,
+  ])
+
+
+def is_absl_status_retryable_error(exception: Exception) -> bool:
+  """Checks if the exception is an absl status error that can be retried."""
+  if (not hasattr(exception, 'status') or
+      not hasattr(exception.status, 'code_int')):
+    return False
+  code = exception.status.code_int()
+  return code in get_absl_status_retryable_error_codes()
+
+
+class CardinalityError(Exception):
+  """Raised when a value in a stack does not match the stack's cardinality."""

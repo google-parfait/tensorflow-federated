@@ -41,13 +41,15 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
           learning_rate=1.0,
           below_estimate_stddev=0.5,
           expected_num_records=100,
-          geometric_update=True)
+          geometric_update=True,
+      )
     else:
       quantile_estimator_query = tfp.NoPrivacyQuantileEstimatorQuery(
           initial_estimate=1.0,
           target_quantile=0.5,
           learning_rate=1.0,
-          geometric_update=True)
+          geometric_update=True,
+      )
 
     process = QEProcess(quantile_estimator_query)
 
@@ -56,33 +58,45 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
 
     server_state_type = computation_types.FederatedType(
         type_conversions.type_from_tensors((query_state, sum_process_state)),
-        placements.SERVER)
+        placements.SERVER,
+    )
 
     self.assertEqual(
         computation_types.FunctionType(
-            parameter=None, result=server_state_type),
-        process.initialize.type_signature)
+            parameter=None, result=server_state_type
+        ),
+        process.initialize.type_signature,
+    )
 
-    estimate_type = computation_types.FederatedType(tf.float32,
-                                                    placements.SERVER)
+    estimate_type = computation_types.FederatedType(
+        tf.float32, placements.SERVER
+    )
 
     self.assertEqual(
         computation_types.FunctionType(
-            parameter=server_state_type, result=estimate_type),
-        process.report.type_signature)
+            parameter=server_state_type, result=estimate_type
+        ),
+        process.report.type_signature,
+    )
 
-    client_value_type = computation_types.FederatedType(tf.float32,
-                                                        placements.CLIENTS)
+    client_value_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS
+    )
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(
             computation_types.FunctionType(
                 parameter=collections.OrderedDict(
-                    state=server_state_type, value=client_value_type),
-                result=server_state_type)))
+                    state=server_state_type, value=client_value_type
+                ),
+                result=server_state_type,
+            )
+        )
+    )
 
   def test_bad_query(self):
     non_quantile_estimator_query = tfp.GaussianSumQuery(
-        l2_norm_clip=1.0, stddev=1.0)
+        l2_norm_clip=1.0, stddev=1.0
+    )
 
     with self.assertRaises(TypeError):
       QEProcess(non_quantile_estimator_query)
@@ -92,12 +106,14 @@ class PrivateQEComputationTest(tf.test.TestCase, parameterized.TestCase):
         initial_estimate=1.0,
         target_quantile=0.5,
         learning_rate=1.0,
-        geometric_update=True)
+        geometric_update=True,
+    )
 
     with self.assertRaises(TypeError):
       QEProcess(
           quantile_estimator_query=quantile_estimator_query,
-          record_aggregation_factory="I'm not a record_aggregation_factory.")
+          record_aggregation_factory="I'm not a record_aggregation_factory.",
+      )
 
 
 class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
@@ -112,7 +128,8 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
         initial_estimate=initial_estimate,
         target_quantile=target_quantile,
         learning_rate=learning_rate,
-        geometric_update=geometric_update)
+        geometric_update=geometric_update,
+    )
 
     process = QEProcess(quantile_estimator_query)
 
@@ -123,8 +140,9 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
     state = process.next(state, [initial_estimate + 1, initial_estimate + 2])
 
     if geometric_update:
-      expected_estimate = (
-          initial_estimate * np.exp(learning_rate * target_quantile))
+      expected_estimate = initial_estimate * np.exp(
+          learning_rate * target_quantile
+      )
     else:
       expected_estimate = initial_estimate + learning_rate * target_quantile
 
@@ -132,7 +150,8 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_no_noise_cls(self):
     process = QEProcess.no_noise(
-        initial_estimate=1.0, target_quantile=0.5, learning_rate=1.0)
+        initial_estimate=1.0, target_quantile=0.5, learning_rate=1.0
+    )
     self.assertIsInstance(process, QEProcess)
     state = process.initialize()
     self.assertEqual(process.report(state), 1.0)
@@ -143,7 +162,8 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
         target_quantile=0.5,
         learning_rate=1.0,
         multiplier=2.0,
-        increment=1.0)
+        increment=1.0,
+    )
     self.assertIsInstance(process, estimation_process.EstimationProcess)
     state = process.initialize()
     self.assertEqual(process.report(state), 3.0)
@@ -153,12 +173,14 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
         initial_estimate=1.0,
         target_quantile=0.5,
         learning_rate=1.0,
-        secure_estimation=False)
+        secure_estimation=False,
+    )
     secure_process = QEProcess.no_noise(
         initial_estimate=1.0,
         target_quantile=0.5,
         learning_rate=1.0,
-        secure_estimation=True)
+        secure_estimation=True,
+    )
 
     data = [0.5, 1.5, 2.5]  # 2 bigger than the initial estimate 1.0, 1 smaller.
 
@@ -169,17 +191,20 @@ class PrivateQEExecutionTest(tf.test.TestCase, parameterized.TestCase):
       secure_state = secure_process.next(secure_state, data)
       self.assertAllClose(
           simple_process.report(simple_state),
-          secure_process.report(secure_state))
+          secure_process.report(secure_state),
+      )
 
   def test_secure_estimation_true_only_contains_secure_aggregation(self):
     secure_process = QEProcess.no_noise(
         initial_estimate=1.0,
         target_quantile=0.5,
         learning_rate=1.0,
-        secure_estimation=True)
+        secure_estimation=True,
+    )
     try:
       static_assert.assert_not_contains_unsecure_aggregation(
-          secure_process.next)
+          secure_process.next
+      )
     except:  # pylint: disable=bare-except
       self.fail('Computation contains non-secure aggregation.')
 

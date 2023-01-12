@@ -62,11 +62,14 @@ class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
   `distortion_aggregation_factory`, if provided.
   """
 
-  def __init__(self,
-               inner_agg_factory: factory.UnweightedAggregationFactory,
-               step_size: float,
-               distortion_aggregation_factory: Optional[
-                   factory.UnweightedAggregationFactory] = None):
+  def __init__(
+      self,
+      inner_agg_factory: factory.UnweightedAggregationFactory,
+      step_size: float,
+      distortion_aggregation_factory: Optional[
+          factory.UnweightedAggregationFactory
+      ] = None,
+  ):
     """Constructor for DeterministicDiscretizationFactory.
 
     Args:
@@ -83,47 +86,60 @@ class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
     self._inner_agg_factory = inner_agg_factory
 
     if distortion_aggregation_factory is not None:
-      py_typecheck.check_type(distortion_aggregation_factory,
-                              factory.UnweightedAggregationFactory)
+      py_typecheck.check_type(
+          distortion_aggregation_factory, factory.UnweightedAggregationFactory
+      )
     self._distortion_aggregation_factory = distortion_aggregation_factory
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     # Validate input args and value_type and parse out the TF dtypes.
     if value_type.is_tensor():
       tf_dtype = value_type.dtype
-    elif (value_type.is_struct_with_python() and
-          type_analysis.is_structure_of_tensors(value_type)):
+    elif (
+        value_type.is_struct_with_python()
+        and type_analysis.is_structure_of_tensors(value_type)
+    ):
       tf_dtype = type_conversions.structure_from_tensor_type_tree(
-          lambda x: x.dtype, value_type)
+          lambda x: x.dtype, value_type
+      )
     else:
-      raise TypeError('Expected `value_type` to be `TensorType` or '
-                      '`StructWithPythonType` containing only `TensorType`. '
-                      f'Found type: {repr(value_type)}')
+      raise TypeError(
+          'Expected `value_type` to be `TensorType` or '
+          '`StructWithPythonType` containing only `TensorType`. '
+          f'Found type: {repr(value_type)}'
+      )
 
     # Check that all values are floats.
     if not type_analysis.is_structure_of_floats(value_type):
-      raise TypeError('Component dtypes of `value_type` must all be floats. '
-                      f'Found {repr(value_type)}.')
+      raise TypeError(
+          'Component dtypes of `value_type` must all be floats. '
+          f'Found {repr(value_type)}.'
+      )
 
     if self._distortion_aggregation_factory is not None:
-      distortion_aggregation_process = self._distortion_aggregation_factory.create(
-          computation_types.to_type(tf.float32))
+      distortion_aggregation_process = (
+          self._distortion_aggregation_factory.create(
+              computation_types.to_type(tf.float32)
+          )
+      )
 
     @tensorflow_computation.tf_computation(value_type, tf.float32)
     def discretize_fn(value, step_size):
       return _discretize_struct(value, step_size)
 
-    @tensorflow_computation.tf_computation(discretize_fn.type_signature.result,
-                                           tf.float32)
+    @tensorflow_computation.tf_computation(
+        discretize_fn.type_signature.result, tf.float32
+    )
     def undiscretize_fn(value, step_size):
       return _undiscretize_struct(value, step_size, tf_dtype)
 
     @tensorflow_computation.tf_computation(value_type, tf.float32)
     def distortion_measurement_fn(value, step_size):
       reconstructed_value = undiscretize_fn(
-          discretize_fn(value, step_size), step_size)
+          discretize_fn(value, step_size), step_size
+      )
       err = tf.nest.map_structure(tf.subtract, reconstructed_value, value)
       squared_err = tf.nest.map_structure(tf.square, err)
       flat_squared_errs = [
@@ -135,47 +151,58 @@ class DeterministicDiscretizationFactory(factory.UnweightedAggregationFactory):
       return mean_squared_err
 
     inner_agg_process = self._inner_agg_factory.create(
-        discretize_fn.type_signature.result)
+        discretize_fn.type_signature.result
+    )
 
     @federated_computation.federated_computation()
     def init_fn():
       state = collections.OrderedDict(
-          step_size=intrinsics.federated_value(self._step_size,
-                                               placements.SERVER),
-          inner_agg_process=inner_agg_process.initialize())
+          step_size=intrinsics.federated_value(
+              self._step_size, placements.SERVER
+          ),
+          inner_agg_process=inner_agg_process.initialize(),
+      )
       return intrinsics.federated_zip(state)
 
     @federated_computation.federated_computation(
-        init_fn.type_signature.result, computation_types.at_clients(value_type))
+        init_fn.type_signature.result, computation_types.at_clients(value_type)
+    )
     def next_fn(state, value):
       server_step_size = state['step_size']
       client_step_size = intrinsics.federated_broadcast(server_step_size)
 
-      discretized_value = intrinsics.federated_map(discretize_fn,
-                                                   (value, client_step_size))
+      discretized_value = intrinsics.federated_map(
+          discretize_fn, (value, client_step_size)
+      )
 
       inner_state = state['inner_agg_process']
       inner_agg_output = inner_agg_process.next(inner_state, discretized_value)
 
       undiscretized_agg_value = intrinsics.federated_map(
-          undiscretize_fn, (inner_agg_output.result, server_step_size))
+          undiscretize_fn, (inner_agg_output.result, server_step_size)
+      )
 
       new_state = collections.OrderedDict(
-          step_size=server_step_size, inner_agg_process=inner_agg_output.state)
+          step_size=server_step_size, inner_agg_process=inner_agg_output.state
+      )
       measurements = collections.OrderedDict(
-          deterministic_discretization=inner_agg_output.measurements)
+          deterministic_discretization=inner_agg_output.measurements
+      )
 
       if self._distortion_aggregation_factory is not None:
-        distortions = intrinsics.federated_map(distortion_measurement_fn,
-                                               (value, client_step_size))
+        distortions = intrinsics.federated_map(
+            distortion_measurement_fn, (value, client_step_size)
+        )
         aggregate_distortion = distortion_aggregation_process.next(
-            distortion_aggregation_process.initialize(), distortions).result
+            distortion_aggregation_process.initialize(), distortions
+        ).result
         measurements['distortion'] = aggregate_distortion
 
       return measured_process.MeasuredProcessOutput(
           state=intrinsics.federated_zip(new_state),
           result=undiscretized_agg_value,
-          measurements=intrinsics.federated_zip(measurements))
+          measurements=intrinsics.federated_zip(measurements),
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 

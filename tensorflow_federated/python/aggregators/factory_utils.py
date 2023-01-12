@@ -21,7 +21,7 @@ from tensorflow_federated.python.core.templates import aggregation_process
 
 
 def as_weighted_aggregator(
-    unweighted_aggregator: factory.UnweightedAggregationFactory
+    unweighted_aggregator: factory.UnweightedAggregationFactory,
 ) -> factory.WeightedAggregationFactory:
   """Constructs a weighted wrapper for an unweighted aggregation factory.
 
@@ -43,20 +43,23 @@ class _UnweightedAsWeightedFactory(factory.WeightedAggregationFactory):
   """Weighted wrapper for an unweighted aggregation factory."""
 
   def __init__(self, unweighted_factory: factory.UnweightedAggregationFactory):
-    py_typecheck.check_type(unweighted_factory,
-                            factory.UnweightedAggregationFactory)
+    py_typecheck.check_type(
+        unweighted_factory, factory.UnweightedAggregationFactory
+    )
     self._factory = unweighted_factory
 
   def create(self, value_type, weight_type):
-
     aggregator = self._factory.create(value_type)
 
     @federated_computation.federated_computation(
-        aggregator.state_type, computation_types.at_clients(value_type),
-        computation_types.at_clients(weight_type))
+        aggregator.state_type,
+        computation_types.at_clients(value_type),
+        computation_types.at_clients(weight_type),
+    )
     def next_fn(state, value, weight):
       del weight  # Unused.
       return aggregator.next(state, value)
 
-    return aggregation_process.AggregationProcess(aggregator.initialize,
-                                                  next_fn)
+    return aggregation_process.AggregationProcess(
+        aggregator.initialize, next_fn
+    )

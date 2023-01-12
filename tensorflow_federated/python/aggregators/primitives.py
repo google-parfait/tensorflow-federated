@@ -37,14 +37,16 @@ def _validate_value_on_clients(value):
   if value.type_signature.placement is not placements.CLIENTS:
     raise TypeError(
         '`value` argument must be a tff.Value placed at CLIENTS. Got: {!s}'
-        .format(value.type_signature))
+        .format(value.type_signature)
+    )
 
 
 def _validate_dtype_is_min_max_compatible(dtype):
   if not (dtype.is_integer or dtype.is_floating):
     raise TypeError(
-        f'Unsupported dtype. The dtype for min and max must be either an '
-        f'integer or floating:. Got: {dtype}.')
+        'Unsupported dtype. The dtype for min and max must be either an '
+        f'integer or floating:. Got: {dtype}.'
+    )
 
 
 def _federated_reduce_with_func(value, tf_func, zeros):
@@ -74,8 +76,9 @@ def _federated_reduce_with_func(value, tf_func, zeros):
   def report(value):
     return value
 
-  return intrinsics.federated_aggregate(value, zeros, accumulate, accumulate,
-                                        report)
+  return intrinsics.federated_aggregate(
+      value, zeros, accumulate, accumulate, report
+  )
 
 
 def _initial_values(initial_value_fn, member_type):
@@ -98,7 +101,8 @@ def _initial_values(initial_value_fn, member_type):
   @tensorflow_computation.tf_computation
   def zeros_fn():
     return type_conversions.structure_from_tensor_type_tree(
-        validate_and_fill, member_type)
+        validate_and_fill, member_type
+    )
 
   return zeros_fn()
 
@@ -162,6 +166,7 @@ class _Samples:
   These two lists are used to sample from the accumulators with equal
   probability.
   """
+
   accumulators = attr.ib()
   rands = attr.ib()
 
@@ -184,7 +189,8 @@ def _zeros_for_sample(member_type):
   def accumlator_type_fn():
     """Gets the type for the accumulators."""
     accumulator_zeros = type_conversions.structure_from_tensor_type_tree(
-        zeros_for_tensor_type, member_type)
+        zeros_for_tensor_type, member_type
+    )
     return _Samples(accumulator_zeros, tf.zeros([0], tf.float32))
 
   return accumlator_type_fn()
@@ -205,16 +211,19 @@ def _get_accumulator_type(member_type):
   """
 
   def add_unknown_first_dim(tensor_type):
-    return computation_types.TensorType(tensor_type.dtype,
-                                        [None] + tensor_type.shape.dims)
+    return computation_types.TensorType(
+        tensor_type.dtype, [None] + tensor_type.shape.dims
+    )
 
   accumulator_type = type_conversions.structure_from_tensor_type_tree(
-      add_unknown_first_dim, member_type)
+      add_unknown_first_dim, member_type
+  )
   return computation_types.to_type(
       _Samples(
           accumulators=accumulator_type,
           rands=computation_types.TensorType(tf.float32, shape=[None]),
-      ))
+      )
+  )
 
 
 def federated_sample(value, max_num_samples=100):
@@ -246,20 +255,23 @@ def federated_sample(value, max_num_samples=100):
     size = tf.shape(rands)[0]
     k = tf.minimum(size, max_num_samples)
     indices = tf.math.top_k(rands, k=k).indices
-    return tf.nest.map_structure(lambda v: tf.gather(v, indices),
-                                 accumulators), tf.gather(rands, indices)
+    return tf.nest.map_structure(
+        lambda v: tf.gather(v, indices), accumulators
+    ), tf.gather(rands, indices)
 
   def concat_expand_dims(a, b):
     b = tf.expand_dims(b, axis=0)
     return tf.concat([a, b], axis=0)
 
-  @tensorflow_computation.tf_computation(accumulator_type,
-                                         value.type_signature.member)
+  @tensorflow_computation.tf_computation(
+      accumulator_type, value.type_signature.member
+  )
   def accumulate(current, value):
     """Accumulates samples through concatenation."""
     rands = concat_expand_dims(current.rands, tf.random.uniform(shape=()))
-    accumulators = tf.nest.map_structure(concat_expand_dims,
-                                         current.accumulators, value)
+    accumulators = tf.nest.map_structure(
+        concat_expand_dims, current.accumulators, value
+    )
     accumulators, rands = apply_sampling(accumulators, rands)
     return _Samples(accumulators, rands)
 
@@ -283,8 +295,12 @@ def federated_sample(value, max_num_samples=100):
 
 # Lower precision types are not supported to avoid potential hard to discover
 # numerical issues in conversion to/from format compatible with secure sum.
-_SECURE_QUANTIZED_SUM_ALLOWED_DTYPES = (tf.int32, tf.int64, tf.float32,
-                                        tf.float64)
+_SECURE_QUANTIZED_SUM_ALLOWED_DTYPES = (
+    tf.int32,
+    tf.int64,
+    tf.float32,
+    tf.float64,
+)
 
 # The largest integer value provided to federated_secure_sum_bitwidth operator.
 _SECAGG_MAX = 2**32 - 1
@@ -293,62 +309,76 @@ _SECAGG_MAX = 2**32 - 1
 class BoundsDifferentTypesError(TypeError):
 
   def __init__(self, lower_bound, upper_bound):
-    message = (f'Both lower_bound and upper_bound must be either federated '
-               f'values or Python constants. Found: type(lower_bound): '
-               f'{type(lower_bound)}, type(upper_bound): {type(upper_bound)}')
+    message = (
+        'Both lower_bound and upper_bound must be either federated '
+        'values or Python constants. Found: type(lower_bound): '
+        f'{type(lower_bound)}, type(upper_bound): {type(upper_bound)}'
+    )
     super().__init__(message)
 
 
 class BoundsDifferentSignaturesError(TypeError):
 
   def __init__(self, lower_bound, upper_bound):
-    message = (f'Provided lower_bound and upper_bound must have the same '
-               f'type_signature. Found: lower_bound signature: '
-               f'{lower_bound.type_signature}, upper_bound signature: '
-               f'{upper_bound.type_signature}.')
+    message = (
+        'Provided lower_bound and upper_bound must have the same '
+        'type_signature. Found: lower_bound signature: '
+        f'{lower_bound.type_signature}, upper_bound signature: '
+        f'{upper_bound.type_signature}.'
+    )
     super().__init__(message)
 
 
 class BoundsNotPlacedAtServerError(TypeError):
 
   def __init__(self, placement):
-    message = (f'Provided lower_bound and upper_bound must be placed at '
-               f'tff.SERVER. Placement found: {placement}')
+    message = (
+        'Provided lower_bound and upper_bound must be placed at '
+        f'tff.SERVER. Placement found: {placement}'
+    )
     super().__init__(message)
 
 
 class StructuredBoundsTypeMismatchError(TypeError):
 
   def __init__(self, value_type, bounds_type):
-    message = (f'If bounds are specified as structures (not scalars), the '
-               f'structures must match the structure of provided client_value, '
-               f'with identical dtypes, but not necessarily shapes. Found: '
-               f'client_value type: {value_type}, bounds type: {bounds_type}.')
+    message = (
+        'If bounds are specified as structures (not scalars), the '
+        'structures must match the structure of provided client_value, '
+        'with identical dtypes, but not necessarily shapes. Found: '
+        f'client_value type: {value_type}, bounds type: {bounds_type}.'
+    )
     super().__init__(message)
 
 
 class ScalarBoundStructValueDTypeError(TypeError):
 
   def __init__(self, value_type, bounds_type):
-    message = (f'If scalar bounds are provided, all parts of client_value must '
-               f'be of matching dtype. Found: client_value type: {value_type}, '
-               f'bounds type: {bounds_type}.')
+    message = (
+        'If scalar bounds are provided, all parts of client_value must '
+        f'be of matching dtype. Found: client_value type: {value_type}, '
+        f'bounds type: {bounds_type}.'
+    )
     super().__init__(message)
 
 
 class ScalarBoundSimpleValueDTypeError(TypeError):
 
   def __init__(self, value_type, bounds_type):
-    message = (f'Bounds must have the same dtype as client_value. Found: '
-               f'client_value type: {value_type}, bounds type: {bounds_type}.')
+    message = (
+        'Bounds must have the same dtype as client_value. Found: '
+        f'client_value type: {value_type}, bounds type: {bounds_type}.'
+    )
     super().__init__(message)
 
 
 class UnsupportedDTypeError(TypeError):
 
   def __init__(self, dtype):
-    message = (f'Value is of unsupported dtype {dtype}. Currently supported '
-               f'types are {_SECURE_QUANTIZED_SUM_ALLOWED_DTYPES}.')
+    message = (
+        f'Value is of unsupported dtype {dtype}. Currently supported '
+        f'types are {_SECURE_QUANTIZED_SUM_ALLOWED_DTYPES}.'
+    )
     super().__init__(message)
 
 
@@ -358,8 +388,9 @@ def _check_secure_quantized_sum_dtype(dtype):
 
 
 # pylint: disable=g-doc-exception
-def _normalize_secure_quantized_sum_args(client_value, lower_bound,
-                                         upper_bound):
+def _normalize_secure_quantized_sum_args(
+    client_value, lower_bound, upper_bound
+):
   """Normalizes inputs to `secure_quantized_sum` method.
 
   Validates the epxected structure of arguments, as documented in the docstring
@@ -397,7 +428,8 @@ def _normalize_secure_quantized_sum_args(client_value, lower_bound,
 
   # Validation of bounds.
   if isinstance(lower_bound, value_impl.Value) != isinstance(
-      upper_bound, value_impl.Value):
+      upper_bound, value_impl.Value
+  ):
     raise BoundsDifferentTypesError(lower_bound, upper_bound)
   elif not isinstance(lower_bound, value_impl.Value):
     # Normalization of bounds to federated values.
@@ -414,20 +446,23 @@ def _normalize_secure_quantized_sum_args(client_value, lower_bound,
   # Validation of client_value and bounds compatibility.
   bound_member = lower_bound.type_signature.member
   if bound_member.is_struct():
-    if not client_value_member.is_struct() or (structure.map_structure(
-        lambda v: v.dtype, bound_member) != structure.map_structure(
-            lambda v: v.dtype, client_value_member)):
+    if not client_value_member.is_struct() or (
+        structure.map_structure(lambda v: v.dtype, bound_member)
+        != structure.map_structure(lambda v: v.dtype, client_value_member)
+    ):
       raise StructuredBoundsTypeMismatchError(client_value_member, bound_member)
   else:
     # If bounds are scalar, must be compatible with all tensors in client_value.
     if client_value_member.is_struct():
       if len(set(dtypes)) > 1 or (bound_member.dtype != dtypes[0]):
-        raise ScalarBoundStructValueDTypeError(client_value_member,
-                                               bound_member)
+        raise ScalarBoundStructValueDTypeError(
+            client_value_member, bound_member
+        )
     else:
       if bound_member.dtype != client_value_member.dtype:
-        raise ScalarBoundSimpleValueDTypeError(client_value_member,
-                                               bound_member)
+        raise ScalarBoundSimpleValueDTypeError(
+            client_value_member, bound_member
+        )
 
   return client_value, lower_bound, upper_bound
 
@@ -454,8 +489,10 @@ def _client_tensor_shift_for_secure_sum(value, lower_bound, upper_bound):
   tf.debugging.assert_less_equal(
       lower_bound,
       upper_bound,
-      message='lower_bound must be smaller than upper_bound for secagg '
-      'quantization')
+      message=(
+          'lower_bound must be smaller than upper_bound for secagg quantization'
+      ),
+  )
   if value.dtype == tf.int32:
     clipped_val = tf.clip_by_value(value, lower_bound, upper_bound)
     # Cast BEFORE shift in order to avoid overflow if full int32 range is used.
@@ -467,7 +504,8 @@ def _client_tensor_shift_for_secure_sum(value, lower_bound, upper_bound):
     shifted_value = tf.cond(
         tf.greater(scale_factor, 1),
         lambda: tf.math.floordiv(clipped_val - lower_bound, scale_factor),
-        lambda: clipped_val - lower_bound)
+        lambda: clipped_val - lower_bound,
+    )
     return shifted_value
   else:
     # This should be ensured earlier and thus not user-facing.
@@ -476,24 +514,29 @@ def _client_tensor_shift_for_secure_sum(value, lower_bound, upper_bound):
     # Prevent NaNs if `lower_bound` and `upper_bound` are the same.
     scale_factor = tf.math.divide_no_nan(
         tf.constant(_SECAGG_MAX, tf.float64),
-        tf.cast(upper_bound - lower_bound, tf.float64))
+        tf.cast(upper_bound - lower_bound, tf.float64),
+    )
     scaled_value = tf.cast(clipped_value, tf.float64) * scale_factor
     # Perform deterministic rounding here, which may introduce bias as every
     # value may be rounded in the same direction for some input data.
     rounded_value = tf.saturate_cast(tf.round(scaled_value), tf.int64)
     # Perform shift in integer space to minimize float precision errors.
     shifted_value = rounded_value - tf.saturate_cast(
-        tf.round(tf.cast(lower_bound, tf.float64) * scale_factor), tf.int64)
+        tf.round(tf.cast(lower_bound, tf.float64) * scale_factor), tf.int64
+    )
     # Clip to expected range in case of numerical stability issues.
-    quantized_value = tf.clip_by_value(shifted_value,
-                                       tf.constant(0, dtype=tf.int64),
-                                       tf.constant(_SECAGG_MAX, dtype=tf.int64))
+    quantized_value = tf.clip_by_value(
+        shifted_value,
+        tf.constant(0, dtype=tf.int64),
+        tf.constant(_SECAGG_MAX, dtype=tf.int64),
+    )
     return quantized_value
 
 
 @tf.function
-def _server_tensor_shift_for_secure_sum(num_summands, value, lower_bound,
-                                        upper_bound, output_dtype):
+def _server_tensor_shift_for_secure_sum(
+    num_summands, value, lower_bound, upper_bound, output_dtype
+):
   """Mapping to be applied to every tensor after secure sum.
 
   This operation is performed on `tff.SERVER` to dequantize outputs of the
@@ -517,23 +560,29 @@ def _server_tensor_shift_for_secure_sum(num_summands, value, lower_bound,
   min_valid_value = tf.constant(0, tf.int64)
   # Cast to tf.int64 before multiplication to prevent overflow.
   max_valid_value = tf.constant(_SECAGG_MAX, tf.int64) * tf.cast(
-      num_summands, tf.int64)
+      num_summands, tf.int64
+  )
   tf.Assert(
       tf.math.logical_and(
           tf.math.reduce_min(value) >= min_valid_value,
-          tf.math.reduce_max(value) <= max_valid_value),
-      [value, min_valid_value, max_valid_value])
+          tf.math.reduce_max(value) <= max_valid_value,
+      ),
+      [value, min_valid_value, max_valid_value],
+  )
 
   if output_dtype == tf.int32:
     value = value + tf.cast(num_summands, tf.int64) * tf.cast(
-        lower_bound, tf.int64)
+        lower_bound, tf.int64
+    )
   elif output_dtype == tf.int64:
     range_span = upper_bound - lower_bound
     scale_factor = tf.math.floordiv(range_span, _SECAGG_MAX) + 1
     num_summands = tf.cast(num_summands, tf.int64)
-    value = tf.cond(scale_factor > 1,
-                    lambda: value * scale_factor + num_summands * lower_bound,
-                    lambda: value + num_summands * lower_bound)
+    value = tf.cond(
+        scale_factor > 1,
+        lambda: value * scale_factor + num_summands * lower_bound,
+        lambda: value + num_summands * lower_bound,
+    )
   else:
     # This should be ensured earlier and thus not user-facing.
     assert output_dtype in [tf.float32, tf.float64]
@@ -542,23 +591,26 @@ def _server_tensor_shift_for_secure_sum(num_summands, value, lower_bound,
     # that the sum of [0] is exactly 0 for any clipping range.
     scale_factor = tf.math.divide_no_nan(
         tf.constant(_SECAGG_MAX, tf.float64),
-        tf.cast(upper_bound - lower_bound, tf.float64))
+        tf.cast(upper_bound - lower_bound, tf.float64),
+    )
     # Scale the shift by `num_summands` as an integer to prevent additional
     # float precision errors for multiple summands. This also ensures that the
     # sum of [0] * num_summands is exactly 0 for any clipping range.
     value = value + tf.saturate_cast(
-        tf.round(tf.cast(lower_bound, tf.float64) * scale_factor),
-        tf.int64) * tf.cast(num_summands, tf.int64)
+        tf.round(tf.cast(lower_bound, tf.float64) * scale_factor), tf.int64
+    ) * tf.cast(num_summands, tf.int64)
     value = tf.cast(value, tf.float64)
     value = value * (
-        tf.cast(upper_bound - lower_bound, tf.float64) / _SECAGG_MAX)
+        tf.cast(upper_bound - lower_bound, tf.float64) / _SECAGG_MAX
+    )
     # If `lower_bound` and `upper_bound` are the same, the above shift had no
     # effect since `scale_factor` is 0. Shift here instead.
     shifted_value = value + tf.cast(num_summands, tf.float64) * tf.cast(
-        lower_bound, tf.float64)
+        lower_bound, tf.float64
+    )
     value = tf.cond(
-        tf.equal(lower_bound, upper_bound), lambda: shifted_value,
-        lambda: value)
+        tf.equal(lower_bound, upper_bound), lambda: shifted_value, lambda: value
+    )
 
   return tf.cast(value, output_dtype)
 
@@ -639,7 +691,8 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
 
   # Possibly converts Python constants to federated values.
   client_value, lower_bound, upper_bound = _normalize_secure_quantized_sum_args(
-      client_value, lower_bound, upper_bound)
+      client_value, lower_bound, upper_bound
+  )
 
   # This object is used during decoration of the `client_shift` method, and the
   # value stored in this mutable container is used during decoration of the
@@ -667,11 +720,18 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
     fn = _server_tensor_shift_for_secure_sum
     if tf.is_tensor(lower_bnd):
       return tf.nest.map_structure(
-          lambda v, dtype: fn(summands, v, lower_bnd, upper_bnd, dtype), value,
-          temp_box[0])
+          lambda v, dtype: fn(summands, v, lower_bnd, upper_bnd, dtype),
+          value,
+          temp_box[0],
+      )
     else:
-      return tf.nest.map_structure(lambda *args: fn(summands, *args), value,
-                                   lower_bnd, upper_bnd, temp_box[0])
+      return tf.nest.map_structure(
+          lambda *args: fn(summands, *args),
+          value,
+          lower_bnd,
+          upper_bnd,
+          temp_box[0],
+      )
 
   client_one = intrinsics.federated_value(1, placements.CLIENTS)
 
@@ -680,9 +740,11 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   client_upper_bound = intrinsics.federated_broadcast(upper_bound)
 
   value = intrinsics.federated_map(
-      client_shift, (client_value, client_lower_bound, client_upper_bound))
+      client_shift, (client_value, client_lower_bound, client_upper_bound)
+  )
   num_summands = intrinsics.federated_secure_sum_bitwidth(
-      client_one, bitwidth=1)
+      client_one, bitwidth=1
+  )
 
   secagg_value_type = value.type_signature.member
   assert secagg_value_type.is_tensor() or secagg_value_type.is_struct()
@@ -693,5 +755,6 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
 
   value = intrinsics.federated_secure_sum_bitwidth(value, bitwidth=bitwidths)
   value = intrinsics.federated_map(
-      server_shift, (value, lower_bound, upper_bound, num_summands))
+      server_shift, (value, lower_bound, upper_bound, num_summands)
+  )
   return value

@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """Utils for converting to/from the MapReduce form.
 
 Note: Refer to `get_computation_for_map_reduce_form()` for the meaning of
@@ -46,18 +41,31 @@ from tensorflow_federated.python.core.impl.types import placements
 
 _GRAPPLER_DEFAULT_CONFIG = tf.compat.v1.ConfigProto()
 _AGGRESSIVE = _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.AGGRESSIVE
-_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.memory_optimization = _AGGRESSIVE
-_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.constant_folding = _AGGRESSIVE
-_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.arithmetic_optimization = _AGGRESSIVE
-_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.loop_optimization = _AGGRESSIVE
-_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.function_optimization = _AGGRESSIVE
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.memory_optimization = (
+    _AGGRESSIVE
+)
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.constant_folding = (
+    _AGGRESSIVE
+)
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.arithmetic_optimization = (
+    _AGGRESSIVE
+)
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.loop_optimization = (
+    _AGGRESSIVE
+)
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.function_optimization = (
+    _AGGRESSIVE
+)
 
-BuildingBlockFn = Callable[[building_blocks.ComputationBuildingBlock],
-                           building_blocks.ComputationBuildingBlock]
+BuildingBlockFn = Callable[
+    [building_blocks.ComputationBuildingBlock],
+    building_blocks.ComputationBuildingBlock,
+]
 
 
 def get_computation_for_broadcast_form(
-    bf: forms.BroadcastForm) -> computation_base.Computation:
+    bf: forms.BroadcastForm,
+) -> computation_base.Computation:
   """Creates `tff.Computation` from a broadcast form."""
   py_typecheck.check_type(bf, forms.BroadcastForm)
   server_data_type = bf.compute_server_context.type_signature.parameter
@@ -70,24 +78,26 @@ def get_computation_for_broadcast_form(
   @federated_computation.federated_computation(comp_parameter_type)
   def computation(arg):
     server_data, client_data = arg
-    context_at_server = intrinsics.federated_map(bf.compute_server_context,
-                                                 server_data)
+    context_at_server = intrinsics.federated_map(
+        bf.compute_server_context, server_data
+    )
     context_at_clients = intrinsics.federated_broadcast(context_at_server)
     client_processing_arg = intrinsics.federated_zip(
-        (context_at_clients, client_data))
+        (context_at_clients, client_data)
+    )
     return intrinsics.federated_map(bf.client_processing, client_processing_arg)
 
   return computation
 
 
 def get_state_initialization_computation_for_map_reduce_form(
-    initialize_computation: computation_base.Computation,
-    grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG
+    initialize_computation: computation_impl.ConcreteComputation,
+    grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
 ) -> computation_base.Computation:
   """Validates and transforms a computation to generate state for MapReduceForm.
 
   Args:
-    initialize_computation: A `computation_base.Computation` that should
+    initialize_computation: A `computation_impl.ConcreteComputation` that should
       generate initial state for a computation that is compatible with
       MapReduceForm.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
@@ -108,22 +118,30 @@ def get_state_initialization_computation_for_map_reduce_form(
   initialize_tree = initialize_computation.to_building_block()
   init_type = initialize_tree.type_signature
   _check_type_is_no_arg_fn(init_type, '`initialize`', TypeError)
-  if (not init_type.result.is_federated() or
-      init_type.result.placement != placements.SERVER):
-    raise TypeError('Expected `initialize` to return a single federated value '
-                    'placed at server (type `T@SERVER`), found return type:\n'
-                    f'{init_type.result}')
+  if (
+      not init_type.result.is_federated()
+      or init_type.result.placement != placements.SERVER
+  ):
+    raise TypeError(
+        'Expected `initialize` to return a single federated value '
+        'placed at server (type `T@SERVER`), found return type:\n'
+        f'{init_type.result}'
+    )
   initialize_tree, _ = tree_transformations.replace_intrinsics_with_bodies(
-      initialize_tree)
+      initialize_tree
+  )
   tree_analysis.check_contains_only_reducible_intrinsics(initialize_tree)
   initialize_tree = compiler.consolidate_and_extract_local_processing(
-      initialize_tree, grappler_config)
+      initialize_tree, grappler_config
+  )
   return computation_impl.ConcreteComputation.from_building_block(
-      initialize_tree)
+      initialize_tree
+  )
 
 
 def get_computation_for_map_reduce_form(
-    mrf: forms.MapReduceForm) -> computation_base.Computation:
+    mrf: forms.MapReduceForm,
+) -> computation_base.Computation:
   """Creates `tff.Computation` from a MapReduce form.
 
   Args:
@@ -144,71 +162,39 @@ def get_computation_for_map_reduce_form(
     broadcast_input = intrinsics.federated_map(mrf.prepare, server_state)
     broadcast_result = intrinsics.federated_broadcast(broadcast_input)
     work_arg = intrinsics.federated_zip([client_data, broadcast_result])
-    (aggregate_input, secure_sum_bitwidth_input, secure_sum_input,
-     secure_modular_sum_input) = intrinsics.federated_map(mrf.work, work_arg)
-    aggregate_result = intrinsics.federated_aggregate(aggregate_input,
-                                                      mrf.zero(),
-                                                      mrf.accumulate, mrf.merge,
-                                                      mrf.report)
+    (
+        aggregate_input,
+        secure_sum_bitwidth_input,
+        secure_sum_input,
+        secure_modular_sum_input,
+    ) = intrinsics.federated_map(mrf.work, work_arg)
+    aggregate_result = intrinsics.federated_aggregate(
+        aggregate_input, mrf.zero(), mrf.accumulate, mrf.merge, mrf.report
+    )
     secure_sum_bitwidth_result = intrinsics.federated_secure_sum_bitwidth(
-        secure_sum_bitwidth_input, mrf.secure_sum_bitwidth())
+        secure_sum_bitwidth_input, mrf.secure_sum_bitwidth()
+    )
     secure_sum_result = intrinsics.federated_secure_sum(
-        secure_sum_input, mrf.secure_sum_max_input())
+        secure_sum_input, mrf.secure_sum_max_input()
+    )
     secure_modular_sum_result = intrinsics.federated_secure_modular_sum(
-        secure_modular_sum_input, mrf.secure_modular_sum_modulus())
-    update_arg = intrinsics.federated_zip(
-        (server_state, (aggregate_result, secure_sum_bitwidth_result,
-                        secure_sum_result, secure_modular_sum_result)))
+        secure_modular_sum_input, mrf.secure_modular_sum_modulus()
+    )
+    update_arg = intrinsics.federated_zip((
+        server_state,
+        (
+            aggregate_result,
+            secure_sum_bitwidth_result,
+            secure_sum_result,
+            secure_modular_sum_result,
+        ),
+    ))
     updated_server_state, server_output = intrinsics.federated_map(
-        mrf.update, update_arg)
+        mrf.update, update_arg
+    )
     return updated_server_state, server_output
 
   return computation
-
-
-def _check_len(
-    target,
-    length,
-    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
-):
-  py_typecheck.check_type(length, int)
-  if len(target) != length:
-    raise err_fn('Expected length of {}, found {}.'.format(length, len(target)))
-
-
-def _check_placement(
-    target,
-    placement: placements.PlacementLiteral,
-    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
-):
-  py_typecheck.check_type(target, computation_types.FederatedType)
-  py_typecheck.check_type(placement, placements.PlacementLiteral)
-  if target.placement != placement:
-    raise err_fn(
-        'Expected value with placement {}, found value of type {}.'.format(
-            placement, target))
-
-
-def _check_type_equal(
-    actual,
-    expected,
-    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
-):
-  py_typecheck.check_type(actual, computation_types.Type)
-  py_typecheck.check_type(expected, computation_types.Type)
-  if not actual.is_equivalent_to(expected):
-    raise err_fn('Expected type of {}, found {}.'.format(expected, actual))
-
-
-def _check_type(
-    target,
-    type_spec,
-    err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
-):
-  py_typecheck.check_type(type_spec, type)
-  if not isinstance(target, type_spec):
-    raise err_fn('Expected type of {}, found {}.'.format(
-        type_spec, type(target)))
 
 
 def _check_type_is_fn(
@@ -217,8 +203,9 @@ def _check_type_is_fn(
     err_fn: Callable[[str], Exception] = compiler.MapReduceFormCompilationError,
 ):
   if not target.is_function():
-    raise err_fn(f'Expected {name} to be a function, but {name} had type '
-                 f'{target}.')
+    raise err_fn(
+        f'Expected {name} to be a function, but {name} had type {target}.'
+    )
 
 
 def _check_type_is_no_arg_fn(
@@ -228,47 +215,60 @@ def _check_type_is_no_arg_fn(
 ):
   _check_type_is_fn(target, name, err_fn)
   if target.parameter is not None:
-    raise err_fn(f'Expected {name} to take no argument, but found '
-                 f'parameter of type {target.parameter}.')
+    raise err_fn(
+        f'Expected {name} to take no argument, but found '
+        f'parameter of type {target.parameter}.'
+    )
 
 
 def _check_function_signature_compatible_with_broadcast_form(
-    function_type: computation_types.FunctionType):
+    function_type: computation_types.FunctionType,
+):
   """Tests compatibility with `tff.backends.mapreduce.BroadcastForm`."""
   py_typecheck.check_type(function_type, computation_types.FunctionType)
-  if not (function_type.parameter.is_struct() and
-          len(function_type.parameter) == 2):
+  if not (
+      function_type.parameter.is_struct() and len(function_type.parameter) == 2
+  ):
     raise TypeError(
         '`BroadcastForm` requires a computation which accepts two arguments '
         '(server data and client data) but found parameter type:\n'
-        f'{function_type.parameter}')
+        f'{function_type.parameter}'
+    )
   server_data_type, client_data_type = function_type.parameter
-  if not (server_data_type.is_federated() and
-          server_data_type.placement.is_server()):
+  if not (
+      server_data_type.is_federated() and server_data_type.placement.is_server()
+  ):
     raise TypeError(
         '`BroadcastForm` expects a computation whose first parameter is server '
         'data (a federated type placed at server) but found first parameter of '
-        f'type:\n{server_data_type}')
-  if not (client_data_type.is_federated() and
-          client_data_type.placement.is_clients()):
+        f'type:\n{server_data_type}'
+    )
+  if not (
+      client_data_type.is_federated()
+      and client_data_type.placement.is_clients()
+  ):
     raise TypeError(
         '`BroadcastForm` expects a computation whose first parameter is client '
         'data (a federated type placed at clients) but found first parameter '
-        f'of type:\n{client_data_type}')
+        f'of type:\n{client_data_type}'
+    )
   result_type = function_type.result
   if not (result_type.is_federated() and result_type.placement.is_clients()):
     raise TypeError(
         '`BroadcastForm` expects a computation whose result is client data '
         '(a federated type placed at clients) but found result type:\n'
-        f'{result_type}')
+        f'{result_type}'
+    )
 
 
 def check_computation_compatible_with_map_reduce_form(
-    comp: computation_base.Computation,
+    comp: computation_impl.ConcreteComputation,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
-) -> tuple[building_blocks.ComputationBuildingBlock,
-           building_blocks.ComputationBuildingBlock]:
+) -> tuple[
+    building_blocks.ComputationBuildingBlock,
+    building_blocks.ComputationBuildingBlock,
+]:
   """Tests compatibility with `tff.backends.mapreduce.MapReduceForm`.
 
   Note: the conditions here are specified in the documentation for
@@ -276,7 +276,7 @@ def check_computation_compatible_with_map_reduce_form(
     be propagated to that documentation.
 
   Args:
-    comp: An instance of `computation_base.Computation` to check for
+    comp: An instance of `computation_impl.ConcreteComputation` to check for
       compatibility with `tff.backends.mapreduce.MapReduceForm`.
     tff_internal_preprocessing: An optional function to transform the AST of the
       computation.
@@ -288,7 +288,7 @@ def check_computation_compatible_with_map_reduce_form(
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  py_typecheck.check_type(comp, computation_base.Computation)
+  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
   comp_tree = comp.to_building_block()
   if tff_internal_preprocessing is not None:
     comp_tree = tff_internal_preprocessing(comp_tree)
@@ -296,11 +296,15 @@ def check_computation_compatible_with_map_reduce_form(
   comp_type = comp_tree.type_signature
   _check_type_is_fn(comp_type, '`comp`', TypeError)
   if not comp_type.parameter.is_struct() or len(comp_type.parameter) != 2:
-    raise TypeError('Expected `comp` to take two arguments, found parameter '
-                    f' type:\n{comp_type.parameter}')
+    raise TypeError(
+        'Expected `comp` to take two arguments, found parameter '
+        f' type:\n{comp_type.parameter}'
+    )
   if not comp_type.result.is_struct() or len(comp_type.result) != 2:
-    raise TypeError('Expected `comp` to return two values, found result '
-                    f'type:\n{comp_type.result}')
+    raise TypeError(
+        'Expected `comp` to return two values, found result '
+        f'type:\n{comp_type.result}'
+    )
 
   comp_tree, _ = tree_transformations.replace_intrinsics_with_bodies(comp_tree)
   comp_tree = _replace_lambda_body_with_call_dominant_form(comp_tree)
@@ -316,29 +320,44 @@ def _untuple_broadcast_only_before_after(before, after):
   # Since there is only a single intrinsic here, there's no need for the outer
   # `{intrinsic_name}_param`/`{intrinsic_name}_result` tuples.
   untupled_before = building_block_factory.select_output_from_lambda(
-      before, 'federated_broadcast_param')
+      before, 'federated_broadcast_param'
+  )
   after_param_name = next(building_block_factory.unique_name_generator(after))
   after_param_type = computation_types.StructType([
       ('original_arg', after.parameter_type.original_arg),
-      ('federated_broadcast_result',
-       after.parameter_type.intrinsic_results.federated_broadcast_result),
+      (
+          'federated_broadcast_result',
+          after.parameter_type.intrinsic_results.federated_broadcast_result,
+      ),
   ])
-  after_param_ref = building_blocks.Reference(after_param_name,
-                                              after_param_type)
+  after_param_ref = building_blocks.Reference(
+      after_param_name, after_param_type
+  )
+
+  after_result_arg = building_blocks.Struct([
+      (
+          'original_arg',
+          building_blocks.Selection(after_param_ref, 'original_arg'),
+      ),
+      (
+          'intrinsic_results',
+          building_blocks.Struct([(
+              'federated_broadcast_result',
+              building_blocks.Selection(
+                  after_param_ref, 'federated_broadcast_result'
+              ),
+          )]),
+      ),
+  ])
+  after_result = building_blocks.Call(
+      after,
+      after_result_arg,
+  )
   untupled_after = building_blocks.Lambda(
-      after_param_name, after_param_type,
-      building_blocks.Call(
-          after,
-          building_blocks.Struct([
-              ('original_arg',
-               building_blocks.Selection(after_param_ref, 'original_arg')),
-              ('intrinsic_results',
-               building_blocks.Struct([
-                   ('federated_broadcast_result',
-                    building_blocks.Selection(after_param_ref,
-                                              'federated_broadcast_result'))
-               ]))
-          ])))
+      after_param_name,
+      after_param_type,
+      after_result,
+  )
   return untupled_before, untupled_after
 
 
@@ -354,7 +373,8 @@ def _split_ast_on_broadcast(bb):
     broadcast's output to comp's output.
   """
   before, after = transformations.force_align_and_split_by_intrinsics(
-      bb, [building_block_factory.create_null_federated_broadcast()])
+      bb, [building_block_factory.create_null_federated_broadcast()]
+  )
   return _untuple_broadcast_only_before_after(before, after)
 
 
@@ -373,12 +393,14 @@ def _split_ast_on_aggregate(bb):
     and `federated_secure_sum_bitwidth` to comp's output.
   """
   return transformations.force_align_and_split_by_intrinsics(
-      bb, [
+      bb,
+      [
           building_block_factory.create_null_federated_aggregate(),
           building_block_factory.create_null_federated_secure_sum_bitwidth(),
           building_block_factory.create_null_federated_secure_sum(),
           building_block_factory.create_null_federated_secure_modular_sum(),
-      ])
+      ],
+  )
 
 
 def _prepare_for_rebinding(bb):
@@ -391,28 +413,34 @@ def _prepare_for_rebinding(bb):
 
 
 def _construct_selection_from_federated_tuple(
-    federated_tuple: building_blocks.ComputationBuildingBlock, index: int,
-    name_generator) -> building_blocks.ComputationBuildingBlock:
+    federated_tuple: building_blocks.ComputationBuildingBlock,
+    index: int,
+    name_generator,
+) -> building_blocks.ComputationBuildingBlock:
   """Selects the index `selected_index` from `federated_tuple`."""
   federated_tuple.type_signature.check_federated()
   member_type = federated_tuple.type_signature.member
   member_type.check_struct()
   param_name = next(name_generator)
   selecting_function = building_blocks.Lambda(
-      param_name, member_type,
+      param_name,
+      member_type,
       building_blocks.Selection(
           building_blocks.Reference(param_name, member_type),
           index=index,
-      ))
+      ),
+  )
   return building_block_factory.create_federated_map_or_apply(
-      selecting_function, federated_tuple)
+      selecting_function, federated_tuple
+  )
 
 
 def _replace_selections(
     bb: building_blocks.ComputationBuildingBlock,
     ref_name: str,
-    path_to_replacement: dict[tuple[int, ...],
-                              building_blocks.ComputationBuildingBlock],
+    path_to_replacement: dict[
+        tuple[int, ...], building_blocks.ComputationBuildingBlock
+    ],
 ) -> building_blocks.ComputationBuildingBlock:
   """Identifies selection pattern and replaces with new binding.
 
@@ -452,35 +480,48 @@ def _replace_selections(
     # In ASTs like x[0][1], we'll see the last (outermost) selection first.
     path.reverse()
     path = tuple(path)
-    if (selection.is_reference() and selection.name == ref_name and
-        path in path_to_replacement):
+    if (
+        selection.is_reference()
+        and selection.name == ref_name
+        and path in path_to_replacement
+    ):
       return path_to_replacement[path], True
-    if (inner_bb.is_call() and inner_bb.function.is_compiled_computation() and
-        inner_bb.argument is not None and inner_bb.argument.is_reference() and
-        inner_bb.argument.name == ref_name):
-      raise ValueError('Encountered called graph on reference pattern in TFF '
-                       'AST; this means relying on pattern-matching when '
-                       'rebinding arguments may be insufficient. Ensure that '
-                       'arguments are rebound before decorating references '
-                       'with called identity graphs.')
+    if (
+        inner_bb.is_call()
+        and inner_bb.function.is_compiled_computation()
+        and inner_bb.argument is not None
+        and inner_bb.argument.is_reference()
+        and inner_bb.argument.name == ref_name
+    ):
+      raise ValueError(
+          'Encountered called graph on reference pattern in TFF '
+          'AST; this means relying on pattern-matching when '
+          'rebinding arguments may be insufficient. Ensure that '
+          'arguments are rebound before decorating references '
+          'with called identity graphs.'
+      )
     return inner_bb, False
 
   result, _ = transformation_utils.transform_postorder(bb, _replace)
   return result
 
 
-def _as_function_of_single_subparameter(bb: building_blocks.Lambda,
-                                        index: int) -> building_blocks.Lambda:
+def _as_function_of_single_subparameter(
+    bb: building_blocks.Lambda, index: int
+) -> building_blocks.Lambda:
   """Turns `x -> ...only uses x_i...` into `x_i -> ...only uses x_i`."""
   tree_analysis.check_has_unique_names(bb)
   bb = _prepare_for_rebinding(bb)
   new_name = next(building_block_factory.unique_name_generator(bb))
-  new_ref = building_blocks.Reference(new_name,
-                                      bb.type_signature.parameter[index])
-  new_lambda_body = _replace_selections(bb.result, bb.parameter_name,
-                                        {(index,): new_ref})
-  new_lambda = building_blocks.Lambda(new_ref.name, new_ref.type_signature,
-                                      new_lambda_body)
+  new_ref = building_blocks.Reference(
+      new_name, bb.type_signature.parameter[index]
+  )
+  new_lambda_body = _replace_selections(
+      bb.result, bb.parameter_name, {(index,): new_ref}
+  )
+  new_lambda = building_blocks.Lambda(
+      new_ref.name, new_ref.type_signature, new_lambda_body
+  )
   tree_analysis.check_contains_no_new_unbound_references(bb, new_lambda)
   return new_lambda
 
@@ -488,9 +529,11 @@ def _as_function_of_single_subparameter(bb: building_blocks.Lambda,
 class _ParameterSelectionError(TypeError):
 
   def __init__(self, path, bb):
-    message = ('Attempted to rebind references to parameter selection path '
-               f'{path}, which is not a valid selection from type '
-               f'{bb.parameter_type}. Original AST:\n{bb}')
+    message = (
+        'Attempted to rebind references to parameter selection path '
+        f'{path}, which is not a valid selection from type '
+        f'{bb.parameter_type}. Original AST:\n{bb}'
+    )
     super().__init__(message)
 
 
@@ -534,7 +577,8 @@ def _as_function_of_some_federated_subparameters(
           'Attempted to rebind references to parameter selection path '
           f'{path} from type {bb.parameter_type}, but the value at that path '
           f'was of non-federated type {selected_type}. Selections must all '
-          f'be of federated type. Original AST:\n{bb}')
+          f'be of federated type. Original AST:\n{bb}'
+      )
     int_paths.append(tuple(int_path))
     type_list.append(selected_type)
 
@@ -543,23 +587,28 @@ def _as_function_of_some_federated_subparameters(
     raise _MismatchedSelectionPlacementError(
         'In order to zip the argument to the lower-level lambda together, all '
         'selected arguments should be at the same placement. Your selections '
-        f'have resulted in the list of types:\n{type_list}')
+        f'have resulted in the list of types:\n{type_list}'
+    )
 
-  zip_type = computation_types.FederatedType([x.member for x in type_list],
-                                             placement=placement)
+  zip_type = computation_types.FederatedType(
+      [x.member for x in type_list], placement=placement
+  )
   ref_to_zip = building_blocks.Reference(next(name_generator), zip_type)
   path_to_replacement = {}
   for i, path in enumerate(int_paths):
     path_to_replacement[path] = _construct_selection_from_federated_tuple(
-        ref_to_zip, i, name_generator)
+        ref_to_zip, i, name_generator
+    )
 
-  new_lambda_body = _replace_selections(bb.result, bb.parameter_name,
-                                        path_to_replacement)
-  lambda_with_zipped_param = building_blocks.Lambda(ref_to_zip.name,
-                                                    ref_to_zip.type_signature,
-                                                    new_lambda_body)
+  new_lambda_body = _replace_selections(
+      bb.result, bb.parameter_name, path_to_replacement
+  )
+  lambda_with_zipped_param = building_blocks.Lambda(
+      ref_to_zip.name, ref_to_zip.type_signature, new_lambda_body
+  )
   tree_analysis.check_contains_no_new_unbound_references(
-      bb, lambda_with_zipped_param)
+      bb, lambda_with_zipped_param
+  )
 
   return lambda_with_zipped_param
 
@@ -568,9 +617,11 @@ def _extract_compute_server_context(before_broadcast, grappler_config):
   """Extracts `compute_server_config` from `before_broadcast`."""
   server_data_index_in_before_broadcast = 0
   compute_server_context = _as_function_of_single_subparameter(
-      before_broadcast, server_data_index_in_before_broadcast)
+      before_broadcast, server_data_index_in_before_broadcast
+  )
   return compiler.consolidate_and_extract_local_processing(
-      compute_server_context, grappler_config)
+      compute_server_context, grappler_config
+  )
 
 
 def _extract_client_processing(after_broadcast, grappler_config):
@@ -582,12 +633,15 @@ def _extract_client_processing(after_broadcast, grappler_config):
   # than `(params, data)` (the order of the iterative process / computation).
   # Here, we use the same `(params, data)` ordering as in the input computation.
   client_processing = _as_function_of_some_federated_subparameters(
-      after_broadcast, [
+      after_broadcast,
+      [
           context_from_server_index_in_after_broadcast,
-          client_data_index_in_after_broadcast
-      ])
+          client_data_index_in_after_broadcast,
+      ],
+  )
   return compiler.consolidate_and_extract_local_processing(
-      client_processing, grappler_config)
+      client_processing, grappler_config
+  )
 
 
 def _extract_prepare(before_broadcast, grappler_config):
@@ -614,9 +668,11 @@ def _extract_prepare(before_broadcast, grappler_config):
   """
   server_state_index_in_before_broadcast = 0
   prepare = _as_function_of_single_subparameter(
-      before_broadcast, server_state_index_in_before_broadcast)
+      before_broadcast, server_state_index_in_before_broadcast
+  )
   return compiler.consolidate_and_extract_local_processing(
-      prepare, grappler_config)
+      prepare, grappler_config
+  )
 
 
 def _extract_work(before_aggregate, grappler_config):
@@ -645,7 +701,8 @@ def _extract_work(before_aggregate, grappler_config):
   client_data_index = ('original_arg', 1)
   broadcast_result_index = ('federated_broadcast_result',)
   work_to_before_aggregate = _as_function_of_some_federated_subparameters(
-      before_aggregate, [client_data_index, broadcast_result_index])
+      before_aggregate, [client_data_index, broadcast_result_index]
+  )
 
   # Indices of `work` results in `before_aggregate` result
   aggregate_input_index = ('federated_aggregate_param', 0)
@@ -653,37 +710,50 @@ def _extract_work(before_aggregate, grappler_config):
   secure_sum_input_index = ('federated_secure_sum_param', 0)
   secure_modular_sum_input_index = ('federated_secure_modular_sum_param', 0)
   work_unzipped = building_block_factory.select_output_from_lambda(
-      work_to_before_aggregate, [
+      work_to_before_aggregate,
+      [
           aggregate_input_index,
           secure_sum_bitwidth_input_index,
           secure_sum_input_index,
           secure_modular_sum_input_index,
-      ])
+      ],
+  )
   work = building_blocks.Lambda(
-      work_unzipped.parameter_name, work_unzipped.parameter_type,
-      building_block_factory.create_federated_zip(work_unzipped.result))
+      work_unzipped.parameter_name,
+      work_unzipped.parameter_type,
+      building_block_factory.create_federated_zip(work_unzipped.result),
+  )
   return compiler.consolidate_and_extract_local_processing(
-      work, grappler_config)
+      work, grappler_config
+  )
 
 
 def _compile_selected_output_to_no_argument_tensorflow(
-    comp: building_blocks.Lambda, path: building_block_factory.Path,
-    grappler_config) -> building_blocks.CompiledComputation:
+    comp: building_blocks.Lambda,
+    path: building_block_factory.Path,
+    grappler_config,
+) -> building_blocks.CompiledComputation:
   """Compiles the independent value result of `comp` at `path` to TensorFlow."""
-  extracted = building_block_factory.select_output_from_lambda(comp,
-                                                               path).result
+  extracted = building_block_factory.select_output_from_lambda(
+      comp, path
+  ).result
   return compiler.consolidate_and_extract_local_processing(
-      building_blocks.Lambda(None, None, extracted), grappler_config)
+      building_blocks.Lambda(None, None, extracted), grappler_config
+  )
 
 
 def _compile_selected_output_as_tensorflow_function(
-    comp: building_blocks.Lambda, path: building_block_factory.Path,
-    grappler_config) -> building_blocks.CompiledComputation:
+    comp: building_blocks.Lambda,
+    path: building_block_factory.Path,
+    grappler_config,
+) -> building_blocks.CompiledComputation:
   """Compiles the functional result of `comp` at `path` to TensorFlow."""
-  extracted = building_block_factory.select_output_from_lambda(comp,
-                                                               path).result
+  extracted = building_block_factory.select_output_from_lambda(
+      comp, path
+  ).result
   return compiler.consolidate_and_extract_local_processing(
-      extracted, grappler_config)
+      extracted, grappler_config
+  )
 
 
 def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
@@ -710,16 +780,21 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
       type.
   """
   federated_aggregate = building_block_factory.select_output_from_lambda(
-      before_aggregate, 'federated_aggregate_param')
+      before_aggregate, 'federated_aggregate_param'
+  )
   # Index `0` is the value being aggregated.
   zero = _compile_selected_output_to_no_argument_tensorflow(
-      federated_aggregate, 1, grappler_config)
+      federated_aggregate, 1, grappler_config
+  )
   accumulate = _compile_selected_output_as_tensorflow_function(
-      federated_aggregate, 2, grappler_config)
+      federated_aggregate, 2, grappler_config
+  )
   merge = _compile_selected_output_as_tensorflow_function(
-      federated_aggregate, 3, grappler_config)
+      federated_aggregate, 3, grappler_config
+  )
   report = _compile_selected_output_as_tensorflow_function(
-      federated_aggregate, 4, grappler_config)
+      federated_aggregate, 4, grappler_config
+  )
   return zero, accumulate, merge, report
 
 
@@ -746,27 +821,36 @@ def _extract_update(after_aggregate, grappler_config):
       type.
   """
   after_aggregate_zipped = building_blocks.Lambda(
-      after_aggregate.parameter_name, after_aggregate.parameter_type,
-      building_block_factory.create_federated_zip(after_aggregate.result))
+      after_aggregate.parameter_name,
+      after_aggregate.parameter_type,
+      building_block_factory.create_federated_zip(after_aggregate.result),
+  )
   # `create_federated_zip` doesn't have unique reference names, but we need
   # them for `as_function_of_some_federated_subparameters`.
   after_aggregate_zipped, _ = tree_transformations.uniquify_reference_names(
-      after_aggregate_zipped)
+      after_aggregate_zipped
+  )
   server_state_index = ('original_arg', 'original_arg', 0)
   aggregate_result_index = ('intrinsic_results', 'federated_aggregate_result')
-  secure_sum_bitwidth_result_index = ('intrinsic_results',
-                                      'federated_secure_sum_bitwidth_result')
+  secure_sum_bitwidth_result_index = (
+      'intrinsic_results',
+      'federated_secure_sum_bitwidth_result',
+  )
   secure_sum_result_index = ('intrinsic_results', 'federated_secure_sum_result')
-  secure_modular_sum_result_index = ('intrinsic_results',
-                                     'federated_secure_modular_sum_result')
+  secure_modular_sum_result_index = (
+      'intrinsic_results',
+      'federated_secure_modular_sum_result',
+  )
   update_with_flat_inputs = _as_function_of_some_federated_subparameters(
-      after_aggregate_zipped, (
+      after_aggregate_zipped,
+      (
           server_state_index,
           aggregate_result_index,
           secure_sum_bitwidth_result_index,
           secure_sum_result_index,
           secure_modular_sum_result_index,
-      ))
+      ),
+  )
 
   # TODO(b/148942011): The transformation
   # `zip_selection_as_argument_to_lower_level_lambda` does not support selecting
@@ -775,39 +859,52 @@ def _extract_update(after_aggregate, grappler_config):
   # <server_state, aggregation_results...>
   # unpack = <v, <...>> -> <v, ...>
   name_generator = building_block_factory.unique_name_generator(
-      update_with_flat_inputs)
+      update_with_flat_inputs
+  )
   unpack_param_name = next(name_generator)
   original_param_type = update_with_flat_inputs.parameter_type.member
   unpack_param_type = computation_types.StructType([
       original_param_type[0],
       computation_types.StructType(original_param_type[1:]),
   ])
-  unpack_param_ref = building_blocks.Reference(unpack_param_name,
-                                               unpack_param_type)
+  unpack_param_ref = building_blocks.Reference(
+      unpack_param_name, unpack_param_type
+  )
   select = lambda bb, i: building_blocks.Selection(bb, index=i)
   unpack = building_blocks.Lambda(
-      unpack_param_name, unpack_param_type,
-      building_blocks.Struct([select(unpack_param_ref, 0)] + [
-          select(select(unpack_param_ref, 1), i)
-          for i in range(len(original_param_type) - 1)
-      ]))
+      unpack_param_name,
+      unpack_param_type,
+      building_blocks.Struct(
+          [select(unpack_param_ref, 0)]
+          + [
+              select(select(unpack_param_ref, 1), i)
+              for i in range(len(original_param_type) - 1)
+          ]
+      ),
+  )
 
   # update = v -> update_with_flat_inputs(federated_map(unpack, v))
   param_name = next(name_generator)
   param_type = computation_types.at_server(unpack_param_type)
   param_ref = building_blocks.Reference(param_name, param_type)
   update = building_blocks.Lambda(
-      param_name, param_type,
+      param_name,
+      param_type,
       building_blocks.Call(
           update_with_flat_inputs,
           building_block_factory.create_federated_map_or_apply(
-              unpack, param_ref)))
+              unpack, param_ref
+          ),
+      ),
+  )
   return compiler.consolidate_and_extract_local_processing(
-      update, grappler_config)
+      update, grappler_config
+  )
 
 
 def _replace_lambda_body_with_call_dominant_form(
-    comp: building_blocks.Lambda) -> building_blocks.Lambda:
+    comp: building_blocks.Lambda,
+) -> building_blocks.Lambda:
   """Transforms the body of `comp` to call-dominant form.
 
   Call-dominant form ensures that all higher-order functions are fully
@@ -831,7 +928,8 @@ def _replace_lambda_body_with_call_dominant_form(
 
 
 def _merge_grappler_config_with_default(
-    grappler_config: tf.compat.v1.ConfigProto) -> tf.compat.v1.ConfigProto:
+    grappler_config: tf.compat.v1.ConfigProto,
+) -> tf.compat.v1.ConfigProto:
   py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
   overridden_grappler_config = tf.compat.v1.ConfigProto()
   overridden_grappler_config.CopyFrom(_GRAPPLER_DEFAULT_CONFIG)
@@ -840,7 +938,7 @@ def _merge_grappler_config_with_default(
 
 
 def get_broadcast_form_for_computation(
-    comp: computation_base.Computation,
+    comp: computation_impl.ConcreteComputation,
     grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG,
     *,
     tff_internal_preprocessing: Optional[BuildingBlockFn] = None,
@@ -848,10 +946,10 @@ def get_broadcast_form_for_computation(
   """Constructs `tff.backends.mapreduce.BroadcastForm` given a computation.
 
   Args:
-    comp: An instance of `tff.Computation` that is compatible with broadcast
-      form. Computations are only compatible if they take in a single value
-      placed at server, return a single value placed at clients, and do not
-      contain any aggregations.
+    comp: An instance of `computation_impl.ConcreteComputation` that is
+      compatible with broadcast form. Computations are only compatible if they
+      take in a single value placed at server, return a single value placed at
+      clients, and do not contain any aggregations.
     grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
       Grappler graph optimization of the Tensorflow graphs backing the resulting
       `tff.backends.mapreduce.BroadcastForm`. These options are combined with a
@@ -866,7 +964,7 @@ def get_broadcast_form_for_computation(
     An instance of `tff.backends.mapreduce.BroadcastForm` equivalent to the
     provided `tff.Computation`.
   """
-  py_typecheck.check_type(comp, computation_base.Computation)
+  py_typecheck.check_type(comp, computation_impl.ConcreteComputation)
   _check_function_signature_compatible_with_broadcast_form(comp.type_signature)
   py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
   grappler_config = _merge_grappler_config_with_default(grappler_config)
@@ -881,29 +979,34 @@ def get_broadcast_form_for_computation(
   aggregations = tree_analysis.find_aggregations_in_tree(bb)
   if aggregations:
     raise ValueError(
-        f'`get_broadcast_form_for_computation` called with computation '
-        f'containing {len(aggregations)} aggregations, but broadcast form '
-        'does not allow aggregation. Full list of aggregations:\n{aggregations}'
+        '`get_broadcast_form_for_computation` called with computation'
+        f' containing {len(aggregations)} aggregations, but broadcast form does'
+        ' not allow aggregation. Full list of aggregations:\n{aggregations}'
     )
 
   before_broadcast, after_broadcast = _split_ast_on_broadcast(bb)
   compute_server_context = _extract_compute_server_context(
-      before_broadcast, grappler_config)
-  client_processing = _extract_client_processing(after_broadcast,
-                                                 grappler_config)
+      before_broadcast, grappler_config
+  )
+  client_processing = _extract_client_processing(
+      after_broadcast, grappler_config
+  )
 
   compute_server_context, client_processing = (
       computation_impl.ConcreteComputation.from_building_block(bb)
-      for bb in (compute_server_context, client_processing))
+      for bb in (compute_server_context, client_processing)
+  )
 
   comp_param_names = structure.name_list_with_nones(
-      comp.type_signature.parameter)
+      comp.type_signature.parameter
+  )
   server_data_label, client_data_label = comp_param_names
   return forms.BroadcastForm(
       compute_server_context,
       client_processing,
       server_data_label=server_data_label,
-      client_data_label=client_data_label)
+      client_data_label=client_data_label,
+  )
 
 
 def get_map_reduce_form_for_computation(
@@ -940,7 +1043,8 @@ def get_map_reduce_form_for_computation(
   """
   py_typecheck.check_type(comp, computation_base.Computation)
   comp_bb = check_computation_compatible_with_map_reduce_form(
-      comp, tff_internal_preprocessing=tff_internal_preprocessing)
+      comp, tff_internal_preprocessing=tff_internal_preprocessing
+  )
   py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
   grappler_config = _merge_grappler_config_with_default(grappler_config)
 
@@ -951,20 +1055,37 @@ def get_map_reduce_form_for_computation(
   prepare = _extract_prepare(before_broadcast, grappler_config)
   work = _extract_work(before_aggregate, grappler_config)
   zero, accumulate, merge, report = _extract_federated_aggregate_functions(
-      before_aggregate, grappler_config)
+      before_aggregate, grappler_config
+  )
   secure_sum_bitwidth = _compile_selected_output_to_no_argument_tensorflow(
-      before_aggregate, ('federated_secure_sum_bitwidth_param', 1),
-      grappler_config)
+      before_aggregate,
+      ('federated_secure_sum_bitwidth_param', 1),
+      grappler_config,
+  )
   secure_sum_max_input = _compile_selected_output_to_no_argument_tensorflow(
-      before_aggregate, ('federated_secure_sum_param', 1), grappler_config)
+      before_aggregate, ('federated_secure_sum_param', 1), grappler_config
+  )
   secure_sum_modulus = _compile_selected_output_to_no_argument_tensorflow(
-      before_aggregate, ('federated_secure_modular_sum_param', 1),
-      grappler_config)
+      before_aggregate,
+      ('federated_secure_modular_sum_param', 1),
+      grappler_config,
+  )
   update = _extract_update(after_aggregate, grappler_config)
 
-  blocks = (prepare, work, zero, accumulate, merge, report, secure_sum_bitwidth,
-            secure_sum_max_input, secure_sum_modulus, update)
+  blocks = (
+      prepare,
+      work,
+      zero,
+      accumulate,
+      merge,
+      report,
+      secure_sum_bitwidth,
+      secure_sum_max_input,
+      secure_sum_modulus,
+      update,
+  )
   comps = (
       computation_impl.ConcreteComputation.from_building_block(bb)
-      for bb in blocks)
+      for bb in blocks
+  )
   return forms.MapReduceForm(comp.type_signature, *comps)

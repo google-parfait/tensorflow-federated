@@ -56,7 +56,8 @@ class DPAggregatorState(NamedTuple):
 def adaptive_clip_noise_params(
     noise_multiplier: float,
     expected_clients_per_round: float,
-    clipped_count_stddev: Optional[float] = None) -> tuple[float, float]:
+    clipped_count_stddev: Optional[float] = None,
+) -> tuple[float, float]:
   """Computes noising parameters for the adaptive L2 clipping procedure.
 
   The adaptive clipping method (described in https://arxiv.org/abs/1905.03871)
@@ -84,22 +85,25 @@ def adaptive_clip_noise_params(
     if noise_multiplier >= 2 * clipped_count_stddev:
       raise ValueError(
           f'clipped_count_stddev = {clipped_count_stddev} (defaults to '
-          f'0.05 * `expected_clients_per_round` if not specified) is too low '
-          f'to achieve the desired effective `noise_multiplier` '
+          '0.05 * `expected_clients_per_round` if not specified) is too low '
+          'to achieve the desired effective `noise_multiplier` '
           f'({noise_multiplier}). You must either increase '
-          f'`clipped_count_stddev` or decrease `noise_multiplier`.')
+          '`clipped_count_stddev` or decrease `noise_multiplier`.'
+      )
 
-    value_noise_multiplier = (noise_multiplier**-2 -
-                              (2 * clipped_count_stddev)**-2)**-0.5
+    value_noise_multiplier = (
+        noise_multiplier**-2 - (2 * clipped_count_stddev) ** -2
+    ) ** -0.5
 
     added_noise_factor = value_noise_multiplier / noise_multiplier
     if added_noise_factor >= 2:
       warnings.warn(
           f'A significant amount of noise ({added_noise_factor:.2f}x) has to '
-          f'be added for record aggregation to achieve the desired effective '
+          'be added for record aggregation to achieve the desired effective '
           f'`noise_multiplier` ({noise_multiplier}). If you are manually '
-          f'specifying `clipped_count_stddev` you may want to increase it. Or '
-          f'you may need more `expected_clients_per_round`.')
+          'specifying `clipped_count_stddev` you may want to increase it. Or '
+          'you may need more `expected_clients_per_round`.'
+      )
   else:
     if clipped_count_stddev is None:
       clipped_count_stddev = 0.0
@@ -142,7 +146,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       initial_l2_norm_clip: float = 0.1,
       target_unclipped_quantile: float = 0.5,
       learning_rate: float = 0.2,
-      clipped_count_stddev: Optional[float] = None
+      clipped_count_stddev: Optional[float] = None,
   ) -> factory.UnweightedAggregationFactory:
     """`DifferentiallyPrivateFactory` with adaptive clipping and Gaussian noise.
 
@@ -185,18 +189,25 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     _check_float_nonnegative(noise_multiplier, 'noise_multiplier')
     _check_float_positive(clients_per_round, 'clients_per_round')
     _check_float_positive(initial_l2_norm_clip, 'initial_l2_norm_clip')
-    _check_float_probability(target_unclipped_quantile,
-                             'target_unclipped_quantile')
+    _check_float_probability(
+        target_unclipped_quantile, 'target_unclipped_quantile'
+    )
     _check_float_nonnegative(learning_rate, 'learning_rate')
     if clipped_count_stddev is not None:
       _check_float_nonnegative(clipped_count_stddev, 'clipped_count_stddev')
 
     value_noise_multiplier, clipped_count_stddev = adaptive_clip_noise_params(
-        noise_multiplier, clients_per_round, clipped_count_stddev)
+        noise_multiplier, clients_per_round, clipped_count_stddev
+    )
     logging.info(
-        'Adaptive clipping, value noise multiplier: %s -> %s,'
-        'clipped_count_stddev: %s', noise_multiplier, value_noise_multiplier,
-        clipped_count_stddev)
+        (
+            'Adaptive clipping, value noise multiplier: %s -> %s,'
+            'clipped_count_stddev: %s'
+        ),
+        noise_multiplier,
+        value_noise_multiplier,
+        clipped_count_stddev,
+    )
 
     query = tfp.QuantileAdaptiveClipSumQuery(
         initial_l2_norm_clip=initial_l2_norm_clip,
@@ -205,14 +216,16 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         learning_rate=learning_rate,
         clipped_count_stddev=clipped_count_stddev,
         expected_num_records=clients_per_round,
-        geometric_update=True)
+        geometric_update=True,
+    )
     query = tfp.NormalizedQuery(query, denominator=clients_per_round)
 
     return cls(query)
 
   @classmethod
-  def gaussian_fixed(cls, noise_multiplier: float, clients_per_round: float,
-                     clip: float) -> factory.UnweightedAggregationFactory:
+  def gaussian_fixed(
+      cls, noise_multiplier: float, clients_per_round: float, clip: float
+  ) -> factory.UnweightedAggregationFactory:
     """`DifferentiallyPrivateFactory` with fixed clipping and Gaussian noise.
 
     Performs fixed clipping and addition of Gaussian noise for differentially
@@ -241,7 +254,8 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
 
     query = tfp.NormalizedQuery(
         tfp.GaussianSumQuery(l2_norm_clip=clip, stddev=clip * noise_multiplier),
-        denominator=clients_per_round)
+        denominator=clients_per_round,
+    )
 
     return cls(query)
 
@@ -255,7 +269,8 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
       noise_seed: Optional[int] = None,
       use_efficient: bool = True,
       record_aggregation_factory: Optional[
-          factory.UnweightedAggregationFactory] = None
+          factory.UnweightedAggregationFactory
+      ] = None,
   ) -> factory.UnweightedAggregationFactory:
     """`DifferentiallyPrivateFactory` with tree aggregation noise.
 
@@ -304,15 +319,20 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         noise_multiplier,
         record_specs,
         noise_seed=noise_seed,
-        use_efficient=use_efficient)
+        use_efficient=use_efficient,
+    )
     mean_query = tfp.NormalizedQuery(sum_query, denominator=clients_per_round)
     return cls(
-        mean_query, record_aggregation_factory=record_aggregation_factory)
+        mean_query, record_aggregation_factory=record_aggregation_factory
+    )
 
-  def __init__(self,
-               query: tfp.DPQuery,
-               record_aggregation_factory: Optional[
-                   factory.UnweightedAggregationFactory] = None):
+  def __init__(
+      self,
+      query: tfp.DPQuery,
+      record_aggregation_factory: Optional[
+          factory.UnweightedAggregationFactory
+      ] = None,
+  ):
     """Initializes `DifferentiallyPrivateFactory`.
 
     Args:
@@ -336,47 +356,61 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     if record_aggregation_factory is None:
       record_aggregation_factory = sum_factory.SumFactory()
 
-    py_typecheck.check_type(record_aggregation_factory,
-                            factory.UnweightedAggregationFactory)
+    py_typecheck.check_type(
+        record_aggregation_factory, factory.UnweightedAggregationFactory
+    )
     self._record_aggregation_factory = record_aggregation_factory
 
   def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+      self, value_type: factory.ValueType
+  ) -> aggregation_process.AggregationProcess:
     type_args = typing.get_args(factory.ValueType)
     py_typecheck.check_type(value_type, type_args)
 
     query_initial_state_fn = tensorflow_computation.tf_computation(
-        self._query.initial_global_state)
+        self._query.initial_global_state
+    )
     tensor_spec = type_conversions.type_to_tf_tensor_specs(value_type)
     query_sample_state_fn = tensorflow_computation.tf_computation(
-        lambda: self._query.initial_sample_state(tensor_spec))
+        lambda: self._query.initial_sample_state(tensor_spec)
+    )
     query_state_type = query_initial_state_fn.type_signature.result
     derive_sample_params = tensorflow_computation.tf_computation(
-        self._query.derive_sample_params, query_state_type)
+        self._query.derive_sample_params, query_state_type
+    )
 
     get_query_record = tensorflow_computation.tf_computation(
         self._query.preprocess_record,
-        derive_sample_params.type_signature.result, value_type)
+        derive_sample_params.type_signature.result,
+        value_type,
+    )
 
     query_record_type = get_query_record.type_signature.result
     record_agg_process = self._record_aggregation_factory.create(
-        query_record_type)
+        query_record_type
+    )
 
-    agg_output_type = record_agg_process.next.type_signature.result.result.member
+    agg_output_type = (
+        record_agg_process.next.type_signature.result.result.member
+    )
     get_noised_result = tensorflow_computation.tf_computation(
-        self._query.get_noised_result, agg_output_type, query_state_type)
+        self._query.get_noised_result, agg_output_type, query_state_type
+    )
     derive_metrics = tensorflow_computation.tf_computation(
-        self._query.derive_metrics, query_state_type)
+        self._query.derive_metrics, query_state_type
+    )
 
     @federated_computation.federated_computation()
     def init_fn():
-      query_initial_state = intrinsics.federated_eval(query_initial_state_fn,
-                                                      placements.SERVER)
-      query_sample_state = intrinsics.federated_eval(query_sample_state_fn,
-                                                     placements.SERVER)
+      query_initial_state = intrinsics.federated_eval(
+          query_initial_state_fn, placements.SERVER
+      )
+      query_sample_state = intrinsics.federated_eval(
+          query_sample_state_fn, placements.SERVER
+      )
       _, _, dp_event = intrinsics.federated_map(
-          get_noised_result, (query_sample_state, query_initial_state))
+          get_noised_result, (query_sample_state, query_initial_state)
+      )
       is_init_state = intrinsics.federated_value(True, placements.SERVER)
       init_state = DPAggregatorState(
           query_initial_state,
@@ -388,18 +422,21 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
 
     @federated_computation.federated_computation(
         init_fn.type_signature.result,
-        computation_types.FederatedType(value_type, placements.CLIENTS))
+        computation_types.FederatedType(value_type, placements.CLIENTS),
+    )
     def next_fn(state, value):
       query_state, agg_state, _, _ = state
 
       params = intrinsics.federated_broadcast(
-          intrinsics.federated_map(derive_sample_params, query_state))
+          intrinsics.federated_map(derive_sample_params, query_state)
+      )
       record = intrinsics.federated_map(get_query_record, (params, value))
 
       record_agg_output = record_agg_process.next(agg_state, record)
 
       result, new_query_state, dp_event = intrinsics.federated_map(
-          get_noised_result, (record_agg_output.result, query_state))
+          get_noised_result, (record_agg_output.result, query_state)
+      )
 
       is_init_state = intrinsics.federated_value(False, placements.SERVER)
 
@@ -412,16 +449,20 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
           is_init_state,
       )
       measurements = collections.OrderedDict(
-          dp_query_metrics=query_metrics, dp=record_agg_output.measurements)
+          dp_query_metrics=query_metrics, dp=record_agg_output.measurements
+      )
       return measured_process.MeasuredProcessOutput(
-          intrinsics.federated_zip(new_state), result,
-          intrinsics.federated_zip(measurements))
+          intrinsics.federated_zip(new_state),
+          result,
+          intrinsics.federated_zip(measurements),
+      )
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
 
 
 def extract_dp_event_from_state(
-    state: DPAggregatorState) -> dp_accounting.dp_event.DpEvent:
+    state: DPAggregatorState,
+) -> dp_accounting.dp_event.DpEvent:
   """Extracts a DPEvent from a DP AggregationProcess' state.
 
   The intended use of this method is to call it on each state generated by a
@@ -449,7 +490,8 @@ def extract_dp_event_from_state(
     raise ExtractingDpEventFromInitialStateError(
         'State was generated by a call to process.initialize(), whose DPEvent '
         'is a placeholder. extract_dp_event_from_state only accepts states '
-        'from calls to process.next().')
+        'from calls to process.next().'
+    )
   return state.dp_event
 
 
@@ -468,5 +510,6 @@ def _check_float_nonnegative(value, label):
 def _check_float_probability(value, label):
   py_typecheck.check_type(value, float, label)
   if not 0 <= value <= 1:
-    raise ValueError(f'{label} must be between 0 and 1 (inclusive). '
-                     f'Found {value}.')
+    raise ValueError(
+        f'{label} must be between 0 and 1 (inclusive). Found {value}.'
+    )

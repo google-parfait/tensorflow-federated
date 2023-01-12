@@ -88,8 +88,9 @@ py_library(
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
     deps = [
+        "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
-        "//tensorflow_federated/python/core/impl/execution_contexts:sync_cpp_execution_context",
+        "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
         "//tensorflow_federated/python/core/impl/executor_stacks:cpp_executor_factory",
     ],
 )

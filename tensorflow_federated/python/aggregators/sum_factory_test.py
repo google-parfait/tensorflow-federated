@@ -28,8 +28,9 @@ from tensorflow_federated.python.core.templates import measured_process
 
 class SumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(('float', tf.float32),
-                                  ('struct', ((tf.float32, (2,)), tf.int32)))
+  @parameterized.named_parameters(
+      ('float', tf.float32), ('struct', ((tf.float32, (2,)), tf.int32))
+  )
   def test_type_properties(self, value_type):
     sum_f = sum_factory.SumFactory()
     self.assertIsInstance(sum_f, factory.UnweightedAggregationFactory)
@@ -37,33 +38,46 @@ class SumFactoryComputationTest(tf.test.TestCase, parameterized.TestCase):
     process = sum_f.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-    param_value_type = computation_types.FederatedType(value_type,
-                                                       placements.CLIENTS)
-    result_value_type = computation_types.FederatedType(value_type,
-                                                        placements.SERVER)
+    param_value_type = computation_types.FederatedType(
+        value_type, placements.CLIENTS
+    )
+    result_value_type = computation_types.FederatedType(
+        value_type, placements.SERVER
+    )
     expected_state_type = computation_types.FederatedType((), placements.SERVER)
     expected_measurements_type = computation_types.FederatedType(
-        (), placements.SERVER)
+        (), placements.SERVER
+    )
 
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=expected_state_type)
+        parameter=None, result=expected_state_type
+    )
     self.assertTrue(
         process.initialize.type_signature.is_equivalent_to(
-            expected_initialize_type))
+            expected_initialize_type
+        )
+    )
 
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
-            state=expected_state_type, value=param_value_type),
+            state=expected_state_type, value=param_value_type
+        ),
         result=measured_process.MeasuredProcessOutput(
-            expected_state_type, result_value_type, expected_measurements_type))
+            expected_state_type, result_value_type, expected_measurements_type
+        ),
+    )
     self.assertTrue(
-        process.next.type_signature.is_equivalent_to(expected_next_type))
+        process.next.type_signature.is_equivalent_to(expected_next_type)
+    )
 
   @parameterized.named_parameters(
-      ('federated_type',
-       computation_types.FederatedType(tf.float32, placements.SERVER)),
+      (
+          'federated_type',
+          computation_types.FederatedType(tf.float32, placements.SERVER),
+      ),
       ('function_type', computation_types.FunctionType(None, ())),
-      ('sequence_type', computation_types.SequenceType(tf.float32)))
+      ('sequence_type', computation_types.SequenceType(tf.float32)),
+  )
   def test_incorrect_value_type_raises(self, bad_value_type):
     sum_f = sum_factory.SumFactory()
     with self.assertRaises(TypeError):

@@ -40,22 +40,26 @@ class FastWalshHadamardTransformTests(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(x.shape, hhx.shape)
     self.assertAllClose(x, hhx)
 
-  @parameterized.named_parameters(('1', [1]), ('1x4x4', [1, 4, 4]),
-                                  ('1x1x1x4', [1, 1, 1, 4]))
+  @parameterized.named_parameters(
+      ('1', [1]), ('1x4x4', [1, 4, 4]), ('1x1x1x4', [1, 1, 1, 4])
+  )
   def test_illegal_inputs_shape(self, dims):
     """Tests incorrect rank of the input."""
     x = tf.random.normal(dims)
-    with self.assertRaisesRegex(hadamard.TensorShapeError,
-                                'Number of dimensions of x must be 2.'):
+    with self.assertRaisesRegex(
+        hadamard.TensorShapeError, 'Number of dimensions of x must be 2.'
+    ):
       hadamard.fast_walsh_hadamard_transform(x)
 
-  @parameterized.named_parameters(('1x3', [1, 3]), ('1x7', [1, 7]),
-                                  ('1x9', [1, 9]), ('4x3', [4, 3]))
+  @parameterized.named_parameters(
+      ('1x3', [1, 3]), ('1x7', [1, 7]), ('1x9', [1, 9]), ('4x3', [4, 3])
+  )
   def test_illegal_inputs_static_power_of_two(self, dims):
     """Tests incorrect static shape of the rank 2 input."""
     x = tf.random.normal(dims)
-    with self.assertRaisesRegex(hadamard.TensorShapeError,
-                                'The dimension of x must be a power of two.'):
+    with self.assertRaisesRegex(
+        hadamard.TensorShapeError, 'The dimension of x must be a power of two.'
+    ):
       hadamard.fast_walsh_hadamard_transform(x)
 
   def test_illegal_inputs_dynamic_power_of_two(self):
@@ -72,12 +76,17 @@ class FastWalshHadamardTransformTests(tf.test.TestCase, parameterized.TestCase):
 
     with self.assertRaisesWithPredicateMatch(
         tf.errors.InvalidArgumentError,
-        'The dimension of x must be a power of two.'):
+        'The dimension of x must be a power of two.',
+    ):
       test_fn()
 
-  @parameterized.named_parameters(('1x1', [1, 1]), ('4x1', [4, 1]),
-                                  ('2x2', [2, 2]), ('1x4', [1, 4]),
-                                  ('1x8', [1, 8]))
+  @parameterized.named_parameters(
+      ('1x1', [1, 1]),
+      ('4x1', [4, 1]),
+      ('2x2', [2, 2]),
+      ('1x4', [1, 4]),
+      ('1x8', [1, 8]),
+  )
   def test_static_input_output_shape(self, dims):
     """Tests static output shape is identical to static input shape."""
     x = tf.random.normal(dims)

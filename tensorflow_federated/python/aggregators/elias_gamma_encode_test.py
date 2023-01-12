@@ -36,17 +36,20 @@ _test_value_type_struct_int32_tensors = collections.OrderedDict({
     'layer2': (tf.int32, (4,)),
 })
 _test_federated_value_type_int32_tensor = computation_types.at_clients(
-    _test_value_type_int32_tensor_rank_1)
+    _test_value_type_int32_tensor_rank_1
+)
 _test_federated_value_type_struct_int32_tensors = collections.OrderedDict({
     'layer1': computation_types.at_server((tf.int32, (4,))),
-    'layer2': (tf.int32, (4,))
+    'layer2': (tf.int32, (4,)),
 })
 
 _test_client_values_int32_tensor_rank_1 = [[-5, 3, 0, 0], [-3, 1, 0, 0]]
 _test_expected_result_int32_tensor_rank_1 = [-8, 4, 0, 0]
 
-_test_client_values_int32_tensor_rank_2 = [[[-5, 3, 0, 0], [-3, 1, 0, 0]],
-                                           [[-5, 3, 0, 0], [-3, 1, 0, 0]]]
+_test_client_values_int32_tensor_rank_2 = [
+    [[-5, 3, 0, 0], [-3, 1, 0, 0]],
+    [[-5, 3, 0, 0], [-3, 1, 0, 0]],
+]
 _test_expected_result_int32_tensor_rank_2 = [[-10, 6, 0, 0], [-6, 2, 0, 0]]
 _test_client_values_struct_int32_tensors = [
     collections.OrderedDict({
@@ -56,7 +59,7 @@ _test_client_values_struct_int32_tensors = [
     collections.OrderedDict({
         'layer1': [-5, 3, 0, 0],
         'layer2': [-3, 1, 0, 0],
-    })
+    }),
 ]
 _test_expected_result_struct_int32_tensors = collections.OrderedDict({
     'layer1': [-10, 6, 0, 0],
@@ -79,22 +82,28 @@ class EncodeUtilTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('int32_tensor_rank_1', _test_value_type_int32_tensor_rank_1),
       ('int32_tensor_rank_2', _test_value_type_int32_tensor_rank_2),
-      ('struct_int32_tensors', _test_value_type_struct_int32_tensors))
+      ('struct_int32_tensors', _test_value_type_struct_int32_tensors),
+  )
   def test_check_is_non_federated_structure_of_int32_passes(self, value_type):
     value_type = computation_types.to_type(value_type)
     self.assertTrue(
-        elias_gamma_encode._is_int32_or_structure_of_int32s(value_type))
+        elias_gamma_encode._is_int32_or_structure_of_int32s(value_type)
+    )
 
   @parameterized.named_parameters(
       ('float32_tensor', _test_value_type_float32_tensor),
       ('int64_tensor', _test_value_type_int64_tensor),
       ('federated_int32_tensor', _test_federated_value_type_int32_tensor),
-      ('federated_struct_int32_tensors',
-       _test_federated_value_type_struct_int32_tensors))
+      (
+          'federated_struct_int32_tensors',
+          _test_federated_value_type_struct_int32_tensors,
+      ),
+  )
   def test_check_is_non_federated_structure_of_int32_fails(self, value_type):
     value_type = computation_types.to_type(value_type)
     self.assertFalse(
-        elias_gamma_encode._is_int32_or_structure_of_int32s(value_type))
+        elias_gamma_encode._is_int32_or_structure_of_int32s(value_type)
+    )
 
 
 class EncodeComputationTest(tf.test.TestCase, parameterized.TestCase):
@@ -102,39 +111,49 @@ class EncodeComputationTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('int32_tensor_rank_1', _test_value_type_int32_tensor_rank_1),
       ('int32_tensor_rank_2', _test_value_type_int32_tensor_rank_2),
-      ('struct_int32_tensors', _test_value_type_struct_int32_tensors))
+      ('struct_int32_tensors', _test_value_type_struct_int32_tensors),
+  )
   def test_encode_properties(self, value_type):
     factory = elias_gamma_encode.EliasGammaEncodedSumFactory(
-        bitrate_mean_factory=mean.UnweightedMeanFactory())
+        bitrate_mean_factory=mean.UnweightedMeanFactory()
+    )
     value_type = computation_types.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     server_state_type = computation_types.at_server(())
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
-    type_test_utils.assert_types_equivalent(process.initialize.type_signature,
-                                            expected_initialize_type)
+        parameter=None, result=server_state_type
+    )
+    type_test_utils.assert_types_equivalent(
+        process.initialize.type_signature, expected_initialize_type
+    )
 
-    expected_measurements_type = computation_types.StructType([
-        ('elias_gamma_code_avg_bitrate', tf.float64)
-    ])
+    expected_measurements_type = computation_types.StructType(
+        [('elias_gamma_code_avg_bitrate', tf.float64)]
+    )
     expected_measurements_type = computation_types.at_server(
-        expected_measurements_type)
+        expected_measurements_type
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type)),
+            value=computation_types.at_clients(value_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
-    type_test_utils.assert_types_equivalent(process.next.type_signature,
-                                            expected_next_type)
+            measurements=expected_measurements_type,
+        ),
+    )
+    type_test_utils.assert_types_equivalent(
+        process.next.type_signature, expected_next_type
+    )
 
   @parameterized.named_parameters(
       ('float32_tensor', _test_value_type_float32_tensor),
-      ('int64_tensor', _test_value_type_int64_tensor))
+      ('int64_tensor', _test_value_type_int64_tensor),
+  )
   def test_encode_create_raises(self, value_type):
     factory = elias_gamma_encode.EliasGammaEncodedSumFactory()
     value_type = computation_types.to_type(value_type)
@@ -144,28 +163,41 @@ class EncodeComputationTest(tf.test.TestCase, parameterized.TestCase):
 class EncodeExecutionTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('int32_tensor_rank_1', _test_value_type_int32_tensor_rank_1,
-       _test_client_values_int32_tensor_rank_1,
-       _test_expected_result_int32_tensor_rank_1,
-       _test_avg_bitrate_int32_tensor_rank_1),
-      ('int32_tensor_rank_2', _test_value_type_int32_tensor_rank_2,
-       _test_client_values_int32_tensor_rank_2,
-       _test_expected_result_int32_tensor_rank_2,
-       _test_avg_bitrate_int32_tensor_rank_2),
-      ('struct_int32_tensors', _test_value_type_struct_int32_tensors,
-       _test_client_values_struct_int32_tensors,
-       _test_expected_result_struct_int32_tensors,
-       _test_avg_bitrate_struct_int32_tensors))
-  def test_encode_impl(self, value_type, client_values, expected_result,
-                       avg_bitrate):
+      (
+          'int32_tensor_rank_1',
+          _test_value_type_int32_tensor_rank_1,
+          _test_client_values_int32_tensor_rank_1,
+          _test_expected_result_int32_tensor_rank_1,
+          _test_avg_bitrate_int32_tensor_rank_1,
+      ),
+      (
+          'int32_tensor_rank_2',
+          _test_value_type_int32_tensor_rank_2,
+          _test_client_values_int32_tensor_rank_2,
+          _test_expected_result_int32_tensor_rank_2,
+          _test_avg_bitrate_int32_tensor_rank_2,
+      ),
+      (
+          'struct_int32_tensors',
+          _test_value_type_struct_int32_tensors,
+          _test_client_values_struct_int32_tensors,
+          _test_expected_result_struct_int32_tensors,
+          _test_avg_bitrate_struct_int32_tensors,
+      ),
+  )
+  def test_encode_impl(
+      self, value_type, client_values, expected_result, avg_bitrate
+  ):
     factory = elias_gamma_encode.EliasGammaEncodedSumFactory(
-        bitrate_mean_factory=mean.UnweightedMeanFactory())
+        bitrate_mean_factory=mean.UnweightedMeanFactory()
+    )
     value_type = computation_types.to_type(value_type)
     process = factory.create(value_type)
     state = process.initialize()
 
     expected_measurements = collections.OrderedDict(
-        elias_gamma_code_avg_bitrate=avg_bitrate)
+        elias_gamma_code_avg_bitrate=avg_bitrate
+    )
 
     measurements = process.next(state, client_values).measurements
     self.assertAllClose(measurements, expected_measurements)
@@ -173,10 +205,17 @@ class EncodeExecutionTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(result, expected_result)
 
   @parameterized.named_parameters(
-      ('int32_tensor_rank_1', _test_client_values_int32_tensor_rank_1,
-       _test_avg_bitstring_length_int32_tensor_rank_1),
-      ('int32_tensor_rank_2', _test_client_values_int32_tensor_rank_2,
-       _test_avg_bitstring_length_int32_tensor_rank_2))
+      (
+          'int32_tensor_rank_1',
+          _test_client_values_int32_tensor_rank_1,
+          _test_avg_bitstring_length_int32_tensor_rank_1,
+      ),
+      (
+          'int32_tensor_rank_2',
+          _test_client_values_int32_tensor_rank_2,
+          _test_avg_bitstring_length_int32_tensor_rank_2,
+      ),
+  )
   def test_bitstring_impl(self, client_values, avg_total_bits):
     bitstrings = [tfc.run_length_gamma_encode(x) for x in client_values]
     total_bits = [elias_gamma_encode._get_bits(x) for x in bitstrings]

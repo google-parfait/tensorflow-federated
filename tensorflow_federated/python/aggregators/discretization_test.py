@@ -30,25 +30,26 @@ _test_struct_type_int = [tf.int32, (tf.int32, (2,)), (tf.int32, (3, 3))]
 _test_struct_type_float = [tf.float32, (tf.float32, (2,)), (tf.float32, (3, 3))]
 
 _test_nested_struct_type_float = collections.OrderedDict(
-    a=[tf.float32, [(tf.float32, (2, 2, 1))]], b=(tf.float32, (3, 3)))
+    a=[tf.float32, [(tf.float32, (2, 2, 1))]], b=(tf.float32, (3, 3))
+)
 
 
 def _make_test_nested_struct_value(value):
   return collections.OrderedDict(
       a=[
           tf.constant(value, dtype=tf.float32),
-          [tf.constant(value, dtype=tf.float32, shape=[2, 2, 1])]
+          [tf.constant(value, dtype=tf.float32, shape=[2, 2, 1])],
       ],
-      b=tf.constant(value, dtype=tf.float32, shape=(3, 3)))
+      b=tf.constant(value, dtype=tf.float32, shape=(3, 3)),
+  )
 
 
-def _discretization_sum(scale_factor=2,
-                        stochastic=False,
-                        beta=0,
-                        prior_norm_bound=None):
-  return discretization.DiscretizationFactory(sum_factory.SumFactory(),
-                                              scale_factor, stochastic, beta,
-                                              prior_norm_bound)
+def _discretization_sum(
+    scale_factor=2, stochastic=False, beta=0, prior_norm_bound=None
+):
+  return discretization.DiscretizationFactory(
+      sum_factory.SumFactory(), scale_factor, stochastic, beta, prior_norm_bound
+  )
 
 
 def _named_test_cases_product(*args):
@@ -68,14 +69,16 @@ def _named_test_cases_product(*args):
   return named_cases
 
 
-class DiscretizationFactoryComputationTest(tf.test.TestCase,
-                                           parameterized.TestCase):
+class DiscretizationFactoryComputationTest(
+    tf.test.TestCase, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
       ('float', tf.float32),
       ('struct_list_float_scalars', [tf.float16, tf.float32, tf.float64]),
       ('struct_list_float_mixed', _test_struct_type_float),
-      ('struct_nested', _test_nested_struct_type_float))
+      ('struct_nested', _test_nested_struct_type_float),
+  )
   def test_type_properties(self, value_type):
     factory = _discretization_sum()
     value_type = computation_types.to_type(value_type)
@@ -86,29 +89,42 @@ class DiscretizationFactoryComputationTest(tf.test.TestCase,
         collections.OrderedDict(
             scale_factor=tf.float32,
             prior_norm_bound=tf.float32,
-            inner_agg_process=()))
+            inner_agg_process=(),
+        )
+    )
 
     expected_initialize_type = computation_types.FunctionType(
-        parameter=None, result=server_state_type)
-    type_test_utils.assert_types_equivalent(process.initialize.type_signature,
-                                            expected_initialize_type)
+        parameter=None, result=server_state_type
+    )
+    type_test_utils.assert_types_equivalent(
+        process.initialize.type_signature, expected_initialize_type
+    )
 
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(discretize=()))
+        collections.OrderedDict(discretize=())
+    )
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
-            value=computation_types.at_clients(value_type)),
+            value=computation_types.at_clients(value_type),
+        ),
         result=measured_process.MeasuredProcessOutput(
             state=server_state_type,
             result=computation_types.at_server(value_type),
-            measurements=expected_measurements_type))
-    type_test_utils.assert_types_equivalent(process.next.type_signature,
-                                            expected_next_type)
+            measurements=expected_measurements_type,
+        ),
+    )
+    type_test_utils.assert_types_equivalent(
+        process.next.type_signature, expected_next_type
+    )
 
-  @parameterized.named_parameters(('bool', tf.bool), ('string', tf.string),
-                                  ('int32', tf.int32), ('int64', tf.int64),
-                                  ('int_nested', [tf.int32, [tf.int32]]))
+  @parameterized.named_parameters(
+      ('bool', tf.bool),
+      ('string', tf.string),
+      ('int32', tf.int32),
+      ('int64', tf.int64),
+      ('int_nested', [tf.int32, [tf.int32]]),
+  )
   def test_raises_on_bad_component_tensor_dtypes(self, value_type):
     factory = _discretization_sum()
     value_type = computation_types.to_type(value_type)
@@ -119,52 +135,84 @@ class DiscretizationFactoryComputationTest(tf.test.TestCase,
       ('plain_struct', [('a', tf.int32)]),
       ('sequence', computation_types.SequenceType(tf.int32)),
       ('function', computation_types.FunctionType(tf.int32, tf.int32)),
-      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]))
+      ('nested_sequence', [[[computation_types.SequenceType(tf.int32)]]]),
+  )
   def test_raises_on_bad_tff_value_types(self, value_type):
     factory = _discretization_sum()
     value_type = computation_types.to_type(value_type)
     with self.assertRaisesRegex(TypeError, 'Expected `value_type` to be'):
       factory.create(value_type)
 
-  @parameterized.named_parameters(('negative', -1), ('zero', 0),
-                                  ('string', 'lol'), ('tensor', tf.constant(3)))
+  @parameterized.named_parameters(
+      ('negative', -1),
+      ('zero', 0),
+      ('string', 'lol'),
+      ('tensor', tf.constant(3)),
+  )
   def test_raises_on_bad_scale_factor(self, scale_factor):
     with self.assertRaisesRegex(ValueError, '`scale_factor` should be a'):
       _discretization_sum(scale_factor=scale_factor)
 
-  @parameterized.named_parameters(('number', 3.14), ('string', 'lol'),
-                                  ('tensor', tf.constant(True)))
+  @parameterized.named_parameters(
+      ('number', 3.14), ('string', 'lol'), ('tensor', tf.constant(True))
+  )
   def test_raises_on_bad_stochastic(self, stochastic):
     with self.assertRaisesRegex(ValueError, '`stochastic` should be a'):
       _discretization_sum(stochastic=stochastic)
 
-  @parameterized.named_parameters(('negative', -1), ('too_large', 1),
-                                  ('string', 'lol'),
-                                  ('tensor', tf.constant(0.5)))
+  @parameterized.named_parameters(
+      ('negative', -1),
+      ('too_large', 1),
+      ('string', 'lol'),
+      ('tensor', tf.constant(0.5)),
+  )
   def test_raises_on_bad_beta(self, beta):
     with self.assertRaisesRegex(ValueError, '`beta` should be a'):
       _discretization_sum(beta=beta)
 
-  @parameterized.named_parameters(('negative', -0.5), ('zero', 0),
-                                  ('string', 'lol'), ('tensor', tf.constant(1)))
+  @parameterized.named_parameters(
+      ('negative', -0.5),
+      ('zero', 0),
+      ('string', 'lol'),
+      ('tensor', tf.constant(1)),
+  )
   def test_raises_on_bad_prior_norm_bound(self, prior_norm_bound):
     with self.assertRaisesRegex(ValueError, '`prior_norm_bound` should be a'):
       _discretization_sum(prior_norm_bound=prior_norm_bound)
 
 
-class DiscretizationFactoryExecutionTest(tf.test.TestCase,
-                                         parameterized.TestCase):
+class DiscretizationFactoryExecutionTest(
+    tf.test.TestCase, parameterized.TestCase
+):
 
   @parameterized.named_parameters(
       ('scalar', tf.float32, [1, 2, 3], 6, False),
-      ('rank_1_tensor', (tf.float32, [7]),
-       [np.arange(7.), np.arange(7.) * 2], np.arange(7.) * 3, False),
-      ('rank_2_tensor', (tf.float32, [1, 2]), [((1, 1),), ((2, 2),)],
-       ((3, 3),), False), ('nested', _test_nested_struct_type_float, [
-           _make_test_nested_struct_value(123),
-           _make_test_nested_struct_value(456)
-       ], _make_test_nested_struct_value(579), False),
-      ('stochastic', tf.float32, [1, 2, 3], 6, True))
+      (
+          'rank_1_tensor',
+          (tf.float32, [7]),
+          [np.arange(7.0), np.arange(7.0) * 2],
+          np.arange(7.0) * 3,
+          False,
+      ),
+      (
+          'rank_2_tensor',
+          (tf.float32, [1, 2]),
+          [((1, 1),), ((2, 2),)],
+          ((3, 3),),
+          False,
+      ),
+      (
+          'nested',
+          _test_nested_struct_type_float,
+          [
+              _make_test_nested_struct_value(123),
+              _make_test_nested_struct_value(456),
+          ],
+          _make_test_nested_struct_value(579),
+          False,
+      ),
+      ('stochastic', tf.float32, [1, 2, 3], 6, True),
+  )
   def test_sum(self, value_type, client_data, expected_sum, stochastic):
     """Integration test with sum."""
     scale_factor = 3
@@ -177,30 +225,36 @@ class DiscretizationFactoryExecutionTest(tf.test.TestCase,
       self.assertEqual(output.state['scale_factor'], scale_factor)
       self.assertEqual(output.state['prior_norm_bound'], 0)
       self.assertEqual(output.state['inner_agg_process'], ())
-      self.assertEqual(output.measurements,
-                       collections.OrderedDict(discretize=()))
+      self.assertEqual(
+          output.measurements, collections.OrderedDict(discretize=())
+      )
       # Use `assertAllClose` to compare structures.
       self.assertAllClose(output.result, expected_sum, atol=0)
       state = output.state
 
-  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64),
-                                  ('float64', tf.float64))
+  @parameterized.named_parameters(
+      ('int32', tf.int32), ('int64', tf.int64), ('float64', tf.float64)
+  )
   def test_output_dtype(self, dtype):
     """Checks the tensor type gets casted during preprocessing."""
     x = tf.range(8, dtype=dtype)
     encoded_x = discretization._discretize_struct(
-        x, scale_factor=10, stochastic=False, beta=0, prior_norm_bound=0)
+        x, scale_factor=10, stochastic=False, beta=0, prior_norm_bound=0
+    )
     self.assertEqual(encoded_x.dtype, discretization.OUTPUT_TF_TYPE)
 
-  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64),
-                                  ('float64', tf.float64))
+  @parameterized.named_parameters(
+      ('int32', tf.int32), ('int64', tf.int64), ('float64', tf.float64)
+  )
   def test_revert_to_input_dtype(self, dtype):
     """Checks that postprocessing restores the original dtype."""
     x = tf.range(8, dtype=dtype)
     encoded_x = discretization._discretize_struct(
-        x, scale_factor=1, stochastic=True, beta=0, prior_norm_bound=0)
+        x, scale_factor=1, stochastic=True, beta=0, prior_norm_bound=0
+    )
     decoded_x = discretization._undiscretize_struct(
-        encoded_x, scale_factor=1, tf_dtype_struct=dtype)
+        encoded_x, scale_factor=1, tf_dtype_struct=dtype
+    )
     self.assertEqual(dtype, decoded_x.dtype)
 
 
@@ -212,22 +266,21 @@ class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
               'scale_factor_1': 0.1,
               'scale_factor_2': 1,
               'scale_factor_3': 314,
-              'scale_factor_4': 2**24
-          }, {
-              'stochastic_true': True,
-              'stochastic_false': False
-          }, {
-              'shape_1': (10,),
-              'shape_2': (10, 10),
-              'shape_3': (10, 5, 2)
-          }))
+              'scale_factor_4': 2**24,
+          },
+          {'stochastic_true': True, 'stochastic_false': False},
+          {'shape_1': (10,), 'shape_2': (10, 10), 'shape_3': (10, 5, 2)},
+      )
+  )
   def test_error_from_rounding(self, scale_factor, stochastic, shape):
     dtype = tf.float32
     x = tf.random.uniform(shape=shape, minval=-10, maxval=10, dtype=dtype)
     encoded_x = discretization._discretize_struct(
-        x, scale_factor, stochastic=stochastic, beta=0, prior_norm_bound=0)
+        x, scale_factor, stochastic=stochastic, beta=0, prior_norm_bound=0
+    )
     decoded_x = discretization._undiscretize_struct(
-        encoded_x, scale_factor, tf_dtype_struct=dtype)
+        encoded_x, scale_factor, tf_dtype_struct=dtype
+    )
     x, decoded_x = self.evaluate([x, decoded_x])
 
     self.assertAllEqual(x.shape, decoded_x.shape)
@@ -239,15 +292,18 @@ class QuantizationTest(tf.test.TestCase, parameterized.TestCase):
 
 class ScalingTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(('scale_factor_1', 1), ('scale_factor_2', 97),
-                                  ('scale_factor_3', 10**6))
+  @parameterized.named_parameters(
+      ('scale_factor_1', 1), ('scale_factor_2', 97), ('scale_factor_3', 10**6)
+  )
   def test_scaling(self, scale_factor):
     # Integers to prevent rounding.
     x = tf.random.stateless_uniform([100], (1, 1), -100, 100, dtype=tf.int32)
     discretized_x = discretization._discretize_struct(
-        x, scale_factor, stochastic=True, beta=0, prior_norm_bound=0)
+        x, scale_factor, stochastic=True, beta=0, prior_norm_bound=0
+    )
     reverted_x = discretization._undiscretize_struct(
-        discretized_x, scale_factor, tf_dtype_struct=tf.int32)
+        discretized_x, scale_factor, tf_dtype_struct=tf.int32
+    )
     x, discretized_x, reverted_x = self.evaluate([x, discretized_x, reverted_x])
     self.assertAllEqual(x * scale_factor, discretized_x)  # Scaling up.
     self.assertAllEqual(x, reverted_x)  # Scaling down.
@@ -261,10 +317,12 @@ class StochasticRoundingTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.random.uniform([100], -100, 100, dtype=tf.float32)
     rounded_norms = []
     for beta in [0, 0.9]:
-      avg_rounded_norm_beta = tf.reduce_mean([
-          tf.norm(discretization._stochastic_rounding(x, beta=beta))
-          for i in range(num_trials)
-      ])
+      avg_rounded_norm_beta = tf.reduce_mean(
+          [
+              tf.norm(discretization._stochastic_rounding(x, beta=beta))
+              for i in range(num_trials)
+          ]
+      )
       rounded_norms.append(avg_rounded_norm_beta)
 
     rounded_norms = self.evaluate(rounded_norms)
@@ -280,14 +338,11 @@ class StochasticRoundingTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(rounded_x.dtype, np.float32)
 
   @parameterized.named_parameters(
-      _named_test_cases_product({
-          'beta_1': 0.0,
-          'beta_2': 0.6
-      }, {
-          'value_1': 0.2,
-          'value_2': 42.6,
-          'value_3': -3.3
-      }))
+      _named_test_cases_product(
+          {'beta_1': 0.0, 'beta_2': 0.6},
+          {'value_1': 0.2, 'value_2': 42.6, 'value_3': -3.3},
+      )
+  )
   def test_biased_inputs(self, beta, value):
     num_trials = 5000
     x = tf.constant(value, shape=[num_trials])
@@ -306,13 +361,11 @@ class StochasticRoundingTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(np.mean(rounded_x), value, atol=4 * stddev / num_trials)
 
   @parameterized.named_parameters(
-      _named_test_cases_product({
-          'float32': tf.float32,
-          'float64': tf.float64
-      }, {
-          'beta_1': 0.0,
-          'beta_2': 0.6
-      }))
+      _named_test_cases_product(
+          {'float32': tf.float32, 'float64': tf.float64},
+          {'beta_1': 0.0, 'beta_2': 0.6},
+      )
+  )
   def test_output_dtype(self, dtype, beta):
     x = tf.random.uniform([100], minval=-10, maxval=10, dtype=dtype)
     rounded_x = discretization._stochastic_rounding(x, beta=beta)
@@ -332,11 +385,14 @@ class InflatedNormTest(tf.test.TestCase, parameterized.TestCase):
       ('large_beta_small_gamma', 1.0, 1e-9, 0.5, 1e9, 1.0000000007137142),
       ('large_beta_large_gamma', 1.0, 1e-2, 0.5, 1e9, 158.12296930808552),
       ('one_beta_small_gamma', 1.0, 1e-9, 1, 1e9, 1.000000000125),
-      ('one_beta_large_gamma', 1.0, 1e-2, 1, 1e9, 158.11704525445697))
-  def test_inflated_l2_norm_bound(self, l2_norm_bound, gamma, beta, dim,
-                                  expected_inflated_norm_bound):
+      ('one_beta_large_gamma', 1.0, 1e-2, 1, 1e9, 158.11704525445697),
+  )
+  def test_inflated_l2_norm_bound(
+      self, l2_norm_bound, gamma, beta, dim, expected_inflated_norm_bound
+  ):
     inflated_norm_bound = discretization.inflated_l2_norm_bound(
-        l2_norm_bound, gamma, beta, dim)
+        l2_norm_bound, gamma, beta, dim
+    )
     self.assertAllClose(inflated_norm_bound, expected_inflated_norm_bound)
 
 

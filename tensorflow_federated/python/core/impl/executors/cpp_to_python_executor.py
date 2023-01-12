@@ -23,8 +23,16 @@ from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.executors import value_serialization
 from tensorflow_federated.python.core.impl.types import computation_types
+
+
+def _handle_error(exception: Exception):
+  if executors_errors.is_absl_status_retryable_error(exception):
+    raise executors_errors.RetryableAbslStatusError() from exception
+  else:
+    raise exception
 
 
 class CppToPythonExecutorValue(executor_value_base.ExecutorValue):
@@ -59,10 +67,19 @@ class CppToPythonExecutorValue(executor_value_base.ExecutorValue):
   async def compute(self) -> Any:
     """Pulls protocol buffer out of C++ into Python, and deserializes."""
     running_loop = asyncio.get_running_loop()
+
+    def _materialize():
+      try:
+        return self._cpp_executor.materialize(self._owned_value_id.ref)
+      except Exception as e:  # pylint: disable=broad-except
+        _handle_error(e)
+
     result_pb = await running_loop.run_in_executor(
-        self._futures_executor,
-        lambda: self._cpp_executor.materialize(self._owned_value_id.ref))
-    deserialized_value, _ = value_serialization.deserialize_value(result_pb)
+        self._futures_executor, _materialize
+    )
+    deserialized_value, _ = value_serialization.deserialize_value(
+        result_pb, self._type_signature
+    )
     return deserialized_value
 
 
@@ -89,7 +106,10 @@ class CppToPythonExecutorBridge(executor_base.Executor):
       type_signature: computation_types.Type) -> CppToPythonExecutorValue:
     serialized_value, _ = value_serialization.serialize_value(
         value, type_signature)
-    owned_id = self._cpp_executor.create_value(serialized_value)
+    try:
+      owned_id = self._cpp_executor.create_value(serialized_value)
+    except Exception as e:  # pylint: disable=broad-except
+      _handle_error(e)
     return CppToPythonExecutorValue(owned_id, type_signature,
                                     self._cpp_executor, self._futures_executor)
 
@@ -104,7 +124,10 @@ class CppToPythonExecutorBridge(executor_base.Executor):
       arg_ref = arg.ref
     else:
       arg_ref = None
-    owned_call_id = self._cpp_executor.create_call(fn_ref, arg_ref)
+    try:
+      owned_call_id = self._cpp_executor.create_call(fn_ref, arg_ref)
+    except Exception as e:  # pylint: disable=broad-except
+      _handle_error(e)
     return CppToPythonExecutorValue(owned_call_id, fn.type_signature.result,
                                     self._cpp_executor, self._futures_executor)
 
@@ -118,7 +141,10 @@ class CppToPythonExecutorBridge(executor_base.Executor):
     for name, value in structure.iter_elements(executor_value_struct):
       id_list.append(value.ref)
       type_list.append((name, value.type_signature))
-    struct_id = self._cpp_executor.create_struct(id_list)
+    try:
+      struct_id = self._cpp_executor.create_struct(id_list)
+    except Exception as e:  # pylint: disable=broad-except
+      _handle_error(e)
     return CppToPythonExecutorValue(struct_id,
                                     computation_types.StructType(type_list),
                                     self._cpp_executor, self._futures_executor)
@@ -126,7 +152,10 @@ class CppToPythonExecutorBridge(executor_base.Executor):
   @tracing.trace
   async def create_selection(self, source: CppToPythonExecutorValue,
                              index: int) -> CppToPythonExecutorValue:
-    selection_id = self._cpp_executor.create_selection(source.ref, index)
+    try:
+      selection_id = self._cpp_executor.create_selection(source.ref, index)
+    except Exception as e:  # pylint: disable=broad-except
+      _handle_error(e)
     selection_type = source.type_signature[index]
     return CppToPythonExecutorValue(selection_id, selection_type,
                                     self._cpp_executor, self._futures_executor)
