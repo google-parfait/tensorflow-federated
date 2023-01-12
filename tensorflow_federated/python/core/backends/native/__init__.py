@@ -13,6 +13,7 @@
 # limitations under the License.
 """Libraries for interacting with native backends."""
 
+from tensorflow_federated.python.core.backends.native.compiler import desugar_and_transform_to_native
 from tensorflow_federated.python.core.backends.native.compiler import transform_to_native_form
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_async_local_cpp_execution_context
 from tensorflow_federated.python.core.backends.native.execution_contexts import create_local_async_python_execution_context
