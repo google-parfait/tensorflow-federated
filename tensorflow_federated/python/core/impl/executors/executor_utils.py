@@ -206,8 +206,11 @@ async def embed_scalar_multiply_operator(
     An instance of `tff.framework.ExecutorValue` representing the operator in
     a form embedded into the executor.
   """
-  proto, type_signature = local_computation_factory.create_scalar_multiply_operator(
-      operand_type, scalar_type)
+  proto, type_signature = (
+      local_computation_factory.create_scalar_multiply_operator(
+          operand_type, scalar_type
+      )
+  )
   return await executor.create_value(proto, type_signature)
 
 
@@ -325,8 +328,11 @@ async def compute_intrinsic_federated_weighted_mean(
 
   operand_type = zip1_type.result.member[0]
   scalar_type = zip1_type.result.member[1]
-  multiply_comp_pb, multiply_comp_type = local_computation_factory.create_scalar_multiply_operator(
-      operand_type, scalar_type)
+  multiply_comp_pb, multiply_comp_type = (
+      local_computation_factory.create_scalar_multiply_operator(
+          operand_type, scalar_type
+      )
+  )
   multiply_blk = building_blocks.CompiledComputation(
       multiply_comp_pb, type_signature=multiply_comp_type)
   map_type = computation_types.FunctionType(
@@ -348,8 +354,11 @@ async def compute_intrinsic_federated_weighted_mean(
           computation_types.StructType(
               [sum1_type.result.member, sum2_type.result.member])))
 
-  divide_blk = building_block_factory.create_tensorflow_binary_operator_with_upcast(
-      tf.divide, zip2_type.result.member)
+  divide_blk = (
+      building_block_factory.create_tensorflow_binary_operator_with_upcast(
+          tf.divide, zip2_type.result.member
+      )
+  )
 
   async def _compute_multiply_fn():
     return await executor.create_value(multiply_blk.proto,

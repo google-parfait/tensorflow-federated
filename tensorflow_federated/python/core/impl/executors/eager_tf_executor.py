@@ -286,8 +286,9 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
                                                     lambda t: t.is_sequence())
   which_computation = comp.WhichOneof('computation')
   if which_computation != 'tensorflow':
-    unexpected_building_block = building_blocks.ComputationBuildingBlock.from_proto(
-        comp)
+    unexpected_building_block = (
+        building_blocks.ComputationBuildingBlock.from_proto(comp)
+    )
     raise TypeError('Expected a TensorFlow computation, found {}.'.format(
         unexpected_building_block))
 

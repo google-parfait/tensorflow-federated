@@ -37,7 +37,9 @@ Executor = executor_bindings.Executor
 
 # Import executor constructors.
 create_tensorflow_executor = executor_bindings.create_tensorflow_executor
-create_reference_resolving_executor = executor_bindings.create_reference_resolving_executor
+create_reference_resolving_executor = (
+    executor_bindings.create_reference_resolving_executor
+)
 create_composing_executor = executor_bindings.create_composing_executor
 create_xla_executor = executor_bindings.create_xla_executor
 create_sequence_executor = executor_bindings.create_sequence_executor
@@ -54,8 +56,9 @@ def create_federating_executor(
     cardinalities: Mapping[placements.PlacementLiteral, int]
 ) -> executor_bindings.Executor:
   """Constructs a FederatingExecutor with a specified placement."""
-  uri_cardinalities = data_conversions.convert_cardinalities_dict_to_string_keyed(
-      cardinalities)
+  uri_cardinalities = (
+      data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
+  )
   return executor_bindings.create_federating_executor(inner_executor,
                                                       uri_cardinalities)
 
@@ -65,8 +68,9 @@ def create_remote_executor(
     cardinalities: Mapping[placements.PlacementLiteral, int],
 ) -> executor_bindings.Executor:
   """Constructs a RemoteExecutor proxying service on `channel`."""
-  uri_cardinalities = data_conversions.convert_cardinalities_dict_to_string_keyed(
-      cardinalities)
+  uri_cardinalities = (
+      data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
+  )
   return executor_bindings.create_remote_executor(channel, uri_cardinalities)
 
 
@@ -75,6 +79,7 @@ def create_composing_child(
     cardinalities: Mapping[placements.PlacementLiteral, int]
 ) -> executor_bindings.Executor:
   """Constructs a ComposingChild with specified cardinalities."""
-  uri_cardinalities = data_conversions.convert_cardinalities_dict_to_string_keyed(
-      cardinalities)
+  uri_cardinalities = (
+      data_conversions.convert_cardinalities_dict_to_string_keyed(cardinalities)
+  )
   return executor_bindings.create_composing_child(executor, uri_cardinalities)

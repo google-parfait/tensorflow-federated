@@ -65,8 +65,11 @@ def _extract_federated_aggregate_computations(
     A tuple of four ConcreteComputations corresponding to the aggregate
     functions in `before_agg`.
   """
-  federated_aggregate_arguments = building_block_factory.select_output_from_lambda(
-      before_agg, 'federated_aggregate_param')
+  federated_aggregate_arguments = (
+      building_block_factory.select_output_from_lambda(
+          before_agg, 'federated_aggregate_param'
+      )
+  )
   # Index 0 is the value to be aggregated, so we skip.
   # We compile the federated aggregate functions to Tensorflow since simply
   # isolating them from their defining scope can leave unused references in the
@@ -158,11 +161,13 @@ def compile_to_mergeable_comp_form(
   identity_report = computation_impl.ConcreteComputation.from_building_block(
       building_block_factory.create_compiled_identity(merge_fn_type.result))
 
-  zero_comp, accumulate_comp, merge_comp, report_comp = _extract_federated_aggregate_computations(
-      before_agg)
+  zero_comp, accumulate_comp, merge_comp, report_comp = (
+      _extract_federated_aggregate_computations(before_agg)
+  )
 
-  before_agg_callable = computation_impl.ConcreteComputation.from_building_block(
-      before_agg)
+  before_agg_callable = (
+      computation_impl.ConcreteComputation.from_building_block(before_agg)
+  )
   after_agg_callable = computation_impl.ConcreteComputation.from_building_block(
       after_agg)
 

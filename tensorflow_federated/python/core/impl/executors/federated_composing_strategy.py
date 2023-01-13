@@ -241,16 +241,24 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
           ]), computation_types.at_server(tf.int32))
       intrinsic = executor_utils.create_intrinsic_comp(
           intrinsic_defs.FEDERATED_AGGREGATE, intrinsic_type)
-      add_comp = building_block_factory.create_tensorflow_binary_operator_with_upcast(
-          tf.add, computation_types.StructType([tf.int32, tf.int32])).proto
+      add_comp = (
+          building_block_factory.create_tensorflow_binary_operator_with_upcast(
+              tf.add, computation_types.StructType([tf.int32, tf.int32])
+          ).proto
+      )
       identity_comp = building_block_factory.create_compiled_identity(
           computation_types.TensorType(tf.int32)).proto
-      fn, client_data, zero_value, add_value, identity_value = await asyncio.gather(
-          executor.create_value(intrinsic, intrinsic_type),
-          executor.create_value(
-              1, computation_types.at_clients(tf.int32, all_equal=True)),
-          executor.create_value(0, tf.int32), executor.create_value(add_comp),
-          executor.create_value(identity_comp))
+      fn, client_data, zero_value, add_value, identity_value = (
+          await asyncio.gather(
+              executor.create_value(intrinsic, intrinsic_type),
+              executor.create_value(
+                  1, computation_types.at_clients(tf.int32, all_equal=True)
+              ),
+              executor.create_value(0, tf.int32),
+              executor.create_value(add_comp),
+              executor.create_value(identity_comp),
+          )
+      )
       arg = await executor.create_struct(
           [client_data, zero_value, add_value, add_value, identity_value])
       call = await executor.create_call(fn, arg)
@@ -311,8 +319,9 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
     py_typecheck.check_len(val, len(self._target_executors))
-    identity_report, identity_report_type = tensorflow_computation_factory.create_identity(
-        zero_type)
+    identity_report, identity_report_type = (
+        tensorflow_computation_factory.create_identity(zero_type)
+    )
     aggr_type = computation_types.FunctionType(
         computation_types.StructType([
             value_type, zero_type, accumulate_type, merge_type,
