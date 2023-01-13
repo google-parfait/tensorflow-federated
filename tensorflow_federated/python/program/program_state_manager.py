@@ -19,7 +19,6 @@ from typing import Any, Generic, Optional, Union, TypeVar
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
-# pyformat: disable
 # ProgramStateManager's may save any value (including materialized values) in
 # addition to materializable values.
 ProgramStateValue = Union[
@@ -28,8 +27,8 @@ ProgramStateValue = Union[
 ]
 ProgramStateStructure = TypeVar(
     'ProgramStateStructure',
-    bound=structure_utils.Structure[ProgramStateValue])
-# pyformat: enable
+    bound=structure_utils.Structure[ProgramStateValue],
+)
 
 
 class ProgramStateManagerStateAlreadyExistsError(Exception):

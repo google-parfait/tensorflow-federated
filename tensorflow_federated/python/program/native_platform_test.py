@@ -63,6 +63,7 @@ class AwaitableValueReferenceTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
        _value_fn_factory(1),
@@ -70,7 +71,8 @@ class AwaitableValueReferenceTest(
       ('sequence',
        _value_fn_factory([1, 2, 3]),
        computation_types.SequenceType(tf.int32)),
-  )  # pyformat: disable
+  )
+  # pyformat: enable
   def test_init_does_not_raise_type_error(self, fn, type_signature):
     try:
       native_platform.AwaitableValueReference(fn, type_signature)
@@ -90,19 +92,20 @@ class AwaitableValueReferenceTest(
     with self.assertRaises(TypeError):
       native_platform.AwaitableValueReference(fn, type_signature)
 
+  # pyformat: disable
   @parameterized.named_parameters(
-      (
-          'federated',
-          computation_types.FederatedType(tf.int32, placements.SERVER),
-      ),
+      ('federated',
+       computation_types.FederatedType(tf.int32, placements.SERVER)),
       ('struct', computation_types.StructWithPythonType([], list)),
   )
+  # pyformat: enable
   def test_init_raises_type_error_with_type_signature(self, type_signature):
     fn = _value_fn_factory(1)
 
     with self.assertRaises(TypeError):
       native_platform.AwaitableValueReference(fn, type_signature)
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('bool',
        _value_fn_factory(True),
@@ -113,7 +116,8 @@ class AwaitableValueReferenceTest(
       ('str',
        _value_fn_factory('a'),
        computation_types.TensorType(tf.string), 'a'),
-  )  # pyformat: disable
+  )
+  # pyformat: enable
   async def test_get_value_returns_value(
       self, fn, type_signature, expected_value
   ):
@@ -169,6 +173,7 @@ class CreateStructureOfAwaitableReferencesTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
        _value_fn_factory(1),
@@ -230,7 +235,8 @@ class CreateStructureOfAwaitableReferencesTest(
                    _value_fn_factory('a'), computation_types.TensorType(tf.string))),
            ])),
        ])),
-  )  # pyformat: disable
+  )
+  # pyformat: enable
   async def test_returns_value(self, fn, type_signature, expected_value):
     actual_value = native_platform._create_structure_of_awaitable_references(
         fn, type_signature
@@ -283,12 +289,14 @@ class CreateStructureOfAwaitableReferencesTest(
           fn, type_signature
       )
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('federated', computation_types.FederatedType(
           tf.int32, placements.CLIENTS)),
       ('function', computation_types.FunctionType(tf.int32, tf.int32)),
       ('placement', computation_types.PlacementType()),
-  )  # pyformat: disable
+  )
+  # pyformat: enable
   def test_raises_not_implemented_error_with_type_signature(
       self, type_signature
   ):
@@ -304,6 +312,7 @@ class MaterializeStructureOfValueReferencesTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
        native_platform.AwaitableValueReference(
@@ -376,7 +385,8 @@ class MaterializeStructureOfValueReferencesTest(
                ('c', 'a'),
            ])),
        ])),
-  )  # pyformat: disable
+  )
+  # pyformat: enable
   async def test_returns_value(self, value, type_signature, expected_value):
     actual_value = (
         await native_platform._materialize_structure_of_value_references(
@@ -406,32 +416,33 @@ class NativeFederatedContextTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
+  # pyformat: disable
   @parameterized.named_parameters(
-      (
-          'async_cpp',
-          execution_contexts.create_local_async_python_execution_context(),
-      ),
-      (
-          'async_python',
-          execution_contexts.create_local_async_python_execution_context(),
-      ),
+      ('async_cpp',
+       execution_contexts.create_local_async_python_execution_context()),
+      ('async_python',
+       execution_contexts.create_local_async_python_execution_context()),
   )
+  # pyformat: enable
   def test_init_does_not_raise_type_error_with_context(self, context):
     try:
       native_platform.NativeFederatedContext(context)
     except TypeError:
       self.fail('Raised `TypeError` unexpectedly.')
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('sync_cpp',
        execution_contexts.create_sync_local_cpp_execution_context()),
       ('sync_python',
        execution_contexts.create_local_python_execution_context()),
-  )  # pyformat: disable
+  )
+  # pyformat: enable
   def test_init_raises_type_error_with_context(self, context):
     with self.assertRaises(TypeError):
       native_platform.NativeFederatedContext(context)
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
        _identity_factory(computation_types.TensorType(tf.int32)),
@@ -460,7 +471,8 @@ class NativeFederatedContextTest(
        ], collections.OrderedDict)),
        {'x': {'a': True, 'b': 1}, 'y': {}},
        {'x': {'a': True, 'b': 1}, 'y': {}}),
-  )  # pyformat: disable
+  )
+  # pyformat: enable
   async def test_invoke_returns_result_materialized_sequentially(
       self, comp, arg, expected_value
   ):
@@ -477,6 +489,7 @@ class NativeFederatedContextTest(
     self.assertEqual(actual_value, expected_value)
     mock_context.invoke.assert_called_once()
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
        _identity_factory(computation_types.TensorType(tf.int32)),
@@ -505,7 +518,8 @@ class NativeFederatedContextTest(
        ], collections.OrderedDict)),
        {'x': {'a': True, 'b': 1}, 'y': {}},
        {'x': {'a': True, 'b': 1}, 'y': {}}),
-  )  # pyformat: disable
+  )
+  # pyformat: enable
   async def test_invoke_returns_result_materialized_concurrently(
       self, comp, arg, expected_value
   ):
@@ -520,6 +534,7 @@ class NativeFederatedContextTest(
     self.assertEqual(actual_value, expected_value)
     mock_context.invoke.assert_called_once()
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('tensor',
        _identity_factory(computation_types.TensorType(tf.int32)),
@@ -548,7 +563,8 @@ class NativeFederatedContextTest(
        ], collections.OrderedDict)),
        {'x': {'a': True, 'b': 1}, 'y': {}},
        {'x': {'a': True, 'b': 1}, 'y': {}}),
-  )  # pyformat: disable
+  )
+  # pyformat: enable
   async def test_invoke_returns_result_materialized_multiple(
       self, comp, arg, expected_value
   ):
@@ -568,6 +584,7 @@ class NativeFederatedContextTest(
     self.assertEqual(actual_value, expected_value)
     mock_context.invoke.assert_called_once()
 
+  # pyformat: disable
   @parameterized.named_parameters(
       ('struct_unnamed_empty',
        _identity_factory(computation_types.StructWithPythonType([], list)),
@@ -587,7 +604,8 @@ class NativeFederatedContextTest(
        ], collections.OrderedDict)),
        {'x': {}, 'y': {}},
        {'x': {}, 'y': {}}),
-  )  # pyformat: disable
+  )
+  # pyformat: enable
   async def test_invoke_returns_result_comp_not_called(
       self, comp, arg, expected_value
   ):

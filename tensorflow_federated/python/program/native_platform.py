@@ -32,8 +32,9 @@ from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
 
-# pyformat: disable
-_MaterializedValueFn = Callable[[], Awaitable[value_reference.MaterializedValue]]
+_MaterializedValueFn = Callable[
+    [], Awaitable[value_reference.MaterializedValue]
+]
 _T = TypeVar('_T')
 # This type defines values of type `_T` nested in a structure of
 # `tff.structure.Struct`'s.
@@ -43,7 +44,6 @@ _StructStructure = Union[
     _T,
     structure.Struct,
 ]
-# pyformat: enable
 
 
 class AwaitableValueReference(value_reference.MaterializableValueReference):

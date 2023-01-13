@@ -20,7 +20,6 @@ import pytype_extensions
 import tree
 
 
-# pyformat: disable
 _T = TypeVar('_T')
 # This type defines the structures supported by the `tff.program` API, meaning
 # values of type `_T` nested in structures defined by this type. For an example
@@ -31,7 +30,6 @@ Structure = Union[
     Mapping[str, 'Structure[_T]'],
     pytype_extensions.Attrs['Structure[_T]'],
 ]
-# pyformat: enable
 
 
 def flatten_with_name(structure: Any) -> list[tuple[str, Any]]:

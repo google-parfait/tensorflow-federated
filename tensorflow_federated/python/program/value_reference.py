@@ -32,7 +32,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import typed_object
 from tensorflow_federated.python.program import structure_utils
 
-# pyformat: disable
 MaterializableTypeSignature = Union[
     computation_types.TensorType,
     computation_types.SequenceType,
@@ -48,7 +47,6 @@ MaterializableValue = Union[
     'MaterializableValueReference',
 ]
 MaterializableStructure = structure_utils.Structure[MaterializableValue]
-# pyformat: enable
 
 
 class MaterializableValueReference(abc.ABC, typed_object.TypedObject):

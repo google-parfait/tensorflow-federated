@@ -27,7 +27,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.program import structure_utils
 from tensorflow_federated.python.program import value_reference
 
-# pyformat: disable
 # ReleaseManager's may release any value (including materialized values) in
 # addition to materializable values.
 ReleasableValue = Union[
@@ -36,9 +35,9 @@ ReleasableValue = Union[
 ]
 ReleasableStructure = TypeVar(
     'ReleasableStructure',
-    bound=structure_utils.Structure[ReleasableValue])
+    bound=structure_utils.Structure[ReleasableValue],
+)
 Key = TypeVar('Key')
-# pyformat: enable
 
 
 class ReleaseManager(abc.ABC, Generic[ReleasableStructure, Key]):

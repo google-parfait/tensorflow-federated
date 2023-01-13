@@ -338,12 +338,10 @@ class CSVFileReleaseManagerWriteValueTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
-  # pyformat: disable
   @parameterized.named_parameters(
       ('empty', {}),
       ('more_fields', {'a': 11, 'b': 12, 'c': 13}),
   )
-  # pyformat: enable
   async def test_writes_value_to_empty_file(self, value):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -365,14 +363,12 @@ class CSVFileReleaseManagerWriteValueTest(
     expected_values = tree.map_structure(str, expected_values)
     self.assertEqual(actual_values, expected_values)
 
-  # pyformat: disable
   @parameterized.named_parameters(
       ('empty', {}),
       ('same_fields', {'a': 11, 'b': 12}),
       ('less_fields', {'a': 11}),
       ('more_fields', {'a': 11, 'b': 12, 'c': 13}),
   )
-  # pyformat: enable
   async def test_writes_value_to_existing_file(self, value):
     file_path = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']
@@ -424,12 +420,10 @@ class CSVFileReleaseManagerAppendValueTest(
     parameterized.TestCase, unittest.IsolatedAsyncioTestCase
 ):
 
-  # pyformat: disable
   @parameterized.named_parameters(
       ('empty', {}),
       ('more_fields', {'a': 11, 'b': 12, 'c': 13}),
   )
-  # pyformat: enable
   async def test_appends_value_to_empty_file(self, value):
     file_path = self.create_tempfile()
     os.remove(file_path)
@@ -451,14 +445,12 @@ class CSVFileReleaseManagerAppendValueTest(
     expected_values = tree.map_structure(str, expected_values)
     self.assertEqual(actual_values, expected_values)
 
-  # pyformat: disable
   @parameterized.named_parameters(
       ('empty', {}),
       ('same_fields', {'a': 11, 'b': 12}),
       ('less_fields', {'a': 11}),
       ('more_fields', {'a': 11, 'b': 12, 'c': 13}),
   )
-  # pyformat: enable
   async def test_appends_value_to_existing_file(self, value):
     file_path = self.create_tempfile()
     existing_fieldnames = ['key', 'a', 'b']

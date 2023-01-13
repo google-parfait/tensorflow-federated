@@ -203,11 +203,9 @@ class MemoryReleaseManagerTest(
     with self.assertRaises(TypeError):
       await release_mngr.release(1, type_signature, key=1)
 
-  # pyformat: disable
   @parameterized.named_parameters(
       ('list', []),
   )
-  # pyformat: enable
   async def test_release_raises_type_error_with_key(self, key):
     release_mngr = memory_release_manager.MemoryReleaseManager()
     value = 1
