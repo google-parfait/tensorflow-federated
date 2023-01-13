@@ -117,7 +117,7 @@ class EvaluationManager:
 
   This manager performs three responsbilities:
 
-  1.  Prepares, starts and tracks new evaluation loops. This invovles creating
+  1.  Prepares, starts and tracks new evaluation loops. This involves creating
       a new evaluation process and state manager for that process, adding
       the new process to the list of tracked inprocess evaluations, and
       creating a new `asyncio.Task` to run the evaluation loop.
