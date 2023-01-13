@@ -111,14 +111,6 @@ class ProximalClientWorkComputationTest(tf.test.TestCase,
           client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
           delta_l2_regularizer=-1.0)
 
-  def test_zero_proximal_strength_raises(self):
-    with self.assertRaises(ValueError):
-      proximal_client_work.build_model_delta_client_work(
-          model_examples.LinearRegression,
-          sgdm.build_sgdm(1.0),
-          client_weighting=client_weight_lib.ClientWeighting.NUM_EXAMPLES,
-          delta_l2_regularizer=0.0)
-
 
 def create_test_dataset() -> tf.data.Dataset:
   # Create a dataset with 4 examples:

@@ -28,6 +28,7 @@ import collections
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
+from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -69,7 +70,7 @@ def build_model_delta_update_with_tff_optimizer(
   Args:
     model_fn: A no-arg callable returning a `tff.learning.Model`.
     weighting: A `tff.learning.ClientWeighting` value.
-    delta_l2_regularizer: A positive float, L2 regularization strength of the
+    delta_l2_regularizer: A nonnegative float, L2 regularization strength of the
       model delta.
     use_experimental_simulation_loop: Controls the reduce loop function for the
       input dataset. An experimental reduce loop is used for simulation.
@@ -159,7 +160,7 @@ def build_model_delta_update_with_keras_optimizer(
   Args:
     model_fn: A no-arg callable returning a `tff.learning.Model`.
     weighting: A `tff.learning.ClientWeighting` value.
-    delta_l2_regularizer: A positive float, L2 regularization strength of the
+    delta_l2_regularizer: A nonnegative float, L2 regularization strength of the
       model delta.
     use_experimental_simulation_loop: Controls the reduce loop function for the
       input dataset. An experimental reduce loop is used for simulation.
@@ -231,7 +232,7 @@ def _build_functional_model_delta_update(
   Args:
     model: A `tff.learning.models.FunctionalModel`.
     weighting: A `tff.learning.ClientWeighting` value.
-    delta_l2_regularizer: A positive float, L2 regularization strength of the
+    delta_l2_regularizer: A nonnegative float, L2 regularization strength of the
       model delta.
 
   Returns:
@@ -355,7 +356,7 @@ def build_model_delta_client_work(
     optimizer: A `tff.learning.optimizers.Optimizer`, or a no-arg callable that
       returns a `tf.keras.Optimizer`.
     client_weighting:  A `tff.learning.ClientWeighting` value.
-    delta_l2_regularizer: A positive float representing the parameter of the
+    delta_l2_regularizer: A nonnegative float representing the parameter of the
       L2-regularization term applied to the delta from initial model weights
       during training. Values larger than 0.0 prevent clients from moving too
       far from the server model during local training.
@@ -376,9 +377,16 @@ def build_model_delta_client_work(
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
   py_typecheck.check_type(delta_l2_regularizer, float)
-  if delta_l2_regularizer <= 0.0:
-    raise ValueError(f'Provided delta_l2_regularizer must be positive,'
-                     f'but found: {delta_l2_regularizer}')
+  if delta_l2_regularizer < 0.0:
+    raise ValueError(
+        'Provided delta_l2_regularizer must be nonnegative,'
+        f'but found: {delta_l2_regularizer}'
+    )
+  elif delta_l2_regularizer == 0.0:
+    logging.warning(
+        'delta_l2_regularizer is set to 0.0, which means no '
+        'regularization will occur.'
+    )
   if not (isinstance(optimizer, optimizer_base.Optimizer) or
           callable(optimizer)):
     raise TypeError(
@@ -457,7 +465,7 @@ def build_functional_model_delta_client_work(
     model: A `tff.learning.models.FunctionalModel` to train.
     optimizer: A `tff.learning.optimizers.Optimizer`.
     client_weighting:  A `tff.learning.ClientWeighting` value.
-    delta_l2_regularizer: A positive float representing the parameter of the
+    delta_l2_regularizer: A nonnegative float representing the parameter of the
       L2-regularization term applied to the delta from initial model weights
       during training. Values larger than 0.0 prevent clients from moving too
       far from the server model during local training.
@@ -475,9 +483,16 @@ def build_functional_model_delta_client_work(
   py_typecheck.check_type(optimizer, optimizer_base.Optimizer)
   py_typecheck.check_type(client_weighting, client_weight_lib.ClientWeighting)
   py_typecheck.check_type(delta_l2_regularizer, float)
-  if delta_l2_regularizer <= 0.0:
-    raise ValueError(f'Provided delta_l2_regularizer must be positive,'
-                     f'but found: {delta_l2_regularizer}')
+  if delta_l2_regularizer < 0.0:
+    raise ValueError(
+        'Provided delta_l2_regularizer must be nonnegative,'
+        f'but found: {delta_l2_regularizer}'
+    )
+  elif delta_l2_regularizer == 0.0:
+    logging.warning(
+        'delta_l2_regularizer is set to 0.0, which means no '
+        'regularization will occur.'
+    )
   if not (isinstance(optimizer, optimizer_base.Optimizer) or
           callable(optimizer)):
     raise TypeError(

@@ -28,6 +28,7 @@ See https://arxiv.org/abs/1812.06127 for the full paper.
 from collections.abc import Callable
 from typing import Optional, Union
 
+from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -124,7 +125,7 @@ def build_weighted_fed_prox(
       invocation, returning the same pre-constructed model each call will result
       in an error.
     proximal_strength: A nonnegative float representing the parameter of
-      FedProx's regularization term. When set to `0`, the algorithm reduces to
+      FedProx's regularization term. When set to `0.0`, the algorithm reduces to
       FedAvg. Higher values prevent clients from moving too far from the server
       model during local training.
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
@@ -162,6 +163,11 @@ def build_weighted_fed_prox(
     raise ValueError(
         'proximal_strength must be a nonnegative float, found {}'.format(
             proximal_strength))
+  elif proximal_strength == 0.0:
+    logging.warning(
+        'proximal_strength is set to 0.0, which means FedProx will'
+        ' behave as FedAvg. Is this intentional?'
+    )
   if not callable(model_fn):
     if not isinstance(model_fn, functional.FunctionalModel):
       raise TypeError(
@@ -305,7 +311,7 @@ def build_unweighted_fed_prox(
       invocation, returning the same pre-constructed model each call will result
       in an error.
     proximal_strength: A nonnegative float representing the parameter of
-      FedProx's regularization term. When set to `0`, the algorithm reduces to
+      FedProx's regularization term. When set to `0.0`, the algorithm reduces to
       FedAvg. Higher values prevent clients from moving too far from the server
       model during local training.
     client_optimizer_fn: A `tff.learning.optimizers.Optimizer`, or a no-arg
