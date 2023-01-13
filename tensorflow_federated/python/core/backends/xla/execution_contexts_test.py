@@ -39,7 +39,6 @@ class ExecutionContextsTest(absltest.TestCase):
   def test_set_local_python_execution_context_and_run_simple_xla_computation(
       self):
     builder = xla_client.XlaBuilder('comp')
-    xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
     xla_client.ops.Constant(builder, np.int32(10))
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType(None, np.int32)

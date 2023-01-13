@@ -67,14 +67,15 @@ def _create_xla_binary_op_computation(type_spec, xla_binary_op_constructor):
       type_spec)
   num_tensors = len(tensor_shapes)
   builder = xla_client.XlaBuilder('comp')
-  param = xla_client.ops.Parameter(
-      builder, 0, xla_client.Shape.tuple_shape(tensor_shapes * 2))
+  params = [
+      xla_client.ops.Parameter(builder, i, shape)
+      for i, shape in enumerate(tensor_shapes * 2)
+  ]
   result_tensors = []
   for idx in range(num_tensors):
     result_tensors.append(
-        xla_binary_op_constructor(
-            xla_client.ops.GetTupleElement(param, idx),
-            xla_client.ops.GetTupleElement(param, idx + num_tensors)))
+        xla_binary_op_constructor(params[idx], params[idx + num_tensors])
+    )
   xla_client.ops.Tuple(builder, result_tensors)
   xla_computation = builder.build()
 
@@ -101,11 +102,6 @@ class XlaComputationFactory(
           str(type_spec)))
 
     builder = xla_client.XlaBuilder('comp')
-
-    # We maintain the convention that arguments are supplied as a tuple for the
-    # sake of consistency and uniformity (see comments in `computation.proto`).
-    # Since there are no arguments here, we create an empty tuple.
-    xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
 
     def _constant_from_tensor(tensor_type):
       py_typecheck.check_type(tensor_type, computation_types.TensorType)
@@ -156,15 +152,14 @@ class XlaComputationFactory(
     scalar_shape = _xla_tensor_shape_from_tff_tensor_type(scalar_type)
     num_operand_tensors = len(operand_shapes)
     builder = xla_client.XlaBuilder('comp')
-    param = xla_client.ops.Parameter(
-        builder, 0,
-        xla_client.Shape.tuple_shape(operand_shapes + [scalar_shape]))
-    scalar_ref = xla_client.ops.GetTupleElement(param, num_operand_tensors)
+    params = [
+        xla_client.ops.Parameter(builder, i, shape)
+        for i, shape in enumerate(operand_shapes + [scalar_shape])
+    ]
+    scalar_ref = params[num_operand_tensors]
     result_tensors = []
     for idx in range(num_operand_tensors):
-      result_tensors.append(
-          xla_client.ops.Mul(
-              xla_client.ops.GetTupleElement(param, idx), scalar_ref))
+      result_tensors.append(xla_client.ops.Mul(params[idx], scalar_ref))
     xla_client.ops.Tuple(builder, result_tensors)
     xla_computation = builder.build()
 

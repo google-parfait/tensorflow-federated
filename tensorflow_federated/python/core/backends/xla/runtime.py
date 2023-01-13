@@ -106,9 +106,9 @@ class ComputationCallable(typed_object.TypedObject):
       raise ValueError(
           'Unsupported computation type: {}'.format(which_computation))
     xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
+    mhlo_module = xla_client._xla.mlir.xla_computation_to_mlir_module(xla_comp)
     compile_options = xla_client.CompileOptions()
-    compile_options.parameter_is_tupled_arguments = True
-    self._executable = backend.compile(xla_comp, compile_options)
+    self._executable = backend.compile(mhlo_module, compile_options)
     self._inverted_parameter_tensor_indexes = list(
         np.argsort(_binding_to_tensor_indexes(comp_pb.xla.parameter)))
     self._result_tensor_indexes = _binding_to_tensor_indexes(comp_pb.xla.result)

@@ -50,7 +50,6 @@ class ExecutorTest(absltest.TestCase):
 
   def test_to_representation_for_type_with_noarg_to_int32_comp(self):
     builder = xla_client.XlaBuilder('comp')
-    xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
     xla_client.ops.Constant(builder, np.int32(10))
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType(None, np.int32)
@@ -63,7 +62,6 @@ class ExecutorTest(absltest.TestCase):
 
   def test_to_representation_for_type_with_noarg_to_2xint32_comp(self):
     builder = xla_client.XlaBuilder('comp')
-    xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
     xla_client.ops.Tuple(builder, [
         xla_client.ops.Constant(builder, np.int32(10)),
         xla_client.ops.Constant(builder, np.int32(20))
@@ -80,12 +78,9 @@ class ExecutorTest(absltest.TestCase):
 
   def test_to_representation_for_type_with_2xint32_to_int32_comp(self):
     builder = xla_client.XlaBuilder('comp')
-    param = xla_client.ops.Parameter(
-        builder, 0,
-        xla_client.shape_from_pyval(tuple([np.array(0, dtype=np.int32)] * 2)))
-    xla_client.ops.Add(
-        xla_client.ops.GetTupleElement(param, 0),
-        xla_client.ops.GetTupleElement(param, 1))
+    shape = xla_client.shape_from_pyval(np.array(0, dtype=np.int32))
+    params = [xla_client.ops.Parameter(builder, i, shape) for i in range(2)]
+    xla_client.ops.Add(params[0], params[1])
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType((np.int32, np.int32), np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(
@@ -119,7 +114,6 @@ class ExecutorTest(absltest.TestCase):
 
   def test_create_and_invoke_noarg_comp_returning_int32(self):
     builder = xla_client.XlaBuilder('comp')
-    xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
     xla_client.ops.Constant(builder, np.int32(10))
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType(None, np.int32)
@@ -140,12 +134,9 @@ class ExecutorTest(absltest.TestCase):
 
   def test_add_numbers(self):
     builder = xla_client.XlaBuilder('comp')
-    param = xla_client.ops.Parameter(
-        builder, 0,
-        xla_client.shape_from_pyval(tuple([np.array(0, dtype=np.int32)] * 2)))
-    xla_client.ops.Add(
-        xla_client.ops.GetTupleElement(param, 0),
-        xla_client.ops.GetTupleElement(param, 1))
+    shape = xla_client.shape_from_pyval(np.array(0, dtype=np.int32))
+    params = [xla_client.ops.Parameter(builder, i, shape) for i in range(2)]
+    xla_client.ops.Add(params[0], params[1])
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType((np.int32, np.int32), np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(

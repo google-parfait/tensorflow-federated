@@ -171,7 +171,8 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
   context = jax_computation_context.JaxComputationContext()
   with context_stack.install(context):
     tracer_callable = jax.xla_computation(
-        traced_fn, tuple_args=True, return_shape=True)
+        traced_fn, tuple_args=False, return_shape=True
+    )
     compiled_xla, returned_shape = tracer_callable(*args, **kwargs)
 
   if isinstance(returned_shape, jax.ShapeDtypeStruct):
