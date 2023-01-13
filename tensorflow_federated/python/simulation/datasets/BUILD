@@ -129,6 +129,21 @@ py_test(
 )
 
 py_library(
+    name = "flair",
+    srcs = ["flair.py"],
+    deps = [
+        ":client_data",
+        ":file_per_user_client_data",
+    ],
+)
+
+py_test(
+    name = "flair_test",
+    srcs = ["flair_test.py"],
+    deps = [":flair"],
+)
+
+py_library(
     name = "shakespeare",
     srcs = ["shakespeare.py"],
     srcs_version = "PY3",
