@@ -222,12 +222,16 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     ], mock_train_metrics_manager.release.call_args_list)
 
     # Assert the model was output once at the end of training.
-    self.assertSequenceEqual([
-        mock.call(
-            any_algorithm_state,
-            train_state_type,
-            key=f'final_training_checkpoint_round_{training_rounds}.ckpt')
-    ], mock_model_output_manager.release.call_args_list)
+    self.assertSequenceEqual(
+        [
+            mock.call(
+                any_algorithm_state,
+                train_state_type,
+                key=f'final_training_checkpoint_round_{training_rounds}',
+            )
+        ],
+        mock_model_output_manager.release.call_args_list,
+    )
 
     # Assert that evaluation were started in round 2 and 4.
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
@@ -273,7 +277,9 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
 
       return asyncio.create_task(return_round_num())
 
-    mock_evaluation_manager.start_evaluation.side_effect = create_fake_evaluation
+    mock_evaluation_manager.start_evaluation.side_effect = (
+        create_fake_evaluation
+    )
 
     # Patch `datetime.now` so that each round looks like it takes 20
     # milliseconds. With evaluation periodicity of 25 milliseconds and training
@@ -324,12 +330,16 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     ], mock_train_metrics_manager.release.call_args_list)
 
     # Assert the model was output once at the end of training.
-    self.assertSequenceEqual([
-        mock.call(
-            any_algorithm_state,
-            train_state_type,
-            key=f'final_training_checkpoint_round_{training_rounds}.ckpt')
-    ], mock_model_output_manager.release.call_args_list)
+    self.assertSequenceEqual(
+        [
+            mock.call(
+                any_algorithm_state,
+                train_state_type,
+                key=f'final_training_checkpoint_round_{training_rounds}',
+            )
+        ],
+        mock_model_output_manager.release.call_args_list,
+    )
 
     # Assert that evaluations were started.
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
@@ -393,12 +403,16 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     ], mock_train_metrics_manager.release.call_args_list)
 
     # Assert the model was output once at the end of training.
-    self.assertSequenceEqual([
-        mock.call(
-            any_algorithm_state,
-            train_state_type,
-            key=f'final_training_checkpoint_round_{training_rounds}.ckpt')
-    ], mock_model_output_manager.release.call_args_list)
+    self.assertSequenceEqual(
+        [
+            mock.call(
+                any_algorithm_state,
+                train_state_type,
+                key=f'final_training_checkpoint_round_{training_rounds}',
+            )
+        ],
+        mock_model_output_manager.release.call_args_list,
+    )
 
   async def test_resumes_from_previous_version_10_runs_one_round(self):
     train_num_clients = 5
@@ -463,12 +477,16 @@ class TrainModelTest(absltest.TestCase, unittest.IsolatedAsyncioTestCase):
     self.assertSequenceEqual(
         [_create_metrics_release_call(key=training_rounds)],
         mock_train_metrics_manager.release.call_args_list)
-    self.assertSequenceEqual([
-        mock.call(
-            any_algorithm_state,
-            train_state_type,
-            key=f'final_training_checkpoint_round_{training_rounds}.ckpt')
-    ], mock_model_output_manager.release.call_args_list)
+    self.assertSequenceEqual(
+        [
+            mock.call(
+                any_algorithm_state,
+                train_state_type,
+                key=f'final_training_checkpoint_round_{training_rounds}',
+            )
+        ],
+        mock_model_output_manager.release.call_args_list,
+    )
 
     # Assert no evaluations were created when attempting to resume evaluations.
     mock_evaluation_manager.resume_from_previous_state.assert_called_once()
