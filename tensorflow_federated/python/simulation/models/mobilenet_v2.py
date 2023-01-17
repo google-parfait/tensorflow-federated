@@ -21,8 +21,6 @@ from typing import Optional
 
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation.models import group_norm
-
 
 def _check_tuple_with_positive_ints(structure):
   if not isinstance(structure, tuple):
@@ -57,9 +55,8 @@ def _make_divisible(value: float, divisor: int) -> int:
 
 
 def compute_pad(
-    image_shape: tuple[int, int],
-    kernel_size: int,
-    enforce_odd: bool = True) -> tuple[tuple[int, int], tuple[int, int]]:
+    image_shape: tuple[int, int], kernel_size: int, enforce_odd: bool = True
+) -> tuple[tuple[int, int], tuple[int, int]]:
   """Computes a padding length for a given image shape and kernel.
 
   Args:
@@ -78,24 +75,27 @@ def compute_pad(
     adjust = (1 - image_shape[0] % 2, 1 - image_shape[1] % 2)
   else:
     adjust = (0, 0)
-  return ((padding[0] - adjust[0], padding[0]), (padding[1] - adjust[1],
-                                                 padding[1]))
+  return (
+      (padding[0] - adjust[0], padding[0]),
+      (padding[1] - adjust[1], padding[1]),
+  )
 
 
-def inverted_res_block(input_tensor,
-                       expansion_factor,
-                       stride,
-                       filters,
-                       alpha,
-                       block_number,
-                       num_groups=2,
-                       dropout_prob=None,
-                       expansion_layer=True):
+def _inverted_res_block(
+    input_tensor,
+    expansion_factor,
+    stride,
+    filters,
+    alpha,
+    block_number,
+    num_groups=2,
+    dropout_prob=None,
+    expansion_layer=True,
+):
   """Creates an inverted residual block.
 
   Args:
-    input_tensor: A 4D input tensor, with shape (samples, channels, rows, cols)
-      or (samples, rows, cols, channels).
+    input_tensor: A 4D input tensor with shape (samples, channels, rows, cols).
     expansion_factor: A positive integer that governs (multiplicatively) how
       many channels are added in the initial expansion layer.
     stride: A positive integer giving the stride of the depthwise convolutional
@@ -114,14 +114,9 @@ def inverted_res_block(input_tensor,
     A 4D tensor with the same shape as the input tensor.
   """
 
-  if tf.keras.backend.image_data_format() == 'channels_last':
-    row_axis = 1
-    col_axis = 2
-    channel_axis = 3
-  else:
-    channel_axis = 1
-    row_axis = 2
-    col_axis = 3
+  row_axis = 1
+  col_axis = 2
+  channel_axis = -1  # last non-batch dimension in keras GroupNormalization
 
   image_shape = (input_tensor.shape[row_axis], input_tensor.shape[col_axis])
   num_input_channels = input_tensor.shape[channel_axis]
@@ -136,15 +131,15 @@ def inverted_res_block(input_tensor,
         padding='same',
         use_bias=False,
         activation=None,
-        name=prefix + 'expand_conv')(
-            x)
-    x = group_norm.GroupNormalization(
-        groups=num_groups, axis=channel_axis, name=prefix + 'expand_gn')(
-            x)
+        name=prefix + 'expand_conv',
+    )(x)
+    x = tf.keras.layers.GroupNormalization(
+        groups=num_groups, axis=channel_axis, name=prefix + 'expand_gn'
+    )(x)
     if dropout_prob:
-      x = tf.keras.layers.Dropout(
-          dropout_prob, name=prefix + 'expand_dropout')(
-              x)
+      x = tf.keras.layers.Dropout(dropout_prob, name=prefix + 'expand_dropout')(
+          x
+      )
     x = tf.keras.layers.ReLU(6.0, name=prefix + 'expand_relu')(x)
 
   # We now use depthwise convolutions
@@ -159,15 +154,15 @@ def inverted_res_block(input_tensor,
       activation=None,
       use_bias=False,
       padding=padding_type,
-      name=prefix + 'depthwise_conv')(
-          x)
-  x = group_norm.GroupNormalization(
-      groups=num_groups, axis=channel_axis, name=prefix + 'depthwise_gn')(
-          x)
+      name=prefix + 'depthwise_conv',
+  )(x)
+  x = tf.keras.layers.GroupNormalization(
+      groups=num_groups, axis=channel_axis, name=prefix + 'depthwise_gn'
+  )(x)
   if dropout_prob:
     x = tf.keras.layers.Dropout(
-        dropout_prob, name=prefix + 'depthwise_dropout')(
-            x)
+        dropout_prob, name=prefix + 'depthwise_dropout'
+    )(x)
   x = tf.keras.layers.ReLU(6.0, name=prefix + 'depthwise_relu')(x)
 
   # Projection phase, using pointwise convolutions
@@ -178,64 +173,78 @@ def inverted_res_block(input_tensor,
       padding='same',
       use_bias=False,
       activation=None,
-      name=prefix + 'project_conv')(
-          x)
-  x = group_norm.GroupNormalization(
-      groups=num_groups, axis=channel_axis, name=prefix + 'project_gn')(
-          x)
+      name=prefix + 'project_conv',
+  )(x)
+  x = tf.keras.layers.GroupNormalization(
+      groups=num_groups, axis=channel_axis, name=prefix + 'project_gn'
+  )(x)
   if dropout_prob:
-    x = tf.keras.layers.Dropout(
-        dropout_prob, name=prefix + 'project_dropout')(
-            x)
+    x = tf.keras.layers.Dropout(dropout_prob, name=prefix + 'project_dropout')(
+        x
+    )
   if num_input_channels == num_projection_filters and stride == 1:
     x = tf.keras.layers.add([input_tensor, x])
   return x
 
 
-def _validate_input_args(input_shape, alpha, pooling, num_groups, dropout_prob,
-                         num_classes):
+def _validate_input_args(
+    input_shape, alpha, pooling, num_groups, dropout_prob, num_classes
+):
   """Validates the MobileNetv2 constructor arguments."""
   if not _check_tuple_with_positive_ints(input_shape) or len(input_shape) != 3:
-    raise ValueError('input_shape must be a tuple of length 3 containing '
-                     'positive integers')
+    raise ValueError(
+        'input_shape must be a tuple of length 3 containing positive integers'
+    )
 
   if not isinstance(alpha, float) or alpha <= 0:
     raise ValueError(
-        'alpha must be positive, found nonpositive value {}'.format(alpha))
+        'alpha must be positive, found nonpositive value {}'.format(alpha)
+    )
 
   if pooling not in ['avg', 'max']:
     raise ValueError(
-        'pooling must be one of avg or max, found {}'.format(pooling))
+        'pooling must be one of avg or max, found {}'.format(pooling)
+    )
 
   if num_groups < 1:
     raise ValueError(
         'num_groups must be a positive integer, found value {}'.format(
-            num_groups))
+            num_groups
+        )
+    )
 
   if dropout_prob:
-    if not isinstance(dropout_prob,
-                      float) or dropout_prob < 0 or dropout_prob > 1:
+    if (
+        not isinstance(dropout_prob, float)
+        or dropout_prob < 0
+        or dropout_prob > 1
+    ):
       raise ValueError(
           'dropout_prob must be `None` or a float between 0 and 1, found {}'
-          .format(dropout_prob))
+          .format(dropout_prob)
+      )
 
   if num_classes < 1:
     raise ValueError(
         'num_classes must be a positive integer, found value {}'.format(
-            num_classes))
+            num_classes
+        )
+    )
 
 
-def create_mobilenet_v2(input_shape: tuple[int, int, int],
-                        alpha: float = 1.0,
-                        pooling: str = 'avg',
-                        num_groups: int = 2,
-                        dropout_prob: Optional[float] = None,
-                        num_classes: int = 1000):
+def create_mobilenet_v2(
+    input_shape: tuple[int, int, int],
+    alpha: float = 1.0,
+    pooling: str = 'avg',
+    num_groups: int = 2,
+    dropout_prob: Optional[float] = None,
+    num_classes: int = 1000,
+):
   """Instantiates a MobileNetV2 model with Group Normalization.
 
   Args:
     input_shape: A tuple of length 3 describing the number of rows, columns, and
-      channels of an input. Can be in channel-first or channel-last format.
+      channels of an input. Restricted to the `channel-last` format.
     alpha: A positive float multiplier for the number of filters in the
       projection pointwise convolutional layers. If set to `1.0`, we recover the
       default number of filters from the original paper.
@@ -250,23 +259,33 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
 
   Returns:
     A `tf.keras.Model`.
-  """
-  _validate_input_args(input_shape, alpha, pooling, num_groups, dropout_prob,
-                       num_classes)
 
+  Raises:
+    ValueError: If image data format is not `channels_last` (the format is
+    `channels_first`).
+  """
+  _validate_input_args(
+      input_shape, alpha, pooling, num_groups, dropout_prob, num_classes
+  )
+
+  # TODO(b/265363369): Support `channels_first` image format once the
+  # GroupNormalizaiton index issue is fixed.
   if tf.keras.backend.image_data_format() == 'channels_last':
     row_axis, col_axis = (0, 1)
-    channel_axis = 3
+    channel_axis = -1  # last non-batch dimension in keras GroupNormalization
   else:
-    row_axis, col_axis = (1, 2)
-    channel_axis = 1
+    raise ValueError(
+        'Image data needs to be represented in the `channels_last` format with'
+        ' a three-dimensional array where the last channel represents the color'
+        ' channel. '
+    )
 
   image_shape = (input_shape[row_axis], input_shape[col_axis])
   img_input = tf.keras.layers.Input(shape=input_shape)
   initial_padding = compute_pad(image_shape, 3, enforce_odd=True)
-  x = tf.keras.layers.ZeroPadding2D(
-      initial_padding, name='initial_pad')(
-          img_input)
+  x = tf.keras.layers.ZeroPadding2D(initial_padding, name='initial_pad')(
+      img_input
+  )
   num_filters_first_block = _make_divisible(32 * alpha, 8)
   x = tf.keras.layers.Conv2D(
       num_filters_first_block,
@@ -274,16 +293,16 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       strides=(2, 2),
       padding='valid',
       use_bias=False,
-      name='initial_conv')(
-          x)
-  x = group_norm.GroupNormalization(
-      groups=num_groups, axis=channel_axis, name='initial_gn')(
-          x)
+      name='initial_conv',
+  )(x)
+  x = tf.keras.layers.GroupNormalization(
+      groups=num_groups, axis=channel_axis, name='initial_gn'
+  )(x)
   if dropout_prob:
     x = tf.keras.layers.Dropout(dropout_prob, name='initial_dropout')(x)
   x = tf.keras.layers.ReLU(6.0, name='initial_relu')(x)
 
-  x = inverted_res_block(
+  x = _inverted_res_block(
       x,
       expansion_factor=1,
       stride=1,
@@ -292,8 +311,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       block_number=0,
       num_groups=num_groups,
       dropout_prob=dropout_prob,
-      expansion_layer=False)
-  x = inverted_res_block(
+      expansion_layer=False,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=2,
@@ -301,8 +321,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=1,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -310,8 +331,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=2,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=2,
@@ -319,8 +341,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=3,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -328,8 +351,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=4,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -337,8 +361,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=5,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=2,
@@ -346,8 +371,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=6,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -355,8 +381,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=7,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -364,8 +391,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=8,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -373,8 +401,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=9,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -382,8 +411,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=10,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -391,8 +421,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=11,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -400,8 +431,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=12,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=2,
@@ -409,8 +441,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=13,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -418,8 +451,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=14,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -427,8 +461,9 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=15,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
-  x = inverted_res_block(
+      dropout_prob=dropout_prob,
+  )
+  x = _inverted_res_block(
       x,
       expansion_factor=6,
       stride=1,
@@ -436,7 +471,8 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
       alpha=alpha,
       block_number=16,
       num_groups=num_groups,
-      dropout_prob=dropout_prob)
+      dropout_prob=dropout_prob,
+  )
 
   # For the last layer, we do not use alpha < 1. This is to recreate the
   # non-usage of alpha in the last layer, as stated in the paper.
@@ -446,11 +482,11 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
     last_block_filters = 1280
 
   x = tf.keras.layers.Conv2D(
-      last_block_filters, kernel_size=1, use_bias=False, name='last_conv')(
-          x)
-  x = group_norm.GroupNormalization(
-      groups=num_groups, axis=channel_axis, name='last_gn')(
-          x)
+      last_block_filters, kernel_size=1, use_bias=False, name='last_conv'
+  )(x)
+  x = tf.keras.layers.GroupNormalization(
+      groups=num_groups, axis=channel_axis, name='last_gn'
+  )(x)
   if dropout_prob:
     x = tf.keras.layers.Dropout(dropout_prob, name='last_dropout')(x)
   x = tf.keras.layers.ReLU(6.0, name='last_relu')(x)
@@ -463,8 +499,8 @@ def create_mobilenet_v2(input_shape: tuple[int, int, int],
     raise ValueError('Found unexpected pooling argument {}'.format(pooling))
 
   x = tf.keras.layers.Dense(
-      num_classes, activation='softmax', use_bias=True, name='logits')(
-          x)
+      num_classes, activation='softmax', use_bias=True, name='logits'
+  )(x)
   model = tf.keras.models.Model(inputs=img_input, outputs=x)
 
   return model
