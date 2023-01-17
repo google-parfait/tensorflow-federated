@@ -27,12 +27,25 @@ DEFAULT_GRAPH_SEED = 87654321
 
 
 def _check_no_graph_level_seed(graph_def):
+  """Ensures graph-level random seed hasn't been set.
+
+  Args:
+    graph_def: the `tf.compat.v1.GraphDef` to pack into a protocol buffer
+      message.
+
+  Raises:
+    ValueError: If the graph-level random seed been set.
+  """
   for x in graph_def.node:
     seed_attr = x.attr.get('seed')
     seed2_attr = x.attr.get('seed2')
-    if seed_attr is not None and not (
-        seed_attr.i == DEFAULT_GRAPH_SEED
-        or (seed_attr.i == 0 and seed2_attr.i == 0)
+    if (
+        seed_attr is not None
+        and seed2_attr is not None
+        and not (
+            seed_attr.i == DEFAULT_GRAPH_SEED
+            or (seed_attr.i == 0 and seed2_attr.i == 0)
+        )
     ):
       raise ValueError(
           'TFF disallows the setting of a graph-level random seed. See the '
