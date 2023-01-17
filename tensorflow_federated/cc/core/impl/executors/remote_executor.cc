@@ -19,6 +19,7 @@ limitations under the License
 #include <future>  // NOLINT
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -87,8 +88,11 @@ class StubDeleter {
 class RemoteExecutor : public ExecutorBase<ValueFuture> {
  public:
   RemoteExecutor(std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
-                 const CardinalityMap& cardinalities)
-      : stub_(stub.release(), StubDeleter()), cardinalities_(cardinalities) {}
+                 const CardinalityMap& cardinalities,
+                 const bool stream_structs = false)
+      : stub_(stub.release(), StubDeleter()),
+        cardinalities_(cardinalities),
+        stream_structs_(stream_structs) {}
 
   ~RemoteExecutor() override {}
 
@@ -118,6 +122,19 @@ class RemoteExecutor : public ExecutorBase<ValueFuture> {
   absl::Mutex mutex_;
   bool executor_pb_set_ ABSL_GUARDED_BY(mutex_) = false;
   v0::ExecutorId executor_pb_;
+  const bool stream_structs_ = false;
+  absl::Mutex stream_structs_map_mutex_;
+  std::unordered_map<std::string, int32_t> stream_structs_map_ ABSL_GUARDED_BY(
+      stream_structs_map_mutex_);  // map of struct or a computation
+                                   // with struct return type to its number of
+                                   // elements. Populated only when
+                                   // stream_structs_ is true.
+  int32_t NumElements(
+      const v0::ValueRef& value_ref);  // returns 0 if stream_structs_ is false
+  void SetNumElements(
+      const v0::ValueRef& value_ref,
+      int32_t num_elements);  // populates the stream_structs_map_, only when
+                              // stream_structs_ is true;
 };
 
 class ExecutorValue {
@@ -180,9 +197,48 @@ absl::Status RemoteExecutor::EnsureInitialized() {
   return grpc_to_absl(result);
 }
 
+int32_t RemoteExecutor::NumElements(const v0::ValueRef& value_ref) {
+  if (!stream_structs_) {
+    return 0;
+  }
+  absl::ReaderMutexLock lock(&stream_structs_map_mutex_);
+  auto it = stream_structs_map_.find(value_ref.id());
+  return it == stream_structs_map_.end() ? 0 : it->second;
+}
+
+void RemoteExecutor::SetNumElements(const v0::ValueRef& value_ref,
+                                    int32_t num_elements) {
+  if (stream_structs_) {
+    absl::WriterMutexLock lock(&stream_structs_map_mutex_);
+    stream_structs_map_[value_ref.id()] = num_elements;
+  }
+}
+
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateExecutorValue(
     const v0::Value& value_pb) {
   TFF_TRY(EnsureInitialized());
+  // b/265163585 : Extend for federated values.
+  if (stream_structs_ && value_pb.has_struct_()) {
+    const auto& struct_pb = value_pb.struct_();
+    std::vector<ValueFuture> elements;
+    for (int i = 0; i < struct_pb.element_size(); ++i) {
+      const v0::Value::Struct::Element& element_pb = struct_pb.element(i);
+      auto element = CreateExecutorValue(element_pb.value());
+      if (!element.ok()) {
+        return element.status();
+      }
+      elements.push_back(std::move(element.value()));
+    }
+
+    auto result = CreateStruct(std::move(elements));
+    if (!result.ok()) {
+      return result.status();
+    }
+    std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(Wait(result.value()));
+    SetNumElements(value_ref->Get(), struct_pb.element_size());
+    return result;
+  }
+
   v0::CreateValueRequest request;
   *request.mutable_executor() = executor_pb_;
   *request.mutable_value() = value_pb;
@@ -203,52 +259,57 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateExecutorValue(
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateCall(
     ValueFuture function, absl::optional<ValueFuture> argument) {
   TFF_TRY(EnsureInitialized());
-  return ThreadRun(
-      [function = std::move(function), argument = std::move(argument),
-       executor_pb = executor_pb_,
-       stub = this->stub_]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-        v0::CreateCallRequest request;
-        v0::CreateCallResponse response;
-        grpc::ClientContext context;
-        std::shared_ptr<ExecutorValue> fn = TFF_TRY(Wait(function));
+  return ThreadRun([function = std::move(function),
+                    argument = std::move(argument), executor_pb = executor_pb_,
+                    this]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
+    v0::CreateCallRequest request;
+    v0::CreateCallResponse response;
+    grpc::ClientContext context;
+    std::shared_ptr<ExecutorValue> fn = TFF_TRY(Wait(function));
 
-        *request.mutable_executor() = executor_pb;
-        *request.mutable_function_ref() = fn->Get();
-        if (argument.has_value()) {
-          std::shared_ptr<ExecutorValue> arg_value =
-              TFF_TRY(Wait(argument.value()));
-          *request.mutable_argument_ref() = arg_value->Get();
-        }
+    *request.mutable_executor() = executor_pb;
+    *request.mutable_function_ref() = fn->Get();
+    if (argument.has_value()) {
+      std::shared_ptr<ExecutorValue> arg_value =
+          TFF_TRY(Wait(argument.value()));
+      *request.mutable_argument_ref() = arg_value->Get();
+    }
 
-        grpc::Status status = stub->CreateCall(&context, request, &response);
-        TFF_TRY(grpc_to_absl(status));
-        return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                               executor_pb, stub);
-      });
+    grpc::Status status = this->stub_->CreateCall(&context, request, &response);
+    TFF_TRY(grpc_to_absl(status));
+    auto result = std::make_shared<ExecutorValue>(
+        std::move(response.value_ref()), executor_pb, this->stub_);
+    if (NumElements(fn->Get()) > 0) {
+      SetNumElements(result->Get(), NumElements(fn->Get()));
+    }
+    return result;
+  });
 }
 
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateStruct(
     std::vector<ValueFuture> members) {
   TFF_TRY(EnsureInitialized());
-  return ThreadRun(
-      [futures = std::move(members), executor_pb = executor_pb_,
-       stub = this->stub_]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
-        v0::CreateStructRequest request;
-        *request.mutable_executor() = executor_pb;
-        v0::CreateStructResponse response;
-        grpc::ClientContext context;
-        std::vector<std::shared_ptr<ExecutorValue>> values =
-            TFF_TRY(WaitAll(futures));
-        for (const std::shared_ptr<ExecutorValue>& element : values) {
-          v0::CreateStructRequest_Element struct_elem;
-          *struct_elem.mutable_value_ref() = element->Get();
-          request.mutable_element()->Add(std::move(struct_elem));
-        }
-        grpc::Status status = stub->CreateStruct(&context, request, &response);
-        TFF_TRY(grpc_to_absl(status));
-        return std::make_shared<ExecutorValue>(std::move(response.value_ref()),
-                                               executor_pb, stub);
-      });
+  return ThreadRun([futures = std::move(members),
+                    this]() -> absl::StatusOr<std::shared_ptr<ExecutorValue>> {
+    v0::CreateStructRequest request;
+    *request.mutable_executor() = this->executor_pb_;
+    v0::CreateStructResponse response;
+    grpc::ClientContext context;
+    std::vector<std::shared_ptr<ExecutorValue>> values =
+        TFF_TRY(WaitAll(futures));
+    for (const std::shared_ptr<ExecutorValue>& element : values) {
+      v0::CreateStructRequest_Element struct_elem;
+      *struct_elem.mutable_value_ref() = element->Get();
+      request.mutable_element()->Add(std::move(struct_elem));
+    }
+    grpc::Status status =
+        this->stub_->CreateStruct(&context, request, &response);
+    TFF_TRY(grpc_to_absl(status));
+    auto result = std::make_shared<ExecutorValue>(
+        std::move(response.value_ref()), this->executor_pb_, this->stub_);
+    SetNumElements(result->Get(), futures.size());
+    return result;
+  });
 }
 
 absl::StatusOr<ValueFuture> RemoteExecutor::CreateSelection(
@@ -274,8 +335,19 @@ absl::StatusOr<ValueFuture> RemoteExecutor::CreateSelection(
 
 absl::Status RemoteExecutor::Materialize(ValueFuture value,
                                          v0::Value* value_pb) {
-  v0::ComputeRequest request;
   std::shared_ptr<ExecutorValue> value_ref = TFF_TRY(Wait(value));
+  if (NumElements(value_ref->Get()) > 0) {
+    v0::Value::Struct* struct_pb = value_pb->mutable_struct_();
+    for (int i = 0; i < NumElements(value_ref->Get()); i++) {
+      const auto selection = TFF_TRY(CreateSelection(value, i));
+      v0::Value element_value;
+      TFF_TRY(Materialize(selection, &element_value));
+      *(struct_pb->add_element()->mutable_value()) = element_value;
+    }
+    return absl::OkStatus();
+  }
+
+  v0::ComputeRequest request;
   *request.mutable_executor() = executor_pb_;
   *request.mutable_value_ref() = value_ref->Get();
 
@@ -289,15 +361,17 @@ absl::Status RemoteExecutor::Materialize(ValueFuture value,
 
 std::shared_ptr<Executor> CreateRemoteExecutor(
     std::unique_ptr<v0::ExecutorGroup::StubInterface> stub,
-    const CardinalityMap& cardinalities) {
-  return std::make_shared<RemoteExecutor>(std::move(stub), cardinalities);
+    const CardinalityMap& cardinalities, const bool stream_structs) {
+  return std::make_shared<RemoteExecutor>(std::move(stub), cardinalities,
+                                          stream_structs);
 }
 
 std::shared_ptr<Executor> CreateRemoteExecutor(
     std::shared_ptr<grpc::ChannelInterface> channel,
-    const CardinalityMap& cardinalities) {
+    const CardinalityMap& cardinalities, const bool stream_structs) {
   std::unique_ptr<v0::ExecutorGroup::StubInterface> stub(
       v0::ExecutorGroup::NewStub(channel));
-  return std::make_shared<RemoteExecutor>(std::move(stub), cardinalities);
+  return std::make_shared<RemoteExecutor>(std::move(stub), cardinalities,
+                                          stream_structs);
 }
 }  // namespace tensorflow_federated

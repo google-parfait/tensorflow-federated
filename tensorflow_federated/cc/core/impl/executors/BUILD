@@ -352,7 +352,6 @@ pybind_extension(
         "@com_github_grpc_grpc//:grpc++",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@org_tensorflow//tensorflow/c:tf_status",
         "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core/platform:status",
         "@org_tensorflow//tensorflow/python:ndarray_tensor_headers",
@@ -1035,5 +1034,28 @@ cc_test(
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
         "@org_tensorflow//tensorflow/core:protos_all_cc",
+    ],
+)
+
+cc_test(
+    name = "remote_executor_stream_structs_test",
+    srcs = ["remote_executor_stream_structs_test.cc"],
+    deps = [
+        ":executor",
+        ":mock_grpc",
+        ":protobuf_matchers",
+        ":remote_executor",
+        ":status_matchers",
+        ":value_test_utils",
+        "//tensorflow_federated/cc/common_libs:oss_test_main",
+        "//tensorflow_federated/proto/v0:executor_cc_grpc_proto",
+        "//tensorflow_federated/proto/v0:executor_cc_proto",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
     ],
 )

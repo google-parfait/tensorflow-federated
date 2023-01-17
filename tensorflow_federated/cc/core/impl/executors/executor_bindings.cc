@@ -168,9 +168,10 @@ PYBIND11_MODULE(executor_bindings, m) {
         py::arg("server"), py::arg("children"), "Creates a ComposingExecutor.");
   m.def("create_remote_executor",
         py::overload_cast<std::shared_ptr<grpc::ChannelInterface>,
-                          const CardinalityMap&>(&CreateRemoteExecutor),
+                          const CardinalityMap&, const bool>(
+            &CreateRemoteExecutor),
         py::arg("channel"), py::arg("cardinalities"),
-        "Creates a RemoteExecutor.");
+        py::arg("stream_structs") = false, "Creates a RemoteExecutor.");
   m.def("create_xla_executor", &CreateXLAExecutor,
         py::arg("platform_name") = "Host", "Creates an XlaExecutor.");
   m.def("create_sequence_executor", &CreateSequenceExecutor,
