@@ -35,7 +35,8 @@ class CppExecutionContextsTest(absltest.TestCase):
 
   def test_set_local_cpp_execution_context_and_run_simple_xla_computation(self):
     self.skipTest(
-        'b/257380799: requires transformation to lowering of TFF computations to XLA'
+        'b/255978089: requires transformation to lowering of TFF computations'
+        ' to XLA'
     )
     builder = xla_client.XlaBuilder('comp')
     xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
@@ -43,7 +44,8 @@ class CppExecutionContextsTest(absltest.TestCase):
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType(None, np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_comp, [], comp_type)
+        xla_comp, [], comp_type
+    )
     ctx_stack = context_stack_impl.context_stack
     comp = computation_impl.ConcreteComputation(comp_pb, ctx_stack)
     cpp_execution_contexts.set_local_cpp_execution_context()
@@ -51,11 +53,13 @@ class CppExecutionContextsTest(absltest.TestCase):
 
   def test_federated_sum_in_xla_execution_context(self):
     self.skipTest(
-        'b/257380799: requires transformation to lowering of federated_sum to XLA'
+        'b/255978089: requires transformation to lowering of federated_sum'
+        ' to XLA'
     )
 
     @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.CLIENTS))
+        computation_types.FederatedType(np.int32, placements.CLIENTS)
+    )
     def comp(x):
       return intrinsics.federated_sum(x)
 
@@ -64,11 +68,13 @@ class CppExecutionContextsTest(absltest.TestCase):
 
   def test_unweighted_federated_mean_in_xla_execution_context(self):
     self.skipTest(
-        'b/257380799: requires transformation to lowering of federated_mean to XLA'
+        'b/255978089: requires transformation to lowering of federated_mean'
+        ' to XLA'
     )
 
     @federated_computation.federated_computation(
-        computation_types.FederatedType(np.float32, placements.CLIENTS))
+        computation_types.FederatedType(np.float32, placements.CLIENTS)
+    )
     def comp(x):
       return intrinsics.federated_mean(x)
 
