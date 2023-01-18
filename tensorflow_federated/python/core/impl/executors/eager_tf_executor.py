@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """A simple executor that operates synchronously in eager TensorFlow mode."""
 
 from collections.abc import Iterable, MutableMapping
@@ -384,10 +379,13 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
 
 
 @tracing.trace
-def _to_computation_internal_rep(*, value: pb.Computation,
-                                 tf_function_cache: MutableMapping[str, Any],
-                                 type_spec: computation_types.StructType,
-                                 device: tf.config.LogicalDevice):
+def _to_computation_internal_rep(
+    *,
+    value: pb.Computation,
+    tf_function_cache: MutableMapping[Any, Any],
+    type_spec: computation_types.StructType,
+    device: tf.config.LogicalDevice,
+):
   """Converts a `pb.Computation` to a `tf.function`."""
   if value.tensorflow.cache_key.id:
     logging.debug('Using value id for cache key: %s',
@@ -410,9 +408,12 @@ def _to_computation_internal_rep(*, value: pb.Computation,
 
 @tracing.trace
 def _to_struct_internal_rep(
-    *, value: Any, tf_function_cache: MutableMapping[str, Any],
+    *,
+    value: Any,
+    tf_function_cache: MutableMapping[Any, Any],
     type_spec: computation_types.StructType,
-    device: tf.config.LogicalDevice) -> structure.Struct:
+    device: tf.config.LogicalDevice,
+) -> structure.Struct:
   """Converts a python container to internal representation for TF executor."""
   type_iterator = structure.iter_elements(type_spec)
   value_struct = structure.from_container(value)
@@ -474,9 +475,10 @@ def _to_sequence_internal_rep(
 @tracing.trace
 def to_representation_for_type(
     value: Any,
-    tf_function_cache: MutableMapping[str, Any],
+    tf_function_cache: MutableMapping[Any, Any],
     type_spec: Optional[computation_types.Type] = None,
-    device: Optional[tf.config.LogicalDevice] = None) -> Any:
+    device: Optional[tf.config.LogicalDevice] = None,
+) -> Any:
   """Verifies or converts the `value` to an eager object matching `type_spec`.
 
   WARNING: This function is only partially implemented. It does not support

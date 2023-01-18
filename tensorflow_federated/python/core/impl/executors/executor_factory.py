@@ -11,19 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# pytype: skip-file
-# This modules disables the Pytype analyzer, see
-# https://github.com/tensorflow/federated/blob/main/docs/pytype.md for more
-# information.
 """ExecutorFactory interface and simple implementation."""
 
 import abc
-from collections.abc import Mapping
+from collections.abc import MutableMapping
+
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.types import placements
 
-CardinalitiesType = Mapping[placements.PlacementLiteral, int]
+CardinalitiesType = MutableMapping[placements.PlacementLiteral, int]
 
 
 class ExecutorFactory(metaclass=abc.ABCMeta):
