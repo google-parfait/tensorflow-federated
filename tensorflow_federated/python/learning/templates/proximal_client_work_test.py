@@ -195,7 +195,9 @@ class ProximalClientWorkExecutionTest(tf.test.TestCase, parameterized.TestCase):
     # Both trainable parameters should have been updated, and we don't return
     # the non-trainable variable.
     self.assertAllGreater(
-        np.linalg.norm(client_result.update, axis=-1), expected_norm)
+        np.linalg.norm(np.array(client_result.update, dtype=object), axis=-1),
+        expected_norm,
+    )
     if weighting == client_weight_lib.ClientWeighting.UNIFORM:
       self.assertEqual(client_result.update_weight, 1.0)
     else:
@@ -359,7 +361,10 @@ class FunctionalProximalClientWorkExecutionTest(tf.test.TestCase,
         client_tf(optimizer, model.initial_weights, dataset))
     # Both trainable parameters should have been updated, and we don't return
     # the non-trainable variable.
-    self.assertAllGreater(np.linalg.norm(client_result.update, axis=-1), 0.1)
+    self.assertAllGreater(
+        np.linalg.norm(np.array(client_result.update, dtype=object), axis=-1),
+        0.1,
+    )
     if weighting == client_weight_lib.ClientWeighting.UNIFORM:
       self.assertEqual(client_result.update_weight, 1.0)
     else:
