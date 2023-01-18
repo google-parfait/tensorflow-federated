@@ -1,3 +1,25 @@
+# Release 0.46.0
+
+## Major Features and Improvements
+
+*   Added parameter and implementation for C++ remote executor to stream the
+    values in a structure across the gRPC interface.
+*   Added `tff.backends.native.desugar_and_transform_to_native` to the public
+    API.
+*   Replaced `GroupNorm` implementation with implementation from Keras.
+*   Added `tff.simulations.datasets.flair` APIs for the FLAIR dataset.
+
+## Breaking Changes
+
+*   Removed file extension for `model_output_manager` used in
+    `tff.learning.programs`
+
+## Bug Fixes
+
+*   Enabled and fixed python type annotations in some modules.
+*   Changed `tff.learning.algorithms.build_weighted_fed_prox` parameter
+    validation to allow `proximal_strength = 0.0`, matching the pydoc.
+
 # Release 0.45.0
 
 ## Major Features and Improvements
