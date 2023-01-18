@@ -16,6 +16,7 @@
 from tensorflow_federated.python.simulation.datasets import celeba
 from tensorflow_federated.python.simulation.datasets import cifar100
 from tensorflow_federated.python.simulation.datasets import emnist
+from tensorflow_federated.python.simulation.datasets import flair
 from tensorflow_federated.python.simulation.datasets import gldv2
 from tensorflow_federated.python.simulation.datasets import inaturalist
 from tensorflow_federated.python.simulation.datasets import shakespeare

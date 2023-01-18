@@ -26,6 +26,7 @@ py_library(
         ":dataset_utils",
         ":emnist",
         ":file_per_user_client_data",
+        ":flair",
         ":from_tensor_slices_client_data",
         ":gldv2",
         ":shakespeare",
