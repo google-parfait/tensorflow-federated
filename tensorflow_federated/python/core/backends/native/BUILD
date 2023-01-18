@@ -3,6 +3,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package(default_visibility = [
     ":native_packages",
     "//tensorflow_federated/python/core:core_users",
+    "//tensorflow_federated/python/core/backends/xla:xla_packages",
 
     # TODO(b/193543632): Remove this visibility once C++ execution is fully
     # supported in OSS.

@@ -1013,7 +1013,7 @@ cc_library(
     ],
 )
 
-cc_test(
+tff_cc_cpu_gpu_test(
     name = "xla_executor_test",
     timeout = "short",
     srcs = ["xla_executor_test.cc"],
@@ -1027,12 +1027,17 @@ cc_test(
         "//tensorflow_federated/proto/v0:computation_cc_proto",
         "@com_google_absl//absl/status",
         "@org_tensorflow//tensorflow/compiler/jit:xla_cpu_jit",  # buildcleaner: keep # Linking in this dependency ensures that XLA can compile its code for the CPU host.
+        "@org_tensorflow//tensorflow/compiler/jit:xla_gpu_jit",  # buildcleaner: keep # Linking in this dependency ensures that XLA can compile its code for the GPU.
         "@org_tensorflow//tensorflow/compiler/tf2xla:common",
         "@org_tensorflow//tensorflow/compiler/xla:shape_util",
         "@org_tensorflow//tensorflow/compiler/xla:xla_data_proto_cc",
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_builder",
         "@org_tensorflow//tensorflow/compiler/xla/client:xla_computation",
+        "@org_tensorflow//tensorflow/compiler/xla/service:platform_util",
+        "@org_tensorflow//tensorflow/compiler/xla/stream_executor:stream_executor_headers",
+        "@org_tensorflow//tensorflow/compiler/xla/stream_executor/cuda:cuda_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on GPU.
         "@org_tensorflow//tensorflow/compiler/xla/stream_executor/host:host_platform",  # buildcleaner: keep # Linking in the host platform here ensures that the stream executor can execute on CPU.
+        "@org_tensorflow//tensorflow/core:framework",
         "@org_tensorflow//tensorflow/core:protos_all_cc",
     ],
 )

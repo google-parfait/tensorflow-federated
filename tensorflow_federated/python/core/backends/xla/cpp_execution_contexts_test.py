@@ -13,73 +13,94 @@
 # limitations under the License.
 
 from absl.testing import absltest
-from jax.lib import xla_client
 import numpy as np
 
 from tensorflow_federated.python.core.backends.xla import cpp_execution_contexts
-from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.jax_context import jax_computation
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.xla_context import xla_serialization
 
 
 class CppExecutionContextsTest(absltest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    cpp_execution_contexts.set_local_cpp_execution_context()
 
   def test_create_local_execution_context(self):
     context = cpp_execution_contexts.create_local_cpp_execution_context()
     self.assertIsInstance(context, context_base.SyncContext)
 
-  def test_set_local_cpp_execution_context_and_run_simple_xla_computation(self):
-    self.skipTest(
-        'b/255978089: requires transformation to lowering of TFF computations'
-        ' to XLA'
-    )
-    builder = xla_client.XlaBuilder('comp')
-    xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
-    xla_client.ops.Constant(builder, np.int32(10))
-    xla_comp = builder.build()
-    comp_type = computation_types.FunctionType(None, np.int32)
-    comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_comp, [], comp_type
-    )
-    ctx_stack = context_stack_impl.context_stack
-    comp = computation_impl.ConcreteComputation(comp_pb, ctx_stack)
-    cpp_execution_contexts.set_local_cpp_execution_context()
-    self.assertEqual(comp(), 10)
+  def test_run_simple_jax_computation(self):
+    @jax_computation.jax_computation(np.float32, np.float32)
+    def comp(a, b):
+      return a + b
 
-  def test_federated_sum_in_xla_execution_context(self):
-    self.skipTest(
-        'b/255978089: requires transformation to lowering of federated_sum'
-        ' to XLA'
-    )
+    self.assertEqual(comp(np.float32(10.0), np.float32(20.0)), 30.0)
+
+  def test_run_federated_aggergate(self):
+    @jax_computation.jax_computation(np.float32, np.float32)
+    def _add(a, b):
+      return a + b
+
+    @jax_computation.jax_computation(np.float32)
+    def _identity(a):
+      return a
+
+    # IMPORTANT: we must wrap the zero literal in a `jax_computation` because
+    # TFF by default wraps Python literals as `tf.constant` which will fail in
+    # this execution context.
+    @jax_computation.jax_computation
+    def zeros():
+      return np.float32(0)
 
     @federated_computation.federated_computation(
-        computation_types.FederatedType(np.int32, placements.CLIENTS)
+        computation_types.at_clients(np.float32)
+    )
+    def aggregate(client_values):
+      return intrinsics.federated_aggregate(
+          client_values,
+          zero=zeros(),
+          accumulate=_add,
+          merge=_add,
+          report=_identity,
+      )
+
+    self.assertEqual(
+        aggregate([np.float32(1), np.float32(2), np.float32(3)]), np.float32(6)
+    )
+
+  def test_federated_sum(self):
+    @federated_computation.federated_computation(
+        computation_types.at_clients(np.int32)
     )
     def comp(x):
       return intrinsics.federated_sum(x)
 
-    cpp_execution_contexts.set_local_cpp_execution_context()
-    self.assertEqual(comp([1, 2, 3]), 6)
+    with self.assertRaisesRegex(
+        Exception, 'Unsupported intrinsic URI: federated_sum'
+    ):
+      # TODO(b/255978089): implement intrinsic lowering using JAX computations,
+      # the compiler currently generates TF logic which will fail.
+      # self.assertEqual(comp([1, 2, 3]), 6)
+      comp([1, 2, 3])
 
-  def test_unweighted_federated_mean_in_xla_execution_context(self):
-    self.skipTest(
-        'b/255978089: requires transformation to lowering of federated_mean'
-        ' to XLA'
-    )
-
+  def test_unweighted_federated_mean(self):
     @federated_computation.federated_computation(
-        computation_types.FederatedType(np.float32, placements.CLIENTS)
+        computation_types.at_clients(np.float32)
     )
     def comp(x):
       return intrinsics.federated_mean(x)
 
-    cpp_execution_contexts.set_local_cpp_execution_context()
-    self.assertEqual(comp([1.0, 2.0, 3.0]), 2.0)
+    with self.assertRaisesRegex(
+        Exception, 'Unsupported intrinsic URI: federated_mean'
+    ):
+      # TODO(b/255978089): implement intrinsic lowering using JAX computations,
+      # the compiler currently generates TF logic which will fail.
+      # self.assertEqual(comp([1.0, 2.0, 3.0]), 2.0)
+      comp([1.0, 2.0, 3.0])
 
 
 if __name__ == '__main__':

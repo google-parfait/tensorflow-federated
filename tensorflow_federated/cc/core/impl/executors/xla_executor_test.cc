@@ -28,9 +28,12 @@ limitations under the License
 #include "tensorflow/compiler/tf2xla/type_util.h"
 #include "tensorflow/compiler/xla/client/xla_builder.h"
 #include "tensorflow/compiler/xla/client/xla_computation.h"
+#include "tensorflow/compiler/xla/service/platform_util.h"
 #include "tensorflow/compiler/xla/shape.h"
 #include "tensorflow/compiler/xla/shape_util.h"
+#include "tensorflow/compiler/xla/stream_executor/platform.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
+#include "tensorflow/core/framework/device_factory.h"
 #include "tensorflow/core/framework/types.pb.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_matchers.h"
@@ -133,7 +136,25 @@ inline xla::Shape XLAShapeWithUnknownDims(tensorflow::DataType dtype,
 
 class XLAExecutorTest : public ::testing::Test {
  public:
-  XLAExecutorTest() { test_executor_ = CreateXLAExecutor("Host").value(); }
+  XLAExecutorTest() {
+    xla::StatusOr<std::vector<xla::se::Platform*>> platforms =
+        xla::PlatformUtil::GetSupportedPlatforms();
+    if (!platforms.ok()) {
+      LOG(FATAL) << "Could not enumerate supported XLA platforms";
+    }
+    LOG(INFO) << "Found " << platforms->size() << " platforms";
+    for (auto* platform : *platforms) {
+      LOG(INFO) << "Platform: " << platform->Name();
+      if (platform->Name() == "CUDA") {
+        if (platform->VisibleDeviceCount() > 0) {
+          test_executor_ = CreateXLAExecutor(platform->Name()).value();
+          return;
+        }
+      }
+    }
+    // If no accelerators exist, ust the "Host" (cpu) platform.
+    test_executor_ = CreateXLAExecutor("Host").value();
+  }
   std::shared_ptr<Executor> test_executor_;
 
   void CheckMaterializeEqual(ValueId id, v0::Value expected_result) {
@@ -383,7 +404,12 @@ TEST_F(XLAExecutorTest, CreateValueComputationTensorParameterUnknownRankFails) {
 
 TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallSingleTensor) {
   xla::XlaBuilder builder("return_two");
-  xla::ConstantR0<float>(&builder, 2.0);
+  xla::XlaOp constant = xla::ConstantR0<float>(&builder, 2.0);
+  // To mimic the Python tracing which always returns tuples, event for single
+  // element results, after passing through MLIR
+  // (https://github.com/google/jax/blob/38f91bdaa564a4de1e06bde7d191af0bff610bbf/jax/_src/api.py#L958),
+  // results are always in tuples.
+  xla::Tuple(&builder, {constant});
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   auto tensor_type = TensorT(v0::TensorType::DT_FLOAT);
@@ -459,7 +485,13 @@ TEST_F(XLAExecutorTest, CreateAndMaterializeNoArgCallNestedTensorStructure) {
 
 TEST_F(XLAExecutorTest, CreateAndMaterializeIdentityScalar) {
   xla::XlaBuilder builder("float_scalar_identity");
-  xla::Parameter(&builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
+  xla::XlaOp parameter = xla::Parameter(
+      &builder, 0, xla::ShapeUtil::MakeScalarShape(xla::F32), "x");
+  // To mimic the Python tracing which always returns tuples, event for single
+  // element results, after passing through MLIR
+  // (https://github.com/google/jax/blob/38f91bdaa564a4de1e06bde7d191af0bff610bbf/jax/_src/api.py#L958),
+  // results are always in tuples.
+  xla::Tuple(&builder, {parameter});
   tensorflow::StatusOr<xla::XlaComputation> xla_computation = builder.Build();
   ASSERT_TRUE(xla_computation.ok());
   v0::Type float_tensor_type = TensorT(v0::TensorType::DT_FLOAT);

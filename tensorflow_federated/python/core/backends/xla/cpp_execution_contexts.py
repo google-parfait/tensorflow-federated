@@ -13,6 +13,7 @@
 # limitations under the License.
 """Execution contexts for the XLA backend."""
 
+from tensorflow_federated.python.core.backends.native import compiler as native_compiler
 from tensorflow_federated.python.core.impl.computation import computation_base
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.execution_contexts import sync_execution_context
@@ -20,16 +21,19 @@ from tensorflow_federated.python.core.impl.executor_stacks import cpp_executor_f
 from tensorflow_federated.python.core.impl.executors import executor_bindings
 
 
-def set_local_cpp_execution_context(default_num_clients: int = 0,
-                                    max_concurrent_computation_calls: int = -1):
+def set_local_cpp_execution_context(
+    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
+):
   context = create_local_cpp_execution_context(
       default_num_clients=default_num_clients,
-      max_concurrent_computation_calls=max_concurrent_computation_calls)
+      max_concurrent_computation_calls=max_concurrent_computation_calls,
+  )
   set_default_context.set_default_context(context)
 
 
 def create_local_cpp_execution_context(
-    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1):
+    default_num_clients: int = 0, max_concurrent_computation_calls: int = -1
+):
   """Creates a local execution context backed by TFF-C++ runtime.
 
   Args:
@@ -47,18 +51,19 @@ def create_local_cpp_execution_context(
   def leaf_executor_fn(max_concurrent_computation_calls):
     del max_concurrent_computation_calls  # Unused.
     xla_executor_fn = executor_bindings.create_xla_executor()
-    executor_bindings.create_sequence_executor(xla_executor_fn)
+    return executor_bindings.create_sequence_executor(xla_executor_fn)
 
   factory = cpp_executor_factory.local_cpp_executor_factory(
       default_num_clients=default_num_clients,
       max_concurrent_computation_calls=max_concurrent_computation_calls,
-      leaf_executor_fn=leaf_executor_fn)
+      leaf_executor_fn=leaf_executor_fn,
+  )
 
   def compiler_fn(comp: computation_base.Computation):
-    # TODO(b/255978089): Define compiler_fn - Integrate LocalComputationFactory
-    # with intrinsic reductions
-    del comp  # Unused.
-    return None
+    # TODO(b/255978089): implement lowering to federated_aggregate to create
+    # JAX computations instead of TensorFlow, similar to "desugar intrinsics"
+    # in the native backend.
+    return native_compiler.transform_to_native_form(comp)
 
   return sync_execution_context.SyncExecutionContext(
       executor_fn=factory, compiler_fn=compiler_fn

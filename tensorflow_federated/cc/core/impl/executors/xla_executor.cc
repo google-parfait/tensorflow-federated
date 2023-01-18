@@ -627,11 +627,24 @@ class XLAExecutor : public ExecutorBase<ValueFuture> {
     const v0::Xla::Binding& result_binding = fn->result_binding();
     switch (result_binding.binding_case()) {
       case v0::Xla::Binding::kTensor: {
-        // Note that we assume the serialization logic is correct, and that if
-        // the XLA computation here declares a tensor binding, then it truly
-        // returns a single value of tensor type.
+        // JAX tracing always compiles results to be tuples, which would
+        // result in length 1 tuples.
+        tensorflow::StatusOr<std::vector<std::unique_ptr<xla::GlobalData>>>
+            maybe_global_data_vector = xla_client_->DeconstructTuple(**result);
+        if (!maybe_global_data_vector.ok()) {
+          return absl::InternalError(absl::StrCat(
+              "Error destructuring tuple in XLA executor. Message: ",
+              maybe_global_data_vector.status().error_message()));
+        }
+        if (maybe_global_data_vector->size() != 1) {
+          return absl::InternalError(
+              absl::StrCat("Expected a 1-tuple representing a single tensor "
+                           "output, instead output was a tuple with",
+                           maybe_global_data_vector->size(), " elements."));
+        }
         return TFFTypeAndGlobalDataToValue(
-            fn->type().function().result().tensor(), std::move(*result));
+            fn->type().function().result().tensor(),
+            std::move(maybe_global_data_vector.value()[0]));
       }
       case v0::Xla::Binding::kStruct: {
         tensorflow::StatusOr<std::vector<std::unique_ptr<xla::GlobalData>>>
@@ -699,6 +712,7 @@ absl::StatusOr<xla::Client*> GetXLAClient(absl::string_view platform_name) {
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateXLAExecutor(
     absl::string_view platform_name) {
+  LOG(INFO) << "Creating XLAExecutor for platform: " << platform_name;
   xla::Client* client = TFF_TRY(GetXLAClient(platform_name));
   return std::make_shared<XLAExecutor>(client);
 }

@@ -88,6 +88,7 @@ py_library(
         "nokokoro",  # b/193543632: C++ execution is not fully supported in OSS.
     ],
     deps = [
+        "//tensorflow_federated/python/core/backends/native:compiler",
         "//tensorflow_federated/python/core/impl/computation:computation_base",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/execution_contexts:sync_execution_context",
@@ -104,14 +105,11 @@ py_test(
     ],
     deps = [
         ":cpp_execution_contexts",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/jax_context:jax_computation",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/impl/xla_context:xla_serialization",
     ],
 )
 
