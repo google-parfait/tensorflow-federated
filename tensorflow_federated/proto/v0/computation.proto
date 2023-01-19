@@ -533,6 +533,8 @@ message PlacementType {
 // will be captured automatically and made concrete based on usage at the Python
 // level of the API. Users of TFF will not need to declare them explicitly, but
 // template specialization will happen before computation logic gets serialized.
+//
+// Next id: 8
 message TensorFlow {
   // The semantics is as follows: the graph embedded here will be instantiated,
   // with all placeholder components of the parameter bound to concrete tensors
@@ -658,6 +660,28 @@ message TensorFlow {
     uint64 id = 1;
   }
   CacheKey cache_key = 5;
+
+  // A map for layout information for variables and inputs for DTensor based
+  // executor.
+  // It is a map with key as variable node name or input tensor binding name.
+  // The value is DTensor Layout sharding spec.
+  //
+  // For example:
+  // "Dense//kernel" , "X"
+  // "Dense1//kernel" , "Unsharded"
+  //
+  // This map is specified by user while declaring tf_computation and is
+  // supplemented only when DTensor executor is used. At runtime the layout
+  // specification is supplimented with DTensor Mesh provided for execution.
+  // The Layout sharding spec must have the dimension names matching that
+  // of the Mesh provided at runtime.
+  //
+  // The layout map attributes will be ignored for other types of executors
+  // other than DTensor executor.
+  message LayoutMap {
+    map<string, string> name_to_sharding_spec = 1;
+  }
+  LayoutMap layout_map = 7;
 }
 
 // !!! EXPERIMENTAL !!!
@@ -676,6 +700,8 @@ message TensorFlow {
 // level of the API. Users of TFF will not need to declare them explicitly, but
 // template specialization will happen before computation logic gets serialized
 // in these messages.
+//
+// Next id: 6
 message TensorFlowFunction {
   // A serialized tensorflow.FunctionDef.
   google.protobuf.Any function_def = 1;
@@ -757,6 +783,28 @@ message TensorFlowFunction {
     uint64 id = 1;
   }
   CacheKey cache_key = 4;
+
+  // A map for layout information for variables and inputs for DTensor based
+  // executor.
+  // It is a map with key as variable node name or input tensor binding name.
+  // The value is DTensor Layout sharding spec.
+  //
+  // For example:
+  // "Dense//kernel" , "X"
+  // "Dense1//kernel" , "Unsharded"
+  //
+  // This map is specified by user while declaring tf_computation and is
+  // supplemented only when DTensor executor is used. At runtime the layout
+  // specification is supplimented with DTensor Mesh provided for execution.
+  // The Layout sharding spec must have the dimension names matching that
+  // of the Mesh provided at runtime.
+  //
+  // The layout map attributes will be ignored for other types of executors
+  // other than DTensor executor.
+  message LayoutMap {
+    map<string, string> name_to_sharding_spec = 1;
+  }
+  LayoutMap layout_map = 5;
 }
 
 // A representation of an intrinsic function. Intrinsics are functions that are
