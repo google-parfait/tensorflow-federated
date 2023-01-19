@@ -26,7 +26,7 @@ implementation of the generalized FedAvg algorithm implemented in
 
 import collections
 from collections.abc import Callable
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import tensorflow as tf
 
@@ -446,20 +446,21 @@ def build_functional_model_delta_update(
   """
 
   @tf.function
-  def client_update_fn(optimizer, initial_weights, dataset):
+  def client_update_fn(
+      optimizer: optimizer_base.Optimizer,
+      initial_weights: Any,
+      dataset: tf.data.Dataset,
+  ):
     initial_trainable_weights = initial_weights[0]
     trainable_tensor_specs = tf.nest.map_structure(
         tf.TensorSpec.from_tensor,
         tuple(tf.nest.flatten(initial_trainable_weights)),
     )
-    optimizer_state = optimizer.initialize(trainable_tensor_specs)
-    metrics_state = model.initialize_metrics_state()
 
-    # Autograph requires we define these variables once outside the loop.
-    model_weights = initial_weights
-    trainable_weights, non_trainable_weights = model_weights
-    num_examples = tf.constant(0, tf.int64)
-    for batch in iter(dataset):
+    def reduce_func(training_state, batch):
+      model_weights, optimizer_state, metrics_state, num_examples = (
+          training_state
+      )
       trainable_weights, non_trainable_weights = model_weights
       with tf.GradientTape() as tape:
         # Must explicitly watch non-tf.Variable tensors.
@@ -478,6 +479,19 @@ def build_functional_model_delta_update(
       metrics_state = model.update_metrics_state(
           metrics_state, batch_output=output, labels=labels
       )
+      return model_weights, optimizer_state, metrics_state, num_examples
+
+    initial_training_state = (
+        initial_weights,
+        optimizer.initialize(trainable_tensor_specs),
+        model.initialize_metrics_state(),
+        tf.constant(0, tf.int64),  # num_examples
+    )
+    final_training_state = dataset.reduce(
+        initial_state=initial_training_state, reduce_func=reduce_func
+    )
+    model_weights, _, metrics_state, num_examples = final_training_state
+    trainable_weights, _ = model_weights
     # After all local batches, compute the delta between the trained model
     # and the initial incoming model weights.
     client_model_update = tf.nest.map_structure(
