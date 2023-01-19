@@ -42,10 +42,13 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
 class CPPExecutorFactory(executor_factory.ExecutorFactory):
   """An ExecutorFactory which wraps a simple executor_fn."""
 
-  def __init__(self,
-               executor_fn: Callable[[executor_factory.CardinalitiesType],
-                                     executor_bindings.Executor],
-               executor_cache_size: int = 5):
+  def __init__(
+      self,
+      executor_fn: Callable[
+          [executor_factory.CardinalitiesType], executor_bindings.Executor
+      ],
+      executor_cache_size: int = 5,
+  ):
     self._executor_fn = executor_fn
     self._cache_size = executor_cache_size
     self._executors = cachetools.LRUCache(self._cache_size)
@@ -63,8 +66,9 @@ class CPPExecutorFactory(executor_factory.ExecutorFactory):
       self._executors[cardinalities_key] = executor
     return self._executors[cardinalities_key]
 
-  def clean_up_executor(self,
-                        cardinalities: executor_factory.CardinalitiesType):
+  def clean_up_executor(
+      self, cardinalities: executor_factory.CardinalitiesType
+  ):
     cardinalities_key = _get_hashable_key(cardinalities)
     ex = self._executors.get(cardinalities_key)
     if ex is None:
@@ -72,9 +76,11 @@ class CPPExecutorFactory(executor_factory.ExecutorFactory):
     del self._executors[cardinalities_key]
 
 
-def _log_and_warn_on_sequential_execution(max_concurrent_computation_calls: int,
-                                          num_clients: int,
-                                          expected_concurrency_factor: int):
+def _log_and_warn_on_sequential_execution(
+    max_concurrent_computation_calls: int,
+    num_clients: int,
+    expected_concurrency_factor: int,
+):
   """Logs warnings that users may be using the runtime in an unexpected way."""
 
   if expected_concurrency_factor >= _CONCURRENCY_LEVEL_TO_WARN:
@@ -82,17 +88,22 @@ def _log_and_warn_on_sequential_execution(max_concurrent_computation_calls: int,
         'Running %s clients with max concurrency %s will result in significant '
         'serialization of execution; running %s TensorFlow functions '
         'sequentially. This invocation could benefit significantly from more '
-        'resources (e.g. more GPUs), or moving to TFF\'s distributed runtime.')
+        "resources (e.g. more GPUs), or moving to TFF's distributed runtime."
+    )
   else:
     logging.info(
-        'TFF-C++ local executor configured to maximally run %s '
-        'calls into TensorFlow in  parallel; asked to run %s '
-        'clients. This will result in %s invocations running '
-        'sequentially, indicating that this invocation will run '
-        'faster when equipped with increased resources or invoked '
-        'against the distributed TFF runtime.',
-        max_concurrent_computation_calls, num_clients,
-        expected_concurrency_factor)
+        (
+            'TFF-C++ local executor configured to maximally run %s '
+            'calls into TensorFlow in  parallel; asked to run %s '
+            'clients. This will result in %s invocations running '
+            'sequentially, indicating that this invocation will run '
+            'faster when equipped with increased resources or invoked '
+            'against the distributed TFF runtime.'
+        ),
+        max_concurrent_computation_calls,
+        num_clients,
+        expected_concurrency_factor,
+    )
 
 
 def _check_num_clients_is_valid(default_num_clients: int):
@@ -112,7 +123,7 @@ def local_cpp_executor_factory(
   _check_num_clients_is_valid(default_num_clients)
 
   def _executor_fn(
-      cardinalities: executor_factory.CardinalitiesType
+      cardinalities: executor_factory.CardinalitiesType,
   ) -> executor_bindings.Executor:
     if cardinalities.get(placements.CLIENTS) is None:
       cardinalities[placements.CLIENTS] = default_num_clients
@@ -121,11 +132,14 @@ def local_cpp_executor_factory(
         max_concurrent_computation_calls > 0
         and num_clients > max_concurrent_computation_calls
     ):
-      expected_concurrency_factor = math.ceil(num_clients /
-                                              max_concurrent_computation_calls)
-      _log_and_warn_on_sequential_execution(max_concurrent_computation_calls,
-                                            num_clients,
-                                            expected_concurrency_factor)
+      expected_concurrency_factor = math.ceil(
+          num_clients / max_concurrent_computation_calls
+      )
+      _log_and_warn_on_sequential_execution(
+          max_concurrent_computation_calls,
+          num_clients,
+          expected_concurrency_factor,
+      )
 
     leaf_executor = leaf_executor_fn(max_concurrent_computation_calls)
     sub_federating_reference_resolving_executor = (
@@ -151,18 +165,20 @@ def _handle_error(exception: Exception):
 
 def remote_cpp_executor_factory(
     channels: Sequence[executor_bindings.GRPCChannel],
-    default_num_clients: int = 0) -> executor_factory.ExecutorFactory:
+    default_num_clients: int = 0,
+    stream_structs: bool = False,
+) -> executor_factory.ExecutorFactory:
   """ExecutorFactory backed by C++ Executor bindings."""
   _check_num_clients_is_valid(default_num_clients)
 
   def _executor_fn(
-      cardinalities: executor_factory.CardinalitiesType
+      cardinalities: executor_factory.CardinalitiesType,
   ) -> executor_bindings.Executor:
     if cardinalities.get(placements.CLIENTS) is None:
       cardinalities[placements.CLIENTS] = default_num_clients
     try:
       return executor_stack_bindings.create_remote_executor_stack(
-          channels, cardinalities
+          channels, cardinalities, stream_structs=stream_structs
       )
     except Exception as e:  # pylint: disable=broad-except
       _handle_error(e)

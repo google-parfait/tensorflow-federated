@@ -83,16 +83,17 @@ std::vector<std::shared_ptr<grpc::ChannelInterface>> FilterToLiveChannels_(
 
 absl::StatusOr<std::shared_ptr<Executor>> CreateRemoteExecutorStack(
     const std::vector<std::shared_ptr<grpc::ChannelInterface>>& channels,
-    const CardinalityMap& cardinalities) {
+    const CardinalityMap& cardinalities, const bool stream_structs) {
   auto rre_tf_leaf_executor = []() {
     return CreateReferenceResolvingExecutor(CreateTensorFlowExecutor());
   };
   ComposingChildFn composing_child_factory =
-      [](std::shared_ptr<grpc::ChannelInterface> channel,
-         const CardinalityMap& cardinalities)
+      [&stream_structs](std::shared_ptr<grpc::ChannelInterface> channel,
+                        const CardinalityMap& cardinalities)
       -> absl::StatusOr<ComposingChild> {
     return TFF_TRY(ComposingChild::Make(
-        CreateRemoteExecutor(channel, cardinalities), cardinalities));
+        CreateRemoteExecutor(channel, cardinalities, stream_structs),
+        cardinalities));
   };
 
   return CreateRemoteExecutorStack(

@@ -62,9 +62,12 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
 class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
   """Implementation of executor factory holding an executor per cardinality."""
 
-  def __init__(self,
-               executor_stack_fn: Callable[[executor_factory.CardinalitiesType],
-                                           executor_base.Executor]):
+  def __init__(
+      self,
+      executor_stack_fn: Callable[
+          [executor_factory.CardinalitiesType], executor_base.Executor
+      ],
+  ):
     """Initializes `ResourceManagingExecutorFactory`.
 
     `ResourceManagingExecutorFactory` manages a mapping from `cardinalities`
@@ -110,8 +113,9 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
     self._executors[key] = ex
     return ex
 
-  def clean_up_executor(self,
-                        cardinalities: executor_factory.CardinalitiesType):
+  def clean_up_executor(
+      self, cardinalities: executor_factory.CardinalitiesType
+  ):
     """Calls `close` on constructed executors, resetting internal cache.
 
     If a caller holds a name bound to any of the executors returned from
@@ -145,6 +149,7 @@ class SizeInfo:
     `aggregate_bits`: A list of shape [number_of_execs] representing the
       number of aggregated bits passed through each executor.
   """
+
   broadcast_history: dict[Any, sizing_executor.SizeAndDTypes]
   aggregate_history: dict[Any, sizing_executor.SizeAndDTypes]
   broadcast_bits: list[int]
@@ -156,9 +161,11 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
 
   def __init__(
       self,
-      executor_stack_fn: Callable[[executor_factory.CardinalitiesType],
-                                  tuple[executor_base.Executor,
-                                        list[sizing_executor.SizingExecutor]]]):
+      executor_stack_fn: Callable[
+          [executor_factory.CardinalitiesType],
+          tuple[executor_base.Executor, list[sizing_executor.SizingExecutor]],
+      ],
+  ):
     """Initializes `SizingExecutorFactory`.
 
     Args:
@@ -213,7 +220,8 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
     broadcast_history, aggregate_history = {}, {}
     for key, size_exs in size_ex_dict.items():
       current_broadcast_history, current_aggregate_history = _extract_history(
-          size_exs)
+          size_exs
+      )
       broadcast_history[key] = current_broadcast_history
       aggregate_history[key] = current_aggregate_history
 
@@ -227,7 +235,8 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
         broadcast_history=broadcast_history,
         aggregate_history=aggregate_history,
         broadcast_bits=broadcast_bits,
-        aggregate_bits=aggregate_bits)
+        aggregate_bits=aggregate_bits,
+    )
 
   def _bits_per_element(self, dtype: tf.dtypes.DType) -> int:
     """Returns the number of bits that a tensorflow DType uses per element."""
@@ -257,19 +266,24 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
 
 
 # pylint:disable=missing-function-docstring
-def _wrap_executor_in_threading_stack(ex: executor_base.Executor,
-                                      support_sequence_ops: bool = False,
-                                      can_resolve_references=True):
+def _wrap_executor_in_threading_stack(
+    ex: executor_base.Executor,
+    support_sequence_ops: bool = False,
+    can_resolve_references=True,
+):
   threaded_ex = thread_delegating_executor.ThreadDelegatingExecutor(ex)
   if support_sequence_ops:
     if not can_resolve_references:
       raise ValueError(
-          'Support for sequence ops requires ability to resolve references.')
+          'Support for sequence ops requires ability to resolve references.'
+      )
     threaded_ex = sequence_executor.SequenceExecutor(
-        reference_resolving_executor.ReferenceResolvingExecutor(threaded_ex))
+        reference_resolving_executor.ReferenceResolvingExecutor(threaded_ex)
+    )
   if can_resolve_references:
     threaded_ex = reference_resolving_executor.ReferenceResolvingExecutor(
-        threaded_ex)
+        threaded_ex
+    )
   return threaded_ex
 
 
@@ -281,13 +295,15 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
   this executor manages the placement of work on local executors.
   """
 
-  def __init__(self,
-               *,
-               support_sequence_ops: bool = False,
-               can_resolve_references: bool = True,
-               server_device: Optional[tf.config.LogicalDevice] = None,
-               client_devices: Optional[Sequence[tf.config.LogicalDevice]] = (),
-               leaf_executor_fn=eager_tf_executor.EagerTFExecutor):
+  def __init__(
+      self,
+      *,
+      support_sequence_ops: bool = False,
+      can_resolve_references: bool = True,
+      server_device: Optional[tf.config.LogicalDevice] = None,
+      client_devices: Optional[Sequence[tf.config.LogicalDevice]] = (),
+      leaf_executor_fn=eager_tf_executor.EagerTFExecutor,
+  ):
     self._support_sequence_ops = support_sequence_ops
     self._can_resolve_references = can_resolve_references
     self._server_device = server_device
@@ -300,19 +316,21 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
       return None
     device = self._client_devices[self._client_device_index]
     self._client_device_index = (self._client_device_index + 1) % len(
-        self._client_devices)
+        self._client_devices
+    )
     return device
 
   def create_executor(
       self,
       *,
       cardinalities: Optional[executor_factory.CardinalitiesType] = None,
-      placement: Optional[placements.PlacementLiteral] = None
+      placement: Optional[placements.PlacementLiteral] = None,
   ) -> executor_base.Executor:
     if cardinalities:
       raise ValueError(
           'Unplaced executors cannot accept nonempty cardinalities as '
-          'arguments. Received cardinalities: {}.'.format(cardinalities))
+          'arguments. Received cardinalities: {}.'.format(cardinalities)
+      )
     if placement == placements.CLIENTS:
       device = self._get_next_client_device()
     elif placement == placements.SERVER:
@@ -323,10 +341,12 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
     return _wrap_executor_in_threading_stack(
         leaf_ex,
         support_sequence_ops=self._support_sequence_ops,
-        can_resolve_references=self._can_resolve_references)
+        can_resolve_references=self._can_resolve_references,
+    )
 
-  def clean_up_executor(self,
-                        cardinalities: executor_factory.CardinalitiesType):
+  def clean_up_executor(
+      self, cardinalities: executor_factory.CardinalitiesType
+  ):
     # Does not hold any executors internally, so nothing to clean up.
     pass
 
@@ -357,25 +377,24 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
     * An optional instance of `LocalComputationFactory` to use to construct
       local computations used as parameters in certain federated operators
       (such as `tff.federated_sum`, etc.). Defaults to a TensorFlow factory.
-
   """
 
-  def __init__(self,
-               *,
-               clients_per_thread: int,
-               unplaced_ex_factory: UnplacedExecutorFactory,
-               default_num_clients: int = 0,
-               use_sizing: bool = False,
-               local_computation_factory: local_computation_factory_base
-               .LocalComputationFactory = tensorflow_computation_factory
-               .TensorFlowComputationFactory(),
-               federated_strategy_factory=federated_resolving_strategy
-               .FederatedResolvingStrategy.factory):
+  def __init__(
+      self,
+      *,
+      clients_per_thread: int,
+      unplaced_ex_factory: UnplacedExecutorFactory,
+      default_num_clients: int = 0,
+      use_sizing: bool = False,
+      local_computation_factory: local_computation_factory_base.LocalComputationFactory = tensorflow_computation_factory.TensorFlowComputationFactory(),
+      federated_strategy_factory=federated_resolving_strategy.FederatedResolvingStrategy.factory,
+  ):
     py_typecheck.check_type(clients_per_thread, int)
     py_typecheck.check_type(unplaced_ex_factory, UnplacedExecutorFactory)
     py_typecheck.check_type(
         local_computation_factory,
-        local_computation_factory_base.LocalComputationFactory)
+        local_computation_factory_base.LocalComputationFactory,
+    )
     self._clients_per_thread = clients_per_thread
     self._unplaced_executor_factory = unplaced_ex_factory
     py_typecheck.check_type(default_num_clients, int)
@@ -393,14 +412,17 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
   @property
   def sizing_executors(self) -> list[sizing_executor.SizingExecutor]:
     if not self._use_sizing:
-      raise ValueError('This federated factory is not configured to produce '
-                       'size information. Construct a new federated factory, '
-                       'passing argument `use_sizing=True`.')
+      raise ValueError(
+          'This federated factory is not configured to produce '
+          'size information. Construct a new federated factory, '
+          'passing argument `use_sizing=True`.'
+      )
     else:
       return self._sizing_executors
 
   def _validate_requested_clients(
-      self, cardinalities: executor_factory.CardinalitiesType) -> int:
+      self, cardinalities: executor_factory.CardinalitiesType
+  ) -> int:
     num_requested_clients = cardinalities.get(placements.CLIENTS)
     if num_requested_clients is None:
       return self._default_num_clients
@@ -414,7 +436,8 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
     num_client_executors = math.ceil(num_clients / self._clients_per_thread)
     client_stacks = [
         self._unplaced_executor_factory.create_executor(
-            cardinalities={}, placement=placements.CLIENTS)
+            cardinalities={}, placement=placements.CLIENTS
+        )
         for _ in range(num_client_executors)
     ]
     if self._use_sizing:
@@ -429,27 +452,31 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
                 client_stacks[k % len(client_stacks)]
                 for k in range(num_clients)
             ],
-            placements.SERVER:
-                self._unplaced_executor_factory.create_executor(
-                    placement=placements.SERVER),
+            placements.SERVER: self._unplaced_executor_factory.create_executor(
+                placement=placements.SERVER
+            ),
         },
-        local_computation_factory=self._local_computation_factory)
+        local_computation_factory=self._local_computation_factory,
+    )
     unplaced_executor = self._unplaced_executor_factory.create_executor()
     executor = federating_executor.FederatingExecutor(
-        federating_strategy_factory, unplaced_executor)
+        federating_strategy_factory, unplaced_executor
+    )
     return _wrap_executor_in_threading_stack(executor)
 
-  def clean_up_executor(self,
-                        cardinalities: executor_factory.CardinalitiesType):
+  def clean_up_executor(
+      self, cardinalities: executor_factory.CardinalitiesType
+  ):
     # Does not hold any executors internally, so nothing to clean up.
     pass
 
 
 def create_minimal_length_flat_stack_fn(
     max_clients_per_stack: int,
-    federated_stack_factory: executor_factory.ExecutorFactory
-) -> Callable[[executor_factory.CardinalitiesType],
-              list[executor_base.Executor]]:
+    federated_stack_factory: executor_factory.ExecutorFactory,
+) -> Callable[
+    [executor_factory.CardinalitiesType], list[executor_base.Executor]
+]:
   """Creates a function returning a list of executors to run `cardinalities`.
 
   This list is of minimal length among all lists subject to the constraint that
@@ -473,7 +500,7 @@ def create_minimal_length_flat_stack_fn(
   """
 
   def create_executor_list(
-      cardinalities: executor_factory.CardinalitiesType
+      cardinalities: executor_factory.CardinalitiesType,
   ) -> list[executor_base.Executor]:
     num_clients = cardinalities.get(placements.CLIENTS, 0)
     if num_clients < 0:
@@ -488,7 +515,8 @@ def create_minimal_length_flat_stack_fn(
       sub_executor_cardinalities = {**cardinalities}
       sub_executor_cardinalities[placements.CLIENTS] = n
       executors.append(
-          federated_stack_factory.create_executor(sub_executor_cardinalities))
+          federated_stack_factory.create_executor(sub_executor_cardinalities)
+      )
       num_clients -= n
     return executors
 
@@ -502,15 +530,16 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
   compositional hierarchy based on the `max_fanout` parameter.
   """
 
-  def __init__(self,
-               *,
-               max_fanout: int,
-               unplaced_ex_factory: UnplacedExecutorFactory,
-               flat_stack_fn: Callable[[executor_factory.CardinalitiesType],
-                                       Sequence[executor_base.Executor]],
-               local_computation_factory: local_computation_factory_base
-               .LocalComputationFactory = tensorflow_computation_factory
-               .TensorFlowComputationFactory()):
+  def __init__(
+      self,
+      *,
+      max_fanout: int,
+      unplaced_ex_factory: UnplacedExecutorFactory,
+      flat_stack_fn: Callable[
+          [executor_factory.CardinalitiesType], Sequence[executor_base.Executor]
+      ],
+      local_computation_factory: local_computation_factory_base.LocalComputationFactory = tensorflow_computation_factory.TensorFlowComputationFactory(),
+  ):
     if max_fanout < 2:
       raise ValueError('Max fanout must be greater than 1.')
     self._flat_stack_fn = flat_stack_fn
@@ -537,8 +566,9 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     executors = self._flat_stack_fn(cardinalities)
     return self._aggregate_stacks(executors)
 
-  def clean_up_executor(self,
-                        cardinalities: executor_factory.CardinalitiesType):
+  def clean_up_executor(
+      self, cardinalities: executor_factory.CardinalitiesType
+  ):
     """Holds no executors internally, so passes on cleanup."""
     pass
 
@@ -546,7 +576,8 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
       self, *, target_executors: Sequence[executor_base.Executor]
   ) -> executor_base.Executor:
     server_executor = self._unplaced_ex_factory.create_executor(
-        placement=placements.SERVER)
+        placement=placements.SERVER
+    )
     composing_strategy_factory = (
         federated_composing_strategy.FederatedComposingStrategy.factory(
             server_executor,
@@ -556,9 +587,11 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     )
     unplaced_executor = self._unplaced_ex_factory.create_executor()
     composing_executor = federating_executor.FederatingExecutor(
-        composing_strategy_factory, unplaced_executor)
+        composing_strategy_factory, unplaced_executor
+    )
     threaded_composing_executor = _wrap_executor_in_threading_stack(
-        composing_executor, can_resolve_references=False)
+        composing_executor, can_resolve_references=False
+    )
     return threaded_composing_executor
 
   def _aggregate_stacks(
@@ -585,7 +618,8 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     """
     if len(executors) <= 1:
       return reference_resolving_executor.ReferenceResolvingExecutor(
-          self._create_composing_stack(target_executors=executors))
+          self._create_composing_stack(target_executors=executors)
+      )
     while len(executors) > 1:
       new_executors = []
       offset = 0
@@ -593,7 +627,8 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
         new_offset = offset + self._max_fanout
         target_executors = executors[offset:new_offset]
         composing_executor = self._create_composing_stack(
-            target_executors=target_executors)
+            target_executors=target_executors
+        )
         new_executors.append(composing_executor)
         offset = new_offset
       executors = new_executors
@@ -603,10 +638,12 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
 
 
 def normalize_num_clients_and_default_num_clients(
-    num_clients: Optional[int], default_num_clients: int) -> int:
+    num_clients: Optional[int], default_num_clients: int
+) -> int:
   if num_clients is not None:
-    warnings.warn('num_clients is deprecated; please use default_num_clients '
-                  'instead.')
+    warnings.warn(
+        'num_clients is deprecated; please use default_num_clients instead.'
+    )
     py_typecheck.check_type(num_clients, int)
     return num_clients
   return default_num_clients
@@ -621,8 +658,7 @@ def local_executor_factory(
     reference_resolving_clients=True,
     support_sequence_ops=False,
     leaf_executor_fn=eager_tf_executor.EagerTFExecutor,
-    local_computation_factory=tensorflow_computation_factory
-    .TensorFlowComputationFactory(),
+    local_computation_factory=tensorflow_computation_factory.TensorFlowComputationFactory(),
 ) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally.
 
@@ -678,20 +714,24 @@ def local_executor_factory(
       can_resolve_references=reference_resolving_clients,
       server_device=server_tf_device,
       client_devices=client_tf_devices,
-      leaf_executor_fn=leaf_executor_fn)
+      leaf_executor_fn=leaf_executor_fn,
+  )
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
       default_num_clients=default_num_clients,
       use_sizing=False,
-      local_computation_factory=local_computation_factory)
+      local_computation_factory=local_computation_factory,
+  )
   flat_stack_fn = create_minimal_length_flat_stack_fn(
-      max_fanout, federating_executor_factory)
+      max_fanout, federating_executor_factory
+  )
   full_stack_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
       flat_stack_fn=flat_stack_fn,
-      local_computation_factory=local_computation_factory)
+      local_computation_factory=local_computation_factory,
+  )
 
   def _factory_fn(cardinalities):
     if cardinalities.get(placements.CLIENTS, 0) < max_fanout:
@@ -758,15 +798,18 @@ def thread_debugging_executor_factory(
   """
   py_typecheck.check_type(clients_per_thread, int)
   unplaced_ex_factory = UnplacedExecutorFactory(
-      can_resolve_references=False, leaf_executor_fn=leaf_executor_fn)
+      can_resolve_references=False, leaf_executor_fn=leaf_executor_fn
+  )
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
       default_num_clients=default_num_clients,
-      use_sizing=False)
+      use_sizing=False,
+  )
 
   return ResourceManagingExecutorFactory(
-      federating_executor_factory.create_executor)
+      federating_executor_factory.create_executor
+  )
 
 
 def sizing_executor_factory(
@@ -806,21 +849,25 @@ def sizing_executor_factory(
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   unplaced_ex_factory = UnplacedExecutorFactory(
-      leaf_executor_fn=leaf_executor_fn)
+      leaf_executor_fn=leaf_executor_fn
+  )
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
       default_num_clients=default_num_clients,
-      use_sizing=True)
+      use_sizing=True,
+  )
   flat_stack_fn = create_minimal_length_flat_stack_fn(
-      max_fanout, federating_executor_factory)
+      max_fanout, federating_executor_factory
+  )
   full_stack_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
-      flat_stack_fn=flat_stack_fn)
+      flat_stack_fn=flat_stack_fn,
+  )
 
   def _factory_fn(
-      cardinalities: executor_factory.CardinalitiesType
+      cardinalities: executor_factory.CardinalitiesType,
   ) -> executor_base.Executor:
     if cardinalities.get(placements.CLIENTS, 0) < max_fanout:
       executor = federating_executor_factory.create_executor(cardinalities)
@@ -840,10 +887,13 @@ class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
   any previously constructed executors.
   """
 
-  def __init__(self,
-               underlying_stack: executor_factory.ExecutorFactory,
-               change_query: Callable[[executor_factory.CardinalitiesType],
-                                      bool] = lambda _: True):
+  def __init__(
+      self,
+      underlying_stack: executor_factory.ExecutorFactory,
+      change_query: Callable[
+          [executor_factory.CardinalitiesType], bool
+      ] = lambda _: True,
+  ):
     self._change_query = change_query
     self._underlying_stack = underlying_stack
     self._executors = cachetools.LRUCache(_EXECUTOR_CACHE_SIZE)
@@ -877,8 +927,9 @@ class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
       self._executors[key] = constructed
       return constructed
 
-  def clean_up_executor(self,
-                        cardinalities: executor_factory.CardinalitiesType):
+  def clean_up_executor(
+      self, cardinalities: executor_factory.CardinalitiesType
+  ):
     key = _get_hashable_key(cardinalities)
     ex = self._executors.get(key)
     if ex is None:
@@ -888,7 +939,7 @@ class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
     self._underlying_stack.clean_up_executor(cardinalities)
 
 
-class _CardinalitiesOrReadyListChanged():
+class _CardinalitiesOrReadyListChanged:
   """Callable checking for changes to either the argument or a ready list.
 
   Note: the contents of the provided list are expected to change over time.
@@ -910,15 +961,24 @@ class _CardinalitiesOrReadyListChanged():
     return cardinalities_changed or ready_list_changed
 
 
-def _configure_remote_workers(default_num_clients, stubs, thread_pool_executor,
-                              dispose_batch_size):
-  """"Configures `default_num_clients` across `remote_executors`."""
+def _configure_remote_workers(
+    default_num_clients,
+    stubs,
+    thread_pool_executor,
+    dispose_batch_size,
+    stream_structs: bool = False,
+):
+  """Configures `default_num_clients` across `remote_executors`."""
   available_stubs = [stub for stub in stubs if stub.is_ready]
-  logging.info('%s TFF workers available out of a total of %s.',
-               len(available_stubs), len(stubs))
+  logging.info(
+      '%s TFF workers available out of a total of %s.',
+      len(available_stubs),
+      len(stubs),
+  )
   if not available_stubs:
     raise executors_errors.RetryableError(
-        'No workers are ready; try again to reconnect.')
+        'No workers are ready; try again to reconnect.'
+    )
   remaining_clients = default_num_clients
   live_workers = []
   for stub_idx, stub in enumerate(available_stubs):
@@ -926,8 +986,9 @@ def _configure_remote_workers(default_num_clients, stubs, thread_pool_executor,
     default_num_clients_to_host = remaining_clients // remaining_stubs
     remaining_clients -= default_num_clients_to_host
     if default_num_clients_to_host > 0:
-      ex = remote_executor.RemoteExecutor(stub, thread_pool_executor,
-                                          dispose_batch_size)
+      ex = remote_executor.RemoteExecutor(
+          stub, thread_pool_executor, dispose_batch_size, stream_structs
+      )
       ex.set_cardinalities({placements.CLIENTS: default_num_clients_to_host})
       live_workers.append(ex)
   return [
@@ -942,6 +1003,7 @@ def remote_executor_factory(
     dispose_batch_size: int = 20,
     max_fanout: int = 100,
     default_num_clients: int = 0,
+    stream_structs: bool = False,
 ) -> executor_factory.ExecutorFactory:
   """Create an executor backed by remote workers.
 
@@ -965,6 +1027,7 @@ def remote_executor_factory(
       client-placed values. However, when this inference isn't possible (such as
       in the case of a no-argument or non-federated computation) this default
       will be used instead.
+    stream_structs: The flag to enable decomposing and streaming struct values.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -983,18 +1046,28 @@ def remote_executor_factory(
       remote_executor_grpc_stub.RemoteExecutorGrpcStub(channel)
       for channel in channels
   ]
-  return remote_executor_factory_from_stubs(stubs, thread_pool_executor,
-                                            dispose_batch_size, max_fanout,
-                                            default_num_clients)
+  return remote_executor_factory_from_stubs(
+      stubs,
+      thread_pool_executor,
+      dispose_batch_size,
+      max_fanout,
+      default_num_clients,
+      stream_structs,
+  )
 
 
 def remote_executor_factory_from_stubs(
-    stubs: list[Union[remote_executor_grpc_stub.RemoteExecutorGrpcStub,
-                      remote_executor_stub.RemoteExecutorStub]],
+    stubs: list[
+        Union[
+            remote_executor_grpc_stub.RemoteExecutorGrpcStub,
+            remote_executor_stub.RemoteExecutorStub,
+        ]
+    ],
     thread_pool_executor: Optional[futures.Executor] = None,
     dispose_batch_size: int = 20,
     max_fanout: int = 100,
     default_num_clients: int = 0,
+    stream_structs: bool = False,
 ) -> executor_factory.ExecutorFactory:
   """Create an executor backed by remote workers.
 
@@ -1017,6 +1090,7 @@ def remote_executor_factory_from_stubs(
       client-placed values. However, when this inference isn't possible (such as
       in the case of a no-argument or non-federated computation) this default
       will be used instead.
+    stream_structs: The flag to enable decomposing and streaming struct values.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -1033,8 +1107,13 @@ def remote_executor_factory_from_stubs(
 
   def _flat_stack_fn(cardinalities):
     num_clients = cardinalities.get(placements.CLIENTS, default_num_clients)
-    return _configure_remote_workers(num_clients, stubs, thread_pool_executor,
-                                     dispose_batch_size)
+    return _configure_remote_workers(
+        num_clients,
+        stubs,
+        thread_pool_executor,
+        dispose_batch_size,
+        stream_structs,
+    )
 
   unplaced_ex_factory = UnplacedExecutorFactory()
   composing_executor_factory = ComposingExecutorFactory(
@@ -1045,4 +1124,5 @@ def remote_executor_factory_from_stubs(
 
   return ReconstructOnChangeExecutorFactory(
       underlying_stack=composing_executor_factory,
-      change_query=_CardinalitiesOrReadyListChanged(maybe_ready_list=stubs))
+      change_query=_CardinalitiesOrReadyListChanged(maybe_ready_list=stubs),
+  )
