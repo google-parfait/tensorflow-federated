@@ -437,9 +437,8 @@ class ModelDeltaClientWorkExecutionTest(
     )
     # Both trainable parameters should have been updated, and we don't return
     # the non-trainable variable.
-    self.assertAllGreater(
-        np.linalg.norm(client_result.update, axis=-1), expected_norm
-    )
+    for trainable_param in client_result.update:
+      self.assertAllGreater(np.linalg.norm(trainable_param), expected_norm)
     if weighting == client_weight_lib.ClientWeighting.UNIFORM:
       self.assertEqual(client_result.update_weight, 1.0)
     else:
